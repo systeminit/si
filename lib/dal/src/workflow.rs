@@ -1,9 +1,9 @@
 use crate::{
     func::backend::js_workflow::FuncBackendJsWorkflowArgs, func::backend::FuncDispatchContext,
-    func::binding::FuncBindingId, func::execution::FuncExecution, DalContext, DalContextBuilder,
-    Func, FuncBackendKind, FuncBinding, FuncBindingError, FuncBindingReturnValue, PgPoolError,
-    RequestContext, ServicesContext, StandardModel, StandardModelError, TransactionsError,
-    TransactionsStarter, WsEvent, WsEventError, WsPayload,
+    func::binding::FuncBindingId, func::execution::FuncExecution, Connections, DalContext,
+    DalContextBuilder, Func, FuncBackendKind, FuncBinding, FuncBindingError,
+    FuncBindingReturnValue, PgPoolError, RequestContext, ServicesContext, StandardModel,
+    StandardModelError, TransactionsError, WsEvent, WsEventError, WsPayload,
 };
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
@@ -238,13 +238,13 @@ impl WorkflowTree {
                 visibility: *ctx.visibility(),
                 history_actor: ctx.history_actor().clone(),
             };
-            let transactions_starter = services_context.transactions_starter().await?;
+            let conns = services_context.connections().await?;
 
             handlers.spawn(async move {
                 async fn process_output(
                     ctx_builder: DalContextBuilder,
                     request_context: RequestContext,
-                    mut conns: TransactionsStarter,
+                    mut conns: Connections,
                     func_binding_id: FuncBindingId,
                     mut rx: mpsc::Receiver<OutputStream>,
                 ) -> WorkflowResult<(FuncBindingId, Vec<OutputStream>)> {
@@ -269,14 +269,7 @@ impl WorkflowTree {
                     }
                     Ok((func_binding_id, output))
                 }
-                process_output(
-                    ctx_builder,
-                    request_context,
-                    transactions_starter,
-                    func_binding_id,
-                    rx,
-                )
-                .await
+                process_output(ctx_builder, request_context, conns, func_binding_id, rx).await
             });
         }
         let mut map = self.clone().execute(map).await?;

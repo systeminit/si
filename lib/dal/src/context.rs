@@ -86,12 +86,12 @@ impl ServicesContext {
         &self.encryption_key
     }
 
-    /// Builds and returns a new [`TransactionsStarter`].
-    pub async fn transactions_starter(&self) -> PgPoolResult<TransactionsStarter> {
+    /// Builds and returns a new [`Connections`].
+    pub async fn connections(&self) -> PgPoolResult<Connections> {
         let pg_conn = self.pg_pool.get().await?;
         let nats_conn = self.nats_conn.clone();
         let job_processor = self.job_processor.clone();
-        Ok(TransactionsStarter::new(pg_conn, nats_conn, job_processor))
+        Ok(Connections::new(pg_conn, nats_conn, job_processor))
     }
 }
 
@@ -122,7 +122,7 @@ impl DalContext {
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
     /// underlying connections.
-    pub async fn commit_into_conns(self) -> Result<TransactionsStarter, TransactionsError> {
+    pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
         self.txns.commit_into_conns().await
     }
 
@@ -154,7 +154,7 @@ impl DalContext {
     ///
     /// This is equivalent to the transaction's `Drop` implementations, but provides any error
     /// encountered to the caller.
-    pub async fn rollback_into_conns(self) -> Result<TransactionsStarter, TransactionsError> {
+    pub async fn rollback_into_conns(self) -> Result<Connections, TransactionsError> {
         self.txns.rollback_into_conns().await
     }
 
@@ -555,13 +555,13 @@ pub struct DalContextBuilder {
 
 impl DalContextBuilder {
     /// Contructs and returns a new [`DalContext`] using the given [`RequestContext`] and
-    /// an existing [`TransactionsStarter`].
+    /// an existing [`Connections`].
     pub async fn build_with_conns(
         &self,
         request_context: RequestContext,
-        conns: TransactionsStarter,
+        conns: Connections,
     ) -> Result<DalContext, TransactionsError> {
-        let txns = conns.start().await?;
+        let txns = conns.start_txns().await?;
 
         Ok(DalContext {
             services_context: self.services_context.clone(),
@@ -606,7 +606,7 @@ impl DalContextBuilder {
         &self,
         request_context: RequestContext,
     ) -> Result<DalContext, TransactionsError> {
-        let conns = self.transactions_starter().await?;
+        let conns = self.connections().await?;
         self.build_with_conns(request_context, conns).await
     }
 
@@ -620,9 +620,9 @@ impl DalContextBuilder {
         &self.services_context.nats_conn
     }
 
-    /// Builds and returns a new [`TransactionsStarter`].
-    pub async fn transactions_starter(&self) -> PgPoolResult<TransactionsStarter> {
-        self.services_context.transactions_starter().await
+    /// Builds and returns a new [`Connections`].
+    pub async fn connections(&self) -> PgPoolResult<Connections> {
+        self.services_context.connections().await
     }
 }
 
@@ -648,14 +648,14 @@ pub enum TransactionsError {
 
 /// A type which holds ownership over connections that can be used to start transactions.
 #[derive(Debug)]
-pub struct TransactionsStarter {
+pub struct Connections {
     pg_conn: InstrumentedClient,
     nats_conn: NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
-impl TransactionsStarter {
-    /// Builds a new [`TransactionsStarter`].
+impl Connections {
+    /// Builds a new [`Connections`].
     #[must_use]
     pub fn new(
         pg_conn: InstrumentedClient,
@@ -669,8 +669,8 @@ impl TransactionsStarter {
         }
     }
 
-    /// Starts and returns the underlying transactions as a [`Transactions`].
-    pub async fn start(self) -> Result<Transactions, TransactionsError> {
+    /// Starts and returns a [`Transactions`].
+    pub async fn start_txns(self) -> Result<Transactions, TransactionsError> {
         let pg_txn = PgTxn::create(self.pg_conn).await?;
         let nats_txn = self.nats_conn.transaction();
         let job_processor = self.job_processor;
@@ -728,11 +728,11 @@ impl Transactions {
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
     /// underlying connections.
-    pub async fn commit_into_conns(self) -> Result<TransactionsStarter, TransactionsError> {
+    pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.commit_into_conn().await?;
         let nats_conn = self.nats_txn.commit_into_conn().await?;
         self.job_processor.process_queue().await?;
-        let conns = TransactionsStarter::new(pg_conn, nats_conn, self.job_processor);
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
 
         Ok(conns)
     }
@@ -748,10 +748,10 @@ impl Transactions {
     ///
     /// This is equivalent to the transaction's `Drop` implementations, but provides any error
     /// encountered to the caller.
-    pub async fn rollback_into_conns(self) -> Result<TransactionsStarter, TransactionsError> {
+    pub async fn rollback_into_conns(self) -> Result<Connections, TransactionsError> {
         let pg_conn = self.pg_txn.rollback_into_conn().await?;
         let nats_conn = self.nats_txn.rollback_into_conn().await?;
-        let conns = TransactionsStarter::new(pg_conn, nats_conn, self.job_processor);
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
 
         Ok(conns)
     }

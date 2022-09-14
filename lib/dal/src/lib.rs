@@ -103,8 +103,8 @@ pub use code_generation_resolver::{
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{Component, ComponentError, ComponentId, ComponentView};
 pub use context::{
-    AccessBuilder, DalContext, DalContextBuilder, RequestContext, ServicesContext, Transactions,
-    TransactionsError, TransactionsStarter,
+    AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
+    Transactions, TransactionsError,
 };
 pub use cyclone_key_pair::CycloneKeyPair;
 pub use diagram::{
