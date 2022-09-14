@@ -1,14 +1,13 @@
-use std::string::FromUtf8Error;
-
-use crate::{standard_model::TypeHint, HistoryEvent, WriteTenancy};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
+use std::string::FromUtf8Error;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, DalContext,
-    HistoryEventError, StandardModel, StandardModelError, Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model::TypeHint, standard_model_accessor,
+    DalContext, HistoryEvent, HistoryEventError, QualificationPrototypeError, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -34,6 +33,8 @@ pub enum FuncError {
     Decode(#[from] base64::DecodeError),
     #[error("utf8 encoding error: {0}")]
     FromUtf8(#[from] FromUtf8Error),
+    #[error("qualificiation prototype error: {0}")]
+    QualificationPrototype(#[from] QualificationPrototypeError),
 
     #[error("could not find func by id: {0}")]
     NotFound(FuncId),

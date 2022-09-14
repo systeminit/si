@@ -25,6 +25,7 @@ pub struct GetFuncResponse {
     pub description: Option<String>,
     pub code: Option<String>,
     pub is_builtin: bool,
+    pub is_revertable: bool,
     pub schema_variants: Vec<SchemaVariantId>,
     pub components: Vec<ComponentId>,
 }
@@ -35,7 +36,7 @@ pub async fn get_func(
     Query(request): Query<GetFuncRequest>,
 ) -> FuncResult<Json<GetFuncResponse>> {
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
 
     let func = Func::get_by_id(&ctx, &request.id)
         .await?
@@ -54,6 +55,9 @@ pub async fn get_func(
         }
     }
 
+    let is_revertable =
+        super::is_func_revertable(builder.clone(), &txns, request_ctx, &func).await?;
+
     txns.commit().await?;
 
     Ok(Json(GetFuncResponse {
@@ -69,5 +73,6 @@ pub async fn get_func(
         is_builtin: func.is_builtin(),
         components,
         schema_variants,
+        is_revertable,
     }))
 }

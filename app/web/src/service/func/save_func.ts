@@ -12,6 +12,7 @@ export interface SaveFuncRequest extends Func {
 
 export interface SaveFuncResponse {
   success: boolean;
+  isRevertable: boolean;
 }
 
 export const saveFunc: (
@@ -34,7 +35,7 @@ export const saveFunc: (
 
   if (response.error) {
     GlobalErrorService.set(response);
-    return { success: false };
+    return { success: false, isRevertable: false };
   }
   return response as SaveFuncResponse;
 };

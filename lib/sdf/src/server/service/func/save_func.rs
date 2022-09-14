@@ -26,6 +26,7 @@ pub struct SaveFuncRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SaveFuncResponse {
     pub success: bool,
+    pub is_revertable: bool,
 }
 
 pub async fn save_func(
@@ -34,17 +35,14 @@ pub async fn save_func(
     Json(request): Json<SaveFuncRequest>,
 ) -> FuncResult<Json<SaveFuncResponse>> {
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
 
     let mut func = Func::get_by_id(&ctx, &request.id)
         .await?
         .ok_or(FuncError::FuncNotFound)?;
 
-    // Don't modify builtins or objects in another tenancy/visibility
-    if !ctx
-        .check_standard_model_tenancy_and_visibility_match(&func)
-        .await?
-    {
+    // Don't modify builtins, or for other tenancies
+    if !ctx.check_tenancy(&func).await? {
         return Err(FuncError::NotWritable);
     }
 
@@ -65,15 +63,12 @@ pub async fn save_func(
                     .collect(),
             );
             associations.append(&mut request.components.iter().map(|f| (*f).into()).collect());
-
-            if !associations.is_empty() {
-                let _ = QualificationPrototype::associate_prototypes_with_func_and_objects(
-                    &ctx,
-                    func.id(),
-                    &associations,
-                )
-                .await?;
-            }
+            let _ = QualificationPrototype::associate_prototypes_with_func_and_objects(
+                &ctx,
+                func.id(),
+                &associations,
+            )
+            .await?;
         }
         FuncBackendKind::JsAttribute => {
             // here we need to update the attribute prototypes based on the chosen props and contexts
@@ -81,9 +76,15 @@ pub async fn save_func(
         _ => {}
     }
 
+    let is_revertable =
+        super::is_func_revertable(builder.clone(), &txns, request_ctx, &func).await?;
+
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
     txns.commit().await?;
 
-    Ok(Json(SaveFuncResponse { success: true }))
+    Ok(Json(SaveFuncResponse {
+        success: true,
+        is_revertable,
+    }))
 }
