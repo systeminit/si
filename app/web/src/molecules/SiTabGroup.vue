@@ -1,46 +1,59 @@
 <template>
-  <TabGroup :selected-index="selectedIndex" @change="props.onChange">
-    <slot />
-    <div
-      :class="topMargin > 0 ? `mt-${topMargin}` : ''"
-      class="w-full h-11 relative"
-    >
-      <TabList ref="tabList" :class="tabListClasses">
-        <div
-          v-if="startMargin > 0"
-          :class="
-            'w-' + startMargin + (selectedTabToFront ? ' order-first' : '')
-          "
-          class="border-b border-neutral-300 dark:border-neutral-600"
-        ></div>
-        <slot name="tabs" />
-        <div ref="endSpace"></div>
-      </TabList>
-      <SiBarButton
-        ref="dropDown"
-        :dropdown-item-show-suffix="false"
-        :hover-effect="false"
-        :navbar="false"
-        :padding-x="2"
-        dropdown-classes="right-0 overflow-hidden max-w-xs text-left text-ellipsis"
-        dropdown-item-classes="text-left text-ellipsis"
+  <div
+    class="si-tab-group absolute w-full h-full flex flex-col overflow-hidden"
+  >
+    <TabGroup :selected-index="selectedIndex" @change="props.onChange">
+      <slot />
+      <div
+        :class="
+          clsx(
+            'si-tab-group__header',
+            'w-full h-11 relative flex-shrink-0',
+            topMargin > 0 ? `mt-${topMargin}` : '',
+          )
+        "
       >
-        <Icon name="dots-vertical" />
-        <template #dropdownContent>
-          <slot name="dropdownitems" />
-        </template>
-      </SiBarButton>
-    </div>
-    <TabPanels as="template">
-      <slot name="panels" />
-    </TabPanels>
-  </TabGroup>
+        <TabList
+          ref="tabList"
+          :class="clsx('si-tab-group__tabs', tabListClasses)"
+        >
+          <div
+            v-if="startMargin > 0"
+            :class="
+              'w-' + startMargin + (selectedTabToFront ? ' order-first' : '')
+            "
+            class="border-b border-neutral-300 dark:border-neutral-600"
+          ></div>
+          <slot name="tabs" />
+          <div ref="endSpace"></div>
+        </TabList>
+        <SiBarButton
+          ref="dropDown"
+          :dropdown-item-show-suffix="false"
+          :hover-effect="false"
+          :navbar="false"
+          :padding-x="2"
+          dropdown-classes="right-0 overflow-hidden max-w-xs text-left text-ellipsis"
+          dropdown-item-classes="text-left text-ellipsis"
+        >
+          <Icon name="dots-vertical" />
+          <template #dropdownContent>
+            <slot name="dropdownitems" />
+          </template>
+        </SiBarButton>
+      </div>
+      <TabPanels class="si-tab-group__body flex-grow overflow-auto relative">
+        <slot name="panels" />
+      </TabPanels>
+    </TabGroup>
+  </div>
 </template>
 
 <script lang="ts" setup>
 import { TabGroup, TabList, TabPanels } from "@headlessui/vue";
 import { onBeforeUnmount, onMounted, onUpdated, provide, ref } from "vue";
 import _ from "lodash";
+import clsx from "clsx";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import Icon from "@/ui-lib/Icon.vue";
 

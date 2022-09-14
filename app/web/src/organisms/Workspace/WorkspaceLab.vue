@@ -1,23 +1,23 @@
 <template>
-  <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
-    <SiPanel
-      remember-size-key="func-picker"
-      side="left"
-      class="h-full pb-12"
-      size-classes="shrink-0 w-96"
-      :min-resize="300"
-    >
-      <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
-      <FuncPicker
-        :func-list="funcList"
-        :selected-func-id="selectedFuncId"
-        @selected-func="selectFunc"
-        @create-func="createFunc"
+  <SiPanel remember-size-key="func-picker" side="left" :min-size="300">
+    <div class="flex flex-col h-full">
+      <ChangeSetPanel
+        class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
-    </SiPanel>
-    <div
-      class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold px-2 pt-2 flex flex-col"
-    >
+      <div class="relative flex-grow">
+        <FuncPicker
+          :func-list="funcList"
+          :selected-func-id="selectedFuncId"
+          @selected-func="selectFunc"
+          @create-func="createFunc"
+        />
+      </div>
+    </div>
+  </SiPanel>
+  <div
+    class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
+  >
+    <div class="inset-2 bottom-0 absolute">
       <FuncEditorTabs
         v-if="selectedFuncId > 0 && !isLoading"
         :selected-func-id="selectedFuncId"
@@ -30,18 +30,16 @@
         Select a function to edit it.
       </div>
     </div>
-    <SiPanel
-      remember-size-key="func-details"
-      :hidden="isLoading"
-      side="right"
-      class="h-full pb-12"
-      size-classes="shrink-0 w-80"
-      :min-resize="200"
-    >
-      <!-- if hiding is added later, condition is selectedFuncId < 1 -->
-      <FuncDetails :func-id="selectedFuncId" />
-    </SiPanel>
   </div>
+  <SiPanel
+    remember-size-key="func-details"
+    :hidden="isLoading"
+    side="right"
+    :min-size="200"
+  >
+    <!-- if hiding is added later, condition is selectedFuncId < 1 -->
+    <FuncDetails :func-id="selectedFuncId" />
+  </SiPanel>
 </template>
 
 <script lang="ts" setup>

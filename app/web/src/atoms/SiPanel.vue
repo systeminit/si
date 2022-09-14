@@ -1,28 +1,43 @@
 <template>
-  <div ref="panel" :class="panelClasses">
+  <div
+    ref="panel"
+    :class="
+      clsx(
+        'si-panel',
+        'z-20 dark:text-white border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 pointer-events-auto relative',
+        {
+          left: 'border-r-2',
+          right: 'border-l-2',
+          top: 'border-b-2',
+          bottom: 'border-t-2',
+        }[side],
+        `${side}-0`,
+      )
+    "
+    :style="{
+      ...(resizeable && {
+        [isVertical ? 'height' : 'width']: `${currentSize}px`,
+      }),
+    }"
+  >
     <SiPanelResizer
-      v-if="currentlyResizeable"
+      v-if="resizeable"
+      class="si-panel__resizer"
       :panel-side="side"
       @resize-start="onResizeStart"
       @resize-move="onResizeMove"
       @resize-reset="resetSize"
     />
-    <div class="absolute w-full h-full flex flex-col">
+    <div class="si-panel__inner absolute w-full h-full">
       <slot />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  PropType,
-  ref,
-  toRef,
-} from "vue";
+import { computed, onBeforeUnmount, onMounted, PropType, ref } from "vue";
 import _ from "lodash";
+import clsx from "clsx";
 import SiPanelResizer from "@/atoms/SiPanelResizer.vue";
 
 const props = defineProps({
@@ -39,104 +54,75 @@ const props = defineProps({
   },
   sizeClasses: { type: String, default: "" },
   resizeable: { type: Boolean, default: true },
-  minResize: { type: Number, default: 0.1 },
-  maxResize: { type: Number, default: 0.45 },
-  fixedDefaultSize: { type: Number },
+  minSizeRatio: { type: Number, default: 0.1 },
+  minSize: { type: Number, default: 200 },
+  maxSizeRatio: { type: Number, default: 0.45 },
+  maxSize: { type: Number },
+  defaultSize: { type: Number, default: 320 },
 });
 
 const isVertical = computed(
   () => props.side === "top" || props.side === "bottom",
 );
 
-const panelClasses = computed(() => {
-  const classes: Record<string, boolean> = {};
-  if (props.side === "left") {
-    if (!currentlyResizeable.value) classes["border-r-2"] = true;
-    classes[props.hidden ? "right-96" : "right-0"] = true;
-  } else if (props.side === "right") {
-    if (!currentlyResizeable.value) classes["border-l-2"] = true;
-    classes[props.hidden ? "left-96" : "left-0"] = true;
-  } else if (props.side === "top") {
-    if (!currentlyResizeable.value) classes["border-b-2"] = true;
-    classes[props.hidden ? "top-96" : "top-0"] = true;
-  } else if (props.side === "bottom") {
-    if (!currentlyResizeable.value) classes["border-t-2"] = true;
-    classes[props.hidden ? "bottom-96" : "bottom-0"] = true;
-  }
-  const propClasses = props.classes
-    .split(" ")
-    .concat(props.sizeClasses.split(" "));
-
-  propClasses.forEach((c) => {
-    classes[c] = true;
-  });
-
-  return classes;
-});
-
 const panel = ref();
-const size = ref(0);
-const maxResize = toRef(props, "maxResize");
-const currentlyResizeable = ref(props.resizeable);
-const currentMinResize = ref(props.minResize);
+const currentSize = ref(0);
 
-const setCurrentlyResizeable = (v: boolean) => {
-  currentlyResizeable.value = v;
-};
+const setSize = (newSize: number) => {
+  let finalSize = newSize;
 
-const setCurrentMinResize = (v: number) => {
-  currentMinResize.value = v;
-};
+  // TODO: make sure these checks don't conflict with each other
 
-const setSize = (size: number, delta = 0) => {
-  let finalSize =
-    size + (props.side === "right" || props.side === "bottom" ? delta : -delta);
-
-  if (currentMinResize.value > 1) {
-    if (finalSize < currentMinResize.value) finalSize = currentMinResize.value;
-  } else if (currentMinResize.value > 0) {
+  if (props.minSize) {
+    if (finalSize < props.minSize) finalSize = props.minSize;
+  }
+  if (props.minSizeRatio) {
     const limit =
       (isVertical.value ? window.innerHeight : window.innerWidth) *
-      currentMinResize.value;
+      props.minSizeRatio;
     if (finalSize < limit) finalSize = limit;
   }
-  if (maxResize.value > 1) {
-    if (finalSize > maxResize.value) finalSize = maxResize.value;
-  } else if (maxResize.value > 0) {
+
+  if (props.maxSize) {
+    if (finalSize > props.maxSize) finalSize = props.maxSize;
+  }
+  if (props.maxSizeRatio) {
     const limit =
       (isVertical.value ? window.innerHeight : window.innerWidth) *
-      maxResize.value;
+      props.maxSizeRatio;
 
     if (finalSize > limit) finalSize = limit;
   }
-
-  if (isVertical.value) panel.value.style.height = `${finalSize}px`;
-  else panel.value.style.width = `${finalSize}px`;
-  return finalSize;
+  currentSize.value = finalSize;
+  if (finalSize === props.defaultSize) {
+    window.localStorage.removeItem(localStorageKey.value);
+  } else {
+    window.localStorage.setItem(localStorageKey.value, `${finalSize}`);
+  }
 };
 
+const localStorageKey = computed(() => `${props.rememberSizeKey}-size`);
+
+const beginResizeValue = ref(0);
 const onResizeStart = () => {
-  if (isVertical.value) size.value = panel.value.offsetHeight;
-  else size.value = panel.value.offsetWidth;
+  beginResizeValue.value = currentSize.value;
 };
 
 const onResizeMove = (delta: number) => {
-  const finalSize = setSize(size.value, delta);
-  window.localStorage.setItem(`${props.rememberSizeKey}-size`, `${finalSize}`);
+  const adjustedDelta =
+    props.side === "right" || props.side === "bottom" ? delta : -delta;
+  setSize(beginResizeValue.value + adjustedDelta);
 };
 
 const resetSize = (useDefaultSize = true) => {
-  window.localStorage.removeItem(`${props.rememberSizeKey}-size`);
-  panel.value.style.width = "";
-  panel.value.style.height = "";
-  if (props.fixedDefaultSize && useDefaultSize) setSize(props.fixedDefaultSize);
+  if (props.defaultSize && useDefaultSize) {
+    setSize(props.defaultSize);
+  }
 };
 
 const onWindowResize = () => {
-  const currentSize = isVertical.value
-    ? panel.value.offsetHeight
-    : panel.value.offsetWidth;
-  setSize(currentSize);
+  // may change the size because min/max ratio of window size may have changed
+  setSize(currentSize.value);
 };
 
 const debounceForResize = _.debounce(onWindowResize, 20);
@@ -144,12 +130,11 @@ const windowResizeObserver = new ResizeObserver(debounceForResize);
 
 onMounted(() => {
   if (props.resizeable) {
-    const storedSize = window.localStorage.getItem(
-      `${props.rememberSizeKey}-size`,
-    );
+    const storedSize = window.localStorage.getItem(localStorageKey.value);
     if (storedSize) setSize(parseInt(storedSize));
+    else setSize(props.defaultSize);
   } else {
-    window.localStorage.removeItem(`${props.rememberSizeKey}-size`);
+    window.localStorage.removeItem(localStorageKey.value);
   }
   windowResizeObserver.observe(document.body);
 });
@@ -160,8 +145,6 @@ onBeforeUnmount(() => {
 
 defineExpose({
   setSize,
-  setCurrentlyResizeable,
   resetSize,
-  setCurrentMinResize,
 });
 </script>

@@ -1,76 +1,66 @@
 <template>
-  <div class="w-full h-full flex relative overflow-hidden">
-    <div class="flex flex-row w-full bg-transparent">
-      <SiPanel
-        remember-size-key="changeset-and-asset"
-        side="left"
-        size-classes="w-80"
-        :min-resize="260"
-      >
-        <ChangeSetPanel
-          v-if="!isViewMode"
-          class="border-b-2 dark:border-neutral-500 mb-2"
-        />
+  <SiPanel remember-size-key="changeset-and-asset" side="left">
+    <div class="flex flex-col h-full">
+      <ChangeSetPanel
+        v-if="!isViewMode"
+        class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
+      />
 
-        <SiTabGroup>
-          <template #tabs>
-            <SiTabHeader v-if="!isViewMode">Asset Palette</SiTabHeader>
-            <SiTabHeader>Diagram Outline</SiTabHeader>
-          </template>
+      <SiTabGroup class="relative flex-grow">
+        <template #tabs>
+          <SiTabHeader v-if="!isViewMode">Asset Palette</SiTabHeader>
+          <SiTabHeader>Diagram Outline</SiTabHeader>
+        </template>
 
-          <template #panels>
-            <TabPanel
-              v-if="!isViewMode"
-              class="flex flex-col overflow-y-hidden"
-            >
-              <AssetPalette @select="onSelectAssetToInsert" />
-            </TabPanel>
-            <TabPanel class="flex flex-col overflow-y-hidden">
-              <DiagramOutline
-                :selected-component-id="selectedComponentId ?? undefined"
-                @select="onOutlineSelectComponent"
-              />
-            </TabPanel>
-          </template>
-        </SiTabGroup>
-      </SiPanel>
-
-      <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
-        <GenericDiagram
-          v-if="diagramData"
-          ref="diagramRef"
-          :custom-config="diagramCustomConfig"
-          :nodes="diagramData?.nodes"
-          :edges="diagramData?.edges"
-          :read-only="isViewMode"
-          @insert-element="onDiagramInsertElement"
-          @move-element="onDiagramMoveElement"
-          @draw-edge="onDrawEdge"
-          @delete-elements="onDiagramDelete"
-          @update:selection="onDiagramUpdateSelection"
-        />
-      </div>
-
-      <SiPanel
-        remember-size-key="component-details"
-        side="right"
-        :min-resize="300"
-        size-classes="w-96"
-      >
-        <ComponentDetails
-          v-if="selectedComponent"
-          :component-identification="selectedComponent"
-          :component-name="selectedComponentLabel || 'selected component'"
-        />
-        <div v-else class="p-4">
-          <template v-if="isViewMode">
-            Select a single component to see more details
-          </template>
-          <template v-else>Select a single component to edit it </template>
-        </div>
-      </SiPanel>
+        <template #panels>
+          <TabPanel v-if="!isViewMode">
+            <AssetPalette @select="onSelectAssetToInsert" />
+          </TabPanel>
+          <TabPanel>
+            <DiagramOutline
+              :selected-component-id="selectedComponentId ?? undefined"
+              @select="onOutlineSelectComponent"
+            />
+          </TabPanel>
+        </template>
+      </SiTabGroup>
     </div>
+  </SiPanel>
+
+  <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
+    <GenericDiagram
+      v-if="diagramData"
+      ref="diagramRef"
+      :custom-config="diagramCustomConfig"
+      :nodes="diagramData?.nodes"
+      :edges="diagramData?.edges"
+      :read-only="isViewMode"
+      @insert-element="onDiagramInsertElement"
+      @move-element="onDiagramMoveElement"
+      @draw-edge="onDrawEdge"
+      @delete-elements="onDiagramDelete"
+      @update:selection="onDiagramUpdateSelection"
+    />
   </div>
+
+  <SiPanel
+    remember-size-key="component-details"
+    side="right"
+    :default-size="380"
+    :min-size="300"
+  >
+    <ComponentDetails
+      v-if="selectedComponent"
+      :component-identification="selectedComponent"
+      :component-name="selectedComponentLabel || 'selected component'"
+    />
+    <div v-else class="p-4">
+      <template v-if="isViewMode">
+        Select a single component to see more details
+      </template>
+      <template v-else>Select a single component to edit it </template>
+    </div>
+  </SiPanel>
 </template>
 
 <script lang="ts" setup>

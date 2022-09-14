@@ -1,10 +1,7 @@
 <template>
   <SiCollapsible
     :label="`${kind} &quot;${name}&quot;`"
-    as="li"
-    content-as="ul"
     default-open
-    class="w-full"
     text-size="md"
     show-label-and-slot
     :force-theme="forceTheme"
@@ -13,13 +10,12 @@
     <template #label>
       <HealthIcon :status="status" size="md" hide-text />
     </template>
-    <div
-      class="px-4 pt-2 pb-4 w-full max-h-96 overflow-hidden"
-      :class="borderClasses"
-    >
-      <CodeViewer :code="output" border :force-theme="forceTheme">
-        <template #title><HealthIcon :status="status" /></template>
-      </CodeViewer>
+    <div class="p-sm max-h-96 overflow-hidden flex" :class="borderClasses">
+      <div class="flex-grow">
+        <CodeViewer :code="output" border :force-theme="forceTheme">
+          <template #title><HealthIcon :status="status" /></template>
+        </CodeViewer>
+      </div>
     </div>
   </SiCollapsible>
 </template>

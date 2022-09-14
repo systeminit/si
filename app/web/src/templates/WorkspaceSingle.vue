@@ -2,7 +2,9 @@
   <AppLayout>
     <Navbar />
 
-    <router-view class="overflow-hidden" />
+    <div class="w-full h-full flex flex-row relative overflow-hidden">
+      <router-view />
+    </div>
 
     <StatusBar class="flex-none" />
     <SiToast />
