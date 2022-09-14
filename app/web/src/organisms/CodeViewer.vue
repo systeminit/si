@@ -18,10 +18,7 @@
         <slot name="actionButtons"></slot>
       </div>
     </div>
-    <div
-      class="w-full h-full overflow-auto"
-      :class="border ? 'border border-neutral-300 dark:border-neutral-600' : ''"
-    >
+    <div class="w-full h-full overflow-auto" :class="borderClasses">
       <div
         ref="editorMountRef"
         class="w-full h-full overflow-auto"
@@ -72,6 +69,17 @@ const props = defineProps({
   forceTheme: { type: String as PropType<ThemeValue> },
   titleClasses: { type: String, default: "h-10" },
   border: { type: Boolean, default: false },
+});
+
+const borderClasses = computed(() => {
+  if (props.forceTheme === "dark" && props.border) {
+    return "border border-neutral-600";
+  } else if (props.forceTheme === "light" && props.border) {
+    return "border border-neutral-300";
+  }
+  return props.border
+    ? "border border-neutral-300 dark:border-neutral-600"
+    : "";
 });
 
 const editorMountRef = ref();

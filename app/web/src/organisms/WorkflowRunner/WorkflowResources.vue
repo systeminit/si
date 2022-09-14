@@ -4,15 +4,42 @@
       name="whiskers"
       kind="docker image"
       :output="whiskersJson"
+      status="Warning"
+      :force-theme="forceTheme"
     />
-    <WorkflowResource name="joe" kind="docker image" output="whatever" />
-    <WorkflowResource name="jet" kind="docker image" output="whatever" />
-    <WorkflowResource name="jen" kind="docker image" output="whatever" />
+    <WorkflowResource
+      name="joe"
+      kind="docker image"
+      output="whatever"
+      status="Ok"
+      :force-theme="forceTheme"
+    />
+    <WorkflowResource
+      name="jet"
+      kind="docker image"
+      output="whatever"
+      status="Error"
+      :force-theme="forceTheme"
+    />
+    <WorkflowResource
+      name="jen"
+      kind="docker image"
+      output="whatever"
+      status="Unknown"
+      :force-theme="forceTheme"
+      hide-bottom-border-while-closed
+    />
   </ul>
 </template>
 
 <script lang="ts" setup>
+import { PropType } from "vue";
+import { ThemeValue } from "@/observable/theme";
 import WorkflowResource from "./WorkflowResource.vue";
+
+defineProps({
+  forceTheme: { type: String as PropType<ThemeValue> },
+});
 
 const whiskersJson = `[
     {
