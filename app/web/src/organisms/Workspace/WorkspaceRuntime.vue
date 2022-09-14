@@ -1,5 +1,5 @@
 <template>
-  <SiPanel remember-size-key="workflow-left" side="left">
+  <SiPanel remember-size-key="workflow-left" side="left" :min-size="220">
     <WorkflowPicker
       :list="list"
       :selected-id="selected?.id ?? null"
