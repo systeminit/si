@@ -41,7 +41,7 @@
 
     <PropertyEditor
       v-if="editorContext"
-      class="overflow-auto"
+      class=""
       :editor-context="editorContext"
       @updated-property="updateProperty($event)"
       @add-to-array="addToArray($event)"

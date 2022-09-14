@@ -6,18 +6,16 @@
     </template>
 
     <template #panels>
-      <TabPanel class="flex flex-col overflow-y-auto">
-        <div class="text-center">
-          <!-- FIXME(nick): remove AttributeViewer's requirement of a componentId -->
-          <AttributeViewer
-            :component-id="props.componentIdentification.componentId"
-            :component-identification="props.componentIdentification"
-            class="dark:text-neutral-50 text-neutral-900"
-          />
-        </div>
+      <TabPanel class="w-full">
+        <!-- FIXME(nick): remove AttributeViewer's requirement of a componentId -->
+        <AttributeViewer
+          :component-id="props.componentIdentification.componentId"
+          :component-identification="props.componentIdentification"
+          class="dark:text-neutral-50 text-neutral-900"
+        />
       </TabPanel>
 
-      <TabPanel>
+      <TabPanel class="w-full h-full overflow-hidden">
         <CodeViewer :code="code" class="dark:text-neutral-50 text-neutral-900">
           <template #title>
             <span class="text-lg ml-4">{{ props.componentName }} Code</span>

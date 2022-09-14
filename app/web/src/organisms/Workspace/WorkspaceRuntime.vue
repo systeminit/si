@@ -1,68 +1,55 @@
 <template>
-  <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
-    <SiPanel
-      remember-size-key="workflow-left"
-      side="left"
-      size-classes="w-96 flex-none"
-    >
-      <WorkflowPicker
-        :list="list"
-        :selected-id="selected?.id ?? null"
-        @selected="select"
-      />
-    </SiPanel>
-    <div
-      class="grow overflow-hidden h-full bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold px-2 pt-2 flex flex-col"
-    >
-      <WorkflowResolver v-if="selected" :selected-id="selected.id">
-        <template #runButton>
-          <VButton
-            icon="play"
-            label="Run"
-            size="lg"
-            class="w-48"
-            button-type="success"
-            @click="runWorkflow()"
-          />
-        </template>
-      </WorkflowResolver>
+  <SiPanel remember-size-key="workflow-left" side="left">
+    <WorkflowPicker
+      :list="list"
+      :selected-id="selected?.id ?? null"
+      @selected="select"
+    />
+  </SiPanel>
+  <div
+    class="grow overflow-hidden h-full bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold px-2 pt-2 flex flex-col"
+  >
+    <WorkflowResolver v-if="selected" :selected-id="selected.id">
+      <template #runButton>
+        <VButton
+          icon="play"
+          label="Run"
+          size="lg"
+          class="w-48"
+          button-type="success"
+          @click="runWorkflow()"
+        />
+      </template>
+    </WorkflowResolver>
 
-      <div
-        v-else
-        class="p-2 text-center text-neutral-400 dark:text-neutral-300"
-      >
-        Select a workflow to resolve.
-      </div>
+    <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
+      Select a workflow to resolve.
     </div>
-    <SiPanel
-      remember-size-key="workflow-right"
-      side="right"
-      size-classes="w-96 flex-none"
-    >
-      <SiTabGroup v-if="logs" :selected-index="0">
-        <template #tabs>
-          <SiTabHeader>Output</SiTabHeader>
-          <SiTabHeader>Resources</SiTabHeader>
-        </template>
-        <template #panels>
-          <TabPanel class="h-full px-2 py-2 overflow-hidden">
-            <WorkflowOutput :logs="logs" :status="currentWorkflowStatus" />
-          </TabPanel>
-          <TabPanel class="h-full overflow-hidden">
-            <WorkflowResources />
-          </TabPanel>
-        </template>
-      </SiTabGroup>
-
-      <div v-else class="p-4 text-neutral-400 dark:text-neutral-300">
-        {{
-          selected
-            ? `When you run ${selected.title}, the output will display here.`
-            : "When you run a workflow, the output will display here."
-        }}
-      </div>
-    </SiPanel>
   </div>
+  <SiPanel remember-size-key="workflow-right" side="right">
+    <SiTabGroup v-if="logs" :selected-index="0">
+      <template #tabs>
+        <SiTabHeader>Output</SiTabHeader>
+        <SiTabHeader>Resources</SiTabHeader>
+      </template>
+      <template #panels>
+        <TabPanel class="h-full p-sm overflow-hidden">
+          <WorkflowOutput :logs="logs" :status="currentWorkflowStatus" />
+        </TabPanel>
+        <TabPanel>
+          <WorkflowResources />
+        </TabPanel>
+      </template>
+    </SiTabGroup>
+
+    <div v-else class="p-4 text-neutral-400 dark:text-neutral-300">
+      {{
+        selected
+          ? `When you run ${selected.title}, the output will display here.`
+          : "When you run a workflow, the output will display here."
+      }}
+    </div>
+  </SiPanel>
 </template>
 
 <script lang="ts" setup>
