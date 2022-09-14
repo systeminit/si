@@ -1,5 +1,5 @@
 <template>
-  <SiPanel remember-size-key="changeset-and-asset" side="left">
+  <SiPanel remember-size-key="changeset-and-asset" side="left" :min-size="250">
     <div class="flex flex-col h-full">
       <ChangeSetPanel
         v-if="!isViewMode"

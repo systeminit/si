@@ -35,7 +35,6 @@
 </template>
 
 <script setup lang="ts">
-import { ifError } from "assert";
 import { computed, onBeforeUnmount, onMounted, PropType, ref } from "vue";
 import _ from "lodash";
 import clsx from "clsx";
