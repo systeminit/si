@@ -9,7 +9,7 @@
   />
   <WorkflowResource
     name="joe"
-    kind="docker image"
+    kind="aws region"
     output="whatever"
     status="Ok"
     :force-theme="forceTheme"
@@ -17,7 +17,7 @@
   />
   <WorkflowResource
     name="bob"
-    kind="docker image"
+    kind="aws instance"
     output="whatever"
     status="Error"
     :force-theme="forceTheme"
@@ -25,7 +25,7 @@
   />
   <WorkflowResource
     name="ann"
-    kind="docker image"
+    kind="other resource"
     output="whatever"
     status="Unknown"
     :force-theme="forceTheme"

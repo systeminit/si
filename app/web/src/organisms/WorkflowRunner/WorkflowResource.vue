@@ -7,6 +7,11 @@
     :force-theme="forceTheme"
     :hide-bottom-border="hideBottomBorderWhileClosed"
   >
+    <div
+      class="w-full text-sm p-xs whitespace-nowrap overflow-hidden text-ellipsis"
+    >
+      Component: LINK TO COMPONENT HERE
+    </div>
     <template #label>
       <HealthIcon :status="status" size="md" hide-text />
     </template>
