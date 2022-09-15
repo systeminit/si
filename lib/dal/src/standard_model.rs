@@ -449,6 +449,24 @@ pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
 }
 
 #[instrument(skip_all)]
+pub async fn hard_delete<PK: Send + Sync + ToSql + std::fmt::Display, OBJECT: DeserializeOwned>(
+    ctx: &DalContext<'_, '_, '_>,
+    table: &str,
+    pk: &PK,
+) -> StandardModelResult<OBJECT> {
+    let row = ctx
+        .txns()
+        .pg()
+        .query_one(
+            "SELECT object FROM hard_delete_by_pk_v1($1, $2)",
+            &[&table, &pk],
+        )
+        .await?;
+    let json: serde_json::Value = row.try_get("object")?;
+    Ok(serde_json::from_value(json)?)
+}
+
+#[instrument(skip_all)]
 pub async fn finish_create_from_row<Object: Send + Sync + DeserializeOwned + StandardModel>(
     ctx: &DalContext<'_, '_, '_>,
     row: PgRow,
@@ -594,6 +612,26 @@ pub trait StandardModel {
         )
         .await?;
         Ok(())
+    }
+
+    /// Permanently delete this object from the database. This is not reversible!
+    /// However, we do store the object's json representation as a HistoryEvent.
+    #[instrument(skip_all)]
+    async fn hard_delete(self, ctx: &DalContext<'_, '_, '_>) -> StandardModelResult<Self>
+    where
+        Self: Send + Sync + Sized + Serialize + DeserializeOwned,
+    {
+        let obj = crate::standard_model::hard_delete(ctx, Self::table_name(), self.pk()).await?;
+
+        let _ = crate::HistoryEvent::new(
+            ctx,
+            &Self::history_event_label(vec!["hard_deleted"]),
+            &Self::history_event_message("hard_deleted"),
+            &serde_json::to_value(&obj)?,
+        )
+        .await?;
+
+        Ok(obj)
     }
 
     /// Builtin objects have universal tenancy and are at the HEAD changeset

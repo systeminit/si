@@ -6,11 +6,12 @@ use axum::{
 };
 
 use dal::{
-    attribute::context::AttributeContextBuilderError, AttributeContext, AttributeContextError,
-    AttributePrototype, AttributePrototypeError, AttributeValue, AttributeValueError,
-    AttributeValueId, ComponentError, DalContext, Func, FuncBackendKind, FuncBinding,
-    FuncBindingError, Prop, PropError, PropKind, QualificationPrototypeError, ReadTenancyError,
-    StandardModel, StandardModelError, TransactionsError, WriteTenancyError, WsEventError,
+    attribute::context::AttributeContextBuilderError, context, AttributeContext,
+    AttributeContextError, AttributePrototype, AttributePrototypeError, AttributeValue,
+    AttributeValueError, AttributeValueId, ComponentError, DalContext, DalContextBuilder, Func,
+    FuncBackendKind, FuncBinding, FuncBindingError, Prop, PropError, PropKind,
+    QualificationPrototypeError, ReadTenancyError, StandardModel, StandardModelError, Transactions,
+    TransactionsError, Visibility, WriteTenancyError, WsEventError,
 };
 
 use dal::attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness;
@@ -23,6 +24,7 @@ pub mod create_func;
 pub mod exec_func;
 pub mod get_func;
 pub mod list_funcs;
+pub mod revert_func;
 pub mod save_func;
 
 #[derive(Error, Debug)]
@@ -82,6 +84,8 @@ pub enum FuncError {
     PropNotFound,
     #[error("func binding return value not found")]
     FuncBindingReturnValueMissing,
+    #[error("func is not revertable")]
+    FuncNotRevertable,
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
@@ -96,6 +100,23 @@ impl IntoResponse for FuncError {
 
         (status, body).into_response()
     }
+}
+
+async fn is_func_revertable<'t>(
+    builder: DalContextBuilder,
+    txns: &'t Transactions<'_>,
+    request_ctx: context::AccessBuilder,
+    func: &Func,
+) -> FuncResult<bool> {
+    let request_ctx = request_ctx.build(Visibility {
+        change_set_pk: (-1).into(),
+        deleted_at: None,
+    });
+    let head_ctx = builder.build(request_ctx, txns);
+
+    let head_func = dbg!(Func::get_by_id(&head_ctx, func.id()).await?);
+
+    Ok(head_func.is_some() && func.visibility().in_change_set())
 }
 
 // Note: much of this function will be replaced by the "update just this value" work
@@ -220,4 +241,5 @@ pub fn routes() -> Router {
         .route("/create_func", post(create_func::create_func))
         .route("/save_func", post(save_func::save_func))
         .route("/exec_func", post(exec_func::exec_func))
+        .route("/revert_func", post(revert_func::revert_func))
 }

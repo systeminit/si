@@ -18,7 +18,8 @@ import { javascript } from "@codemirror/lang-javascript";
 import { linter, lintGutter } from "@codemirror/lint";
 import { createLintSource } from "@/utils/typescriptLinter";
 import { useTheme } from "@/composables/injectTheme";
-import { changeFunc, funcState, nullEditingFunc } from "./func_state";
+import { EditingFunc } from "@/observable/func";
+import { changeFunc, funcById, funcState, nullEditingFunc } from "./func_state";
 
 const isDevMode = import.meta.env.DEV;
 
@@ -27,12 +28,31 @@ const props = defineProps<{
 }>();
 
 const funcId = toRef(props, "funcId", -1);
-const editingFunc = computed(
-  () => funcState.funcs.find((f) => f.id === funcId.value) ?? nullEditingFunc,
-);
-
+const editingFunc = ref<EditingFunc>(funcById(funcId.value) ?? nullEditingFunc);
 const editorMount = ref();
-const view = ref<EditorView | undefined>();
+let view: EditorView;
+
+watch([funcId, funcState], async ([currentFuncId], [prevFuncId]) => {
+  editingFunc.value = funcById(currentFuncId) ?? nullEditingFunc;
+  const currentDoc = view.state.doc.toString();
+  const funcCode = editingFunc.value.code;
+
+  // We only care about this if the code changes from outside the editor itself
+  // and we didn't just switch to a new doc. This condition prevents a cycle
+  // with the updateListener
+  if (prevFuncId !== currentFuncId || currentDoc === funcCode) {
+    return;
+  }
+
+  const updateTransaction = view.state.update({
+    changes: {
+      from: 0,
+      to: view.state.doc.length,
+      insert: editingFunc.value.code,
+    },
+  });
+  view.update([updateTransaction]);
+});
 
 const language = new Compartment();
 const readOnly = new Compartment();
@@ -45,7 +65,7 @@ const codeMirrorTheme = computed(() =>
   appTheme.value === "dark" ? gruvboxDark : basicLight,
 );
 watch(codeMirrorTheme, () => {
-  view.value?.dispatch({
+  view.dispatch({
     effects: [themeCompartment.reconfigure(codeMirrorTheme.value)],
   });
 });
@@ -77,7 +97,7 @@ const mountEditor = async () => {
     ],
   });
 
-  view.value = new EditorView({
+  view = new EditorView({
     state: editorState,
     parent: editorMount.value,
   });

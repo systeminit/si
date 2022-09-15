@@ -71,6 +71,7 @@ impl Visibility {
         Self::new_change_set(self.change_set_pk, self.deleted_at.is_some())
     }
 
+    /// Returns true if this [`Visibility`] is in a working changeset (and not in head)
     #[instrument]
     pub fn in_change_set(&self) -> bool {
         self.change_set_pk != NO_CHANGE_SET_PK

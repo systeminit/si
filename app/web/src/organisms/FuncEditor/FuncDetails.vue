@@ -21,12 +21,16 @@
             />
 
             <VButton
-              :disabled="!isDevMode && editingFunc.isBuiltin"
+              :disabled="
+                (!isDevMode && editingFunc.isBuiltin) ||
+                !editingFunc.isRevertable
+              "
               button-rank="tertiary"
               button-type="neutral"
               icon="x"
               label="Revert"
               size="sm"
+              @click="revertFunc"
             />
           </div>
 
@@ -85,6 +89,7 @@
                 thing-label="components"
                 :options="components"
                 :disabled="editingFunc.isBuiltin"
+                @change="updateFunc"
               />
               <h2
                 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50"
@@ -113,7 +118,7 @@
 import { TabPanel } from "@headlessui/vue";
 import { ref, toRef, watch } from "vue";
 import { refFrom } from "vuse-rx";
-import { map } from "rxjs/operators";
+import { map, take } from "rxjs/operators";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { Option } from "@/molecules/SelectMenu.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
@@ -124,7 +129,13 @@ import { EditingFunc } from "@/observable/func";
 import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
 import { FuncService } from "@/service/func";
-import { changeFunc, funcById, funcState, nullEditingFunc } from "./func_state";
+import {
+  changeFunc,
+  funcById,
+  funcState,
+  insertFunc,
+  nullEditingFunc,
+} from "./func_state";
 import FuncRunOnSelector from "./FuncRunOnSelector.vue";
 
 const props = defineProps<{
@@ -190,6 +201,15 @@ const updateFunc = () => {
     components: selectedComponents.value.map(({ value }) => value as number),
     schemaVariants: selectedVariants.value.map(({ value }) => value as number),
   });
+};
+
+const revertFunc = async () => {
+  const result = await FuncService.revertFunc({ id: editingFunc.value.id });
+  if (result.success) {
+    FuncService.getFunc({ id: editingFunc.value.id })
+      .pipe(take(1))
+      .subscribe(insertFunc);
+  }
 };
 
 const execFunc = () => {

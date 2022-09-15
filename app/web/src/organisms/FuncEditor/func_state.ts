@@ -11,15 +11,22 @@ export const nullEditingFunc: EditingFunc = {
   name: "",
   code: "",
   isBuiltin: false,
+  isRevertable: false,
   components: [],
   schemaVariants: [],
 };
 
 export const funcState = reactive<{ funcs: EditingFunc[] }>({ funcs: [] });
 
+const getFuncIndex = (funcId: number) =>
+  funcState.funcs.findIndex((f) => f.id === funcId);
+
 export const insertFunc = (func: GetFuncResponse) => {
-  if (!funcState.funcs.find((f) => f.id === func.id)) {
+  const idx = getFuncIndex(func.id);
+  if (idx === -1) {
     funcState.funcs.push(func);
+  } else {
+    funcState.funcs[idx] = func;
   }
 };
 
@@ -28,9 +35,16 @@ export const funcById = (funcId: number) =>
 
 export const funcExists = (funcId: number) => !!funcById(funcId);
 
-export const changeFunc = (func: GetFuncResponse) => {
-  const currentFuncIdx = funcState.funcs.findIndex((f) => f.id === func.id);
+export const setFuncRevertable = (funcId: number, revertable: boolean) => {
+  const currentFuncIdx = getFuncIndex(funcId);
+  if (currentFuncIdx === -1) {
+    return;
+  }
+  funcState.funcs[currentFuncIdx].isRevertable = revertable;
+};
 
+export const changeFunc = (func: GetFuncResponse) => {
+  const currentFuncIdx = getFuncIndex(func.id);
   if (currentFuncIdx === -1) {
     return;
   }

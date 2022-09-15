@@ -389,6 +389,27 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
+
+CREATE OR REPLACE FUNCTION hard_delete_by_pk_v1(
+    this_table_text text,
+    this_pk bigint,
+    OUT object json
+)
+AS
+$$
+DECLARE
+    this_table regclass;
+BEGIN
+    this_table := this_table_text::regclass;
+
+    EXECUTE format(
+        'DELETE FROM %1$I WHERE %1$I.pk = %2$L RETURNING row_to_json(%1$I);', 
+        this_table, 
+        this_pk
+    ) INTO object;
+END;
+$$ LANGUAGE PLPGSQL;
+
 CREATE OR REPLACE FUNCTION list_models_v1(this_table_text text, this_tenancy jsonb, this_visibility jsonb)
     RETURNS TABLE
             (

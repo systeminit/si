@@ -323,7 +323,7 @@ impl<'a, 't> DalContext<'a, '_, 't> {
 
     /// Determines if a standard model object matches the write tenancy of the current context and
     /// is in the same visibility.
-    pub async fn check_standard_model_tenancy_and_visibility_match<T: StandardModel>(
+    pub async fn check_tenancy<T: StandardModel>(
         &self,
         object: &T,
     ) -> Result<bool, TransactionsError> {
@@ -333,8 +333,7 @@ impl<'a, 't> DalContext<'a, '_, 't> {
             .check(self.pg_txn(), &read_tenancy)
             .await?;
 
-        Ok(is_in_our_tenancy
-            && self.visibility().change_set_pk == object.visibility().change_set_pk)
+        Ok(is_in_our_tenancy)
     }
 }
 

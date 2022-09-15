@@ -64,7 +64,7 @@ import { eventChangeSetWritten$ } from "@/observable/change_set";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { DevService } from "@/service/dev";
-import { clearFuncs } from "../FuncEditor/func_state";
+import { clearFuncs, setFuncRevertable } from "../FuncEditor/func_state";
 
 const isDevMode = import.meta.env.DEV;
 
@@ -121,9 +121,15 @@ saveFuncToBackend$
         (acc, saveReq) => ({ ...acc, [saveReq.id]: saveReq }),
         {} as { [key: number]: SaveFuncRequest },
       ),
-    ).forEach((saveReq) => {
-      if (isDevMode && saveReq.isBuiltin) DevService.saveBuiltinFunc(saveReq);
-      else FuncService.saveFunc(saveReq);
+    ).forEach(async (saveReq) => {
+      if (isDevMode && saveReq.isBuiltin) {
+        DevService.saveBuiltinFunc(saveReq);
+      } else {
+        const result = await FuncService.saveFunc(saveReq);
+        if (result.success) {
+          setFuncRevertable(saveReq.id, result.isRevertable);
+        }
+      }
     }),
   );
 </script>
