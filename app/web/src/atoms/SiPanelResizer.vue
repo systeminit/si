@@ -2,15 +2,19 @@
   <div
     :class="
       clsx(
+        'si-panel-resizer',
         'z-30 absolute',
-        isVertical
-          ? 'h-0.5 w-full cursor-row-resize'
-          : 'w-0.5 h-full cursor-col-resize',
+        panelIsVertical
+          ? ['h-full cursor-col-resize', isHandleVisible ? 'w-1' : 'w-0.5']
+          : ['w-full cursor-row-resize', isHandleVisible ? 'h-1' : 'h-0.5'],
+        isHandleVisible
+          ? 'bg-neutral-400 dark:bg-neutral-500'
+          : 'bg-neutral-300 dark:bg-neutral-600',
         {
-          left: '-right-0.5',
-          right: '-left-0.5',
-          top: '-bottom-0.5',
-          bottom: '-top-0.5',
+          left: 'left-full',
+          right: 'right-full',
+          top: 'top-full',
+          bottom: 'bottom-full',
         }[panelSide],
       )
     "
@@ -18,36 +22,41 @@
     <div
       :class="
         clsx(
+          'si-panel-resizer__hover-area',
           'absolute z-50',
           showResizeHoverAreas
             ? 'bg-destructive-500 opacity-25'
             : 'bg-transparent',
-          isVertical ? 'h-5 w-full' : 'w-5 h-full',
+          panelIsVertical
+            ? ['h-full', isHandleVisible ? 'w-6' : 'w-1']
+            : ['w-full', isHandleVisible ? 'h-6' : 'h-1'],
           {
-            left: 'left-0',
-            right: 'right-0',
-            top: 'top-0',
-            bottom: 'bottom-0',
+            left: 'left-0.5 translate-x-[-50%]',
+            right: 'right-0.5 translate-x-[50%]',
+            top: 'top-0.5 translate-y-[-50%]',
+            bottom: 'bottom-0.5 translate-y-[50%]',
           }[panelSide],
         )
       "
-      @mouseover="showHandle"
-      @mouseleave="hideHandle"
-      @mousedown="mouseDown"
-      @dblclick="dblClick"
+      @mouseover="isHovered = true"
+      @mouseleave="isHovered = false"
+      @mousedown="onMouseDown"
+      @dblclick="onDblClick"
     />
     <div
       ref="handleRef"
       :class="
         clsx(
-          'absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] rounded-full bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-900 text-xl',
-          isVertical ? 'h-3 w-16' : 'w-3 h-16',
-          !handleVisible && 'hidden',
+          'absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%]',
+          'w-3 h-16 rounded-full',
+          'bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-900',
+          !panelIsVertical && 'rotate-90',
+          !isHandleVisible && 'hidden',
         )
       "
     >
       <Icon
-        :name="isVertical ? 'dots-horizontal' : 'dots-vertical'"
+        name="dots-vertical"
         class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] w-6 text-neutral-400 dark:text-neutral-500"
       />
     </div>
@@ -67,8 +76,8 @@ const props = defineProps({
   showResizeHoverAreas: { type: Boolean },
 });
 
-const isVertical = computed(() => {
-  return props.panelSide === "top" || props.panelSide === "bottom";
+const panelIsVertical = computed(() => {
+  return props.panelSide === "left" || props.panelSide === "right";
 });
 
 const emit = defineEmits<{
@@ -78,48 +87,41 @@ const emit = defineEmits<{
   (e: "resize-reset"): void;
 }>();
 
-const selected = ref(false);
 const dragStartMouseX = ref(0);
 const dragStartMouseY = ref(0);
-const handleVisible = ref(false);
+const isHovered = ref(false);
+const isResizing = ref(false);
 
-const showHandle = () => {
-  handleVisible.value = true;
-};
+const isHandleVisible = computed(() => isHovered.value || isResizing.value);
 
-const hideHandle = () => {
-  handleVisible.value = false;
-};
-
-const mouseDown = (e: MouseEvent) => {
-  selected.value = true;
+const onMouseDown = (e: MouseEvent) => {
+  isResizing.value = true;
   dragStartMouseX.value = e.clientX;
   dragStartMouseY.value = e.clientY;
-  window.addEventListener("mousemove", mouseMove);
-  window.addEventListener("mouseup", mouseUp);
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("mouseup", onMouseUp);
   emit("resize-start");
 };
 
-const mouseMove = (e: MouseEvent) => {
+const onMouseMove = (e: MouseEvent) => {
   const dx = dragStartMouseX.value - e.clientX;
   const dy = dragStartMouseY.value - e.clientY;
-  emit("resize-move", isVertical.value ? dy : dx);
+  emit("resize-move", panelIsVertical.value ? dx : dy);
 };
 
-const mouseUp = () => {
-  selected.value = false;
-  window.removeEventListener("mousemove", mouseMove);
-  window.removeEventListener("mouseup", mouseUp);
+const onMouseUp = () => {
+  isResizing.value = false;
+  window.removeEventListener("mousemove", onMouseMove);
+  window.removeEventListener("mouseup", onMouseUp);
   emit("resize-end");
-  if (!handleVisible.value) hideHandle();
 };
 
-const dblClick = () => {
+const onDblClick = () => {
   emit("resize-reset");
 };
 
 onBeforeUnmount(() => {
-  window.removeEventListener("mousemove", mouseMove);
-  window.removeEventListener("mouseup", mouseUp);
+  window.removeEventListener("mousemove", onMouseMove);
+  window.removeEventListener("mouseup", onMouseUp);
 });
 </script>
