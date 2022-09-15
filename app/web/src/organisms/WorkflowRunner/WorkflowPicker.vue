@@ -37,7 +37,7 @@
                           : ''
                       "
                       class="border dark:border-neutral-600 dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
-                      @click="select(workflow)"
+                      @click="select(workflow, null)"
                     />
                   </span>
                 </template>
@@ -59,7 +59,7 @@
                             : ''
                         "
                         class="border dark:border-neutral-600 dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
-                        @click="select(workflow)"
+                        @click="select(workflow, String(component))"
                       />
                     </span>
                   </SiCollapsible>
@@ -122,15 +122,15 @@ const groupedFilteredList = computed(() => {
   for (const el of filteredList) {
     if (el.schemaName) {
       if (!group[el.schemaName]) group[el.schemaName] = {};
-      if (el.componentNames.length === 0) {
+      if (el.components.length === 0) {
         continue;
       } else if (!Array.isArray(group[el.schemaName])) {
-        for (const componentName of el.componentNames) {
-          if (!group[el.schemaName][componentName]) {
-            group[el.schemaName][componentName] = [];
+        for (const component of el.components) {
+          if (!group[el.schemaName][component.name]) {
+            group[el.schemaName][component.name] = [];
           }
 
-          group[el.schemaName][componentName].push(el);
+          group[el.schemaName][component.name].push(el);
         }
       }
     } else {
@@ -142,10 +142,11 @@ const groupedFilteredList = computed(() => {
 });
 
 const emits = defineEmits<{
-  (e: "selected", v: ListedWorkflowView): void;
+  (e: "selected", v: ListedWorkflowView, componentId: number | null): void;
 }>();
 
-const select = (w: ListedWorkflowView) => {
-  emits("selected", w);
+const select = (w: ListedWorkflowView, componentName: string | null) => {
+  const componentId = w.components.find((c) => c.name === componentName)?.id ?? null;
+  emits("selected", w, componentId);
 };
 </script>

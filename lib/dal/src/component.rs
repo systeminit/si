@@ -7,7 +7,6 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
-use crate::edge::EdgeId;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
@@ -19,19 +18,20 @@ use crate::func::binding_return_value::{
 };
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
-use crate::resource::ResourceId;
 use crate::resource_resolver::ResourceResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::SocketEdgeKind;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
+    edge::EdgeId,
     func::{FuncId, FuncMetadataView},
     impl_standard_model,
     node::NodeId,
     pk,
     provider::internal::InternalProviderError,
     qualification::QualificationError,
+    resource::ResourceId,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
@@ -39,11 +39,11 @@ use crate::{
     ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider, Node,
     NodeError, OrganizationError, Prop, PropError, PropId, QualificationPrototype,
     QualificationPrototypeError, QualificationResolver, QualificationResolverError,
-    ReadTenancyError, Resource, ResourceError, ResourcePrototype, ResourcePrototypeError,
-    ResourceResolver, ResourceResolverError, ResourceView, Schema, SchemaError, SchemaId, Socket,
-    SocketId, StandardModel, StandardModelError, SystemId, Timestamp, TransactionsError,
-    ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
-    Visibility, WorkspaceError, WriteTenancy,
+    ReadTenancyError, ResourceError, ResourcePrototype, ResourcePrototypeError, ResourceResolver,
+    ResourceResolverError, Schema, SchemaError, SchemaId, Socket, SocketId, StandardModel,
+    StandardModelError, SystemId, Timestamp, TransactionsError, ValidationPrototype,
+    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
+    WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
 
@@ -180,7 +180,7 @@ pub enum ComponentError {
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
 const FIND_FOR_NODE: &str = include_str!("./queries/component_find_for_node.sql");
-const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
+//const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
 const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
 const LIST_CODE_GENERATED: &str = include_str!("./queries/component_list_code_generated.sql");
 const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_resource_sync.sql");
@@ -333,9 +333,10 @@ impl Component {
         // NOTE: We may want to be a bit smarter about when we create the Resource
         //       at some point in the future, by only creating it if there is also
         //       a ResourcePrototype for the Component's SchemaVariant.
-        let resource = Resource::new(ctx, &self.id, &system_id).await?;
+        //let resource = Resource::new(ctx, &self.id, &system_id).await?;
 
-        Ok((*edge.id(), *resource.id()))
+        //Ok((*edge.id(), *resource.id()))
+        Ok((*edge.id(), ResourceId::NONE))
     }
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
@@ -1151,41 +1152,41 @@ impl Component {
         Ok(results)
     }
 
-    #[instrument(skip_all)]
-    pub async fn get_resource_by_component_and_system(
-        ctx: &DalContext<'_, '_, '_>,
-        component_id: ComponentId,
-        system_id: SystemId,
-    ) -> ComponentResult<Option<ResourceView>> {
-        let resource =
-            Resource::get_by_component_id_and_system_id(ctx, &component_id, &system_id).await?;
-        let resource = match resource {
-            Some(r) => r,
-            None => return Ok(None),
-        };
+    //#[instrument(skip_all)]
+    //pub async fn get_resource_by_component_and_system(
+    //    ctx: &DalContext<'_, '_, '_>,
+    //    component_id: ComponentId,
+    //    system_id: SystemId,
+    //) -> ComponentResult<Vec<ResourceView>> {
+    //    let resource =
+    //        Resource::list_by_component(ctx, &component_id, &system_id).await?;
+    //    let resource = match resource {
+    //        Some(r) => r,
+    //        None => return Ok(None),
+    //    };
 
-        let row = ctx
-            .txns()
-            .pg()
-            .query_opt(
-                GET_RESOURCE,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &component_id,
-                    &system_id,
-                ],
-            )
-            .await?;
+    //    let row = ctx
+    //        .txns()
+    //        .pg()
+    //        .query_opt(
+    //            GET_RESOURCE,
+    //            &[
+    //                ctx.read_tenancy(),
+    //                ctx.visibility(),
+    //                &component_id,
+    //                &system_id,
+    //            ],
+    //        )
+    //        .await?;
 
-        let json: Option<serde_json::Value> = row.map(|row| row.try_get("object")).transpose()?;
+    //    let json: Option<serde_json::Value> = row.map(|row| row.try_get("object")).transpose()?;
 
-        let func_binding_return_value: Option<FuncBindingReturnValue> =
-            json.map(serde_json::from_value).transpose()?;
-        let res_view = ResourceView::from((resource, func_binding_return_value));
+    //    let func_binding_return_value: Option<FuncBindingReturnValue> =
+    //        json.map(serde_json::from_value).transpose()?;
+    //    let res_view = ResourceView::from((resource, func_binding_return_value));
 
-        Ok(Some(res_view))
-    }
+    //    Ok(Some(res_view))
+    //}
 
     pub async fn veritech_code_generation_component(
         &self,

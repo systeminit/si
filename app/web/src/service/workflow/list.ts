@@ -9,7 +9,10 @@ export interface ListedWorkflowView {
   title: string;
   description: string | null;
   link: string | null;
-  componentNames: string[];
+  components: Array<{
+    id: number;
+    name: string;
+  }>;
   schemaName: string | null;
   schemaVariantName: string | null;
 }

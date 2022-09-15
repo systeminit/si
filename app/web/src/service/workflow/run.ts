@@ -7,6 +7,7 @@ import { WorkflowStatus } from "@/molecules/WorkflowStatusIcon.vue";
 
 export interface WorkflowRunRequest {
   id: number;
+  componentId: number | null;
 }
 
 export interface WorkflowRunnerState {
@@ -32,7 +33,8 @@ export const run: (
 
   const response = await firstValueFrom(
     sdf.post<ApiResponse<WorkflowRunResponse>>("workflow/run", {
-      ...arg,
+      id: arg.id,
+      componentId: arg.componentId ?? -1,
       ...visibility,
     }),
   );

@@ -1,4 +1,3 @@
-use dal::func::backend::js_workflow::FuncBackendJsWorkflowArgs;
 use dal::DalContext;
 use dal::{
     func::binding::FuncBinding, workflow_resolver::WorkflowResolverContext, Func, StandardModel,
@@ -17,7 +16,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
         .pop()
         .expect("Missing builtin function si:poemWorkflow");
 
-    let args = FuncBackendJsWorkflowArgs;
+    let args = serde_json::Value::Null;
     let func_binding = FuncBinding::new(
         ctx,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -53,7 +52,7 @@ async fn find_for_prototype(ctx: &DalContext<'_, '_, '_>) {
         .pop()
         .expect("Missing builtin function si:poemWorkflow");
 
-    let args = FuncBackendJsWorkflowArgs;
+    let args = serde_json::Value::Null;
     let func_binding = FuncBinding::new(
         ctx,
         serde_json::to_value(args.clone()).expect("cannot turn args into json"),

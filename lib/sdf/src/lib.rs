@@ -16,4 +16,5 @@ mod server;
 pub use server::{
     build_service, service, Config, ConfigError, ConfigFile, FaktoryProcessor, IncomingStream,
     JobQueueProcessor, JwtSecretKey, MigrationMode, Server, StandardConfig, StandardConfigFile,
+    SyncProcessor,
 };

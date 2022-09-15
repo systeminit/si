@@ -56,6 +56,7 @@ impl ResourceScheduler {
                 },
                 _ = self.start_task() => {}
             }
+            info!("Resource Syncing stopped");
         });
     }
 

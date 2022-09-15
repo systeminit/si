@@ -1,6 +1,6 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{Component, ComponentId, ResourceView, SystemId, Visibility, WorkspaceId};
+use dal::{ComponentId, ResourceView, SystemId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -32,19 +32,20 @@ pub async fn get_resource(
     }
 
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let _ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let resource = Component::get_resource_by_component_and_system(
-        &ctx,
-        request.component_id,
-        request.system_id,
-    )
-    .await?
-    .ok_or(ComponentError::ResourceNotFound(
-        request.component_id,
-        request.system_id,
-    ))?;
-
+    //let resource = Component::get_resource_by_component_and_system(
+    //    &ctx,
+    //    request.component_id,
+    //    request.system_id,
+    //)
+    //.await?
+    //.ok_or(
     txns.commit().await?;
-    Ok(Json(GetResourceResponse { resource }))
+    Err(ComponentError::ResourceNotFound(
+        request.component_id,
+        request.system_id,
+    ))
+
+    //Ok(Json(GetResourceResponse { resource }))
 }

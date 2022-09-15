@@ -8,6 +8,7 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "./function";
+import { Component } from "./component";
 import { createSandbox } from "./sandbox";
 import { createNodeVm } from "./vm";
 
@@ -16,6 +17,7 @@ const debug = Debug("langJs:workflowResolve");
 export interface WorkflowResolveRequest extends Request {
   handler: string;
   codeBase64: string;
+  args: unknown
 }
 
 export type WorkflowResolveResult =
@@ -46,7 +48,7 @@ export async function executeWorkflowResolve(
   );
   const vm = createNodeVm(sandbox);
 
-  const result = await execute(vm, code, request.executionId);
+  const result = await execute(vm, code, request.executionId, request.args);
   debug({ result });
 
   console.log(JSON.stringify(result));
@@ -55,15 +57,17 @@ export async function executeWorkflowResolve(
 async function execute(
   vm: NodeVM,
   code: string,
-  executionId: string
+  executionId: string,
+  args: unknown,
 ): Promise<WorkflowResolveResult> {
   let workflowResolveResult: Record<string, unknown>;
   try {
     const workflowResolveRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     workflowResolveResult = await new Promise((resolve) => {
-      workflowResolveRunner((resolution: Record<string, unknown>) =>
-        resolve(resolution)
+      workflowResolveRunner(
+        args,
+        (resolution: Record<string, unknown>) => resolve(resolution)
       );
     });
 
@@ -83,9 +87,10 @@ async function execute(
 }
 
 function wrapCode(code: string, handle: string): string {
-  const wrapped = `module.exports = function(callback) {
+  const wrapped = `module.exports = function(args, callback) {
     ${code}
-    const returnValue = ${handle}(callback);
+    const arguments = Array.isArray(args) ? args : [args];
+    const returnValue = ${handle}(...arguments, callback);
     if (returnValue instanceof Promise) {
       returnValue.then((data) => callback(data))
         .catch((err) => {

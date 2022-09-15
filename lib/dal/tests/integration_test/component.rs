@@ -1,12 +1,10 @@
 use dal::{
     qualification_resolver::UNSET_ID_VALUE,
-    test::helpers::create_system_with_node,
     test_harness::{
         create_component_and_schema, create_component_for_schema_variant, create_schema,
         create_schema_variant, create_schema_variant_with_root,
     },
-    Component, DalContext, Prop, PropKind, Resource, Schema, SchemaKind, StandardModel,
-    WorkspaceId,
+    Component, DalContext, Prop, PropKind, Schema, SchemaKind, StandardModel,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
@@ -21,9 +19,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_, '_>, wid: WorkspaceId) {
-    let (system, _system_node) = create_system_with_node(ctx, &wid).await;
-
+async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_, '_>) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
@@ -40,43 +36,6 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_, '_>, wid: Wor
     assert_eq!(
         *found_component.id(), // actual
         *component.id()        // expected
-    );
-
-    // A components does not get a Resource record when created.
-    let resource = Resource::get_by_component_id_and_system_id(ctx, component.id(), system.id())
-        .await
-        .expect("cannot retrieve resource for Component & System");
-    assert!(resource.is_none());
-
-    component
-        .add_to_system(ctx, *system.id())
-        .await
-        .expect("failed to add node to system");
-
-    // A components gets a Resource record when added to a system.
-    let resource = Resource::get_by_component_id_and_system_id(ctx, component.id(), system.id())
-        .await
-        .expect("cannot retrieve resource for Component & System");
-    assert!(resource.is_some());
-
-    let resource = resource.unwrap();
-    assert_eq!(
-        resource
-            .component(ctx)
-            .await
-            .expect("cannot retrieve component for resource")
-            .expect("no component found for resource")
-            .id(),
-        component.id()
-    );
-    assert_eq!(
-        resource
-            .system(ctx)
-            .await
-            .expect("cannot retrieve system for resource")
-            .expect("no system found for resource")
-            .id(),
-        system.id()
     );
 }
 
@@ -121,7 +80,8 @@ async fn qualification_view(ctx: &DalContext<'_, '_, '_>) {
             "data": {
                 "system": null,
                 "kind": "standard",
-                "properties": { "si": { "name": "mastodon" }, "domain": {} }
+                "properties": { "si": { "name": "mastodon" }, "domain": {} },
+                "resources": []
             },
             "parents": [],
             "codes": []
@@ -175,53 +135,6 @@ async fn list_qualifications_by_component_id(ctx: &DalContext<'_, '_, '_>) {
             .await
             .expect("cannot list qualifications");
     assert_eq!(qualifications.len(), 2);
-}
-
-// Also brittle, same reason
-#[test]
-async fn get_resource_by_component_id(ctx: &DalContext<'_, '_, '_>, wid: WorkspaceId) {
-    let (system, _system_node) = create_system_with_node(ctx, &wid).await;
-
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
-        .await
-        .expect("cannot find docker image schema")
-        .pop()
-        .expect("no docker image schema found");
-    let (component, _node) = Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
-        .await
-        .expect("cannot create ash component");
-
-    component
-        .add_to_system(ctx, *system.id())
-        .await
-        .expect("failed to add component to system");
-
-    component
-        .sync_resource(ctx, *system.id())
-        .await
-        .expect("cannot sync resource");
-
-    let resource =
-        Component::get_resource_by_component_and_system(ctx, *component.id(), *system.id())
-            .await
-            .expect("cannot get resource");
-
-    assert_eq!(
-        serde_json::json!("Cant touch this: chvrches"),
-        *resource
-            .expect("Resource missing")
-            .data
-            .as_object()
-            .expect("None resource sync data")
-            .get("data")
-            .expect("Missing 'data' key from resource sync data")
-            .as_object()
-            .expect("Null 'data' key")
-            .get("data")
-            .expect("Missing 'data.data' key from resource sync data")
-            .get("name")
-            .expect("Missing name in resource sync data"),
-    );
 }
 
 // FIXME(nick,adam): fix output stream test or figure out another way how to do this. This is

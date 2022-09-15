@@ -505,17 +505,20 @@ mod tests {
                     properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
+                    resources: Default::default(),
                 },
                 parents: vec![
                     ComponentView {
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
+                        resources: Default::default(),
                     },
                     ComponentView {
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
+                        resources: Default::default(),
                     },
                 ],
             },
@@ -563,6 +566,7 @@ mod tests {
                     properties: serde_json::json!({"image": "systeminit/whiskers"}),
                     system: None,
                     kind: ComponentKind::Standard,
+                    resources: Default::default(),
                 },
                 codes: vec![CodeGenerated {
                     format: "yaml".to_owned(),
@@ -672,6 +676,7 @@ mod tests {
             properties: serde_json::json!({"image": "abc"}),
             system: None,
             kind: ComponentKind::Standard,
+            resources: Default::default(),
         };
 
         // Now update the request to re-run an unqualified check (i.e. qualification returning
@@ -713,6 +718,7 @@ mod tests {
                 properties: serde_json::json!({"pkg": "cider"}),
                 system: None,
                 kind: ComponentKind::Standard,
+                resources: Default::default(),
             },
             code_base64: base64::encode("function syncItOut(component) { return {}; }"),
         };
@@ -754,6 +760,7 @@ mod tests {
                 properties: serde_json::json!({"pkg": "cider"}),
                 system: None,
                 kind: ComponentKind::Standard,
+                    resources: Default::default(),
             },
             code_base64: base64::encode("function generateItOut(component) { return { format: 'yaml', code: YAML.stringify(component.properties) }; }"),
         };
@@ -799,6 +806,7 @@ mod tests {
             handler: "workItOut".to_string(),
             // TODO(fnichol): rewrite this function once we settle on contract
             code_base64: base64::encode("function workItOut() { return { name: 'mc fioti', kind: 'vacina butantan - https://www.youtube.com/watch?v=yQ8xJHuW7TY', steps: [] }; }"),
+            args: Default::default(),
         };
 
         let result = client

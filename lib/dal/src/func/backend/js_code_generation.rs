@@ -51,7 +51,7 @@ impl FuncDispatch for FuncBackendJsCodeGeneration {
 impl ExtractPayload for CodeGenerationResultSuccess {
     type Payload = CodeGenerated;
 
-    fn extract(self) -> Self::Payload {
-        self.data
+    fn extract(self) -> FuncBackendResult<Self::Payload> {
+        Ok(self.data)
     }
 }

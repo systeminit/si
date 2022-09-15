@@ -8,6 +8,9 @@ CREATE TABLE resources
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
+    key                         text                     NOT NULL,
+    data                        jsonb                    NOT NULL,
+    refresh_workflow_id         bigint                   NOT NULL,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW()
 );
@@ -23,6 +26,9 @@ VALUES ('resources', 'model', 'resource', 'Resource'),
 CREATE OR REPLACE FUNCTION resource_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
+    this_key text,
+    this_data jsonb,
+    this_refresh_workflow_id bigint,
     OUT object json) AS
 $$
 DECLARE
@@ -38,13 +44,19 @@ BEGIN
                            tenancy_organization_ids,
                            tenancy_workspace_ids,
                            visibility_change_set_pk,
-                           visibility_deleted_at)
+                           visibility_deleted_at,
+                           key,
+                           data,
+                           refresh_workflow_id)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at)
+            this_visibility_record.visibility_deleted_at,
+            this_key,
+            this_data,
+            this_refresh_workflow_id)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

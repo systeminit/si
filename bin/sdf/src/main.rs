@@ -1,7 +1,10 @@
 #![recursion_limit = "256"]
 
 use color_eyre::Result;
-use sdf::{Config, FaktoryProcessor, IncomingStream, JobQueueProcessor, MigrationMode, Server};
+use sdf::{
+    Config, FaktoryProcessor, IncomingStream, JobQueueProcessor, MigrationMode, Server,
+    SyncProcessor,
+};
 use telemetry::{
     start_tracing_level_signal_handler_task,
     tracing::{debug, error, info, trace},
@@ -150,7 +153,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
             Server::start_resource_sync_scheduler(
                 pg_pool,
                 nats,
-                job_processor,
+                Box::new(SyncProcessor::new()),
                 veritech,
                 encryption_key,
                 shutdown_broadcast_rx,
@@ -175,7 +178,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
             Server::start_resource_sync_scheduler(
                 pg_pool,
                 nats,
-                job_processor,
+                Box::new(SyncProcessor::new()),
                 veritech,
                 encryption_key,
                 shutdown_broadcast_rx,

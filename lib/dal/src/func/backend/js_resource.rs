@@ -51,7 +51,7 @@ impl FuncDispatch for FuncBackendJsResourceSync {
 impl ExtractPayload for ResourceSyncResultSuccess {
     type Payload = Self;
 
-    fn extract(self) -> Self::Payload {
-        self
+    fn extract(self) -> FuncBackendResult<Self::Payload> {
+        Ok(self)
     }
 }

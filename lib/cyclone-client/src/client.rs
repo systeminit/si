@@ -738,17 +738,20 @@ mod tests {
                     properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
+                    resources: Default::default(),
                 },
                 parents: vec![
                     ComponentView {
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
+                        resources: Default::default(),
                     },
                     ComponentView {
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
+                        resources: Default::default(),
                     },
                 ],
             },
@@ -829,17 +832,20 @@ mod tests {
                     properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
+                    resources: Default::default(),
                 },
                 parents: vec![
                     ComponentView {
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
+                        resources: Default::default(),
                     },
                     ComponentView {
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
+                        resources: Default::default(),
                     },
                 ],
             },
@@ -919,6 +925,7 @@ mod tests {
                     properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
                     system: None,
                     kind: ComponentKind::Standard,
+                    resources: Default::default(),
                 },
                 codes: Vec::new(),
                 parents: Vec::new(),
@@ -1010,6 +1017,7 @@ mod tests {
                     properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
                     system: None,
                     kind: ComponentKind::Standard,
+                    resources: Default::default(),
                 },
                 codes: Vec::new(),
                 parents: Vec::new(),
@@ -1096,6 +1104,7 @@ mod tests {
             properties: serde_json::json!({}),
             system: None,
             kind: ComponentKind::Standard,
+            resources: Default::default(),
         };
         let req = ResourceSyncRequest {
             execution_id: "1234".to_string(),
@@ -1177,6 +1186,7 @@ mod tests {
             properties: serde_json::json!({}),
             system: None,
             kind: ComponentKind::Standard,
+            resources: Default::default(),
         };
         let req = ResourceSyncRequest {
             execution_id: "1234".to_string(),
@@ -1256,6 +1266,7 @@ mod tests {
             properties: serde_json::json!({ "si": { "name": "Ablublubé"}}),
             system: None,
             kind: ComponentKind::Standard,
+            resources: Default::default(),
         };
         let req = CodeGenerationRequest {
             execution_id: "1234".to_string(),
@@ -1285,7 +1296,7 @@ mod tests {
                 assert_eq!(
                     serde_json::from_str::<serde_json::Value>(&output.message)
                         .expect("Unable to serialize output to json"),
-                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "system": null, "kind": "standard" })
+                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "system": null, "kind": "standard", "resources": [] })
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -1345,6 +1356,7 @@ mod tests {
             properties: serde_json::json!({ "si": { "name": "Ablublubé"}}),
             system: None,
             kind: ComponentKind::Standard,
+            resources: Default::default(),
         };
         let req = CodeGenerationRequest {
             execution_id: "1234".to_string(),
@@ -1374,7 +1386,7 @@ mod tests {
                 assert_eq!(
                     serde_json::from_str::<serde_json::Value>(&output.message)
                         .expect("Unable to serialize output to json"),
-                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "system": null, "kind": "standard" })
+                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "system": null, "kind": "standard", "resources": [] })
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -1431,6 +1443,7 @@ mod tests {
         let req = WorkflowResolveRequest {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
+            args: Default::default(),
             code_base64: base64::encode(
                 r#"function workit() {
                     console.log('first');
@@ -1505,6 +1518,7 @@ mod tests {
         let req = WorkflowResolveRequest {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
+            args: Default::default(),
             code_base64: base64::encode(
                 r#"function workit() {
                     console.log('first');
@@ -1578,6 +1592,7 @@ mod tests {
         let req = CommandRunRequest {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
+            args: Default::default(),
             code_base64: base64::encode(
                 r#"function workit() {
                     console.log('first');
@@ -1651,6 +1666,7 @@ mod tests {
         let req = CommandRunRequest {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
+            args: Default::default(),
             code_base64: base64::encode(
                 r#"function workit() {
                     console.log('first');

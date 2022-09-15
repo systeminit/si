@@ -4,14 +4,15 @@ use serde::{Deserialize, Serialize};
 use super::{WorkflowError, WorkflowResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::{
-    workflow::WorkflowTreeView, FuncBinding, FuncBindingReturnValue, StandardModel, Visibility,
-    WorkflowPrototype, WorkflowPrototypeId, WorkflowTree,
+    workflow::WorkflowTreeView, ComponentId, FuncBinding, FuncBindingReturnValue, StandardModel,
+    Visibility, WorkflowPrototype, WorkflowPrototypeId, WorkflowTree,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowResolveRequest {
     pub id: WorkflowPrototypeId,
+    pub component_id: ComponentId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -30,11 +31,10 @@ pub async fn resolve(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let resolver = WorkflowPrototype::get_by_id(&ctx, &request.id)
+    let prototype = WorkflowPrototype::get_by_id(&ctx, &request.id)
         .await?
-        .ok_or(WorkflowError::PrototypeNotFound(request.id))?
-        .resolve(&ctx)
-        .await?;
+        .ok_or(WorkflowError::PrototypeNotFound(request.id))?;
+    let resolver = prototype.resolve(&ctx, request.component_id).await?;
     let func_binding = FuncBinding::get_by_id(&ctx, &resolver.func_binding_id())
         .await?
         .ok_or_else(|| WorkflowError::FuncBindingNotFound(resolver.func_binding_id()))?;

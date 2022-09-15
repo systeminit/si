@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
 use veritech::{
     FunctionResult, OutputStream, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
@@ -10,8 +9,7 @@ use crate::func::backend::{
 };
 use crate::WorkflowView;
 
-#[derive(Deserialize, Serialize, Debug, Clone, Default)]
-pub struct FuncBackendJsWorkflowArgs;
+pub type FuncBackendJsWorkflowArgs = serde_json::Value;
 
 #[derive(Debug)]
 pub struct FuncBackendJsWorkflow {
@@ -28,7 +26,7 @@ impl FuncDispatch for FuncBackendJsWorkflow {
         context: FuncDispatchContext,
         code_base64: &str,
         handler: &str,
-        _args: Self::Args,
+        args: Self::Args,
     ) -> Box<Self> {
         let request = WorkflowResolveRequest {
             // Once we start tracking the state of these executions, then this id will be useful,
@@ -36,6 +34,7 @@ impl FuncDispatch for FuncBackendJsWorkflow {
             execution_id: "danielfurlanjsworkflow".to_string(),
             handler: handler.into(),
             code_base64: code_base64.into(),
+            args,
         };
 
         Box::new(Self { context, request })
@@ -73,13 +72,12 @@ impl FuncDispatch for FuncBackendJsWorkflow {
 impl ExtractPayload for WorkflowResolveResultSuccess {
     type Payload = WorkflowView;
 
-    fn extract(self) -> Self::Payload {
-        WorkflowView::new(
+    fn extract(self) -> FuncBackendResult<Self::Payload> {
+        Ok(WorkflowView::new(
             self.name,
-            // TODO: propagate error
-            serde_json::from_value(serde_json::Value::String(self.kind)).unwrap(),
-            serde_json::from_value(self.steps).unwrap(),
-            serde_json::from_value(self.args).unwrap(),
-        )
+            serde_json::from_value(serde_json::Value::String(self.kind))?,
+            serde_json::from_value(self.steps)?,
+            serde_json::from_value(self.args)?,
+        ))
     }
 }

@@ -11,7 +11,7 @@ FROM resources
                        resources.tenancy_billing_account_ids = resource_belongs_to_component.tenancy_billing_account_ids
                         AND resources.tenancy_organization_ids = resource_belongs_to_component.tenancy_organization_ids
                         AND resources.tenancy_workspace_ids = resource_belongs_to_component.tenancy_workspace_ids
-         INNER JOIN resource_belongs_to_system
+         LEFT OUTER JOIN resource_belongs_to_system
                     ON resources.id = resource_belongs_to_system.object_id
                         AND resources.tenancy_universal = resource_belongs_to_system.tenancy_universal
                         AND
@@ -21,7 +21,7 @@ FROM resources
 
 WHERE in_tenancy_and_visible_v1($1, $2, resources)
   AND resource_belongs_to_component.belongs_to_id = $3
-  AND resource_belongs_to_system.belongs_to_id = $4
+  AND (resource_belongs_to_system IS NULL OR resource_belongs_to_system.belongs_to_id = $4)
 
 ORDER BY resources.id,
          resources.visibility_change_set_pk DESC,

@@ -32,7 +32,7 @@ pub use cyclone_core::{
     FunctionResult, FunctionResultFailure, OutputStream, QualificationCheckComponent,
     QualificationCheckRequest, QualificationCheckResultSuccess, QualificationSubCheck,
     QualificationSubCheckStatus, ResolverFunctionComponent, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess,
+    ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess, ResourceView,
     SensitiveContainer, SystemView, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 
