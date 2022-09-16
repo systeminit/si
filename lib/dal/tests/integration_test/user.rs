@@ -6,7 +6,7 @@ use dal::{
 use crate::dal::test;
 
 #[test]
-async fn new(ctx: &mut DalContext<'_, '_, '_>, bid: BillingAccountId) {
+async fn new(ctx: &mut DalContext, bid: BillingAccountId) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let _user = User::new(
@@ -20,11 +20,7 @@ async fn new(ctx: &mut DalContext<'_, '_, '_>, bid: BillingAccountId) {
 }
 
 #[test]
-async fn login(
-    ctx: &mut DalContext<'_, '_, '_>,
-    bid: BillingAccountId,
-    jwt_secret_key: &JwtSecretKey,
-) {
+async fn login(ctx: &mut DalContext, bid: BillingAccountId, jwt_secret_key: &JwtSecretKey) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let password = "snakesOnAPlane123";
@@ -39,7 +35,7 @@ async fn login(
 }
 
 #[test]
-async fn find_by_email(ctx: &mut DalContext<'_, '_, '_>, bid: BillingAccountId) {
+async fn find_by_email(ctx: &mut DalContext, bid: BillingAccountId) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let password = "snakesOnAPlane123";
@@ -68,7 +64,7 @@ async fn find_by_email(ctx: &mut DalContext<'_, '_, '_>, bid: BillingAccountId) 
 }
 
 #[test]
-async fn authorize(ctx: &mut DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn authorize(ctx: &mut DalContext, nba: &BillingAccountSignup) {
     ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
 
     let worked = User::authorize(ctx, nba.user.id())

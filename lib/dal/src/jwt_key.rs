@@ -5,7 +5,7 @@ use jwt_simple::{
     prelude::{JWTClaims, RSAPublicKeyLike, Token},
 };
 use serde::{Deserialize, Serialize};
-use si_data::PgTxn;
+use si_data::pg::InstrumentedTransaction;
 use sodiumoxide::crypto::secretbox;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -131,7 +131,7 @@ impl JwtSecretKey {
 
 #[instrument(skip_all)]
 pub async fn get_jwt_validation_key(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     jwt_id: impl AsRef<str>,
 ) -> JwtKeyResult<RS256PublicKey> {
     let jwt_id = jwt_id.as_ref();
@@ -156,7 +156,7 @@ pub async fn get_jwt_validation_key(
 
 #[instrument(skip_all)]
 pub async fn validate_bearer_token(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<UserClaim>> {
     let bearer_token = bearer_token.as_ref();
@@ -187,7 +187,7 @@ pub async fn validate_bearer_token(
 
 #[instrument(skip_all)]
 pub async fn validate_bearer_token_api_client(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<ApiClaim>> {
     let bearer_token = bearer_token.as_ref();
@@ -212,7 +212,7 @@ pub async fn validate_bearer_token_api_client(
 
 #[instrument(skip_all)]
 pub async fn get_jwt_signing_key(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     jwt_secret_key: &JwtSecretKey,
 ) -> JwtKeyResult<RS256KeyPair> {
     let row = ctx
@@ -236,14 +236,14 @@ pub async fn get_jwt_signing_key(
 }
 
 #[instrument(skip_all)]
-pub async fn jwt_key_exists(txn: &PgTxn<'_>) -> JwtKeyResult<bool> {
+pub async fn jwt_key_exists(txn: &InstrumentedTransaction<'_>) -> JwtKeyResult<bool> {
     let rows = txn.query(JWT_KEY_EXISTS, &[]).await?;
     Ok(!rows.is_empty())
 }
 
 #[instrument(skip_all)]
 pub async fn install_new_jwt_key(
-    txn: &PgTxn<'_>,
+    txn: &InstrumentedTransaction<'_>,
     jwt_secret_key: &JwtSecretKey,
 ) -> JwtKeyResult<()> {
     // NOTE(fnichol): It's a little unclear to me what a good "molulus bits" value would be, this
@@ -285,7 +285,7 @@ pub async fn install_new_jwt_key(
 
 #[instrument(skip_all)]
 pub async fn create_jwt_key_if_missing(
-    txn: &PgTxn<'_>,
+    txn: &InstrumentedTransaction<'_>,
     public_filename: impl AsRef<str>,
     private_filename: impl AsRef<str>,
     secret_key: &secretbox::Key,

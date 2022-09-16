@@ -133,7 +133,7 @@ impl WorkflowResolver {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         workflow_prototype_id: WorkflowPrototypeId,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
@@ -156,7 +156,7 @@ impl WorkflowResolver {
         Ok(object)
     }
 
-    pub async fn tree(&self, ctx: &DalContext<'_, '_, '_>) -> WorkflowResolverResult<WorkflowTree> {
+    pub async fn tree(&self, ctx: &DalContext) -> WorkflowResolverResult<WorkflowTree> {
         let func_binding = FuncBinding::get_by_id(ctx, &self.func_binding_id())
             .await?
             .ok_or_else(|| WorkflowResolverError::FuncBindingNotFound(self.func_binding_id()))?;
@@ -177,7 +177,7 @@ impl WorkflowResolver {
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), WorkflowResolverResult);
 
     pub async fn find_for_prototype(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         workflow_prototype_id: &WorkflowPrototypeId,
         context: WorkflowResolverContext,
     ) -> WorkflowResolverResult<Vec<Self>> {

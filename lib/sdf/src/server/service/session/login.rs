@@ -25,28 +25,28 @@ pub struct LoginResponse {
 }
 
 pub async fn login(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     JwtSecretKey(jwt_secret_key): JwtSecretKey,
     Json(request): Json<LoginRequest>,
 ) -> SessionResult<Json<LoginResponse>> {
-    let txns = txns.start().await?;
     // Global history actor
-    let ctx = builder.build(
-        AccessBuilder::new(
-            ReadTenancy::new_universal(),
-            // Empty tenancy means things can be written, but won't ever be read
-            WriteTenancy::new_empty(),
-            HistoryActor::SystemInit,
+    let mut ctx = builder
+        .build(
+            AccessBuilder::new(
+                ReadTenancy::new_universal(),
+                // Empty tenancy means things can be written, but won't ever be read
+                WriteTenancy::new_empty(),
+                HistoryActor::SystemInit,
+            )
+            .build_head(),
         )
-        .build_head(),
-        &txns,
-    );
+        .await?;
     let billing_account = BillingAccount::find_by_name(&ctx, &request.billing_account_name)
         .await?
         .ok_or(SessionError::LoginFailed)?;
 
     // Update context tenancies
-    let ctx = ctx.clone_with_new_tenancies(
+    ctx.update_tenancies(
         ReadTenancy::new_billing_account(vec![*billing_account.id()]),
         WriteTenancy::new_billing_account(*billing_account.id()),
     );
@@ -56,7 +56,7 @@ pub async fn login(
         .ok_or(SessionError::LoginFailed)?;
 
     // Update context history actor
-    let ctx = ctx.clone_with_new_history_actor(HistoryActor::User(*user.id()));
+    ctx.update_history_actor(HistoryActor::User(*user.id()));
 
     let jwt = user
         .login(
@@ -67,8 +67,6 @@ pub async fn login(
         )
         .await
         .map_err(|_| SessionError::LoginFailed)?;
-
-    txns.commit().await?;
 
     Ok(Json(LoginResponse {
         jwt,

@@ -123,7 +123,7 @@ impl Edge {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         kind: EdgeKind,
         head_node_id: NodeId,
         head_object_kind: VertexObjectKind,
@@ -170,7 +170,7 @@ impl Edge {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new_for_connection(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         head_node_id: NodeId,
         head_socket_id: SocketId,
         tail_node_id: NodeId,
@@ -234,7 +234,7 @@ impl Edge {
     standard_model_accessor!(tail_socket_id, Pk(SocketId), EdgeResult);
 
     pub async fn list_parents_for_component(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         head_component_id: ComponentId,
     ) -> EdgeResult<Vec<ComponentId>> {
         let rows = ctx
@@ -253,7 +253,7 @@ impl Edge {
     }
 
     pub async fn include_component_in_system(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         diagram_kind: DiagramKind,
         system_id: SystemId,
@@ -284,7 +284,7 @@ impl Edge {
     /// - _"head":_ where the connection is going to
     /// - _"tail":_ where the connection is coming from
     pub async fn connect_providers_for_components(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         name: impl AsRef<str>,
         head_explicit_internal_provider_id: InternalProviderId,
         head_component_id: ComponentId,

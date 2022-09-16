@@ -103,8 +103,8 @@ pub use code_generation_resolver::{
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{Component, ComponentError, ComponentId, ComponentView};
 pub use context::{
-    AccessBuilder, DalContext, DalContextBuilder, RequestContext, ServicesContext, Transactions,
-    TransactionsError, TransactionsStarter,
+    AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
+    Transactions, TransactionsError,
 };
 pub use cyclone_key_pair::CycloneKeyPair;
 pub use diagram::{
@@ -250,12 +250,10 @@ pub async fn migrate_builtins(
         Arc::new(*encryption_key),
     );
     let dal_context = services_context.into_builder();
-    let mut starter = dal_context.transactions_starter().await?;
-    let txns = starter.start().await?;
     let request_context = RequestContext::new_universal_head(HistoryActor::SystemInit);
-    let ctx = dal_context.build(request_context, &txns);
+    let ctx = dal_context.build(request_context).await?;
     builtins::migrate(&ctx).await?;
-    txns.commit().await?;
+    ctx.commit().await?;
     Ok(())
 }
 

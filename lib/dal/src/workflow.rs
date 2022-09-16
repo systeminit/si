@@ -1,14 +1,15 @@
 use crate::{
     func::backend::js_workflow::FuncBackendJsWorkflowArgs, func::backend::FuncDispatchContext,
-    func::binding::FuncBindingId, func::execution::FuncExecution, DalContext, DalContextBuilder,
-    Func, FuncBackendKind, FuncBinding, FuncBindingError, FuncBindingReturnValue, PgPoolError,
-    RequestContext, ServicesContext, StandardModel, StandardModelError, TransactionsError,
-    TransactionsStarter, WsEvent, WsEventError, WsPayload,
+    func::binding::FuncBindingId, func::execution::FuncExecution, Connections, DalContext,
+    DalContextBuilder, Func, FuncBackendKind, FuncBinding, FuncBindingError,
+    FuncBindingReturnValue, PgPoolError, RequestContext, ServicesContext, StandardModel,
+    StandardModelError, TransactionsError, WsEvent, WsEventError, WsPayload,
 };
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, collections::HashSet, sync::Arc};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech::OutputStream;
@@ -99,7 +100,7 @@ impl WorkflowView {
     }
 
     pub async fn resolve(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func: &Func,
         args: serde_json::Value,
     ) -> WorkflowResult<WorkflowTree> {
@@ -108,7 +109,7 @@ impl WorkflowView {
 
     /// Run a workflow using veritech.
     async fn veritech_run(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func: Func,
         args: FuncBackendJsWorkflowArgs,
     ) -> WorkflowResult<Self> {
@@ -126,7 +127,7 @@ impl WorkflowView {
     /// A recursive function to resolve inner workflows in order to build a [`WorkflowTree`].
     #[async_recursion]
     async fn resolve_inner(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         name: &str,
         args: FuncBackendJsWorkflowArgs,
         mut recursion_marker: HashSet<String>,
@@ -218,10 +219,7 @@ pub struct FuncToExecute {
 }
 
 impl WorkflowTree {
-    pub async fn run(
-        &self,
-        ctx: &DalContext<'_, '_, '_>,
-    ) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
+    pub async fn run(&self, ctx: &DalContext) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
         let (map, rxs) = self.prepare(ctx).await?;
 
         let mut handlers = tokio::task::JoinSet::new();
@@ -240,20 +238,21 @@ impl WorkflowTree {
                 visibility: *ctx.visibility(),
                 history_actor: ctx.history_actor().clone(),
             };
-            let transactions_starter = services_context.transactions_starter().await?;
+            let conns = services_context.connections().await?;
 
             handlers.spawn(async move {
                 async fn process_output(
                     ctx_builder: DalContextBuilder,
                     request_context: RequestContext,
-                    mut transactions_starter: TransactionsStarter,
+                    mut conns: Connections,
                     func_binding_id: FuncBindingId,
                     mut rx: mpsc::Receiver<OutputStream>,
                 ) -> WorkflowResult<(FuncBindingId, Vec<OutputStream>)> {
                     let mut output = Vec::new();
                     while let Some(stream) = rx.recv().await {
-                        let txns = transactions_starter.start().await?;
-                        let ctx = ctx_builder.build(request_context.clone(), &txns);
+                        let ctx = ctx_builder
+                            .build_with_conns(request_context.clone(), conns)
+                            .await?;
 
                         let text = match &stream.data {
                             Some(data) => format!(
@@ -266,18 +265,11 @@ impl WorkflowTree {
                         output.push(stream);
 
                         WsEvent::command_output(&ctx, text).publish(&ctx).await?;
-                        txns.commit().await?;
+                        conns = ctx.commit_into_conns().await?;
                     }
                     Ok((func_binding_id, output))
                 }
-                process_output(
-                    ctx_builder,
-                    request_context,
-                    transactions_starter,
-                    func_binding_id,
-                    rx,
-                )
-                .await
+                process_output(ctx_builder, request_context, conns, func_binding_id, rx).await
             });
         }
         let mut map = self.clone().execute(map).await?;
@@ -299,7 +291,7 @@ impl WorkflowTree {
     #[async_recursion]
     async fn prepare(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
     ) -> WorkflowResult<(
         HashMap<FuncBindingId, FuncToExecute>,
         HashMap<FuncBindingId, mpsc::Receiver<OutputStream>>,
@@ -417,7 +409,7 @@ impl WorkflowTree {
 
     async fn postprocess(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         map: HashMap<FuncBindingId, FuncToExecute>,
         mut outputs: HashMap<FuncBindingId, Vec<OutputStream>>,
     ) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
@@ -466,7 +458,7 @@ pub struct WorkflowTreeView {
 impl WorkflowTreeView {
     // We need to stop recursing so much
     #[async_recursion]
-    pub async fn new(ctx: &DalContext<'_, '_, '_>, tree: WorkflowTree) -> WorkflowResult<Self> {
+    pub async fn new(ctx: &DalContext, tree: WorkflowTree) -> WorkflowResult<Self> {
         let mut view = WorkflowTreeView {
             name: tree.name,
             kind: tree.kind,
@@ -501,7 +493,7 @@ pub struct CommandOutput {
 }
 
 impl WsEvent {
-    pub fn command_output(ctx: &DalContext<'_, '_, '_>, output: String) -> Self {
+    pub fn command_output(ctx: &DalContext, output: String) -> Self {
         WsEvent::new(ctx, WsPayload::CommandOutput(CommandOutput { output }))
     }
 }

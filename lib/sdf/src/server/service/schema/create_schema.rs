@@ -20,28 +20,29 @@ pub struct CreateSchemaResponse {
 }
 
 pub async fn create_schema(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     Authorization(claim): Authorization,
     Tenancy(_write_tenancy, read_tenancy): Tenancy,
     HistoryActor(history_actor): HistoryActor,
     Json(request): Json<CreateSchemaRequest>,
 ) -> SchemaResult<Json<CreateSchemaResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(
-        dal::context::AccessBuilder::new(
-            read_tenancy,
-            WriteTenancy::new_billing_account(claim.billing_account_id),
-            history_actor,
+    let ctx = builder
+        .build(
+            dal::context::AccessBuilder::new(
+                read_tenancy,
+                WriteTenancy::new_billing_account(claim.billing_account_id),
+                history_actor,
+            )
+            .build(request.visibility),
         )
-        .build(request.visibility),
-        &txns,
-    );
+        .await?;
 
     let schema = Schema::new(&ctx, &request.name, &request.kind, &ComponentKind::Standard).await?;
     let response = CreateSchemaResponse { schema };
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
+
     Ok(Json(response))
 }

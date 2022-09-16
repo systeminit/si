@@ -126,7 +126,7 @@ impl CodeGenerationResolver {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         code_generation_prototype_id: CodeGenerationPrototypeId,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
@@ -162,7 +162,7 @@ impl CodeGenerationResolver {
     );
 
     pub async fn find_for_prototype_and_component(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         code_generation_prototype_id: &CodeGenerationPrototypeId,
         component_id: &ComponentId,
     ) -> CodeGenerationResolverResult<Vec<Self>> {
@@ -193,7 +193,7 @@ pub struct CodeGenerationId {
 
 impl WsEvent {
     pub fn code_generated(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> Self {

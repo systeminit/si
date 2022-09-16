@@ -21,12 +21,11 @@ pub struct GetSystemResponse {
 }
 
 pub async fn get_system(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetSystemRequest>,
 ) -> SystemResult<Json<GetSystemResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let system = System::get_by_id(&ctx, &request.system_id)
         .await?

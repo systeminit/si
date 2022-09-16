@@ -49,9 +49,7 @@ pub enum QualificationSummaryError {
 pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
 
 impl QualificationSummary {
-    pub async fn get_summary(
-        ctx: &DalContext<'_, '_, '_>,
-    ) -> QualificationSummaryResult<QualificationSummary> {
+    pub async fn get_summary(ctx: &DalContext) -> QualificationSummaryResult<QualificationSummary> {
         let rows = ctx
             .txns()
             .pg()
@@ -195,7 +193,7 @@ impl QualificationView {
     }
 
     pub async fn new_for_func_binding_return_value(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         prototype: QualificationPrototype,
         func_metadata: FuncMetadataView,
         func_binding_return_value: FuncBindingReturnValue,
@@ -237,7 +235,7 @@ pub struct QualificationCheckId {
 
 impl WsEvent {
     pub fn checked_qualifications(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         prototype_id: QualificationPrototypeId,
         component_id: ComponentId,
         system_id: SystemId,

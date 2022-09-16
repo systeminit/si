@@ -39,40 +39,40 @@ lazy_static! {
 ///
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].
 /// To use mutably borrowed `DalContext` version, use [`DalContextHeadMutRef`].
-pub struct DalContextHead<'a, 'b, 'c>(pub DalContext<'a, 'b, 'c>);
+pub struct DalContextHead(pub DalContext);
 
 /// A reference to a [`DalContext`] for a workspace in a billing account which is not in a change
 /// set nor an edit session.
 ///
 /// To use an owned `DalContext` version, use [`DalContextHead`].
 /// To use mutably borrowed `DalContext` version, use [`DalContextHeadMutRef`].
-pub struct DalContextHeadRef<'a, 'b, 'c, 'd>(pub &'a DalContext<'b, 'c, 'd>);
+pub struct DalContextHeadRef<'a>(pub &'a DalContext);
 
 /// A mutable reference to a [`DalContext`] for a workspace in a billing account which is not in a
 /// change set nor an edit session.
 ///
 /// To use an owned `DalContext` version, use [`DalContextHead`].
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].
-pub struct DalContextHeadMutRef<'a, 'b, 'c, 'd>(pub &'a mut DalContext<'b, 'c, 'd>);
+pub struct DalContextHeadMutRef<'a>(pub &'a mut DalContext);
 
 /// A [`DalContext`] with universal read/write tenancies and a head visibility.
 ///
 /// To use a borrowed `DalContext` version, use [`DalContextUniversalHeadRef`].
 /// To use mutably borrowed `DalContext` version, use [`DalContextUniversalHeadMutRef`].
-pub struct DalContextUniversalHead<'a, 'b, 'c>(pub DalContext<'a, 'b, 'c>);
+pub struct DalContextUniversalHead(pub DalContext);
 
 /// A reference to a [`DalContext`] with universal read/write tenancies and a head visibility.
 ///
 /// To use an owned `DalContext` version, use [`DalContextUniversalHead`].
 /// To use mutably borrowed `DalContext` version, use [`DalContextUniversalHeadMutRef`].
-pub struct DalContextUniversalHeadRef<'a, 'b, 'c, 'd>(pub &'a DalContext<'b, 'c, 'd>);
+pub struct DalContextUniversalHeadRef<'a>(pub &'a DalContext);
 
 /// A mutable reference to a [`DalContext`] with universal read/write tenancies and a head
 /// visibility.
 ///
 /// To use an owned `DalContext` version, use [`DalContextUniversalHead`].
 /// To use a borrowed `DalContext` version, use [`DalContextUniversalHeadRef`].
-pub struct DalContextUniversalHeadMutRef<'a, 'b, 'c, 'd>(pub &'a mut DalContext<'b, 'c, 'd>);
+pub struct DalContextUniversalHeadMutRef<'a>(pub &'a mut DalContext);
 
 #[derive(Clone, Debug)]
 pub struct Config {

@@ -65,7 +65,7 @@ impl From<&Func> for FunctionMetadata {
 /// A private constant representing "/si/lib/dal".
 const CARGO_MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
-pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     let extension_regex = Regex::new(r#"(?P<name>.*)\.(?P<extension>.*)"#)?;
     let mut path = PathBuf::from(CARGO_MANIFEST_DIR);
     path.push("src/builtins/func");

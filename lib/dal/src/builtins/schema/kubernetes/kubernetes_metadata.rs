@@ -4,7 +4,7 @@ use crate::{builtins::BuiltinsResult, DalContext, Prop, PropId, PropKind, Standa
 use crate::builtins::schema::kubernetes::doc_url;
 
 pub async fn create_metadata_prop(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     is_name_required: bool,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {

@@ -27,7 +27,7 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 /// use crate::dal::test;
 ///
 /// #[test]
-/// async fn good_defaults(ctx: &DalContext<'_, '_>) {
+/// async fn good_defaults(ctx: &DalContext) {
 ///     // ...
 /// }
 /// ```
@@ -41,7 +41,7 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 /// use crate::dal::test;
 ///
 /// #[test]
-/// async fn good_defaults(ctx: &mut DalContext<'_, '_>) {
+/// async fn good_defaults(ctx: &mut DalContext) {
 ///     ctx.update_to_universal_head();
 ///     // ...
 /// }
@@ -57,7 +57,7 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 /// use crate::dal::test;
 ///
 /// #[test]
-/// async fn good_defaults(ctx: DalContext<'_, '_>) {
+/// async fn good_defaults(ctx: DalContext) {
 ///     // ...
 /// }
 /// ```
@@ -70,29 +70,29 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 /// * `bid: BillingAccountId`: the billing account ID of the billing account created for this test
 /// * `nba: BillingAccountSignup`: the full "new-billing-account" data structure, created for this
 ///   test
-/// * `ctx: DalContext<'_, '_>`: a DAL context for the created billing account with an open change
-///   set and edit session
+/// * `conns: Connections`: the type that owns new connections used to start a set of
+///    transactions
+/// * `ctx: DalContext`: a DAL context for the created billing account with an open change
+///    set and edit session
+/// * `mut ctx: DalContext`: a mutable DAL context for the created billing account with an open
+///    change set and edit session
 /// * `builder: DalContextBuilder`: the builder to create DAL context objects
-/// * `DalContextHead(ctx): DalContextHead<'_, '_>`: a DAL context for a workspace in the billing
-///    account
+/// * `DalContextHead(ctx): DalContextHead`: a DAL context for a workspace in the billing account
 ///    which is not in a change set nor an edit session. `ctx` is **owned**.
-/// * `DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_>`: a reference to a DAL context for a
-///    workspace in the billing account which is not in a change set nor an edit session
-/// * `DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_, '_, '_>`: a mutable reference to a DAL
-///    context for a workspace in the billing account which is not in a change set nor an edit
-///    session
-/// * `DalContextUniversalHead(ctx): DalContextUniversalHead<'_, '_>`: a DAL context with universal
+/// * `DalContextHeadRef(ctx): DalContextHeadRef<'_>`: a reference to a DAL context for a workspace
+///    in the billing account which is not in a change set nor an edit session
+/// * `DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_>`: a mutable reference to a DAL context
+///    for a workspace in the billing account which is not in a change set nor an edit session
+/// * `DalContextUniversalHead(ctx): DalContextUniversalHead`: a DAL context with universal
 ///    read/write tenancies and a head visibility. `ctx` is **owned**.
-/// * `DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_>`: a reference to a
-///    DAL context with universal read/write tenancies and a head visibility
-/// * `DalContextUniversalHeadMutRef(ctx): DalContextUniversalHeadMutRef<'_, '_, '_>`: a mutable
-///    reference to a DAL context with universal read/write tenancies and a head visibility
+/// * `DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>`: a reference to a DAL
+///    context with universal read/write tenancies and a head visibility
+/// * `DalContextUniversalHeadMutRef(ctx): DalContextUniversalHeadMutRef<'_>`: a mutable reference
+///    to a DAL context with universal read/write tenancies and a head visibility
 /// * `oid: OrganizationId`: the organization ID of the billing account created for this test
 /// * `services_ctx: ServicesContext`: a services context object, used to create DAL contexts
 /// * `handle: ShutdownHandle`: the shutdown handle for the Veritech server running alongside each
 ///    test
-/// * `starter: TransactionsStarter`: the type that owns new connections used to start a set of
-///    transactions
 /// * `wid: WorkspaceId`: the workspace ID of the billing account created for this test
 ///
 /// # Referenced/Borrowed Types
@@ -102,9 +102,9 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 ///
 /// * `nba: &BillingAccountSignup`: a reference to the full "new-billing-account" data structure,
 ///    created for this test
-/// * `ctx: &DalContext<'_, '_>`: a reference to the the default DAL context
-/// * `ctx: &mut DalContext<'_, '_>`: a mutable reference to the the default DAL context
-/// * `builder: DalContextBuilder`: a reference to the builder to create DAL context objects
+/// * `ctx: &DalContext`: a reference to the the default DAL context
+/// * `ctx: &mut DalContext`: a mutable reference to the the default DAL context
+/// * `builder: &DalContextBuilder`: a reference to the builder to create DAL context objects
 /// * `jwt_secret_key: &JwtSecretKey`: a reference to the key used to decrypt the JWT signing key
 ///    from the database.
 /// * `services_ctx: &ServicesContext`: a reference to a services context object, used to create

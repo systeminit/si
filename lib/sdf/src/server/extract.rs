@@ -7,7 +7,7 @@ use axum::{
 };
 use dal::{
     context::{self, DalContextBuilder, ServicesContext},
-    ReadTenancy, RequestContext, TransactionsStarter, User, UserClaim, WorkspaceId, WriteTenancy,
+    ReadTenancy, RequestContext, User, UserClaim, WorkspaceId, WriteTenancy,
 };
 use hyper::StatusCode;
 use si_data::{nats, pg};
@@ -37,7 +37,7 @@ where
     }
 }
 
-pub struct HandlerContext(pub DalContextBuilder, pub TransactionsStarter);
+pub struct HandlerContext(pub DalContextBuilder);
 
 #[async_trait]
 impl<P> FromRequest<P> for HandlerContext
@@ -51,11 +51,7 @@ where
             .await
             .map_err(internal_error)?;
         let builder = services_context.into_builder();
-        let txns = builder
-            .transactions_starter()
-            .await
-            .map_err(internal_error)?;
-        Ok(Self(builder, txns))
+        Ok(Self(builder))
     }
 }
 
@@ -108,7 +104,7 @@ where
 }
 
 impl PgRwTxn {
-    pub async fn start(&mut self) -> Result<pg::PgTxn<'_>, pg::PgError> {
+    pub async fn start(&mut self) -> Result<pg::InstrumentedTransaction<'_>, pg::PgError> {
         self.0.transaction().await
     }
 }
@@ -129,7 +125,7 @@ where
 }
 
 impl PgRoTxn {
-    pub async fn start(&mut self) -> Result<pg::PgTxn<'_>, pg::PgError> {
+    pub async fn start(&mut self) -> Result<pg::InstrumentedTransaction<'_>, pg::PgError> {
         self.0.build_transaction().read_only(true).start().await
     }
 }
@@ -257,10 +253,13 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let HandlerContext(builder, mut starter) = HandlerContext::from_request(req).await?;
-        let txns = starter.start().await.map_err(internal_error)?;
-        let request_context = RequestContext::new_universal_head(dal::HistoryActor::SystemInit);
-        let mut ctx = builder.build(request_context, &txns);
+        let HandlerContext(builder) = HandlerContext::from_request(req).await?;
+        let mut ctx = builder
+            .build(RequestContext::new_universal_head(
+                dal::HistoryActor::SystemInit,
+            ))
+            .await
+            .map_err(internal_error)?;
 
         let headers = req.headers();
         let authorization_header_value = headers
@@ -279,8 +278,6 @@ where
             .await
             .map_err(|_| unauthorized_error())?;
 
-        txns.commit().await.map_err(internal_error)?;
-
         Ok(Self(claim))
     }
 }
@@ -295,10 +292,13 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let HandlerContext(builder, mut starter) = HandlerContext::from_request(req).await?;
-        let txns = starter.start().await.map_err(internal_error)?;
-        let request_context = RequestContext::new_universal_head(dal::HistoryActor::SystemInit);
-        let mut ctx = builder.build(request_context, &txns);
+        let HandlerContext(builder) = HandlerContext::from_request(req).await?;
+        let mut ctx = builder
+            .build(RequestContext::new_universal_head(
+                dal::HistoryActor::SystemInit,
+            ))
+            .await
+            .map_err(internal_error)?;
 
         let query: Query<HashMap<String, String>> = Query::from_request(req)
             .await
@@ -310,10 +310,10 @@ where
             .map_err(|_| unauthorized_error())?;
         let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
         ctx.update_read_tenancy(read_tenancy);
+
         User::authorize(&ctx, &claim.user_id)
             .await
             .map_err(|_| unauthorized_error())?;
-        txns.commit().await.map_err(internal_error)?;
 
         Ok(Self(claim))
     }
@@ -353,10 +353,13 @@ async fn tenancy_from_request<P: Send>(
     req: &mut RequestParts<P>,
     claim: &UserClaim,
 ) -> Result<Tenancy, (StatusCode, Json<serde_json::Value>)> {
-    let HandlerContext(builder, mut starter) = HandlerContext::from_request(req).await?;
-    let txns = starter.start().await.map_err(internal_error)?;
-    let request_context = RequestContext::new_universal_head(dal::HistoryActor::SystemInit);
-    let mut ctx = builder.build(request_context, &txns);
+    let HandlerContext(builder) = HandlerContext::from_request(req).await?;
+    let mut ctx = builder
+        .build(RequestContext::new_universal_head(
+            dal::HistoryActor::SystemInit,
+        ))
+        .await
+        .map_err(internal_error)?;
 
     let headers = req.headers();
     let write_tenancy = if let Some(workspace_header_value) = headers.get("WorkspaceId") {

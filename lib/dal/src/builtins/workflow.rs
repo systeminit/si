@@ -3,13 +3,13 @@ use crate::{
     WorkflowPrototypeContext,
 };
 
-pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     poem(ctx).await?;
     failure(ctx).await?;
     Ok(())
 }
 
-async fn poem(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+async fn poem(ctx: &DalContext) -> BuiltinsResult<()> {
     let func_name = "si:poemWorkflow";
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await?
@@ -27,7 +27,7 @@ async fn poem(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     Ok(())
 }
 
-async fn failure(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+async fn failure(ctx: &DalContext) -> BuiltinsResult<()> {
     let func_name = "si:failureWorkflow";
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await?

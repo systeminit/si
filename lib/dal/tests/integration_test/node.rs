@@ -8,7 +8,7 @@ use dal::test_harness::{
 use dal::{HistoryActor, Node, SchemaKind, StandardModel, Visibility, WriteTenancy};
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let _write_tenancy = WriteTenancy::new_universal();
     let _visibility = Visibility::new_head(false);
     let _history_actor = HistoryActor::SystemInit;
@@ -18,7 +18,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn component_relationships(ctx: &DalContext<'_, '_, '_>) {
+async fn component_relationships(ctx: &DalContext) {
     let component = create_component_and_schema(ctx).await;
     let node = create_node(ctx, &NodeKind::Configuration).await;
     node.set_component(ctx, component.id())
@@ -33,7 +33,7 @@ async fn component_relationships(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn new_node_template(ctx: &DalContext<'_, '_, '_>) {
+async fn new_node_template(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema

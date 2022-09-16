@@ -30,12 +30,11 @@ pub struct CreateConnectionResponse {
 /// Create a [`Connection`](dal::Connection) with a _to_ [`Socket`](dal::Socket) and
 /// [`Node`](dal::Node) and a _from_ [`Socket`](dal::Socket) and [`Node`](dal::Node).
 pub async fn create_connection(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CreateConnectionRequest>,
 ) -> DiagramResult<Json<CreateConnectionResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let connection = Connection::new(
         &ctx,
@@ -93,7 +92,7 @@ pub async fn create_connection(
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(CreateConnectionResponse { connection }))
 }

@@ -25,7 +25,7 @@ WantedBy=multi-user.target";
 const EXPECTED_IGNITION_OUTPUT: &str = include_str!("expected.ign");
 
 #[test]
-async fn butane_is_valid_ignition(ctx: &DalContext<'_, '_, '_>) {
+async fn butane_is_valid_ignition(ctx: &DalContext) {
     let mut harness = BuiltinsHarness::new();
     let butane_payload = harness
         .create_component(ctx, "butane", Builtin::CoreOsButane)

@@ -95,11 +95,7 @@ impl WriteTenancy {
     }
 
     #[instrument(skip_all)]
-    pub async fn check(
-        &self,
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-    ) -> WriteTenancyResult<bool> {
+    pub async fn check(&self, txn: &PgTxn, read_tenancy: &ReadTenancy) -> WriteTenancyResult<bool> {
         let row = txn
             .query_one(
                 "SELECT result FROM in_tenancy_v1($1, $2, $3, $4, $5)",
@@ -118,7 +114,7 @@ impl WriteTenancy {
 
     pub async fn clone_into_read_tenancy(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
     ) -> Result<ReadTenancy, ReadTenancyError> {
         let read_tenancy = if self.workspace_ids.is_empty() {
             if self.organization_ids.is_empty() {

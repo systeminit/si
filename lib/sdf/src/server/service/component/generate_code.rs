@@ -23,14 +23,13 @@ pub struct GenerateCodeResponse {
 }
 
 pub async fn generate_code(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<GenerateCodeRequest>,
 ) -> ComponentResult<Json<GenerateCodeResponse>> {
     let system_id = request.system_id.unwrap_or_else(|| SystemId::from(-1));
 
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let component = Component::get_by_id(&ctx, &request.component_id)
         .await?
@@ -38,7 +37,7 @@ pub async fn generate_code(
 
     ctx.enqueue_job(CodeGeneration::new(&ctx, *component.id(), system_id).await?)
         .await;
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(GenerateCodeResponse { success: true }))
 }

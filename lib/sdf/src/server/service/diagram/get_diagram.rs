@@ -16,15 +16,13 @@ pub struct GetDiagramRequest {
 pub type GetDiagramResponse = Diagram;
 
 pub async fn get_diagram(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetDiagramRequest>,
 ) -> DiagramResult<Json<GetDiagramResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let response = Diagram::assemble(&ctx, request.system_id).await?;
 
-    txns.commit().await?;
     Ok(Json(response))
 }

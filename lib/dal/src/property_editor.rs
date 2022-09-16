@@ -84,10 +84,7 @@ pub enum PropertyEditorPropWidgetKind {
 }
 
 impl PropertyEditorPropWidgetKind {
-    pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
-        widget_kind: WidgetKind,
-    ) -> PropertyEditorResult<Self> {
+    pub async fn new(ctx: &DalContext, widget_kind: WidgetKind) -> PropertyEditorResult<Self> {
         Ok(match widget_kind {
             WidgetKind::Array => Self::Array,
             WidgetKind::Checkbox => Self::Checkbox,
@@ -127,10 +124,7 @@ pub struct PropertyEditorProp {
 }
 
 impl PropertyEditorProp {
-    pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
-        prop: Prop,
-    ) -> PropertyEditorResult<PropertyEditorProp> {
+    pub async fn new(ctx: &DalContext, prop: Prop) -> PropertyEditorResult<PropertyEditorProp> {
         Ok(PropertyEditorProp {
             id: prop.id().into(),
             name: prop.name().into(),
@@ -151,7 +145,7 @@ pub struct PropertyEditorSchema {
 
 impl PropertyEditorSchema {
     pub async fn for_schema_variant(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> PropertyEditorResult<Self> {
         let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
@@ -219,7 +213,7 @@ pub struct PropertyEditorValues {
 
 impl PropertyEditorValues {
     pub async fn for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         context: AttributeReadContext,
     ) -> PropertyEditorResult<Self> {
         let mut root_value_id = None;
@@ -305,7 +299,7 @@ pub struct PropertyEditorValidations {
 
 impl PropertyEditorValidations {
     pub async fn for_component(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> PropertyEditorResult<Self> {

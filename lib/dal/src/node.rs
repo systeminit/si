@@ -94,7 +94,7 @@ impl_standard_model! {
 
 impl Node {
     #[instrument(skip_all)]
-    pub async fn new(ctx: &DalContext<'_, '_, '_>, kind: &NodeKind) -> NodeResult<Self> {
+    pub async fn new(ctx: &DalContext, kind: &NodeKind) -> NodeResult<Self> {
         let row = ctx
             .txns()
             .pg()
@@ -142,10 +142,7 @@ pub struct NodeTemplate {
 }
 
 impl NodeTemplate {
-    pub async fn new_from_schema_id(
-        ctx: &DalContext<'_, '_, '_>,
-        schema_id: SchemaId,
-    ) -> NodeResult<Self> {
+    pub async fn new_from_schema_id(ctx: &DalContext, schema_id: SchemaId) -> NodeResult<Self> {
         let schema = Schema::get_by_id(ctx, &schema_id)
             .await?
             .ok_or(NodeError::SchemaIdNotFound)?;

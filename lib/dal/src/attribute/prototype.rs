@@ -147,7 +147,7 @@ impl AttributePrototype {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
@@ -235,7 +235,7 @@ impl AttributePrototype {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new_with_existing_value(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func_id: FuncId,
         context: AttributeContext,
         key: Option<String>,
@@ -295,7 +295,7 @@ impl AttributePrototype {
     /// Caution: this should be used rather than [`StandardModel::delete()`] when deleting an
     /// [`AttributePrototype`]. That method should never be called directly.
     pub async fn remove(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_prototype_id: &AttributePrototypeId,
     ) -> AttributePrototypeResult<()> {
         // Get the prototype for the given id. Once we get its corresponding value, we can delete
@@ -369,7 +369,7 @@ impl AttributePrototype {
 
     #[instrument(skip_all)]
     pub async fn list_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         context: AttributeContext,
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = ctx
@@ -391,7 +391,7 @@ impl AttributePrototype {
 
     #[tracing::instrument(skip_all)]
     pub async fn find_with_parent_value_and_key_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         parent_attribute_value_id: Option<AttributeValueId>,
         key: Option<String>,
         context: AttributeContext,
@@ -416,7 +416,7 @@ impl AttributePrototype {
 
     /// List [`Vec<Self>`] that depend on a provided [`InternalProviderId`](crate::InternalProvider).
     pub async fn list_from_internal_provider_use(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = ctx
@@ -432,7 +432,7 @@ impl AttributePrototype {
     /// List [`Vec<Self>`] that depend on a provided [`ExternalProviderId`](crate::ExternalProvider)
     /// and _tail_ [`ComponentId`](crate::Component).
     pub async fn list_by_head_from_external_provider_use_with_tail(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         external_provider_id: ExternalProviderId,
         tail_component_id: ComponentId,
     ) -> AttributePrototypeResult<Vec<AttributePrototypeGroupByHeadComponentId>> {
@@ -468,7 +468,7 @@ impl AttributePrototype {
     /// and whose context contains the provided [`AttributeReadContext`](crate::AttributeReadContext)
     /// or are "more-specific" than the provided [`AttributeReadContext`](crate::AttributeReadContext).
     pub async fn attribute_values_in_context_or_greater(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
         context: AttributeReadContext,
     ) -> AttributePrototypeResult<Vec<AttributeValue>> {
@@ -491,7 +491,7 @@ impl AttributePrototype {
     #[allow(clippy::too_many_arguments)]
     #[async_recursion]
     async fn create_intermediate_proxy_values(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         parent_attribute_value_id: Option<AttributeValueId>,
         prototype_id: AttributePrototypeId,
         context: AttributeContext,
@@ -556,7 +556,7 @@ impl AttributePrototype {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn update_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
         context: AttributeContext,
         func_id: FuncId,
@@ -621,7 +621,7 @@ impl AttributePrototype {
     }
 
     pub async fn find_for_func(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func_id: &FuncId,
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = ctx

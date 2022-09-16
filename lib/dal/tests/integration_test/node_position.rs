@@ -3,7 +3,7 @@ use dal::DalContext;
 use dal::{node::NodeKind, test_harness::create_node, DiagramKind, NodePosition, StandardModel};
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let node = create_node(ctx, &NodeKind::Configuration).await;
     let node_position = NodePosition::new(
         ctx,
@@ -32,7 +32,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn set_node_position(ctx: &DalContext<'_, '_, '_>) {
+async fn set_node_position(ctx: &DalContext) {
     let node = create_node(ctx, &NodeKind::Configuration).await;
 
     let node_position = NodePosition::upsert_by_node_id(

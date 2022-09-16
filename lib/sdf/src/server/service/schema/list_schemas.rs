@@ -19,14 +19,14 @@ pub struct ListSchemaResponse {
 }
 
 pub async fn list_schemas(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListSchemaRequest>,
 ) -> SchemaResult<Json<ListSchemaResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let list = Schema::list(&ctx).await?;
+
     let response = ListSchemaResponse { list };
     Ok(Json(response))
 }

@@ -25,7 +25,7 @@ pub struct Connection {
 impl Connection {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         from_node_id: NodeId,
         from_socket_id: SocketId,
         to_node_id: NodeId,
@@ -37,7 +37,7 @@ impl Connection {
         Ok(Connection::from_edge(&edge))
     }
 
-    pub async fn list(ctx: &DalContext<'_, '_, '_>) -> DiagramResult<Vec<Self>> {
+    pub async fn list(ctx: &DalContext) -> DiagramResult<Vec<Self>> {
         let edges = Edge::list(ctx).await?;
         let connections = edges.iter().map(Self::from_edge).collect::<Vec<Self>>();
         Ok(connections)

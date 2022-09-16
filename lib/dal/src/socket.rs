@@ -116,7 +116,7 @@ impl_standard_model! {
 impl Socket {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         name: impl AsRef<str>,
         kind: SocketKind,
         edge_kind: &SocketEdgeKind,

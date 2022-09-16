@@ -89,7 +89,7 @@ impl FuncBindingReturnValue {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         unprocessed_value: Option<serde_json::Value>,
         value: Option<serde_json::Value>,
         func_id: FuncId,
@@ -120,7 +120,7 @@ impl FuncBindingReturnValue {
 
     pub async fn get_output_stream(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
     ) -> FuncBindingReturnValueResult<Option<Vec<OutputStream>>> {
         if self.func_execution_pk == FuncExecutionPk::from(-1) {
             return Ok(None);
@@ -144,7 +144,7 @@ impl FuncBindingReturnValue {
     // }
 
     pub async fn get_by_attribute_value_id(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> FuncBindingReturnValueResult<Option<Self>> {
         let row = ctx
@@ -161,7 +161,7 @@ impl FuncBindingReturnValue {
 
     /// Attempts to retrieve [`Self`] by [`FuncBindingId`].
     pub async fn get_by_func_binding_id(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func_binding_id: FuncBindingId,
     ) -> FuncBindingReturnValueResult<Option<Self>> {
         let row = ctx
@@ -180,7 +180,7 @@ impl FuncBindingReturnValue {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn upsert(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         unprocessed_value: Option<serde_json::Value>,
         value: Option<serde_json::Value>,
         func_id: FuncId,

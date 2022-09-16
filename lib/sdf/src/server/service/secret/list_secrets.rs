@@ -21,12 +21,11 @@ pub struct ListSecretResponse {
 }
 
 pub async fn list_secrets(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListSecretRequest>,
 ) -> SecretResult<Json<ListSecretResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let list: Vec<SecretView> = Secret::list(&ctx)
         .await?

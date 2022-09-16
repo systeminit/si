@@ -10,7 +10,7 @@ use dal::{
 use crate::dal::test;
 
 #[test]
-async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_, '_>) {
+async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
     let change_set = ChangeSet::new(
         ctx,
         "mastodon rocks",
@@ -28,7 +28,7 @@ async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_, '_>) {
 }
 
 #[test]
-async fn apply(ctx: &mut DalContext<'_, '_, '_>) {
+async fn apply(ctx: &mut DalContext) {
     let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
         .await
         .unwrap()
@@ -56,10 +56,7 @@ async fn apply(ctx: &mut DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn list_open(
-    DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_, '_>,
-    bid: BillingAccountId,
-) {
+async fn list_open(DalContextHeadRef(ctx): DalContextHeadRef<'_>, bid: BillingAccountId) {
     let a_change_set = create_change_set(ctx, bid).await;
     let b_change_set = create_change_set(ctx, bid).await;
     let mut c_change_set = create_change_set(ctx, bid).await;
@@ -99,10 +96,7 @@ async fn list_open(
 }
 
 #[test]
-async fn get_by_pk(
-    DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_, '_>,
-    bid: BillingAccountId,
-) {
+async fn get_by_pk(DalContextHeadRef(ctx): DalContextHeadRef<'_>, bid: BillingAccountId) {
     let change_set = create_change_set(ctx, bid).await;
     let result = ChangeSet::get_by_pk(ctx, &change_set.pk)
         .await

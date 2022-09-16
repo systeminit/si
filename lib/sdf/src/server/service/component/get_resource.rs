@@ -23,7 +23,7 @@ pub struct GetResourceResponse {
 }
 
 pub async fn get_resource(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetResourceRequest>,
 ) -> ComponentResult<Json<GetResourceResponse>> {
@@ -31,8 +31,7 @@ pub async fn get_resource(
         return Err(ComponentError::SystemIdRequired);
     }
 
-    let txns = txns.start().await?;
-    let _ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let _ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     //let resource = Component::get_resource_by_component_and_system(
     //    &ctx,
@@ -41,7 +40,7 @@ pub async fn get_resource(
     //)
     //.await?
     //.ok_or(
-    txns.commit().await?;
+
     Err(ComponentError::ResourceNotFound(
         request.component_id,
         request.system_id,

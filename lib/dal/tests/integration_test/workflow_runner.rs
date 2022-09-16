@@ -11,7 +11,7 @@ use dal::{
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let func_name = "si:poemWorkflow".to_string();
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await
@@ -47,7 +47,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn find_for_prototype(ctx: &DalContext<'_, '_, '_>) {
+async fn find_for_prototype(ctx: &DalContext) {
     let func_name = "si:poemWorkflow".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
@@ -95,7 +95,7 @@ async fn find_for_prototype(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn fail(ctx: &DalContext<'_, '_, '_>) {
+async fn fail(ctx: &DalContext) {
     let name = "si:failureWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
@@ -125,7 +125,7 @@ async fn fail(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn run(ctx: &DalContext<'_, '_, '_>) {
+async fn run(ctx: &DalContext) {
     let title = "Docker Image Resource Refresh";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await

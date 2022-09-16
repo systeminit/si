@@ -1,7 +1,7 @@
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use dal::{BillingAccount, HistoryActor, ReadTenancy, StandardModel, WriteTenancy};
+use dal::{BillingAccount, HistoryActor, RequestContext};
 use telemetry::prelude::*;
 
 use crate::{
@@ -28,7 +28,7 @@ pub struct CreateAccountResponse {
 }
 
 pub async fn create_account(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     SignupSecret(signup_secret): SignupSecret,
     Json(request): Json<CreateAccountRequest>,
 ) -> SignupResult<Json<CreateAccountResponse>> {
@@ -37,18 +37,11 @@ pub async fn create_account(
         return Err(SignupError::InvalidSignupSecret);
     }
 
-    let txns = txns.start().await?;
-    let mut ctx = builder.build(
-        dal::context::AccessBuilder::new(
-            ReadTenancy::new_universal(),
-            WriteTenancy::new_universal(),
-            HistoryActor::SystemInit,
-        )
-        .build_head(),
-        &txns,
-    );
+    let ctx = builder
+        .build(RequestContext::new_universal_head(HistoryActor::SystemInit))
+        .await?;
 
-    let billing_acct = BillingAccount::signup(
+    let _billing_acct = BillingAccount::signup(
         &ctx,
         &request.billing_account_name,
         &request.user_name,
@@ -57,16 +50,7 @@ pub async fn create_account(
     )
     .await?;
 
-    ctx.update_tenancies(
-        ReadTenancy::new_workspace(
-            txns.pg(),
-            vec![*billing_acct.workspace.id()],
-            ctx.visibility(),
-        )
-        .await?,
-        WriteTenancy::new_workspace(*billing_acct.workspace.id()),
-    );
+    ctx.commit().await?;
 
-    txns.commit().await?;
     Ok(Json(CreateAccountResponse { success: true }))
 }

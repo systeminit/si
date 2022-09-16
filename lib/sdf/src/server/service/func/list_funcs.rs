@@ -28,12 +28,11 @@ pub struct ListFuncsResponse {
 }
 
 pub async fn list_funcs(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListFuncsRequest>,
 ) -> FuncResult<Json<ListFuncsResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let funcs = Func::find_by_attr_in(
         &ctx,
@@ -56,8 +55,6 @@ pub async fn list_funcs(
         is_builtin: func.is_builtin(),
     })
     .collect();
-
-    txns.commit().await?;
 
     Ok(Json(ListFuncsResponse { funcs }))
 }

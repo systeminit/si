@@ -13,7 +13,7 @@ use dal::{BillingAccountSignup, ChangeSet, DalContext, Func, WriteTenancy};
 use crate::dal::test;
 
 #[test]
-async fn get_by_pk(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn get_by_pk(ctx: &DalContext, nba: &BillingAccountSignup) {
     let retrieved = standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
         .await
         .expect("cannot get billing account by pk");
@@ -22,7 +22,7 @@ async fn get_by_pk(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
 }
 
 #[test]
-async fn get_by_id(ctx: &DalContext<'_, '_, '_>) {
+async fn get_by_id(ctx: &DalContext) {
     let billing_account = create_billing_account_with_name(ctx, "coheed").await;
     let head_visibility = create_visibility_head();
     let head_ctx = ctx.clone_with_new_visibility(head_visibility);
@@ -66,7 +66,7 @@ async fn get_by_id(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn list(ctx: &DalContext<'_, '_, '_>) {
+async fn list(ctx: &DalContext) {
     let _coheed_billing_account = create_billing_account_with_name(ctx, "coheed").await;
     let _spiritbox_billing_account = create_billing_account_with_name(ctx, "spiritbox").await;
     let _zeal_billing_account = create_billing_account_with_name(ctx, "zeal and ardor").await;
@@ -108,7 +108,7 @@ async fn list(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn update(ctx: &mut DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn update(ctx: &mut DalContext, nba: &BillingAccountSignup) {
     // Guess what--a billing account's tenancy is universal! So let's make sure our DalContext is
     // appropriately set up
     ctx.update_write_tenancy(WriteTenancy::new_universal());
@@ -126,7 +126,7 @@ async fn update(ctx: &mut DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
 }
 
 #[test]
-async fn delete(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn delete(ctx: &DalContext, nba: &BillingAccountSignup) {
     let _updated_at = standard_model::delete(ctx, "billing_accounts", nba.billing_account.pk())
         .await
         .expect("cannot delete field");
@@ -143,7 +143,7 @@ async fn delete(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
 }
 
 #[test]
-async fn hard_delete(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn hard_delete(ctx: &DalContext, nba: &BillingAccountSignup) {
     let ba: BillingAccount =
         standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
             .await
@@ -165,7 +165,7 @@ async fn hard_delete(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
 }
 
 #[test]
-async fn undelete(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn undelete(ctx: &DalContext, nba: &BillingAccountSignup) {
     let _updated_at = standard_model::delete(ctx, "billing_accounts", nba.billing_account.pk())
         .await
         .expect("cannot delete field");
@@ -196,7 +196,7 @@ async fn undelete(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
 }
 
 #[test]
-async fn set_belongs_to(ctx: &DalContext<'_, '_, '_>) {
+async fn set_belongs_to(ctx: &DalContext) {
     let first_billing_account = create_billing_account_with_name(ctx, "coheed").await;
     let second_billing_account = create_billing_account_with_name(ctx, "cambria").await;
     let key_pair = create_key_pair(ctx).await;
@@ -229,7 +229,7 @@ async fn set_belongs_to(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn unset_belongs_to(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn unset_belongs_to(ctx: &DalContext, nba: &BillingAccountSignup) {
     let key_pair = create_key_pair(ctx).await;
 
     standard_model::set_belongs_to(
@@ -247,7 +247,7 @@ async fn unset_belongs_to(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSign
 }
 
 #[test]
-async fn belongs_to(ctx: &DalContext<'_, '_, '_>) {
+async fn belongs_to(ctx: &DalContext) {
     let billing_account = create_billing_account_with_name(ctx, "coheed").await;
     let key_pair = create_key_pair(ctx).await;
 
@@ -327,7 +327,7 @@ async fn belongs_to(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn has_many(ctx: &DalContext<'_, '_, '_>) {
+async fn has_many(ctx: &DalContext) {
     let billing_account = create_billing_account_with_name(ctx, "coheed").await;
     let a_key_pair = create_key_pair(ctx).await;
     standard_model::set_belongs_to(
@@ -373,7 +373,7 @@ async fn has_many(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn associate_many_to_many(ctx: &DalContext<'_, '_, '_>) {
+async fn associate_many_to_many(ctx: &DalContext) {
     let group = create_group(ctx).await;
     let user_one = create_user(ctx).await;
     let user_two = create_user(ctx).await;
@@ -396,7 +396,7 @@ async fn associate_many_to_many(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn disassociate_many_to_many(ctx: &DalContext<'_, '_, '_>) {
+async fn disassociate_many_to_many(ctx: &DalContext) {
     let group = create_group(ctx).await;
     let user_one = create_user(ctx).await;
     let user_two = create_user(ctx).await;
@@ -427,7 +427,7 @@ async fn disassociate_many_to_many(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn many_to_many(ctx: &DalContext<'_, '_, '_>) {
+async fn many_to_many(ctx: &DalContext) {
     let group_one = create_group(ctx).await;
     let group_two = create_group(ctx).await;
 
@@ -540,7 +540,7 @@ async fn many_to_many(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext<'_, '_, '_>) {
+async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext) {
     let group = create_group(ctx).await;
     let user_one = create_user(ctx).await;
     standard_model::associate_many_to_many(
@@ -562,7 +562,7 @@ async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext<'_, '_, '_>) 
 }
 
 #[test]
-async fn find_by_attr(ctx: &mut DalContext<'_, '_, '_>) {
+async fn find_by_attr(ctx: &mut DalContext) {
     let _billing_account = create_billing_account(ctx).await;
     ctx.update_to_universal_head();
 
@@ -594,7 +594,7 @@ async fn find_by_attr(ctx: &mut DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn find_by_attr_in(ctx: &mut DalContext<'_, '_, '_>) {
+async fn find_by_attr_in(ctx: &mut DalContext) {
     let _billing_account = create_billing_account(ctx).await;
     ctx.update_to_universal_head();
 
@@ -655,7 +655,7 @@ async fn find_by_attr_in(ctx: &mut DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn find_by_attr_not_in(ctx: &mut DalContext<'_, '_, '_>) {
+async fn find_by_attr_not_in(ctx: &mut DalContext) {
     let _billing_account = create_billing_account(ctx).await;
     ctx.update_to_universal_head();
 

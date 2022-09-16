@@ -9,7 +9,7 @@ pub mod ui_menu;
 pub mod variant;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let _schema = Schema::new(
         ctx,
         "mastodon",
@@ -21,7 +21,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn billing_accounts(ctx: &DalContext<'_, '_, '_>, jwt_secret_key: &JwtSecretKey) {
+async fn billing_accounts(ctx: &DalContext, jwt_secret_key: &JwtSecretKey) {
     let (nba, _token) = billing_account_signup(ctx, jwt_secret_key).await;
     let schema = Schema::new(
         ctx,
@@ -54,7 +54,7 @@ async fn billing_accounts(ctx: &DalContext<'_, '_, '_>, jwt_secret_key: &JwtSecr
 }
 
 #[test]
-async fn organizations(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn organizations(ctx: &DalContext, nba: &BillingAccountSignup) {
     let schema = Schema::new(
         ctx,
         "mastodon",
@@ -86,7 +86,7 @@ async fn organizations(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup)
 }
 
 #[test]
-async fn workspaces(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn workspaces(ctx: &DalContext, nba: &BillingAccountSignup) {
     let schema = Schema::new(
         ctx,
         "mastodon",
@@ -112,7 +112,7 @@ async fn workspaces(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
 }
 
 #[test]
-async fn ui_menus(ctx: &DalContext<'_, '_, '_>) {
+async fn ui_menus(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_ui_menu = create_schema_ui_menu(ctx).await;
     schema_ui_menu

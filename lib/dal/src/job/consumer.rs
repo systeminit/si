@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::TryFrom, sync::Arc};
+use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -83,16 +83,16 @@ pub trait JobConsumer: std::fmt::Debug + Sync {
     fn access_builder(&self) -> AccessBuilder;
     fn visibility(&self) -> Visibility;
 
-    async fn run(&self, ctx: &DalContext<'_, '_, '_>) -> JobConsumerResult<()>;
+    async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()>;
 
-    async fn run_job(&self, ctx_builder: Arc<DalContextBuilder>) -> JobConsumerResult<()> {
-        let mut txns = ctx_builder.transactions_starter().await?;
-        let txns = txns.start().await?;
-        let ctx = ctx_builder.build(self.access_builder().build(self.visibility()), &txns);
+    async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
+        let ctx = ctx_builder
+            .build(self.access_builder().build(self.visibility()))
+            .await?;
 
         self.run(&ctx).await?;
 
-        txns.commit().await?;
+        ctx.commit().await?;
 
         Ok(())
     }

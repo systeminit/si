@@ -30,12 +30,11 @@ pub struct SaveFuncResponse {
 }
 
 pub async fn save_func(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SaveFuncRequest>,
 ) -> FuncResult<Json<SaveFuncResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let mut func = Func::get_by_id(&ctx, &request.id)
         .await?
@@ -76,12 +75,11 @@ pub async fn save_func(
         _ => {}
     }
 
-    let is_revertable =
-        super::is_func_revertable(builder.clone(), &txns, request_ctx, &func).await?;
+    let is_revertable = super::is_func_revertable(&ctx, &func).await?;
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(SaveFuncResponse {
         success: true,

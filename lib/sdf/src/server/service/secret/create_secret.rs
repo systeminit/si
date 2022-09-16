@@ -31,13 +31,12 @@ pub struct CreateSecretResponse {
 }
 
 pub async fn create_secret(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_tx): AccessBuilder,
     Authorization(claim): Authorization,
     Json(request): Json<CreateSecretRequest>,
 ) -> SecretResult<Json<CreateSecretResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_tx.build(request.visibility), &txns);
+    let ctx = builder.build(request_tx.build(request.visibility)).await?;
 
     let secret = EncryptedSecret::new(
         &ctx,
@@ -54,7 +53,7 @@ pub async fn create_secret(
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(CreateSecretResponse { secret }))
 }

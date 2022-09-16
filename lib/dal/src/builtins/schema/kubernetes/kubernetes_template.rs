@@ -6,7 +6,7 @@ use crate::{builtins::BuiltinsResult, DalContext, Prop, PropId, PropKind, Standa
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
 pub async fn create_template_prop(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     parent_prop_id: Option<PropId>,
 ) -> BuiltinsResult<Prop> {
     let template_prop =

@@ -42,7 +42,7 @@ pub enum TypeHint {
 
 #[instrument(skip(ctx))]
 pub async fn get_by_pk<PK: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     pk: &PK,
 ) -> StandardModelResult<OBJECT> {
@@ -58,7 +58,7 @@ pub async fn get_by_pk<PK: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 
 #[instrument(skip(ctx))]
 pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     id: &ID,
 ) -> StandardModelResult<Option<OBJECT>> {
@@ -78,7 +78,7 @@ pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 // Hugs, Adam
 #[instrument(skip(ctx))]
 pub async fn find_by_attr<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     attr_name: &str,
     value: &V,
@@ -102,7 +102,7 @@ pub async fn find_by_attr<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 
 #[instrument(skip(ctx))]
 pub async fn find_by_attr_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     attr_name: &str,
     value: &[&V],
@@ -126,7 +126,7 @@ pub async fn find_by_attr_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 
 #[instrument(skip(ctx))]
 pub async fn find_by_attr_not_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     attr_name: &str,
     value: &[&V],
@@ -163,7 +163,7 @@ pub fn object_option_from_row_option<OBJECT: DeserializeOwned>(
 
 #[instrument(skip(ctx))]
 pub async fn belongs_to<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     retrieve_table: &str,
     id: &ID,
@@ -187,7 +187,7 @@ pub async fn belongs_to<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 
 #[instrument(skip(ctx))]
 pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + Sync + ToSql>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     object_id: &ObjectId,
     belongs_to_id: &BelongsToId,
@@ -210,7 +210,7 @@ pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + S
 
 #[instrument(skip(ctx))]
 pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     object_id: &ObjectId,
 ) -> StandardModelResult<()> {
@@ -226,7 +226,7 @@ pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
 
 #[instrument(skip(ctx))]
 pub async fn has_many<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     retrieve_table: &str,
     belongs_to_id: &ID,
@@ -255,7 +255,7 @@ pub async fn many_to_many<
     RightId: Send + Sync + ToSql,
     Object: DeserializeOwned,
 >(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     left_table: &str,
     right_table: &str,
@@ -283,7 +283,7 @@ pub async fn many_to_many<
 
 #[instrument(skip(ctx))]
 pub async fn associate_many_to_many<LeftId: Send + Sync + ToSql, RightId: Send + Sync + ToSql>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     left_object_id: &LeftId,
     right_object_id: &RightId,
@@ -309,7 +309,7 @@ pub async fn disassociate_many_to_many<
     LeftId: Send + Sync + ToSql,
     RightId: Send + Sync + ToSql,
 >(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     left_object_id: &LeftId,
     right_object_id: &RightId,
@@ -361,7 +361,7 @@ pub fn option_object_from_row<OBJECT: DeserializeOwned>(
 #[instrument(skip_all)]
 #[allow(clippy::too_many_arguments)]
 pub async fn update<ID, VALUE>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     column: &str,
     id: &ID,
@@ -398,7 +398,7 @@ where
 
 #[instrument(skip_all)]
 pub async fn list<OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
 ) -> StandardModelResult<Vec<OBJECT>> {
     let rows = ctx
@@ -414,7 +414,7 @@ pub async fn list<OBJECT: DeserializeOwned>(
 
 #[instrument(skip_all)]
 pub async fn delete<PK: Send + Sync + ToSql + std::fmt::Display>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     pk: PK,
 ) -> StandardModelResult<DateTime<Utc>> {
@@ -432,7 +432,7 @@ pub async fn delete<PK: Send + Sync + ToSql + std::fmt::Display>(
 
 #[instrument(skip_all)]
 pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     pk: PK,
 ) -> StandardModelResult<DateTime<Utc>> {
@@ -450,7 +450,7 @@ pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
 
 #[instrument(skip_all)]
 pub async fn hard_delete<PK: Send + Sync + ToSql + std::fmt::Display, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     table: &str,
     pk: &PK,
 ) -> StandardModelResult<OBJECT> {
@@ -468,7 +468,7 @@ pub async fn hard_delete<PK: Send + Sync + ToSql + std::fmt::Display, OBJECT: De
 
 #[instrument(skip_all)]
 pub async fn finish_create_from_row<Object: Send + Sync + DeserializeOwned + StandardModel>(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     row: PgRow,
 ) -> StandardModelResult<Object> {
     let json: serde_json::Value = row.try_get("object")?;
@@ -513,7 +513,7 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn get_by_pk(ctx: &DalContext<'_, '_, '_>, pk: &Self::Pk) -> StandardModelResult<Self>
+    async fn get_by_pk(ctx: &DalContext, pk: &Self::Pk) -> StandardModelResult<Self>
     where
         Self: Sized + DeserializeOwned,
     {
@@ -522,10 +522,7 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn get_by_id(
-        ctx: &DalContext<'_, '_, '_>,
-        id: &Self::Id,
-    ) -> StandardModelResult<Option<Self>>
+    async fn get_by_id(ctx: &DalContext, id: &Self::Id) -> StandardModelResult<Option<Self>>
     where
         Self: Sized + DeserializeOwned,
     {
@@ -535,7 +532,7 @@ pub trait StandardModel {
 
     #[instrument(skip_all)]
     async fn find_by_attr<V: Send + Sync + ToSql>(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attr_name: &str,
         value: &V,
     ) -> StandardModelResult<Vec<Self>>
@@ -553,7 +550,7 @@ pub trait StandardModel {
     /// other types.
     #[instrument(skip_all)]
     async fn find_by_attr_in<V: Send + Sync + ToSql>(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attr_name: &str,
         value: &[&V],
     ) -> StandardModelResult<Vec<Self>>
@@ -567,7 +564,7 @@ pub trait StandardModel {
     }
 
     async fn find_by_attr_not_in<V: Send + Sync + ToSql>(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attr_name: &str,
         value: &[&V],
     ) -> StandardModelResult<Vec<Self>>
@@ -581,7 +578,7 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn list(ctx: &DalContext<'_, '_, '_>) -> StandardModelResult<Vec<Self>>
+    async fn list(ctx: &DalContext) -> StandardModelResult<Vec<Self>>
     where
         Self: Sized + DeserializeOwned,
     {
@@ -590,7 +587,7 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn delete(self, ctx: &DalContext<'_, '_, '_>) -> StandardModelResult<()>
+    async fn delete(self, ctx: &DalContext) -> StandardModelResult<()>
     where
         Self: Send + Sync + Sized,
     {
@@ -617,7 +614,7 @@ pub trait StandardModel {
     /// Permanently delete this object from the database. This is not reversible!
     /// However, we do store the object's json representation as a HistoryEvent.
     #[instrument(skip_all)]
-    async fn hard_delete(self, ctx: &DalContext<'_, '_, '_>) -> StandardModelResult<Self>
+    async fn hard_delete(self, ctx: &DalContext) -> StandardModelResult<Self>
     where
         Self: Send + Sync + Sized + Serialize + DeserializeOwned,
     {

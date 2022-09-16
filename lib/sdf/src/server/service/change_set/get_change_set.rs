@@ -18,18 +18,17 @@ pub struct GetChangeSetResponse {
 }
 
 pub async fn get_change_set(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetChangeSetRequest>,
 ) -> ChangeSetResult<Json<GetChangeSetResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build_head(), &txns);
+    let ctx = builder.build(request_ctx.build_head()).await?;
 
     let change_set = ChangeSet::get_by_pk(&ctx, &request.pk)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(GetChangeSetResponse { change_set }))
 }

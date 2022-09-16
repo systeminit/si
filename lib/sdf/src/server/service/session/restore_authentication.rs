@@ -13,12 +13,11 @@ pub struct RestoreAuthenticationResponse {
 }
 
 pub async fn restore_authentication(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Authorization(claim): Authorization,
 ) -> SessionResult<Json<RestoreAuthenticationResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build_head(), &txns);
+    let ctx = builder.build(request_ctx.build_head()).await?;
 
     // Why is this here?
     let billing_account = BillingAccount::get_by_id(&ctx, &claim.billing_account_id)

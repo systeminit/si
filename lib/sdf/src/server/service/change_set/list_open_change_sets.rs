@@ -11,11 +11,12 @@ pub struct ListOpenChangeSetsResponse {
 }
 
 pub async fn list_open_change_sets(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
 ) -> ChangeSetResult<Json<ListOpenChangeSetsResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build_head(), &txns);
+    let ctx = builder.build(request_ctx.build_head()).await?;
+
     let list = ChangeSet::list_open(&ctx).await?;
+
     Ok(Json(ListOpenChangeSetsResponse { list }))
 }

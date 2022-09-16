@@ -91,7 +91,7 @@ impl WorkflowRunnerState {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         workflow_runner_id: WorkflowRunnerId,
         status: WorkflowRunnerStatus,
         execution_id: Option<String>,
@@ -120,7 +120,7 @@ impl WorkflowRunnerState {
 
     /// Find [`Self`] for a given [`WorkflowRunnerId`](crate::workflow_runner::WorkflowRunner).
     pub async fn find_for_workflow_runner(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         workflow_runner_id: WorkflowRunnerId,
     ) -> WorkflowRunnerResult<Option<Self>> {
         let row = ctx

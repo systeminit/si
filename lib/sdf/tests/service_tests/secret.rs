@@ -24,7 +24,6 @@ async fn create_secret() {
         nba,
         auth_token,
         dal_ctx,
-        dal_txns,
         _faktory,
     );
 

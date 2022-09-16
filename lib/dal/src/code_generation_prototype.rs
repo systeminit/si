@@ -133,7 +133,7 @@ impl CodeGenerationPrototype {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func_id: FuncId,
         args: serde_json::Value,
         format: CodeLanguage,
@@ -162,7 +162,7 @@ impl CodeGenerationPrototype {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_component(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,

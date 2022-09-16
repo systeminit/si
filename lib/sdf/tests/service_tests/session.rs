@@ -23,7 +23,6 @@ async fn login() {
         nba,
         _auth_token,
         _dal_ctx,
-        dal_txns,
         _faktory,
     );
 
@@ -81,7 +80,6 @@ async fn restore_authentication() {
         nba,
         auth_token,
         _dal_ctx,
-        dal_txns,
         _faktory,
     );
 
@@ -111,11 +109,10 @@ async fn get_defaults() {
         app,
         nba,
         auth_token,
-        _dal_ctx,
-        dal_txns,
+        dal_ctx,
         _faktory,
     );
-    dal_txns.commit().await.expect("cannot commit txns");
+    dal_ctx.commit().await.expect("cannot commit txns");
 
     let response: GetDefaultsResponse = api_request_auth_empty(
         app.clone(),

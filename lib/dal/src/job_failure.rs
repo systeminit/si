@@ -60,7 +60,7 @@ impl_standard_model! {
 impl JobFailure {
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         kind: impl AsRef<str>,
         message: impl AsRef<str>,
     ) -> JobFailureResult<Self> {

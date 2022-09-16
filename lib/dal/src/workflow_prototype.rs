@@ -152,7 +152,7 @@ impl WorkflowPrototype {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func_id: FuncId,
         args: serde_json::Value,
         context: WorkflowPrototypeContext,
@@ -198,7 +198,7 @@ impl WorkflowPrototype {
     /// Found resolvers are not modified.
     pub async fn resolve(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
     ) -> WorkflowPrototypeResult<WorkflowResolver> {
         let component = if component_id.is_some() {
@@ -298,7 +298,7 @@ impl WorkflowPrototype {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,

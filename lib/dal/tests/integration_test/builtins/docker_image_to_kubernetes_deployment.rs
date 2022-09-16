@@ -4,9 +4,7 @@ use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
 #[test]
-async fn docker_image_to_kubernetes_deployment_inter_component_update(
-    ctx: &DalContext<'_, '_, '_>,
-) {
+async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalContext) {
     let mut harness = BuiltinsHarness::new();
     let tail_docker_image_payload = harness
         .create_component(ctx, "image", Builtin::DockerImage)

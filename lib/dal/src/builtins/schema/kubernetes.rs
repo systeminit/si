@@ -30,13 +30,13 @@ pub fn doc_url(path: impl AsRef<str>) -> String {
     )
 }
 
-pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     kubernetes_namespace(ctx).await?;
     kubernetes_deployment(ctx).await?;
     Ok(())
 }
 
-async fn kubernetes_namespace(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     let name = "kubernetes_namespace".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {

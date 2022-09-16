@@ -30,7 +30,6 @@ async fn list_components_identification() {
         nba,
         auth_token,
         dal_ctx,
-        dal_txns,
         _faktory,
     );
 
@@ -60,7 +59,8 @@ async fn list_components_identification() {
     }
 
     let visibility = *dal_ctx.visibility();
-    dal_txns.commit().await.expect("cannot commit transaction");
+
+    dal_ctx.commit().await.expect("cannot commit transaction");
 
     let request = ListComponentsIdentificationRequest {
         visibility,
@@ -141,7 +141,6 @@ async fn get_components_metadata() {
         nba,
         auth_token,
         dal_ctx,
-        dal_txns,
         _faktory,
     );
     let visibility = Visibility::new_head(false);
@@ -151,7 +150,8 @@ async fn get_components_metadata() {
     let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
 
     let _component = create_component_for_schema_variant(&dal_ctx, schema_variant.id()).await;
-    dal_txns.commit().await.expect("cannot commit transaction");
+
+    dal_ctx.commit().await.expect("cannot commit transaction");
 
     let request = GetComponentsMetadataRequest {
         visibility,

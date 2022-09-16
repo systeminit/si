@@ -3,7 +3,7 @@ use dal::DalContext;
 use dal::{schema::SchemaVariant, test_harness::create_schema, SchemaKind, StandardModel};
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
 
     let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "ringo")
@@ -13,7 +13,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn set_schema(ctx: &DalContext<'_, '_, '_>) {
+async fn set_schema(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0")
         .await

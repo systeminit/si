@@ -15,7 +15,7 @@ mod docker;
 mod kubernetes;
 mod systeminit;
 
-pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     systeminit::migrate(ctx).await?;
     docker::migrate(ctx).await?;
     kubernetes::migrate(ctx).await?;
@@ -29,7 +29,7 @@ pub struct BuiltinSchemaHelpers;
 
 impl BuiltinSchemaHelpers {
     pub async fn create_schema(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         schema_name: &str,
         schema_kind: &SchemaKind,
     ) -> BuiltinsResult<Option<Schema>> {
@@ -58,7 +58,7 @@ impl BuiltinSchemaHelpers {
     /// only used when a parent [`PropId`] is provided.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_prop(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         prop_name: &str,
         prop_kind: PropKind,
         parent_prop_id: Option<PropId>,
@@ -75,7 +75,7 @@ impl BuiltinSchemaHelpers {
     }
 
     pub async fn create_string_prop_with_default(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         prop_name: &str,
         default_string: String,
         parent_prop_id: Option<PropId>,
@@ -147,7 +147,7 @@ impl BuiltinSchemaHelpers {
 
     /// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
     pub async fn setup_identity_func(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
     ) -> BuiltinsResult<(FuncId, FuncBindingId, FuncBindingReturnValueId)> {
         let identity_func_name = "si:identity".to_string();
         let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
@@ -172,7 +172,7 @@ impl BuiltinSchemaHelpers {
     ///
     /// _Use with caution!_
     pub async fn find_child_prop_by_name(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         prop_id: PropId,
         child_prop_name: &str,
     ) -> BuiltinsResult<Prop> {

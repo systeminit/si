@@ -4,7 +4,7 @@ use dal::DalContext;
 use dal::{HistoryActor, HistoryEvent};
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let history_event = HistoryEvent::new(
         ctx,
         "change_set.opened",

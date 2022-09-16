@@ -107,7 +107,7 @@ async function qualification(component) {
   };
 }";
 
-async fn create_qualification_func(ctx: &DalContext<'_, '_, '_>) -> FuncResult<Func> {
+async fn create_qualification_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
         generate_name(None),
@@ -127,10 +127,7 @@ async fn create_qualification_func(ctx: &DalContext<'_, '_, '_>) -> FuncResult<F
     Ok(func)
 }
 
-async fn copy_attribute_func(
-    ctx: &DalContext<'_, '_, '_>,
-    func_to_copy: &Func,
-) -> FuncResult<Func> {
+async fn copy_attribute_func(ctx: &DalContext, func_to_copy: &Func) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
         generate_name(None),
@@ -149,7 +146,7 @@ async fn copy_attribute_func(
 }
 
 async fn create_default_attribute_func(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     current_value_id: AttributeValueId,
     current_func: &Func,
 ) -> FuncResult<Func> {
@@ -188,7 +185,7 @@ async fn create_default_attribute_func(
 }
 
 async fn create_attribute_func(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     value_id: AttributeValueId,
     parent_value_id: Option<AttributeValueId>,
     component_id: ComponentId,
@@ -234,12 +231,11 @@ async fn create_attribute_func(
 }
 
 pub async fn create_func(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CreateFuncRequest>,
 ) -> FuncResult<Json<CreateFuncResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let func = match request.kind {
         FuncBackendKind::JsAttribute => match request.options {
@@ -270,7 +266,7 @@ pub async fn create_func(
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(CreateFuncResponse {
         id: func.id().to_owned(),

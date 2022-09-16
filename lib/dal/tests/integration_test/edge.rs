@@ -10,7 +10,7 @@ use dal::{
 use crate::dal::test;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let mut harness = BuiltinsHarness::new();
     let credential_payload = harness
         .create_component(ctx, "tail", Builtin::DockerHubCredential)
@@ -77,7 +77,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn include_component_in_system_on_head(
-    DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_, '_>,
+    DalContextHeadRef(ctx): DalContextHeadRef<'_>,
     wid: WorkspaceId,
 ) {
     let edge_kind = "system".to_string();
@@ -143,10 +143,7 @@ async fn include_component_in_system_on_head(
 }
 
 #[test]
-async fn include_component_in_system_with_edit_sessions(
-    ctx: &DalContext<'_, '_, '_>,
-    wid: WorkspaceId,
-) {
+async fn include_component_in_system_with_edit_sessions(ctx: &DalContext, wid: WorkspaceId) {
     let edge_kind = "system".to_string();
     let (system, system_node) = create_system_with_node(ctx, &wid).await;
 

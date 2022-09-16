@@ -5,7 +5,7 @@ use crate::dal::test;
 use dal::Workspace;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let _ = Workspace::new(ctx, "iron maiden")
         .await
         .expect("cannot create workspace");

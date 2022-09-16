@@ -256,7 +256,7 @@ impl_standard_model! {
 impl AttributeValue {
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
         context: AttributeContext,
@@ -347,7 +347,7 @@ impl AttributeValue {
 
     pub async fn set_parent_attribute_value(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         belongs_to_id: &AttributeValueId,
     ) -> AttributeValueResult<()> {
         if let Some(potential_duplicate) = Self::find_with_parent_and_key_for_context(
@@ -379,7 +379,7 @@ impl AttributeValue {
     /// corresponding to the field on [`Self`].
     pub async fn get_value(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
     ) -> AttributeValueResult<Option<serde_json::Value>> {
         match FuncBindingReturnValue::get_by_id(ctx, &self.func_binding_return_value_id).await? {
             Some(func_binding_return_value) => Ok(func_binding_return_value.value().cloned()),
@@ -387,10 +387,7 @@ impl AttributeValue {
         }
     }
 
-    pub async fn update_stored_index_map(
-        &self,
-        ctx: &DalContext<'_, '_, '_>,
-    ) -> AttributeValueResult<()> {
+    pub async fn update_stored_index_map(&self, ctx: &DalContext) -> AttributeValueResult<()> {
         standard_model::update(
             ctx,
             "attribute_values",
@@ -406,7 +403,7 @@ impl AttributeValue {
     /// Returns a list of child [`AttributeValues`](crate::AttributeValue) for a given
     /// [`AttributeValue`] and [`AttributeReadContext`](crate::AttributeReadContext).
     pub async fn child_attribute_values_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         attribute_read_context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<Self>> {
@@ -427,7 +424,7 @@ impl AttributeValue {
     }
 
     async fn child_attribute_values_for_exact_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         attribute_read_context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<Self>> {
@@ -447,7 +444,7 @@ impl AttributeValue {
         Ok(standard_model::objects_from_rows(rows)?)
     }
     pub async fn find_with_parent_and_prototype_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         parent_attribute_value_id: Option<AttributeValueId>,
         attribute_prototype_id: AttributePrototypeId,
         context: AttributeContext,
@@ -472,7 +469,7 @@ impl AttributeValue {
 
     /// Find [`Self`] with a given parent value and key.
     pub async fn find_with_parent_and_key_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         parent_attribute_value_id: Option<AttributeValueId>,
         key: Option<String>,
         context: AttributeReadContext,
@@ -506,7 +503,7 @@ impl AttributeValue {
     /// object themselves! For those objects, please use
     /// [`Self::find_with_parent_and_key_for_context()`].
     pub async fn list_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<Self>> {
         let rows = ctx
@@ -533,7 +530,7 @@ impl AttributeValue {
     /// object themselves! For those objects, please use
     /// [`Self::find_with_parent_and_key_for_context()`].
     pub async fn find_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Option<Self>> {
         AttributeContextBuilder::from(context).to_context()?;
@@ -552,7 +549,7 @@ impl AttributeValue {
     /// Return the [`Prop`] that the [`AttributeValueId`] belongs to,
     /// following the relationship through [`AttributePrototype`].
     pub async fn find_prop_for_value(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Prop> {
         let row = ctx
@@ -568,7 +565,7 @@ impl AttributeValue {
     }
 
     pub async fn list_payload_for_read_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<AttributeValuePayload>> {
         let schema_variant_id = if let Some(schema_variant_id) = context.schema_variant_id() {
@@ -630,7 +627,7 @@ impl AttributeValue {
     /// - [`PropId`](crate::Prop) must be set to [`None`]
     /// - Both providers fields must be unset
     pub async fn list_payload_for_read_context_and_root(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         root_attribute_value_id: AttributeValueId,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<AttributeValuePayload>> {
@@ -699,7 +696,7 @@ impl AttributeValue {
     /// - the [`Option<serde_json::Value>`] that was passed in
     /// - the updated [`AttributeValueId`](Self)
     pub async fn update_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         parent_attribute_value_id: Option<AttributeValueId>,
         context: AttributeContext,
@@ -720,7 +717,7 @@ impl AttributeValue {
     }
 
     pub async fn update_for_context_without_creating_proxies(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         parent_attribute_value_id: Option<AttributeValueId>,
         context: AttributeContext,
@@ -741,7 +738,7 @@ impl AttributeValue {
     }
 
     async fn update_for_context_raw(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_value_id: AttributeValueId,
         parent_attribute_value_id: Option<AttributeValueId>,
         context: AttributeContext,
@@ -977,7 +974,7 @@ impl AttributeValue {
     /// [`AttributeValue`] to use.
     #[instrument(skip_all)]
     pub async fn insert_for_context(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         parent_context: AttributeContext,
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
@@ -996,7 +993,7 @@ impl AttributeValue {
 
     #[instrument(skip_all)]
     pub async fn insert_for_context_without_creating_proxies(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         parent_context: AttributeContext,
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
@@ -1015,7 +1012,7 @@ impl AttributeValue {
 
     #[instrument(skip_all)]
     async fn insert_for_context_raw(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         parent_context: AttributeContext,
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
@@ -1145,10 +1142,7 @@ impl AttributeValue {
     }
 
     #[instrument(skip_all)]
-    pub async fn update_parent_index_map(
-        &self,
-        ctx: &DalContext<'_, '_, '_>,
-    ) -> AttributeValueResult<()> {
+    pub async fn update_parent_index_map(&self, ctx: &DalContext) -> AttributeValueResult<()> {
         if let Some(mut parent_value) = self.parent_attribute_value(ctx).await? {
             let parent_prop = Prop::get_by_id(ctx, &parent_value.context.prop_id())
                 .await?
@@ -1178,7 +1172,7 @@ impl AttributeValue {
     #[instrument(skip_all)]
     #[async_recursion]
     async fn vivify_value_and_parent_values(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         context: AttributeContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<AttributeValueId> {
@@ -1188,7 +1182,7 @@ impl AttributeValue {
     #[instrument(skip_all)]
     #[async_recursion]
     async fn vivify_value_and_parent_values_without_child_proxies(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         context: AttributeContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<AttributeValueId> {
@@ -1198,7 +1192,7 @@ impl AttributeValue {
     #[instrument(skip_all)]
     #[async_recursion]
     async fn vivify_value_and_parent_values_raw(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         context: AttributeContext,
         attribute_value_id: AttributeValueId,
         create_child_proxies: bool,
@@ -1267,7 +1261,7 @@ impl AttributeValue {
 
     #[async_recursion]
     async fn populate_child_proxies_for_value(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         original_attribute_value_id: AttributeValueId,
         previous_write_context: AttributeContext,
         attribute_value_id: AttributeValueId,
@@ -1354,7 +1348,7 @@ impl AttributeValue {
 
     #[async_recursion]
     async fn populate_nested_values(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         parent_attribute_value_id: AttributeValueId,
         update_context: AttributeContext,
         mut unprocessed_value: serde_json::Value,
@@ -1523,7 +1517,7 @@ impl AttributeValue {
 
     #[async_recursion]
     async fn remove_value_and_children(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         parent_attribute_value: AttributeValue,
     ) -> AttributeValueResult<()> {
         let child_values = parent_attribute_value.child_attribute_values(ctx).await?;
@@ -1565,7 +1559,7 @@ impl AttributeValue {
         Ok(())
     }
 
-    async fn remove_proxies(&self, ctx: &DalContext<'_, '_, '_>) -> AttributeValueResult<()> {
+    async fn remove_proxies(&self, ctx: &DalContext) -> AttributeValueResult<()> {
         let _row = ctx
             .txns()
             .pg()
@@ -1579,7 +1573,7 @@ impl AttributeValue {
 
     // pub async fn update_proxies(
     //     &mut self,
-    //     txn: &PgTxn<'_>,
+    //     txn: &PgTxn,
     //     nats: &NatsTxn,
     //     history_actor: &HistoryActor,
     // ) -> AttributeValueResult<()> {
@@ -1637,7 +1631,7 @@ fn as_type<T: serde::de::DeserializeOwned>(json: serde_json::Value) -> Attribute
 }
 
 async fn set_value(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     func_name: &str,
     args: serde_json::Value,
 ) -> AttributeValueResult<(Func, FuncBinding, FuncBindingReturnValue)> {
@@ -1697,18 +1691,18 @@ impl DependentValuesAsyncTasks {
         visibility: Visibility,
         ctx_builder: &DalContextBuilder,
     ) -> AttributeValueResult<()> {
-        let mut txns = ctx_builder.transactions_starter().await?;
-        let txns = txns.start().await?;
-        let ctx = ctx_builder.build(access_builder.clone().build(visibility), &txns);
+        let ctx = ctx_builder
+            .build(access_builder.clone().build(visibility))
+            .await?;
 
         self.run_in_ctx(&ctx).await?;
 
-        txns.commit().await?;
+        ctx.commit().await?;
 
         Ok(())
     }
 
-    pub async fn run_in_ctx(&self, ctx: &DalContext<'_, '_, '_>) -> AttributeValueResult<()> {
+    pub async fn run_in_ctx(&self, ctx: &DalContext) -> AttributeValueResult<()> {
         // After we have _completely_ updated ourself, we can update our dependent values.
         AttributeValueDependentUpdateHarness::update_dependent_values(ctx, self.attribute_value_id)
             .await?;
@@ -1735,7 +1729,7 @@ pub struct DependentValuesUpdated {
 
 impl WsEvent {
     pub fn updated_dependent_value(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> Self {

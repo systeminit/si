@@ -18,12 +18,11 @@ pub struct GetPropertyEditorSchemaRequest {
 pub type GetPropertyEditorSchemaResponse = PropertyEditorSchema;
 
 pub async fn get_property_editor_schema(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetPropertyEditorSchemaRequest>,
 ) -> ComponentResult<Json<GetPropertyEditorSchemaResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.component_id).await?;
     let is_component_in_visibility = Component::get_by_id(&ctx, &request.component_id)
@@ -43,8 +42,6 @@ pub async fn get_property_editor_schema(
         .id();
     let prop_edit_schema =
         PropertyEditorSchema::for_schema_variant(&ctx, schema_variant_id).await?;
-
-    txns.commit().await?;
 
     Ok(Json(prop_edit_schema))
 }

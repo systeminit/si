@@ -27,7 +27,7 @@ impl AttributeValueDependentUpdateHarness {
     /// Update dependent_update [`AttributeValues`](crate::AttributeValue) for an updated
     /// [`AttributeValueId`](crate::AttributeValue).
     pub async fn update_dependent_values(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_value_id_to_update: AttributeValueId,
     ) -> AttributeValueResult<()> {
         let mut attribute_value_that_needs_to_be_updated =
@@ -192,7 +192,7 @@ impl AttributeValueDependentUpdateHarness {
     /// [`AttributePrototypeArgument`](crate::AttributePrototypeArgument) and context of the
     /// [`AttributeValue`] that needs to be updated.
     async fn build_func_binding_argument_value_from_attribute_prototype_argument(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_prototype_argument: AttributePrototypeArgument,
         attribute_value_context: AttributeContext,
     ) -> AttributeValueResult<Option<serde_json::Value>> {

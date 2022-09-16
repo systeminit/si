@@ -14,7 +14,7 @@ use dal::{
 };
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let _write_tenancy = WriteTenancy::new_universal();
     let _visibility = Visibility::new_head(false);
     let _history_actor = HistoryActor::SystemInit;
@@ -29,7 +29,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn func_binding_new(ctx: &DalContext<'_, '_, '_>) {
+async fn func_binding_new(ctx: &DalContext) {
     let _write_tenancy = WriteTenancy::new_universal();
     let _visibility = Visibility::new_head(false);
     let _history_actor = HistoryActor::SystemInit;
@@ -42,7 +42,7 @@ async fn func_binding_new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn func_binding_find_or_create_head(ctx: &DalContext<'_, '_, '_>) {
+async fn func_binding_find_or_create_head(ctx: &DalContext) {
     let _write_tenancy = WriteTenancy::new_universal();
     let _visibility = Visibility::new_head(false);
     let _history_actor = HistoryActor::SystemInit;
@@ -66,7 +66,7 @@ async fn func_binding_find_or_create_head(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn func_binding_find_or_create_change_set(ctx: &DalContext<'_, '_, '_>) {
+async fn func_binding_find_or_create_change_set(ctx: &DalContext) {
     let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("floop".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
@@ -119,7 +119,7 @@ async fn func_binding_find_or_create_change_set(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn func_binding_return_value_new(ctx: &DalContext<'_, '_, '_>) {
+async fn func_binding_return_value_new(ctx: &DalContext) {
     let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("funky".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
@@ -143,7 +143,7 @@ async fn func_binding_return_value_new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn func_binding_execute(ctx: &DalContext<'_, '_, '_>) {
+async fn func_binding_execute(ctx: &DalContext) {
     let func = create_func(ctx).await;
     let args = serde_json::to_value(FuncBackendStringArgs::new("funky".to_string()))
         .expect("cannot serialize args to json");
@@ -162,7 +162,7 @@ async fn func_binding_execute(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn func_binding_execute_unset(ctx: &DalContext<'_, '_, '_>) {
+async fn func_binding_execute_unset(ctx: &DalContext) {
     let name = dal::test_harness::generate_fake_name();
     let func = Func::new(
         ctx,

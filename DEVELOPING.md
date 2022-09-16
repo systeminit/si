@@ -429,64 +429,29 @@ SI_TEST_LOG=info
 
 ### Debugging Integration Tests with Database Contents
 
-Integration tests from the dal will not have their transactions committed and persisted to the database.
-If you would like to view the state of the database via a debugger or after test conclusion, you will need to _
-temporarily_ refactor your test accordingly:
+Integration tests in the `lib/dal` crate typically perform their work without
+committing and persisting to the database (that is, the transaction in each
+test is rolled back when the transaction is dropped). However, if you would
+like to view the state of the database after the test finishes running, you can
+modify your test accordingly:
 
 ```rust
+// Note, you'll want to own your `DalContext` so that you can consume it
+// when commiting.
 #[test]
-async fn your_dal_integration_test() {
-    let test_context = ::dal::test::TestContext::global().await;
-    let nats_subject_prefix = ::dal::test::nats_subject_prefix();
-    let services_context = test_context
-        .create_services_context(&nats_subject_prefix)
-        .await;
-    let dal_context_builder = services_context.into_builder();
-    let mut transactions_starter = dal_context_builder
-        .transactions_starter()
-        .await
-        .expect("failed to build transactions starter");
-    let transactions = transactions_starter
-        .start()
-        .await
-        .expect("failed to start transactions");
-    let (nba, _auth_token) = ::dal::test::helpers::billing_account_signup(
-        &dal_context_builder,
-        &transactions,
-        test_context.jwt_secret_key(),
-    )
-        .await;
-    let default_dal_context = ::dal::test::helpers::create_ctx_for_new_change_set(
-        &dal_context_builder,
-        &transactions,
-        &nba,
-    )
-        .await;
-    let veritech_server = ::dal::test::veritech_server_for_uds_cyclone(
-        test_context.nats_config().clone(),
-        nats_subject_prefix.clone(),
-    )
-        .await;
-    ::tokio::spawn(veritech_server.run());
-    let ctx = &default_dal_context;
+async fn your_dal_integration_test(ctx: DalContext) {
+    // Perform your test work, mutate the `ctx`, etc.
 
-    // Do your test stuff here!
+    // Construct a new ctx, resuing the connected `Connections` with identical
+    // tenancies, visibility, and history actor
+    let ctx = commit_and_continue(ctx).await;
 
-    transactions.commit().await.expect("failed to commit");
-
-    // After committing your transactions, you must end the test since you cannot use "ctx" again ("transactions" is
-    // is consumed once you commit.
+    // More test code, if applicable.
 }
 ```
 
-With these changes, you will be able to commit transactions and see them in the database.
-However, please note: this refactor "hack" may produce unintended side effects that may or may not be relevant
-(depending on what you are looking for).
-It is also possible that the refactor example may not be entirely correct for your use case.
-
-How did we get this? By asking rust-analyzer to expand the `#[test]` macro and
-copy the contents of the `async fn imp() { .. }` body (except for the
-`inner(...).await` line).
+With these changes, you will be able to commit transactions and see them in the
+database.
 
 ## Troubleshooting
 

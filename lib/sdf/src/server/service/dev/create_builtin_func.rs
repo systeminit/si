@@ -2,7 +2,7 @@ use axum::Json;
 use dal::qualification_prototype::QualificationPrototypeContext;
 use dal::{
     Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, QualificationPrototype,
-    ReadTenancy, StandardModel, Visibility, WriteTenancy, WsEvent,
+    RequestContext, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -21,18 +21,13 @@ pub struct CreateBuiltinFuncRequest {
 }
 
 pub async fn create_builtin_func(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CreateBuiltinFuncRequest>,
 ) -> DevResult<Json<CreateFuncResponse>> {
-    let txns = txns.start().await?;
-
-    let universal_req_ctx = dal::context::AccessBuilder::new(
-        ReadTenancy::new_universal(),
-        WriteTenancy::new_universal(),
-        HistoryActor::SystemInit,
-    );
-    let ctx = builder.build(universal_req_ctx.build(Visibility::new_head(false)), &txns);
+    let mut ctx = builder
+        .build(RequestContext::new_universal_head(HistoryActor::SystemInit))
+        .await?;
 
     let func = match request.kind {
         FuncBackendKind::JsQualification => {
@@ -60,12 +55,12 @@ pub async fn create_builtin_func(
 
     dal::builtins::func::persist(&func).await?;
 
-    let acct_ctx = builder.build(request_ctx.build(request.visibility), &txns);
-    WsEvent::change_set_written(&acct_ctx)
-        .publish(&acct_ctx)
-        .await?;
+    // Update the ctx with the account details for proper WS signaling
+    ctx.update_from_request_context(request_ctx.build(request.visibility));
 
-    txns.commit().await?;
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+
+    ctx.commit().await?;
 
     Ok(Json(CreateFuncResponse {
         id: func.id().to_owned(),

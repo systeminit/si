@@ -6,8 +6,7 @@ use thiserror::Error;
 use tokio::{sync::broadcast, time};
 
 use crate::{
-    Component, ComponentError, HistoryActor, HistoryEventError, RequestContext, ServicesContext,
-    StandardModelError, SystemId,
+    Component, ComponentError, HistoryEventError, ServicesContext, StandardModelError, SystemId,
 };
 
 #[derive(Error, Debug)]
@@ -88,44 +87,37 @@ impl ResourceScheduler {
                     continue 'check;
                 }
                 let builder = self.services_context.clone().into_builder();
-                let mut starter = match builder.transactions_starter().await {
-                    Ok(starter) => starter,
+                // First we're building a ctx with universal head, then updating it with a
+                // workspace head request context
+                let mut ctx = match builder.build_default().await {
+                    Ok(ctx) => ctx,
                     Err(err) => {
-                        error!("Unable to generate transaction starter: {:?}", err);
+                        error!("Unable to build dal context: {:?}", err);
                         continue 'check;
                     }
                 };
-                let txns = match starter.start().await {
-                    Ok(txns) => txns,
-                    Err(err) => {
-                        error!("Unable to start transactions: {:?}", err);
-                        continue 'check;
-                    }
-                };
-                let request_context = match RequestContext::new_workspace_head(
-                    txns.pg(),
-                    HistoryActor::SystemInit,
-                    *component
-                        .tenancy()
-                        .workspaces()
-                        .first()
-                        .expect("empty workspace array when we checked earlier; bug!"),
-                )
-                .await
+                if let Err(err) = ctx
+                    .update_to_workspace_tenancies(
+                        *component
+                            .tenancy()
+                            .workspaces()
+                            .first()
+                            .expect("empty workspace array when we checked earlier; bug!"),
+                    )
+                    .await
                 {
-                    Ok(request_context) => request_context,
-                    Err(err) => {
-                        error!("Unable to create request context: {:?}", err);
-                        continue 'check;
-                    }
+                    error!(
+                        "Unable to update dal context for workspace tenanices: {:?}",
+                        err
+                    );
+                    continue 'check;
                 };
-                let ctx = builder.build(request_context, &txns);
 
                 if let Err(error) = component.sync_resource(&ctx, system_id).await {
                     error!(?error, "Failed to sync component, moving to the next.");
                     continue 'check;
                 }
-                if let Err(err) = txns.commit().await {
+                if let Err(err) = ctx.commit().await {
                     error!("Unable to commit transactions: {:?}", err);
                     continue 'check;
                 };

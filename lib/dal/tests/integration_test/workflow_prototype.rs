@@ -11,7 +11,7 @@ use pretty_assertions_sorted::assert_eq;
 use crate::dal::test;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let func_name = "si:poemWorkflow".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
@@ -33,7 +33,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn find_for_context(ctx: &DalContext<'_, '_, '_>) {
+async fn find_for_context(ctx: &DalContext) {
     let poem_func = Func::find_by_attr(ctx, "name", &"si:poemWorkflow".to_string())
         .await
         .expect("got func")
@@ -81,11 +81,7 @@ async fn find_for_context(ctx: &DalContext<'_, '_, '_>) {
     assert!(found_new_prototype);
 }
 
-async fn fb(
-    ctx: &DalContext<'_, '_, '_>,
-    name: &str,
-    args: serde_json::Value,
-) -> serde_json::Value {
+async fn fb(ctx: &DalContext, name: &str, args: serde_json::Value) -> serde_json::Value {
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")
@@ -99,7 +95,7 @@ async fn fb(
 }
 
 #[test]
-async fn resolve(ctx: &DalContext<'_, '_, '_>) {
+async fn resolve(ctx: &DalContext) {
     let title = "Docker Image Resource Refresh";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
@@ -152,7 +148,7 @@ async fn resolve(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn run(ctx: &DalContext<'_, '_, '_>) {
+async fn run(ctx: &DalContext) {
     let title = "Docker Image Resource Refresh";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await

@@ -1,10 +1,11 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use si_data::{
     nats,
-    pg::{self, InstrumentedClient, InstrumentedTransaction, PgPoolResult},
+    pg::{self, InstrumentedClient, PgPoolResult},
     NatsClient, NatsTxn, PgPool, PgTxn,
 };
-use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech::EncryptionKey;
@@ -85,23 +86,23 @@ impl ServicesContext {
         &self.encryption_key
     }
 
-    /// Builds and returns a new [`TransactionsStarter`].
-    pub async fn transactions_starter(&self) -> PgPoolResult<TransactionsStarter> {
+    /// Builds and returns a new [`Connections`].
+    pub async fn connections(&self) -> PgPoolResult<Connections> {
         let pg_conn = self.pg_pool.get().await?;
         let nats_conn = self.nats_conn.clone();
         let job_processor = self.job_processor.clone();
-        Ok(TransactionsStarter::new(pg_conn, nats_conn, job_processor))
+        Ok(Connections::new(pg_conn, nats_conn, job_processor))
     }
 }
 
 /// A context type which holds references to underlying services, transactions, and read/write
 /// context for DAL objects.
 #[derive(Clone, Debug)]
-pub struct DalContext<'a, 's, 't> {
+pub struct DalContext {
     /// A reference to a [`ServicesContext`] which has handles to common core services.
-    services_context: &'s ServicesContext,
+    services_context: ServicesContext,
     /// A reference to a set of atomically related transactions.
-    txns: &'t Transactions<'a>,
+    txns: Transactions,
     /// A suitable read tenancy for the consuming DAL objects.
     read_tenancy: ReadTenancy,
     /// A suitable write tenancy for the consuming DAL objects.
@@ -112,11 +113,93 @@ pub struct DalContext<'a, 's, 't> {
     history_actor: HistoryActor,
 }
 
-impl<'a, 't> DalContext<'a, '_, 't> {
+impl DalContext {
     /// Takes a reference to a [`ServicesContext`] and returns a builder to construct a
     /// `DalContext`.
     pub fn builder(services_context: ServicesContext) -> DalContextBuilder {
         DalContextBuilder { services_context }
+    }
+
+    /// Consumes all inner transactions, committing all changes made within them, and returns
+    /// underlying connections.
+    pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
+        self.txns.commit_into_conns().await
+    }
+
+    /// Consumes all inner transactions, committing all changes made within them, and returns
+    /// the context parts which can be used to build a new context.
+    pub async fn commit_into_parts(
+        self,
+    ) -> Result<(DalContextBuilder, Connections, RequestContext), TransactionsError> {
+        let conns = self.txns.commit_into_conns().await?;
+        let builder = self.services_context.into_builder();
+        let request_ctx = RequestContext {
+            read_tenancy: self.read_tenancy,
+            write_tenancy: self.write_tenancy,
+            visibility: self.visibility,
+            history_actor: self.history_actor,
+        };
+
+        Ok((builder, conns, request_ctx))
+    }
+
+    /// Consumes all inner transactions and committing all changes made within them.
+    pub async fn commit(self) -> Result<(), TransactionsError> {
+        let _ = self.commit_into_conns().await?;
+        Ok(())
+    }
+
+    /// Rolls all inner transactions back, discarding all changes made within them, and returns
+    /// underlying connections.
+    ///
+    /// This is equivalent to the transaction's `Drop` implementations, but provides any error
+    /// encountered to the caller.
+    pub async fn rollback_into_conns(self) -> Result<Connections, TransactionsError> {
+        self.txns.rollback_into_conns().await
+    }
+
+    /// Rolls all inner transactions back, discarding all changes made within them, and returns the
+    /// context parts which can be used to build a new context.
+    ///
+    /// This is equivalent to the transaction's `Drop` implementations, but provides any error
+    /// encountered to the caller.
+    pub async fn rollback_into_parts(
+        self,
+    ) -> Result<(DalContextBuilder, Connections, RequestContext), TransactionsError> {
+        let conns = self.txns.rollback_into_conns().await?;
+        let builder = self.services_context.into_builder();
+        let request_ctx = RequestContext {
+            read_tenancy: self.read_tenancy,
+            write_tenancy: self.write_tenancy,
+            visibility: self.visibility,
+            history_actor: self.history_actor,
+        };
+
+        Ok((builder, conns, request_ctx))
+    }
+
+    /// Rolls all inner transactions back, discarding all changes made within them.
+    ///
+    /// This is equivalent to the transaction's `Drop` implementations, but provides any error
+    /// encountered to the caller.
+    pub async fn rollback(self) -> Result<(), TransactionsError> {
+        let _ = self.rollback_into_conns().await?;
+        Ok(())
+    }
+
+    /// Updates this context with all new values from a [`RequestContext`].
+    pub fn update_from_request_context(&mut self, request_ctx: RequestContext) {
+        self.read_tenancy = request_ctx.read_tenancy;
+        self.write_tenancy = request_ctx.write_tenancy;
+        self.visibility = request_ctx.visibility;
+        self.history_actor = request_ctx.history_actor;
+    }
+
+    /// Clones a new context from this one with all new values from a  [`RequestContext`].
+    pub fn clone_from_request_context(&self, request_ctx: RequestContext) -> Self {
+        let mut new = self.clone();
+        new.update_from_request_context(request_ctx);
+        new
     }
 
     /// Updates this context with a new [`HistoryActor`].
@@ -184,6 +267,18 @@ impl<'a, 't> DalContext<'a, '_, 't> {
         new
     }
 
+    /// Updates this context with a head [`Visibility`].
+    pub fn update_to_head(&mut self) {
+        self.visibility = Visibility::new_head(false);
+    }
+
+    /// Clones a new context from this one with a head [`Visibility`].
+    pub fn clone_with_head(&self) -> Self {
+        let mut new = self.clone();
+        new.update_to_head();
+        new
+    }
+
     /// Updates this context with universal-scoped read/write tenancies and a head [`Visibility`].
     pub fn update_to_universal_head(&mut self) {
         self.read_tenancy = ReadTenancy::new_universal();
@@ -215,56 +310,52 @@ impl<'a, 't> DalContext<'a, '_, 't> {
     /// Updates this context with read/write tenancies for a specific organization.
     pub async fn update_to_organization_tenancies(
         &mut self,
-        ctx: &DalContext<'_, '_, '_>,
         oid: OrganizationId,
     ) -> Result<(), TransactionsError> {
         self.read_tenancy =
-            ReadTenancy::new_organization(ctx.txns().pg(), vec![oid], ctx.visibility()).await?;
+            ReadTenancy::new_organization(self.txns().pg(), vec![oid], self.visibility()).await?;
         self.write_tenancy = WriteTenancy::new_organization(oid);
         Ok(())
     }
 
-    // /// Clones a new context from this one with read/write tenancies for a specific organization.
-    // pub async fn clone_with_new_organization_tenancies(
-    //     &self,
-    //     ctx: &DalContext<'_, '_, '_>,
-    //     oid: OrganizationId,
-    // ) -> Result<DalContext<'_, '_, '_>, TransactionsError> {
-    //     let mut new = self.clone();
-    //     new.update_to_organization_tenancies(ctx, oid).await?;
-    //     Ok(new)
-    // }
+    /// Clones a new context from this one with read/write tenancies for a specific organization.
+    pub async fn clone_with_new_organization_tenancies(
+        &self,
+        oid: OrganizationId,
+    ) -> Result<DalContext, TransactionsError> {
+        let mut new = self.clone();
+        new.update_to_organization_tenancies(oid).await?;
+        Ok(new)
+    }
 
     /// Updates this context with read/write tenancies for a specific workspace.
     pub async fn update_to_workspace_tenancies(
         &mut self,
-        ctx: &DalContext<'_, '_, '_>,
         wid: WorkspaceId,
     ) -> Result<(), TransactionsError> {
         self.read_tenancy =
-            ReadTenancy::new_workspace(ctx.txns().pg(), vec![wid], ctx.visibility()).await?;
+            ReadTenancy::new_workspace(self.txns().pg(), vec![wid], self.visibility()).await?;
         self.write_tenancy = WriteTenancy::new_workspace(wid);
         Ok(())
     }
 
-    // /// Clones a new context from this one with read/write tenancies for a specific workspace.
-    // pub async fn clone_with_new_workspace_tenancies(
-    //     &self,
-    //     ctx: &DalContext<'_, '_, '_>,
-    //     wid: WorkspaceId,
-    // ) -> Result<DalContext<'_, '_, '_>, TransactionsError> {
-    //     let mut new = self.clone();
-    //     new.update_to_workspace_tenancies(ctx, wid).await?;
-    //     Ok(new)
-    // }
+    /// Clones a new context from this one with read/write tenancies for a specific workspace.
+    pub async fn clone_with_new_workspace_tenancies(
+        &self,
+        wid: WorkspaceId,
+    ) -> Result<DalContext, TransactionsError> {
+        let mut new = self.clone();
+        new.update_to_workspace_tenancies(wid).await?;
+        Ok(new)
+    }
 
     pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
         self.txns().job_processor.enqueue_job(job, self).await
     }
 
     /// Gets the dal context's txns.
-    pub fn txns(&self) -> &Transactions<'a> {
-        self.txns
+    pub fn txns(&self) -> &Transactions {
+        &self.txns
     }
 
     pub fn job_processor(&self) -> Box<dyn JobQueueProcessor + Send + Sync> {
@@ -277,7 +368,7 @@ impl<'a, 't> DalContext<'a, '_, 't> {
     }
 
     /// Gets the dal context's pg txn.
-    pub fn pg_txn(&self) -> &InstrumentedTransaction<'a> {
+    pub fn pg_txn(&self) -> &PgTxn {
         &self.txns.pg_txn
     }
 
@@ -337,6 +428,12 @@ impl<'a, 't> DalContext<'a, '_, 't> {
     }
 }
 
+impl From<DalContext> for Transactions {
+    fn from(value: DalContext) -> Self {
+        value.txns
+    }
+}
+
 /// A context which represents a suitable tenancies, visibilities, etc. for consumption by a set
 /// of DAL objects.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -366,25 +463,6 @@ impl RequestContext {
         }
     }
 
-    /// Builds a new [`RequestContext`] with read/write tenancies for a specific workspace and a
-    /// head [`Visibility`] and the given [`HistoryActor`].
-    pub async fn new_workspace_head(
-        txn: &PgTxn<'_>,
-        history_actor: HistoryActor,
-        workspace_id: WorkspaceId,
-    ) -> Result<Self, TransactionsError> {
-        let visibility = Visibility::new_head(false);
-        let read_tenancy = ReadTenancy::new_workspace(txn, vec![workspace_id], &visibility).await?;
-        let write_tenancy = WriteTenancy::new_workspace(workspace_id);
-
-        Ok(Self {
-            read_tenancy,
-            write_tenancy,
-            visibility,
-            history_actor,
-        })
-    }
-
     /// Get a reference to the request context's read tenancy.
     #[must_use]
     pub fn read_tenancy(&self) -> &ReadTenancy {
@@ -407,6 +485,12 @@ impl RequestContext {
     #[must_use]
     pub fn history_actor(&self) -> &HistoryActor {
         &self.history_actor
+    }
+}
+
+impl Default for RequestContext {
+    fn default() -> Self {
+        Self::new_universal_head(HistoryActor::SystemInit)
     }
 }
 
@@ -456,8 +540,8 @@ impl AccessBuilder {
     }
 }
 
-impl From<DalContext<'_, '_, '_>> for AccessBuilder {
-    fn from(ctx: DalContext<'_, '_, '_>) -> Self {
+impl From<DalContext> for AccessBuilder {
+    fn from(ctx: DalContext) -> Self {
         Self::new(ctx.read_tenancy, ctx.write_tenancy, ctx.history_actor)
     }
 }
@@ -470,21 +554,60 @@ pub struct DalContextBuilder {
 }
 
 impl DalContextBuilder {
-    /// Contructs and returns a new [`DalContext`] using the given transaction references and
-    /// [`RequestContext`].
-    pub fn build<'a, 't>(
+    /// Contructs and returns a new [`DalContext`] using the given [`RequestContext`] and
+    /// an existing [`Connections`].
+    pub async fn build_with_conns(
         &self,
         request_context: RequestContext,
-        txns: &'t Transactions<'a>,
-    ) -> DalContext<'a, '_, 't> {
+        conns: Connections,
+    ) -> Result<DalContext, TransactionsError> {
+        let txns = conns.start_txns().await?;
+
+        Ok(DalContext {
+            services_context: self.services_context.clone(),
+            txns,
+            read_tenancy: request_context.read_tenancy,
+            write_tenancy: request_context.write_tenancy,
+            visibility: request_context.visibility,
+            history_actor: request_context.history_actor,
+        })
+    }
+
+    /// Contructs and returns a new [`DalContext`] using a default [`RequestContext`] and
+    /// the given [`Transactions`].
+    pub fn build_default_with_txns(&self, txns: Transactions) -> DalContext {
+        self.build_with_txns(RequestContext::default(), txns)
+    }
+
+    /// Contructs and returns a new [`DalContext`] using the given [`RequestContext`] and
+    /// an existing [`Transactions`].
+    pub fn build_with_txns(
+        &self,
+        request_context: RequestContext,
+        txns: Transactions,
+    ) -> DalContext {
         DalContext {
-            services_context: &self.services_context,
+            services_context: self.services_context.clone(),
             txns,
             read_tenancy: request_context.read_tenancy,
             write_tenancy: request_context.write_tenancy,
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
         }
+    }
+
+    /// Contructs and returns a new [`DalContext`] using a default [`RequestContext`].
+    pub async fn build_default(&self) -> Result<DalContext, TransactionsError> {
+        self.build(RequestContext::default()).await
+    }
+
+    /// Contructs and returns a new [`DalContext`] using a [`RequestContext`].
+    pub async fn build(
+        &self,
+        request_context: RequestContext,
+    ) -> Result<DalContext, TransactionsError> {
+        let conns = self.connections().await?;
+        self.build_with_conns(request_context, conns).await
     }
 
     /// Gets a reference to the PostgreSQL connection pool.
@@ -497,40 +620,42 @@ impl DalContextBuilder {
         &self.services_context.nats_conn
     }
 
-    /// Builds and returns a new [`TransactionsStarter`].
-    pub async fn transactions_starter(&self) -> PgPoolResult<TransactionsStarter> {
-        self.services_context.transactions_starter().await
+    /// Builds and returns a new [`Connections`].
+    pub async fn connections(&self) -> PgPoolResult<Connections> {
+        self.services_context.connections().await
     }
 }
 
 #[derive(Debug, Error)]
 pub enum TransactionsError {
+    #[error("faktory error: {0}")]
+    Faktory(#[from] faktory_async::Error),
     #[error(transparent)]
-    Pg(#[from] pg::PgError),
+    JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error(transparent)]
     Nats(#[from] nats::Error),
     #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
+    Pg(#[from] pg::PgError),
+    #[error(transparent)]
+    PgPool(#[from] pg::PgPoolError),
     #[error(transparent)]
     ReadTenancy(#[from] ReadTenancyError),
     #[error(transparent)]
-    WriteTenancy(#[from] WriteTenancyError),
+    SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
-    JobQueueProcessor(#[from] JobQueueProcessorError),
-    #[error("faktory error: {0}")]
-    Faktory(#[from] faktory_async::Error),
+    WriteTenancy(#[from] WriteTenancyError),
 }
 
 /// A type which holds ownership over connections that can be used to start transactions.
 #[derive(Debug)]
-pub struct TransactionsStarter {
+pub struct Connections {
     pg_conn: InstrumentedClient,
     nats_conn: NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
-impl TransactionsStarter {
-    /// Builds a new [`TransactionsStarter`].
+impl Connections {
+    /// Builds a new [`Connections`].
     #[must_use]
     pub fn new(
         pg_conn: InstrumentedClient,
@@ -544,11 +669,11 @@ impl TransactionsStarter {
         }
     }
 
-    /// Starts and returns the underlying transactions as a [`Transactions`].
-    pub async fn start(&mut self) -> Result<Transactions<'_>, TransactionsError> {
-        let pg_txn = self.pg_conn.transaction().await?;
+    /// Starts and returns a [`Transactions`].
+    pub async fn start_txns(self) -> Result<Transactions, TransactionsError> {
+        let pg_txn = PgTxn::create(self.pg_conn).await?;
         let nats_txn = self.nats_conn.transaction();
-        let job_processor = self.job_processor.clone();
+        let job_processor = self.job_processor;
 
         Ok(Transactions::new(pg_txn, nats_txn, job_processor))
     }
@@ -568,19 +693,19 @@ impl TransactionsStarter {
 //
 // Ideally, all of these inner transactions would be committed or rolled back together, hence the
 // API methods.
-#[derive(Debug)]
-pub struct Transactions<'a> {
+#[derive(Clone, Debug)]
+pub struct Transactions {
     /// A PostgreSQL transaction.
-    pg_txn: PgTxn<'a>,
+    pg_txn: PgTxn,
     /// A NATS transaction.
     nats_txn: NatsTxn,
-    pub job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
-impl<'a> Transactions<'a> {
+impl Transactions {
     /// Creates and returns a new `Transactions` instance.
-    pub fn new(
-        pg_txn: PgTxn<'a>,
+    fn new(
+        pg_txn: PgTxn,
         nats_txn: NatsTxn,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     ) -> Self {
@@ -592,7 +717,7 @@ impl<'a> Transactions<'a> {
     }
 
     /// Gets a reference to the PostgreSQL transaction.
-    pub fn pg(&self) -> &PgTxn<'a> {
+    pub fn pg(&self) -> &PgTxn {
         &self.pg_txn
     }
 
@@ -601,12 +726,34 @@ impl<'a> Transactions<'a> {
         &self.nats_txn
     }
 
+    /// Consumes all inner transactions, committing all changes made within them, and returns
+    /// underlying connections.
+    pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
+        let pg_conn = self.pg_txn.commit_into_conn().await?;
+        let nats_conn = self.nats_txn.commit_into_conn().await?;
+        self.job_processor.process_queue().await?;
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
+
+        Ok(conns)
+    }
+
     /// Consumes all inner transactions and committing all changes made within them.
     pub async fn commit(self) -> Result<(), TransactionsError> {
-        self.pg_txn.commit().await?;
-        self.nats_txn.commit().await?;
-        self.job_processor.process_queue().await?;
+        let _ = self.commit_into_conns().await?;
         Ok(())
+    }
+
+    /// Rolls all inner transactions back, discarding all changes made within them, and returns
+    /// underlying connections.
+    ///
+    /// This is equivalent to the transaction's `Drop` implementations, but provides any error
+    /// encountered to the caller.
+    pub async fn rollback_into_conns(self) -> Result<Connections, TransactionsError> {
+        let pg_conn = self.pg_txn.rollback_into_conn().await?;
+        let nats_conn = self.nats_txn.rollback_into_conn().await?;
+        let conns = Connections::new(pg_conn, nats_conn, self.job_processor);
+
+        Ok(conns)
     }
 
     /// Rolls all inner transactions back, discarding all changes made within them.
@@ -614,8 +761,7 @@ impl<'a> Transactions<'a> {
     /// This is equivalent to the transaction's `Drop` implementations, but provides any error
     /// encountered to the caller.
     pub async fn rollback(self) -> Result<(), TransactionsError> {
-        self.pg_txn.rollback().await?;
-        self.nats_txn.rollback().await?;
+        let _ = self.rollback_into_conns().await?;
         Ok(())
     }
 }
