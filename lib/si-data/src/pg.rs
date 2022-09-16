@@ -1975,13 +1975,19 @@ impl PgSharedTransaction {
     /// responsibility of the caller to ensure that there are no more copies before `commit` is
     /// called meaning that it's *highly likely* that `PgError::TxnCommitNotExclusive` represents a
     /// programmer error rather than a transient failure.
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn commit_into_conn(self) -> Result<InstrumentedClient, PgError> {
         let mut owned_txn = Arc::try_unwrap(self.inner)
             .map_err(|arc| PgError::TxnCommitNotExclusive(Arc::strong_count(&arc)))?
             .into_inner();
+        #[allow(clippy::expect_used)] // This expect could also be expressed with an `unreachable!`
         owned_txn
             .with_mut(|inner| inner.txn.take())
-            .expect("TODO: deal with none here")
+            .expect("txn is only consumed once with commit/rollback--this is an internal bug")
             .commit()
             .await?;
         let conn = owned_txn.into_heads().conn;
@@ -2009,13 +2015,19 @@ impl PgSharedTransaction {
     /// `rollback` is called meaning that it's *highly likely* that
     /// `PgError::TxnRollbackNotExclusive` represents a programmer error rather than a transient
     /// failure.
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn rollback_into_conn(self) -> Result<InstrumentedClient, PgError> {
         let mut owned_txn = Arc::try_unwrap(self.inner)
             .map_err(|arc| PgError::TxnRollbackNotExclusive(Arc::strong_count(&arc)))?
             .into_inner();
+        #[allow(clippy::expect_used)] // This expect could also be expressed with an `unreachable!`
         owned_txn
             .with_mut(|inner| inner.txn.take())
-            .expect("TODO: deal with none here")
+            .expect("txn is only consumed once with commit/rollback--this is an internal bug")
             .rollback()
             .await?;
         let conn = owned_txn.into_heads().conn;
@@ -2025,6 +2037,11 @@ impl PgSharedTransaction {
 
     /// Like [`tokio_postgres::Transaction::prepare`](#method.prepare-1)
     /// but uses an existing statement from the cache if possible.
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn prepare_cached(&self, query: &str) -> Result<Statement, PgError> {
         match self.inner.lock().await.borrow_txn().as_ref() {
             Some(txn) => txn.prepare_cached(query).await,
@@ -2036,6 +2053,11 @@ impl PgSharedTransaction {
 
     /// Like [`tokio_postgres::Transaction::prepare_typed`](#method.prepare_typed-1)
     /// but uses an existing statement from the cache if possible.
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn prepare_typed_cached(
         &self,
         query: &str,
@@ -2064,6 +2086,11 @@ impl PgSharedTransaction {
     /// responsibility of the caller to ensure that there are no more copies before `commit` is
     /// called meaning that it's *highly likely* that `PgError::TxnCommitNotExclusive` represents a
     /// programmer error rather than a transient failure.
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn commit(self) -> Result<(), PgError> {
         let _ = self.commit_into_conn().await?;
         Ok(())
@@ -2088,6 +2115,11 @@ impl PgSharedTransaction {
     /// `rollback` is called meaning that it's *highly likely* that
     /// `PgError::TxnRollbackNotExclusive` represents a programmer error rather than a transient
     /// failure.
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn rollback(self) -> Result<(), PgError> {
         let _ = self.rollback_into_conn().await?;
         Ok(())
@@ -2112,6 +2144,11 @@ impl PgSharedTransaction {
     /// The list of types may be smaller than the number of parameters - the types of the remaining
     /// parameters will be inferred. For example, `client.prepare_typed(query, &[])` is equivalent
     /// to `client.prepare(query)`.
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn prepare_typed(
         &self,
         query: &str,
@@ -2136,7 +2173,9 @@ impl PgSharedTransaction {
     ///
     /// # Panics
     ///
-    /// Panics if the number of parameters provided does not match the number expected.
+    /// - If the number of parameters provided does not match the number expected.
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn query(
         &self,
         statement: &str,
@@ -2163,7 +2202,9 @@ impl PgSharedTransaction {
     ///
     /// # Panics
     ///
-    /// Panics if the number of parameters provided does not match the number expected.
+    /// - If the number of parameters provided does not match the number expected.
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn query_one(
         &self,
         statement: &str,
@@ -2190,7 +2231,9 @@ impl PgSharedTransaction {
     ///
     /// # Panics
     ///
-    /// Panics if the number of parameters provided does not match the number expected.
+    /// - If the number of parameters provided does not match the number expected.
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn query_opt(
         &self,
         statement: &str,
@@ -2215,7 +2258,9 @@ impl PgSharedTransaction {
     ///
     /// # Panics
     ///
-    /// Panics if the number of parameters provided does not match the number expected.
+    /// - If the number of parameters provided does not match the number expected.
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     ///
     /// [`query`]: #method.query
     pub async fn query_raw<P, I>(
@@ -2249,7 +2294,9 @@ impl PgSharedTransaction {
     ///
     /// # Panics
     ///
-    /// Panics if the number of parameters provided does not match the number expected.
+    /// - If the number of parameters provided does not match the number expected.
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn execute(
         &self,
         statement: &str,
@@ -2274,7 +2321,9 @@ impl PgSharedTransaction {
     ///
     /// # Panics
     ///
-    /// Panics if the number of parameters provided does not match the number expected.
+    /// - If the number of parameters provided does not match the number expected.
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     ///
     /// [`execute`]: #method.execute
     pub async fn execute_raw<P, I>(&self, statement: &str, params: I) -> Result<u64, PgError>
@@ -2299,7 +2348,9 @@ impl PgSharedTransaction {
     ///
     /// # Panics
     ///
-    /// Panics if the number of parameters provided does not match the number expected.
+    /// - If the number of parameters provided does not match the number expected.
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn bind<T>(
         &self,
         statement: &T,
@@ -2317,6 +2368,11 @@ impl PgSharedTransaction {
     }
 
     /// A maximally flexible version of [`bind`].
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     ///
     /// [`bind`]: #method.bind
     pub async fn bind_raw<P, T, I>(&self, statement: &T, params: I) -> Result<Portal, PgError>
@@ -2339,6 +2395,11 @@ impl PgSharedTransaction {
     /// Unlike `query`, portals can be incrementally evaluated by limiting the number of rows
     /// returned in each call to `query_portal`. If the requested number is negative or 0, all rows
     /// will be returned.
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn query_portal(
         &self,
         portal: &Portal,
@@ -2353,6 +2414,11 @@ impl PgSharedTransaction {
     }
 
     /// The maximally flexible version of [`query_portal`].
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     ///
     /// [`query_portal`]: #method.query_portal
     pub async fn query_portal_raw(
@@ -2376,7 +2442,9 @@ impl PgSharedTransaction {
     ///
     /// # Panics
     ///
-    /// Panics if the statement contains parameters.
+    /// - If the statement contains parameters.
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn copy_in<T, U>(&self, statement: &T) -> Result<CopyInSink<U>, PgError>
     where
         T: ?Sized + ToStatement,
@@ -2397,7 +2465,9 @@ impl PgSharedTransaction {
     ///
     /// # Panics
     ///
-    /// Panics if the statement contains parameters.
+    /// - If the statement contains parameters.
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn copy_out<T>(&self, statement: &T) -> Result<CopyOutStream, PgError>
     where
         T: ?Sized + ToStatement,
@@ -2425,6 +2495,11 @@ impl PgSharedTransaction {
     /// Prepared statements should be use for any query which contains user-specified data, as they
     /// provided the functionality to safely embed that data in the request. Do not form statements
     /// via string concatenation and pass them to this method!
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn simple_query(&self, query: &str) -> Result<Vec<SimpleQueryMessage>, PgError> {
         match self.inner.lock().await.borrow_txn().as_ref() {
             Some(txn) => txn.simple_query(query).await,
@@ -2445,6 +2520,11 @@ impl PgSharedTransaction {
     /// Prepared statements should be use for any query which contains user-specified data, as they
     /// provided the functionality to safely embed that data in the request. Do not form statements
     /// via string concatenation and pass them to this method!
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn batch_execute(&self, query: &str) -> Result<(), PgError> {
         match self.inner.lock().await.borrow_txn().as_ref() {
             Some(txn) => txn.batch_execute(query).await,
@@ -2456,6 +2536,11 @@ impl PgSharedTransaction {
 
     /// Constructs a cancellation token that can later be used to request cancellation of a query
     /// running on the connection associated with this client.
+    ///
+    /// # Panics
+    ///
+    /// - If the internal transaction has already been consumed which is an internal correctness
+    ///   bug
     pub async fn cancel_token(&self) -> CancelToken {
         match self.inner.lock().await.borrow_txn().as_ref() {
             Some(txn) => txn.cancel_token(),
