@@ -140,6 +140,8 @@ const diagramData = computed(() => {
     nodes: _.map(rawDiagramData.value?.nodes, (node) => {
       let typeIcon = "docker";
       if (node.title.startsWith("kubernetes_")) typeIcon = "kubernetes";
+      else if (node.title === "aws_ami") typeIcon = "awsAmi";
+      else if (node.title === "aws_ec2") typeIcon = "awsEc2";
       // NOTE(nick): not all CoreOS objects will be prefixed with "coreos". The name
       // "CoreOS Fedora CoreOS" doesn't sounds great, right? We will probably need
       // another way to index "schema family" or something similar in the future.
