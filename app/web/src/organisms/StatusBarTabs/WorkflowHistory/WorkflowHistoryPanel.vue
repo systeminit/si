@@ -1,6 +1,6 @@
 <template>
   <div class="w-full h-full flex flex-row">
-    <div class="w-72 shrink-0 border-shade-100 h-full flex flex-col">
+    <div class="w-64 shrink-0 border-shade-100 h-full flex flex-col">
       <span
         class="h-11 border-b border-shade-100 text-lg px-4 flex items-center flex-none"
       >
@@ -9,12 +9,12 @@
 
       <!-- Sort button and its dropdown -->
       <SiBarButton
-        class="h-11 border-b border-shade-100"
+        class="h-11 border-b border-shade-100 flex-none"
         tooltip-text="Sort"
         fill-entire-width
       >
         <template #default="{ hovered, open }">
-          <div class="flex flex-row">
+          <div class="flex flex-row items-center">
             {{ selectedSort.title }}
             <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
           </div>
@@ -42,16 +42,14 @@
               ? 'bg-action-500'
               : 'hover:bg-black'
           "
-          class="py-2 pl-4 pr-3 cursor-pointer flex flex-row items-center"
+          class="py-2 pl-4 pr-3 cursor-pointer flex flex-row items-center leading-tight"
           @click="selectWorkflow(workflow)"
         >
           <WorkflowStatusIcon :status="workflow.status" />
           <span class="truncate mr-3 whitespace-nowrap">
             {{ workflow.title }}
           </span>
-          <span
-            class="text-xs text-neutral-400 shrink truncate whitespace-nowrap ml-auto"
-          >
+          <span class="text-xs text-neutral-400 whitespace-nowrap ml-auto">
             <Timestamp
               :date="new Date(workflow.created_at)"
               size="mini"
@@ -90,24 +88,13 @@
         <div
           class="h-fit max-h-full lg:basis-1/2 grow overflow-hidden flex flex-row p-1"
         >
-          <div class="w-full shrink grow bg-neutral-800 rounded flex flex-col">
-            <div class="flex-none h-10 border-b p-2 border-neutral-600">
-              Resources Impacted
-            </div>
-            <div class="w-full grow shrink overflow-auto">
-              <ul class="list-disc list-inside p-2">
-                <li>Resource 0</li>
-                <li>Resource 1</li>
-                <li>Resource 2</li>
-                <li>Resource 3</li>
-                <li>Resource 4</li>
-                <li>Resource 5</li>
-                <li>Resource 6</li>
-                <li>Resource 7</li>
-                <li>Resource 8</li>
-                <li>Resource 9</li>
-              </ul>
-            </div>
+          <div
+            class="w-full shrink grow bg-neutral-800 rounded flex flex-col overflow-auto"
+          >
+            <WorkflowResources
+              force-theme="dark"
+              :components="componentsList"
+            />
           </div>
         </div>
       </div>
@@ -138,6 +125,10 @@ import {
 } from "@/service/workflow/history";
 import { WorkflowRunInfo } from "@/service/workflow/info";
 import Timestamp from "@/ui-lib/Timestamp.vue";
+import WorkflowResources from "@/organisms/WorkflowRunner/WorkflowResources.vue";
+import { QualificationService } from "@/service/qualification";
+import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
+import { ConfirmationService } from "@/service/confirmation";
 
 export interface SortOption {
   value: string;
@@ -192,4 +183,20 @@ const selectedWorkflowInfo = refFrom<WorkflowRunInfo | null>(
     }),
   ),
 );
+
+const confirmationsSummary = ConfirmationService.useConfirmationSummary();
+
+const componentsList = computed((): ComponentListItem[] => {
+  if (confirmationsSummary.value === undefined) return [];
+  const list: ComponentListItem[] = [];
+  for (const component of confirmationsSummary.value.components) {
+    list.push({
+      id: component.id,
+      name: component.name,
+      type: component.type,
+      health: component.health,
+    });
+  }
+  return list;
+});
 </script>

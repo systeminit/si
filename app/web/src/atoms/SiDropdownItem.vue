@@ -3,14 +3,14 @@
     <a
       :class="[
         active ? 'bg-action-500' : '',
-        'flex flex-row relative items-center whitespace-nowrap p-2 cursor-pointer',
+        'h-10 flex flex-row relative items-center whitespace-nowrap p-2 cursor-pointer',
         classes,
       ]"
       @click="emit('select')"
     >
       <div class="w-5 mr-2 flex-none" :class="showPrefix ? '' : 'hidden'">
         <slot name="prefix">
-          <Icon v-if="checked" name="check" />
+          <Icon v-if="checked" name="check" size="sm" />
         </slot>
       </div>
       <div class="min-w-0 text-ellipsis overflow-hidden">

@@ -1,7 +1,6 @@
 <template>
   <StatusBarTab :selected="selected">
-    <template #icon><WorkflowStatusIcon status="success" size="lg" /></template>
-    <!-- TODO(wendy) - replace fixed icon with updating one -->
+    <template #icon><Icon name="clock" size="lg" /></template>
     <template #name>Workflow History</template>
     <template #summary></template>
   </StatusBarTab>
@@ -9,7 +8,7 @@
 
 <script lang="ts" setup>
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
-import WorkflowStatusIcon from "@/molecules/WorkflowStatusIcon.vue";
+import Icon from "../../../ui-lib/Icon.vue";
 
 defineProps({
   selected: { type: Boolean, required: true },

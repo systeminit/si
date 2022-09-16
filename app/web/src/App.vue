@@ -29,7 +29,7 @@ useHead(
       // add some base classes we need these type classes set for capsize plugin to work throughout
       // and add dark mode style/class
       class: tw`font-sans text-base leading-none ${themeValue.value}`,
-      style: `{ color-scheme: ${themeValue.value}; }`,
+      style: `color-scheme: ${themeValue.value};`,
     },
     // set up title template and a default
     titleTemplate: "%s | System Init",

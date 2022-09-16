@@ -1,61 +1,61 @@
 <template>
-  <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
-    <SiPanel
-      remember-size-key="workflow-left"
-      side="left"
-      size-classes="w-96 flex-none"
-    >
-      <WorkflowPicker
-        :list="list"
-        :selected-id="selected?.id ?? null"
-        @selected="select"
-      />
-    </SiPanel>
-    <div
-      class="grow overflow-hidden h-full bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold px-2 pt-2 flex flex-col"
-    >
-      <WorkflowResolver v-if="selected" :selected="selected">
-        <template #runButton>
-          <VButton
-            icon="play"
-            label="Run"
-            size="lg"
-            class="w-48"
-            button-type="success"
-            @click="runWorkflow()"
-          />
-        </template>
-      </WorkflowResolver>
-
-      <div
-        v-else
-        class="p-2 text-center text-neutral-400 dark:text-neutral-300"
-      >
-        Select a workflow to resolve.
-      </div>
-    </div>
-    <SiPanel
-      remember-size-key="workflow-right"
-      side="right"
-      size-classes="w-96 flex-none"
-    >
-      <div class="p-2 w-full h-full overflow-hidden">
-        <WorkflowOutput
-          v-if="logs"
-          :logs="logs"
-          :status="currentWorkflowStatus"
+  <SiPanel remember-size-key="workflow-left" side="left" :min-size="220">
+    <WorkflowPicker
+      :list="workflowList"
+      :selected-id="selected?.id ?? null"
+      @selected="select"
+    />
+  </SiPanel>
+  <div
+    class="grow overflow-hidden h-full bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold px-2 pt-2 flex flex-col"
+  >
+    <WorkflowResolver v-if="selected" :selected="selected">
+      <template #runButton>
+        <VButton
+          icon="play"
+          label="Run"
+          size="lg"
+          class="w-48"
+          button-type="success"
+          @click="runWorkflow()"
         />
-        <div v-else class="p-2 text-neutral-400 dark:text-neutral-300">
-          When you run a workflow, its output will display here.
-        </div>
-      </div>
-    </SiPanel>
+      </template>
+    </WorkflowResolver>
+
+    <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
+      Select a workflow to resolve.
+    </div>
   </div>
+  <SiPanel remember-size-key="workflow-right" side="right">
+    <SiTabGroup v-if="logs" :selected-index="0">
+      <template #tabs>
+        <SiTabHeader>Output</SiTabHeader>
+        <SiTabHeader>Resources</SiTabHeader>
+      </template>
+      <template #panels>
+        <TabPanel class="h-full p-xs overflow-hidden">
+          <WorkflowOutput :logs="logs" :status="currentWorkflowStatus" />
+        </TabPanel>
+        <TabPanel>
+          <WorkflowResources :components="componentsList" />
+        </TabPanel>
+      </template>
+    </SiTabGroup>
+
+    <div v-else class="p-4 text-neutral-400 dark:text-neutral-300">
+      {{
+        selected
+          ? `When you run ${selected.title}, the output will display here.`
+          : "When you run a workflow, the output will display here."
+      }}
+    </div>
+  </SiPanel>
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { refFrom, untilUnmounted } from "vuse-rx";
+import { TabPanel } from "@headlessui/vue";
 import WorkflowPicker from "@/organisms/WorkflowRunner/WorkflowPicker.vue";
 import WorkflowResolver from "@/organisms/WorkflowRunner/WorkflowResolver.vue";
 import { WorkflowService } from "@/service/workflow";
@@ -67,12 +67,21 @@ import {
 import VButton from "@/molecules/VButton.vue";
 import SiPanel from "@/atoms/SiPanel.vue";
 import { WorkflowStatus } from "@/molecules/WorkflowStatusIcon.vue";
+import SiTabGroup from "@/molecules/SiTabGroup.vue";
+import SiTabHeader from "@/molecules/SiTabHeader.vue";
+import { ConfirmationService } from "@/service/confirmation";
 import WorkflowOutput from "../WorkflowRunner/WorkflowOutput.vue";
+import WorkflowResources from "../WorkflowRunner/WorkflowResources.vue";
+import { ComponentListItem } from "../StatusBar/StatusBarTabPanelComponentList.vue";
 
-const selected = ref<{ id: number, componentId: number | null } | null>(null);
+const selected = ref<{
+  id: number;
+  title: string;
+  componentId: number | null;
+} | null>(null);
 const select = (w: ListedWorkflowView, componentId: number | null) => {
   logs.value = null;
-  selected.value = { id: w.id, componentId };
+  selected.value = { id: w.id, title: w.title, componentId };
 };
 
 const logs = ref<string[] | null>(null);
@@ -98,5 +107,21 @@ eventCommandOutput$.pipe(untilUnmounted).subscribe((command) => {
   logs.value.push(command.payload.data.output);
 });
 
-const list = refFrom<ListWorkflowsResponse>(WorkflowService.list(), []);
+const workflowList = refFrom<ListWorkflowsResponse>(WorkflowService.list(), []);
+
+const confirmationsSummary = ConfirmationService.useConfirmationSummary();
+
+const componentsList = computed((): ComponentListItem[] => {
+  if (confirmationsSummary.value === undefined) return [];
+  const list: ComponentListItem[] = [];
+  for (const component of confirmationsSummary.value.components) {
+    list.push({
+      id: component.id,
+      name: component.name,
+      type: component.type,
+      health: component.health,
+    });
+  }
+  return list;
+});
 </script>

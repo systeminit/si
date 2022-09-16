@@ -1,77 +1,84 @@
 <template>
-  <div :class="classes">
+  <div
+    :class="
+      clsx(
+        'si-panel-resizer',
+        'z-30 absolute',
+        panelIsVertical
+          ? ['h-full cursor-col-resize', isHandleVisible ? 'w-1' : 'w-0.5']
+          : ['w-full cursor-row-resize', isHandleVisible ? 'h-1' : 'h-0.5'],
+        isHandleVisible
+          ? 'bg-neutral-400 dark:bg-neutral-500'
+          : 'bg-neutral-300 dark:bg-neutral-600',
+        {
+          left: 'left-full',
+          right: 'right-full',
+          top: 'top-full',
+          bottom: 'bottom-full',
+        }[panelSide],
+      )
+    "
+  >
     <div
-      :class="hoverClasses"
-      @mouseover="showHandle"
-      @mouseleave="hideHandle"
-      @mousedown="mouseDown"
-      @dblclick="dblClick"
+      :class="
+        clsx(
+          'si-panel-resizer__hover-area',
+          'absolute z-50',
+          showResizeHoverAreas
+            ? 'bg-destructive-500 opacity-25'
+            : 'bg-transparent',
+          panelIsVertical
+            ? ['h-full', isHandleVisible ? 'w-8' : 'w-1']
+            : ['w-full', isHandleVisible ? 'h-8' : 'h-1'],
+          {
+            left: 'left-0.5 translate-x-[-50%]',
+            right: 'right-0.5 translate-x-[50%]',
+            top: 'top-0.5 translate-y-[-50%]',
+            bottom: 'bottom-0.5 translate-y-[50%]',
+          }[panelSide],
+        )
+      "
+      @mouseover="isHovered = true"
+      @mouseleave="isHovered = false"
+      @mousedown="onMouseDown"
+      @dblclick="onDblClick"
     />
-    <div ref="handleRef" :class="handleClasses">
+    <div
+      ref="handleRef"
+      :class="
+        clsx(
+          'absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%]',
+          'w-3 h-16 rounded-full',
+          'bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-900',
+          !panelIsVertical && 'rotate-90',
+          !isHandleVisible && 'hidden',
+        )
+      "
+    >
       <Icon
-        :name="isVertical ? 'dots-horizontal' : 'dots-vertical'"
-        :class="iconClasses"
+        name="dots-vertical"
+        class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] w-6 text-neutral-400 dark:text-neutral-500"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, PropType, ref } from "vue";
+import clsx from "clsx";
 import Icon from "@/ui-lib/Icon.vue";
 
-const props = withDefaults(
-  defineProps<{
-    panelSide: "left" | "right" | "top" | "bottom";
-    showResizeHoverAreas?: boolean;
-  }>(),
-  {
-    showResizeHoverAreas: false,
+const props = defineProps({
+  panelSide: {
+    type: String as PropType<"left" | "right" | "top" | "bottom">,
+    required: true,
   },
-);
-
-const isVertical = computed(() => {
-  return props.panelSide === "top" || props.panelSide === "bottom";
+  showResizeHoverAreas: { type: Boolean },
 });
 
-const classes = computed(() => {
-  const everyDirection = "bg-neutral-300 dark:bg-neutral-600 z-30 absolute ";
-
-  const horizontal = "w-0.5 h-full cursor-col-resize ";
-
-  const vertical = "h-0.5 w-full cursor-row-resize ";
-
-  const side = { left: "right-0", right: "", top: "bottom-0", bottom: "" }[
-    props.panelSide
-  ];
-
-  return everyDirection + (isVertical.value ? vertical : horizontal) + side;
+const panelIsVertical = computed(() => {
+  return props.panelSide === "left" || props.panelSide === "right";
 });
-
-const hoverClasses = computed(() => {
-  const c = `absolute left-1/2 top-1/2 z-50 ${
-    props.showResizeHoverAreas
-      ? "bg-destructive-500 opacity-25"
-      : "bg-transparent"
-  }`;
-  if (props.panelSide === "bottom")
-    return `${c} w-full h-6 translate-x-[-50%] translate-y-[-100%]`;
-  else if (props.panelSide === "top")
-    return `${c} w-full h-6 translate-x-[-50%]`;
-  else if (props.panelSide === "left")
-    return `${c} w-6 h-full translate-y-[-50%]`;
-  return `${c} w-6 h-full translate-y-[-50%] translate-x-[-25%]`;
-});
-
-const handleClasses = computed(() => {
-  const c =
-    "absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] hidden rounded-full bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-900 text-xl";
-  if (isVertical.value) return `${c} h-3 w-16`;
-  return `${c} w-3 h-16`;
-});
-
-const iconClasses =
-  "absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] w-6 text-neutral-400 dark:text-neutral-500";
 
 const emit = defineEmits<{
   (e: "resize-start"): void;
@@ -80,51 +87,41 @@ const emit = defineEmits<{
   (e: "resize-reset"): void;
 }>();
 
-const selected = ref(false);
-const handleRef = ref();
-const handleShow = ref(false);
 const dragStartMouseX = ref(0);
 const dragStartMouseY = ref(0);
+const isHovered = ref(false);
+const isResizing = ref(false);
 
-const showHandle = () => {
-  handleShow.value = true;
-  handleRef.value.classList.remove("hidden");
-};
+const isHandleVisible = computed(() => isHovered.value || isResizing.value);
 
-const hideHandle = () => {
-  handleShow.value = false;
-  if (!selected.value) handleRef.value.classList.add("hidden");
-};
-
-const mouseDown = (e: MouseEvent) => {
-  selected.value = true;
+const onMouseDown = (e: MouseEvent) => {
+  isResizing.value = true;
   dragStartMouseX.value = e.clientX;
   dragStartMouseY.value = e.clientY;
-  window.addEventListener("mousemove", mouseMove);
-  window.addEventListener("mouseup", mouseUp);
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("mouseup", onMouseUp);
   emit("resize-start");
 };
 
-const mouseMove = (e: MouseEvent) => {
+const onMouseMove = (e: MouseEvent) => {
   const dx = dragStartMouseX.value - e.clientX;
   const dy = dragStartMouseY.value - e.clientY;
-  emit("resize-move", isVertical.value ? dy : dx);
+  emit("resize-move", panelIsVertical.value ? dx : dy);
 };
 
-const mouseUp = () => {
-  selected.value = false;
-  window.removeEventListener("mousemove", mouseMove);
-  window.removeEventListener("mouseup", mouseUp);
+const onMouseUp = () => {
+  isResizing.value = false;
+  window.removeEventListener("mousemove", onMouseMove);
+  window.removeEventListener("mouseup", onMouseUp);
   emit("resize-end");
-  if (!handleShow.value) hideHandle();
 };
 
-const dblClick = () => {
+const onDblClick = () => {
   emit("resize-reset");
 };
 
 onBeforeUnmount(() => {
-  window.removeEventListener("mousemove", mouseMove);
-  window.removeEventListener("mouseup", mouseUp);
+  window.removeEventListener("mousemove", onMouseMove);
+  window.removeEventListener("mouseup", onMouseUp);
 });
 </script>
