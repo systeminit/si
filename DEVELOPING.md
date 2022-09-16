@@ -114,7 +114,16 @@ This will ensure that our database is running, our NATS server is running, and f
 Now, wait for the `postgres` database container to be running and ready to receive incoming client connection requests.
 If it is not ready, `sdf` database migration will fail.
 
-Once the database is ready, you can run `veritech`.
+Once the database is ready, we start running the "homemade" components of our stack.
+
+> **Before We Start: How Will I Know That Each Component Is Ready?**
+>
+> For backend services like `veritech` and `sdf`, there will usually be an `INFO`-level log indicating that the
+> webserver has bound to a port and is ready to receive messages.
+> This may be subject to change (e.g. underlying library is upgraded to a new major version and the startup sequence
+> changes) and will vary from component to component.
+
+First, we run `veritech`.
 
 ```bash
 make run//bin/veritech
@@ -142,7 +151,7 @@ This will run the web application, which you can access by navigating to http://
 Now, you have SI running!
 
 
-> **NOTE: CLion run configurations**
+> **Using CLion Run Configurations Instead of Terminal Panes**
 >
 > This repository contains CLion run configurations for most of these targets, in addition to a `Run SI` compound target
 > for running all the targets at once. They should be listed on the run menu automatically and are called
@@ -383,10 +392,7 @@ make FORCE=true test//lib/sdf
 To ensure your code will pass CI, you can run the exact same code that the CI servers themselves will run.
 
 ```bash
-(
-  make down
-  make CI=true ci
-)
+CI=true make down ci
 ```
 
 This will evaluate the delta between your current branch and `main`, and run only the tests and checks
@@ -452,49 +458,3 @@ async fn your_dal_integration_test(ctx: DalContext) {
 
 With these changes, you will be able to commit transactions and see them in the
 database.
-
-## Troubleshooting
-
-If re-running the aforementioned [bootstrap script](./scripts/bootstrap.sh) does not solve your issue
-and you are certain that `main` is stable, this section may help with troubleshooting and debugging.
-
-### Wiping the Slate Clean
-
-Having trouble running SI or its tests? Want to go back to the beginning and
-wipe the slate clean? Keeping in mind that this will erase your current
-development database and clean all build artifacts, you can try this:
-
-```bash
-make clean prepare build
-```
-
-Where:
-
-- `clean` removes all Cargo (Rust) build artifacts, and each TypeScript-based
-  component will remove its `node_modules/` and associated build artifacts
-- `prepare` brings down the supporting services running in a Docker Compose
-  deployment (i.e. the PostgreSQL database, NATS, and Faktory services), and
-  then re-deploys them from scratch
-- `build` builds all components, including apps, binaries, and
-  libraries/packages
-
-### Build and Runtime Errors on aarch64 (arm64)
-
-For `aarch64 (arm64)` debugging, please refer to the aforementioned **Notes on aarch64 (arm64)** section.
-
-### Hitting File Descriptor Limits in Integration Tests
-
-Running all [dal integration tests](./lib/dal/tests/integration.rs) can result in hitting the file descriptor limit.
-You may see NATS, Postgres and general failures containing the following message: "too many open files".
-If this happens, you are likley hitting the file descriptors limit.
-
-You can see all `ulimit` values by executing `ulimit -a`.
-For your specific OS, please refer to its official documentation on how to increase the file descriptor limit
-to a reasonable, stable, and likely-much-higher value.
-
-> #### Setting the Limit with Persistence on macOS
->
-> While we recommend referring to the official documentation when possible, sometimes, it does not
-> exist!
-> [This guide](https://becomethesolution.com/blogs/mac/increase-open-file-descriptor-limits-fix-too-many-open-files-errors-mac-os-x-10-14)
-> from an unofficial source may help persist file descriptor limit changes on macOS.

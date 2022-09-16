@@ -1,5 +1,5 @@
 use crate::dal::test;
-use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
+use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
@@ -7,7 +7,7 @@ use pretty_assertions_sorted::assert_eq_sorted;
 #[ignore]
 #[test]
 async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
-    let mut harness = BuiltinsHarness::new();
+    let mut harness = SchemaBuiltinsTestHarness::new();
     let tail_fedora_payload = harness
         .create_component(ctx, "fedora", Builtin::DockerImage)
         .await;

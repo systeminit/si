@@ -112,7 +112,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
         .await?;
         if let MigrationMode::RunAndQuit = config.migration_mode() {
             info!(
-                "migration mode is {:?}, shutting down",
+                "migration mode is {}, shutting down",
                 config.migration_mode()
             );
             return Ok(());

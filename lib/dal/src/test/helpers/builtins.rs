@@ -1,5 +1,7 @@
-//! This module provides [`BuiltinsHarness`], for use in integration tests related to
-//! providers and builtin [`Schemas`](crate::Schema) leveraging them.
+//! This module provides a harness for use in integration tests related to
+//! providers and builtin [`Schemas`](crate::Schema) leveraging them. It will
+//! cache relevant information to reduce the total number of queries to the
+//! database during a test.
 
 use std::collections::HashMap;
 
@@ -50,11 +52,11 @@ type PropMap = HashMap<&'static str, PropId>;
 /// [`Schemas`](crate::Schema). All fields are private since they are purely used to reduce the
 /// number of total database queries.
 #[derive(Default)]
-pub struct BuiltinsHarness {
+pub struct SchemaBuiltinsTestHarness {
     builtins: HashMap<Builtin, BuiltinMetadata>,
 }
 
-impl BuiltinsHarness {
+impl SchemaBuiltinsTestHarness {
     pub fn new() -> Self {
         Self::default()
     }
@@ -119,6 +121,35 @@ impl BuiltinsHarness {
                     .await
                     .expect("could not find prop and/or parent");
             prop_map.insert("/root/si/metadata/name", metadata_name_prop_id);
+        } else if let Builtin::DockerImage = builtin {
+            let (image_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "image", "domain", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            prop_map.insert("/root/domain/image", image_prop_id);
+            let (exposed_ports_prop_id, _) = find_prop_and_parent_by_name(
+                ctx,
+                "ExposedPorts",
+                "domain",
+                None,
+                schema_variant_id,
+            )
+            .await
+            .expect("could not find prop and/or parent");
+            prop_map.insert("/root/domain/exposed-ports", exposed_ports_prop_id);
+            let (exposed_port_prop_id, _) = find_prop_and_parent_by_name(
+                ctx,
+                "ExposedPort",
+                "ExposedPorts",
+                None,
+                schema_variant_id,
+            )
+            .await
+            .expect("could not find prop and/or parent");
+            prop_map.insert(
+                "/root/domain/exposed-ports/exposed-port",
+                exposed_port_prop_id,
+            );
         } else if let Builtin::CoreOsButane = builtin {
             let (variant_prop_id, _) =
                 find_prop_and_parent_by_name(ctx, "variant", "domain", None, schema_variant_id)

@@ -1,12 +1,12 @@
 use dal::node_menu::GenerateMenuItem;
-use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
+use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::{DalContext, DiagramKind};
 
 use crate::dal::test;
 
 #[test]
 async fn get_node_menu(ctx: &DalContext) {
-    let mut harness = BuiltinsHarness::new();
+    let mut harness = SchemaBuiltinsTestHarness::new();
     let _docker_image_payload = harness
         .create_component(ctx, "valorant", Builtin::DockerImage)
         .await;

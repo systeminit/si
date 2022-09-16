@@ -1,7 +1,9 @@
 use crate::dal::test;
-use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
-
-use dal::{Component, DalContext, StandardModel, SystemId};
+use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
+use dal::{
+    Component, ComponentId, DalContext, Edge, ExternalProvider, InternalProvider, StandardModel,
+    SystemId,
+};
 use pretty_assertions_sorted::assert_eq_sorted;
 
 const SYSTEMD_UNIT_FILE_PAYLOAD: &str = "\
@@ -20,32 +22,19 @@ ExecStart=/bin/podman run --name whiskers1 --publish 80:80 docker.io/systeminit/
 [Install]
 WantedBy=multi-user.target";
 
-// NOTE(nick): this was nasty inline. Trust me, you want this file. Doesn't matter where, you
-// absolutely want it though.
-const EXPECTED_IGNITION_OUTPUT: &str = include_str!("expected.ign");
+// NOTE(nick): these were nasty inline. Trust me, you want these files. Doesn't matter where, you
+// absolutely want them though.
+const EXPECTED_CONNECTED_IGNITION_OUTPUT: &str = include_str!("ignition/connected.ign");
+const EXPECTED_DISCRETE_IGNITION_OUTPUT: &str = include_str!("ignition/discrete.ign");
 
 #[test]
 async fn butane_is_valid_ignition(ctx: &DalContext) {
-    let mut harness = BuiltinsHarness::new();
+    let mut harness = SchemaBuiltinsTestHarness::new();
     let butane_payload = harness
         .create_component(ctx, "butane", Builtin::CoreOsButane)
         .await;
 
     // "Fill out" the entire component.
-    butane_payload
-        .update_attribute_value_for_prop_name(
-            ctx,
-            "/root/si/domain/variant",
-            Some(serde_json::json!["fcos"]),
-        )
-        .await;
-    butane_payload
-        .update_attribute_value_for_prop_name(
-            ctx,
-            "/root/si/domain/version",
-            Some(serde_json::json!["1.4.0"]),
-        )
-        .await;
     let element_attribute_value_id = butane_payload
         .insert_array_object_element(
             ctx,
@@ -120,7 +109,134 @@ async fn butane_is_valid_ignition(ctx: &DalContext) {
     );
 
     // Check the ignition qualification.
-    let component = Component::get_by_id(ctx, &butane_payload.component_id)
+    let ignition = get_ignition_from_qualification_output(ctx, &butane_payload.component_id).await;
+    assert_eq_sorted!(
+        &ignition,                         // actual
+        EXPECTED_DISCRETE_IGNITION_OUTPUT  // expected
+    );
+}
+
+#[ignore]
+#[test]
+async fn connected_butane_is_valid_ignition(ctx: &DalContext) {
+    let mut harness = SchemaBuiltinsTestHarness::new();
+    let butane_payload = harness
+        .create_component(ctx, "butane", Builtin::CoreOsButane)
+        .await;
+    let alpine_payload = harness
+        .create_component(ctx, "alpine", Builtin::DockerImage)
+        .await;
+    let nginx_payload = harness
+        .create_component(ctx, "nginx", Builtin::DockerImage)
+        .await;
+
+    // Collect the providers needed to perform the two connections from each docker image to butane.
+    let alpine_provider = ExternalProvider::find_for_schema_variant_and_name(
+        ctx,
+        alpine_payload.schema_variant_id,
+        "docker_image",
+    )
+    .await
+    .expect("cannot find external provider")
+    .expect("external provider not found");
+    let nginx_provider = ExternalProvider::find_for_schema_variant_and_name(
+        ctx,
+        nginx_payload.schema_variant_id,
+        "docker_image",
+    )
+    .await
+    .expect("cannot find external provider")
+    .expect("external provider not found");
+    let butane_provider = InternalProvider::find_explicit_for_schema_variant_and_name(
+        ctx,
+        butane_payload.schema_variant_id,
+        "docker_image",
+    )
+    .await
+    .expect("cannot find explicit internal provider")
+    .expect("explicit internal provider not found");
+
+    // Perform the two connections.
+    Edge::connect_providers_for_components(
+        ctx,
+        "identity",
+        *butane_provider.id(),
+        butane_payload.component_id,
+        *alpine_provider.id(),
+        alpine_payload.component_id,
+    )
+    .await
+    .expect("could not connect providers for components");
+    Edge::connect_providers_for_components(
+        ctx,
+        "identity",
+        *butane_provider.id(),
+        butane_payload.component_id,
+        *nginx_provider.id(),
+        nginx_payload.component_id,
+    )
+    .await
+    .expect("could not connect providers for components");
+
+    // Set values required for butane.
+    alpine_payload
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/si/name",
+            Some(serde_json::json!["alpine8675"]),
+        )
+        .await;
+    let alpine_image_value =
+        serde_json::to_value("docker.io/library/alpine").expect("could not convert to value");
+    alpine_payload
+        .update_attribute_value_for_prop_name(ctx, "/root/domain/image", Some(alpine_image_value))
+        .await;
+    nginx_payload
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/si/name",
+            Some(serde_json::json!["nginx309"]),
+        )
+        .await;
+    let nginx_image_value =
+        serde_json::to_value("docker.io/library/nginx").expect("could not convert to value");
+    nginx_payload
+        .update_attribute_value_for_prop_name(ctx, "/root/domain/image", Some(nginx_image_value))
+        .await;
+    let nginx_port80_value = serde_json::to_value("80/tcp").expect("could not convert to value");
+    nginx_payload
+        .insert_array_primitive_element(
+            ctx,
+            "/root/domain/exposed-ports",
+            "/root/domain/exposed-ports/exposed-port",
+            nginx_port80_value,
+        )
+        .await;
+    let nginx_port443_value = serde_json::to_value("443/tcp").expect("could not convert to value");
+    nginx_payload
+        .insert_array_primitive_element(
+            ctx,
+            "/root/domain/exposed-ports",
+            "/root/domain/exposed-ports/exposed-port",
+            nginx_port443_value,
+        )
+        .await;
+
+    // Check the ignition qualification.
+    let ignition = get_ignition_from_qualification_output(ctx, &butane_payload.component_id).await;
+    assert_eq_sorted!(
+        &ignition,                          // actual
+        EXPECTED_CONNECTED_IGNITION_OUTPUT  // expected
+    );
+}
+
+/// Combs through the qualifications for a Butane [Component](crate::Component) and returns the
+/// Ignition output from the relevant qualification.
+async fn get_ignition_from_qualification_output(
+    ctx: &DalContext,
+    butane_component_id: &ComponentId,
+) -> String {
+    let component = Component::get_by_id(ctx, butane_component_id)
         .await
         .expect("could not find component by id")
         .expect("component not found by id");
@@ -158,13 +274,10 @@ async fn butane_is_valid_ignition(ctx: &DalContext) {
         })
         .collect::<Vec<String>>();
 
-    // Perform final assertions based on the output.
-    let line = filtered_stream_view_lines
+    // Return the ignition.
+    let ignition = filtered_stream_view_lines
         .pop()
         .expect("filtered streams are empty");
     assert!(filtered_stream_view_lines.is_empty());
-    assert_eq_sorted!(
-        &line,                    // actual
-        EXPECTED_IGNITION_OUTPUT  // expected
-    );
+    ignition
 }

@@ -1,14 +1,15 @@
+use crate::attribute::context::AttributeContextBuilder;
 use crate::{
     component::ComponentKind,
     func::{
-        backend::js_attribute::FuncBackendJsAttributeArgs,
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
-    AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsResult, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, Prop, PropError, PropId, PropKind,
-    Schema, SchemaKind, StandardModel,
+    AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext, Func,
+    FuncError, FuncId, Prop, PropError, PropId, PropKind, Schema, SchemaId, SchemaKind,
+    SchemaVariantId, StandardModel,
 };
+use serde_json::Value;
 
 mod coreos;
 mod docker;
@@ -74,77 +75,6 @@ impl BuiltinSchemaHelpers {
         Ok(prop)
     }
 
-    pub async fn create_string_prop_with_default(
-        ctx: &DalContext,
-        prop_name: &str,
-        default_string: String,
-        parent_prop_id: Option<PropId>,
-        _base_attribute_read_context: AttributeReadContext,
-    ) -> BuiltinsResult<Prop> {
-        let prop =
-            Self::create_prop(ctx, prop_name, PropKind::String, parent_prop_id, None).await?;
-
-        let mut func = Func::new(
-            ctx,
-            &format!("si:setDefaultToProp{:?}", prop.id()),
-            FuncBackendKind::JsAttribute,
-            FuncBackendResponseType::String,
-        )
-        .await
-        .expect("cannot create func");
-        func.set_handler(ctx, Some("defaultValue")).await?;
-        func.set_code_base64(
-            ctx,
-            Some(base64::encode(&format!(
-                "function defaultValue(component) {{ return \"{default_string}\"; }}"
-            ))),
-        )
-        .await?;
-
-        let (func_binding, func_binding_return_value) = FuncBinding::find_or_create_and_execute(
-            ctx,
-            // The default run doesn't have useful information, but it's just a reference for future reruns
-            serde_json::to_value(FuncBackendJsAttributeArgs {
-                component: veritech::ResolverFunctionComponent {
-                    data: veritech::ComponentView {
-                        properties: serde_json::json!({}),
-                        system: None,
-                        kind: veritech::ComponentKind::Standard,
-                        resources: vec![],
-                    },
-                    parents: vec![],
-                },
-            })?,
-            *func.id(),
-        )
-        .await?;
-
-        let attribute_value_context = AttributeReadContext {
-            prop_id: Some(*prop.id()),
-            ..AttributeReadContext::default()
-        };
-
-        Prop::create_default_prototypes_and_values(ctx, *prop.id()).await?;
-
-        let mut attribute_value = AttributeValue::find_for_context(ctx, attribute_value_context)
-            .await?
-            .ok_or(AttributeValueError::Missing)?;
-        attribute_value
-            .set_func_binding_id(ctx, *func_binding.id())
-            .await?;
-        attribute_value
-            .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
-            .await?;
-
-        let mut attribute_prototype = attribute_value
-            .attribute_prototype(ctx)
-            .await?
-            .ok_or(AttributeValueError::MissingAttributePrototype)?;
-        attribute_prototype.set_func_id(ctx, *func.id()).await?;
-
-        Ok(prop)
-    }
-
     /// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
     pub async fn setup_identity_func(
         ctx: &DalContext,
@@ -185,5 +115,81 @@ impl BuiltinSchemaHelpers {
             }
         }
         Err(PropError::ExpectedChildNotFound(child_prop_name.to_string()).into())
+    }
+
+    /// Set a default [`Value`](serde_json::Value) for a given [`Prop`](crate::Prop) in a
+    /// [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant).
+    ///
+    /// **Requirements:**
+    /// - The [`Prop's`](crate::Prop) [`kind`](crate::PropKind) must be
+    ///   [`String`](crate::PropKind::String), [`Boolean`](crate::PropKind::Boolean), or
+    ///   [`Integer`](crate::PropKind::Integer).
+    /// - The parent (and entire [`Prop`](crate::Prop) lineage) must have all have their
+    ///   [`kind`](crate::PropKind) be [`Object`](crate::PropKind::Object).
+    ///
+    /// This function should only be used _after_
+    /// [`SchemaVariant::finalize()`](crate::SchemaVariant::finalize()) within a builtin migration.
+    pub async fn set_default_value_for_prop(
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+        value: Value,
+    ) -> BuiltinsResult<()> {
+        let prop = Prop::get_by_id(ctx, &prop_id)
+            .await?
+            .ok_or(BuiltinsError::PropNotFound(prop_id))?;
+        match prop.kind() {
+            PropKind::String | PropKind::Boolean | PropKind::Integer => {
+                // Every other field must be set to unset (-1) and cannot be "any".
+                let base_attribute_read_context = AttributeReadContext {
+                    prop_id: Some(prop_id),
+                    schema_id: Some(schema_id),
+                    schema_variant_id: Some(schema_variant_id),
+                    ..AttributeReadContext::default()
+                };
+
+                let attribute_value =
+                    AttributeValue::find_for_context(ctx, base_attribute_read_context)
+                        .await?
+                        .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                            base_attribute_read_context,
+                        ))?;
+                let parent_attribute_value = attribute_value
+                    .parent_attribute_value(ctx)
+                    .await?
+                    .ok_or_else(|| {
+                        BuiltinsError::AttributeValueDoesNotHaveParent(*attribute_value.id())
+                    })?;
+
+                // Ensure the parent project is an object. Technically, we should ensure that every
+                // prop in entire lineage is of kind object, but this should (hopefully) suffice
+                // for now. Ideally, this would be handled in a query.
+                let parent_prop = Prop::get_by_id(ctx, &parent_attribute_value.context.prop_id())
+                    .await?
+                    .ok_or_else(|| {
+                        BuiltinsError::PropNotFound(parent_attribute_value.context.prop_id())
+                    })?;
+                if parent_prop.kind() != &PropKind::Object {
+                    return Err(BuiltinsError::ParentPropIsNotObjectForPropWithDefaultValue(
+                        *parent_prop.kind(),
+                    ));
+                }
+
+                let context =
+                    AttributeContextBuilder::from(base_attribute_read_context).to_context()?;
+                AttributeValue::update_for_context(
+                    ctx,
+                    *attribute_value.id(),
+                    Some(*parent_attribute_value.id()),
+                    context,
+                    Some(value),
+                    None,
+                )
+                .await?;
+                Ok(())
+            }
+            _ => Err(BuiltinsError::NonPrimitivePropKind(*prop.kind())),
+        }
     }
 }

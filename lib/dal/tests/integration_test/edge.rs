@@ -1,4 +1,4 @@
-use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
+use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::test::helpers::{create_system_with_node, find_schema_by_name};
 use dal::test::DalContextHeadRef;
 use dal::{
@@ -11,7 +11,7 @@ use crate::dal::test;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let mut harness = BuiltinsHarness::new();
+    let mut harness = SchemaBuiltinsTestHarness::new();
     let credential_payload = harness
         .create_component(ctx, "tail", Builtin::DockerHubCredential)
         .await;

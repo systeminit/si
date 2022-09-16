@@ -1,7 +1,7 @@
 use crate::dal::test;
 
 use dal::socket::{SocketArity, SocketKind};
-use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
+use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::{
     socket::SocketEdgeKind, Connection, DalContext, Diagram, DiagramKind, NodePosition, Schema,
     StandardModel,
@@ -10,7 +10,7 @@ use dal::{DiagramEdgeView, SchemaVariant};
 
 #[test]
 async fn get_diagram_and_create_connection(ctx: &DalContext) {
-    let mut harness = BuiltinsHarness::new();
+    let mut harness = SchemaBuiltinsTestHarness::new();
     let from_docker_hub_credential = harness
         .create_component(ctx, "from", Builtin::DockerHubCredential)
         .await;
