@@ -1,18 +1,20 @@
 <template>
-  <div class="w-72 shrink-0 border-shade-100 h-full flex flex-col">
+  <div class="w-64 shrink-0 border-shade-100 h-full flex flex-col">
     <!-- Filter button and its dropdown -->
-    <span
-      class="h-11 border-b border-shade-100 text-lg px-4 flex items-center flex-none"
+    <div
+      class="h-11 w-full border-b border-shade-100 text-lg px-4 flex items-center flex-none"
     >
-      Components Menu
-    </span>
+      <span class="block whitespace-nowrap text-ellipsis overflow-hidden"
+        >Components Menu</span
+      >
+    </div>
     <SiBarButton
-      class="h-11 border-b border-shade-100"
+      class="h-11 border-b border-shade-100 flex-none"
       tooltip-text="Filter"
       fill-entire-width
     >
       <template #default="{ hovered, open }">
-        <div class="flex flex-row">
+        <div class="flex flex-row items-center">
           {{ selectedFilter.title }}
           <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
         </div>
@@ -40,16 +42,23 @@
             ? 'bg-action-500'
             : 'hover:bg-black'
         "
-        class="py-2 pl-4 pr-3 cursor-pointer flex justify-between items-center"
+        class="py-xs pl-sm pr-xs cursor-pointer flex justify-between items-center leading-tight"
         @click="SelectionService.setSelectedComponentId(component.id)"
       >
-        <span class="shrink min-w-0 truncate mr-3">
+        <span class="shrink h-full min-w-0 truncate mr-3">
           {{ component.name }}
         </span>
         <StatusIndicatorIcon
           v-if="component.status"
           :status="component.status"
           class="w-6 shrink-0"
+        />
+        <HealthIcon
+          v-if="component.health"
+          :health="component.health"
+          hide-text
+          remove-right-padding
+          size="md"
         />
       </div>
     </div>
@@ -65,11 +74,15 @@ import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import { SelectionService } from "@/service/selection";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
+import HealthIcon, { Health } from "@/molecules/HealthIcon.vue";
+import { ComponentType } from "@/service/confirmation";
 
 export interface ComponentListItem {
   id: number;
   name: string;
+  type?: ComponentType;
   status?: Status;
+  health?: Health;
 }
 
 export interface FilterOption {

@@ -1,5 +1,5 @@
 <template>
-  <CodeViewer :code="logs.join('\n')" :force-theme="forceTheme">
+  <CodeViewer :code="logs.join('\n')" :force-theme="forceTheme" border>
     <template #title>
       <WorkflowStatusIcon :status="status" show-text />
     </template>

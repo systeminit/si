@@ -5,9 +5,10 @@
     side="bottom"
     :min-resize="0"
     :max-resize="0.8"
-    size-classes="h-11 bar"
-    :resizeable="false"
-    :fixed-default-size="320"
+    :class="clsx(!panelOpen && 'h-12')"
+    :resizeable="panelOpen"
+    :default-size="320"
+    :min-size="280"
   >
     <TabGroup
       class="flex flex-col w-full h-full bg-neutral-900 text-white border-black border-t"
@@ -186,8 +187,7 @@
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
-            <!-- TOOD(nick): replace with a Confirmations tab panel -->
-            <GenericTabPanel :component-list="componentList" />
+            <ConfirmationsPanel />
           </TabPanel>
         </TabPanels>
       </Transition>
@@ -197,9 +197,10 @@
 
 <script lang="ts" setup>
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/vue";
-import { computed, onMounted, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { untilUnmounted } from "vuse-rx/src";
+import clsx from "clsx";
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
 import SiPanel from "@/atoms/SiPanel.vue";
@@ -217,6 +218,7 @@ import WorkflowHistoryTab from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryT
 import WorkflowHistoryPanel, {
   SortOption,
 } from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryPanel.vue";
+import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
 
 // Tab 0 is our phantom empty panel
 const selectedTab = ref(0);
@@ -246,17 +248,11 @@ const togglePanel = () => {
 
 const openPanel = () => {
   panelOpen.value = true;
-  panelRef.value.setCurrentMinResize(280);
-  panelRef.value.setCurrentlyResizeable(true);
-  panelRef.value.setSize(320);
 };
 
 const closePanel = () => {
   panelOpen.value = false;
   selectedTab.value = 0;
-  panelRef.value.setCurrentMinResize(0);
-  panelRef.value.setCurrentlyResizeable(false);
-  panelRef.value.resetSize(false);
 };
 
 const barClasses = computed(() => {
@@ -301,10 +297,10 @@ untilUnmounted(ComponentService.listComponentsIdentification()).subscribe(
   },
 );
 
-onMounted(() => {
-  panelRef.value.resetSize(false);
-  panelRef.value.setCurrentlyResizeable(false);
-});
+// close status bar when route changes
+// TODO: probably do something smarter if tab still exists
+const route = useRoute();
+watch(() => route.name, closePanel);
 </script>
 
 <style scoped>

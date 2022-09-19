@@ -1,13 +1,13 @@
 <template>
   <SiSearch auto-search @search="onSearchUpdated" />
-  <ul class="overflow-y-auto">
-    <template v-if="!allComponents.length">
-      <div class="p-2 text-neutral-500">No components</div>
-    </template>
-    <template v-else-if="!filteredComponenets.length">
-      <div class="p-2 text-neutral-500">No components matching your search</div>
-    </template>
-    <template v-else>
+  <template v-if="!allComponents.length">
+    <div class="p-2 text-neutral-500">No components</div>
+  </template>
+  <template v-else-if="!filteredComponenets.length">
+    <div class="p-2 text-neutral-500">No components matching your search</div>
+  </template>
+  <template v-else>
+    <ul>
       <li
         v-for="component in filteredComponenets"
         :key="component.id"
@@ -38,8 +38,8 @@
           </i>
         </span>
       </li>
-    </template>
-  </ul>
+    </ul>
+  </template>
 </template>
 
 <script lang="ts" setup>
