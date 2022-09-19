@@ -18,23 +18,24 @@ async fn system(ctx: &DalContext) -> BuiltinsResult<()> {
         };
     schema.set_ui_hidden(ctx, true).await?;
 
-    let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    let (schema_variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema
-        .set_default_schema_variant_id(ctx, Some(*variant.id()))
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;
 
-    variant.finalize(ctx).await?;
+    schema_variant.finalize(ctx).await?;
 
-    let identity_func = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
     let (_component_output_provider, _component_output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
-        *variant.id(),
+        *schema_variant.id(),
         "component_output",
         None,
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
         SocketArity::Many,
         DiagramKind::Configuration,
     )

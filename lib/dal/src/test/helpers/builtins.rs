@@ -16,26 +16,26 @@ use crate::{
 /// [`Components`](crate::Component) for integration tests.
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Builtin {
+    AwsEc2,
+    AwsRegion,
+    CoreOsButane,
     DockerHubCredential,
     DockerImage,
     KubernetesDeployment,
     KubernetesNamespace,
-    CoreOsButane,
-    AwsEc2,
-    AwsRegion,
 }
 
 impl Builtin {
     /// Converts a [`Builtin`](Self) to its [`Schema`](crate::Schema) name.
     pub fn as_str(&self) -> &'static str {
         match &self {
+            Builtin::AwsEc2 => "aws_ec2",
+            Builtin::AwsRegion => "aws_region",
+            Builtin::CoreOsButane => "coreos_butane",
             Builtin::DockerHubCredential => "docker_hub_credential",
             Builtin::DockerImage => "docker_image",
             Builtin::KubernetesDeployment => "kubernetes_deployment",
             Builtin::KubernetesNamespace => "kubernetes_namespace",
-            Builtin::CoreOsButane => "butane",
-            Builtin::AwsEc2 => "aws_ec2",
-            Builtin::AwsRegion => "aws_region",
         }
     }
 }
@@ -86,6 +86,7 @@ impl SchemaBuiltinsTestHarness {
                 .await
             }
             None => {
+                // If metadata has not been cached, we need to do that.
                 let (schema, schema_variant) =
                     find_schema_and_default_variant_by_name(ctx, builtin.as_str()).await;
                 let prop_map = Self::build_prop_map(ctx, builtin, *schema_variant.id()).await;
@@ -107,118 +108,6 @@ impl SchemaBuiltinsTestHarness {
                 .await
             }
         }
-    }
-
-    /// Private function to build a [`PropMap`](PropMap) for a given [`Builtin`](Builtin). This
-    /// function will populate the map differently depending on the [`Builtin`](Builtin) provided.
-    async fn build_prop_map(
-        ctx: &DalContext,
-        builtin: Builtin,
-        schema_variant_id: SchemaVariantId,
-    ) -> PropMap {
-        let mut prop_map = HashMap::new();
-
-        // Add props specific to each builtin!
-        if let Builtin::KubernetesNamespace = builtin {
-            let (metadata_name_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "name", "metadata", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert("/root/si/metadata/name", metadata_name_prop_id);
-        } else if let Builtin::DockerImage = builtin {
-            let (image_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "image", "domain", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert("/root/domain/image", image_prop_id);
-            let (exposed_ports_prop_id, _) = find_prop_and_parent_by_name(
-                ctx,
-                "ExposedPorts",
-                "domain",
-                None,
-                schema_variant_id,
-            )
-            .await
-            .expect("could not find prop and/or parent");
-            prop_map.insert("/root/domain/exposed-ports", exposed_ports_prop_id);
-            let (exposed_port_prop_id, _) = find_prop_and_parent_by_name(
-                ctx,
-                "ExposedPort",
-                "ExposedPorts",
-                None,
-                schema_variant_id,
-            )
-            .await
-            .expect("could not find prop and/or parent");
-            prop_map.insert(
-                "/root/domain/exposed-ports/exposed-port",
-                exposed_port_prop_id,
-            );
-        } else if let Builtin::CoreOsButane = builtin {
-            let (variant_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "variant", "domain", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert("/root/si/domain/variant", variant_prop_id);
-            let (version_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "version", "domain", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert("/root/si/domain/version", version_prop_id);
-            let (systemd_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "systemd", "domain", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert("/root/si/domain/systemd", systemd_prop_id);
-            let (units_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "units", "systemd", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert("/root/si/domain/systemd/units", units_prop_id);
-            let (unit_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "unit", "units", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert("/root/si/domain/systemd/units/unit", unit_prop_id);
-
-            // All fields under "unit".
-            let (unit_name_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "name", "unit", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert("/root/si/domain/systemd/units/unit/name", unit_name_prop_id);
-            let (unit_enabled_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "enabled", "unit", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert(
-                "/root/si/domain/systemd/units/unit/enabled",
-                unit_enabled_prop_id,
-            );
-            let (unit_contents_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "contents", "unit", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert(
-                "/root/si/domain/systemd/units/unit/contents",
-                unit_contents_prop_id,
-            );
-        } else if let Builtin::AwsRegion = builtin {
-            let (variant_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "region", "domain", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            prop_map.insert("/root/domain/region", variant_prop_id);
-        }
-
-        // Always provide "/root/si/name".
-        let (si_name_prop_id, _) =
-            find_prop_and_parent_by_name(ctx, "name", "si", None, schema_variant_id)
-                .await
-                .expect("could not find prop and/or parent");
-        prop_map.insert("/root/si/name", si_name_prop_id);
-
-        prop_map
     }
 
     /// Private method to create a [`Component`](crate::Component) and assemble a
@@ -248,5 +137,159 @@ impl SchemaBuiltinsTestHarness {
                 ..AttributeReadContext::default()
             },
         }
+    }
+
+    /// Private function to build a [`PropMap`](PropMap) for a given [`Builtin`](Builtin). This
+    /// function will populate the map differently depending on the [`Builtin`](Builtin) provided.
+    async fn build_prop_map(
+        ctx: &DalContext,
+        builtin: Builtin,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropMap {
+        let mut prop_map = match builtin {
+            Builtin::AwsRegion => Self::prop_map_for_aws_region(ctx, schema_variant_id).await,
+            Builtin::CoreOsButane => Self::prop_map_for_coreos_butane(ctx, schema_variant_id).await,
+            Builtin::DockerImage => Self::prop_map_for_docker_image(ctx, schema_variant_id).await,
+            Builtin::KubernetesNamespace => {
+                Self::prop_map_for_kubernetes_namespace(ctx, schema_variant_id).await
+            }
+            _ => HashMap::new(),
+        };
+
+        // Always provide "/root/si/name" for all builtins.
+        let (si_name_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "name", "si", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/si/name", si_name_prop_id);
+
+        prop_map
+    }
+
+    /// Returns a [`PropMap`] for [`Builtin::AwsRegion`] with manually cached JSON
+    /// pointers for [`Props`](crate::Prop) from the associated builtins'
+    /// [`SchemaVariant`](crate::SchemaVariant).
+    async fn prop_map_for_aws_region(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropMap {
+        let mut prop_map = HashMap::new();
+        let (variant_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "region", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/region", variant_prop_id);
+        prop_map
+    }
+
+    /// Returns a [`PropMap`] for [`Builtin::CoreOsButane`] with manually cached JSON
+    /// pointers for [`Props`](crate::Prop) from the associated builtins'
+    /// [`SchemaVariant`](crate::SchemaVariant).
+    async fn prop_map_for_coreos_butane(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropMap {
+        let mut prop_map = HashMap::new();
+
+        // All fields including and above "unit".
+        let (variant_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "variant", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/variant", variant_prop_id);
+        let (version_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "version", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/version", version_prop_id);
+        let (systemd_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "systemd", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/systemd", systemd_prop_id);
+        let (units_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "units", "systemd", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/systemd/units", units_prop_id);
+        let (unit_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "unit", "units", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/systemd/units/unit", unit_prop_id);
+
+        // All fields under "unit".
+        let (unit_name_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "name", "unit", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/systemd/units/unit/name", unit_name_prop_id);
+        let (unit_enabled_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "enabled", "unit", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert(
+            "/root/domain/systemd/units/unit/enabled",
+            unit_enabled_prop_id,
+        );
+        let (unit_contents_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "contents", "unit", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert(
+            "/root/domain/systemd/units/unit/contents",
+            unit_contents_prop_id,
+        );
+        prop_map
+    }
+
+    /// Returns a [`PropMap`] for [`Builtin::DockerImage`] with manually cached JSON
+    /// pointers for [`Props`](crate::Prop) from the associated builtins'
+    /// [`SchemaVariant`](crate::SchemaVariant).
+    async fn prop_map_for_docker_image(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropMap {
+        let mut prop_map = HashMap::new();
+        let (image_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "image", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/image", image_prop_id);
+        let (exposed_ports_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "ExposedPorts", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/exposed-ports", exposed_ports_prop_id);
+        let (exposed_port_prop_id, _) = find_prop_and_parent_by_name(
+            ctx,
+            "ExposedPort",
+            "ExposedPorts",
+            None,
+            schema_variant_id,
+        )
+        .await
+        .expect("could not find prop and/or parent");
+        prop_map.insert(
+            "/root/domain/exposed-ports/exposed-port",
+            exposed_port_prop_id,
+        );
+        prop_map
+    }
+
+    /// Returns a [`PropMap`] for [`Builtin::KubernetesNamespace`] with manually cached JSON
+    /// pointers for [`Props`](crate::Prop) from the associated builtins'
+    /// [`SchemaVariant`](crate::SchemaVariant).
+    async fn prop_map_for_kubernetes_namespace(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropMap {
+        let mut prop_map = HashMap::new();
+        let (metadata_name_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "name", "metadata", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/si/metadata/name", metadata_name_prop_id);
+        prop_map
     }
 }

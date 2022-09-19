@@ -141,13 +141,15 @@ impl AttributePrototypeArgument {
         external_provider_id: ExternalProviderId,
     ) -> AttributePrototypeArgumentResult<Self> {
         // Ensure the value fields are what we expect.
-        let internal_provider_id: ExternalProviderId = UNSET_ID_VALUE.into();
         if external_provider_id == UNSET_ID_VALUE.into()
             || tail_component_id == UNSET_ID_VALUE.into()
             || head_component_id == UNSET_ID_VALUE.into()
         {
             return Err(AttributePrototypeArgumentError::RequiredValueFieldsUnset);
         }
+
+        // For inter component connections, the internal provider id field must be unset.
+        let internal_provider_id: InternalProviderId = UNSET_ID_VALUE.into();
 
         let name = name.as_ref();
         let row = ctx

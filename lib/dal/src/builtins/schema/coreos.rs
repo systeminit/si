@@ -19,7 +19,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).
 async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "butane".to_string();
+    let name = "coreos_butane".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
             Some(schema) => schema,

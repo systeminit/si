@@ -494,7 +494,8 @@ impl InternalProvider {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    /// Find [`Self`] with a provided name.
+    /// Find [`Self`] with a provided name, which is not only the name of [`Self`], but also of the
+    /// associated _input_ [`Socket`](crate::Socket).
     #[instrument(skip_all)]
     pub async fn find_explicit_for_schema_variant_and_name(
         ctx: &DalContext,

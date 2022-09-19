@@ -2,8 +2,11 @@ use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 
 use crate::diagram::DiagramResult;
+use crate::schema::UiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
-use crate::{DalContext, DiagramError, Node, NodePosition, SchemaVariant, StandardModel};
+use crate::{
+    DalContext, DiagramError, Node, NodePosition, SchemaError, SchemaVariant, StandardModel,
+};
 
 #[derive(
     AsRefStr,
@@ -123,6 +126,7 @@ pub struct DiagramNodeView {
     #[serde(rename = "type")]
     ty: Option<String>,
     title: String,
+    category: Option<String>,
     subtitle: Option<String>,
     content: Option<String>,
     sockets: Option<Vec<SocketView>>,
@@ -141,15 +145,24 @@ impl DiagramNodeView {
             .component(ctx)
             .await?
             .ok_or(DiagramError::ComponentNotFound)?;
+        let schema = schema_variant
+            .schema(ctx)
+            .await?
+            .ok_or(DiagramError::SchemaNotFound)?;
+        let diagram_kind = schema
+            .diagram_kind()
+            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+        let category =
+            match UiMenu::get_by_schema_and_diagram_kind(ctx, *schema.id(), diagram_kind).await? {
+                Some(ui_menu) => ui_menu.category().map(|c| c.to_string()),
+                None => None,
+            };
+
         Ok(Self {
             id: node.id().to_string(),
             ty: None,
-            title: schema_variant
-                .schema(ctx)
-                .await?
-                .ok_or(DiagramError::SchemaNotFound)?
-                .name()
-                .to_owned(),
+            title: schema.name().to_owned(),
+            category,
             subtitle: component
                 .find_value_by_json_pointer(ctx, "/root/si/name")
                 .await?,

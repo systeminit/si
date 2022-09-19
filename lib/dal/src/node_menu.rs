@@ -9,10 +9,8 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use crate::schema::UiMenu;
-use crate::{standard_model, SchemaError, SchemaId, StandardModel, StandardModelError};
 use crate::{DalContext, DiagramKind};
-
-const UI_MENUS_FOR_DIAGRAM_KIND: &str = include_str!("queries/ui_menus_for_diagram_kind.sql");
+use crate::{SchemaError, SchemaId, StandardModel, StandardModelError};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
@@ -213,21 +211,9 @@ impl GenerateMenuItem {
     /// Generates raw items and initializes menu items as an empty vec.
     pub async fn new(ctx: &DalContext, diagram_kind: DiagramKind) -> NodeMenuResult<Self> {
         let mut item_list = Vec::new();
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                UI_MENUS_FOR_DIAGRAM_KIND,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &(diagram_kind.to_string()),
-                ],
-            )
-            .await?;
-        let result: Vec<UiMenu> = standard_model::objects_from_rows(rows)?;
+        let ui_menus = UiMenu::list_for_diagram_kind(ctx, diagram_kind).await?;
 
-        for ui_menu in result.into_iter() {
+        for ui_menu in ui_menus.into_iter() {
             if ui_menu.usable_in_menu(ctx).await? {
                 if let Some(schema) = ui_menu.schema(ctx).await? {
                     item_list.push((

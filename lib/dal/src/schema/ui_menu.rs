@@ -8,6 +8,11 @@ use crate::{
 
 use super::{Schema, SchemaId, SchemaResult};
 
+const UI_MENU_GET_BY_SCHEMA_AND_DIAGRAM_KIND: &str =
+    include_str!("../queries/ui_menus_get_by_schema_and_diagram_kind.sql");
+const UI_MENUS_LIST_FOR_DIAGRAM_KIND: &str =
+    include_str!("../queries/ui_menus_list_for_diagram_kind.sql");
+
 pk!(UiMenuPk);
 pk!(UiMenuId);
 
@@ -68,6 +73,53 @@ impl UiMenu {
         returns: Schema,
         result: SchemaResult,
     );
+
+    #[instrument(skip_all)]
+    pub async fn list_for_diagram_kind(
+        ctx: &DalContext,
+        diagram_kind: DiagramKind,
+    ) -> SchemaResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                UI_MENUS_LIST_FOR_DIAGRAM_KIND,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &(diagram_kind.to_string()),
+                ],
+            )
+            .await?;
+        let objects: Vec<Self> = standard_model::objects_from_rows(rows)?;
+        Ok(objects)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn get_by_schema_and_diagram_kind(
+        ctx: &DalContext,
+        schema_id: SchemaId,
+        diagram_kind: DiagramKind,
+    ) -> SchemaResult<Option<Self>> {
+        let maybe_row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                UI_MENU_GET_BY_SCHEMA_AND_DIAGRAM_KIND,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &schema_id,
+                    &(diagram_kind.to_string()),
+                ],
+            )
+            .await?;
+
+        // NOTE(nick): currently, we are assuming there can only be one "schema_ui_menu" for a given
+        // schema id and a given diagram kind. This might not always be the case.
+        let maybe_object: Option<Self> = standard_model::option_object_from_row(maybe_row)?;
+        Ok(maybe_object)
+    }
 
     /// A menu item is unusable when it doesn't have the fields set yet that
     /// enable it to show up in a menu.

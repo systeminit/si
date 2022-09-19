@@ -11,8 +11,8 @@ use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::{
     AttributePrototypeArgumentError, ComponentError, DalContext, EdgeError, Node, NodeError,
-    NodeKind, NodePosition, NodePositionError, PropError, ReadTenancyError, StandardModel,
-    StandardModelError, SystemError, SystemId,
+    NodeKind, NodePosition, NodePositionError, PropError, ReadTenancyError, SchemaError,
+    StandardModel, StandardModelError, SystemError, SystemId,
 };
 
 pub mod connection;
@@ -46,6 +46,8 @@ pub enum DiagramError {
     NodePosition(#[from] NodePositionError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
     #[error("schema variant not found")]

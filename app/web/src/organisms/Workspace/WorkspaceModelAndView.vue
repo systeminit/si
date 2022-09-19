@@ -130,15 +130,14 @@ const diagramData = computed(() => {
     nodes: _.map(rawDiagramData.value?.nodes, (node) => {
       // Default to "si" if we do not have a logo.
       let typeIcon = "si";
-
-      // NOTE(nick): not all CoreOS objects will be prefixed with "coreos". The name
-      // "CoreOS Fedora CoreOS" doesn't sounds great, right? We will probably need
-      // another way to index "schema family" or something similar in the future.
-      // For now, we only have one component, so let's use it.
-      if (node.title === "butane") typeIcon = "coreos";
-      else if (node.title.startsWith("aws_")) typeIcon = "aws";
-      else if (node.title.startsWith("docker_")) typeIcon = "docker";
-      else if (node.title.startsWith("kubernetes_")) typeIcon = "kubernetes";
+      if (
+        node.category === "aws" ||
+        node.category === "coreos" ||
+        node.category === "docker" ||
+        node.category === "kubernetes"
+      ) {
+        typeIcon = node.category;
+      }
 
       const componentQualificationSummary = _.find(
         qualificationSummary.value?.components,
