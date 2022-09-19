@@ -5,8 +5,9 @@ use crate::{
     qualification_prototype::QualificationPrototypeContext,
     schema::{SchemaVariant, UiMenu},
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    BuiltinsError, BuiltinsResult, DalContext, DiagramKind, Func, FuncError, InternalProvider,
-    PropKind, QualificationPrototype, SchemaError, SchemaKind, Socket, StandardModel,
+    BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
+    InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind, Socket,
+    StandardModel,
 };
 
 const BUTANE_DOCS_FCOS_1_4_URL: &str = "https://coreos.github.io/butane/config-fcos-v1_4/";
@@ -113,10 +114,6 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?;
     }
 
-    // NOTE(nick): this was from "docker_image". We might need it.
-    // let mut properties = HashMap::new();
-    // properties.insert("image".to_owned(), serde_json::json!(""));
-
     // Sockets
     let system_socket = Socket::new(
         ctx,
@@ -215,6 +212,22 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         *docker_image_explicit_internal_provider.id(),
     )
     .await?;
+
+    // TODO(nick): add ability to export ignition as ec2 user data.
+    let (_ec2_user_data_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+        ctx,
+        *schema.id(),
+        *schema_variant.id(),
+        "user_data",
+        None,
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        SocketArity::Many,
+        DiagramKind::Configuration,
+    )
+    .await?;
+    output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     Ok(())
 }

@@ -11,6 +11,7 @@ use crate::{
 };
 use serde_json::Value;
 
+mod aws;
 mod coreos;
 mod docker;
 mod kubernetes;
@@ -21,6 +22,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     docker::migrate(ctx).await?;
     kubernetes::migrate(ctx).await?;
     coreos::migrate(ctx).await?;
+    aws::migrate(ctx).await?;
     Ok(())
 }
 
