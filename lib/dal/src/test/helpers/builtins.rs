@@ -21,6 +21,8 @@ pub enum Builtin {
     KubernetesDeployment,
     KubernetesNamespace,
     CoreOsButane,
+    AwsEc2,
+    AwsRegion,
 }
 
 impl Builtin {
@@ -32,6 +34,8 @@ impl Builtin {
             Builtin::KubernetesDeployment => "kubernetes_deployment",
             Builtin::KubernetesNamespace => "kubernetes_namespace",
             Builtin::CoreOsButane => "butane",
+            Builtin::AwsEc2 => "aws_ec2",
+            Builtin::AwsRegion => "aws_region",
         }
     }
 }
@@ -199,6 +203,12 @@ impl SchemaBuiltinsTestHarness {
                 "/root/si/domain/systemd/units/unit/contents",
                 unit_contents_prop_id,
             );
+        } else if let Builtin::AwsRegion = builtin {
+            let (variant_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "region", "domain", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            prop_map.insert("/root/domain/region", variant_prop_id);
         }
 
         // Always provide "/root/si/name".

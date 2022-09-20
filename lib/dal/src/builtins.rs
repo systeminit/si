@@ -92,10 +92,14 @@ pub enum BuiltinsError {
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
 
-/// Migrate all "builtin" [`Funcs`](crate::Func) and [`Schemas`](crate::Schema) (in that order).
+/// Migrate all "builtins" in a definitive order.
+///
+/// 1. [`Funcs`](crate::Func)
+/// 1. [`WorkflowPrototypes`](crate::workflow_prototype::WorkflowPrototype)
+/// 1. [`Schemas`](crate::Schema)
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     func::migrate(ctx).await?;
-    schema::migrate(ctx).await?;
     workflow::migrate(ctx).await?;
+    schema::migrate(ctx).await?;
     Ok(())
 }
