@@ -1,4 +1,4 @@
-use std::{borrow::Cow, env, result::Result};
+use std::{borrow::Cow, env, fmt, result::Result};
 
 use async_trait::async_trait;
 use thiserror::Error;
@@ -7,11 +7,25 @@ use tokio::sync::mpsc;
 pub use opentelemetry::trace::SpanKind;
 
 pub mod prelude {
-    pub use super::{SpanExt, SpanKind};
+    pub use super::{FormattedSpanKind, SpanExt, SpanKind};
     pub use tracing::{
         self, debug, debug_span, error, event, field::Empty, info, info_span, instrument, span,
         trace, trace_span, warn, Instrument, Level, Span,
     };
+}
+
+pub struct FormattedSpanKind(pub SpanKind);
+
+impl fmt::Display for FormattedSpanKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            SpanKind::Client => write!(f, "client"),
+            SpanKind::Server => write!(f, "server"),
+            SpanKind::Producer => write!(f, "producer"),
+            SpanKind::Consumer => write!(f, "consumer"),
+            SpanKind::Internal => write!(f, "internal"),
+        }
+    }
 }
 
 pub trait SpanExt {
@@ -23,20 +37,14 @@ pub trait SpanExt {
 
 impl SpanExt for tracing::Span {
     fn record_ok(&self) {
-        self.record(
-            "otel.status_code",
-            &opentelemetry::trace::StatusCode::Ok.as_str(),
-        );
+        self.record("otel.status_code", "OK");
     }
 
     fn record_err<E>(&self, err: E) -> E
     where
         E: std::error::Error,
     {
-        self.record(
-            "otel.status_code",
-            &opentelemetry::trace::StatusCode::Error.as_str(),
-        );
+        self.record("otel.status_code", "ERROR");
         self.record("otel.status_message", &err.to_string().as_str());
         err
     }

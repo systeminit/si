@@ -195,7 +195,7 @@ pub trait FuncDispatch: std::fmt::Debug {
     skip_all,
     level = "debug",
     fields(
-    otel.kind = % SpanKind::Client,
+    otel.kind = %FormattedSpanKind(SpanKind::Client),
     otel.status_code = Empty,
     otel.status_message = Empty,
     si.func.result = Empty
@@ -260,7 +260,7 @@ pub trait FuncBackend {
     skip_all,
     level = "debug",
     fields(
-    otel.kind = % SpanKind::Client,
+    otel.kind = %FormattedSpanKind(SpanKind::Client),
     otel.status_code = Empty,
     otel.status_message = Empty,
     si.func.result = Empty
