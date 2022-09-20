@@ -72,14 +72,6 @@ pub(crate) struct Args {
     #[clap(long, group = "resolver")]
     pub(crate) disable_resolver: bool,
 
-    /// Enables sync endpoint.
-    #[clap(long, group = "sync")]
-    pub(crate) enable_sync: bool,
-
-    /// Disables sync endpoint.
-    #[clap(long, group = "sync")]
-    pub(crate) disable_sync: bool,
-
     /// Enables code generation endpoint.
     #[clap(long, group = "code_generation")]
     pub(crate) enable_code_generation: bool,
@@ -142,12 +134,6 @@ impl TryFrom<Args> for Config {
             builder.enable_resolver(true);
         } else if args.disable_resolver {
             builder.enable_resolver(false);
-        }
-
-        if args.enable_sync {
-            builder.enable_sync(true);
-        } else if args.disable_sync {
-            builder.enable_sync(false);
         }
 
         if args.enable_code_generation {

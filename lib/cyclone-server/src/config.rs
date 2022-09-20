@@ -37,9 +37,6 @@ pub struct Config {
     enable_resolver: bool,
 
     #[builder(default = "true")]
-    enable_sync: bool,
-
-    #[builder(default = "true")]
     enable_code_generation: bool,
 
     #[builder(default = "true")]
@@ -87,12 +84,6 @@ impl Config {
     #[must_use]
     pub fn enable_resolver(&self) -> bool {
         self.enable_resolver
-    }
-
-    /// Gets a reference to the config's enable sync.
-    #[must_use]
-    pub fn enable_sync(&self) -> bool {
-        self.enable_sync
     }
 
     /// Gets a reference to the config's enable sync.

@@ -1,6 +1,0 @@
-{
-    "kind": "JsResourceSync",
-    "response_type": "ResourceSync",
-    "code_file": "resourceSyncHammer.js",
-    "code_entrypoint": "resourceSyncHammer"
-}

@@ -13,8 +13,7 @@ pub use cyclone_core::{
     EncryptionKey, EncryptionKeyError, LivenessStatus, LivenessStatusParseError,
     QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
     ReadinessStatusParseError, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ResourceSyncRequest, ResourceSyncResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 pub use hyper::client::connect::Connection;
 pub use hyperlocal::UnixStream;

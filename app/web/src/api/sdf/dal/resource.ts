@@ -19,6 +19,7 @@ export interface Resource {
   createdAt: string;
   updatedAt: string;
   error?: string; // TODO: what is this?
+  key: string;
   data: unknown; // TODO: what is this?
   // state: any;
   // status: ResourceStatus;

@@ -2,35 +2,41 @@ use crate::DalContext;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use si_data::{NatsError, PgError};
+use si_data::PgError;
 use strum_macros::Display;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     ws_event::{WsEvent, WsPayload},
-    Component, ComponentId, HistoryEventError, ReadTenancyError, StandardModel, StandardModelError,
-    System, SystemId, Timestamp, Visibility, WorkflowPrototypeId, WriteTenancy,
+    Component, ComponentId, HistoryEventError, StandardModel, StandardModelError, System, SystemId,
+    Timestamp, Visibility, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
+    WorkflowRunner, WorkflowRunnerError, WriteTenancy, WsEventError,
 };
 
 #[derive(Error, Debug)]
 pub enum ResourceError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
+    #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
+    #[error(transparent)]
+    Pg(#[from] PgError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    WsEvent(#[from] WsEventError),
+    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
+    #[error(transparent)]
+    WorkflowPrototype(#[from] WorkflowPrototypeError),
+    #[error(transparent)]
+    WorkflowRunner(#[from] WorkflowRunnerError),
     #[error("system id is required: -1 was used")]
     SystemIdRequired,
+    #[error("no component set for resource {0}")]
+    NoComponent(ResourceId),
+    #[error("prototype not found {0}")]
+    PrototypeNotFound(WorkflowPrototypeId),
 }
 
 pub type ResourceResult<T> = Result<T, ResourceError>;
@@ -179,6 +185,28 @@ impl Resource {
         Ok(objects)
     }
 
+    pub async fn refresh(&mut self, ctx: &DalContext) -> ResourceResult<()> {
+        let component = self
+            .component(ctx)
+            .await?
+            .ok_or(ResourceError::NoComponent(self.id))?;
+        let prototype = WorkflowPrototype::get_by_id(ctx, &self.refresh_workflow_id)
+            .await?
+            .ok_or(ResourceError::PrototypeNotFound(self.refresh_workflow_id))?;
+        let run_id: usize = rand::random();
+        let (_runner, _state, _func_binding_return_values, _created_resources, _updated_resources) =
+            WorkflowRunner::run(ctx, run_id, *prototype.id(), *component.id()).await?;
+
+        let system_id = self
+            .system(ctx)
+            .await?
+            .map_or(SystemId::NONE, |system| *system.id());
+        WsEvent::resource_refreshed(ctx, *component.id(), system_id)
+            .publish(ctx)
+            .await?;
+        Ok(())
+    }
+
     pub async fn list_by_component(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -219,60 +247,45 @@ pub struct ResourceView {
     pub updated_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
     pub error: Option<String>,
+    pub key: String,
     pub data: serde_json::Value,
     pub health: ResourceHealth,
     pub entity_type: String,
 }
 
-impl From<(Resource, Option<FuncBindingReturnValue>)> for ResourceView {
-    fn from(
-        (resource, func_binding_return_value): (Resource, Option<FuncBindingReturnValue>),
-    ) -> Self {
+impl ResourceView {
+    pub fn new(resource: Resource) -> Self {
         // TODO: actually fill all of the data dynamically, most fields don't make much sense for now
 
-        // TODO: do we want to have a special case for when the FuncBindingReturnValue is there, but the .value() returns None?
-        if let Some((func_binding_return_value, result_json)) =
-            func_binding_return_value.and_then(|f| f.value().cloned().map(|v| (f, v)))
-        {
-            Self {
-                id: *resource.id(),
-                created_at: func_binding_return_value.timestamp().created_at,
-                updated_at: func_binding_return_value.timestamp().updated_at,
-                error: Some("Boto Cor de Rosa Spotted at a Party".to_owned()),
-                data: result_json,
-                health: ResourceHealth::Error,
-                entity_type: "idk bro".to_owned(),
-            }
-        } else {
-            Self {
-                id: *resource.id(),
-                created_at: resource.timestamp().created_at,
-                updated_at: resource.timestamp().updated_at,
-                error: Some("Boto Cor de Rosa Spotted at a Party".to_owned()),
-                data: serde_json::json!(null),
-                health: ResourceHealth::Warning,
-                entity_type: "idk bro".to_owned(),
-            }
+        Self {
+            id: *resource.id(),
+            created_at: resource.timestamp().created_at,
+            updated_at: resource.timestamp().updated_at,
+            error: None,
+            key: resource.key,
+            data: resource.data,
+            health: ResourceHealth::Error,
+            entity_type: "idk bro".to_owned(),
         }
     }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ResourceSyncId {
+pub struct ResourceRefreshId {
     component_id: ComponentId,
     system_id: SystemId,
 }
 
 impl WsEvent {
-    pub fn resource_synced(
+    pub fn resource_refreshed(
         ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> Self {
         WsEvent::new(
             ctx,
-            WsPayload::ResourceSynced(ResourceSyncId {
+            WsPayload::ResourceRefreshed(ResourceRefreshId {
                 component_id,
                 system_id,
             }),

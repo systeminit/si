@@ -11,7 +11,9 @@ use tokio::{
 
 use dal::{
     job::consumer::{JobConsumer, JobConsumerError},
-    job::definition::{CodeGeneration, DependentValuesUpdate, Qualification, Qualifications},
+    job::definition::{
+        CodeGeneration, DependentValuesUpdate, Qualification, Qualifications, WorkflowRun,
+    },
     CycloneKeyPair, DalContext, DalContextBuilder, JobFailure, JobFailureError, ServicesContext,
     TransactionsError,
 };
@@ -289,7 +291,8 @@ async fn execute_job_fallible(
         Qualification,
         Qualifications,
         CodeGeneration,
-        DependentValuesUpdate
+        DependentValuesUpdate,
+        WorkflowRun
     ) {
         Ok(job) => job,
         Err(err) => return Err(err),

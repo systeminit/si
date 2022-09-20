@@ -1,7 +1,6 @@
 use cyclone_core::{
     CodeGenerationRequest, CommandRunRequest, ComponentKind, ComponentView,
-    QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest, SensitiveString,
-    WorkflowResolveRequest,
+    QualificationCheckRequest, ResolverFunctionRequest, SensitiveString, WorkflowResolveRequest,
 };
 use serde_json::Value;
 
@@ -242,32 +241,6 @@ impl DecryptRequest for ResolverFunctionRequest {
                 return Err(DecryptionKeyError::JSONPointerNotFound(
                     value,
                     "/component/parents".to_owned(),
-                ))
-            }
-        }
-        Ok(value)
-    }
-}
-
-impl ListSecrets for ResourceSyncRequest {
-    fn list_secrets(
-        &self,
-        key: &DecryptionKey,
-    ) -> Result<Vec<SensitiveString>, DecryptionKeyError> {
-        self.component.list_secrets(key)
-    }
-}
-
-impl DecryptRequest for ResourceSyncRequest {
-    fn decrypt_request(self, key: &DecryptionKey) -> Result<serde_json::Value, DecryptionKeyError> {
-        let mut value = serde_json::to_value(&self)?;
-
-        match value.pointer_mut("/component") {
-            Some(v) => *v = self.component.decrypt_request(key)?,
-            None => {
-                return Err(DecryptionKeyError::JSONPointerNotFound(
-                    value,
-                    "/component".to_owned(),
                 ))
             }
         }

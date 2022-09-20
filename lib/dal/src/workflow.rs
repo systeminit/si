@@ -1,6 +1,7 @@
 use crate::{
     func::backend::js_workflow::FuncBackendJsWorkflowArgs, func::backend::FuncDispatchContext,
-    func::binding::FuncBindingId, func::execution::FuncExecution, Connections, DalContext,
+    func::binding::FuncBindingId, func::execution::FuncExecution, resource::ResourceView,
+    workflow_runner::workflow_runner_state::WorkflowRunnerState, Connections, DalContext,
     DalContextBuilder, Func, FuncBackendKind, FuncBinding, FuncBindingError,
     FuncBindingReturnValue, PgPoolError, RequestContext, ServicesContext, StandardModel,
     StandardModelError, TransactionsError, WsEvent, WsEventError, WsPayload,
@@ -219,7 +220,11 @@ pub struct FuncToExecute {
 }
 
 impl WorkflowTree {
-    pub async fn run(&self, ctx: &DalContext) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
+    pub async fn run(
+        &self,
+        ctx: &DalContext,
+        run_id: usize,
+    ) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
         let (map, rxs) = self.prepare(ctx).await?;
 
         let mut handlers = tokio::task::JoinSet::new();
@@ -247,6 +252,7 @@ impl WorkflowTree {
                     mut conns: Connections,
                     func_binding_id: FuncBindingId,
                     mut rx: mpsc::Receiver<OutputStream>,
+                    run_id: usize,
                 ) -> WorkflowResult<(FuncBindingId, Vec<OutputStream>)> {
                     let mut output = Vec::new();
                     while let Some(stream) = rx.recv().await {
@@ -264,12 +270,22 @@ impl WorkflowTree {
                         };
                         output.push(stream);
 
-                        WsEvent::command_output(&ctx, text).publish(&ctx).await?;
+                        WsEvent::command_output(&ctx, run_id, text)
+                            .publish(&ctx)
+                            .await?;
                         conns = ctx.commit_into_conns().await?;
                     }
                     Ok((func_binding_id, output))
                 }
-                process_output(ctx_builder, request_context, conns, func_binding_id, rx).await
+                process_output(
+                    ctx_builder,
+                    request_context,
+                    conns,
+                    func_binding_id,
+                    rx,
+                    run_id,
+                )
+                .await
             });
         }
         let mut map = self.clone().execute(map).await?;
@@ -489,12 +505,46 @@ impl WorkflowTreeView {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandOutput {
+    run_id: usize,
     output: String,
 }
 
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CommandReturn {
+    run_id: usize,
+    created_resources: Vec<ResourceView>,
+    updated_resources: Vec<ResourceView>,
+    runner_state: WorkflowRunnerState,
+    output: Vec<String>,
+}
+
 impl WsEvent {
-    pub fn command_output(ctx: &DalContext, output: String) -> Self {
-        WsEvent::new(ctx, WsPayload::CommandOutput(CommandOutput { output }))
+    pub fn command_output(ctx: &DalContext, run_id: usize, output: String) -> Self {
+        WsEvent::new(
+            ctx,
+            WsPayload::CommandOutput(CommandOutput { run_id, output }),
+        )
+    }
+
+    pub fn command_return(
+        ctx: &DalContext,
+        run_id: usize,
+        created_resources: Vec<ResourceView>,
+        updated_resources: Vec<ResourceView>,
+        runner_state: WorkflowRunnerState,
+        output: Vec<String>,
+    ) -> Self {
+        WsEvent::new(
+            ctx,
+            WsPayload::CommandReturn(Box::new(CommandReturn {
+                run_id,
+                created_resources,
+                updated_resources,
+                runner_state,
+                output,
+            })),
+        )
     }
 }
 

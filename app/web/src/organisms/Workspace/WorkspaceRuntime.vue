@@ -59,9 +59,10 @@ import { TabPanel } from "@headlessui/vue";
 import WorkflowPicker from "@/organisms/WorkflowRunner/WorkflowPicker.vue";
 import WorkflowResolver from "@/organisms/WorkflowRunner/WorkflowResolver.vue";
 import { WorkflowService } from "@/service/workflow";
-import { eventCommandOutput$ } from "@/observable/command";
+import { eventCommandOutput$, eventCommandReturn$ } from "@/observable/command";
 import {
   ListedWorkflowView,
+
   ListWorkflowsResponse,
 } from "@/service/workflow/list";
 import VButton from "@/molecules/VButton.vue";
@@ -74,6 +75,8 @@ import WorkflowOutput from "../WorkflowRunner/WorkflowOutput.vue";
 import WorkflowResources from "../WorkflowRunner/WorkflowResources.vue";
 import { ComponentListItem } from "../StatusBar/StatusBarTabPanelComponentList.vue";
 
+const runId = ref<null | number>(null);
+
 const selected = ref<{
   id: number;
   title: string;
@@ -81,6 +84,7 @@ const selected = ref<{
 } | null>(null);
 const select = (w: ListedWorkflowView, componentId: number | null) => {
   logs.value = null;
+  runId.value = null;
   selected.value = { id: w.id, title: w.title, componentId };
 };
 
@@ -88,14 +92,15 @@ const logs = ref<string[] | null>(null);
 const runWorkflow = async () => {
   if (selected.value) {
     logs.value = null;
+    runId.value = null;
     currentWorkflowStatus.value = "running";
-    const outputs = await WorkflowService.run({
+    const response = await WorkflowService.run({
       id: selected.value.id,
       componentId: selected.value.componentId,
     });
-    currentWorkflowStatus.value =
-      outputs?.workflowRunnerState.status || "failure";
-    logs.value = outputs?.logs ?? null;
+    if (response) {
+      runId.value = response.runId;
+    }
   }
 };
 
@@ -103,8 +108,17 @@ const currentWorkflowStatus = ref("running" as WorkflowStatus);
 
 eventCommandOutput$.pipe(untilUnmounted).subscribe((command) => {
   if (!command) return;
+  if (runId.value !== command.payload.data.runId) return;
   if (!logs.value) logs.value = [];
   logs.value.push(command.payload.data.output);
+});
+
+eventCommandReturn$.pipe(untilUnmounted).subscribe((command) => {
+  if (!command) return;
+  if (runId.value !== command.payload.data.runId) return;
+  if (!logs.value) logs.value = [];
+  logs.value = command.payload.data.output;
+  currentWorkflowStatus.value = command.payload.data.runnerState.status;
 });
 
 const workflowList = refFrom<ListWorkflowsResponse>(WorkflowService.list(), []);

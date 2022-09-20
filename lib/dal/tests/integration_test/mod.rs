@@ -26,8 +26,6 @@ mod qualification_prototype;
 mod qualification_resolver;
 mod read_tenancy;
 mod resource;
-mod resource_prototype;
-mod resource_resolver;
 mod schema;
 mod secret;
 mod socket;

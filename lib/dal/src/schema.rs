@@ -17,8 +17,8 @@ use crate::{
     AttributePrototypeError, AttributeValueError, BillingAccount, BillingAccountId,
     CodeGenerationPrototypeError, Component, DalContext, DiagramKind, FuncError, HistoryEventError,
     Organization, OrganizationId, PropError, QualificationPrototypeError, ReadTenancyError,
-    ResourcePrototypeError, StandardModel, StandardModelError, Timestamp, ValidationPrototypeError,
-    Visibility, Workspace, WorkspaceId, WsEventError,
+    StandardModel, StandardModelError, Timestamp, ValidationPrototypeError, Visibility, Workspace,
+    WorkspaceId, WsEventError,
 };
 
 pub use ui_menu::UiMenu;
@@ -72,8 +72,6 @@ pub enum SchemaError {
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
-    #[error("resource prototype error: {0}")]
-    ResourcePrototype(#[from] ResourcePrototypeError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("socket error: {0}")]

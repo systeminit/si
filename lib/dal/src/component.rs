@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_data::{pg::InstrumentedTransaction, NatsError, PgError};
+use si_data::{NatsError, PgError};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -10,7 +10,7 @@ use crate::code_generation_resolver::CodeGenerationResolverContext;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
-    js_qualification::FuncBackendJsQualificationArgs, js_resource::FuncBackendJsResourceSyncArgs,
+    js_qualification::FuncBackendJsQualificationArgs,
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::{
@@ -18,7 +18,6 @@ use crate::func::binding_return_value::{
 };
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
-use crate::resource_resolver::ResourceResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::SocketEdgeKind;
@@ -31,7 +30,6 @@ use crate::{
     pk,
     provider::internal::InternalProviderError,
     qualification::QualificationError,
-    resource::ResourceId,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
@@ -39,8 +37,7 @@ use crate::{
     ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider, Node,
     NodeError, OrganizationError, Prop, PropError, PropId, QualificationPrototype,
     QualificationPrototypeError, QualificationResolver, QualificationResolverError,
-    ReadTenancyError, ResourceError, ResourcePrototype, ResourcePrototypeError, ResourceResolver,
-    ResourceResolverError, Schema, SchemaError, SchemaId, Socket, SocketId, StandardModel,
+    ReadTenancyError, Schema, SchemaError, SchemaId, Socket, SocketId, StandardModel,
     StandardModelError, SystemId, Timestamp, TransactionsError, ValidationPrototype,
     ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
     WorkspaceError, WriteTenancy,
@@ -89,14 +86,12 @@ pub enum ComponentError {
     RootPropNotFound(SchemaVariantId),
 
     // FIXME: change the below to be alphabetical and re-join with the above variants.
+    #[error(transparent)]
+    ComponentView(#[from] ComponentViewError),
     #[error("qualification prototype error: {0}")]
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("qualification resolver error: {0}")]
     QualificationResolver(#[from] QualificationResolverError),
-    #[error("resource prototype error: {0}")]
-    ResourcePrototype(#[from] ResourcePrototypeError),
-    #[error("resource resolver error: {0}")]
-    ResourceResolver(#[from] ResourceResolverError),
     #[error("code generation prototype error: {0}")]
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("code generation resolver error: {0}")]
@@ -127,8 +122,6 @@ pub enum ComponentError {
     NoSystemSocketsFound(ComponentId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
-    #[error("resource not found for component ({0}) in system ({1})")]
-    ResourceNotFound(ComponentId, SystemId),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant not found")]
@@ -157,8 +150,6 @@ pub enum ComponentError {
     ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("qualification view error: {0}")]
     QualificationView(#[from] QualificationError),
-    #[error("resource error: {0}")]
-    Resource(#[from] ResourceError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
     #[error("workspace not found")]
@@ -183,7 +174,6 @@ const FIND_FOR_NODE: &str = include_str!("./queries/component_find_for_node.sql"
 //const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
 const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
 const LIST_CODE_GENERATED: &str = include_str!("./queries/component_list_code_generated.sql");
-const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_resource_sync.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("./queries/component_list_for_schema_variant.sql");
 const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
@@ -308,7 +298,7 @@ impl Component {
         &self,
         ctx: &DalContext,
         system_id: SystemId,
-    ) -> ComponentResult<(EdgeId, ResourceId)> {
+    ) -> ComponentResult<EdgeId> {
         let system_sockets =
             Self::list_sockets_for_kind(ctx, self.id, SocketEdgeKind::System).await?;
 
@@ -330,13 +320,7 @@ impl Component {
 
         let edge = Edge::include_component_in_system(ctx, self.id, diagram_kind, system_id).await?;
 
-        // NOTE: We may want to be a bit smarter about when we create the Resource
-        //       at some point in the future, by only creating it if there is also
-        //       a ResourcePrototype for the Component's SchemaVariant.
-        //let resource = Resource::new(ctx, &self.id, &system_id).await?;
-
-        //Ok((*edge.id(), *resource.id()))
-        Ok((*edge.id(), ResourceId::NONE))
+        Ok(*edge.id())
     }
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
@@ -1179,69 +1163,7 @@ impl Component {
         Ok(results)
     }
 
-    //#[instrument(skip_all)]
-    //pub async fn get_resource_by_component_and_system(
-    //    ctx: &DalContext,
-    //    component_id: ComponentId,
-    //    system_id: SystemId,
-    //) -> ComponentResult<Vec<ResourceView>> {
-    //    let resource =
-    //        Resource::list_by_component(ctx, &component_id, &system_id).await?;
-    //    let resource = match resource {
-    //        Some(r) => r,
-    //        None => return Ok(None),
-    //    };
-
-    //    let row = ctx
-    //        .txns()
-    //        .pg()
-    //        .query_opt(
-    //            GET_RESOURCE,
-    //            &[
-    //                ctx.read_tenancy(),
-    //                ctx.visibility(),
-    //                &component_id,
-    //                &system_id,
-    //            ],
-    //        )
-    //        .await?;
-
-    //    let json: Option<serde_json::Value> = row.map(|row| row.try_get("object")).transpose()?;
-
-    //    let func_binding_return_value: Option<FuncBindingReturnValue> =
-    //        json.map(serde_json::from_value).transpose()?;
-    //    let res_view = ResourceView::from((resource, func_binding_return_value));
-
-    //    Ok(Some(res_view))
-    //}
-
     pub async fn veritech_code_generation_component(
-        &self,
-        ctx: &DalContext,
-        system_id: SystemId,
-    ) -> ComponentResult<ComponentView> {
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
-        let attribute_context = AttributeReadContext {
-            prop_id: None,
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            component_id: Some(*self.id()),
-            system_id: Some(system_id),
-            ..AttributeReadContext::default()
-        };
-
-        let component = ComponentView::for_context(ctx, attribute_context).await?;
-        Ok(component)
-    }
-
-    pub async fn veritech_resource_sync_component(
         &self,
         ctx: &DalContext,
         system_id: SystemId,
@@ -1338,107 +1260,6 @@ impl Component {
         }
 
         Ok(results)
-    }
-
-    #[instrument(skip_all)]
-    pub async fn list_for_resource_sync(
-        txn: &InstrumentedTransaction<'_>,
-    ) -> ComponentResult<Vec<(Component, SystemId)>> {
-        let visibility = Visibility::new_head(false);
-        let rows = txn.query(LIST_FOR_RESOURCE_SYNC, &[&visibility]).await?;
-
-        let mut results = Vec::new();
-        for row in rows.into_iter() {
-            let json: serde_json::Value = row.try_get("object")?;
-            let object: Self = serde_json::from_value(json)?;
-            let system_id: SystemId = row.try_get("system_id")?;
-            results.push((object, system_id));
-        }
-
-        Ok(results)
-    }
-
-    #[instrument(skip_all)]
-    pub async fn sync_resource(
-        &self,
-        ctx: &DalContext,
-        system_id: SystemId,
-    ) -> ComponentResult<()> {
-        // Note(paulo): we don't actually care about the Resource here, we only care about the ResourcePrototype, is this wrong?
-
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
-
-        let resource_prototype = ResourcePrototype::get_for_component(
-            ctx,
-            *self.id(),
-            *schema.id(),
-            *schema_variant.id(),
-            system_id,
-        )
-        .await?;
-
-        if let Some(prototype) = resource_prototype {
-            let func = Func::get_by_id(ctx, &prototype.func_id())
-                .await?
-                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
-
-            let args = FuncBackendJsResourceSyncArgs {
-                component: self
-                    .veritech_resource_sync_component(ctx, system_id)
-                    .await?,
-            };
-
-            let (func_binding, _created) = FuncBinding::find_or_create(
-                ctx,
-                serde_json::to_value(args)?,
-                prototype.func_id(),
-                *func.backend_kind(),
-            )
-            .await?;
-
-            // Note: We need to execute the same func binding a bunch of times
-            func_binding.execute(ctx).await?;
-
-            // Note for future humans - if this isn't a built in, then we need to
-            // think about execution time. Probably higher up than this? But just
-            // an FYI.
-            let existing_resolver =
-                ResourceResolver::get_for_prototype_and_component(ctx, prototype.id(), self.id())
-                    .await?;
-
-            // If we do not have one, create the resource resolver. If we do, update the
-            // func binding id to point to the new value.
-            let mut resolver = if let Some(resolver) = existing_resolver {
-                resolver
-            } else {
-                let mut resolver_context = ResourceResolverContext::new();
-                resolver_context.set_component_id(*self.id());
-                ResourceResolver::new(
-                    ctx,
-                    *prototype.id(),
-                    *func.id(),
-                    *func_binding.id(),
-                    resolver_context,
-                )
-                .await?
-            };
-            resolver
-                .set_func_binding_id(ctx, *func_binding.id())
-                .await?;
-        }
-
-        WsEvent::resource_synced(ctx, *self.id(), system_id)
-            .publish(ctx)
-            .await?;
-
-        Ok(())
     }
 
     // Note: Won't work for arrays and maps

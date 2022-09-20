@@ -20,8 +20,7 @@ export interface WorkflowRunnerState {
 }
 
 export interface WorkflowRunResponse {
-  logs: string[];
-  workflowRunnerState: WorkflowRunnerState;
+  runId: number;
 }
 
 export const run: (

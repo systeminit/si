@@ -649,7 +649,7 @@ macro_rules! impl_standard_model {
      table_name: $table_name:expr,
      history_event_label_base: $history_event_label_base:expr,
      history_event_message_name: $history_event_message_name:expr $(,)?) => {
-        impl StandardModel for $model {
+        impl $crate::StandardModel for $model {
             type Pk = $pk;
             type Id = $id;
 
@@ -673,27 +673,27 @@ macro_rules! impl_standard_model {
                 $history_event_message_name
             }
 
-            fn visibility(&self) -> &Visibility {
+            fn visibility(&self) -> &$crate::Visibility {
                 &self.visibility
             }
 
-            fn visibility_mut(&mut self) -> &mut Visibility {
+            fn visibility_mut(&mut self) -> &mut $crate::Visibility {
                 &mut self.visibility
             }
 
-            fn tenancy(&self) -> &WriteTenancy {
+            fn tenancy(&self) -> &$crate::WriteTenancy {
                 &self.tenancy
             }
 
-            fn tenancy_mut(&mut self) -> &mut WriteTenancy {
+            fn tenancy_mut(&mut self) -> &mut $crate::WriteTenancy {
                 &mut self.tenancy
             }
 
-            fn timestamp(&self) -> &Timestamp {
+            fn timestamp(&self) -> &$crate::Timestamp {
                 &self.timestamp
             }
 
-            fn timestamp_mut(&mut self) -> &mut Timestamp {
+            fn timestamp_mut(&mut self) -> &mut $crate::Timestamp {
                 &mut self.timestamp
             }
         }

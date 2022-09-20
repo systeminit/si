@@ -6,12 +6,12 @@ import {
   eventChangeSetCreated$,
   eventChangeSetWritten$,
 } from "@/observable/change_set";
-import { eventResourceSynced$ } from "@/observable/resource";
+import { eventResourceRefreshed$ } from "@/observable/resource";
 import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { eventDependentValuesUpdated$ } from "@/observable/attribute_value";
 import { eventCodeGenerated$ } from "@/observable/code";
 import { eventSecretCreated$ } from "@/observable/secret";
-import { eventCommandOutput$ } from "@/observable/command";
+import { eventCommandOutput$, eventCommandReturn$ } from "@/observable/command";
 
 const eventMap: {
   [E in WsPayloadKinds["kind"]]:  // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,12 +25,13 @@ const eventMap: {
   ChangeSetApplied: eventChangeSetApplied$,
   ChangeSetCanceled: eventChangeSetCanceled$,
   ChangeSetWritten: eventChangeSetWritten$,
-  ResourceSynced: eventResourceSynced$,
+  ResourceRefreshed: eventResourceRefreshed$,
   CodeGenerated: eventCodeGenerated$,
   CheckedQualifications: eventCheckedQualifications$,
   UpdatedDependentValue: eventDependentValuesUpdated$,
   SecretCreated: eventSecretCreated$,
   CommandOutput: eventCommandOutput$,
+  CommandReturn: eventCommandReturn$,
 };
 
 export function dispatch(wsEvent: WsEvent<WsPayloadKinds>) {

@@ -1,7 +1,7 @@
 import { ReplaySubject } from "rxjs";
-import { WsResourceSynced, WsEvent } from "@/api/sdf/dal/ws_event";
+import { WsResourceRefreshed, WsEvent } from "@/api/sdf/dal/ws_event";
 
-export interface ResourceSyncId {
+export interface ResourceRefreshId {
   componentId: number;
   systemId: number;
 }
@@ -9,6 +9,6 @@ export interface ResourceSyncId {
 /**
  * Fired with the ids of the component and the system
  */
-export const eventResourceSynced$ =
-  new ReplaySubject<WsEvent<WsResourceSynced> | null>(1);
-eventResourceSynced$.next(null);
+export const eventResourceRefreshed$ =
+  new ReplaySubject<WsEvent<WsResourceRefreshed> | null>(1);
+eventResourceRefreshed$.next(null);

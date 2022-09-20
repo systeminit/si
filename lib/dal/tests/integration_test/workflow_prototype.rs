@@ -171,5 +171,5 @@ async fn run(ctx: &DalContext) {
         .await
         .expect("unable to extract tree");
 
-    tree.run(ctx).await.expect("unable to run workflow");
+    tree.run(ctx, 0).await.expect("unable to run workflow");
 }

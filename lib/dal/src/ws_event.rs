@@ -6,8 +6,8 @@ use si_data::NatsError;
 use crate::attribute::value::DependentValuesUpdated;
 use crate::code_generation_resolver::CodeGenerationId;
 use crate::qualification::QualificationCheckId;
-use crate::resource::ResourceSyncId;
-use crate::workflow::CommandOutput;
+use crate::resource::ResourceRefreshId;
+use crate::workflow::{CommandOutput, CommandReturn};
 use crate::{BillingAccountId, ChangeSetPk, DalContext, HistoryActor, ReadTenancy, SchemaPk};
 
 #[derive(Error, Debug)]
@@ -28,11 +28,12 @@ pub enum WsPayload {
     ChangeSetCanceled(ChangeSetPk),
     ChangeSetWritten(ChangeSetPk),
     SchemaCreated(SchemaPk),
-    ResourceSynced(ResourceSyncId),
+    ResourceRefreshed(ResourceRefreshId),
     CodeGenerated(CodeGenerationId),
     CheckedQualifications(QualificationCheckId),
     UpdatedDependentValue(DependentValuesUpdated),
     CommandOutput(CommandOutput),
+    CommandReturn(Box<CommandReturn>),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]

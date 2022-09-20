@@ -74,11 +74,6 @@ export function createSandbox(
         ...commonSandbox(executionId),
         ...resolverFunctionSandbox,
       };
-    case FunctionKind.ResourceSync:
-      return {
-        ...commonSandbox(executionId),
-        ...resourceSyncSandbox,
-      };
     case FunctionKind.WorkflowResolve:
       return {
         ...commonSandbox(executionId),

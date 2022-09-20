@@ -112,30 +112,33 @@ impl WriteTenancy {
         Ok(result)
     }
 
-    pub async fn clone_into_read_tenancy(
-        &self,
+    pub async fn into_read_tenancy(
+        self,
         ctx: &DalContext,
     ) -> Result<ReadTenancy, ReadTenancyError> {
         let read_tenancy = if self.workspace_ids.is_empty() {
             if self.organization_ids.is_empty() {
-                ReadTenancy::new_billing_account(self.billing_account_ids.clone())
+                ReadTenancy::new_billing_account(self.billing_account_ids)
             } else {
                 ReadTenancy::new_organization(
                     ctx.txns().pg(),
-                    self.organization_ids.clone(),
+                    self.organization_ids,
                     ctx.visibility(),
                 )
                 .await?
             }
         } else {
-            ReadTenancy::new_workspace(
-                ctx.txns().pg(),
-                self.workspace_ids.clone(),
-                ctx.visibility(),
-            )
-            .await?
+            ReadTenancy::new_workspace(ctx.txns().pg(), self.workspace_ids, ctx.visibility())
+                .await?
         };
         Ok(read_tenancy)
+    }
+
+    pub async fn clone_into_read_tenancy(
+        &self,
+        ctx: &DalContext,
+    ) -> Result<ReadTenancy, ReadTenancyError> {
+        self.clone().into_read_tenancy(ctx).await
     }
 }
 

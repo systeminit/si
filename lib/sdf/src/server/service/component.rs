@@ -21,11 +21,9 @@ pub mod get_diff;
 pub mod get_property_editor_schema;
 pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
-pub mod get_resource;
 pub mod insert_property_editor_value;
 pub mod list_components_identification;
 pub mod list_qualifications;
-pub mod sync_resource;
 pub mod update_property_editor_value;
 
 #[derive(Debug, Error)]
@@ -107,8 +105,6 @@ pub fn routes() -> Router {
             "/list_qualifications",
             get(list_qualifications::list_qualifications),
         )
-        .route("/get_resource", get(get_resource::get_resource))
-        .route("/sync_resource", post(sync_resource::sync_resource))
         .route(
             "/check_qualifications",
             post(check_qualifications::check_qualifications),

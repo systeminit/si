@@ -1,26 +1,51 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    component::{ComponentKind, ComponentResult},
-    AttributeReadContext, AttributeValue, Component, ComponentError, DalContext, EncryptedSecret,
-    ExternalProviderId, FuncBindingReturnValue, InternalProvider, Prop, PropId, Resource,
+    component::ComponentKind, func::binding_return_value::FuncBindingReturnValueId,
+    AttributeReadContext, AttributeValue, AttributeValueError, Component, ComponentId, DalContext,
+    EncryptedSecret, ExternalProviderId, FuncBindingReturnValue, InternalProvider,
+    InternalProviderError, Prop, PropError, PropId, Resource, ResourceError, SchemaVariantId,
     SecretError, SecretId, StandardModel, StandardModelError, System, SystemId,
 };
 
 use thiserror::Error;
 
+type ComponentViewResult<T> = Result<T, ComponentViewError>;
+
 #[derive(Error, Debug)]
 pub enum ComponentViewError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
-    #[error("secret error: {0}")]
+    #[error(transparent)]
+    InternalProvider(#[from] InternalProviderError),
+    #[error(transparent)]
     Secret(#[from] SecretError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    Resource(#[from] ResourceError),
+    #[error(transparent)]
+    AttributeValue(#[from] AttributeValueError),
+    #[error(transparent)]
+    Prop(#[from] PropError),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
     #[error("secret not found: {0}")]
     SecretNotFound(SecretId),
     #[error("json pointer not found: {1} at {:0?}")]
     JSONPointerNotFound(serde_json::Value, String),
+    #[error("bad attribute read context {0}")]
+    BadAttributeReadContext(String),
+    #[error("component not found {0}")]
+    NotFound(ComponentId),
+    #[error("schema variant not found for component {0}")]
+    NoSchemaVariant(ComponentId),
+    #[error("no root prop found for schema variant {0}")]
+    NoRootProp(SchemaVariantId),
+    #[error("func binding return value not found {0}")]
+    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
+    #[error("no internal provider for prop {0}")]
+    NoInternalProvider(PropId),
+    #[error("no attribute value found for context {0:?}")]
+    NoAttributeValue(AttributeReadContext),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -46,11 +71,11 @@ impl ComponentView {
     pub async fn for_context(
         ctx: &DalContext,
         context: AttributeReadContext,
-    ) -> ComponentResult<ComponentView> {
+    ) -> ComponentViewResult<ComponentView> {
         let component_id = match context.component_id() {
             Some(c) => c,
             None => {
-                return Err(ComponentError::BadAttributeReadContext(
+                return Err(ComponentViewError::BadAttributeReadContext(
                     "component_id is required".to_string(),
                 ));
             }
@@ -58,7 +83,7 @@ impl ComponentView {
 
         let component = Component::get_by_id(ctx, &component_id)
             .await?
-            .ok_or(ComponentError::NotFound(component_id))?;
+            .ok_or(ComponentViewError::NotFound(component_id))?;
 
         // Perhaps get_by_id should just do this? -- Adam
         let system = match context.system_id() {
@@ -68,19 +93,15 @@ impl ComponentView {
 
         let schema_variant_id = context
             .schema_variant_id()
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or_else(|| ComponentViewError::NoSchemaVariant(*component.id()))?;
 
         let prop = Prop::find_root_for_schema_variant(ctx, schema_variant_id)
             .await?
-            .ok_or_else(|| {
-                ComponentError::PropNotFound(format!(
-                    "root not found for schema variant {schema_variant_id}"
-                ))
-            })?;
+            .ok_or(ComponentViewError::NoRootProp(schema_variant_id))?;
 
         let implicit_provider = InternalProvider::get_for_prop(ctx, *prop.id())
             .await?
-            .ok_or_else(|| ComponentError::InternalProviderNotFoundForProp(*prop.id()))?;
+            .ok_or_else(|| ComponentViewError::NoInternalProvider(*prop.id()))?;
 
         let value_context = AttributeReadContext {
             internal_provider_id: Some(*implicit_provider.id()),
@@ -91,15 +112,13 @@ impl ComponentView {
 
         let attribute_value = AttributeValue::find_for_context(ctx, value_context)
             .await?
-            .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                value_context,
-            ))?;
+            .ok_or(ComponentViewError::NoAttributeValue(value_context))?;
 
         let properties =
             FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
                 .await?
                 .ok_or_else(|| {
-                    ComponentError::FuncBindingReturnValueNotFound(
+                    ComponentViewError::FuncBindingReturnValueNotFound(
                         attribute_value.func_binding_return_value_id(),
                     )
                 })?;

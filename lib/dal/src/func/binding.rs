@@ -16,7 +16,6 @@ use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGeneration,
     js_command::FuncBackendJsCommand,
     js_qualification::FuncBackendJsQualification,
-    js_resource::FuncBackendJsResourceSync,
     js_workflow::FuncBackendJsWorkflow,
     map::FuncBackendMap,
     prop_object::FuncBackendPropObject,
@@ -26,10 +25,9 @@ use crate::func::backend::{
 };
 use crate::DalContext;
 use crate::{
-    component::ComponentViewError, impl_standard_model, pk, standard_model,
-    standard_model_accessor, standard_model_belongs_to, Func, FuncBackendError, FuncBackendKind,
-    HistoryEvent, HistoryEventError, ReadTenancyError, StandardModel, StandardModelError,
-    Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
+    Func, FuncBackendError, FuncBackendKind, HistoryEvent, HistoryEventError, ReadTenancyError,
+    StandardModel, StandardModelError, Timestamp, Visibility,
 };
 
 use super::{
@@ -64,8 +62,6 @@ pub enum FuncBindingError {
     StandardModelError(#[from] StandardModelError),
     #[error("func execution tracking error: {0}")]
     FuncExecutionError(#[from] FuncExecutionError),
-    #[error("component view error: {0}")]
-    ComponentView(#[from] ComponentViewError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
 }
@@ -267,9 +263,6 @@ impl FuncBinding {
             FuncBackendKind::JsCommand => {
                 FuncBackendJsCommand::create_and_execute(context, &func, &self.args).await?
             }
-            FuncBackendKind::JsResourceSync => {
-                FuncBackendJsResourceSync::create_and_execute(context, &func, &self.args).await?
-            }
             FuncBackendKind::JsAttribute => {
                 FuncBackendJsAttribute::create_and_execute(context, &func, &self.args).await?
             }
@@ -378,8 +371,7 @@ impl FuncBinding {
             | FuncBackendKind::Unset
             | FuncBackendKind::ValidateStringValue => {}
 
-            FuncBackendKind::JsResourceSync
-            | FuncBackendKind::JsCodeGeneration
+            FuncBackendKind::JsCodeGeneration
             | FuncBackendKind::JsQualification
             | FuncBackendKind::JsAttribute
             | FuncBackendKind::JsWorkflow

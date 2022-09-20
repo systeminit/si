@@ -5,35 +5,31 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{sync::broadcast, time};
 
-use crate::{
-    Component, ComponentError, HistoryEventError, ServicesContext, StandardModelError, SystemId,
-};
+use crate::{Resource, ServicesContext, StandardModel, StandardModelError, TransactionsError};
 
 #[derive(Error, Debug)]
 pub enum ResourceSchedulerError {
-    #[error("error serializing/deserializing json: {0}")]
+    #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
-    #[error("pg pool error: {0}")]
+    #[error(transparent)]
     PgPool(#[from] PgPoolError),
-    #[error("pg error: {0}")]
+    #[error(transparent)]
     Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
+    #[error(transparent)]
     Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
+    #[error(transparent)]
     StandardModelError(#[from] StandardModelError),
-    #[error("component")]
-    Component(#[from] ComponentError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type ResourceSchedulerResult<T> = Result<T, ResourceSchedulerError>;
 
-/// The resource scheduler handles looking up all the components, and scheduling
-/// them to refresh their resources. Eventually, it should become smart enough to
-/// parallelize, it might be extracted to a fully separate service, etc etc. For now,
+/// The resource scheduler handles looking up all the resources, and scheduling
+/// them to refresh. Eventually, it should become smart enough to parallelize,
+/// it might be extracted to a fully separate service, etc etc. For now,
 /// it is the dumbest thing that could possibly work - no more often than every 30
-/// seconds, it will ask a component to sync_resource.
+/// seconds, it will ask a resource to refresh
 #[derive(Debug, Clone)]
 pub struct ResourceScheduler {
     services_context: ServicesContext,
@@ -51,41 +47,34 @@ impl ResourceScheduler {
         tokio::spawn(async move {
             tokio::select! {
                 _ = shutdown_broadcast_rx.recv() => {
-                    info!("Resource Syncing Scheduler received shutdown request, bailing out");
+                    info!("Resource Refreshing Scheduler received shutdown request, bailing out");
                 },
                 _ = self.start_task() => {}
             }
-            info!("Resource Syncing stopped");
+            info!("Resource Refreshing stopped");
         });
     }
 
     /// The internal task spawned by `start`. No more frequently than every 30
-    /// seconds, it will iterate over all the components in the database and
-    /// schedule them to sync their resources.
+    /// seconds, it will iterate over all the resources in the database and
+    /// schedule them to refresh.
     #[instrument(name = "resource_scheduler.start_task", skip_all, level = "debug")]
     async fn start_task(&self) {
         let mut interval = time::interval(Duration::from_secs(30));
         'schedule: loop {
             interval.tick().await;
-            let to_check = match self.components_to_check().await {
+            let resources = match self.resources().await {
                 Ok(r) => r,
                 Err(error) => {
                     error!(
                         ?error,
-                        "Failed to fetch components; aborting scheduled interval check"
+                        "Failed to fetch resources; aborting scheduled interval check"
                     );
                     continue 'schedule;
                 }
             };
 
-            'check: for (component, system_id) in to_check.into_iter() {
-                if component.tenancy().workspaces().is_empty() {
-                    error!(
-                        "component does not have any workspaces in tenancy; skipping it: {:?}",
-                        component
-                    );
-                    continue 'check;
-                }
+            'refresh: for mut resource in resources {
                 let builder = self.services_context.clone().into_builder();
                 // First we're building a ctx with universal head, then updating it with a
                 // workspace head request context
@@ -93,45 +82,44 @@ impl ResourceScheduler {
                     Ok(ctx) => ctx,
                     Err(err) => {
                         error!("Unable to build dal context: {:?}", err);
-                        continue 'check;
+                        continue 'refresh;
                     }
                 };
-                if let Err(err) = ctx
-                    .update_to_workspace_tenancies(
-                        *component
-                            .tenancy()
-                            .workspaces()
-                            .first()
-                            .expect("empty workspace array when we checked earlier; bug!"),
-                    )
-                    .await
-                {
-                    error!(
-                        "Unable to update dal context for workspace tenanices: {:?}",
-                        err
-                    );
-                    continue 'check;
-                };
 
-                if let Err(error) = component.sync_resource(&ctx, system_id).await {
-                    error!(?error, "Failed to sync component, moving to the next.");
-                    continue 'check;
+                let read_tenancy = match resource.tenancy().clone_into_read_tenancy(&ctx).await {
+                    Ok(tenancy) => tenancy,
+                    Err(err) => {
+                        error!(
+                            "Unable to update dal context for workspace tenanices: {:?}",
+                            err
+                        );
+                        continue 'refresh;
+                    }
+                };
+                ctx.update_tenancies(read_tenancy, resource.tenancy().clone());
+
+                if let Err(error) = resource.refresh(&ctx).await {
+                    error!(?error, "Failed to refresh resource, moving to the next.");
+                    continue 'refresh;
                 }
                 if let Err(err) = ctx.commit().await {
                     error!("Unable to commit transactions: {:?}", err);
-                    continue 'check;
+                    continue 'refresh;
                 };
             }
         }
     }
 
-    /// Gets a list of all the components in the database.
+    /// Gets a list of all the resources in the database.
     #[instrument(skip_all, level = "debug")]
-    async fn components_to_check(&self) -> ResourceSchedulerResult<Vec<(Component, SystemId)>> {
-        let mut conn = self.services_context.pg_pool().get().await?;
-        let txn = conn.transaction().await?;
-        let results = Component::list_for_resource_sync(&txn).await?;
-        txn.commit().await?;
+    async fn resources(&self) -> ResourceSchedulerResult<Vec<Resource>> {
+        let builder = self.services_context.clone().into_builder();
+        let ctx = builder
+            .build_default()
+            .await
+            .expect("cannot start transactions");
+        let results = Resource::list(&ctx).await?;
+        ctx.commit().await?;
         Ok(results)
     }
 }

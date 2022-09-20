@@ -22,7 +22,6 @@ mod progress;
 mod qualification_check;
 mod readiness;
 mod resolver_function;
-mod resource_sync;
 mod sensitive_container;
 mod workflow_resolve;
 
@@ -44,6 +43,5 @@ pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
 pub use resolver_function::{
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
 };
-pub use resource_sync::{ResourceSyncRequest, ResourceSyncResultSuccess};
 pub use sensitive_container::{SensitiveContainer, SensitiveString};
 pub use workflow_resolve::{WorkflowResolveRequest, WorkflowResolveResultSuccess};

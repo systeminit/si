@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, PgError};
-use std::default::Default;
+use si_data::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -12,13 +11,12 @@ use crate::{
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     func::execution::{FuncExecution, FuncExecutionError},
     func::{binding::FuncBindingId, FuncId},
-    impl_standard_model, pk,
-    standard_model::{self, objects_from_rows},
-    standard_model_accessor, ChangeSetPk, ComponentId, Func, FuncBinding, FuncBindingError,
-    HistoryEventError, Resource, ResourceError, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, Timestamp, Visibility, WorkflowError, WorkflowPrototype,
-    WorkflowPrototypeError, WorkflowPrototypeId, WorkflowResolverError, WorkflowResolverId,
-    WriteTenancy, WsEvent, WsEventError, WsPayload,
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many,
+    ChangeSetPk, ComponentId, Func, FuncBinding, FuncBindingError, HistoryEventError,
+    InternalProviderError, Resource, ResourceError, ResourceId, SchemaId, SchemaVariantId,
+    StandardModel, StandardModelError, SystemId, Timestamp, Visibility, WorkflowError,
+    WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowResolverError,
+    WorkflowResolverId, WriteTenancy, WsEvent, WsEventError, WsPayload,
 };
 
 pub mod workflow_runner_state;
@@ -28,22 +26,20 @@ pub enum WorkflowRunnerError {
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
     #[error(transparent)]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error(transparent)]
+    Pg(#[from] PgError),
+    #[error(transparent)]
     Workflow(#[from] WorkflowError),
     #[error(transparent)]
-    Resource(#[from] ResourceError),
+    Resource(#[from] Box<ResourceError>),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
     FuncExecution(#[from] FuncExecutionError),
-    #[error("error serializing/deserializing json: {0}")]
+    #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
+    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     WorkflowResolver(#[from] WorkflowResolverError),
@@ -51,6 +47,8 @@ pub enum WorkflowRunnerError {
     WorkflowPrototype(#[from] WorkflowPrototypeError),
     #[error(transparent)]
     FuncBinding(#[from] FuncBindingError),
+    #[error(transparent)]
+    InternalProvider(#[from] InternalProviderError),
     #[error("prototype not found {0}")]
     PrototypeNotFound(WorkflowPrototypeId),
     #[error("missing workflow {0}")]
@@ -161,6 +159,8 @@ impl WorkflowRunner {
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         context: WorkflowRunnerContext,
+        created_resources: Vec<ResourceId>,
+        updated_resources: Vec<ResourceId>,
     ) -> WorkflowRunnerResult<Self> {
         let row = ctx.txns().pg().query_one(
             "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
@@ -178,7 +178,17 @@ impl WorkflowRunner {
             ],
         )
             .await?;
-        let object = standard_model::finish_create_from_row(ctx, row).await?;
+
+        let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
+
+        for resource in created_resources {
+            object.add_created_resource(ctx, &resource).await?;
+        }
+
+        for resource in updated_resources {
+            object.add_updated_resource(ctx, &resource).await?;
+        }
+
         WsEvent::new(ctx, WsPayload::ChangeSetApplied(ChangeSetPk::NONE))
             .publish(ctx)
             .await?;
@@ -190,9 +200,16 @@ impl WorkflowRunner {
     /// [`WorkflowRunnerState`](crate::workflow_runner::workflow_runner_state::WorkflowRunnerState).
     pub async fn run(
         ctx: &DalContext,
+        run_id: usize,
         prototype_id: WorkflowPrototypeId,
         component_id: ComponentId,
-    ) -> WorkflowRunnerResult<(Self, WorkflowRunnerState, Vec<FuncBindingReturnValue>)> {
+    ) -> WorkflowRunnerResult<(
+        Self,
+        WorkflowRunnerState,
+        Vec<FuncBindingReturnValue>,
+        Vec<Resource>,
+        Vec<Resource>,
+    )> {
         let prototype = WorkflowPrototype::get_by_id(ctx, &prototype_id)
             .await?
             .ok_or(WorkflowRunnerError::PrototypeNotFound(prototype_id))?;
@@ -206,14 +223,15 @@ impl WorkflowRunner {
         let tree = resolver.tree(ctx).await?;
 
         // Perform the workflow runner "run" by running the workflow tree.
-        let func_binding_return_values = tree.run(ctx).await?;
-        let (func_id, func_binding_id) = Self::process_successful_workflow_run(
-            ctx,
-            &func_binding_return_values,
-            prototype_id,
-            component_id,
-        )
-        .await?;
+        let func_binding_return_values = tree.run(ctx, run_id).await?;
+        let (func_id, func_binding_id, created_resources, updated_resources) =
+            Self::process_successful_workflow_run(
+                ctx,
+                &func_binding_return_values,
+                prototype_id,
+                component_id,
+            )
+            .await?;
         let (workflow_runner_status, error_message) =
             Self::detect_failure_from_tree_execution(&func_binding_return_values);
 
@@ -232,6 +250,8 @@ impl WorkflowRunner {
             func_id,
             func_binding_id,
             context,
+            created_resources.iter().map(|r| *r.id()).collect(),
+            updated_resources.iter().map(|r| *r.id()).collect(),
         )
         .await?;
 
@@ -245,7 +265,13 @@ impl WorkflowRunner {
         )
         .await?;
 
-        Ok((runner, runner_state, func_binding_return_values))
+        Ok((
+            runner,
+            runner_state,
+            func_binding_return_values,
+            created_resources,
+            updated_resources,
+        ))
     }
 
     /// Greedy algorithm to find the first instance of failure in a list of given [`FuncBindingReturnValues`](Vec<FuncBindingReturnValue>)
@@ -272,7 +298,7 @@ impl WorkflowRunner {
         func_binding_return_values: &Vec<FuncBindingReturnValue>,
         prototype_id: WorkflowPrototypeId,
         component_id: ComponentId,
-    ) -> WorkflowRunnerResult<(FuncId, FuncBindingId)> {
+    ) -> WorkflowRunnerResult<(FuncId, FuncBindingId, Vec<Resource>, Vec<Resource>)> {
         let identity = Func::find_by_attr(ctx, "name", &"si:identity")
             .await?
             .pop()
@@ -285,7 +311,8 @@ impl WorkflowRunner {
         )
             .await?;
 
-        let mut resources = Vec::new();
+        let mut created_resources = Vec::new();
+        let mut updated_resources = Vec::new();
         let mut logs = Vec::new();
         for return_value in func_binding_return_values {
             for stream in return_value
@@ -299,7 +326,7 @@ impl WorkflowRunner {
             if let Some(value) = return_value.value() {
                 let result = CommandRunResult::deserialize(value)?;
                 for (key, value) in result.updated {
-                    resources.push(
+                    updated_resources.push(
                         Resource::upsert(
                             ctx,
                             component_id,
@@ -308,15 +335,17 @@ impl WorkflowRunner {
                             value,
                             prototype_id,
                         )
-                        .await?,
+                        .await
+                        .map_err(Box::new)?,
                     );
                 }
                 for (key, value) in result.created {
                     // If the function creates multiple resources with the same key we will duplicate them
                     // Otherwise a EC2 instance might get lost if the command function has a glitch
-                    resources.push(
+                    created_resources.push(
                         Resource::new(ctx, component_id, SystemId::NONE, key, value, prototype_id)
-                            .await?,
+                            .await
+                            .map_err(Box::new)?,
                     );
                 }
             }
@@ -335,7 +364,12 @@ impl WorkflowRunner {
             FuncExecution::get_by_pk(ctx, &func_binding_return_value.func_execution_pk()).await?;
         func_execution.set_output_stream(ctx, logs).await?;
 
-        Ok((*identity.id(), *func_binding.id()))
+        Ok((
+            *identity.id(),
+            *func_binding.id(),
+            created_resources,
+            updated_resources,
+        ))
     }
 
     standard_model_accessor!(
@@ -367,9 +401,37 @@ impl WorkflowRunner {
                 ],
             )
             .await?;
-        let object = objects_from_rows(rows)?;
+        let object = standard_model::objects_from_rows(rows)?;
         Ok(object)
     }
+
+    standard_model_many_to_many!(
+        lookup_fn: created_resources,
+        associate_fn: add_created_resource,
+        disassociate_fn: remove_created_resource,
+        table_name: "workflow_runner_many_to_many_created_resources",
+        left_table: "workflow_runners",
+        left_id: WorkflowRunnerId,
+        right_table: "resources",
+        right_id: ResourceId,
+        which_table_is_this: "left",
+        returns: Resource,
+        result: WorkflowRunnerResult,
+    );
+
+    standard_model_many_to_many!(
+        lookup_fn: updated_resources,
+        associate_fn: add_updated_resource,
+        disassociate_fn: remove_updated_resource,
+        table_name: "workflow_runner_many_to_many_updated_resources",
+        left_table: "workflow_runners",
+        left_id: WorkflowRunnerId,
+        right_table: "resources",
+        right_id: ResourceId,
+        which_table_is_this: "left",
+        returns: Resource,
+        result: WorkflowRunnerResult,
+    );
 }
 
 #[cfg(test)]
