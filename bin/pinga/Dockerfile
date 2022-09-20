@@ -8,7 +8,7 @@ FROM rust:$RUST_VERSION as cache
 ARG RUST_VERSION
 ARG BIN=pinga
 
-RUN apt-get update && apt-get install -y lld
+RUN apt-get update && apt-get install -y lld protobuf-compiler
 WORKDIR /usr/src
 COPY . .
 

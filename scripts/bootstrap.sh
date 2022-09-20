@@ -64,6 +64,7 @@ function darwin-bootstrap {
         kubeval
         libtool
         make
+        protobuf
         skopeo
     )
 
@@ -78,6 +79,7 @@ function arch-bootstrap {
         base-devel
         git
         make
+        protobuf
         skopeo
         wget
     )
@@ -95,6 +97,7 @@ function fedora-bootstrap {
         golang-github-instrumenta-kubeval
         lld
         make
+        protobuf-compiler
         skopeo
         wget
     )
@@ -108,8 +111,10 @@ function ubuntu-bootstrap {
     local pkgs=(
         build-essential
         git
+        libprotobuf-dev
         lld
         make
+        protobuf-compiler
         skopeo
         wget
     )
@@ -201,6 +206,7 @@ function check-binaries {
         kubeval
         node
         npm
+        protoc
         skopeo
     )
 
