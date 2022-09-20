@@ -23,16 +23,19 @@
           :style="{
             'border-color': component.color || colors.neutral[400],
           }"
-          class="block px-2 py-2 border-l-8 group"
+          class="w-full px-2 py-2 border-l-8 group flex flex-row items-baseline"
         >
-          {{ component.subtitle || "si-123" }}
+          <span
+            class="whitespace-nowrap text-ellipsis overflow-hidden shrink leading-tight"
+            >{{ component.subtitle || "si-123" }}</span
+          >
           <i
             :class="
               selectedComponentId === parseInt(component.id)
                 ? ['bg-action-500 text-white']
                 : ['text-neutral-500 group-hover:text-white']
             "
-            class="text-sm pl-1"
+            class="text-sm pl-1 flex-none"
           >
             {{ component.title }}
           </i>
