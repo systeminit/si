@@ -25,7 +25,7 @@ default--check-lint:
 ## check-doc: Checks all documentation for the Rust crate
 default--check-doc:
 	$(call header,$@)
-	env RUSTDOCFLAGS="-Dwarnings" cargo doc --all
+	env RUSTDOCFLAGS="-Dwarnings" cargo doc --all-features --no-deps
 .PHONY: default--check-doc
 
 ## check-format: Checks all code formatting for the Rust crate
