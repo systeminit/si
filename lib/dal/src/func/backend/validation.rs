@@ -48,7 +48,7 @@ impl FuncBackend for FuncBackendValidateStringValue {
         if let Some(v) = value {
             if v != expected {
                 validation_errors.push(ValidationError {
-                    message: format!("value ({v}) does not match expected string ({expected})"),
+                    message: format!("value ({v}) does not match expected ({expected})"),
                     ..ValidationError::default()
                 });
             }
