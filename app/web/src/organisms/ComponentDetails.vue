@@ -18,7 +18,10 @@
       <TabPanel class="w-full h-full overflow-hidden">
         <CodeViewer :code="code" class="dark:text-neutral-50 text-neutral-900">
           <template #title>
-            <span class="text-lg ml-4">{{ props.componentName }} Code</span>
+            <span
+              class="text-lg ml-4 whitespace-nowrap overflow-hidden text-ellipsis"
+              >{{ props.componentName }} Code</span
+            >
           </template>
 
           <template #actionButtons>

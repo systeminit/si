@@ -3,7 +3,7 @@
     <div
       class="flex flex-row items-center h-10 px-6 py-2 text-base align-middle"
     >
-      <div class="text-lg">
+      <div class="text-lg whitespace-nowrap overflow-hidden text-ellipsis">
         {{
           componentMetadata?.schemaName || componentIdentification.schemaName
         }}
