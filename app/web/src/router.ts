@@ -47,18 +47,20 @@ const routes: RouteRecordRaw[] = [
       {
         path: "c",
         name: "workspace-compose",
-        component: () => import("@/organisms/Workspace/WorkspaceCompose.vue"),
+        component: () =>
+          import("@/organisms/Workspace/WorkspaceModelAndView.vue"),
       },
       {
         path: "l/:funcId?",
         name: "workspace-lab",
         props: true,
-        component: () => import("@/organisms/Workspace/WorkspaceLab.vue"),
+        component: () => import("@/organisms/Workspace/WorkspaceCustomize.vue"),
       },
       {
         path: "v",
         name: "workspace-view",
-        component: () => import("@/organisms/Workspace/WorkspaceCompose.vue"),
+        component: () =>
+          import("@/organisms/Workspace/WorkspaceModelAndView.vue"),
       },
       {
         path: "r",
