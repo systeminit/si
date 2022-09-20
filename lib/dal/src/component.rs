@@ -464,6 +464,39 @@ impl Component {
                     }
                     (func_binding, binding_created)
                 }
+                // TODO(wendy/nick/victor) - Validator!
+                // FuncBackendKind::ValidateStringArrayValue => {
+                //     let mut args =
+                //         FuncBackendValidateStringArrayValueArgs::deserialize(validator.args())?;
+                //     if let Some(json_value) = value {
+                //         if json_value.is_string() {
+                //             args.value = Some(json_value.to_string());
+                //         } else {
+                //             return Err(ComponentError::InvalidPropValue(
+                //                 "String".to_string(),
+                //                 json_value.clone(),
+                //             ));
+                //         }
+                //     } else {
+                //         // TODO: This might not be quite the right error to return here if we got a None.
+                //         return Err(ComponentError::MissingProp(prop_id));
+                //     };
+                //     let args_json = serde_json::to_value(args)?;
+                //     let (func_binding, binding_created) = FuncBinding::find_or_create(
+                //         ctx,
+                //         args_json,
+                //         *func.id(),
+                //         *func.backend_kind(),
+                //     )
+                //     .await?;
+                //     // Note for future humans - if this isn't a built in, then we need to
+                //     // think about execution time. Probably higher up than this? But just
+                //     // an FYI.
+                //     if binding_created {
+                //         func_binding.execute(ctx).await?;
+                //     }
+                //     (func_binding, binding_created)
+                // }
                 kind => unimplemented!("Validator Backend not supported yet: {}", kind),
             };
 
