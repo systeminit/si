@@ -70,11 +70,13 @@ impl SocketView {
     ) -> DiagramResult<Vec<Self>> {
         let node_id = *node.id();
         let node_id: i64 = node_id.into();
+
+        // NOTE(nick): filter out system sockets since we only have the configuration diagram kind.
         Ok(schema_variant
             .sockets(ctx)
             .await?
             .into_iter()
-            .filter(|socket| socket.name() != "includes")
+            .filter(|socket| socket.name() != "system")
             .map(|socket| {
                 let socket_id = *socket.id();
                 let socket_id: i64 = socket_id.into();

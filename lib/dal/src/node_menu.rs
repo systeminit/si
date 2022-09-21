@@ -211,7 +211,11 @@ impl GenerateMenuItem {
     /// Generates raw items and initializes menu items as an empty vec.
     pub async fn new(ctx: &DalContext, diagram_kind: DiagramKind) -> NodeMenuResult<Self> {
         let mut item_list = Vec::new();
-        let ui_menus = UiMenu::list_for_diagram_kind(ctx, diagram_kind).await?;
+        let mut ui_menus = UiMenu::list_for_diagram_kind(ctx, diagram_kind).await?;
+
+        // Ensure the names and categories are alphabetically sorted.
+        ui_menus.sort_by(|a, b| a.name().cmp(&b.name()));
+        ui_menus.sort_by(|a, b| a.category().cmp(&b.category()));
 
         for ui_menu in ui_menus.into_iter() {
             if ui_menu.usable_in_menu(ctx).await? {
