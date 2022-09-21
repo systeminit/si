@@ -224,7 +224,8 @@ impl ExternalProvider {
         Ok(standard_model::object_option_from_row_option(row)?)
     }
 
-    /// Find [`Self`] with a provided name.
+    /// Find [`Self`] with a provided name, which is not only the name of [`Self`], but also of the
+    /// associated _output_ [`Socket`](crate::Socket).
     #[instrument(skip_all)]
     pub async fn find_for_schema_variant_and_name(
         ctx: &DalContext,

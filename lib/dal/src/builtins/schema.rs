@@ -57,8 +57,7 @@ impl BuiltinSchemaHelpers {
         }
     }
 
-    /// Creates a [`Prop`]. While a base [`AttributeReadContext`] is required for this function, it is
-    /// only used when a parent [`PropId`] is provided.
+    /// Creates a [`Prop`](crate::Prop) with some common settings.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_prop(
         ctx: &DalContext,

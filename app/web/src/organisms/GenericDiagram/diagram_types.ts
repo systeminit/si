@@ -30,6 +30,8 @@ export type DiagramNodeDef = {
   id: string;
   /** node type within the context of the diagram */
   type?: string | null;
+  /** category of diagram node */
+  category?: string | null;
   /** title of diagram node */
   title: string;
   /** subtitle of diagram node */

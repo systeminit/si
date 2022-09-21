@@ -27,7 +27,7 @@ export enum ComponentType {
   DockerHubCredential = "docker_hub_credential",
   KubernetesNamespace = "kubernetes_namespace",
   KubernetesDeployment = "kubernetes_deployment",
-  Butane = "butane",
+  CoreOsButane = "coreos_butane",
 }
 
 export type Resource = {
@@ -78,8 +78,8 @@ export const fakeResources = (
     kubernetes_namespace: [
       {
         id: 1,
-        name: "my k8 namespace",
-        kind: "k8 namespace",
+        name: "my k8s namespace",
+        kind: "k8s namespace",
         health: "Unknown" as Health,
         confirmations: [
           {
@@ -94,8 +94,8 @@ export const fakeResources = (
     kubernetes_deployment: [
       {
         id: 1,
-        name: "let's deploy to k8",
-        kind: "k8 deployment",
+        name: "let's deploy to k8s",
+        kind: "k8s deployment",
         health: "Warning" as Health,
         confirmations: [
           {
@@ -107,11 +107,11 @@ export const fakeResources = (
         ],
       },
     ],
-    butane: [
+    coreos_butane: [
       {
         id: 1,
         name: "idk butane or something",
-        kind: "butane",
+        kind: "coreos butane",
         health: "Ok" as Health,
         confirmations: [
           {
@@ -173,7 +173,7 @@ const mockComponentData: ConfirmationSummary = {
     {
       id: 5,
       name: "mock component 5",
-      type: ComponentType.Butane,
+      type: ComponentType.CoreOsButane,
       health: "Ok",
     },
   ],

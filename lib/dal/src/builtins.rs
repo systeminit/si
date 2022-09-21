@@ -1,6 +1,7 @@
 //! This module contains "builtin" objects that are included with System Initiative.
-//! Most submodules are private since the only entrypoint to this module should be the
-//! [migrate()](crate::builtins::migrate()) function, but we do some builtin editing on Dev Mode
+//! All submodules are private since the only entrypoint to this module should be the
+//! [migrate()](crate::builtins::migrate()) function. However, they may have some functionality
+//! exposed for "dev mode" use cases.
 
 use thiserror::Error;
 
@@ -18,9 +19,12 @@ use crate::{
     ValidationPrototypeError, WorkflowPrototypeError,
 };
 
-pub mod func;
+mod func;
 mod schema;
 mod workflow;
+
+// Expose the "persist" function for creating and editing builtin funcs while in dev mode.
+pub use func::persist as func_persist;
 
 #[derive(Error, Debug)]
 pub enum BuiltinsError {

@@ -10,10 +10,12 @@ use crate::{
 
 // Reference: https://aws.amazon.com/trademark-guidelines/
 const AWS_PRIMARY_COLOR: i64 = 0xFF9900;
+
+// Documentation URLs.
 const AMI_DOCS_URL: &str =
     "https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html";
 const EC2_DOCS_URL: &str = "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html";
-const AWS_REGION_DOCS_URL: &str =
+const REGION_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html";
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
@@ -292,7 +294,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
         "region",
         PropKind::String,
         Some(root_prop.domain_prop_id),
-        Some(AWS_REGION_DOCS_URL.to_string()),
+        Some(REGION_DOCS_URL.to_string()),
     )
     .await?;
 

@@ -38,14 +38,14 @@ async fn butane_is_valid_ignition(ctx: &DalContext) {
     let element_attribute_value_id = butane_payload
         .insert_array_object_element(
             ctx,
-            "/root/si/domain/systemd/units",
-            "/root/si/domain/systemd/units/unit",
+            "/root/domain/systemd/units",
+            "/root/domain/systemd/units/unit",
         )
         .await;
     butane_payload
         .update_attribute_value_for_prop_name_and_parent_element_attribute_value_id(
             ctx,
-            "/root/si/domain/systemd/units/unit/name",
+            "/root/domain/systemd/units/unit/name",
             Some(serde_json::json!["whiskers.service"]),
             element_attribute_value_id,
         )
@@ -53,7 +53,7 @@ async fn butane_is_valid_ignition(ctx: &DalContext) {
     butane_payload
         .update_attribute_value_for_prop_name_and_parent_element_attribute_value_id(
             ctx,
-            "/root/si/domain/systemd/units/unit/enabled",
+            "/root/domain/systemd/units/unit/enabled",
             Some(serde_json::json![true]),
             element_attribute_value_id,
         )
@@ -85,7 +85,7 @@ async fn butane_is_valid_ignition(ctx: &DalContext) {
     butane_payload
         .update_attribute_value_for_prop_name_and_parent_element_attribute_value_id(
             ctx,
-            "/root/si/domain/systemd/units/unit/contents",
+            "/root/domain/systemd/units/unit/contents",
             Some(serde_json::json![SYSTEMD_UNIT_FILE_PAYLOAD]),
             element_attribute_value_id,
         )
