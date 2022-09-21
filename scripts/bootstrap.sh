@@ -56,25 +56,69 @@ function set-config {
 }
 
 function darwin-bootstrap {
+    local pkgs=(
+        automake
+        bash
+        butane
+        git
+        kubeval
+        libtool
+        make
+        protobuf
+        skopeo
+    )
+
     brew update
     brew upgrade
     brew cleanup
-    brew install bash make git skopeo libtool automake kubeval butane
+    brew install "${pkgs[@]}"
 }
 
 function arch-bootstrap {
-    sudo pacman -Syu --noconfirm base-devel make git skopeo wget
+    local pkgs=(
+        base-devel
+        git
+        make
+        protobuf
+        skopeo
+        wget
+    )
+
+    sudo pacman -Syu --noconfirm "${pkgs[@]}"
     install-kubeval-linux-amd64
     install-butane-linux-amd64
 }
 
 function fedora-bootstrap {
+    local pkgs=(
+        @development-tools
+        butane
+        git
+        golang-github-instrumenta-kubeval
+        lld
+        make
+        protobuf-compiler
+        skopeo
+        wget
+    )
+
     sudo dnf upgrade -y --refresh
     sudo dnf autoremove -y
-    sudo dnf install -y @development-tools make git lld skopeo wget butane golang-github-instrumenta-kubeval
+    sudo dnf install -y "${pkgs[@]}"
 }
 
 function ubuntu-bootstrap {
+    local pkgs=(
+        build-essential
+        git
+        libprotobuf-dev
+        lld
+        make
+        protobuf-compiler
+        skopeo
+        wget
+    )
+
     . /etc/os-release
     # Kubic provides skopeo packages for 20.04, but it's available in the main Ubuntu repository in >= 20.10.
     if [ "${VERSION_OD}" == "20.04" ]; then
@@ -85,7 +129,7 @@ function ubuntu-bootstrap {
     sudo apt update
     sudo apt upgrade -y
     sudo apt autoremove -y
-    sudo apt install -y build-essential make git lld skopeo wget
+    sudo apt install -y "${pkgs[@]}"
     install-kubeval-linux-amd64
     install-butane-linux-amd64
 
@@ -154,9 +198,21 @@ function install-butane-linux-amd64 {
 }
 
 function check-binaries {
-    for BINARY in "cargo" "node" "npm" "docker" "docker-compose" "skopeo" "kubeval" "butane"; do
-        if ! [ "$(command -v ${BINARY})" ]; then
-            die "\"$BINARY\" must be installed and in PATH"
+    local binaries=(
+        butane
+        cargo
+        docker
+        docker-compose
+        kubeval
+        node
+        npm
+        protoc
+        skopeo
+    )
+
+    for binary in "${binaries[@]}"; do
+        if ! [ "$(command -v ${binary})" ]; then
+            die "\"$binary\" must be installed and in PATH"
         fi
     done
 }
