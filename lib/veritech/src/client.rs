@@ -3,8 +3,8 @@ use std::sync::Arc;
 use cyclone_core::{
     CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
     FunctionResult, OutputStream, QualificationCheckRequest, QualificationCheckResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
-    ResourceSyncResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 use futures::{StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Serialize};
@@ -16,8 +16,8 @@ use tokio::sync::mpsc;
 use self::subscription::{Subscription, SubscriptionError};
 use crate::{
     nats_code_generation_subject, nats_command_run_subject, nats_qualification_check_subject,
-    nats_resolver_function_subject, nats_resource_sync_subject, nats_subject,
-    nats_workflow_resolve_subject, reply_mailbox_for_output, reply_mailbox_for_result,
+    nats_resolver_function_subject, nats_subject, nats_workflow_resolve_subject,
+    reply_mailbox_for_output, reply_mailbox_for_result,
 };
 
 #[derive(Error, Debug)]
@@ -134,35 +134,6 @@ impl Client {
         request: &CodeGenerationRequest,
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<CodeGenerationResultSuccess>> {
-        self.execute_request(
-            nats_subject(self.subject_prefix(), subject_suffix),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_resource_sync", skip_all)]
-    pub async fn execute_resource_sync(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &ResourceSyncRequest,
-    ) -> ClientResult<FunctionResult<ResourceSyncResultSuccess>> {
-        self.execute_request(
-            nats_resource_sync_subject(self.subject_prefix()),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_resource_sync_with_subject", skip_all)]
-    pub async fn execute_resource_sync_with_subject(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &ResourceSyncRequest,
-        subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<ResourceSyncResultSuccess>> {
         self.execute_request(
             nats_subject(self.subject_prefix(), subject_suffix),
             output_tx,
@@ -690,48 +661,6 @@ mod tests {
             FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "9012");
                 assert!(!success.qualified);
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("function did not succeed and should have: {:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn executes_simple_resource_sync() {
-        let prefix = nats_prefix();
-        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
-        let client = client(prefix).await;
-
-        // Not going to check output here--we aren't emitting anything
-        let (tx, mut rx) = mpsc::channel(64);
-        tokio::spawn(async move {
-            while let Some(output) = rx.recv().await {
-                info!("output: {:?}", output)
-            }
-        });
-
-        let request = ResourceSyncRequest {
-            execution_id: "7867".to_string(),
-            handler: "syncItOut".to_string(),
-            component: ComponentView {
-                properties: serde_json::json!({"pkg": "cider"}),
-                system: None,
-                kind: ComponentKind::Standard,
-                resources: Default::default(),
-            },
-            code_base64: base64::encode("function syncItOut(component) { return {}; }"),
-        };
-
-        let result = client
-            .execute_resource_sync(tx, &request)
-            .await
-            .expect("failed to execute resource sync");
-
-        match result {
-            FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "7867");
-                // TODO(fnichol): add more asserts once resource is filled in
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)

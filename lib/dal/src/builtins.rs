@@ -15,8 +15,8 @@ use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
     AttributeReadContext, AttributeValueError, AttributeValueId, CodeGenerationPrototypeError,
     DalContext, ExternalProviderId, FuncError, PropError, PropId, PropKind,
-    QualificationPrototypeError, ResourcePrototypeError, SchemaError, StandardModelError,
-    ValidationPrototypeError, WorkflowPrototypeError,
+    QualificationPrototypeError, SchemaError, StandardModelError, ValidationPrototypeError,
+    WorkflowPrototypeError,
 };
 
 mod func;
@@ -68,8 +68,6 @@ pub enum BuiltinsError {
     PropNotFound(PropId),
     #[error("qualification prototype error: {0}")]
     QualificationPrototype(#[from] QualificationPrototypeError),
-    #[error("resource prototype error: {0}")]
-    ResourcePrototype(#[from] ResourcePrototypeError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]

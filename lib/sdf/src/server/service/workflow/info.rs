@@ -3,8 +3,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::workflow_runner::workflow_runner_state::{WorkflowRunnerState, WorkflowRunnerStatus};
 use dal::{
-    FuncBindingReturnValue, StandardModel, Timestamp, Visibility, WorkflowPrototype,
-    WorkflowRunner, WorkflowRunnerId,
+    resource::ResourceView, FuncBindingReturnValue, StandardModel, Timestamp, Visibility,
+    WorkflowPrototype, WorkflowRunner, WorkflowRunnerId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +23,8 @@ pub struct WorkflowRunInfoView {
     title: String,
     description: Option<String>,
     status: WorkflowRunnerStatus,
+    created_resources: Vec<ResourceView>,
+    updated_resources: Vec<ResourceView>,
     #[serde(flatten)]
     timestamp: Timestamp,
     logs: Vec<String>,
@@ -70,12 +72,23 @@ pub async fn info(
         .await?
         .ok_or_else(|| WorkflowError::RunnerStateNotFound(*runner.id()))?;
 
+    let created_resources = runner.created_resources(&ctx).await?;
+    let updated_resources = runner.updated_resources(&ctx).await?;
+
     let view = WorkflowRunInfoView {
         id: *runner.id(),
         title: prototype.title().to_owned(),
         description: prototype.description().map(ToString::to_string),
         status: runner_state.status(),
         timestamp: *runner.timestamp(),
+        created_resources: created_resources
+            .into_iter()
+            .map(ResourceView::new)
+            .collect(),
+        updated_resources: updated_resources
+            .into_iter()
+            .map(ResourceView::new)
+            .collect(),
         logs,
     };
 

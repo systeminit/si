@@ -3,10 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::WorkflowResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use dal::{
-    workflow_runner::workflow_runner_state::WorkflowRunnerState, ComponentId, Visibility,
-    WorkflowPrototypeId, WorkflowRunner,
-};
+use dal::{job::definition::WorkflowRun, ComponentId, Visibility, WorkflowPrototypeId};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -20,8 +17,7 @@ pub struct WorkflowRunRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowRunResponse {
-    logs: Vec<String>,
-    workflow_runner_state: WorkflowRunnerState,
+    run_id: usize,
 }
 
 pub async fn run(
@@ -31,38 +27,16 @@ pub async fn run(
 ) -> WorkflowResult<Json<WorkflowRunResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    // NOTE(nick,wendy): this looks similar to code insider WorkflowRunner::run(). Do we need to run
-    // it twice?
-    // reference: https://github.com/systeminit/si/blob/87c5cce99d6b972f441358295bbabe27f1d787da/lib/dal/src/workflow_runner.rs#L209-L227
-    let (_, workflow_runner_state, func_binding_return_values) =
-        WorkflowRunner::run(&ctx, request.id, request.component_id).await?;
-    let mut logs = Vec::new();
-    for func_binding_return_value in func_binding_return_values {
-        for stream in func_binding_return_value
-            .get_output_stream(&ctx)
-            .await?
-            .unwrap_or_default()
-        {
-            match stream.data {
-                Some(data) => logs.push((
-                    stream.timestamp,
-                    format!(
-                        "{} {}",
-                        stream.message,
-                        serde_json::to_string_pretty(&data)?
-                    ),
-                )),
-                None => logs.push((stream.timestamp, stream.message)),
-            }
-        }
-    }
-    logs.sort_by_key(|(timestamp, _)| *timestamp);
-    let logs = logs.into_iter().map(|(_, log)| log).collect();
+    let run_id: usize = rand::random();
+    ctx.enqueue_job(WorkflowRun::new(
+        &ctx,
+        run_id,
+        request.id,
+        request.component_id,
+    ))
+    .await;
 
     ctx.commit().await?;
 
-    Ok(Json(WorkflowRunResponse {
-        logs,
-        workflow_runner_state,
-    }))
+    Ok(Json(WorkflowRunResponse { run_id }))
 }

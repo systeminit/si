@@ -8,8 +8,9 @@ use si_data::PgPoolError;
 use thiserror::Error;
 
 use crate::{
+    func::binding_return_value::FuncBindingReturnValueError, workflow_runner::WorkflowRunnerError,
     AccessBuilder, AttributeValueError, ComponentError, DalContext, DalContextBuilder,
-    StandardModelError, TransactionsError, Visibility,
+    StandardModelError, TransactionsError, Visibility, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -28,6 +29,12 @@ pub enum JobConsumerError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error(transparent)]
+    WorkflowRunner(#[from] WorkflowRunnerError),
+    #[error(transparent)]
+    WsEvent(#[from] WsEventError),
 }
 
 impl From<JobConsumerError> for std::io::Error {

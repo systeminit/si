@@ -8,7 +8,6 @@ import { makeConsole } from "./sandbox/console";
 import { executeCodeGeneration } from "./code_generation";
 import { executeQualificationCheck } from "./qualification_check";
 import { executeResolverFunction } from "./resolver_function";
-import { executeResourceSync } from "./resource_sync";
 import { executeWorkflowResolve } from "./workflow_resolve";
 import { executeCommandRun } from "./command_run";
 
@@ -59,9 +58,6 @@ async function main() {
         break;
       case FunctionKind.ResolverFunction:
         executeResolverFunction(request);
-        break;
-      case FunctionKind.ResourceSync:
-        executeResourceSync(request);
         break;
       case FunctionKind.WorkflowResolve:
         executeWorkflowResolve(request);

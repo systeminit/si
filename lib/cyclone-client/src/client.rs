@@ -13,8 +13,8 @@ use cyclone_core::{
     CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
     LivenessStatus, LivenessStatusParseError, QualificationCheckRequest,
     QualificationCheckResultSuccess, ReadinessStatus, ReadinessStatusParseError,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
-    ResourceSyncResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 use http::{
     request::Builder,
@@ -142,11 +142,6 @@ where
         Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
         ClientError,
     >;
-
-    async fn execute_sync(
-        &mut self,
-        request: ResourceSyncRequest,
-    ) -> result::Result<Execution<Strm, ResourceSyncRequest, ResourceSyncResultSuccess>, ClientError>;
 
     async fn execute_code_generation(
         &mut self,
@@ -290,14 +285,6 @@ where
         request: ResolverFunctionRequest,
     ) -> Result<Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>> {
         let stream = self.websocket_stream("/execute/resolver").await?;
-        Ok(execution::execute(stream, request))
-    }
-
-    async fn execute_sync(
-        &mut self,
-        request: ResourceSyncRequest,
-    ) -> Result<Execution<Strm, ResourceSyncRequest, ResourceSyncResultSuccess>> {
-        let stream = self.websocket_stream("/execute/sync").await?;
         Ok(execution::execute(stream, request))
     }
 
@@ -1086,168 +1073,6 @@ mod tests {
             FunctionResult::Success(success) => {
                 assert!(success.qualified);
                 assert_eq!(success.message, None);
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn http_execute_sync() {
-        let (_, key) = gen_keys();
-        let mut builder = Config::builder();
-        let mut client =
-            http_client_for_running_server(builder.enable_qualification(true), key).await;
-
-        let component = ComponentView {
-            properties: serde_json::json!({}),
-            system: None,
-            kind: ComponentKind::Standard,
-            resources: Default::default(),
-        };
-        let req = ResourceSyncRequest {
-            execution_id: "1234".to_string(),
-            handler: "syncit".to_string(),
-            component: component.clone(),
-            code_base64: base64::encode(
-                r#"function syncit(component) {
-                    console.log(JSON.stringify(component));
-                    console.log('sync');
-                    return {};
-                }"#,
-            ),
-        };
-
-        // Start the protocol
-        let mut progress = client
-            .execute_sync(req)
-            .await
-            .expect("failed to establish websocket stream")
-            .start()
-            .await
-            .expect("failed to start protocol");
-
-        // Consume the output messages
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(
-                    output.message,
-                    serde_json::to_string(&component).expect("Unable to serialize ComponentView")
-                )
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "sync")
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        // TODO(fnichol): until we've determined how to handle processing the result server side,
-        // we're going to see a heartbeat come back when a request is processed
-        match progress.next().await {
-            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
-            None => panic!("output stream ended early"),
-        }
-        match progress.next().await {
-            None => assert!(true),
-            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-        };
-        // Get the result
-        let result = progress.finish().await.expect("failed to return result");
-        match result {
-            FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "1234");
-                // TODO(fnichol): check the future return value fields, pls
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn uds_execute_sync() {
-        let (_, key) = gen_keys();
-        let tmp_socket = rand_uds();
-        let mut builder = Config::builder();
-        let mut client =
-            uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket, key)
-                .await;
-
-        let component = ComponentView {
-            properties: serde_json::json!({}),
-            system: None,
-            kind: ComponentKind::Standard,
-            resources: Default::default(),
-        };
-        let req = ResourceSyncRequest {
-            execution_id: "1234".to_string(),
-            handler: "syncit".to_string(),
-            component: component.clone(),
-            code_base64: base64::encode(
-                r#"function syncit(component) {
-                    console.log(JSON.stringify(component));
-                    console.log('sync');
-                    return {};
-                }"#,
-            ),
-        };
-
-        // Start the protocol
-        let mut progress = client
-            .execute_sync(req)
-            .await
-            .expect("failed to establish websocket stream")
-            .start()
-            .await
-            .expect("failed to start protocol");
-
-        // Consume the output messages
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(
-                    output.message,
-                    serde_json::to_string(&component).expect("Unable to serialize ComponentView")
-                )
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "sync")
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        // TODO(fnichol): until we've determined how to handle processing the result server side,
-        // we're going to see a heartbeat come back when a request is processed
-        match progress.next().await {
-            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
-            None => panic!("output stream ended early"),
-        }
-        match progress.next().await {
-            None => assert!(true),
-            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-        };
-        // Get the result
-        let result = progress.finish().await.expect("failed to return result");
-        match result {
-            FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "1234");
-                // TODO(fnichol): check the future return value fields, pls
             }
             FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)

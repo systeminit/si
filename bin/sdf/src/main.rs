@@ -144,13 +144,13 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
                 telemetry,
                 pg_pool.clone(),
                 nats.clone(),
-                job_processor.clone(),
+                job_processor,
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
             )?;
 
-            Server::start_resource_sync_scheduler(
+            Server::start_resource_refresh_scheduler(
                 pg_pool,
                 nats,
                 Box::new(SyncProcessor::new()),
@@ -168,14 +168,14 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
                 telemetry,
                 pg_pool.clone(),
                 nats.clone(),
-                job_processor.clone(),
+                job_processor,
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
             )
             .await?;
 
-            Server::start_resource_sync_scheduler(
+            Server::start_resource_refresh_scheduler(
                 pg_pool,
                 nats,
                 Box::new(SyncProcessor::new()),

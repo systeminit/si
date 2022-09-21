@@ -12,7 +12,7 @@ use crate::workflow_runner::WorkflowRunnerResult;
 use crate::{
     impl_standard_model, pk,
     standard_model::{self},
-    StandardModel, Timestamp, Visibility, WriteTenancy,
+    Timestamp, Visibility, WriteTenancy,
 };
 use crate::{DalContext, WorkflowRunnerId};
 

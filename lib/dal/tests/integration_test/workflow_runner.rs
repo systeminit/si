@@ -41,6 +41,8 @@ async fn new(ctx: &DalContext) {
         *func.id(),
         *func_binding.id(),
         workflow_runner_context,
+        Vec::new(),
+        Vec::new(),
     )
     .await
     .expect("cannot create new workflow runner");
@@ -78,6 +80,8 @@ async fn find_for_prototype(ctx: &DalContext) {
         *func.id(),
         *func_binding.id(),
         runner_context,
+        Vec::new(),
+        Vec::new(),
     )
     .await
     .expect("cannot create new workflow runner");
@@ -114,7 +118,7 @@ async fn fail(ctx: &DalContext) {
     .await
     .expect("cannot create new prototype");
 
-    let (_, state, _) = WorkflowRunner::run(ctx, *prototype.id(), ComponentId::NONE)
+    let (_, state, _, _, _) = WorkflowRunner::run(ctx, 0, *prototype.id(), ComponentId::NONE)
         .await
         .expect("unable to run workflow");
     assert_eq!(
@@ -161,8 +165,8 @@ async fn run(ctx: &DalContext) {
         .expect("unable to generate component view for docker image component");
     assert_eq!(component_view.resources.len(), 0);
 
-    let (_runner, state, _func_bindings) =
-        WorkflowRunner::run(ctx, *prototype.id(), *component.id())
+    let (_runner, state, _func_bindings, _, _) =
+        WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id())
             .await
             .expect("unable to run workflow runner");
     assert_eq!(state.status(), WorkflowRunnerStatus::Success);

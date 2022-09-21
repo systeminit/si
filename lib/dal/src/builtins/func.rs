@@ -37,7 +37,6 @@ impl From<&Func> for FunctionMetadata {
 
         let extension = match f.backend_kind() {
             FuncBackendKind::JsQualification
-            | FuncBackendKind::JsResourceSync
             | FuncBackendKind::JsCodeGeneration
             | FuncBackendKind::JsAttribute
             | FuncBackendKind::JsWorkflow

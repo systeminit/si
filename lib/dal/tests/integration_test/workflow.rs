@@ -83,5 +83,5 @@ async fn run(ctx: &DalContext) {
     .expect("unable to resolve workflow");
 
     // Text output is checked at WorkflowRunner tests as they actually order it
-    tree.run(ctx).await.expect("unable to run workflow");
+    tree.run(ctx, 0).await.expect("unable to run workflow");
 }

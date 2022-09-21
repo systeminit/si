@@ -16,7 +16,6 @@ pub mod js_attribute;
 pub mod js_code_generation;
 pub mod js_command;
 pub mod js_qualification;
-pub mod js_resource;
 pub mod js_workflow;
 pub mod map;
 pub mod prop_object;
@@ -73,7 +72,6 @@ pub enum FuncBackendKind {
     Identity,
     Integer,
     JsQualification,
-    JsResourceSync,
     JsCodeGeneration,
     JsAttribute,
     JsWorkflow,
@@ -113,7 +111,6 @@ pub enum FuncBackendResponseType {
     Map,
     PropObject,
     Qualification,
-    ResourceSync,
     CodeGeneration,
     String,
     Unset,

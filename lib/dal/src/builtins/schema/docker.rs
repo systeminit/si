@@ -5,15 +5,13 @@ use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
     component::ComponentKind,
     edit_field::widget::*,
-    func::backend::js_resource::FuncBackendJsResourceSyncArgs,
     qualification_prototype::QualificationPrototypeContext,
-    resource_prototype::ResourcePrototypeContext,
     schema::{SchemaVariant, UiMenu},
     socket::SocketArity,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider,
-    Func, InternalProvider, Prop, PropKind, QualificationPrototype, ResourcePrototype, SchemaError,
-    SchemaKind, Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    Func, InternalProvider, Prop, PropKind, QualificationPrototype, SchemaError, SchemaKind,
+    Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
@@ -203,25 +201,6 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     qual_prototype_context.set_schema_variant_id(*schema_variant.id());
 
     let _ = QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
-
-    // Resource Prototype
-    let resource_sync_func_name = "si:resourceSyncHammer".to_string();
-    let mut resource_sync_funcs = Func::find_by_attr(ctx, "name", &resource_sync_func_name).await?;
-    let resource_sync_func = resource_sync_funcs
-        .pop()
-        .ok_or(SchemaError::FuncNotFound(resource_sync_func_name))?;
-    let resource_sync_args = FuncBackendJsResourceSyncArgs::default();
-    let resource_sync_args_json = serde_json::to_value(&resource_sync_args)?;
-    let mut resource_sync_prototype_context = ResourcePrototypeContext::new();
-    resource_sync_prototype_context.set_schema_variant_id(*schema_variant.id());
-
-    let _prototype = ResourcePrototype::new(
-        ctx,
-        *resource_sync_func.id(),
-        resource_sync_args_json,
-        resource_sync_prototype_context,
-    )
-    .await?;
 
     schema_variant.finalize(ctx).await?;
 

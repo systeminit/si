@@ -208,8 +208,8 @@ impl Server<(), ()> {
         Ok(())
     }
 
-    /// Start the basic resource sync scheduler
-    pub async fn start_resource_sync_scheduler(
+    /// Start the basic resource refresh scheduler
+    pub async fn start_resource_refresh_scheduler(
         pg: PgPool,
         nats: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,

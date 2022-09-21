@@ -14,8 +14,8 @@ use cyclone_core::{
     process::{self, ShutdownError},
     CanonicalCommand, CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest,
     CommandRunResultSuccess, QualificationCheckRequest, QualificationCheckResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
-    ResourceSyncResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -177,23 +177,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         result
     }
 
-    async fn execute_sync(
-        &mut self,
-        request: ResourceSyncRequest,
-    ) -> result::Result<
-        Execution<UnixStream, ResourceSyncRequest, ResourceSyncResultSuccess>,
-        ClientError,
-    > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
-        let result = self.client.execute_sync(request).await;
-        self.count_request();
-
-        result
-    }
-
     async fn execute_code_generation(
         &mut self,
         request: CodeGenerationRequest,
@@ -318,10 +301,6 @@ pub struct LocalUdsInstanceSpec {
     #[builder(private, setter(name = "_resolver"), default = "false")]
     resolver: bool,
 
-    /// Enables the `sync` execution endpoint for a spawned Cyclone server.
-    #[builder(private, setter(name = "_sync"), default = "false")]
-    sync: bool,
-
     /// Enables the `code_generation` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_code_generation"), default = "false")]
     code_generation: bool,
@@ -415,9 +394,6 @@ impl LocalUdsInstanceSpec {
         if self.resolver {
             cmd.arg("--enable-resolver");
         }
-        if self.sync {
-            cmd.arg("--enable-sync");
-        }
 
         cmd
     }
@@ -451,11 +427,6 @@ impl LocalUdsInstanceSpecBuilder {
     /// Enables the `resolver` execution endpoint for a spawned Cyclone server.
     pub fn resolver(&mut self) -> &mut Self {
         self._resolver(true)
-    }
-
-    /// Enables the `sync` execution endpoint for a spawned Cyclone server.
-    pub fn sync(&mut self) -> &mut Self {
-        self._sync(true)
     }
 
     /// Enables the `code_generation` execution endpoint for a spawned Cyclone server.

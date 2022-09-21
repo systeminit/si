@@ -20,9 +20,13 @@ CREATE TABLE workflow_runners
     system_id                   bigint                   NOT NULL
 );
 SELECT standard_model_table_constraints_v1('workflow_runners');
+SELECT many_to_many_table_create_v1('workflow_runner_many_to_many_created_resources', 'workflow_runners', 'resources');
+SELECT many_to_many_table_create_v1('workflow_runner_many_to_many_updated_resources', 'workflow_runners', 'resources');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('workflow_runners', 'model', 'workflow_runner', 'workflow runner');
+VALUES ('workflow_runners', 'model', 'workflow_runner', 'workflow runner'),
+       ('workflow_runner_many_to_many_created_resources', 'many_to_many', 'workflow_runner.created_resources', 'Workflow Runner <> Created Resource'),
+       ('workflow_runner_many_to_many_updated_resources', 'many_to_many', 'workflow_runner.updated_resources', 'Workflow Runner <> Updated Resource');
 
 CREATE OR REPLACE FUNCTION workflow_runner_create_v1(
     this_tenancy jsonb,

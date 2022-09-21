@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor_ro, DalContext, PgPoolError,
-    StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility, WriteTenancy,
+    StandardModelError, Timestamp, TransactionsError, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]

@@ -1,4 +1,5 @@
 import { Observable } from "rxjs";
+import { Resource } from "@/api/sdf/dal/resource";
 import { map } from "rxjs/operators";
 import { ApiResponse } from "@/api/sdf";
 import { memoizedVisibilitySdfPipe } from "@/utils/memoizedVisibilitySdfPipes";
@@ -9,6 +10,8 @@ export interface WorkflowRunInfo {
   title: string;
   description: string | null;
   status: "success" | "failure" | "running";
+  createdResources: Resource[],
+  updatedResources: Resource[],
   created_at: string;
   logs: string[];
 }
