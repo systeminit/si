@@ -97,6 +97,7 @@ pub fn routes(
         .nest("/api/signup", crate::server::service::signup::routes())
         .nest("/api/system", crate::server::service::system::routes())
         .nest("/api/workflow", crate::server::service::workflow::routes())
+        .nest("/api/resource", crate::server::service::resource::routes())
         .nest("/api/ws", crate::server::service::ws::routes());
 
     // Load test routes if we are in test mode (decided by "opt-level" at the moment).
