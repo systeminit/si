@@ -19,6 +19,10 @@ mod kubernetes_selector;
 mod kubernetes_spec;
 mod kubernetes_template;
 
+// This node color is purely meant the complement existing node colors. It does not reflect an
+// official branding Kubernetes color.
+const KUBERNETES_NODE_COLOR: i64 = 0x30BA78;
+
 /// The default Kubernetes API version used when creating documentation URLs.
 const DEFAULT_KUBERNETES_API_VERSION: &str = "1.22";
 
@@ -46,7 +50,9 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
         };
 
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(0x1ba97e)).await?;
+    schema_variant
+        .set_color(ctx, Some(KUBERNETES_NODE_COLOR))
+        .await?;
     schema_variant.set_link(ctx, Some("https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/".to_owned())).await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -204,7 +210,9 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
         };
 
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(0x921ed6)).await?;
+    schema_variant
+        .set_color(ctx, Some(KUBERNETES_NODE_COLOR))
+        .await?;
     schema_variant
         .set_link(
             ctx,

@@ -30,7 +30,7 @@ pub enum ComponentViewError {
     StandardModel(#[from] StandardModelError),
     #[error("secret not found: {0}")]
     SecretNotFound(SecretId),
-    #[error("json pointer not found: {1} at {:0?}")]
+    #[error("json pointer not found: {1:?} at {0}")]
     JSONPointerNotFound(serde_json::Value, String),
     #[error("bad attribute read context {0}")]
     BadAttributeReadContext(String),

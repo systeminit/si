@@ -9,7 +9,7 @@ use crate::{
 };
 
 // Reference: https://aws.amazon.com/trademark-guidelines/
-const AWS_PRIMARY_COLOR: i64 = 0xFF9900;
+const AWS_NODE_COLOR: i64 = 0xFF9900;
 
 // Documentation URLs.
 const AMI_DOCS_URL: &str =
@@ -39,9 +39,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
 
     // Variant setup. The variant color was taken from the coreos logo.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant
-        .set_color(ctx, Some(AWS_PRIMARY_COLOR))
-        .await?;
+    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;
@@ -118,9 +116,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
 
     // Variant setup. The variant color was taken from the coreos logo.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant
-        .set_color(ctx, Some(AWS_PRIMARY_COLOR))
-        .await?;
+    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;
@@ -271,9 +267,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
 
     // Variant setup. The variant color was taken from the coreos logo.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant
-        .set_color(ctx, Some(AWS_PRIMARY_COLOR))
-        .await?;
+    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;
@@ -377,9 +371,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
 
     // Variant setup. The variant color was taken from the coreos logo.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant
-        .set_color(ctx, Some(AWS_PRIMARY_COLOR))
-        .await?;
+    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;

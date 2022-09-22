@@ -10,6 +10,8 @@ use crate::{
     StandardModel,
 };
 
+// Reference: https://getfedora.org/
+const COREOS_NODE_COLOR: i64 = 0xE26B70;
 const BUTANE_DOCS_FCOS_1_4_URL: &str = "https://coreos.github.io/butane/config-fcos-v1_4/";
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
@@ -28,7 +30,9 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
 
     // Variant setup. The variant color was taken from the coreos logo.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(0x5590cc)).await?;
+    schema_variant
+        .set_color(ctx, Some(COREOS_NODE_COLOR))
+        .await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;

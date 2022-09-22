@@ -76,6 +76,7 @@ pub struct SchemaVariant {
     id: SchemaVariantId,
     name: String,
     link: Option<String>,
+    // NOTE(nick): we should consider whether or not we want to keep the color.
     color: Option<i64>,
     #[serde(flatten)]
     tenancy: WriteTenancy,

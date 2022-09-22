@@ -14,6 +14,9 @@ use crate::{
     Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
+// Reference: https://www.docker.com/company/newsroom/media-resources/
+const DOCKER_NODE_COLOR: i64 = 0x4695E7;
+
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     docker_hub_credential(ctx).await?;
     docker_image(ctx).await?;
@@ -32,7 +35,9 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?;
 
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(0x1e88d6)).await?;
+    schema_variant
+        .set_color(ctx, Some(DOCKER_NODE_COLOR))
+        .await?;
 
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -109,7 +114,9 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
         };
 
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(0xd61e8c)).await?;
+    schema_variant
+        .set_color(ctx, Some(DOCKER_NODE_COLOR))
+        .await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;
