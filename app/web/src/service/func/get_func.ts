@@ -9,11 +9,28 @@ export interface GetFuncArgs {
   id: number;
 }
 
+export interface QualificationAssocations {
+  type: "qualification";
+  schemaVariantIds: number[];
+  componentIds: number[];
+}
+
+export interface AttributeAssociations {
+  type: "attribute";
+  props: {
+    propId: number;
+    name: string;
+    componentId?: number;
+    schemaVariantId: number;
+  }[];
+}
+
+export type FuncAssociations = AttributeAssociations | QualificationAssocations;
+
 export interface GetFuncResponse extends Func {
   isBuiltin: boolean;
   isRevertable: boolean;
-  components: number[];
-  schemaVariants: number[];
+  associations?: FuncAssociations;
 }
 
 const memo: {
@@ -50,6 +67,4 @@ export const nullFunc: GetFuncResponse = {
   code: undefined,
   isBuiltin: false,
   isRevertable: false,
-  components: [],
-  schemaVariants: [],
 };

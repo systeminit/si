@@ -2,12 +2,12 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 
 use dal::{
-    ComponentId, Func, FuncBackendKind, FuncId, HistoryActor, RequestContext, SchemaVariantId,
-    StandardModel, Visibility, WsEvent,
+    Func, FuncBackendKind, FuncId, HistoryActor, RequestContext, StandardModel, Visibility, WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::dev::DevError;
+use crate::service::func::FuncAssociations;
 
 use super::DevResult;
 
@@ -20,8 +20,7 @@ pub struct SaveBuiltinFuncRequest {
     pub name: String,
     pub description: Option<String>,
     pub code: Option<String>,
-    pub schema_variants: Vec<SchemaVariantId>,
-    pub components: Vec<ComponentId>,
+    pub associations: Option<FuncAssociations>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

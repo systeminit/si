@@ -95,8 +95,8 @@ impl_standard_model! {
     pk: FuncBindingPk,
     id: FuncBindingId,
     table_name: "func_bindings",
-    history_event_label_base: "function_binding",
-    history_event_message_name: "Function Binding"
+    history_event_label_base: "func_binding",
+    history_event_message_name: "Func Binding"
 }
 
 impl FuncBinding {

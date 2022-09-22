@@ -32,3 +32,20 @@ export interface Func {
   code?: string;
   isBuiltin: boolean;
 }
+
+export enum FuncArgumentKind {
+  Array = "Array",
+  Boolean = "Boolean",
+  Integer = "Integer",
+  Object = "Object",
+  String = "String",
+  Map = "Map",
+}
+
+export interface FuncArgument {
+  id: number;
+  funcId: number;
+  name: string;
+  kind: FuncArgumentKind;
+  elementKind?: FuncArgumentKind;
+}

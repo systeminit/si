@@ -70,40 +70,28 @@
             </div>
           </SiCollapsible>
           <SiCollapsible
-            v-if="editingFunc.kind === 'JsQualification'"
+            v-if="editingFunc.kind === FuncBackendKind.JsQualification"
             label="Run On"
             default-open
           >
-            <div class="p-3 flex flex-col gap-2">
-              <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-                Run this qualification on the selected components and component
-                types below.
-              </h1>
-              <h2
-                class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50"
-              >
-                Run on Component:
-              </h2>
-              <FuncRunOnSelector
-                v-model="selectedComponents"
-                thing-label="components"
-                :options="components"
-                :disabled="editingFunc.isBuiltin"
-                @change="updateFunc"
-              />
-              <h2
-                class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50"
-              >
-                Run on Schema Variant:
-              </h2>
-              <FuncRunOnSelector
-                v-model="selectedVariants"
-                thing-label="schema variants"
-                :options="schemaVariants"
-                :disabled="editingFunc.isBuiltin"
-                @change="updateFunc"
-              />
-            </div>
+            <QualificationDetails
+              v-if="associations && associations.type === 'qualification'"
+              v-model="associations"
+              :components="componentOptions"
+              :schema-variants="schemaVariantOptions"
+              :disabled="editingFunc.isBuiltin"
+              @change="updateFunc"
+            />
+          </SiCollapsible>
+          <SiCollapsible
+            v-if="editingFunc.kind === FuncBackendKind.JsAttribute"
+            label="Arguments"
+            default-open
+          >
+            <FuncArguments
+              :func-id="props.funcId"
+              :disabled="editingFunc.isBuiltin"
+            />
           </SiCollapsible>
         </TabPanel>
       </template>
@@ -116,7 +104,7 @@
 
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
-import { ref, toRef, watch } from "vue";
+import { ref, toRef, watch, computed } from "vue";
 import { refFrom } from "vuse-rx";
 import { map, take } from "rxjs/operators";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
@@ -129,6 +117,8 @@ import { EditingFunc } from "@/observable/func";
 import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
 import { FuncService } from "@/service/func";
+import { FuncAssociations } from "@/service/func/get_func";
+import { FuncBackendKind } from "@/api/sdf/dal/func";
 import {
   changeFunc,
   funcById,
@@ -136,7 +126,8 @@ import {
   insertFunc,
   nullEditingFunc,
 } from "./func_state";
-import FuncRunOnSelector from "./FuncRunOnSelector.vue";
+import QualificationDetails from "./QualificationDetails.vue";
+import FuncArguments from "./FuncArguments.vue";
 
 const props = defineProps<{
   funcId: number;
@@ -146,7 +137,7 @@ const isDevMode = import.meta.env.DEV;
 
 const funcId = toRef(props, "funcId", -1);
 
-const schemaVariants = refFrom<Option[]>(
+const schemaVariantOptions = refFrom<Option[]>(
   DiagramService.listSchemaVariants().pipe(
     map((schemaVariants) =>
       schemaVariants.error
@@ -160,46 +151,32 @@ const schemaVariants = refFrom<Option[]>(
   [],
 );
 
-const components = refFrom<Option[]>(
+const components = refFrom(
   ComponentService.listComponentsIdentification().pipe(
-    map((components) =>
-      components.error
-        ? []
-        : components.list.map((c) => ({
-            label: c.label,
-            value: c.value.componentId,
-          })),
-    ),
+    map((components) => (components.error ? [] : components.list)),
   ),
   [],
 );
 
-const editingFunc = ref<EditingFunc>(nullEditingFunc);
-const selectedVariants = ref<Option[]>([]);
-const selectedComponents = ref<Option[]>([]);
+const componentOptions = computed(() =>
+  components.value.map((c) => ({
+    label: c.label,
+    value: c.value.componentId,
+  })),
+);
 
-const toOptionValues = (options: Option[], ids: number[]): Option[] =>
-  options.filter((opt) =>
-    typeof opt.value === "number" ? ids.includes(opt.value) : false,
-  );
+const editingFunc = ref<EditingFunc>(nullEditingFunc);
+const associations = ref<FuncAssociations | undefined>(undefined);
 
 watch([funcId, funcState], async ([currentFuncId]) => {
   editingFunc.value = funcById(currentFuncId) ?? nullEditingFunc;
-
-  selectedVariants.value = toOptionValues(
-    schemaVariants.value,
-    editingFunc.value.schemaVariants ?? [],
-  );
-
-  selectedComponents.value =
-    toOptionValues(components.value, editingFunc.value.components) ?? [];
+  associations.value = editingFunc.value.associations;
 });
 
 const updateFunc = () => {
   changeFunc({
     ...editingFunc.value,
-    components: selectedComponents.value.map(({ value }) => value as number),
-    schemaVariants: selectedVariants.value.map(({ value }) => value as number),
+    ...associations.value,
   });
 };
 

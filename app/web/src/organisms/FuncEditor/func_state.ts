@@ -12,8 +12,6 @@ export const nullEditingFunc: EditingFunc = {
   code: "",
   isBuiltin: false,
   isRevertable: false,
-  components: [],
-  schemaVariants: [],
 };
 
 export const funcState = reactive<{ funcs: EditingFunc[] }>({ funcs: [] });

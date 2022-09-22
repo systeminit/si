@@ -78,5 +78,14 @@ macro_rules! pk {
                 postgres_types::ToSql::to_sql(&self.0, &ty, out)
             }
         }
+
+        impl From<Option<$name>> for $name {
+            fn from(optional_pk: Option<$name>) -> Self {
+                match optional_pk {
+                    Some(id) => id,
+                    None => Self::NONE,
+                }
+            }
+        }
     };
 }

@@ -2,10 +2,10 @@ use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::func::FuncError;
 use axum::Json;
-use dal::attribute::context::AttributeContextBuilder;
 use dal::{
-    generate_name, qualification_prototype::QualificationPrototypeContext, AttributeValue,
-    AttributeValueId, ComponentId, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
+    attribute::context::AttributeContextBuilder, generate_name,
+    qualification_prototype::QualificationPrototypeContext, AttributeValue, AttributeValueId,
+    ComponentId, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
     FuncBindingReturnValue, FuncId, QualificationPrototype, SchemaId, SchemaVariantId,
     StandardModel, Visibility, WsEvent,
 };
@@ -16,12 +16,12 @@ use serde::{Deserialize, Serialize};
 pub enum CreateFuncOptions {
     #[serde(rename_all = "camelCase")]
     AttributeOptions {
-        value_id: AttributeValueId,
+        value_id: Option<AttributeValueId>,
         parent_value_id: Option<AttributeValueId>,
-        component_id: ComponentId,
-        schema_variant_id: SchemaVariantId,
-        schema_id: SchemaId,
-        current_func_id: FuncId,
+        component_id: Option<ComponentId>,
+        schema_variant_id: Option<SchemaVariantId>,
+        schema_id: Option<SchemaId>,
+        current_func_id: Option<FuncId>,
     },
 }
 
@@ -147,33 +147,46 @@ async fn copy_attribute_func(ctx: &DalContext, func_to_copy: &Func) -> FuncResul
 
 async fn create_default_attribute_func(
     ctx: &DalContext,
-    current_value_id: AttributeValueId,
-    current_func: &Func,
+    value_id: Option<AttributeValueId>,
+    current_func: Option<&Func>,
 ) -> FuncResult<Func> {
-    let current_value = AttributeValue::get_by_id(ctx, &current_value_id)
-        .await?
-        .ok_or(FuncError::AttributeValueMissing)?;
-
-    let fbrv_id = current_value.func_binding_return_value_id();
-    let fbrv = FuncBindingReturnValue::get_by_id(ctx, &fbrv_id)
-        .await?
-        .ok_or(FuncError::FuncBindingReturnValueMissing)?;
-
-    let current_value_value = fbrv.unprocessed_value();
     let default_code = DEFAULT_ATTRIBUTE_CODE_TEMPLATE.replace(
         ATTRIBUTE_CODE_HANDLER_PLACEHOLDER,
         ATTRIBUTE_CODE_DEFAULT_HANDLER,
     );
-    let default_code = default_code.replace(
-        ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER,
-        &serde_json::to_string_pretty(&current_value_value)?,
-    );
+
+    // if we were given an existing AttributeValue, generate a function with that value as the
+    // default return value
+    let default_code = if let Some(current_value_id) = value_id {
+        let current_value = AttributeValue::get_by_id(ctx, &current_value_id)
+            .await?
+            .ok_or(FuncError::AttributeValueMissing)?;
+
+        let fbrv_id = current_value.func_binding_return_value_id();
+        let fbrv = FuncBindingReturnValue::get_by_id(ctx, &fbrv_id)
+            .await?
+            .ok_or(FuncError::FuncBindingReturnValueMissing)?;
+
+        let current_value_value = fbrv.unprocessed_value();
+
+        default_code.replace(
+            ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER,
+            &serde_json::to_string_pretty(&current_value_value)?,
+        )
+    } else {
+        default_code.replace(ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER, "null")
+    };
+
+    let backend_response_type = match current_func {
+        Some(func) => *func.backend_response_type(),
+        None => FuncBackendResponseType::Unset,
+    };
 
     let mut func = Func::new(
         ctx,
         generate_name(None),
         FuncBackendKind::JsAttribute,
-        *current_func.backend_response_type(),
+        backend_response_type,
     )
     .await?;
 
@@ -186,46 +199,60 @@ async fn create_default_attribute_func(
 
 async fn create_attribute_func(
     ctx: &DalContext,
-    value_id: AttributeValueId,
+    value_id: Option<AttributeValueId>,
     parent_value_id: Option<AttributeValueId>,
-    component_id: ComponentId,
-    schema_variant_id: SchemaVariantId,
-    schema_id: SchemaId,
-    current_func_id: FuncId,
+    component_id: Option<ComponentId>,
+    schema_variant_id: Option<SchemaVariantId>,
+    schema_id: Option<SchemaId>,
+    current_func_id: Option<FuncId>,
 ) -> FuncResult<Func> {
-    let current_func = Func::get_by_id(ctx, &current_func_id)
-        .await?
-        .ok_or(FuncError::FuncNotFound)?;
+    let current_func = match current_func_id {
+        Some(current_func_id) => Some(
+            Func::get_by_id(ctx, &current_func_id)
+                .await?
+                .ok_or(FuncError::FuncNotFound)?,
+        ),
+        None => None,
+    };
 
-    let should_copy_existing = if let FuncBackendKind::JsAttribute = current_func.backend_kind() {
-        current_func.is_builtin()
-    } else {
-        false
+    let should_copy_existing = match current_func {
+        Some(ref current_func) => {
+            if let FuncBackendKind::JsAttribute = current_func.backend_kind() {
+                current_func.is_builtin()
+            } else {
+                false
+            }
+        }
+        None => false,
     };
 
     let func = if should_copy_existing {
-        copy_attribute_func(ctx, &current_func).await?
+        // unwrap is safe from panic here, should_copy_existing will only ever be true if current_func is Some()
+        copy_attribute_func(ctx, current_func.as_ref().unwrap()).await?
     } else {
-        create_default_attribute_func(ctx, value_id, &current_func).await?
+        create_default_attribute_func(ctx, value_id, current_func.as_ref()).await?
     };
 
-    let prop = AttributeValue::find_prop_for_value(ctx, value_id).await?;
-    let context = AttributeContextBuilder::new()
-        .set_prop_id(*prop.id())
-        .set_component_id(component_id)
-        .set_schema_variant_id(schema_variant_id)
-        .set_schema_id(schema_id)
-        .to_context()?;
+    // If we were given a value, update that value with the new function
+    if let Some(value_id) = value_id {
+        let prop = AttributeValue::find_prop_for_value(ctx, value_id).await?;
+        let context = AttributeContextBuilder::new()
+            .set_prop_id(*prop.id())
+            .set_component_id(component_id.into())
+            .set_schema_variant_id(schema_variant_id.into())
+            .set_schema_id(schema_id.into())
+            .to_context()?;
 
-    super::update_attribute_value_by_func_for_context(
-        ctx,
-        value_id,
-        parent_value_id,
-        &func,
-        context,
-        true,
-    )
-    .await?;
+        super::update_attribute_value_by_func_for_context(
+            ctx,
+            value_id,
+            parent_value_id,
+            &func,
+            context,
+            true,
+        )
+        .await?;
+    }
 
     Ok(func)
 }
@@ -258,14 +285,13 @@ pub async fn create_func(
                 )
                 .await?
             }
-            _ => Err(FuncError::MissingOptions)?,
+            None => create_attribute_func(&ctx, None, None, None, None, None, None).await?,
         },
         FuncBackendKind::JsQualification => create_qualification_func(&ctx).await?,
         _ => Err(FuncError::FuncNotSupported)?,
     };
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
-
     ctx.commit().await?;
 
     Ok(Json(CreateFuncResponse {

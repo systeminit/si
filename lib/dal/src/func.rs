@@ -12,6 +12,7 @@ use crate::{
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
 
+pub mod argument;
 pub mod backend;
 pub mod binding;
 pub mod binding_return_value;

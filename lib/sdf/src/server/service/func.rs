@@ -4,25 +4,32 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-
-use dal::{
-    attribute::context::AttributeContextBuilderError, AttributeContext, AttributeContextError,
-    AttributePrototype, AttributePrototypeError, AttributeValue, AttributeValueError,
-    AttributeValueId, ComponentError, DalContext, Func, FuncBackendKind, FuncBinding,
-    FuncBindingError, Prop, PropError, PropKind, QualificationPrototypeError, ReadTenancyError,
-    StandardModel, StandardModelError, TransactionsError, Visibility, WriteTenancyError,
-    WsEventError,
-};
-
-use dal::attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness;
-use dal::func::backend::js_attribute::FuncBackendJsAttributeArgs;
-use dal::func::binding_return_value::FuncBindingReturnValueError;
-use dal::job::definition::DependentValuesUpdate;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use dal::{
+    attribute::{
+        context::AttributeContextBuilderError,
+        value::dependent_update::collection::AttributeValueDependentCollectionHarness,
+    },
+    func::{
+        argument::{FuncArgumentError, FuncArgumentId, FuncArgumentKind},
+        backend::js_attribute::FuncBackendJsAttributeArgs,
+        binding_return_value::FuncBindingReturnValueError,
+    },
+    job::definition::DependentValuesUpdate,
+    AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeError,
+    AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
+    Func, FuncBackendKind, FuncBinding, FuncBindingError, Prop, PropError, PropId, PropKind,
+    QualificationPrototypeError, ReadTenancyError, SchemaVariantId, StandardModel,
+    StandardModelError, TransactionsError, Visibility, WriteTenancyError, WsEventError,
+};
+
+pub mod create_argument;
 pub mod create_func;
 pub mod exec_func;
 pub mod get_func;
+pub mod list_arguments;
 pub mod list_funcs;
 pub mod revert_func;
 pub mod save_func;
@@ -65,6 +72,8 @@ pub enum FuncError {
     AttributeContext(#[from] AttributeContextError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
 
     #[error("Function not found")]
     FuncNotFound,
@@ -86,6 +95,8 @@ pub enum FuncError {
     FuncBindingReturnValueMissing,
     #[error("func is not revertable")]
     FuncNotRevertable,
+    #[error("func argument already exists for that name")]
+    FuncArgumentAlreadyExists,
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
@@ -102,10 +113,39 @@ impl IntoResponse for FuncError {
     }
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PropAssociation {
+    pub prop_id: PropId,
+    pub name: String,
+    pub component_id: Option<ComponentId>,
+    pub schema_variant_id: SchemaVariantId,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum FuncAssociations {
+    #[serde(rename_all = "camelCase")]
+    Qualification {
+        schema_variant_ids: Vec<SchemaVariantId>,
+        component_ids: Vec<ComponentId>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Attribute { props: Vec<PropAssociation> },
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FuncArgumentView {
+    pub id: FuncArgumentId,
+    pub name: String,
+    pub kind: FuncArgumentKind,
+    pub element_kind: Option<FuncArgumentKind>,
+}
+
 async fn is_func_revertable(ctx: &DalContext, func: &Func) -> FuncResult<bool> {
     // Clone a new ctx vith head visibility
     let ctx = ctx.clone_with_new_visibility(Visibility::new_head(false));
-
     let head_func = Func::get_by_id(&ctx, func.id()).await?;
 
     Ok(head_func.is_some() && func.visibility().in_change_set())
@@ -234,4 +274,6 @@ pub fn routes() -> Router {
         .route("/save_func", post(save_func::save_func))
         .route("/exec_func", post(exec_func::exec_func))
         .route("/revert_func", post(revert_func::revert_func))
+        .route("/list_arguments", get(list_arguments::list_arguments))
+        .route("/create_argument", post(create_argument::create_argument))
 }

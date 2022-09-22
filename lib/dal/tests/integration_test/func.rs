@@ -1,7 +1,9 @@
 use dal::test_harness::create_visibility_change_set;
-use dal::{ChangeSet, DalContext};
+use dal::{generate_name, ChangeSet, DalContext};
+use strum::IntoEnumIterator;
 
 use crate::dal::test;
+use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::func::execution::FuncExecution;
 use dal::{
     func::{
@@ -9,8 +11,8 @@ use dal::{
         binding_return_value::FuncBindingReturnValue,
     },
     test_harness::{create_change_set, create_func, create_func_binding},
-    Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, StandardModel, Visibility,
-    WriteTenancy, NO_CHANGE_SET_PK,
+    Func, FuncBackendKind, FuncBackendResponseType, FuncId, HistoryActor, StandardModel,
+    Visibility, WriteTenancy, NO_CHANGE_SET_PK,
 };
 
 #[test]
@@ -182,4 +184,69 @@ async fn func_binding_execute_unset(ctx: &DalContext) {
         .expect("failed to execute func binding");
     assert_eq!(return_value.value(), None);
     assert_eq!(return_value.unprocessed_value(), None,);
+}
+
+#[test]
+async fn func_argument_new(ctx: &DalContext) {
+    for kind in FuncArgumentKind::iter() {
+        FuncArgument::new(ctx, generate_name(None), kind, None, 1.into())
+            .await
+            .expect("Could not create function argument with null argument kind");
+        FuncArgument::new(ctx, generate_name(None), kind, Some(kind), 1.into())
+            .await
+            .expect("Could not create function argument with element kind");
+    }
+}
+
+#[test]
+async fn func_argument_list_for_func(ctx: &DalContext) {
+    for kind in FuncArgumentKind::iter() {
+        FuncArgument::new(ctx, generate_name(None), kind, None, 1.into())
+            .await
+            .expect("Could not create function argument with null argument kind");
+    }
+
+    let funcs = FuncArgument::list_for_func(ctx, 1.into())
+        .await
+        .expect("Could not list func arguments for func");
+    assert_eq!(6, funcs.len());
+}
+
+#[test]
+async fn func_argument_find_by_name_for_func(ctx: &DalContext) {
+    let mut ctx = ctx.clone_with_head();
+    ctx.update_to_head();
+
+    let name = "an_argument";
+    let func_id: FuncId = 1.into();
+
+    assert_eq!(
+        None,
+        FuncArgument::find_by_name_for_func(&ctx, name, func_id,)
+            .await
+            .expect("could not find_by_name_for_func")
+    );
+
+    assert!(
+        FuncArgument::new(&ctx, name, FuncArgumentKind::String, None, 1.into(),)
+            .await
+            .expect("Could not create argument in head")
+            .visibility()
+            .is_head()
+    );
+
+    ctx.update_visibility(Visibility::new_change_set(1.into(), false));
+
+    FuncArgument::find_by_name_for_func(&ctx, name, func_id)
+        .await
+        .expect("could not find_by_name_for_func")
+        .expect("should have found a func");
+
+    let arg = FuncArgument::new(&ctx, name, FuncArgumentKind::String, None, 1.into())
+        .await
+        .expect("Could not create argument in head");
+
+    assert!(arg.visibility().in_change_set());
+    assert_eq!(name, arg.name());
+    assert_eq!(func_id, arg.func_id());
 }
