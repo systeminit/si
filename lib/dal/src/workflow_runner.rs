@@ -304,7 +304,7 @@ impl WorkflowRunner {
             .pop()
             .ok_or_else(|| WorkflowRunnerError::MissingWorkflow("si:identity".to_owned()))?;
 
-        let (func_binding, mut func_binding_return_value) = FuncBinding::find_or_create_and_execute(
+        let (func_binding, mut func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
             ctx,
             serde_json::json!({ "identity": serde_json::to_value(func_binding_return_values)? }),
             *identity.id(),

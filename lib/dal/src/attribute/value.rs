@@ -294,9 +294,7 @@ impl AttributeValue {
             )
             .await?;
         let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
-
         object.update_parent_index_map(ctx).await?;
-
         Ok(object)
     }
 
@@ -1049,7 +1047,7 @@ impl AttributeValue {
             .await?
             .pop()
             .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
-        let (unset_func_binding, unset_func_binding_return_value) =
+        let (unset_func_binding, unset_func_binding_return_value, _) =
             FuncBinding::find_or_create_and_execute(ctx, serde_json::json![null], *unset_func.id())
                 .await?;
 
@@ -1403,7 +1401,7 @@ impl AttributeValue {
                     .await?
                     .pop()
                     .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
-                let (unset_func_binding, unset_func_binding_return_value) =
+                let (unset_func_binding, unset_func_binding_return_value, _) =
                     FuncBinding::find_or_create_and_execute(
                         ctx,
                         serde_json::json![null],
@@ -1641,7 +1639,7 @@ async fn set_value(
         .pop()
         .ok_or(AttributeValueError::MissingFunc(func_name))?;
 
-    let (func_binding, func_binding_return_value) =
+    let (func_binding, func_binding_return_value, _) =
         FuncBinding::find_or_create_and_execute(ctx, args, *func.id()).await?;
 
     Ok((func, func_binding, func_binding_return_value))

@@ -11,6 +11,7 @@ use serde_json::json;
 
 use crate::dal::test;
 
+mod validation;
 mod view;
 
 #[test]

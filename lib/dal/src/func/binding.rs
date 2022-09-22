@@ -7,6 +7,7 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech::{OutputStream, ResolverFunctionComponent};
 
+use crate::func::backend::validation::validate_string_array::FuncBackendValidateStringArrayValue;
 use crate::func::backend::{
     array::FuncBackendArray,
     boolean::FuncBackendBoolean,
@@ -20,7 +21,7 @@ use crate::func::backend::{
     map::FuncBackendMap,
     prop_object::FuncBackendPropObject,
     string::FuncBackendString,
-    validation::FuncBackendValidateStringValue,
+    validation::validate_string::FuncBackendValidateStringValue,
     FuncBackend, FuncDispatch, FuncDispatchContext,
 };
 use crate::DalContext;
@@ -189,14 +190,14 @@ impl FuncBinding {
         ctx: &DalContext,
         args: serde_json::Value,
         func_id: FuncId,
-    ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
+    ) -> FuncBindingResult<(Self, FuncBindingReturnValue, bool)> {
         let func = Func::get_by_id(ctx, &func_id)
             .await?
             .ok_or(FuncError::NotFound(func_id))?;
-        let (func_binding, created) =
+        let (func_binding, created_func_binding) =
             Self::find_or_create(ctx, args, func_id, func.backend_kind).await?;
 
-        let func_binding_return_value: FuncBindingReturnValue = if created {
+        let func_binding_return_value: FuncBindingReturnValue = if created_func_binding {
             func_binding.execute(ctx).await?
         } else {
             // If the func binding was not newly created, let's try to find a func binding
@@ -212,7 +213,11 @@ impl FuncBinding {
             }
         };
 
-        Ok((func_binding, func_binding_return_value))
+        Ok((
+            func_binding,
+            func_binding_return_value,
+            created_func_binding,
+        ))
     }
 
     standard_model_accessor!(args, PlainJson<JsonValue>, FuncBindingResult);
@@ -298,6 +303,9 @@ impl FuncBinding {
             FuncBackendKind::ValidateStringValue => {
                 FuncBackendValidateStringValue::create_and_execute(&self.args).await?
             }
+            FuncBackendKind::ValidateStringArrayValue => {
+                FuncBackendValidateStringArrayValue::create_and_execute(&self.args).await?
+            }
         };
         Ok(value)
     }
@@ -369,7 +377,8 @@ impl FuncBinding {
             | FuncBackendKind::PropObject
             | FuncBackendKind::String
             | FuncBackendKind::Unset
-            | FuncBackendKind::ValidateStringValue => {}
+            | FuncBackendKind::ValidateStringValue
+            | FuncBackendKind::ValidateStringArrayValue => {}
 
             FuncBackendKind::JsCodeGeneration
             | FuncBackendKind::JsQualification

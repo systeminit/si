@@ -1,4 +1,7 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
+
 use si_data::{NatsError, PgError};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
@@ -7,7 +10,7 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
-use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
+use crate::func::backend::validation::validate_string::FuncBackendValidateStringValueArgs;
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
     js_qualification::FuncBackendJsQualificationArgs,
@@ -34,16 +37,17 @@ use crate::{
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
     CodeGenerationResolverError, CodeLanguage, CodeView, DalContext, Edge, EdgeError,
-    ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider, Node,
-    NodeError, OrganizationError, Prop, PropError, PropId, QualificationPrototype,
-    QualificationPrototypeError, QualificationResolver, QualificationResolverError,
-    ReadTenancyError, Schema, SchemaError, SchemaId, Socket, SocketId, StandardModel,
-    StandardModelError, SystemId, Timestamp, TransactionsError, ValidationPrototype,
+    ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider,
+    InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError, PropId,
+    QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    QualificationResolverError, ReadTenancyError, Schema, SchemaError, SchemaId, Socket, SocketId,
+    StandardModel, StandardModelError, SystemId, Timestamp, TransactionsError, ValidationPrototype,
     ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
     WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
 
+use crate::func::backend::validation::validate_string_array::FuncBackendValidateStringArrayValueArgs;
 pub use view::{ComponentView, ComponentViewError};
 
 pub mod diff;
@@ -141,7 +145,7 @@ pub enum ComponentError {
     #[error("func binding return value: {0} not found")]
     FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
     #[error("invalid prop value; expected {0} but got {1}")]
-    InvalidPropValue(String, serde_json::Value),
+    InvalidPropValue(String, Value),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("validation resolver error: {0}")]
@@ -397,103 +401,122 @@ impl Component {
         Ok(standard_model::object_option_from_row_option(row)?)
     }
 
-    pub async fn check_validations(
-        &self,
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-        value: &Option<serde_json::Value>,
-    ) -> ComponentResult<()> {
-        let attribute_value = AttributeValue::get_by_id(ctx, &attribute_value_id)
+    /// Check validations for [`Self`].
+    pub async fn check_validations(&self, ctx: &DalContext) -> ComponentResult<()> {
+        let schema_variant = self
+            .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::MissingAttributeValue(attribute_value_id))?;
-        let prop_id = attribute_value.context.prop_id();
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+        let schema = self
+            .schema(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
 
-        let validators =
-            ValidationPrototype::find_for_prop(ctx, prop_id, UNSET_ID_VALUE.into()).await?;
+        // TODO(nick): use system.
+        let base_attribute_read_context = AttributeReadContext {
+            prop_id: None,
+            external_provider_id: Some(ExternalProviderId::NONE),
+            internal_provider_id: Some(InternalProviderId::NONE),
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            component_id: Some(self.id),
+            system_id: Some(SystemId::NONE),
+        };
 
-        for validator in validators {
-            let func = Func::get_by_id(ctx, &validator.func_id())
-                .await?
-                .ok_or_else(|| ComponentError::MissingFunc(validator.func_id().to_string()))?;
-            let (func_binding, created) = match func.backend_kind() {
-                FuncBackendKind::ValidateStringValue => {
-                    let mut args =
-                        FuncBackendValidateStringValueArgs::deserialize(validator.args())?;
-                    if let Some(json_value) = value {
-                        if json_value.is_string() {
-                            args.value = Some(json_value.to_string());
-                        } else {
-                            return Err(ComponentError::InvalidPropValue(
-                                "String".to_string(),
-                                json_value.clone(),
-                            ));
-                        }
-                    } else {
-                        // TODO: This might not be quite the right error to return here if we got a None.
-                        return Err(ComponentError::MissingProp(prop_id));
-                    };
-                    let args_json = serde_json::to_value(args)?;
-                    let (func_binding, binding_created) = FuncBinding::find_or_create(
+        let validation_prototypes =
+            ValidationPrototype::list_for_schema_variant(ctx, *schema_variant.id(), SystemId::NONE)
+                .await?;
+
+        // Cache data necessary for assembling func arguments. We do this since a prop can have
+        // multiple validation prototypes within schema variant.
+        let mut cache: HashMap<PropId, (Option<Value>, AttributeValueId)> = HashMap::new();
+
+        for validation_prototype in validation_prototypes {
+            let prop_id = validation_prototype.context().prop_id();
+
+            // Grab the data necessary for assembling the func arguments. We'll check if it's in
+            // the cache first.
+            let (value, attribute_value_id) = match cache.get(&prop_id) {
+                Some((value, attribute_value_id)) => (value.to_owned(), *attribute_value_id),
+                None => {
+                    let attribute_value = AttributeValue::find_for_context(
                         ctx,
-                        args_json,
-                        *func.id(),
-                        *func.backend_kind(),
+                        AttributeReadContext {
+                            prop_id: Some(prop_id),
+                            ..base_attribute_read_context
+                        },
                     )
-                    .await?;
-                    // Note for future humans - if this isn't a built in, then we need to
-                    // think about execution time. Probably higher up than this? But just
-                    // an FYI.
-                    if binding_created {
-                        func_binding.execute(ctx).await?;
-                    }
-                    (func_binding, binding_created)
+                    .await?
+                    .expect("poop canoe");
+
+                    let value = match FuncBindingReturnValue::get_by_id(
+                        ctx,
+                        &attribute_value.func_binding_return_value_id(),
+                    )
+                    .await?
+                    {
+                        Some(func_binding_return_value) => {
+                            func_binding_return_value.value().cloned()
+                        }
+                        None => None,
+                    };
+
+                    cache.insert(prop_id, (value.clone(), *attribute_value.id()));
+                    (value, *attribute_value.id())
                 }
-                // TODO(wendy/nick/victor) - Validator!
-                // FuncBackendKind::ValidateStringArrayValue => {
-                //     let mut args =
-                //         FuncBackendValidateStringArrayValueArgs::deserialize(validator.args())?;
-                //     if let Some(json_value) = value {
-                //         if json_value.is_string() {
-                //             args.value = Some(json_value.to_string());
-                //         } else {
-                //             return Err(ComponentError::InvalidPropValue(
-                //                 "String".to_string(),
-                //                 json_value.clone(),
-                //             ));
-                //         }
-                //     } else {
-                //         // TODO: This might not be quite the right error to return here if we got a None.
-                //         return Err(ComponentError::MissingProp(prop_id));
-                //     };
-                //     let args_json = serde_json::to_value(args)?;
-                //     let (func_binding, binding_created) = FuncBinding::find_or_create(
-                //         ctx,
-                //         args_json,
-                //         *func.id(),
-                //         *func.backend_kind(),
-                //     )
-                //     .await?;
-                //     // Note for future humans - if this isn't a built in, then we need to
-                //     // think about execution time. Probably higher up than this? But just
-                //     // an FYI.
-                //     if binding_created {
-                //         func_binding.execute(ctx).await?;
-                //     }
-                //     (func_binding, binding_created)
-                // }
+            };
+
+            let func = Func::get_by_id(ctx, &validation_prototype.func_id())
+                .await?
+                .ok_or_else(|| PropError::MissingFuncById(validation_prototype.func_id()))?;
+
+            let prepared_value = match &value {
+                Some(json_value) => match json_value.as_str() {
+                    Some(v) => Some(v.to_string()),
+                    None => {
+                        return Err(ComponentError::InvalidPropValue(
+                            "String".to_string(),
+                            json_value.clone(),
+                        ));
+                    }
+                },
+                None => None,
+            };
+
+            let args_json = match func.backend_kind() {
+                FuncBackendKind::ValidateStringValue => {
+                    let mut args = FuncBackendValidateStringValueArgs::deserialize(
+                        validation_prototype.args(),
+                    )?;
+                    args.value = prepared_value;
+                    serde_json::to_value(args)?
+                }
+                FuncBackendKind::ValidateStringArrayValue => {
+                    let mut args = FuncBackendValidateStringArrayValueArgs::deserialize(
+                        validation_prototype.args(),
+                    )?;
+                    args.value = prepared_value;
+                    serde_json::to_value(args)?
+                }
                 kind => unimplemented!("Validator Backend not supported yet: {}", kind),
             };
 
+            let (func_binding, _, created) =
+                FuncBinding::find_or_create_and_execute(ctx, args_json, *func.id()).await?;
+
+            // If the func binding was newly created, then we need to also create a validation
+            // resolver.
             if created {
                 ValidationResolver::new(
                     ctx,
-                    *validator.id(),
+                    *validation_prototype.id(),
                     attribute_value_id,
                     *func_binding.id(),
                 )
                 .await?;
             }
         }
+
         Ok(())
     }
 

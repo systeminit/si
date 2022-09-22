@@ -7,6 +7,7 @@ use crate::attribute::context::{AttributeContextBuilder, UNSET_ID_VALUE};
 use crate::func::backend::identity::FuncBackendIdentityArgs;
 use crate::func::binding::{FuncBindingError, FuncBindingId};
 use crate::func::binding_return_value::FuncBindingReturnValueId;
+
 use crate::job::definition::CodeGeneration;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
@@ -22,6 +23,7 @@ use crate::{
     AttributeContext, AttributeContextError, AttributeValue, DalContext, Func, FuncBinding, PropId,
     SchemaId, SchemaVariantId,
 };
+use crate::{Component, ComponentId};
 
 const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
     include_str!("../queries/internal_provider_find_explicit_for_schema_variant_and_name.sql");
@@ -45,6 +47,8 @@ pub enum InternalProviderError {
     AttributeValue(#[from] AttributeValueError),
     #[error("component error: {0}")]
     Component(String),
+    #[error("component not found by id: {0}")]
+    ComponentNotFound(ComponentId),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("history event error: {0}")]
@@ -179,7 +183,7 @@ impl InternalProvider {
             .await?
             .pop()
             .ok_or(InternalProviderError::MissingFunc(identity_func_name))?;
-        let (identity_func_binding, identity_func_binding_return_value) =
+        let (identity_func_binding, identity_func_binding_return_value, _) =
             FuncBinding::find_or_create_and_execute(
                 ctx,
                 serde_json::json![{ "identity": null }],
@@ -401,7 +405,7 @@ impl InternalProvider {
             Some(*found_attribute_value.id()),
         )
         .await?;
-        let (func_binding, func_binding_return_value) = FuncBinding::find_or_create_and_execute(
+        let (func_binding, func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
             ctx,
             serde_json::to_value(FuncBackendIdentityArgs {
                 identity: found_attribute_view.value().clone(),
@@ -461,6 +465,17 @@ impl InternalProvider {
 
             // The Root Prop won't have a parent Prop.
             if provider_prop.parent_prop(ctx).await?.is_none() {
+                let component = Component::get_by_id(ctx, &emit_attribute_context.component_id())
+                    .await?
+                    .ok_or_else(|| {
+                        InternalProviderError::ComponentNotFound(
+                            emit_attribute_context.component_id(),
+                        )
+                    })?;
+                component
+                    .check_validations(ctx)
+                    .await
+                    .map_err(|e| InternalProviderError::Component(e.to_string()))?;
                 ctx.enqueue_job(
                     CodeGeneration::new(
                         ctx,

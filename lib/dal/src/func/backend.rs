@@ -80,13 +80,11 @@ pub enum FuncBackendKind {
     PropObject,
     String,
     Unset,
-    // Commented out while we climb back up - Adam & Fletcher
-    //Number (Float?),
-    //EmptyObject,
-    //EmptyArray,
     Json,
-    //Js,
+    /// Validate that a [`String`] matches an expected [`String`].
     ValidateStringValue,
+    /// Validate that a [`String`] exists in a [`Vec<String>`].
+    ValidateStringArrayValue,
 }
 
 #[derive(

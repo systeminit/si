@@ -152,9 +152,6 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
             .expect("cannot set func link");
     }
 
-    // Rust functions
-    migrate_rust_functions(ctx).await?;
-
     Ok(())
 }
 
@@ -178,17 +175,4 @@ pub async fn persist(func: &Func) -> BuiltinsResult<()> {
     let metadata_file = File::create(metadata_path)?;
 
     serde_json::to_writer_pretty(metadata_file, &new_metadata).map_err(SerdeJson)
-}
-
-/// Migrates [`Funcs`](crate::Func) that are Rust-based. These are likely temporary
-/// as function execution should occur in an secure runtime environment.
-async fn migrate_rust_functions(_ctx: &DalContext) -> BuiltinsResult<()> {
-    // let _validate_string_array_func = Func::new(
-    //     &ctx,
-    //     "si:validateStringArray",
-    //     FuncBackendKind::ValidateStringArrayValue,
-    //     FuncBackendResponseType::Validation,
-    // )
-    // .await?;
-    Ok(())
 }

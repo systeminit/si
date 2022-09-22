@@ -316,7 +316,7 @@ impl PropertyEditorValidations {
                     .map(|err| PropertyEditorValidationError {
                         message: err.message,
                         level: err.level,
-                        kind: err.kind,
+                        kind: Some(err.kind.as_str().to_string()),
                         link: err.link,
                     })
                     .collect(),

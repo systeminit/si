@@ -186,9 +186,11 @@ async fn update_attribute_value_by_func_for_context(
         },
     };
 
-    let (func_binding, mut fbrv) = if func_is_new {
-        FuncBinding::find_or_create_and_execute(ctx, serde_json::to_value(args)?, *func.id())
-            .await?
+    let (func_binding, mut func_binding_return_value) = if func_is_new {
+        let (func_binding, func_binding_return_value, _) =
+            FuncBinding::find_or_create_and_execute(ctx, serde_json::to_value(args)?, *func.id())
+                .await?;
+        (func_binding, func_binding_return_value)
     } else {
         let func_binding = FuncBinding::new(
             ctx,
@@ -197,16 +199,15 @@ async fn update_attribute_value_by_func_for_context(
             FuncBackendKind::JsAttribute,
         )
         .await?;
-        let fbrv = func_binding.execute(ctx).await?;
-
-        (func_binding, fbrv)
+        let func_binding_return_value = func_binding.execute(ctx).await?;
+        (func_binding, func_binding_return_value)
     };
 
     attribute_value
         .set_func_binding_id(ctx, *func_binding.id())
         .await?;
     attribute_value
-        .set_func_binding_return_value_id(ctx, *fbrv.id())
+        .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
         .await?;
 
     // If the value we just updated was for a Prop, we might have run a function that
@@ -217,7 +218,7 @@ async fn update_attribute_value_by_func_for_context(
         .context
         .is_least_specific_field_kind_prop()?
     {
-        let processed_value = match fbrv.unprocessed_value().cloned() {
+        let processed_value = match func_binding_return_value.unprocessed_value().cloned() {
             Some(unprocessed_value) => {
                 let prop = Prop::get_by_id(ctx, &attribute_value.context.prop_id())
                     .await?
@@ -231,7 +232,9 @@ async fn update_attribute_value_by_func_for_context(
             }
             None => None,
         };
-        fbrv.set_value(ctx, processed_value).await?;
+        func_binding_return_value
+            .set_value(ctx, processed_value)
+            .await?;
     };
 
     AttributePrototype::update_for_context(
@@ -240,7 +243,7 @@ async fn update_attribute_value_by_func_for_context(
         context,
         *func.id(),
         *func_binding.id(),
-        *fbrv.id(),
+        *func_binding_return_value.id(),
         parent_value_id,
         Some(value_id),
     )

@@ -174,7 +174,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         .expect("could not find func by name attr")
         .pop()
         .expect("identity func not found");
-    let (_identity_func_binding, _identity_func_binding_return_value) =
+    let (_identity_func_binding, _identity_func_binding_return_value, _) =
         FuncBinding::find_or_create_and_execute(
             ctx,
             serde_json::json![{ "identity": null }],
