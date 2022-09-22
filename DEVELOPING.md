@@ -1,7 +1,8 @@
 # Developing
 
 This document contains information related to developing and running the SI stack.
-However, since it cannot fit everything, you can check out the contents of the [docs directory](./docs) for even more information.
+However, since it cannot fit everything, you can check out the contents of the [docs directory](./docs) for even more
+information.
 
 ## Table of Contents
 
@@ -82,6 +83,22 @@ We need to ensure that we are [logged into Docker locally](https://docs.docker.c
 and that the corresponding account can pull images from
 our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
 Please reach out internally if your account cannot pull images from the private SI repositories.
+
+You should also configure your aws cli to use the SI account:
+
+```bash
+aws configure
+```
+
+passing the following responses to each prompt:
+
+- AWS Access Key ID: The `Access Key` field on
+  this [1password entry](https://start.1password.com/open/i?a=6FRDDOEI5JBKHJJAMQIKAEFWD4&v=y5uwcpkwsqeppqg4cwkxnnpwdm&i=mw3mygbdcd66pgn4hgkroicssi&h=systeminitiativeinc.1password.com)
+- AWS Secret Access Key:  The `Access Key` field on the
+  same [1password entry](https://start.1password.com/open/i?a=6FRDDOEI5JBKHJJAMQIKAEFWD4&v=y5uwcpkwsqeppqg4cwkxnnpwdm&i=mw3mygbdcd66pgn4hgkroicssi&h=systeminitiativeinc.1password.com)
+  as above
+- Default region name: `us-east-2`
+- Default output format: Leave empty
 
 ### Checking for Potential Service Conflicts (3/5)
 
@@ -399,7 +416,8 @@ This will evaluate the delta between your current branch and `main`, and run onl
 that are relevant to your changes.
 
 _However_, you should rarely need to run the above commands.
-It is usually best to run individual tests or module(s) of tests (likely from the [`dal integration tests directory`](./lib/dal/tests/integration_test/))
+It is usually best to run individual tests or module(s) of tests (likely from
+the [`dal integration tests directory`](./lib/dal/tests/integration_test/))
 that cover code you have edited.
 
 ### Running Integration Tests Manually
@@ -427,7 +445,8 @@ RUST_BACKTRACE=full cargo test integration_test
 make test
 ```
 
-If you would like to log output during tests with timestamps, use `tracing::info` and add the following environment variable.
+If you would like to log output during tests with timestamps, use `tracing::info` and add the following environment
+variable.
 
 ```bash
 SI_TEST_LOG=info
