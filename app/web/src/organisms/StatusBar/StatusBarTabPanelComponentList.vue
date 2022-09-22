@@ -74,7 +74,8 @@ import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import { SelectionService } from "@/service/selection";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import HealthIcon, { Health } from "@/molecules/HealthIcon.vue";
+import HealthIcon from "@/molecules/HealthIcon.vue";
+import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { ComponentType } from "@/service/confirmation";
 
 export interface ComponentListItem {
@@ -82,7 +83,7 @@ export interface ComponentListItem {
   name: string;
   type?: ComponentType;
   status?: Status;
-  health?: Health;
+  health?: ResourceHealth;
 }
 
 export interface FilterOption {

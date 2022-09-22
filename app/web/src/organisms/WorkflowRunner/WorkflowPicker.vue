@@ -148,7 +148,8 @@ const emits = defineEmits<{
 }>();
 
 const select = (w: ListedWorkflowView, componentName: string | null) => {
-  const componentId = w.components.find((c) => c.name === componentName)?.id ?? null;
+  const componentId =
+    w.components.find((c) => c.name === componentName)?.id ?? null;
   emits("selected", w, componentId);
 };
 </script>

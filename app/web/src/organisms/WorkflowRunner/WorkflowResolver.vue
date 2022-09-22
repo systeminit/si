@@ -25,7 +25,7 @@ import { WorkflowResolveResponse } from "@/service/workflow/resolve";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 
 const props = defineProps<{
-  selected: { id: number, componentId: number | null };
+  selected: { id: number; componentId: number | null };
 }>();
 
 const selected = toRef(props, "selected");
@@ -36,7 +36,7 @@ const workflowTree = refFrom<WorkflowResolveResponse | null>(
     switchMap(([selected]) => {
       return WorkflowService.resolve({
         id: selected.id,
-        componentId: selected.componentId
+        componentId: selected.componentId,
       });
     }),
   ),

@@ -70,7 +70,13 @@ export interface WsCommandOutput extends WsPayload {
 
 export interface WsCommandReturn extends WsPayload {
   kind: "CommandReturn";
-  data: { runId: number; createdResources: Resource[], updatedResources: Resource[], output: string[], runnerState: WorkflowRunnerState  };
+  data: {
+    runId: number;
+    createdResources: Resource[];
+    updatedResources: Resource[];
+    output: string[];
+    runnerState: WorkflowRunnerState;
+  };
 }
 
 export type WsPayloadKinds =

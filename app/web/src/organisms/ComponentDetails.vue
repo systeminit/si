@@ -3,6 +3,7 @@
     <template #tabs>
       <SiTabHeader>Attributes</SiTabHeader>
       <SiTabHeader>Code</SiTabHeader>
+      <SiTabHeader>Resources</SiTabHeader>
     </template>
 
     <template #panels>
@@ -35,6 +36,30 @@
           </template>
         </CodeViewer>
       </TabPanel>
+
+      <TabPanel class="w-full">
+        <SiCollapsible
+          v-for="(resource, index) in props.componentIdentification.resources"
+          :key="resource.key"
+          :label="resource.key"
+          :default-open="index === 0"
+          text-size="md"
+          show-label-and-slot
+        >
+          <template #label>
+            <HealthIcon :health="resource.health" size="md" hide-text />
+          </template>
+          <div class="px-xs pb-xs max-h-96 overflow-hidden flex">
+            <div class="flex-grow">
+              <CodeViewer :code="JSON.stringify(resource.data)" border>
+                <template #title
+                  ><HealthIcon :health="resource.health"
+                /></template>
+              </CodeViewer>
+            </div>
+          </div>
+        </SiCollapsible>
+      </TabPanel>
     </template>
   </SiTabGroup>
 </template>
@@ -50,6 +75,8 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import CodeViewer from "@/organisms/CodeViewer.vue";
+import SiCollapsible from "@/organisms/SiCollapsible.vue";
+import HealthIcon from "@/molecules/HealthIcon.vue";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import { CodeView } from "@/api/sdf/dal/code_view";

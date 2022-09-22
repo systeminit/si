@@ -7,7 +7,8 @@ use axum::{
 use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeValueError,
     ComponentError as DalComponentError, ComponentId, DiagramError, ReadTenancyError,
-    SchemaError as DalSchemaError, StandardModelError, SystemId, TransactionsError, WsEventError,
+    ResourceError, SchemaError as DalSchemaError, StandardModelError, SystemId, TransactionsError,
+    WsEventError,
 };
 use thiserror::Error;
 
@@ -52,6 +53,8 @@ pub enum ComponentError {
     Node(#[from] NodeError),
     #[error("diagram error: {0}")]
     Diagram(#[from] DiagramError),
+    #[error(transparent)]
+    Resource(#[from] ResourceError),
 
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),

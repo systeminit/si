@@ -36,7 +36,8 @@
 <script lang="ts" setup>
 import { PropType, computed } from "vue";
 import { ThemeValue } from "@/observable/theme";
-import HealthIcon, { Health } from "@/molecules/HealthIcon.vue";
+import HealthIcon from "@/molecules/HealthIcon.vue";
+import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { SelectionService } from "@/service/selection";
 import SiCollapsible from "../SiCollapsible.vue";
 import CodeViewer from "../CodeViewer.vue";
@@ -50,7 +51,7 @@ const props = defineProps({
   name: { type: String, required: true },
   kind: { type: String, required: true },
   output: { type: String, required: true },
-  status: { type: String as PropType<Health>, required: true },
+  status: { type: String as PropType<ResourceHealth>, required: true },
   forceTheme: { type: String as PropType<ThemeValue> },
   hideBottomBorderWhileClosed: { type: Boolean, default: false },
   defaultClosed: { type: Boolean, default: false },
