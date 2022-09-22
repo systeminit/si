@@ -1,9 +1,9 @@
-use super::{FuncAssociations, FuncError, FuncResult, PropAssociation};
+use super::{FuncAssociations, FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
-    AttributePrototype, DalContext, Func, FuncBackendKind, FuncId,
-    Prop, QualificationPrototype, StandardModel, Visibility,
+     Func, FuncBackendKind, FuncId,
+     QualificationPrototype, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -27,30 +27,6 @@ pub struct GetFuncResponse {
     pub is_builtin: bool,
     pub is_revertable: bool,
     pub associations: Option<FuncAssociations>,
-}
-
-async fn attribute_proto_prop_association(
-    ctx: &DalContext,
-    proto: &AttributePrototype,
-) -> FuncResult<Option<PropAssociation>> {
-    if proto.context.is_least_specific_field_kind_prop()? {
-        let prop = Prop::get_by_id(ctx, &proto.context.prop_id())
-            .await?
-            .ok_or(FuncError::PropNotFound)?;
-
-        Ok(Some(PropAssociation {
-            prop_id: *prop.id(),
-            name: prop.name().to_string(),
-            schema_variant_id: proto.context.schema_variant_id(),
-            component_id: if proto.context.component_id().is_some() {
-                Some(proto.context.component_id())
-            } else {
-                None
-            },
-        }))
-    } else {
-        Ok(None)
-    }
 }
 
 pub async fn get_func(
@@ -84,19 +60,7 @@ pub async fn get_func(
                 component_ids,
             })
         }
-        FuncBackendKind::JsAttribute => {
-            let protos = AttributePrototype::find_for_func(&ctx, func.id()).await?;
-
-            let mut props = vec![];
-            for proto in protos {
-                let prop = attribute_proto_prop_association(&ctx, &proto).await?;
-                if let Some(prop_assoc) = prop {
-                    props.push(prop_assoc);
-                }
-            }
-
-            Some(FuncAssociations::Attribute { props })
-        }
+        FuncBackendKind::JsAttribute => None,
         _ => None,
     };
 

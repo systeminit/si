@@ -110,9 +110,13 @@ const grabArgs = async (funcId: number) => {
 
 grabArgs(props.funcId);
 
-watch([funcId], ([funcId]) => {
-  grabArgs(funcId);
-});
+watch(
+  [funcId],
+  ([funcId]) => {
+    grabArgs(funcId);
+  },
+  { immediate: true },
+);
 
 const addArgument = async () => {
   await FuncService.createArgument({

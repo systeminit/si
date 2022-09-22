@@ -20,7 +20,7 @@ use dal::{
     job::definition::DependentValuesUpdate,
     AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeError,
     AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
-    Func, FuncBackendKind, FuncBinding, FuncBindingError, Prop, PropError, PropId, PropKind,
+    Func, FuncBackendKind, FuncBinding, FuncBindingError, Prop, PropError, PropKind,
     QualificationPrototypeError, ReadTenancyError, SchemaVariantId, StandardModel,
     StandardModelError, TransactionsError, Visibility, WriteTenancyError, WsEventError,
 };
@@ -114,15 +114,6 @@ impl IntoResponse for FuncError {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct PropAssociation {
-    pub prop_id: PropId,
-    pub name: String,
-    pub component_id: Option<ComponentId>,
-    pub schema_variant_id: SchemaVariantId,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
@@ -130,8 +121,6 @@ pub enum FuncAssociations {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
     },
-    #[serde(rename_all = "camelCase")]
-    Attribute { props: Vec<PropAssociation> },
 }
 
 #[derive(Deserialize, Serialize, Debug)]

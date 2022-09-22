@@ -28,9 +28,9 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { Option } from "@/molecules/SelectMenu.vue";
-import { QualificationAssocations } from "@/service/func/get_func";
+import { QualificationAssocations } from "@/service/func";
 import QualificationRunOnSelector from "./QualificationRunOnSelector.vue";
 
 const props = defineProps<{
@@ -56,6 +56,21 @@ const emit = defineEmits<{
   (e: "update:modelValue", v: QualificationAssocations): void;
   (e: "change", v: QualificationAssocations): void;
 }>();
+
+watch(
+  () => props.modelValue,
+  (mv) => {
+    selectedVariants.value = toOptionValues(
+      props.schemaVariants,
+      mv.schemaVariantIds,
+    );
+    selectedComponents.value = toOptionValues(
+      props.components,
+      mv.componentIds,
+    );
+  },
+  { immediate: true },
+);
 
 const updateAssociations = () => {
   const associations: QualificationAssocations = {

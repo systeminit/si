@@ -116,8 +116,7 @@ import { DiagramService } from "@/service/diagram";
 import { EditingFunc } from "@/observable/func";
 import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
-import { FuncService } from "@/service/func";
-import { FuncAssociations } from "@/service/func/get_func";
+import { FuncService, FuncAssociations } from "@/service/func";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import {
   changeFunc,
@@ -168,15 +167,19 @@ const componentOptions = computed(() =>
 const editingFunc = ref<EditingFunc>(nullEditingFunc);
 const associations = ref<FuncAssociations | undefined>(undefined);
 
-watch([funcId, funcState], async ([currentFuncId]) => {
-  editingFunc.value = funcById(currentFuncId) ?? nullEditingFunc;
-  associations.value = editingFunc.value.associations;
-});
+watch(
+  [funcId, funcState],
+  async ([currentFuncId]) => {
+    editingFunc.value = funcById(currentFuncId) ?? nullEditingFunc;
+    associations.value = editingFunc.value.associations;
+  },
+  { immediate: true },
+);
 
 const updateFunc = () => {
   changeFunc({
     ...editingFunc.value,
-    ...associations.value,
+    associations: associations.value,
   });
 };
 

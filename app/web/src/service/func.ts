@@ -13,17 +13,7 @@ export interface QualificationAssocations {
   componentIds: number[];
 }
 
-export interface AttributeAssociations {
-  type: "attribute";
-  props: {
-    propId: number;
-    name: string;
-    componentId?: number;
-    schemaVariantId: number;
-  }[];
-}
-
-export type FuncAssociations = AttributeAssociations | QualificationAssocations;
+export type FuncAssociations = QualificationAssocations;
 
 export const FuncService = {
   listFuncs,

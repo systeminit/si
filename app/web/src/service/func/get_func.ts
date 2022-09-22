@@ -4,28 +4,11 @@ import { ApiResponse } from "@/api/sdf";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
 import { GlobalErrorService } from "@/service/global_error";
 import { memoizedVisibilitySdfPipe } from "@/utils/memoizedVisibilitySdfPipes";
+import { FuncAssociations } from "@/service/func";
 
 export interface GetFuncArgs {
   id: number;
 }
-
-export interface QualificationAssocations {
-  type: "qualification";
-  schemaVariantIds: number[];
-  componentIds: number[];
-}
-
-export interface AttributeAssociations {
-  type: "attribute";
-  props: {
-    propId: number;
-    name: string;
-    componentId?: number;
-    schemaVariantId: number;
-  }[];
-}
-
-export type FuncAssociations = AttributeAssociations | QualificationAssocations;
 
 export interface GetFuncResponse extends Func {
   isBuiltin: boolean;
