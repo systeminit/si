@@ -7,10 +7,10 @@ POST http://localhost:8080/api/signup/create_account
 Content-Type: application/json
 
 {
-  "billingAccountName": "Company",
-  "userName": "User",
-  "userEmail": "admin@systeminit.com",
-  "userPassword": "yJhbGciOiJSUzI1NiIsItpZC",
+  "billingAccountName": "systeminit",
+  "userName": "System Init",
+  "userEmail": "example@systeminit.com",
+  "userPassword": "Password123!",
   "signupSecret": "cool-steam"
 }
 
@@ -19,9 +19,9 @@ POST http://localhost:8080/api/session/login
 Content-Type: application/json
 
 {
-  "billingAccountName": "Company",
-  "userEmail": "admin@systeminit.com",
-  "userPassword": "yJhbGciOiJSUzI1NiIsItpZC"
+  "billingAccountName": "systeminit",
+  "userEmail": "example@systeminit.com",
+  "userPassword": "Password123!"
 }
 
 > {% client.global.set("auth_token", response.body.jwt); %}

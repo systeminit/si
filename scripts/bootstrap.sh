@@ -58,6 +58,7 @@ function set-config {
 function darwin-bootstrap {
     local pkgs=(
         automake
+        awscli
         bash
         butane
         git
@@ -76,6 +77,7 @@ function darwin-bootstrap {
 
 function arch-bootstrap {
     local pkgs=(
+        aws-cli
         base-devel
         git
         make
@@ -92,6 +94,7 @@ function arch-bootstrap {
 function fedora-bootstrap {
     local pkgs=(
         @development-tools
+        awscli
         butane
         git
         golang-github-instrumenta-kubeval
@@ -109,6 +112,7 @@ function fedora-bootstrap {
 
 function ubuntu-bootstrap {
     local pkgs=(
+        awscli
         build-essential
         git
         libprotobuf-dev
@@ -123,7 +127,7 @@ function ubuntu-bootstrap {
     # Kubic provides skopeo packages for 20.04, but it's available in the main Ubuntu repository in >= 20.10.
     if [ "${VERSION_OD}" == "20.04" ]; then
         echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
-        curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
+        curl -L "https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key" | sudo apt-key add -
     fi
 
     sudo apt update
