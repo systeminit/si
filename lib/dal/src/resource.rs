@@ -264,7 +264,7 @@ impl ResourceView {
             error: None,
             key: resource.key,
             data: resource.data,
-            health: ResourceHealth::Error,
+            health: ResourceHealth::Ok,
             entity_type: "idk bro".to_owned(),
         }
     }

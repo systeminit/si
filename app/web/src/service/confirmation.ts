@@ -1,11 +1,11 @@
 import { useObservable } from "@vueuse/rxjs";
 import { ReplaySubject } from "rxjs";
-import HealthIconVue, { Health } from "@/molecules/HealthIcon.vue";
+import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 
 export interface Confirmation {
   title: string;
-  health: Health;
+  health: ResourceHealth;
   link?: string;
   description?: string;
   output?: string[];
@@ -15,7 +15,7 @@ export interface ConfirmationSummaryForComponent {
   id: number;
   name: string;
   type: ComponentType;
-  health: Health;
+  health: ResourceHealth;
 }
 
 export interface ConfirmationSummary {
@@ -34,7 +34,7 @@ export type Resource = {
   id: number;
   name: string;
   kind: string;
-  health: Health;
+  health: ResourceHealth;
   confirmations: Confirmation[];
 };
 
@@ -47,11 +47,11 @@ export const fakeResources = (
         id: 1,
         name: "whiskers",
         kind: "docker image",
-        health: "Ok" as Health,
+        health: ResourceHealth.Ok,
         confirmations: [
           {
             title: "test confirmation 1",
-            health: "Ok" as Health,
+            health: ResourceHealth.Ok,
             link: "idk",
             description: "this is just a test",
             output: [],
@@ -64,11 +64,11 @@ export const fakeResources = (
         id: 1,
         name: "fake credential",
         kind: "docker hub credential",
-        health: "Error" as Health,
+        health: ResourceHealth.Error,
         confirmations: [
           {
             title: "test confirmation 2",
-            health: "Error" as Health,
+            health: ResourceHealth.Error,
             link: "idk",
             description: "this is just a test",
           },
@@ -80,11 +80,11 @@ export const fakeResources = (
         id: 1,
         name: "my k8s namespace",
         kind: "k8s namespace",
-        health: "Unknown" as Health,
+        health: ResourceHealth.Unknown,
         confirmations: [
           {
             title: "test confirmation 3",
-            health: "Unknown" as Health,
+            health: ResourceHealth.Unknown,
             link: "idk",
             description: "this is just a test",
           },
@@ -96,11 +96,11 @@ export const fakeResources = (
         id: 1,
         name: "let's deploy to k8s",
         kind: "k8s deployment",
-        health: "Warning" as Health,
+        health: ResourceHealth.Warning,
         confirmations: [
           {
             title: "test confirmation 4",
-            health: "Warning" as Health,
+            health: ResourceHealth.Warning,
             link: "idk",
             description: "this is just a test",
           },
@@ -112,11 +112,11 @@ export const fakeResources = (
         id: 1,
         name: "idk butane or something",
         kind: "coreos butane",
-        health: "Ok" as Health,
+        health: ResourceHealth.Ok,
         confirmations: [
           {
             title: "test confirmation 5",
-            health: "Ok" as Health,
+            health: ResourceHealth.Ok,
             link: "idk",
             description: "this is just a test",
           },
@@ -128,11 +128,11 @@ export const fakeResources = (
         id: 2,
         kind: "unknown",
         name: "other resource",
-        health: "Error" as Health,
+        health: ResourceHealth.Error,
         confirmations: [
           {
             title: "test confirmation 6",
-            health: "Error" as Health,
+            health: ResourceHealth.Error,
             link: "idk",
             description: "this is just a test",
           },
@@ -150,31 +150,31 @@ const mockComponentData: ConfirmationSummary = {
       id: 1,
       name: "mock component 1",
       type: ComponentType.DockerImage,
-      health: "Ok",
+      health: ResourceHealth.Ok,
     },
     {
       id: 2,
       name: "mock component 2",
       type: ComponentType.DockerHubCredential,
-      health: "Error",
+      health: ResourceHealth.Error,
     },
     {
       id: 3,
       name: "mock component 3",
       type: ComponentType.KubernetesNamespace,
-      health: "Unknown",
+      health: ResourceHealth.Unknown,
     },
     {
       id: 4,
       name: "mock component 4",
       type: ComponentType.KubernetesDeployment,
-      health: "Warning",
+      health: ResourceHealth.Warning,
     },
     {
       id: 5,
       name: "mock component 5",
       type: ComponentType.CoreOsButane,
-      health: "Ok",
+      health: ResourceHealth.Ok,
     },
   ],
 };

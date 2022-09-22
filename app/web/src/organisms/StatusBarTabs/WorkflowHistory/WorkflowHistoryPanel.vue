@@ -126,7 +126,6 @@ import {
 import { WorkflowRunInfo } from "@/service/workflow/info";
 import Timestamp from "@/ui-lib/Timestamp.vue";
 import WorkflowResources from "@/organisms/WorkflowRunner/WorkflowResources.vue";
-import { QualificationService } from "@/service/qualification";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 import { ConfirmationService } from "@/service/confirmation";
 

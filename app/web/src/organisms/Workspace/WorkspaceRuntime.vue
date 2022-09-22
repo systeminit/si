@@ -62,7 +62,6 @@ import { WorkflowService } from "@/service/workflow";
 import { eventCommandOutput$, eventCommandReturn$ } from "@/observable/command";
 import {
   ListedWorkflowView,
-
   ListWorkflowsResponse,
 } from "@/service/workflow/list";
 import VButton from "@/molecules/VButton.vue";

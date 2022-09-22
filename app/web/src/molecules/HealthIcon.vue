@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="health === 'Ok'"
+    v-if="health === ResourceHealth.Ok"
     class="flex flex-row whitespace-nowrap items-center text-sm"
   >
     <Icon
@@ -12,7 +12,7 @@
     <span v-if="!hideText">Health: {{ health }}</span>
   </div>
   <div
-    v-else-if="health === 'Warning'"
+    v-else-if="health === ResourceHealth.Warning"
     class="flex flex-row whitespace-nowrap items-center text-sm"
   >
     <Icon
@@ -24,7 +24,7 @@
     <span v-if="!hideText">Health: {{ health }}</span>
   </div>
   <div
-    v-else-if="health === 'Error'"
+    v-else-if="health === ResourceHealth.Error"
     class="flex flex-row whitespace-nowrap items-center text-sm"
   >
     <Icon
@@ -49,14 +49,13 @@
 <script lang="ts" setup>
 import { PropType } from "vue";
 import Icon, { IconSizes } from "@/ui-lib/Icon.vue";
+import { ResourceHealth } from "@/api/sdf/dal/resource";
 
 export type WorkflowStatus = "running" | "success" | "failure";
 
-export type Health = "Ok" | "Warning" | "Error" | "Unknown";
-
 defineProps({
   health: {
-    type: String as PropType<Health>,
+    type: String as PropType<ResourceHealth>,
     required: true,
   },
   hideText: { type: Boolean, default: false },
