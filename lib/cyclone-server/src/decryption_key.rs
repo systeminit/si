@@ -13,7 +13,7 @@ pub enum DecryptionKeyError {
     DecryptionFailed,
     #[error("encrypted secret not found")]
     EncryptedSecretNotFound,
-    #[error("json pointer not found: {1} at {:0?}")]
+    #[error("json pointer not found: {1} at {0}")]
     JSONPointerNotFound(serde_json::Value, String),
     #[error("failed to load key from bytes")]
     KeyParse,
