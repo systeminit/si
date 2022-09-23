@@ -76,7 +76,7 @@ import { SelectionService } from "@/service/selection";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import HealthIcon from "@/molecules/HealthIcon.vue";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
-import { ComponentType } from "@/service/confirmation";
+import { ComponentType } from "@/service/resource";
 
 export interface ComponentListItem {
   id: number;

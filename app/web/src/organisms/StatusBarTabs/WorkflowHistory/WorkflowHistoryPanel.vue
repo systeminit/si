@@ -127,7 +127,7 @@ import { WorkflowRunInfo } from "@/service/workflow/info";
 import Timestamp from "@/ui-lib/Timestamp.vue";
 import WorkflowResources from "@/organisms/WorkflowRunner/WorkflowResources.vue";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
-import { ConfirmationService } from "@/service/confirmation";
+import { ResourceService } from "@/service/resource";
 
 export interface SortOption {
   value: string;
@@ -183,7 +183,7 @@ const selectedWorkflowInfo = refFrom<WorkflowRunInfo | null>(
   ),
 );
 
-const confirmationsSummary = ConfirmationService.useConfirmationSummary();
+const confirmationsSummary = ResourceService.useResourceSummary();
 
 const componentsList = computed((): ComponentListItem[] => {
   if (confirmationsSummary.value === undefined) return [];

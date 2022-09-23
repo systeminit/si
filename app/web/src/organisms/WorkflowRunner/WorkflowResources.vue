@@ -50,7 +50,7 @@
 <script lang="ts" setup>
 import { PropType } from "vue";
 import { ThemeValue } from "@/observable/theme";
-import { fakeResources } from "@/service/confirmation";
+import { fakeResources } from "@/service/resource";
 import WorkflowResource from "./WorkflowResource.vue";
 import { ComponentListItem } from "../StatusBar/StatusBarTabPanelComponentList.vue";
 

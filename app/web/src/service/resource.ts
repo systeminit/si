@@ -49,6 +49,7 @@ export const fakeResources = (
         name: "whiskers",
         kind: "docker image",
         health: ResourceHealth.Ok,
+        status: ResourceStatus.Created,
         confirmations: [
           {
             title: "test confirmation 1",
@@ -66,6 +67,7 @@ export const fakeResources = (
         name: "fake credential",
         kind: "docker hub credential",
         health: ResourceHealth.Error,
+        status: ResourceStatus.Failed,
         confirmations: [
           {
             title: "test confirmation 2",
@@ -82,6 +84,7 @@ export const fakeResources = (
         name: "my k8s namespace",
         kind: "k8s namespace",
         health: ResourceHealth.Unknown,
+        status: ResourceStatus.Pending,
         confirmations: [
           {
             title: "test confirmation 3",
@@ -98,6 +101,7 @@ export const fakeResources = (
         name: "let's deploy to k8s",
         kind: "k8s deployment",
         health: ResourceHealth.Warning,
+        status: ResourceStatus.InProgress,
         confirmations: [
           {
             title: "test confirmation 4",
@@ -114,6 +118,7 @@ export const fakeResources = (
         name: "idk butane or something",
         kind: "coreos butane",
         health: ResourceHealth.Ok,
+        status: ResourceStatus.Created,
         confirmations: [
           {
             title: "test confirmation 5",
@@ -130,6 +135,7 @@ export const fakeResources = (
         kind: "unknown",
         name: "other resource",
         health: ResourceHealth.Error,
+        status: ResourceStatus.Created,
         confirmations: [
           {
             title: "test confirmation 6",
@@ -183,10 +189,10 @@ const mockComponentData: ConfirmationSummary = {
 const mockComponentData$ = new ReplaySubject<ConfirmationSummary>();
 mockComponentData$.next(mockComponentData);
 
-function useConfirmationSummary() {
+function useResourceSummary() {
   return useObservable(mockComponentData$); // TODO(wendy) - replace mock data with my own endpoint
 }
 
-export const ConfirmationService = {
-  useConfirmationSummary,
+export const ResourceService = {
+  useResourceSummary,
 };
