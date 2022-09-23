@@ -1,11 +1,15 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::builtins::BuiltinsError;
+use crate::code_generation_prototype::CodeGenerationPrototypeContext;
+use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
+use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::{
     schema::{SchemaVariant, UiMenu},
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    BuiltinsResult, DalContext, DiagramKind, ExternalProvider, InternalProvider, PropKind,
-    SchemaError, SchemaKind, Socket, StandardModel,
+    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
+    ExternalProvider, Func, InternalProvider, PropKind, QualificationPrototype, SchemaError,
+    SchemaKind, Socket, StandardModel,
 };
 
 // Reference: https://aws.amazon.com/trademark-guidelines/
@@ -136,28 +140,111 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
 
     // Prop creation
     // TODO(nick): add validation for shape (e.g. "ami-XXX").
+    // TODO(victor): This should be set as required in the validation
     let _image_id_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
-        "imageId",
+        "ImageId",
         PropKind::String,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
     )
     .await?;
+
+    // TODO Add validation to check if value is valid
+    // TODO(victor): This should be set as required in the validation
+    let _instance_type_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "InstanceType",
+        PropKind::String,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // TODO Add provider to get this value from socket
+    let _key_name_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "KeyName",
+        PropKind::String,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let security_groups_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "SecurityGroupIds",
+        PropKind::Array,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let _security_group_id_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "SecurityGroupId",
+        PropKind::String,
+        Some(*security_groups_prop.id()),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let tags_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "Tags",
+        PropKind::Map,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // TODO(victor): Make one item of the list have key `Name` and value equal to /root/si/name
+    let _tags_map_item_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "Tag",
+        PropKind::String,
+        Some(*tags_prop.id()),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
     let _user_data_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
-        "userData",
+        "UserData",
         PropKind::String,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
     )
     .await?;
+
     let region_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "region",
         PropKind::String,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // Code Generation Prototype
+    let code_generation_func_name = "si:generateJSON".to_owned();
+    let code_generation_func =
+        Func::find_by_attr(ctx, "name", &code_generation_func_name.to_owned())
+            .await?
+            .pop()
+            .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
+
+    let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
+    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
+    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
+    code_generation_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    let _prototype = CodeGenerationPrototype::new(
+        ctx,
+        *code_generation_func.id(),
+        code_generation_args_json,
+        CodeLanguage::Json,
+        code_generation_prototype_context,
     )
     .await?;
 
@@ -218,6 +305,19 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         )
         .await?; // TODO(wendy) - Can an EC2 instance have multiple regions? Idk!
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    // Qualification Prototype
+    let qual_func_name = "si:qualificationEc2CanRun".to_string();
+
+    let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
+        .await?
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
+
+    let mut qual_prototype_context = QualificationPrototypeContext::new();
+    qual_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
     // Wrap it up.
     schema_variant.finalize(ctx).await?;

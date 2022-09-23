@@ -1,0 +1,9 @@
+{
+  "kind": "JsQualification",
+  "response_type": "Qualification",
+  "display_name": "Ec2 can run",
+  "description": null,
+  "link": null,
+  "code_file": "qualificationEc2CanRun.js",
+  "code_entrypoint": "qualification"
+}

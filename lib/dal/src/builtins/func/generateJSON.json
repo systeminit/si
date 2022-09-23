@@ -1,0 +1,6 @@
+{
+  "kind": "JsCodeGeneration",
+  "response_type": "CodeGeneration",
+  "code_file": "generateJSON.js",
+  "code_entrypoint": "generateJSON"
+}

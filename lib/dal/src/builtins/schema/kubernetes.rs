@@ -96,6 +96,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Create sockets
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
