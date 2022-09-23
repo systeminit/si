@@ -1,0 +1,6 @@
+{
+  "kind": "JsCodeGeneration",
+  "response_type": "CodeGeneration",
+  "code_file": "generateAwsJSON.js",
+  "code_entrypoint": "generateAwsJSON"
+}
