@@ -69,7 +69,7 @@ import SiPanel from "@/atoms/SiPanel.vue";
 import { WorkflowStatus } from "@/molecules/WorkflowStatusIcon.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import { ConfirmationService } from "@/service/confirmation";
+import { ResourceService } from "@/service/resource";
 import WorkflowOutput from "../WorkflowRunner/WorkflowOutput.vue";
 import WorkflowResources from "../WorkflowRunner/WorkflowResources.vue";
 import { ComponentListItem } from "../StatusBar/StatusBarTabPanelComponentList.vue";
@@ -122,17 +122,18 @@ eventCommandReturn$.pipe(untilUnmounted).subscribe((command) => {
 
 const workflowList = refFrom<ListWorkflowsResponse>(WorkflowService.list(), []);
 
-const confirmationsSummary = ConfirmationService.useConfirmationSummary();
+const resourceSummary = ResourceService.useResourceSummary();
 
 const componentsList = computed((): ComponentListItem[] => {
-  if (confirmationsSummary.value === undefined) return [];
+  if (resourceSummary.value === undefined) return [];
   const list: ComponentListItem[] = [];
-  for (const component of confirmationsSummary.value.components) {
+  for (const component of resourceSummary.value.components) {
     list.push({
       id: component.id,
       name: component.name,
-      type: component.type,
+      schema: component.schema,
       health: component.health,
+      resources: component.resources,
     });
   }
   return list;

@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts" setup>
-import { Resource } from "@/service/confirmation";
+import { Resource } from "@/service/resource";
 import ConfirmationViewerSingle from "./ConfirmationViewerSingle.vue";
 
 defineProps<{

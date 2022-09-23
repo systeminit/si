@@ -4,6 +4,7 @@ pub mod diagram;
 pub mod func;
 pub mod provider;
 pub mod qualification;
+pub mod resource;
 pub mod schema;
 pub mod secret;
 pub mod session;

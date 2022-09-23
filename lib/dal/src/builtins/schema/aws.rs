@@ -577,6 +577,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     schema_variant.finalize(ctx).await?;
 
     // Connect the "/root/domain/key id" prop to the external provider.
+    // TODO(wendy) - currently this just gives the key name, how can we give the key id without making it a prop?
     let external_provider_attribute_prototype_id = key_name_external_provider
         .attribute_prototype_id()
         .ok_or_else(|| {

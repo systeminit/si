@@ -14,17 +14,17 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, PropType } from "vue";
 import StatusIndicatorIcon, {
   Status,
 } from "@/molecules/StatusIndicatorIcon.vue";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import HealthIcon from "./HealthIcon.vue";
 
-const props = defineProps<{
-  status?: Status;
-  health?: ResourceHealth;
-}>();
+const props = defineProps({
+  health: { type: String as PropType<ResourceHealth> },
+  status: { type: String as PropType<Status> },
+});
 
 const divClasses = computed(() => {
   switch (true) {
