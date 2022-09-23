@@ -27,11 +27,13 @@ use dal::{
 
 pub mod create_argument;
 pub mod create_func;
+pub mod delete_argument;
 pub mod exec_func;
 pub mod get_func;
 pub mod list_arguments;
 pub mod list_funcs;
 pub mod revert_func;
+pub mod save_argument;
 pub mod save_func;
 
 #[derive(Error, Debug)]
@@ -97,6 +99,8 @@ pub enum FuncError {
     FuncNotRevertable,
     #[error("func argument already exists for that name")]
     FuncArgumentAlreadyExists,
+    #[error("func argument not found")]
+    FuncArgNotFound,
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
@@ -265,4 +269,6 @@ pub fn routes() -> Router {
         .route("/revert_func", post(revert_func::revert_func))
         .route("/list_arguments", get(list_arguments::list_arguments))
         .route("/create_argument", post(create_argument::create_argument))
+        .route("/delete_argument", post(delete_argument::delete_argument))
+        .route("/save_argument", post(save_argument::save_argument))
 }

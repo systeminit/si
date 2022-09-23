@@ -6,6 +6,8 @@ import { execFunc } from "./func/exec_func";
 import { revertFunc } from "./func/revert_func";
 import { listArguments } from "./func/list_arguments";
 import { createArgument } from "./func/create_argument";
+import { saveArgument } from "./func/save_argument";
+import { deleteArgument } from "./func/delete_argument";
 
 export interface QualificationAssocations {
   type: "qualification";
@@ -24,4 +26,6 @@ export const FuncService = {
   revertFunc,
   listArguments,
   createArgument,
+  deleteArgument,
+  saveArgument,
 };

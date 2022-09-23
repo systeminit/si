@@ -1,7 +1,7 @@
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    DalContext, Func, FuncId, FuncResult, HistoryEventError, PropKind, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, DalContext, FuncId,
+    HistoryEventError, PropKind, StandardModel, StandardModelError, Timestamp, Visibility,
+    WriteTenancy,
 };
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
@@ -131,16 +131,6 @@ impl FuncArgument {
         FuncArgumentResult
     );
     standard_model_accessor!(shape, OptionJson<JsonValue>, FuncArgumentResult);
-    standard_model_belongs_to!(
-        lookup_fn: func,
-        set_fn: set_func,
-        unset_fn: unset_func,
-        table: "func_argument_belongs_to_func",
-        model_table: "funcs",
-        belongs_to_id: FuncId,
-        returns: Func,
-        result: FuncResult,
-    );
 
     /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId).
     pub async fn list_for_func(ctx: &DalContext, func_id: FuncId) -> FuncArgumentResult<Vec<Self>> {

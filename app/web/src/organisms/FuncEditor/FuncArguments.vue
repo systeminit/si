@@ -1,5 +1,8 @@
 <template>
-  <div>
+  <div class="p-3 flex flex-col gap-2">
+    <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
+      Add the names of the arguments to this function and their types.
+    </h1>
     <div class="flex flex-row gap-1 items-center">
       <SiTextBox
         id="newArg"
@@ -25,22 +28,31 @@
     </div>
     <ul>
       <li
-        v-for="arg in args"
-        :key="`${arg.name}-${arg.id}`"
+        v-for="arg in editingArgs"
+        :key="arg.id"
         class="flex flex-row items-center gap-1"
       >
         <SiTextBox
-          :id="`${arg.name}-${arg.id}`"
+          :id="`arg-name-${arg.id}`"
           v-model="arg.name"
           class="flex-1"
           placeholder="Argument name"
           :disabled="disabled"
+          @change="saveArgument(arg)"
         />
         <SelectMenu
           v-model="arg.kind"
           class="flex-auto"
           :options="kindOptions"
           :disabled="disabled"
+        />
+        <VButton
+          class="flex-none"
+          label="Del"
+          button-rank="primary"
+          button-type="destructive"
+          :disabled="disabled"
+          @click="deleteArgument(arg.id)"
         />
       </li>
     </ul>
@@ -69,6 +81,7 @@ const kindToOption = (kind?: FuncArgumentKind): Option =>
     : { label: "None", value: "None" };
 
 const kindOptions = generateKindOptions();
+// we haven't implemented element kinds yet
 // const elementKindOptions = [kindToOption()].concat(generateKindOptions());
 
 const props = defineProps<{
@@ -101,19 +114,19 @@ const argsToEditingArgs = (args: FuncArgument[]) =>
     elementKind: kindToOption(elementKind),
   }));
 
-const args = ref<EditingFuncArgument[]>([]);
+const editingArgs = ref<EditingFuncArgument[]>([]);
 
-const grabArgs = async (funcId: number) => {
+const fetchArguments = async (funcId: number) => {
   const funcArgs = (await FuncService.listArguments({ funcId })).arguments;
-  args.value = argsToEditingArgs(funcArgs);
+  editingArgs.value = argsToEditingArgs(funcArgs);
 };
 
-grabArgs(props.funcId);
+fetchArguments(props.funcId);
 
 watch(
   [funcId],
   ([funcId]) => {
-    grabArgs(funcId);
+    fetchArguments(funcId);
   },
   { immediate: true },
 );
@@ -126,6 +139,19 @@ const addArgument = async () => {
   });
   newArg.value.name = "";
   newArg.value.kind = kindToOption(FuncArgumentKind.String);
-  grabArgs(funcId.value);
+  fetchArguments(funcId.value);
+};
+
+const saveArgument = async (arg: EditingFuncArgument) => {
+  await FuncService.saveArgument({
+    id: arg.id,
+    name: arg.name,
+    kind: arg.kind.value as FuncArgumentKind,
+  });
+};
+
+const deleteArgument = async (id: number) => {
+  await FuncService.deleteArgument({ id });
+  editingArgs.value = editingArgs.value.filter((a) => a.id !== id);
 };
 </script>

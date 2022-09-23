@@ -227,8 +227,8 @@ async fn create_attribute_func(
     };
 
     let func = if should_copy_existing {
-        // unwrap is safe from panic here, should_copy_existing will only ever be true if current_func is Some()
-        copy_attribute_func(ctx, current_func.as_ref().unwrap()).await?
+        // expect is safe from panic here, should_copy_existing will only ever be true if current_func is Some()
+        copy_attribute_func(ctx, current_func.as_ref().expect("current_func was None")).await?
     } else {
         create_default_attribute_func(ctx, value_id, current_func.as_ref()).await?
     };
