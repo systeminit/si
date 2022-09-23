@@ -62,14 +62,45 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop creation
-    // TODO(nick): add validation that max length is 1024 characters. This is mentioned in the
-    // reference.
-    let _image_prop = BuiltinSchemaHelpers::create_prop(
+    // TODO(nick): add validation that max length is 1024 characters.
+    // TODO(victor): add validation that this string starts with 'ami-'
+    let image_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
-        "image",
+        "ImageId",
         PropKind::String,
         Some(root_prop.domain_prop_id),
         Some(AMI_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let region_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "region",
+        PropKind::String,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // Code Generation
+    let code_generation_func_name = "si:generateAwsJSON".to_owned();
+    let code_generation_func =
+        Func::find_by_attr(ctx, "name", &code_generation_func_name.to_owned())
+            .await?
+            .pop()
+            .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
+
+    let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
+    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
+    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
+    code_generation_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    let _prototype = CodeGenerationPrototype::new(
+        ctx,
+        *code_generation_func.id(),
+        code_generation_args_json,
+        CodeLanguage::Json,
+        code_generation_prototype_context,
     )
     .await?;
 
@@ -88,7 +119,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     // TODO(nick): add ability to export image id for ec2.
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
-    let (_ec2_image_id_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+    let (image_id_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
         *schema_variant.id(),
@@ -103,8 +134,85 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
+    let (region_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "region",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    // Qualifications
+    let qual_func_name = "si:qualificationAmiExists".to_string();
+
+    let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
+        .await?
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
+
+    let mut qual_prototype_context = QualificationPrototypeContext::new();
+    qual_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+
     // Wrap it up.
     schema_variant.finalize(ctx).await?;
+
+    // Connect the props to providers.
+    let external_provider_attribute_prototype_id = image_id_external_provider
+        .attribute_prototype_id()
+        .ok_or_else(|| {
+            BuiltinsError::MissingAttributePrototypeForExternalProvider(
+                *image_id_external_provider.id(),
+            )
+        })?;
+    let image_id_implicit_internal_provider = InternalProvider::get_for_prop(ctx, *image_prop.id())
+        .await?
+        .ok_or_else(|| BuiltinsError::ImplicitInternalProviderNotFoundForProp(*image_prop.id()))?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *external_provider_attribute_prototype_id,
+        "identity",
+        *image_id_implicit_internal_provider.id(),
+    )
+    .await?;
+
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+    let region_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*region_prop.id()),
+        ..base_attribute_read_context
+    };
+    let region_attribute_value =
+        AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                region_attribute_value_read_context,
+            ))?;
+    let mut region_attribute_prototype = region_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    region_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *region_attribute_prototype.id(),
+        "identity",
+        *region_explicit_internal_provider.id(),
+    )
+    .await?;
 
     Ok(())
 }
@@ -141,7 +249,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     // Prop creation
     // TODO(nick): add validation for shape (e.g. "ami-XXX").
     // TODO(victor): This should be set as required in the validation
-    let _image_id_prop = BuiltinSchemaHelpers::create_prop(
+    let image_id_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "ImageId",
         PropKind::String,
@@ -227,7 +335,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Code Generation Prototype
-    let code_generation_func_name = "si:generateJSON".to_owned();
+    let code_generation_func_name = "si:generateAwsJSON".to_owned();
     let code_generation_func =
         Func::find_by_attr(ctx, "name", &code_generation_func_name.to_owned())
             .await?
@@ -277,7 +385,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         )
         .await?;
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
-    let (_ami_explicit_internal_provider, mut input_socket) =
+    let (image_id_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
             *schema.id(),
@@ -306,7 +414,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?; // TODO(wendy) - Can an EC2 instance have multiple regions? Idk!
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-    // Qualification Prototype
+    // Qualifications
     let qual_func_name = "si:qualificationEc2CanRun".to_string();
 
     let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
@@ -322,12 +430,13 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     // Wrap it up.
     schema_variant.finalize(ctx).await?;
 
-    // Connect the "region" prop to the "region" explicit internal provider.
+    // Connect props to providers.
     let base_attribute_read_context = AttributeReadContext {
         schema_id: Some(*schema.id()),
         schema_variant_id: Some(*schema_variant.id()),
         ..AttributeReadContext::default()
     };
+
     let region_attribute_value_read_context = AttributeReadContext {
         prop_id: Some(*region_prop.id()),
         ..base_attribute_read_context
@@ -350,6 +459,31 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         *region_attribute_prototype.id(),
         "identity",
         *region_explicit_internal_provider.id(),
+    )
+    .await?;
+
+    let image_id_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*image_id_prop.id()),
+        ..base_attribute_read_context
+    };
+    let image_id_attribute_value =
+        AttributeValue::find_for_context(ctx, image_id_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                image_id_attribute_value_read_context,
+            ))?;
+    let mut image_id_attribute_prototype = image_id_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    image_id_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *image_id_attribute_prototype.id(),
+        "identity",
+        *image_id_explicit_internal_provider.id(),
     )
     .await?;
 

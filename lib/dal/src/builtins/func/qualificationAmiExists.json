@@ -1,0 +1,9 @@
+{
+  "kind": "JsQualification",
+  "response_type": "Qualification",
+  "display_name": "Ami Exists",
+  "description": null,
+  "link": null,
+  "code_file": "qualificationAmiExists.js",
+  "code_entrypoint": "qualification"
+}
