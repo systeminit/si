@@ -1,6 +1,6 @@
 import { useObservable } from "@vueuse/rxjs";
 import { ReplaySubject } from "rxjs";
-import { ResourceHealth } from "@/api/sdf/dal/resource";
+import { ResourceHealth, ResourceStatus } from "@/api/sdf/dal/resource";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 
 export interface Confirmation {
@@ -35,6 +35,7 @@ export type Resource = {
   name: string;
   kind: string;
   health: ResourceHealth;
+  status: ResourceStatus;
   confirmations: Confirmation[];
 };
 

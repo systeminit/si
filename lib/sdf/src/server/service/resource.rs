@@ -16,6 +16,8 @@ pub enum ResourceError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error("component name not found: {0}")]
+    ComponentNameNotFound(ComponentId),
 }
 
 pub type ResourceResult<T> = std::result::Result<T, ResourceError>;

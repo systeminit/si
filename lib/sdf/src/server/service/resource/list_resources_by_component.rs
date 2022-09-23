@@ -9,7 +9,6 @@ use crate::service::resource::{ResourceError, ResourceResult};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListResourcesByComponentRequest {
-    pub component_id: ComponentId,
     pub system_id: Option<SystemId>,
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
@@ -19,7 +18,113 @@ pub struct ListResourcesByComponentRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListResourcesByComponentResponse {
-    value: serde_json::Value,
+    components: Vec<MockComponent>,
+}
+
+// Mock Data Structs
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MockComponent {
+    id: ComponentId,
+    name: String,
+    resources: Vec<MockResource>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MockResource {
+    id: i64,
+    name: String,
+    kind: String,
+    health: MockHealth,
+    status: MockStatus,
+    confirmations: Vec<serde_json::Value>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+enum MockHealth {
+    Ok,
+    Warning,
+    Error,
+    Unknown,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+enum MockStatus {
+    Pending,
+    InProgress,
+    Created,
+    Failed,
+    Deleted,
+}
+
+// Mock Data Generation Functions
+
+fn mock_default(id: ComponentId, name: String) -> MockComponent {
+    // Create confirmation
+    let mut confirmations = Vec::new();
+    let confirmation = serde_json::json![{
+        "title": "fake confirmation",
+        "health": "Ok",
+        "link": "none",
+        "description": "this is fake",
+        "output": [],
+    }];
+    confirmations.push(confirmation);
+
+    // Create resource
+    let mut resources = Vec::new();
+    let resouce = MockResource {
+        id: 1,
+        name: "unknown".to_string(),
+        kind: "unknown".to_string(),
+        health: MockHealth::Unknown,
+        status: MockStatus::Pending,
+        confirmations,
+    };
+    resources.push(resouce);
+
+    // Return component
+    MockComponent {
+        name,
+        id,
+        resources,
+    }
+}
+
+fn mock_docker(id: ComponentId, name: String) -> MockComponent {
+    // Create confirmation
+    let mut confirmations = Vec::new();
+    let confirmation = serde_json::json![{
+        "title": "Does the resource exist?",
+        "health": "Ok",
+        "link": "none",
+        "description": "Checks if the resource actually exists.",
+        "output": [],
+    }];
+    confirmations.push(confirmation);
+
+    // Create resource
+    let mut resources = Vec::new();
+    let resouce = MockResource {
+        id: 1,
+        name: "whiskers".to_string(),
+        kind: "docker image".to_string(),
+        health: MockHealth::Ok,
+        status: MockStatus::Created,
+        confirmations,
+    };
+    resources.push(resouce);
+
+    // Return component
+    MockComponent {
+        name,
+        id,
+        resources,
+    }
 }
 
 pub async fn list_resources_by_component(
@@ -29,27 +134,25 @@ pub async fn list_resources_by_component(
 ) -> ResourceResult<Json<ListResourcesByComponentResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let component = Component::get_by_id(&ctx, &request.component_id)
-        .await?
-        .ok_or(ResourceError::ComponentNotFound(request.component_id))?;
+    let mut components: Vec<MockComponent> = Vec::new();
 
-    let default_case = serde_json::json![{
-      "foo": {
-        "bar": "baz"
-      }
-    }];
+    for component in Component::list(&ctx).await? {
+        let component_id = *component.id();
+        let component_name = component
+            .find_value_by_json_pointer::<String>(&ctx, "/root/si/name")
+            .await?
+            .ok_or(ResourceError::ComponentNameNotFound(component_id))?;
 
-    let value = match component.schema_variant(&ctx).await? {
-        Some(sv) => match sv.name() {
-            "docker_image" => serde_json::json![{
-              "foo": {
-                "bar": "baz"
-              }
-            }],
-            _ => default_case,
-        },
-        None => default_case,
-    };
+        let value = match component.schema_variant(&ctx).await? {
+            Some(sv) => match sv.name() {
+                "docker_image" => mock_docker(component_id, component_name),
+                _ => mock_default(component_id, component_name),
+            },
+            None => mock_default(component_id, component_name),
+        };
 
-    Ok(Json(ListResourcesByComponentResponse { value }))
+        components.push(value);
+    }
+
+    Ok(Json(ListResourcesByComponentResponse { components }))
 }
