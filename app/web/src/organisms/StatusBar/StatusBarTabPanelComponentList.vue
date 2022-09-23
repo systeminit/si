@@ -76,14 +76,15 @@ import { SelectionService } from "@/service/selection";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import HealthIcon from "@/molecules/HealthIcon.vue";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
-import { ComponentType } from "@/service/resource";
+import { Resource } from "@/service/resource";
 
 export interface ComponentListItem {
   id: number;
   name: string;
-  type?: ComponentType;
+  schema?: string;
   status?: Status;
   health?: ResourceHealth;
+  resources?: Resource[];
 }
 
 export interface FilterOption {

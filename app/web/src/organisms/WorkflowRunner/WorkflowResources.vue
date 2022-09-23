@@ -8,7 +8,7 @@
   <div v-else class="w-full h-full">
     <template v-for="component in components" :key="component.id">
       <WorkflowResource
-        v-for="resource in fakeResources(component)"
+        v-for="resource in component.resources"
         :key="resource.id"
         :name="resource.name"
         :kind="resource.kind"
@@ -50,7 +50,6 @@
 <script lang="ts" setup>
 import { PropType } from "vue";
 import { ThemeValue } from "@/observable/theme";
-import { fakeResources } from "@/service/resource";
 import WorkflowResource from "./WorkflowResource.vue";
 import { ComponentListItem } from "../StatusBar/StatusBarTabPanelComponentList.vue";
 

@@ -1,6 +1,6 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{Component, ComponentId, StandardModel, SystemId, Visibility, WorkspaceId};
+use dal::{Component, ComponentId, StandardModel, SystemId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -10,7 +10,6 @@ use crate::service::resource::{ResourceError, ResourceResult};
 #[serde(rename_all = "camelCase")]
 pub struct ListResourcesByComponentRequest {
     pub system_id: Option<SystemId>,
-    pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -28,6 +27,7 @@ pub struct ListResourcesByComponentResponse {
 pub struct MockComponent {
     id: ComponentId,
     name: String,
+    schema: String,
     resources: Vec<MockResource>,
 }
 
@@ -63,12 +63,12 @@ enum MockStatus {
 
 // Mock Data Generation Functions
 
-fn mock_default(id: ComponentId, name: String) -> MockComponent {
+fn mock_default(id: ComponentId, name: String, schema: String) -> MockComponent {
     // Create confirmation
     let mut confirmations = Vec::new();
     let confirmation = serde_json::json![{
         "title": "fake confirmation",
-        "health": "Ok",
+        "health": "error",
         "link": "none",
         "description": "this is fake",
         "output": [],
@@ -92,15 +92,16 @@ fn mock_default(id: ComponentId, name: String) -> MockComponent {
         name,
         id,
         resources,
+        schema,
     }
 }
 
-fn mock_docker(id: ComponentId, name: String) -> MockComponent {
+fn mock_docker(id: ComponentId, name: String, schema: String) -> MockComponent {
     // Create confirmation
     let mut confirmations = Vec::new();
     let confirmation = serde_json::json![{
         "title": "Does the resource exist?",
-        "health": "Ok",
+        "health": "ok",
         "link": "none",
         "description": "Checks if the resource actually exists.",
         "output": [],
@@ -124,6 +125,7 @@ fn mock_docker(id: ComponentId, name: String) -> MockComponent {
         name,
         id,
         resources,
+        schema,
     }
 }
 
@@ -142,13 +144,16 @@ pub async fn list_resources_by_component(
             .find_value_by_json_pointer::<String>(&ctx, "/root/si/name")
             .await?
             .ok_or(ResourceError::ComponentNameNotFound(component_id))?;
+        let component_schema = component.schema(&ctx).await?;
 
-        let value = match component.schema_variant(&ctx).await? {
-            Some(sv) => match sv.name() {
-                "docker_image" => mock_docker(component_id, component_name),
-                _ => mock_default(component_id, component_name),
+        let value = match component_schema {
+            Some(schema) => match schema.name() {
+                "docker_image" => {
+                    mock_docker(component_id, component_name, schema.name().to_string())
+                }
+                _ => mock_default(component_id, component_name, schema.name().to_string()),
             },
-            None => mock_default(component_id, component_name),
+            None => mock_default(component_id, component_name, "unknown".to_string()),
         };
 
         components.push(value);

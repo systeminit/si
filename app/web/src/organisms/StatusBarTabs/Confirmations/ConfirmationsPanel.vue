@@ -45,7 +45,7 @@ import StatusBarTabPanelComponentList, {
   FilterOption,
 } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 import { SelectionService } from "@/service/selection";
-import { ResourceService, fakeResources } from "@/service/resource";
+import { ResourceService, Resource } from "@/service/resource";
 import ConfirmationsResourceList from "./ConfirmationsResourceList.vue";
 import ConfirmationViewerMultiple from "./ConfirmationViewerMultiple.vue";
 
@@ -70,8 +70,6 @@ const changeSelectedFilter = (newFilter: FilterOption) => {
   selectedFilter.value = newFilter;
 };
 
-const confirmationsSummary = ResourceService.useResourceSummary();
-
 const selectedComponentId = SelectionService.useSelectedComponentId();
 
 const selectedResourceId = ref(undefined as undefined | number);
@@ -80,9 +78,16 @@ const selectResource = (id: number) => {
   selectedResourceId.value = id;
 };
 
+const resourceSummary = ResourceService.useResourceSummary();
+
 const resourcesList = computed(() => {
-  if (selectedComponent.value) return fakeResources(selectedComponent.value);
-  else return [];
+  console.log(selectedComponent.value?.resources);
+  if (selectedComponent.value && selectedComponent.value.resources)
+    return selectedComponent.value.resources;
+  else {
+    const empty: Resource[] = [];
+    return empty;
+  }
 });
 
 watch(selectedComponentId, () => {
@@ -90,14 +95,15 @@ watch(selectedComponentId, () => {
 });
 
 const componentsList = computed((): ComponentListItem[] => {
-  if (confirmationsSummary.value === undefined) return [];
+  if (resourceSummary.value === undefined) return [];
   const list: ComponentListItem[] = [];
-  for (const component of confirmationsSummary.value.components) {
+  for (const component of resourceSummary.value.components) {
     list.push({
       id: component.id,
       name: component.name,
-      type: component.type,
+      schema: component.schema,
       health: component.health,
+      resources: component.resources,
     });
   }
   return list;

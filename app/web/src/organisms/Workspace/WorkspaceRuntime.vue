@@ -122,17 +122,18 @@ eventCommandReturn$.pipe(untilUnmounted).subscribe((command) => {
 
 const workflowList = refFrom<ListWorkflowsResponse>(WorkflowService.list(), []);
 
-const confirmationsSummary = ResourceService.useResourceSummary();
+const resourceSummary = ResourceService.useResourceSummary();
 
 const componentsList = computed((): ComponentListItem[] => {
-  if (confirmationsSummary.value === undefined) return [];
+  if (resourceSummary.value === undefined) return [];
   const list: ComponentListItem[] = [];
-  for (const component of confirmationsSummary.value.components) {
+  for (const component of resourceSummary.value.components) {
     list.push({
       id: component.id,
       name: component.name,
-      type: component.type,
+      schema: component.schema,
       health: component.health,
+      resources: component.resources,
     });
   }
   return list;
