@@ -11,8 +11,9 @@ import { visibility$ } from "@/observable/visibility";
 import { ApiResponse, sdf, SDF } from "@/api/sdf";
 import { GlobalErrorService } from "@/service/global_error";
 import { system$ } from "@/observable/system";
-import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
+import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { CreateFuncResponse, nullFunc } from "@/service/func/create_func";
+import { SaveFuncRequest } from "@/service/func/save_func";
 
 /**
  * Gets the (shorthand) current Git sha of HEAD. This could be done in an npm script with an
@@ -71,11 +72,6 @@ export async function createBuiltinFunc(data: {
     return nullFunc;
   }
   return response as CreateFuncResponse;
-}
-
-export interface SaveFuncRequest extends Func {
-  schemaVariants: number[];
-  components: number[];
 }
 
 export interface SaveFuncResponse {

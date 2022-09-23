@@ -34,7 +34,7 @@ export const listFuncs: () => Observable<ListFuncsResponse> =
           map((response) => {
             if (response.error) {
               GlobalErrorService.set(response);
-              return {} as ListFuncsResponse;
+              return { funcs: [] } as ListFuncsResponse;
             }
 
             return response as ListFuncsResponse;

@@ -1,10 +1,7 @@
-use super::{FuncError, FuncResult};
+use super::{FuncAssociations, FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{
-    ComponentId, Func, FuncBackendKind, FuncId, QualificationPrototype, SchemaVariantId,
-    StandardModel, Visibility,
-};
+use dal::{Func, FuncBackendKind, FuncId, QualificationPrototype, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -26,8 +23,7 @@ pub struct GetFuncResponse {
     pub code: Option<String>,
     pub is_builtin: bool,
     pub is_revertable: bool,
-    pub schema_variants: Vec<SchemaVariantId>,
-    pub components: Vec<ComponentId>,
+    pub associations: Option<FuncAssociations>,
 }
 
 pub async fn get_func(
@@ -41,18 +37,29 @@ pub async fn get_func(
         .await?
         .ok_or(FuncError::FuncNotFound)?;
 
-    let prototypes = QualificationPrototype::find_for_func(&ctx, func.id()).await?;
+    let associations = match func.backend_kind() {
+        FuncBackendKind::JsQualification => {
+            let protos = QualificationPrototype::find_for_func(&ctx, func.id()).await?;
 
-    let mut schema_variants = vec![];
-    let mut components = vec![];
+            let mut schema_variant_ids = vec![];
+            let mut component_ids = vec![];
 
-    for proto in prototypes {
-        if proto.context().schema_variant_id().is_some() {
-            schema_variants.push(proto.context().schema_variant_id());
-        } else if proto.context().component_id().is_some() {
-            components.push(proto.context().component_id());
+            for proto in protos {
+                if proto.context().schema_variant_id().is_some() {
+                    schema_variant_ids.push(proto.context().schema_variant_id());
+                } else if proto.context().component_id().is_some() {
+                    component_ids.push(proto.context().component_id());
+                }
+            }
+
+            Some(FuncAssociations::Qualification {
+                schema_variant_ids,
+                component_ids,
+            })
         }
-    }
+        FuncBackendKind::JsAttribute => None,
+        _ => None,
+    };
 
     let is_revertable = super::is_func_revertable(&ctx, &func).await?;
 
@@ -67,8 +74,7 @@ pub async fn get_func(
         description: func.description().map(|d| d.to_owned()),
         code: func.code_plaintext()?,
         is_builtin: func.is_builtin(),
-        components,
-        schema_variants,
         is_revertable,
+        associations,
     }))
 }

@@ -1,10 +1,9 @@
-use super::{FuncError, FuncResult};
+use super::{FuncAssociations, FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    qualification_prototype::QualificationPrototypeContextField, ComponentId, Func,
-    FuncBackendKind, FuncId, QualificationPrototype, SchemaVariantId, StandardModel, Visibility,
-    WsEvent,
+    qualification_prototype::QualificationPrototypeContextField, Func, FuncBackendKind, FuncId,
+    QualificationPrototype, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -16,8 +15,7 @@ pub struct SaveFuncRequest {
     pub name: String,
     pub description: Option<String>,
     pub code: Option<String>,
-    pub schema_variants: Vec<SchemaVariantId>,
-    pub components: Vec<ComponentId>,
+    pub associations: Option<FuncAssociations>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -54,14 +52,15 @@ pub async fn save_func(
     match func.backend_kind() {
         FuncBackendKind::JsQualification => {
             let mut associations: Vec<QualificationPrototypeContextField> = vec![];
-            associations.append(
-                &mut request
-                    .schema_variants
-                    .iter()
-                    .map(|f| (*f).into())
-                    .collect(),
-            );
-            associations.append(&mut request.components.iter().map(|f| (*f).into()).collect());
+            if let Some(FuncAssociations::Qualification {
+                schema_variant_ids,
+                component_ids,
+            }) = request.associations
+            {
+                associations.append(&mut schema_variant_ids.iter().map(|f| (*f).into()).collect());
+                associations.append(&mut component_ids.iter().map(|f| (*f).into()).collect());
+            };
+
             let _ = QualificationPrototype::associate_prototypes_with_func_and_objects(
                 &ctx,
                 func.id(),

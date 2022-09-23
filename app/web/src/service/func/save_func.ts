@@ -4,10 +4,10 @@ import { ApiResponse, SDF } from "@/api/sdf";
 import { GlobalErrorService } from "@/service/global_error";
 import { visibility$ } from "@/observable/visibility";
 import { Func } from "@/api/sdf/dal/func";
+import { FuncAssociations } from "@/service/func";
 
 export interface SaveFuncRequest extends Func {
-  schemaVariants: number[];
-  components: number[];
+  associations?: FuncAssociations;
 }
 
 export interface SaveFuncResponse {

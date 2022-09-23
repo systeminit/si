@@ -4,6 +4,7 @@ import { ApiResponse } from "@/api/sdf";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
 import { GlobalErrorService } from "@/service/global_error";
 import { memoizedVisibilitySdfPipe } from "@/utils/memoizedVisibilitySdfPipes";
+import { FuncAssociations } from "@/service/func";
 
 export interface GetFuncArgs {
   id: number;
@@ -12,8 +13,7 @@ export interface GetFuncArgs {
 export interface GetFuncResponse extends Func {
   isBuiltin: boolean;
   isRevertable: boolean;
-  components: number[];
-  schemaVariants: number[];
+  associations?: FuncAssociations;
 }
 
 const memo: {
@@ -50,6 +50,4 @@ export const nullFunc: GetFuncResponse = {
   code: undefined,
   isBuiltin: false,
   isRevertable: false,
-  components: [],
-  schemaVariants: [],
 };
