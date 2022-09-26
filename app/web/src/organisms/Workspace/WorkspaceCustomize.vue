@@ -43,8 +43,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
-import { untilUnmounted } from "vuse-rx/src";
+import { computed, ref, provide } from "vue";
+import { untilUnmounted, refFrom } from "vuse-rx";
 import { bufferTime } from "rxjs/operators";
 import { firstValueFrom } from "rxjs";
 import _ from "lodash";
@@ -62,6 +62,7 @@ import { eventChangeSetWritten$ } from "@/observable/change_set";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { DevService } from "@/service/dev";
+import { ListInputSourcesResponse } from "@/service/func/list_input_sources";
 import { clearFuncs, setFuncRevertable } from "../FuncEditor/func_state";
 
 const isDevMode = import.meta.env.DEV;
@@ -83,6 +84,10 @@ const selectFunc = (func: ListedFuncView) => {
 
 const isLoading = ref(true);
 const funcList = ref<ListFuncsResponse>({ funcs: [] });
+const inputSources = refFrom<ListInputSourcesResponse>(
+  FuncService.listInputSources(),
+);
+provide("inputSources", inputSources);
 
 FuncService.listFuncs().subscribe((funcs) => {
   funcList.value = funcs;
@@ -107,7 +112,7 @@ const createFunc = async ({
   selectFunc(func);
 };
 
-visibility$.subscribe(() => {
+visibility$.subscribe(async () => {
   clearFuncs();
 });
 
@@ -130,4 +135,6 @@ saveFuncToBackend$
       }
     }),
   );
+
+provide("input_sources", FuncService.listInputSources());
 </script>

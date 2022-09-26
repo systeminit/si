@@ -6,6 +6,9 @@
     <SiTabGroup :selected-index="0">
       <template #tabs>
         <SiTabHeader>Properties</SiTabHeader>
+        <SiTabHeader v-if="editingFunc.kind === FuncBackendKind.JsAttribute"
+          >Bindings</SiTabHeader
+        >
       </template>
       <template #panels>
         <TabPanel class="overflow-auto grow">
@@ -94,6 +97,10 @@
             />
           </SiCollapsible>
         </TabPanel>
+
+        <TabPanel v-if="editingFunc.kind === FuncBackendKind.JsAttribute">
+          {{ inputSources }}
+        </TabPanel>
       </template>
     </SiTabGroup>
   </div>
@@ -104,7 +111,7 @@
 
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
-import { ref, toRef, watch, computed } from "vue";
+import { ref, toRef, watch, computed, inject } from "vue";
 import { refFrom } from "vuse-rx";
 import { map, take } from "rxjs/operators";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
@@ -195,4 +202,6 @@ const revertFunc = async () => {
 const execFunc = () => {
   FuncService.execFunc({ id: editingFunc.value.id });
 };
+
+const inputSources = inject("inputSources");
 </script>

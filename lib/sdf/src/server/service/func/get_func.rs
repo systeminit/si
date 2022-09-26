@@ -1,7 +1,12 @@
-use super::{FuncAssociations, FuncError, FuncResult};
+use super::{
+    AttributePrototypeArgumentView, AttributePrototypeView, FuncAssociations, FuncError, FuncResult,
+};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{Func, FuncBackendKind, FuncId, QualificationPrototype, StandardModel, Visibility};
+use dal::{
+    AttributePrototype, AttributePrototypeArgument, DalContext, Func, FuncBackendKind, FuncId,
+    Prop, QualificationPrototype, StandardModel, Visibility,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -24,6 +29,58 @@ pub struct GetFuncResponse {
     pub is_builtin: bool,
     pub is_revertable: bool,
     pub associations: Option<FuncAssociations>,
+}
+
+async fn prototype_view_for_prototype(
+    ctx: &DalContext,
+    proto: &AttributePrototype,
+) -> FuncResult<AttributePrototypeView> {
+    let prop_id = if proto.context.prop_id().is_some() {
+        proto.context.prop_id()
+    } else {
+        return Err(FuncError::AttributePrototypeMissingPropId(*proto.id()));
+    };
+
+    let component_id = if proto.context.component_id().is_some() {
+        Some(proto.context.component_id())
+    } else {
+        None
+    };
+
+    let schema_variant_id = if proto.context.schema_variant_id().is_none() {
+        let prop = Prop::get_by_id(ctx, &prop_id)
+            .await?
+            .ok_or_else(|| FuncError::AttributePrototypeMissingProp(*proto.id(), prop_id))?;
+
+        match prop.schema_variants(ctx).await?.pop() {
+            Some(schema_variant) => *schema_variant.id(),
+            None => {
+                return Err(FuncError::AttributePrototypeMissingSchemaVariant(
+                    *proto.id(),
+                ))
+            }
+        }
+    } else {
+        proto.context.schema_variant_id()
+    };
+
+    let prototype_arguments =
+        AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id())
+            .await?
+            .iter()
+            .map(|arg| AttributePrototypeArgumentView {
+                id: *arg.id(),
+                name: arg.name().to_string(),
+                internal_provider_id: arg.internal_provider_id(),
+            })
+            .collect();
+
+    Ok(AttributePrototypeView {
+        prop_id,
+        component_id,
+        schema_variant_id,
+        prototype_arguments,
+    })
 }
 
 pub async fn get_func(
@@ -57,7 +114,18 @@ pub async fn get_func(
                 component_ids,
             })
         }
-        FuncBackendKind::JsAttribute => None,
+        FuncBackendKind::JsAttribute => {
+            let protos = AttributePrototype::find_for_func(&ctx, func.id()).await?;
+            let mut prototype_views = vec![];
+
+            for proto in &protos {
+                prototype_views.push(prototype_view_for_prototype(&ctx, proto).await?);
+            }
+
+            Some(FuncAssociations::Attribute {
+                prototypes: prototype_views,
+            })
+        }
         _ => None,
     };
 

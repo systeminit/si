@@ -8,6 +8,7 @@ import { listArguments } from "./func/list_arguments";
 import { createArgument } from "./func/create_argument";
 import { saveArgument } from "./func/save_argument";
 import { deleteArgument } from "./func/delete_argument";
+import { listInputSources } from "./func/list_input_sources";
 
 export interface QualificationAssocations {
   type: "qualification";
@@ -28,4 +29,5 @@ export const FuncService = {
   createArgument,
   deleteArgument,
   saveArgument,
+  listInputSources,
 };

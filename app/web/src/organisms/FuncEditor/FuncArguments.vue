@@ -127,6 +127,7 @@ watch(
   [funcId],
   ([funcId]) => {
     fetchArguments(funcId);
+    FuncService.listInputSources();
   },
   { immediate: true },
 );

@@ -18,11 +18,14 @@ use dal::{
         binding_return_value::FuncBindingReturnValueError,
     },
     job::definition::DependentValuesUpdate,
-    AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeError,
-    AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
-    Func, FuncBackendKind, FuncBinding, FuncBindingError, Prop, PropError, PropKind,
-    QualificationPrototypeError, ReadTenancyError, SchemaVariantId, StandardModel,
-    StandardModelError, TransactionsError, Visibility, WriteTenancyError, WsEventError,
+    prop_tree::PropTreeError,
+    AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeArgumentError,
+    AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId, AttributeValue,
+    AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext, Func,
+    FuncBackendKind, FuncBinding, FuncBindingError, InternalProviderError, InternalProviderId,
+    Prop, PropError, PropId, PropKind, QualificationPrototypeError, ReadTenancyError,
+    SchemaVariantId, StandardModel, StandardModelError, TransactionsError, Visibility,
+    WriteTenancyError, WsEventError,
 };
 
 pub mod create_argument;
@@ -32,6 +35,7 @@ pub mod exec_func;
 pub mod get_func;
 pub mod list_arguments;
 pub mod list_funcs;
+pub mod list_input_sources;
 pub mod revert_func;
 pub mod save_argument;
 pub mod save_func;
@@ -60,6 +64,8 @@ pub enum FuncError {
     SerdeJson(#[from] serde_json::Error),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("component error: {0}")]
@@ -76,6 +82,10 @@ pub enum FuncError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
+    #[error("prop tree error: {0}")]
+    PropTree(#[from] PropTreeError),
 
     #[error("Function not found")]
     FuncNotFound,
@@ -101,6 +111,12 @@ pub enum FuncError {
     FuncArgumentAlreadyExists,
     #[error("func argument not found")]
     FuncArgNotFound,
+    #[error("attribute prototype {0} has no prop_id")]
+    AttributePrototypeMissingPropId(AttributePrototypeId),
+    #[error("attribute prototype {0} has no schema_variant")]
+    AttributePrototypeMissingSchemaVariant(AttributePrototypeId),
+    #[error("attribute prototype {0} is missing its prop {1}")]
+    AttributePrototypeMissingProp(AttributePrototypeId, PropId),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
@@ -118,12 +134,32 @@ impl IntoResponse for FuncError {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeArgumentView {
+    id: AttributePrototypeArgumentId,
+    name: String,
+    internal_provider_id: InternalProviderId,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeView {
+    schema_variant_id: SchemaVariantId,
+    component_id: Option<ComponentId>,
+    prop_id: PropId,
+    prototype_arguments: Vec<AttributePrototypeArgumentView>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
     Qualification {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
+    },
+    Attribute {
+        prototypes: Vec<AttributePrototypeView>,
     },
 }
 
@@ -274,4 +310,8 @@ pub fn routes() -> Router {
         .route("/create_argument", post(create_argument::create_argument))
         .route("/delete_argument", post(delete_argument::delete_argument))
         .route("/save_argument", post(save_argument::save_argument))
+        .route(
+            "/list_input_sources",
+            get(list_input_sources::list_input_sources),
+        )
 }
