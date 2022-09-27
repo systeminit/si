@@ -231,6 +231,7 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "apiVersion",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/deployment-v1/#Deployment",
@@ -241,6 +242,7 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "kind",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/deployment-v1/#Deployment",

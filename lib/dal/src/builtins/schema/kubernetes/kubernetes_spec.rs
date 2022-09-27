@@ -7,6 +7,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
         ctx,
         "spec",
         PropKind::Object,
+        None,
         Some(parent_prop_id),
         None,
     )
@@ -16,7 +17,8 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
         let containers_prop = BuiltinSchemaHelpers::create_prop(
             ctx,
             "containers",
-            PropKind::Array, // How to specify it as an array of objects?
+            PropKind::Array,
+            None,
             Some(*spec_prop.id()),
             None,
         )
@@ -28,6 +30,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                 ctx,
                 "name",
                 PropKind::String,
+                None,
                 Some(*containers_prop.id()),
                 None,
             )
@@ -39,6 +42,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                 ctx,
                 "image",
                 PropKind::String,
+                None,
                 Some(*containers_prop.id()),
                 None,
             )
@@ -50,7 +54,8 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
             let env_prop = BuiltinSchemaHelpers::create_prop(
                 ctx,
                 "env",
-                PropKind::Array, // How to specify it as an array of objects?
+                PropKind::Array,
+                None,
                 Some(*containers_prop.id()),
                 None,
             )
@@ -61,6 +66,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "name",
                     PropKind::String,
+                    None,
                     Some(*env_prop.id()),
                     None,
                 )
@@ -72,6 +78,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "value",
                     PropKind::String,
+                    None,
                     Some(*env_prop.id()),
                     None,
                 )
@@ -83,6 +90,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "valueFrom",
                     PropKind::Object,
+                    None,
                     Some(*env_prop.id()),
                     None,
                 )
@@ -93,6 +101,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                         ctx,
                         "secretKeyRef",
                         PropKind::Object,
+                        None,
                         Some(*_value_from_prop.id()),
                         None,
                     )
@@ -103,6 +112,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "name",
                             PropKind::String,
+                            None,
                             Some(*_secret_key_ref_prop.id()),
                             None,
                         )
@@ -114,6 +124,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "key",
                             PropKind::String,
+                            None,
                             Some(*_secret_key_ref_prop.id()),
                             None,
                         )
@@ -125,6 +136,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "optional",
                             PropKind::Boolean,
+                            None,
                             Some(*_secret_key_ref_prop.id()),
                             None,
                         )
@@ -137,6 +149,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                         ctx,
                         "configMapRef",
                         PropKind::Object,
+                        None,
                         Some(*_value_from_prop.id()),
                         None,
                     )
@@ -147,6 +160,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "name",
                             PropKind::String,
+                            None,
                             Some(*_config_map_ref_prop.id()),
                             None,
                         )
@@ -158,6 +172,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "key",
                             PropKind::String,
+                            None,
                             Some(*_config_map_ref_prop.id()),
                             None,
                         )
@@ -169,6 +184,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "optional",
                             PropKind::Boolean,
+                            None,
                             Some(*_config_map_ref_prop.id()),
                             None,
                         )
@@ -181,6 +197,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                         ctx,
                         "resourceFieldRef",
                         PropKind::Object,
+                        None,
                         Some(*_value_from_prop.id()),
                         None,
                     )
@@ -191,6 +208,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "containerName",
                             PropKind::String,
+                            None,
                             Some(*_resource_field_ref_prop.id()),
                             None,
                         )
@@ -202,6 +220,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "resource",
                             PropKind::String,
+                            None,
                             Some(*_resource_field_ref_prop.id()),
                             None,
                         )
@@ -213,6 +232,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "divisor",
                             PropKind::String,
+                            None,
                             Some(*_resource_field_ref_prop.id()),
                             None,
                         )
@@ -225,6 +245,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                         ctx,
                         "fieldRef",
                         PropKind::Object,
+                        None,
                         Some(*_value_from_prop.id()),
                         None,
                     )
@@ -236,6 +257,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "apiVersion",
                             PropKind::String,
+                            None,
                             Some(*_field_ref_prop.id()),
                             None,
                         )
@@ -247,6 +269,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                             ctx,
                             "fieldPath",
                             PropKind::String,
+                            None,
                             Some(*_field_ref_prop.id()),
                             None,
                         )
@@ -264,6 +287,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                 ctx,
                 "imagePullPolicy",
                 PropKind::String,
+                None,
                 Some(*containers_prop.id()),
                 None,
             )
@@ -274,7 +298,8 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
             let ports_prop = BuiltinSchemaHelpers::create_prop(
                 ctx,
                 "ports",
-                PropKind::Array, // How to specify it as an array of objects?
+                PropKind::Array,
+                None,
                 Some(*containers_prop.id()),
                 None,
             )
@@ -285,6 +310,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "name",
                     PropKind::String,
+                    None,
                     Some(*ports_prop.id()),
                     None,
                 )
@@ -297,6 +323,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "containerPort",
                     PropKind::Integer,
+                    None,
                     Some(*ports_prop.id()),
                     None,
                 )
@@ -308,6 +335,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "hostIp",
                     PropKind::String,
+                    None,
                     Some(*ports_prop.id()),
                     None,
                 )
@@ -320,6 +348,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "hostPort",
                     PropKind::Integer,
+                    None,
                     Some(*ports_prop.id()),
                     None,
                 )
@@ -333,6 +362,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "protocol",
                     PropKind::String,
+                    None,
                     Some(*ports_prop.id()),
                     None,
                 )
@@ -344,7 +374,8 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
             let volume_mounts_prop = BuiltinSchemaHelpers::create_prop(
                 ctx,
                 "volumeMounts",
-                PropKind::Array, // How to specify it as an array of objects?
+                PropKind::Array,
+                None,
                 Some(*containers_prop.id()),
                 None,
             )
@@ -355,6 +386,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "name",
                     PropKind::String,
+                    None,
                     Some(*volume_mounts_prop.id()),
                     None,
                 )
@@ -366,6 +398,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "mountPath",
                     PropKind::String,
+                    None,
                     Some(*volume_mounts_prop.id()),
                     None,
                 )
@@ -378,7 +411,8 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
         let volumes_prop = BuiltinSchemaHelpers::create_prop(
             ctx,
             "volumes",
-            PropKind::Array, // How to specify it as an array of objects?
+            PropKind::Array,
+            None,
             Some(*spec_prop.id()),
             None,
         )
@@ -389,6 +423,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                 ctx,
                 "name",
                 PropKind::String,
+                None,
                 Some(*volumes_prop.id()),
                 None,
             )
@@ -400,6 +435,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                 ctx,
                 "configMap",
                 PropKind::Object,
+                None,
                 Some(*volumes_prop.id()),
                 None,
             )
@@ -410,6 +446,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                     ctx,
                     "name",
                     PropKind::String,
+                    None,
                     Some(*config_map_prop.id()),
                     None,
                 )
@@ -422,7 +459,8 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
         let image_pull_secrets_prop = BuiltinSchemaHelpers::create_prop(
             ctx,
             "imagePullSecrets",
-            PropKind::Array, // How to specify it as an array of objects?
+            PropKind::Array,
+            None,
             Some(*spec_prop.id()),
             None,
         )
@@ -433,6 +471,7 @@ pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
                 ctx,
                 "name",
                 PropKind::String,
+                None,
                 Some(*image_pull_secrets_prop.id()),
                 None,
             )

@@ -40,8 +40,12 @@
       @add-to-map="addToMap($event)"
       @toggle-collapsed="setCollapsed($event)"
     />
+    <!-- TODO(nick): until we use the "options" for select, let's just ignore them for now and force a text box  -->
     <WidgetTextBox
-      v-else-if="props.schemaProp.widgetKind.kind === 'text'"
+      v-else-if="
+        props.schemaProp.widgetKind.kind === 'text' ||
+        props.schemaProp.widgetKind.kind === 'select'
+      "
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
@@ -71,7 +75,7 @@
       @updated-property="updatedProperty($event)"
     />
     <WidgetSelectBox
-      v-else-if="props.schemaProp.widgetKind.kind === 'select'"
+      v-else-if="props.schemaProp.widgetKind.kind === 'secretSelect'"
       :name="props.schemaProp.name"
       :options="props.schemaProp.widgetKind.options"
       :path="path"

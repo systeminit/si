@@ -1,0 +1,94 @@
+[
+  {
+    "region_name": "US East (N. Virginia)",
+    "region_value": "us-east-1"
+  },
+  {
+    "region_name": "US East (Ohio)",
+    "region_value": "us-east-2"
+  },
+  {
+    "region_name": "US West (N. California)",
+    "region_value": "us-west-1"
+  },
+  {
+    "region_name": "US West (Oregon)",
+    "region_value": "us-west-2"
+  },
+  {
+    "region_name": "Africa (Cape Town)",
+    "region_value": "af-south-1"
+  },
+  {
+    "region_name": "Asia Pacific (Hong Kong)",
+    "region_value": "ap-east-1"
+  },
+  {
+    "region_name": "Asia Pacific (Jakarta)",
+    "region_value": "ap-southeast-3"
+  },
+  {
+    "region_name": "Asia Pacific (Mumbai)",
+    "region_value": "ap-south-1"
+  },
+  {
+    "region_name": "Asia Pacific (Osaka)",
+    "region_value": "ap-northeast-3"
+  },
+  {
+    "region_name": "Asia Pacific (Seoul)",
+    "region_value": "ap-northeast-2"
+  },
+  {
+    "region_name": "Asia Pacific (Singapore)",
+    "region_value": "ap-southeast-1"
+  },
+  {
+    "region_name": "Asia Pacific (Sydney)",
+    "region_value": "ap-southeast-2"
+  },
+  {
+    "region_name": "Asia Pacific (Tokyo)",
+    "region_value": "ap-northeast-1"
+  },
+  {
+    "region_name": "Canada (Central)",
+    "region_value": "ca-central-1"
+  },
+  {
+    "region_name": "Europe (Frankfurt)",
+    "region_value": "eu-central-1"
+  },
+  {
+    "region_name": "Europe (Ireland)",
+    "region_value": "eu-west-1"
+  },
+  {
+    "region_name": "Europe (London)",
+    "region_value": "eu-west-2"
+  },
+  {
+    "region_name": "Europe (Milan)",
+    "region_value": "eu-south-1"
+  },
+  {
+    "region_name": "Europe (Paris)",
+    "region_value": "eu-west-3"
+  },
+  {
+    "region_name": "Europe (Stockholm)",
+    "region_value": "eu-north-1"
+  },
+  {
+    "region_name": "Middle East (Bahrain)",
+    "region_value": "me-south-1"
+  },
+  {
+    "region_name": "Middle East (UAE)",
+    "region_value": "me-central-1"
+  },
+  {
+    "region_name": "South America (Sao Paulo)",
+    "region_value": "me-central-1"
+  }
+]

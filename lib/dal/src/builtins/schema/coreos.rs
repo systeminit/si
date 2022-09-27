@@ -55,6 +55,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "variant",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
     )
@@ -63,6 +64,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "version",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
     )
@@ -71,6 +73,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "systemd",
         PropKind::Object,
+        None,
         Some(root_prop.domain_prop_id),
         Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
     )
@@ -79,6 +82,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "units",
         PropKind::Array,
+        None,
         Some(*systemd_prop.id()),
         Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
     )
@@ -87,6 +91,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "unit",
         PropKind::Object,
+        None,
         Some(*units_prop.id()),
         Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
     )
@@ -96,6 +101,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             "name",
             PropKind::String,
+            None,
             Some(*unit_prop.id()),
             Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
         )
@@ -104,6 +110,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             "enabled",
             PropKind::Boolean,
+            None,
             Some(*unit_prop.id()),
             Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
         )
@@ -112,6 +119,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             "contents",
             PropKind::String,
+            None,
             Some(*unit_prop.id()),
             Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
         )

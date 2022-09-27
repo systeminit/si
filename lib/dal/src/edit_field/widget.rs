@@ -13,4 +13,7 @@ pub enum WidgetKind {
     Map,
     SecretSelect,
     Text,
+    /// Provides a select box for corresponding "primitive" (e.g. string, number, boolean)
+    /// [`PropKinds`](crate::PropKind).
+    Select,
 }

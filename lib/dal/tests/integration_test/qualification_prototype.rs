@@ -10,6 +10,7 @@ use dal::{
     QualificationPrototype, Schema, SchemaError, SchemaKind, SchemaVariant, StandardModel,
     SystemId,
 };
+use std::option::Option::None;
 
 #[test]
 async fn new(ctx: &DalContext) {
@@ -133,7 +134,9 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
         let mut validation_prototype_ctx = ValidationPrototypeContext::default();
         validation_prototype_ctx.set_schema_id(*schema.id());
         validation_prototype_ctx.set_schema_variant_id(*variant.id());
-        let text_prop = Prop::new(ctx, "text", PropKind::String).await.unwrap();
+        let text_prop = Prop::new(ctx, "text", PropKind::String, None)
+            .await
+            .unwrap();
         text_prop
             .set_parent_prop(ctx, root_prop.domain_prop_id)
             .await

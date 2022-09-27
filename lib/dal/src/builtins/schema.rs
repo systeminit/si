@@ -1,4 +1,6 @@
 use crate::attribute::context::AttributeContextBuilder;
+use crate::builtins::schema::aws::AwsRegion;
+use crate::edit_field::widget::WidgetKind;
 use crate::{
     component::ComponentKind,
     func::{
@@ -9,6 +11,8 @@ use crate::{
     FuncError, FuncId, Prop, PropError, PropId, PropKind, Schema, SchemaId, SchemaKind,
     SchemaVariantId, StandardModel,
 };
+
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 mod aws;
@@ -24,6 +28,23 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     coreos::migrate(ctx).await?;
     aws::migrate(ctx).await?;
     Ok(())
+}
+
+// TODO(nick): once shape is finalized and we stop serializing this within builtins, please
+// move to a more formal type in the property editor module.
+#[derive(Deserialize, Serialize, Debug)]
+pub struct SelectWidgetOption {
+    label: String,
+    value: String,
+}
+
+impl From<&AwsRegion> for SelectWidgetOption {
+    fn from(region: &AwsRegion) -> Self {
+        Self {
+            label: region.region_name.clone(),
+            value: region.region_value.clone(),
+        }
+    }
 }
 
 /// This unit struct (zero bytes) provides a singular place to index helpers for creating builtin
@@ -63,10 +84,11 @@ impl BuiltinSchemaHelpers {
         ctx: &DalContext,
         prop_name: &str,
         prop_kind: PropKind,
+        widget_kind_and_options: Option<(WidgetKind, Value)>,
         parent_prop_id: Option<PropId>,
         doc_link: Option<String>,
     ) -> BuiltinsResult<Prop> {
-        let mut prop = Prop::new(ctx, prop_name, prop_kind).await?;
+        let mut prop = Prop::new(ctx, prop_name, prop_kind, widget_kind_and_options).await?;
         if let Some(parent_prop_id) = parent_prop_id {
             prop.set_parent_prop(ctx, parent_prop_id).await?;
         }

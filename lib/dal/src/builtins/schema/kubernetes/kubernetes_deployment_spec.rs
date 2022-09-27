@@ -14,6 +14,7 @@ pub async fn create_deployment_spec_prop(
         ctx,
         "spec",
         PropKind::Object,
+        None,
         Some(parent_prop_id),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/deployment-v1/#DeploymentSpec",
@@ -25,6 +26,7 @@ pub async fn create_deployment_spec_prop(
         ctx,
         "replicas",
         PropKind::Integer,
+        None,
         Some(*spec_prop.id()),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/deployment-v1/#DeploymentSpec",
@@ -46,6 +48,7 @@ async fn create_pod_template_spec_prop(
         ctx,
         "template",
         PropKind::Object,
+        None,
         Some(parent_prop_id),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/pod-template-v1/#PodTemplateSpec",
@@ -70,6 +73,7 @@ async fn create_pod_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
         ctx,
         "spec",
         PropKind::Object,
+        None,
         Some(parent_prop_id),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#PodSpec",
@@ -81,6 +85,7 @@ async fn create_pod_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
         ctx,
         "containers",
         PropKind::Array,
+        None,
         Some(*spec_prop.id()),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#containers",
@@ -97,6 +102,7 @@ async fn create_container_prop(ctx: &DalContext, parent_prop_id: PropId) -> Buil
         ctx,
         "container",
         PropKind::Object,
+        None,
         Some(parent_prop_id),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#Container",
@@ -108,6 +114,7 @@ async fn create_container_prop(ctx: &DalContext, parent_prop_id: PropId) -> Buil
         ctx,
         "name",
         PropKind::String,
+        None,
         Some(*container_prop.id()),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#Container",
@@ -119,6 +126,7 @@ async fn create_container_prop(ctx: &DalContext, parent_prop_id: PropId) -> Buil
         ctx,
         "image",
         PropKind::String,
+        None,
         Some(*container_prop.id()),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#image",
@@ -130,6 +138,7 @@ async fn create_container_prop(ctx: &DalContext, parent_prop_id: PropId) -> Buil
         ctx,
         "ports",
         PropKind::Array,
+        None,
         Some(*container_prop.id()),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#ports",
@@ -149,6 +158,7 @@ async fn create_container_port_prop(
         ctx,
         "port",
         PropKind::Object,
+        None,
         Some(parent_prop_id),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#ports",
@@ -160,6 +170,7 @@ async fn create_container_port_prop(
         ctx,
         "containerPort",
         PropKind::Integer,
+        None,
         Some(*port_prop.id()),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#ports",
@@ -171,6 +182,7 @@ async fn create_container_port_prop(
         ctx,
         "protocol",
         PropKind::String,
+        None,
         Some(*port_prop.id()),
         Some(doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#ports",

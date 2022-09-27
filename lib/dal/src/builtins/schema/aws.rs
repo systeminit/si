@@ -1,6 +1,7 @@
-use crate::builtins::schema::BuiltinSchemaHelpers;
+use crate::builtins::schema::{BuiltinSchemaHelpers, SelectWidgetOption};
 use crate::builtins::BuiltinsError;
 use crate::code_generation_prototype::CodeGenerationPrototypeContext;
+use crate::edit_field::widget::WidgetKind;
 use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use crate::func::backend::validation::validate_string_array::FuncBackendValidateStringArrayValueArgs;
 use crate::qualification_prototype::QualificationPrototypeContext;
@@ -14,6 +15,8 @@ use crate::{
     SchemaError, SchemaKind, Socket, StandardModel, ValidationPrototype,
 };
 
+use serde::{Deserialize, Serialize};
+
 // Reference: https://aws.amazon.com/trademark-guidelines/
 const AWS_NODE_COLOR: i64 = 0xFF9900;
 
@@ -26,32 +29,8 @@ const REGION_DOCS_URL: &str =
 const KEY_PAIR_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html";
 
-// NOTE(nick): this is temporary. These should have labels and values once a select box is
-// implemented in the frontend.
-const REGIONS: &str = "\
-us-east-1
-us-east-2
-us-west-1
-us-west-2
-af-south-1
-ap-east-1
-ap-southeast-3
-ap-south-1
-ap-northeast-3
-ap-northeast-2
-ap-southeast-1
-ap-southeast-2
-ap-northeast-1
-ca-central-1
-eu-central-1
-eu-west-1
-eu-west-2
-eu-south-1
-eu-west-3
-eu-north-1
-me-south-1
-me-central-1
-me-central-1";
+/// A dataset of AWS regions.
+const REGIONS: &str = include_str!("data/aws_regions.json");
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     ami(ctx).await?;
@@ -59,6 +38,12 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     region(ctx).await?;
     keypair(ctx).await?;
     Ok(())
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct AwsRegion {
+    pub(crate) region_name: String,
+    pub(crate) region_value: String,
 }
 
 /// A [`Schema`](crate::Schema) migration for [`AWS AMI`](https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html).
@@ -97,6 +82,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "ImageId",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(AMI_DOCS_URL.to_string()),
     )
@@ -106,6 +92,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "region",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
     )
@@ -282,6 +269,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "ImageId",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
     )
@@ -293,6 +281,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "InstanceType",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
     )
@@ -303,6 +292,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "KeyName",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
     )
@@ -312,6 +302,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "SecurityGroupIds",
         PropKind::Array,
+        None,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
     )
@@ -321,6 +312,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "SecurityGroupId",
         PropKind::String,
+        None,
         Some(*security_groups_prop.id()),
         Some(EC2_DOCS_URL.to_string()),
     )
@@ -330,6 +322,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "Tags",
         PropKind::Map,
+        None,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
     )
@@ -340,6 +333,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "Tag",
         PropKind::String,
+        None,
         Some(*tags_prop.id()),
         Some(EC2_DOCS_URL.to_string()),
     )
@@ -349,6 +343,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "UserData",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
     )
@@ -358,6 +353,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "region",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(EC2_DOCS_URL.to_string()),
     )
@@ -549,10 +545,18 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop Creation
+    let regions: Vec<AwsRegion> = serde_json::from_str(REGIONS)?;
+    let widget_options = regions
+        .iter()
+        .map(SelectWidgetOption::from)
+        .collect::<Vec<SelectWidgetOption>>();
+    let serialized_widget_options = serde_json::to_value(widget_options)?;
+
     let region_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "region",
         PropKind::String,
+        Some((WidgetKind::Select, serialized_widget_options)),
         Some(root_prop.domain_prop_id),
         Some(REGION_DOCS_URL.to_string()),
     )
@@ -568,9 +572,9 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
     let func = funcs.pop().ok_or(FuncError::NotFoundByName(func_name))?;
 
-    let expected = REGIONS
-        .lines()
-        .map(|r| r.to_string())
+    let expected = regions
+        .iter()
+        .map(|r| r.region_value.clone())
         .collect::<Vec<String>>();
     let _region_prop_validation_prototype = ValidationPrototype::new(
         ctx,
@@ -669,6 +673,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "key name",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(KEY_PAIR_DOCS_URL.to_string()),
     )
@@ -678,6 +683,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "key type",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(KEY_PAIR_DOCS_URL.to_string()),
     )
@@ -687,6 +693,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "tags",
         PropKind::Array,
+        None,
         Some(root_prop.domain_prop_id),
         Some(KEY_PAIR_DOCS_URL.to_string()),
     )
@@ -695,6 +702,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         "region",
         PropKind::String,
+        None,
         Some(root_prop.domain_prop_id),
         Some(KEY_PAIR_DOCS_URL.to_string()),
     )
