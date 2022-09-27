@@ -1,4 +1,3 @@
-use crate::DalContext;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
 use std::collections::HashMap;
@@ -6,6 +5,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::func::backend::validation::ValidationError;
+use crate::DalContext;
 use crate::{
     func::{
         binding::FuncBindingId, binding_return_value::FuncBindingReturnValue,
@@ -121,6 +121,7 @@ impl ValidationResolver {
     standard_model_accessor!(func_id, Pk(FuncId), ValidationResolverResult);
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), ValidationResolverResult);
 
+    /// Find the status of validation(s) for a given [`ComponentId`](crate::Component).
     pub async fn find_status(
         ctx: &DalContext,
         component_id: ComponentId,

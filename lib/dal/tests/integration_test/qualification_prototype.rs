@@ -2,7 +2,7 @@ use crate::dal::test;
 use dal::qualification_prototype::QualificationPrototypeContext;
 use dal::{
     component::ComponentKind,
-    func::backend::validation::FuncBackendValidateStringValueArgs,
+    func::backend::validation::validate_string::FuncBackendValidateStringValueArgs,
     generate_name,
     qualification_prototype::QualificationPrototypeContextField,
     validation_prototype::{ValidationPrototype, ValidationPrototypeContext},

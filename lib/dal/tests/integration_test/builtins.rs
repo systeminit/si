@@ -1,4 +1,4 @@
-mod aws_region_to_aws_ec2_intelligence;
+mod aws_region;
 mod coreos_butane;
 mod docker_image_intelligence;
 mod docker_image_to_kubernetes_deployment;

@@ -115,7 +115,7 @@ impl WorkflowView {
         args: FuncBackendJsWorkflowArgs,
     ) -> WorkflowResult<Self> {
         assert_eq!(func.backend_kind(), &FuncBackendKind::JsWorkflow);
-        let (func_binding, func_binding_return_value) =
+        let (func_binding, func_binding_return_value, _) =
             FuncBinding::find_or_create_and_execute(ctx, serde_json::to_value(args)?, *func.id())
                 .await?;
         Ok(Self::deserialize(

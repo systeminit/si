@@ -2,7 +2,7 @@ use dal::{BillingAccountSignup, DalContext};
 
 use crate::dal::test;
 use dal::{
-    func::backend::validation::FuncBackendValidateStringValueArgs,
+    func::backend::validation::validate_string::FuncBackendValidateStringValueArgs,
     validation_prototype::{ValidationPrototypeContext, UNSET_ID_VALUE},
     Func, Schema, StandardModel, SystemId, ValidationPrototype,
 };
@@ -108,7 +108,7 @@ async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
     .expect("cannot create new attribute prototype");
 
     let validation_results =
-        ValidationPrototype::find_for_prop(ctx, *first_prop.id(), unset_system_id)
+        ValidationPrototype::list_for_prop(ctx, *first_prop.id(), unset_system_id)
             .await
             .expect("cannot find values");
 

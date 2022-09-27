@@ -1,35 +1,32 @@
-use dal::DalContext;
-
 use crate::dal::test;
+use dal::test_harness::{
+    create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
+};
 use dal::{
-    func::{backend::validation::FuncBackendValidateStringValueArgs, binding::FuncBinding},
+    func::{
+        backend::validation::validate_string::FuncBackendValidateStringValueArgs,
+        binding::FuncBinding,
+    },
     test_harness::create_component_for_schema,
     validation_prototype::ValidationPrototypeContext,
-    AttributeContext, AttributeValue, Func, FuncBackendKind, FuncBackendResponseType, Schema,
-    StandardModel, SystemId, ValidationPrototype, ValidationResolver,
+    AttributeContext, AttributeValue, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
+    PropKind, SchemaKind, StandardModel, SystemId, ValidationPrototype, ValidationResolver,
 };
 
 const UNSET_ID_VALUE: i64 = -1;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
-        .expect("cannot find docker image")
-        .pop()
-        .expect("no docker image found");
-
-    let default_variant = schema
-        .default_variant(ctx)
+        .expect("cannot set default schema variant");
+    let prop = create_prop_of_kind_with_name(ctx, PropKind::String, "glaive").await;
+    prop.set_parent_prop(ctx, root_prop.domain_prop_id)
         .await
-        .expect("cannot find default variant");
-
-    let prop = default_variant
-        .props(ctx)
-        .await
-        .expect("cannot get props")
-        .pop()
-        .expect("no prop found");
+        .expect("cannot set parent prop");
 
     let func = Func::new(
         ctx,
@@ -43,7 +40,7 @@ async fn new(ctx: &DalContext) {
     let mut context = ValidationPrototypeContext::new();
     context.set_prop_id(*prop.id());
     context.set_schema_id(*schema.id());
-    context.set_schema_variant_id(*default_variant.id());
+    context.set_schema_variant_id(*schema_variant.id());
     let prototype = ValidationPrototype::new(
         ctx,
         *func.id(),
@@ -81,7 +78,7 @@ async fn new(ctx: &DalContext) {
         .set_prop_id(*prop.id())
         .set_component_id(*component.id())
         .set_schema_id(*schema.id())
-        .set_schema_variant_id(*default_variant.id())
+        .set_schema_variant_id(*schema_variant.id())
         .to_context()
         .expect("unable to build attribute context");
     let attribute_value = AttributeValue::new(
@@ -108,23 +105,16 @@ async fn new(ctx: &DalContext) {
 async fn find_errors(ctx: &DalContext) {
     let unset_system_id: SystemId = UNSET_ID_VALUE.into();
 
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
-        .expect("cannot find docker image")
-        .pop()
-        .expect("no docker image found");
-
-    let default_variant = schema
-        .default_variant(ctx)
+        .expect("cannot set default schema variant");
+    let prop = create_prop_of_kind_with_name(ctx, PropKind::String, "glaive").await;
+    prop.set_parent_prop(ctx, root_prop.domain_prop_id)
         .await
-        .expect("cannot find default variant");
-
-    let prop = default_variant
-        .props(ctx)
-        .await
-        .expect("cannot get props")
-        .pop()
-        .expect("no prop found");
+        .expect("cannot set parent prop");
 
     let func = Func::new(
         ctx,
@@ -138,7 +128,7 @@ async fn find_errors(ctx: &DalContext) {
     let mut context = ValidationPrototypeContext::new();
     context.set_prop_id(*prop.id());
     context.set_schema_id(*schema.id());
-    context.set_schema_variant_id(*default_variant.id());
+    context.set_schema_variant_id(*schema_variant.id());
     let first_prototype = ValidationPrototype::new(
         ctx,
         *func.id(),
@@ -190,7 +180,7 @@ async fn find_errors(ctx: &DalContext) {
         .set_prop_id(*prop.id())
         .set_component_id(*component.id())
         .set_schema_id(*schema.id())
-        .set_schema_variant_id(*default_variant.id())
+        .set_schema_variant_id(*schema_variant.id())
         .to_context()
         .expect("unable to build attribute context");
     let attribute_value = AttributeValue::new(

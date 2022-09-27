@@ -31,7 +31,10 @@ pub enum ValidationPrototypeError {
 pub type ValidationPrototypeResult<T> = Result<T, ValidationPrototypeError>;
 
 pub const UNSET_ID_VALUE: i64 = -1;
-const FIND_FOR_CONTEXT: &str = include_str!("./queries/validation_prototype_find_for_context.sql");
+
+const LIST_FOR_PROP: &str = include_str!("queries/validation_prototype_list_for_prop.sql");
+const LIST_FOR_SCHEMA_VARIANT: &str =
+    include_str!("queries/validation_prototype_list_for_schema_variant.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ValidationPrototypeContext {
@@ -123,7 +126,6 @@ impl_standard_model! {
 }
 
 impl ValidationPrototype {
-    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
@@ -156,8 +158,13 @@ impl ValidationPrototype {
     standard_model_accessor!(args, Json<JsonValue>, ValidationPrototypeResult);
     standard_model_accessor!(link, Option<String>, ValidationPrototypeResult);
 
-    #[allow(clippy::too_many_arguments)]
-    pub async fn find_for_prop(
+    pub fn context(&self) -> &ValidationPrototypeContext {
+        &self.context
+    }
+
+    /// List all [`ValidationPrototypes`](Self) for a given [`Prop`](crate::Prop).
+    #[instrument(skip_all)]
+    pub async fn list_for_prop(
         ctx: &DalContext,
         prop_id: PropId,
         system_id: SystemId,
@@ -166,8 +173,36 @@ impl ValidationPrototype {
             .txns()
             .pg()
             .query(
-                FIND_FOR_CONTEXT,
+                LIST_FOR_PROP,
                 &[ctx.read_tenancy(), ctx.visibility(), &prop_id, &system_id],
+            )
+            .await?;
+        let object = objects_from_rows(rows)?;
+        Ok(object)
+    }
+
+    /// List all [`ValidationPrototypes`](Self) for all [`Props`](crate::Prop) in a
+    /// [`SchemaVariant`](crate::SchemaVariant).
+    ///
+    /// _You can access the [`PropId`](crate::Prop) via the [`ValidationPrototypeContext`], if
+    /// needed._
+    #[instrument(skip_all)]
+    pub async fn list_for_schema_variant(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        system_id: SystemId,
+    ) -> ValidationPrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_SCHEMA_VARIANT,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &schema_variant_id,
+                    &system_id,
+                ],
             )
             .await?;
         let object = objects_from_rows(rows)?;

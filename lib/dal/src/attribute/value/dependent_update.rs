@@ -106,7 +106,7 @@ impl AttributeValueDependentUpdateHarness {
         }
 
         // Generate a new func binding return value with our arguments assembled.
-        let (func_binding, mut func_binding_return_value) =
+        let (func_binding, mut func_binding_return_value, _) =
             FuncBinding::find_or_create_and_execute(
                 ctx,
                 serde_json::to_value(func_binding_args)?,

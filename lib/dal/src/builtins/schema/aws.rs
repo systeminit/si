@@ -2,14 +2,16 @@ use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::builtins::BuiltinsError;
 use crate::code_generation_prototype::CodeGenerationPrototypeContext;
 use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
+use crate::func::backend::validation::validate_string_array::FuncBackendValidateStringArrayValueArgs;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
+use crate::validation_prototype::ValidationPrototypeContext;
 use crate::{
     schema::{SchemaVariant, UiMenu},
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
-    ExternalProvider, Func, InternalProvider, PropKind, QualificationPrototype, SchemaError,
-    SchemaKind, Socket, StandardModel,
+    ExternalProvider, Func, FuncError, InternalProvider, PropKind, QualificationPrototype,
+    SchemaError, SchemaKind, Socket, StandardModel, ValidationPrototype,
 };
 
 // Reference: https://aws.amazon.com/trademark-guidelines/
@@ -23,6 +25,33 @@ const REGION_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html";
 const KEY_PAIR_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html";
+
+// NOTE(nick): this is temporary. These should have labels and values once a select box is
+// implemented in the frontend.
+const REGIONS: &str = "\
+us-east-1
+us-east-2
+us-west-1
+us-west-2
+af-south-1
+ap-east-1
+ap-southeast-3
+ap-south-1
+ap-northeast-3
+ap-northeast-2
+ap-southeast-1
+ap-southeast-2
+ap-northeast-1
+ca-central-1
+eu-central-1
+eu-west-1
+eu-west-2
+eu-south-1
+eu-west-3
+eu-north-1
+me-south-1
+me-central-1
+me-central-1";
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     ami(ctx).await?;
@@ -530,14 +559,26 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Validation Creation
-    // let mut validation_context = ValidationPrototypeContext::new();
-    // validation_context.set_prop_id(*region_prop.id());
-    // validation_context.set_schema_id(*schema.id());
-    // validation_context.set_schema_variant_id(*schema_variant.id());
+    let mut validation_context = ValidationPrototypeContext::new();
+    validation_context.set_prop_id(*region_prop.id());
+    validation_context.set_schema_id(*schema.id());
+    validation_context.set_schema_variant_id(*schema_variant.id());
 
-    // FuncBackendValidateStringArrayValueArgs::new();
+    let func_name = "si:validateStringInStringArray".to_string();
+    let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
+    let func = funcs.pop().ok_or(FuncError::NotFoundByName(func_name))?;
 
-    // ValidationPrototype::new(ctx, func_id, args, validation_context).await?;
+    let expected = REGIONS
+        .lines()
+        .map(|r| r.to_string())
+        .collect::<Vec<String>>();
+    let _region_prop_validation_prototype = ValidationPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::to_value(FuncBackendValidateStringArrayValueArgs::new(None, expected))?,
+        validation_context,
+    )
+    .await?;
 
     // System Socket
     let system_socket = Socket::new(

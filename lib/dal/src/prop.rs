@@ -18,9 +18,9 @@ use crate::{
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, standard_model_many_to_many, AttributeContext,
-    AttributeContextBuilderError, AttributeReadContext, DalContext, Func, HistoryEventError,
-    ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
-    Visibility, WriteTenancy,
+    AttributeContextBuilderError, AttributeReadContext, DalContext, Func, FuncId,
+    HistoryEventError, ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{AttributeValueError, AttributeValueId};
 
@@ -47,6 +47,8 @@ pub enum PropError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("missing a func: {0}")]
     MissingFunc(String),
+    #[error("missing a func by id: {0}")]
+    MissingFuncById(FuncId),
     #[error("prop not found: {0} ({1:?})")]
     NotFound(PropId, Visibility),
     #[error("pg error: {0}")]
@@ -308,7 +310,7 @@ impl Prop {
         // No matter what, we need a FuncBindingReturnValueId to create a new attribute prototype.
         // If the func binding was created, we execute on it to generate our value id. Otherwise,
         // we try to find a value by id and then fallback to executing anyway if one was not found.
-        let (func_binding, func_binding_return_value) =
+        let (func_binding, func_binding_return_value, _) =
             FuncBinding::find_or_create_and_execute(ctx, serde_json::json![null], *func.id())
                 .await?;
 
