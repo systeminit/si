@@ -12,7 +12,7 @@ use crate::socket::SocketError;
 use crate::WriteTenancy;
 use crate::{
     component::ComponentKind, func::binding::FuncBindingError, impl_standard_model, node::NodeKind,
-    pk, schema::ui_menu::UiMenuId, standard_model, standard_model_accessor,
+    pk, schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
     AttributePrototypeError, AttributeValueError, BillingAccount, BillingAccountId,
     CodeGenerationPrototypeError, Component, DalContext, DiagramKind, FuncError, HistoryEventError,
@@ -21,7 +21,7 @@ use crate::{
     WorkspaceId, WsEventError,
 };
 
-pub use ui_menu::UiMenu;
+pub use ui_menu::SchemaUiMenu;
 pub use variant::root_prop::RootProp;
 pub use variant::{SchemaVariant, SchemaVariantId};
 
@@ -78,8 +78,8 @@ pub enum SchemaError {
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("ui menu not found: {0}")]
-    UiMenuNotFound(UiMenuId),
+    #[error("schema ui menu not found: {0}")]
+    SchemaUiMenuNotFound(SchemaUiMenuId),
     #[error("schema variant error: {0}")]
     Variant(#[from] SchemaVariantError),
     #[error("validation prototype error: {0}")]
@@ -226,7 +226,7 @@ impl Schema {
         lookup_fn: ui_menus,
         table: "schema_ui_menu_belongs_to_schema",
         model_table: "schema_ui_menus",
-        returns: UiMenu,
+        returns: SchemaUiMenu,
         result: SchemaResult,
     );
 

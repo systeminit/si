@@ -4,7 +4,7 @@ use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
     code_generation_prototype::CodeGenerationPrototypeContext,
     func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs,
-    schema::{SchemaVariant, UiMenu},
+    schema::{SchemaUiMenu, SchemaVariant},
     socket::SocketArity,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     AttributeValueError, BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage,
@@ -65,11 +65,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
-    ui_menu.set_name(ctx, Some("namespace")).await?;
-    ui_menu
-        .set_category(ctx, Some("kubernetes".to_owned()))
-        .await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "namespace", "kubernetes", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     let metadata_prop =
@@ -340,14 +336,10 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
-    // TODO: abstract this boilerplate away
     let diagram_kind = schema
         .diagram_kind()
         .expect("no diagram kind for schema kind");
-    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
-    ui_menu.set_name(ctx, Some("deployment".to_owned())).await?;
-
-    ui_menu.set_category(ctx, Some("kubernetes")).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "deployment", "kubernetes", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     schema_variant.finalize(ctx).await?;

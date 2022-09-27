@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::sync::Arc;
 use thiserror::Error;
 
-use crate::schema::UiMenu;
+use crate::schema::SchemaUiMenu;
 use crate::{DalContext, DiagramKind};
 use crate::{SchemaError, SchemaId, StandardModel, StandardModelError};
 
@@ -211,25 +211,18 @@ impl GenerateMenuItem {
     /// Generates raw items and initializes menu items as an empty vec.
     pub async fn new(ctx: &DalContext, diagram_kind: DiagramKind) -> NodeMenuResult<Self> {
         let mut item_list = Vec::new();
-        let mut ui_menus = UiMenu::list_for_diagram_kind(ctx, diagram_kind).await?;
+        let mut ui_menus = SchemaUiMenu::list_for_diagram_kind(ctx, diagram_kind).await?;
 
         // Ensure the names and categories are alphabetically sorted.
-        ui_menus.sort_by(|a, b| a.name().cmp(&b.name()));
-        ui_menus.sort_by(|a, b| a.category().cmp(&b.category()));
+        ui_menus.sort_by(|a, b| a.name().cmp(b.name()));
+        ui_menus.sort_by(|a, b| a.category().cmp(b.category()));
 
         for ui_menu in ui_menus.into_iter() {
-            if ui_menu.usable_in_menu(ctx).await? {
-                if let Some(schema) = ui_menu.schema(ctx).await? {
-                    item_list.push((
-                        ui_menu.category_path(),
-                        Item::new(
-                            ui_menu
-                                .name()
-                                .expect("name does not exist; bug in usable_in_menu"),
-                            *schema.id(),
-                        ),
-                    ));
-                }
+            if let Some(schema) = ui_menu.schema(ctx).await? {
+                item_list.push((
+                    ui_menu.category_path(),
+                    Item::new(ui_menu.name(), *schema.id()),
+                ));
             }
         }
 

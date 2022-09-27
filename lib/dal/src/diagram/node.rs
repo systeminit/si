@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 
 use crate::diagram::DiagramResult;
-use crate::schema::UiMenu;
+use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
     DalContext, DiagramError, Node, NodePosition, SchemaError, SchemaVariant, StandardModel,
@@ -155,10 +155,9 @@ impl DiagramNodeView {
             .diagram_kind()
             .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
         let category =
-            match UiMenu::get_by_schema_and_diagram_kind(ctx, *schema.id(), diagram_kind).await? {
-                Some(ui_menu) => ui_menu.category().map(|c| c.to_string()),
-                None => None,
-            };
+            SchemaUiMenu::get_by_schema_and_diagram_kind(ctx, *schema.id(), diagram_kind)
+                .await?
+                .map(|um| um.category().to_string());
 
         Ok(Self {
             id: node.id().to_string(),

@@ -6,7 +6,7 @@ use crate::{
     component::ComponentKind,
     edit_field::widget::*,
     qualification_prototype::QualificationPrototypeContext,
-    schema::{SchemaVariant, UiMenu},
+    schema::{SchemaUiMenu, SchemaVariant},
     socket::SocketArity,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider,
@@ -97,9 +97,7 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
-    ui_menu.set_name(ctx, Some("credential".to_owned())).await?;
-    ui_menu.set_category(ctx, Some("docker".to_owned())).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "credential", "docker", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     Ok(())
@@ -128,10 +126,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
-    ui_menu.set_name(ctx, Some("image")).await?;
-
-    ui_menu.set_category(ctx, Some("docker".to_owned())).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "image", "docker", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     let image_prop = Prop::new(ctx, "image", PropKind::String).await?;

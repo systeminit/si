@@ -309,12 +309,6 @@ pub async fn create_schema(ctx: &DalContext, kind: &SchemaKind) -> Schema {
         .expect("cannot create schema")
 }
 
-pub async fn create_schema_ui_menu(ctx: &DalContext) -> schema::UiMenu {
-    schema::UiMenu::new(ctx, &DiagramKind::Configuration)
-        .await
-        .expect("cannot create schema ui menu")
-}
-
 pub async fn create_schema_variant(ctx: &DalContext, schema_id: SchemaId) -> schema::SchemaVariant {
     create_schema_variant_with_root(ctx, schema_id).await.0
 }
