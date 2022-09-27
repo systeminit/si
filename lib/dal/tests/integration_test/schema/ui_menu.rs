@@ -2,26 +2,19 @@ use dal::DalContext;
 
 use crate::dal::test;
 use dal::schema::SchemaKind;
-use dal::test_harness::{create_schema, create_schema_ui_menu};
-use dal::{schema::UiMenu, DiagramKind, HistoryActor, StandardModel, Visibility, WriteTenancy};
+use dal::test_harness::create_schema;
+use dal::{schema::SchemaUiMenu, DiagramKind, StandardModel};
 
 #[test]
-async fn new(ctx: &DalContext) {
-    let _write_tenancy = WriteTenancy::new_universal();
-    let _visibility = Visibility::new_head(false);
-    let _history_actor = HistoryActor::SystemInit;
-    let schema_ui_menu = UiMenu::new(ctx, &DiagramKind::Configuration)
-        .await
-        .expect("cannot create schema ui menu");
-    assert_eq!(schema_ui_menu.name(), None);
-    assert_eq!(schema_ui_menu.category(), None);
-    assert_eq!(schema_ui_menu.diagram_kind(), &DiagramKind::Configuration);
-}
-
-#[test]
-async fn set_schema(ctx: &DalContext) {
+async fn new_and_set_schema(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let schema_ui_menu = create_schema_ui_menu(ctx).await;
+    let schema_ui_menu =
+        SchemaUiMenu::new(ctx, "riot", "awaken, my love!", &DiagramKind::Configuration)
+            .await
+            .expect("cannot create schema ui menu");
+    assert_eq!(schema_ui_menu.name(), "riot");
+    assert_eq!(schema_ui_menu.category(), "awaken, my love!");
+    assert_eq!(schema_ui_menu.diagram_kind(), DiagramKind::Configuration);
 
     schema_ui_menu
         .set_schema(ctx, schema.id())

@@ -3,7 +3,7 @@ use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::{
     qualification_prototype::QualificationPrototypeContext,
-    schema::{SchemaVariant, UiMenu},
+    schema::{SchemaUiMenu, SchemaVariant},
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
     InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind, Socket,
@@ -45,9 +45,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
-    ui_menu.set_name(ctx, Some("butane")).await?;
-    ui_menu.set_category(ctx, Some("coreos".to_owned())).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "butane", "coreos", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop creation

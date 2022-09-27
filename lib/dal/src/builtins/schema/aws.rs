@@ -7,7 +7,7 @@ use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::validation_prototype::ValidationPrototypeContext;
 use crate::{
-    schema::{SchemaVariant, UiMenu},
+    schema::{SchemaUiMenu, SchemaVariant},
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
     ExternalProvider, Func, FuncError, InternalProvider, PropKind, QualificationPrototype,
@@ -85,9 +85,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
-    ui_menu.set_name(ctx, Some("ami")).await?;
-    ui_menu.set_category(ctx, Some("aws".to_owned())).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "ami", "aws", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop creation
@@ -270,9 +268,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
-    ui_menu.set_name(ctx, Some("ec2")).await?;
-    ui_menu.set_category(ctx, Some("aws".to_owned())).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "ec2", "aws", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop creation
@@ -543,9 +539,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
-    ui_menu.set_name(ctx, Some("region")).await?;
-    ui_menu.set_category(ctx, Some("aws".to_owned())).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "region", "aws", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop Creation
@@ -659,9 +653,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
-    ui_menu.set_name(ctx, Some("key pair")).await?;
-    ui_menu.set_category(ctx, Some("aws".to_owned())).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "key pair", "aws", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop Creation

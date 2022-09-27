@@ -1,8 +1,8 @@
-use dal::{BillingAccountSignup, DalContext, JwtSecretKey};
+use dal::{BillingAccountSignup, DalContext, DiagramKind, JwtSecretKey};
 
 use crate::dal::test;
-use dal::schema::SchemaKind;
-use dal::test_harness::{billing_account_signup, create_schema, create_schema_ui_menu};
+use dal::schema::{SchemaKind, SchemaUiMenu};
+use dal::test_harness::{billing_account_signup, create_schema};
 use dal::{component::ComponentKind, Schema, StandardModel};
 
 pub mod ui_menu;
@@ -114,7 +114,9 @@ async fn workspaces(ctx: &DalContext, nba: &BillingAccountSignup) {
 #[test]
 async fn ui_menus(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let schema_ui_menu = create_schema_ui_menu(ctx).await;
+    let schema_ui_menu = SchemaUiMenu::new(ctx, "visa", "m.i.a.", &DiagramKind::Configuration)
+        .await
+        .expect("cannot create schema ui menu");
     schema_ui_menu
         .set_schema(ctx, schema.id())
         .await

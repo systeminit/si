@@ -10,10 +10,19 @@ CREATE TABLE schema_ui_menus
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    name                        text,
-    category                    ltree,
-    diagram_kind              text                     NOT NULL
+    name                        text                     NOT NULL,
+    category                    text                     NOT NULL,
+    diagram_kind                text                     NOT NULL
 );
+
+CREATE UNIQUE INDEX unique_schema_ui_menus
+    ON schema_ui_menus (name,
+                        category,
+                        diagram_kind,
+                        visibility_change_set_pk,
+                        (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
+
 SELECT standard_model_table_constraints_v1('schema_ui_menus');
 SELECT belongs_to_table_create_v1('schema_ui_menu_belongs_to_schema', 'schema_ui_menus', 'schemas');
 
@@ -25,6 +34,8 @@ VALUES ('schema_ui_menus', 'model', 'schema.ui_menu', 'Schema UI Menu'),
 CREATE OR REPLACE FUNCTION schema_ui_menu_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
+    this_name text,
+    this_category text,
     this_diagram_kind text,
     OUT object json) AS
 $$
@@ -39,11 +50,11 @@ BEGIN
     INSERT INTO schema_ui_menus (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                                  tenancy_workspace_ids,
                                  visibility_change_set_pk, visibility_deleted_at,
-                                 diagram_kind)
+                                 name, category, diagram_kind)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at,
-            this_diagram_kind)
+            this_name, this_category, this_diagram_kind)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
