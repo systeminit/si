@@ -36,6 +36,8 @@ pub enum BuiltinsError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value not found by id: {0}")]
+    AttributeValueNotFound(AttributeValueId),
     #[error("attribute value not found for attribute read context: {0:?}")]
     AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("no parent found for attribute value: {0}")]

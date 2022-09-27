@@ -24,6 +24,8 @@ const AWS_NODE_COLOR: i64 = 0xFF9900;
 const AMI_DOCS_URL: &str =
     "https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html";
 const EC2_DOCS_URL: &str = "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html";
+const EC2_INSTANCE_TYPES_URL: &str =
+    "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html";
 const REGION_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html";
 const KEY_PAIR_DOCS_URL: &str =
@@ -135,7 +137,6 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
-    // TODO(nick): add ability to export image id for ec2.
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
     let (image_id_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
@@ -284,12 +285,11 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        Some(EC2_DOCS_URL.to_string()),
+        Some(EC2_INSTANCE_TYPES_URL.to_string()),
     )
     .await?;
 
-    // TODO Add provider to get this value from socket
-    let _key_name_prop = BuiltinSchemaHelpers::create_prop(
+    let key_name_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "KeyName",
         PropKind::String,
@@ -319,9 +319,9 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    let tags_prop = BuiltinSchemaHelpers::create_prop(
+    let tags_map_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
-        "Tags",
+        "tags",
         PropKind::Map,
         None,
         Some(root_prop.domain_prop_id),
@@ -332,10 +332,10 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     // TODO(victor): Make one item of the list have key `Name` and value equal to /root/si/name
     let _tags_map_item_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
-        "Tag",
+        "tag",
         PropKind::String,
         None,
-        Some(*tags_prop.id()),
+        Some(*tags_map_prop.id()),
         Some(EC2_DOCS_URL.to_string()),
     )
     .await?;
@@ -343,6 +343,16 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     let _user_data_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "UserData",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let aws_resource_type_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "awsResourceType",
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
@@ -394,7 +404,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
-    // TODO(nick): add the ability to use butane and ami as an inputs.
+    // TODO(nick): add the ability to use butane as input.
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
     let (_butane_explicit_internal_provider, mut input_socket) =
@@ -411,6 +421,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         )
         .await?;
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
     let (image_id_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
@@ -425,6 +436,22 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         )
         .await?;
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    let (keyname_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "key_name",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
     let (region_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
@@ -456,12 +483,81 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     // Wrap it up.
     schema_variant.finalize(ctx).await?;
 
-    // Connect props to providers.
+    // Set Defaults
+    BuiltinSchemaHelpers::set_default_value_for_prop(
+        ctx,
+        *aws_resource_type_prop.id(),
+        *schema.id(),
+        *schema_variant.id(),
+        serde_json::json!["instance"],
+    )
+    .await?;
+
     let base_attribute_read_context = AttributeReadContext {
         schema_id: Some(*schema.id()),
         schema_variant_id: Some(*schema_variant.id()),
         ..AttributeReadContext::default()
     };
+
+    // Note(victor): The code below is commented out because it breaks some tests. We should come back to this someday.
+    // Create a default item in the map. We will need this to connect
+    // "/root/si/name" to the item's value.
+
+    // let tags_map_attribute_read_context = AttributeReadContext {
+    //     prop_id: Some(*tags_map_prop.id()),
+    //     ..base_attribute_read_context
+    // };
+    // let tags_map_attribute_value =
+    //     AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
+    //         .await?
+    //         .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+    //             tags_map_attribute_read_context,
+    //         ))?;
+    // let tags_map_item_attribute_context =
+    //     AttributeContextBuilder::from(base_attribute_read_context)
+    //         .set_prop_id(*tags_map_item_prop.id())
+    //         .to_context()?;
+    // let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
+    //     ctx,
+    //     tags_map_item_attribute_context,
+    //     *tags_map_attribute_value.id(),
+    //     None,
+    //     Some("Name".to_string()),
+    // )
+    // .await?;
+
+    // Connect props to providers.
+
+    // Note(victor): The code below connects si/name to a tag in the tags list.
+    // It's commented out because it breaks some tests
+
+    // let si_name_prop =
+    //     BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
+    // let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+    //     .await?
+    //     .ok_or_else(|| {
+    //         BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+    //     })?;
+    // let name_tags_item_attribute_value =
+    //     AttributeValue::get_by_id(ctx, &name_tags_item_attribute_value_id)
+    //         .await?
+    //         .ok_or(BuiltinsError::AttributeValueNotFound(
+    //             name_tags_item_attribute_value_id,
+    //         ))?;
+    // let mut name_tags_item_attribute_prototype = name_tags_item_attribute_value
+    //     .attribute_prototype(ctx)
+    //     .await?
+    //     .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    // name_tags_item_attribute_prototype
+    //     .set_func_id(ctx, identity_func_id)
+    //     .await?;
+    // AttributePrototypeArgument::new_for_intra_component(
+    //     ctx,
+    //     *name_tags_item_attribute_prototype.id(),
+    //     "identity",
+    //     *si_name_internal_provider.id(),
+    // )
+    // .await?;
 
     let region_attribute_value_read_context = AttributeReadContext {
         prop_id: Some(*region_prop.id()),
@@ -510,6 +606,32 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         *image_id_attribute_prototype.id(),
         "identity",
         *image_id_explicit_internal_provider.id(),
+    )
+    .await?;
+
+    let keyname_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*key_name_prop.id()),
+        ..base_attribute_read_context
+    };
+    let keyname_attribute_value =
+        AttributeValue::find_for_context(ctx, keyname_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                keyname_attribute_value_read_context,
+            ))?;
+    let mut keyname_attribute_prototype =
+        keyname_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    keyname_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *keyname_attribute_prototype.id(),
+        "identity",
+        *keyname_explicit_internal_provider.id(),
     )
     .await?;
 
@@ -668,7 +790,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     // Prop Creation
     let key_name_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
-        "key name",
+        "KeyName",
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
@@ -726,7 +848,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         *schema.id(),
         *schema_variant.id(),
-        "key id",
+        "key_name",
         None,
         identity_func_id,
         identity_func_binding_id,
@@ -757,7 +879,6 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     schema_variant.finalize(ctx).await?;
 
     // Connect the "/root/domain/key id" prop to the external provider.
-    // TODO(wendy) - currently this just gives the key name, how can we give the key id without making it a prop?
     let external_provider_attribute_prototype_id = key_name_external_provider
         .attribute_prototype_id()
         .ok_or_else(|| {
@@ -773,7 +894,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,
-        "key name",
+        "identity",
         *key_name_internal_provider.id(),
     )
     .await?;

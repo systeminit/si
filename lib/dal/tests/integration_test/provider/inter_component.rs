@@ -647,6 +647,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .expect("cannot get source domain AttributeValue")
     .expect("source domain AttributeValue not found")
     .id();
+
     let source_object_attribute_value_id = *AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
@@ -658,6 +659,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .expect("cannot get source object AttributeValue")
     .expect("source object AttributeValue not found")
     .id();
+
     let source_foo_attribute_value_id = *AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {

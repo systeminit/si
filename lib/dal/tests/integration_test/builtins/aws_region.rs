@@ -42,7 +42,9 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "domain": {},
+            "domain": {
+                "awsResourceType": "instance",
+            },
             "si": {
                 "name": "server"
             }
@@ -95,7 +97,9 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "domain": {},
+            "domain": {
+                "awsResourceType": "instance",
+            },
             "si": {
                 "name": "server"
             }
@@ -127,6 +131,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "domain": {
+                "awsResourceType": "instance",
                 "region": "us-west-2"
             },
             "si": {
