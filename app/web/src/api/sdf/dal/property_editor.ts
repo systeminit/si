@@ -37,7 +37,7 @@ export interface PropertyEditorPropWidgetKindInteger {
 }
 export interface PropertyEditorPropWidgetKindSelect {
   kind: "select";
-  options?: JSON;
+  options?: LabelList<string | number>;
 }
 export interface PropertyEditorPropWidgetKindSecretSelect {
   kind: "secretSelect";

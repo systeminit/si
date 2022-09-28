@@ -35,8 +35,8 @@ const KEY_PAIR_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html";
 
 // Datasets
-const REGIONS: &str = include_str!("data/aws_regions.json");
-const INSTANCE_TYPES: &str = include_str!("data/aws_instance_types.json");
+const REGIONS_JSON_STR: &str = include_str!("data/aws_regions.json");
+const INSTANCE_TYPES_JSON_STR: &str = include_str!("data/aws_instance_types.json");
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     ami(ctx).await?;
@@ -49,8 +49,16 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct AwsRegion {
-    pub(crate) region_name: String,
-    pub(crate) region_value: String,
+    pub(crate) name: String,
+    pub(crate) code: String,
+}
+impl From<&AwsRegion> for SelectWidgetOption {
+    fn from(region: &AwsRegion) -> Self {
+        Self {
+            label: format!("{} - {}", region.code, region.name),
+            value: region.code.clone(),
+        }
+    }
 }
 
 /// A [`Schema`](crate::Schema) migration for [`AWS AMI`](https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html).
@@ -62,7 +70,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
             None => return Ok(()),
         };
 
-    // Variant setup.
+    // Variant setup
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
@@ -315,7 +323,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    let expected: Vec<String> = serde_json::from_str(INSTANCE_TYPES)?;
+    let expected: Vec<String> = serde_json::from_str(INSTANCE_TYPES_JSON_STR)?;
     BuiltinSchemaHelpers::create_validation(
         ctx,
         Validation::StringInStringArray {
@@ -711,27 +719,28 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop Creation
-    let regions: Vec<AwsRegion> = serde_json::from_str(REGIONS)?;
-    let widget_options = regions
+    let regions_json: Vec<AwsRegion> = serde_json::from_str(REGIONS_JSON_STR)?;
+    let regions_dropdown_options = regions_json
         .iter()
         .map(SelectWidgetOption::from)
         .collect::<Vec<SelectWidgetOption>>();
-    let serialized_widget_options = serde_json::to_value(widget_options)?;
+    let regions_dropdown_options_json = serde_json::to_value(regions_dropdown_options)?;
 
     let region_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "region",
         PropKind::String,
-        Some((WidgetKind::Select, serialized_widget_options)),
+        Some((WidgetKind::Select, regions_dropdown_options_json)),
         Some(root_prop.domain_prop_id),
         Some(AWS_REGIONS_DOCS_URL.to_string()),
     )
     .await?;
 
     // Validation Creation
-    let expected = regions
+
+    let expected = regions_json
         .iter()
-        .map(|r| r.region_value.clone())
+        .map(|r| r.code.clone())
         .collect::<Vec<String>>();
     BuiltinSchemaHelpers::create_validation(
         ctx,

@@ -42,10 +42,7 @@
     />
     <!-- TODO(nick): until we use the "options" for select, let's just ignore them for now and force a text box  -->
     <WidgetTextBox
-      v-else-if="
-        props.schemaProp.widgetKind.kind === 'text' ||
-        props.schemaProp.widgetKind.kind === 'select'
-      "
+      v-else-if="props.schemaProp.widgetKind.kind === 'text'"
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
@@ -75,9 +72,12 @@
       @updated-property="updatedProperty($event)"
     />
     <WidgetSelectBox
-      v-else-if="props.schemaProp.widgetKind.kind === 'secretSelect'"
+      v-else-if="
+        props.schemaProp.widgetKind.kind === 'secretSelect' ||
+        props.schemaProp.widgetKind.kind === 'select'
+      "
       :name="props.schemaProp.name"
-      :options="props.schemaProp.widgetKind.options"
+      :options="props.schemaProp.widgetKind.options || []"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
       :value="props.propValue.value"
@@ -89,6 +89,7 @@
       class="py-4 px-8"
       @updated-property="updatedProperty($event)"
     />
+
     <!-- restricting to text props for now -->
     <WidgetFuncButton
       v-if="!props.isFirstProp"

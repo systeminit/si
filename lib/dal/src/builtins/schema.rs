@@ -1,5 +1,4 @@
 use crate::attribute::context::AttributeContextBuilder;
-use crate::builtins::schema::aws::AwsRegion;
 use crate::edit_field::widget::WidgetKind;
 use crate::{
     component::ComponentKind,
@@ -39,15 +38,6 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 pub struct SelectWidgetOption {
     label: String,
     value: String,
-}
-
-impl From<&AwsRegion> for SelectWidgetOption {
-    fn from(region: &AwsRegion) -> Self {
-        Self {
-            label: region.region_name.clone(),
-            value: region.region_value.clone(),
-        }
-    }
 }
 
 /// This unit struct (zero bytes) provides a singular place to index helpers for creating builtin
