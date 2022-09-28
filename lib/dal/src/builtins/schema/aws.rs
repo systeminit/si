@@ -29,6 +29,9 @@ const REGION_DOCS_URL: &str =
 const KEY_PAIR_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html";
 
+const INGRESS_EGRESS_DOCS_URL: &str =
+    "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html";
+
 /// A dataset of AWS regions.
 const REGIONS: &str = include_str!("data/aws_regions.json");
 
@@ -37,6 +40,8 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     ec2(ctx).await?;
     region(ctx).await?;
     keypair(ctx).await?;
+    ingress(ctx).await?;
+    egress(ctx).await?;
     Ok(())
 }
 
@@ -803,6 +808,220 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         *region_explicit_internal_provider.id(),
     )
     .await?;
+
+    Ok(())
+}
+
+/// A [`Schema`](crate::Schema) migration for [`AWS Ingress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
+async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
+    let name = "ingress".to_string();
+    let mut schema =
+        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
+            Some(schema) => schema,
+            None => return Ok(()),
+        };
+
+    // Variant setup. The variant color was taken from the coreos logo.
+    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+        .await?;
+    let mut attribute_context_builder = AttributeContext::builder();
+    attribute_context_builder
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id());
+
+    // Diagram and UI Menu
+    let diagram_kind = schema
+        .diagram_kind()
+        .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+    let ui_menu = SchemaUiMenu::new(ctx, "ingress", "aws", &diagram_kind).await?;
+    ui_menu.set_schema(ctx, schema.id()).await?;
+
+    // Prop Creation
+    let _group_name_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "group id",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let _protocol_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "protocol",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let _port_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "port",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let _cidr_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "cidr",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // TODO(wendy) - validations, see Linear
+
+    // System Socket
+    let system_socket = Socket::new(
+        ctx,
+        "system",
+        SocketKind::Provider,
+        &SocketEdgeKind::System,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+    )
+    .await?;
+    schema_variant.add_socket(ctx, system_socket.id()).await?;
+
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+
+    // Input Socket
+    let (_region_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "security group id",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    // Wrap it up.
+    schema_variant.finalize(ctx).await?;
+
+    Ok(())
+}
+
+/// A [`Schema`](crate::Schema) migration for [`AWS Egress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
+async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
+    let name = "egress".to_string();
+    let mut schema =
+        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
+            Some(schema) => schema,
+            None => return Ok(()),
+        };
+
+    // Variant setup. The variant color was taken from the coreos logo.
+    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+        .await?;
+    let mut attribute_context_builder = AttributeContext::builder();
+    attribute_context_builder
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id());
+
+    // Diagram and UI Menu
+    let diagram_kind = schema
+        .diagram_kind()
+        .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+    let ui_menu = SchemaUiMenu::new(ctx, "egress", "aws", &diagram_kind).await?;
+    ui_menu.set_schema(ctx, schema.id()).await?;
+
+    // Prop Creation
+    let _group_name_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "group id",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let _protocol_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "protocol",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let _port_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "port",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let _cidr_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "cidr",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // TODO(wendy) - validations, see Linear
+
+    // System Socket
+    let system_socket = Socket::new(
+        ctx,
+        "system",
+        SocketKind::Provider,
+        &SocketEdgeKind::System,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+    )
+    .await?;
+    schema_variant.add_socket(ctx, system_socket.id()).await?;
+
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+
+    // Input Socket
+    let (_region_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "security group id",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    // Wrap it up.
+    schema_variant.finalize(ctx).await?;
 
     Ok(())
 }
