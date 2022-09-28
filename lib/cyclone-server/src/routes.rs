@@ -111,6 +111,11 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
             get(handlers::ws_execute_code_generation),
         ));
     }
+    if config.enable_confirmation() {
+        debug!("enabling confirmation endpoint");
+        router = router
+            .merge(Router::new().route("/confirmation", get(handlers::ws_execute_confirmation)));
+    }
     if config.enable_workflow_resolve() {
         debug!("enabling workflow resolve endpoint");
         router = router

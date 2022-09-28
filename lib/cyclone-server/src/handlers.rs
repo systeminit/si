@@ -14,9 +14,10 @@ use axum::{
 };
 use cyclone_core::{
     CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
-    LivenessStatus, Message, QualificationCheckRequest, QualificationCheckResultSuccess,
-    ReadinessStatus, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ConfirmationRequest, ConfirmationResultSuccess, LivenessStatus, Message,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 use hyper::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
@@ -31,8 +32,8 @@ use crate::{
     request::{DecryptRequest, ListSecrets},
     result::{
         LangServerCodeGenerationResultSuccess, LangServerCommandRunResultSuccess,
-        LangServerQualificationCheckResultSuccess, LangServerResolverFunctionResultSuccess,
-        LangServerWorkflowResolveResultSuccess,
+        LangServerConfirmationResultSuccess, LangServerQualificationCheckResultSuccess,
+        LangServerResolverFunctionResultSuccess, LangServerWorkflowResolveResultSuccess,
     },
     watch, DecryptionKey,
 };
@@ -158,6 +159,33 @@ pub async fn ws_execute_code_generation(
             key,
             limit_request_guard,
             "codeGeneration".to_owned(),
+            request,
+            lang_server_success,
+            success,
+        )
+    })
+}
+
+#[allow(clippy::unused_async)]
+pub async fn ws_execute_confirmation(
+    wsu: WebSocketUpgrade,
+    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
+    Extension(key): Extension<Arc<DecryptionKey>>,
+    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
+    limit_request_guard: LimitRequestGuard,
+) -> impl IntoResponse {
+    let lang_server_path = lang_server_path.as_path().to_path_buf();
+    wsu.on_upgrade(move |socket| {
+        let request: PhantomData<ConfirmationRequest> = PhantomData;
+        let lang_server_success: PhantomData<LangServerConfirmationResultSuccess> = PhantomData;
+        let success: PhantomData<ConfirmationResultSuccess> = PhantomData;
+        handle_socket(
+            socket,
+            lang_server_path,
+            telemetry_level.is_debug_or_lower(),
+            key,
+            limit_request_guard,
+            "confirmation".to_owned(),
             request,
             lang_server_success,
             success,

@@ -7,6 +7,7 @@ import { failureExecution, FunctionKind, function_kinds } from "./function";
 import { makeConsole } from "./sandbox/console";
 import { executeCodeGeneration } from "./code_generation";
 import { executeQualificationCheck } from "./qualification_check";
+import { executeConfirmation } from "./confirmation";
 import { executeResolverFunction } from "./resolver_function";
 import { executeWorkflowResolve } from "./workflow_resolve";
 import { executeCommandRun } from "./command_run";
@@ -60,10 +61,13 @@ async function main() {
         executeResolverFunction(request);
         break;
       case FunctionKind.WorkflowResolve:
-        executeWorkflowResolve(request);
+        await executeWorkflowResolve(request);
         break;
       case FunctionKind.CommandRun:
-        executeCommandRun(request);
+        await executeCommandRun(request);
+        break;
+      case FunctionKind.Confirmation:
+        await executeConfirmation(request);
         break;
       default:
         throw Error(`Unknown Kind variant: ${kind}`);

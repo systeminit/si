@@ -85,6 +85,7 @@ impl Group {
         lookup_fn: users,
         associate_fn: add_user,
         disassociate_fn: remove_user,
+        disassociate_all_fn: remove_all_users,
         table_name: "group_many_to_many_users",
         left_table: "groups",
         left_id: GroupId,

@@ -12,9 +12,9 @@ use cyclone_client::{
 use cyclone_core::{
     process::{self, ShutdownError},
     CanonicalCommand, CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest,
-    CommandRunResultSuccess, QualificationCheckRequest, QualificationCheckResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    CommandRunResultSuccess, ConfirmationRequest, ConfirmationResultSuccess,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -154,6 +154,23 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
         result
     }
 
+    async fn execute_confirmation(
+        &mut self,
+        request: ConfirmationRequest,
+    ) -> result::Result<
+        Execution<TcpStream, ConfirmationRequest, ConfirmationResultSuccess>,
+        ClientError,
+    > {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
+        let result = self.client.execute_confirmation(request).await;
+        self.count_request();
+
+        result
+    }
+
     async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
@@ -286,9 +303,17 @@ pub struct LocalHttpInstanceSpec {
     #[builder(private, setter(name = "_qualification"), default = "false")]
     qualification: bool,
 
+    /// Enables the `confirmation` execution endpoint for a spawned Cyclone server.
+    #[builder(private, setter(name = "_confirmation"), default = "false")]
+    confirmation: bool,
+
     /// Enables the `resolver` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_resolver"), default = "false")]
     resolver: bool,
+
+    /// Enables the `code_generation` execution endpoint for a spawned Cyclone server.
+    #[builder(private, setter(name = "_code_generation"), default = "false")]
+    code_generation: bool,
 
     /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_workflow"), default = "false")]
@@ -375,8 +400,20 @@ impl LocalHttpInstanceSpec {
         if self.qualification {
             cmd.arg("--enable-qualification");
         }
+        if self.confirmation {
+            cmd.arg("--enable-confirmation");
+        }
         if self.resolver {
             cmd.arg("--enable-resolver");
+        }
+        if self.code_generation {
+            cmd.arg("--enable-code-generation");
+        }
+        if self.workflow {
+            cmd.arg("--enable-workflow");
+        }
+        if self.command {
+            cmd.arg("--enable-command-run");
         }
 
         cmd
@@ -408,9 +445,19 @@ impl LocalHttpInstanceSpecBuilder {
         self._qualification(true)
     }
 
+    /// Enables the `confirmation` execution endpoint for a spawned Cyclone server.
+    pub fn confirmation(&mut self) -> &mut Self {
+        self._confirmation(true)
+    }
+
     /// Enables the `resolver` execution endpoint for a spawned Cyclone server.
     pub fn resolver(&mut self) -> &mut Self {
         self._resolver(true)
+    }
+
+    /// Enables the `code_generation` execution endpoint for a spawned Cyclone server.
+    pub fn code_generation(&mut self) -> &mut Self {
+        self._code_generation(true)
     }
 
     /// Enables the `workflow` execution endpoint for a spawned Cyclone server.

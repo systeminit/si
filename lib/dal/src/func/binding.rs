@@ -16,6 +16,7 @@ use crate::func::backend::{
     js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
     js_code_generation::FuncBackendJsCodeGeneration,
     js_command::FuncBackendJsCommand,
+    js_confirmation::FuncBackendJsConfirmation,
     js_qualification::FuncBackendJsQualification,
     js_workflow::FuncBackendJsWorkflow,
     map::FuncBackendMap,
@@ -267,6 +268,9 @@ impl FuncBinding {
             FuncBackendKind::JsAttribute => {
                 FuncBackendJsAttribute::create_and_execute(context, &func, &self.args).await?
             }
+            FuncBackendKind::JsConfirmation => {
+                FuncBackendJsConfirmation::create_and_execute(context, &func, &self.args).await?
+            }
             FuncBackendKind::Json => {
                 let component = FuncBackendJsAttributeArgs {
                     component: ResolverFunctionComponent {
@@ -377,6 +381,7 @@ impl FuncBinding {
             | FuncBackendKind::JsAttribute
             | FuncBackendKind::JsWorkflow
             | FuncBackendKind::JsCommand
+            | FuncBackendKind::JsConfirmation
             | FuncBackendKind::Json => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Dispatch)

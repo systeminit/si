@@ -15,6 +15,7 @@ pub mod integer;
 pub mod js_attribute;
 pub mod js_code_generation;
 pub mod js_command;
+pub mod js_confirmation;
 pub mod js_qualification;
 pub mod js_workflow;
 pub mod map;
@@ -75,6 +76,7 @@ pub enum FuncBackendKind {
     JsCodeGeneration,
     JsAttribute,
     JsWorkflow,
+    JsConfirmation,
     JsCommand,
     Map,
     PropObject,
@@ -107,6 +109,7 @@ pub enum FuncBackendResponseType {
     PropObject,
     Qualification,
     CodeGeneration,
+    Confirmation,
     String,
     Unset,
     Json,

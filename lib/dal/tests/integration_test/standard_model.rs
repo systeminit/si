@@ -427,6 +427,32 @@ async fn disassociate_many_to_many(ctx: &DalContext) {
 }
 
 #[test]
+async fn disassociate_all_many_to_many(ctx: &DalContext) {
+    let group = create_group(ctx).await;
+    let user_one = create_user(ctx).await;
+    let user_two = create_user(ctx).await;
+    standard_model::associate_many_to_many(
+        ctx,
+        "group_many_to_many_users",
+        group.id(),
+        user_one.id(),
+    )
+    .await
+    .expect("cannot associate many to many");
+    standard_model::associate_many_to_many(
+        ctx,
+        "group_many_to_many_users",
+        group.id(),
+        user_two.id(),
+    )
+    .await
+    .expect("cannot associate many to many");
+    standard_model::disassociate_all_many_to_many(ctx, "group_many_to_many_users", group.id())
+        .await
+        .expect("cannot disassociate many to many");
+}
+
+#[test]
 async fn many_to_many(ctx: &DalContext) {
     let group_one = create_group(ctx).await;
     let group_two = create_group(ctx).await;
@@ -537,6 +563,22 @@ async fn many_to_many(ctx: &DalContext) {
     .await
     .expect("cannot get list of groups for user");
     assert_eq!(user_two_groups, vec![group_one.clone(), group_two.clone()]);
+
+    standard_model::disassociate_all_many_to_many(ctx, "group_many_to_many_users", group_two.id())
+        .await
+        .expect("cannot disassociate many to many");
+
+    let user_two_groups: Vec<Group> = standard_model::many_to_many(
+        ctx,
+        "group_many_to_many_users",
+        "groups",
+        "users",
+        left_object_id,
+        Some(user_two.id()),
+    )
+    .await
+    .expect("cannot get list of groups for user");
+    assert_eq!(user_two_groups, vec![group_one.clone()]);
 }
 
 #[test]

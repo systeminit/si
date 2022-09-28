@@ -13,9 +13,9 @@ use cyclone_client::{
 use cyclone_core::{
     process::{self, ShutdownError},
     CanonicalCommand, CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest,
-    CommandRunResultSuccess, QualificationCheckRequest, QualificationCheckResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    CommandRunResultSuccess, ConfirmationRequest, ConfirmationResultSuccess,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -160,6 +160,23 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         result
     }
 
+    async fn execute_confirmation(
+        &mut self,
+        request: ConfirmationRequest,
+    ) -> result::Result<
+        Execution<UnixStream, ConfirmationRequest, ConfirmationResultSuccess>,
+        ClientError,
+    > {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
+        let result = self.client.execute_confirmation(request).await;
+        self.count_request();
+
+        result
+    }
+
     async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
@@ -297,6 +314,10 @@ pub struct LocalUdsInstanceSpec {
     #[builder(private, setter(name = "_qualification"), default = "false")]
     qualification: bool,
 
+    /// Enables the `confirmation` execution endpoint for a spawned Cyclone server.
+    #[builder(private, setter(name = "_confirmation"), default = "false")]
+    confirmation: bool,
+
     /// Enables the `resolver` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_resolver"), default = "false")]
     resolver: bool,
@@ -391,8 +412,20 @@ impl LocalUdsInstanceSpec {
         if self.qualification {
             cmd.arg("--enable-qualification");
         }
+        if self.confirmation {
+            cmd.arg("--enable-confirmation");
+        }
         if self.resolver {
             cmd.arg("--enable-resolver");
+        }
+        if self.code_generation {
+            cmd.arg("--enable-code-generation");
+        }
+        if self.workflow {
+            cmd.arg("--enable-workflow");
+        }
+        if self.command {
+            cmd.arg("--enable-command-run");
         }
 
         cmd
@@ -422,6 +455,11 @@ impl LocalUdsInstanceSpecBuilder {
     /// Enables the `qualification` execution endpoint for a spawned Cyclone server.
     pub fn qualification(&mut self) -> &mut Self {
         self._qualification(true)
+    }
+
+    /// Enables the `confirmation` execution endpoint for a spawned Cyclone server.
+    pub fn confirmation(&mut self) -> &mut Self {
+        self._confirmation(true)
     }
 
     /// Enables the `resolver` execution endpoint for a spawned Cyclone server.

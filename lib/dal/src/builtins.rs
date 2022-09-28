@@ -12,11 +12,11 @@ use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
-    AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeReadContext, AttributeValueError, AttributeValueId, CodeGenerationPrototypeError,
-    DalContext, ExternalProviderId, FuncError, PropError, PropId, PropKind,
-    QualificationPrototypeError, SchemaError, StandardModelError, ValidationPrototypeError,
-    WorkflowPrototypeError,
+    ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
+    AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
+    CodeGenerationPrototypeError, ConfirmationPrototypeError, DalContext, ExternalProviderId,
+    FuncError, PropError, PropId, PropKind, QualificationPrototypeError, SchemaError,
+    StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
 };
 
 mod func;
@@ -71,6 +71,8 @@ pub enum BuiltinsError {
     Prop(#[from] PropError),
     #[error("prop not bound by id: {0}")]
     PropNotFound(PropId),
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("qualification prototype error: {0}")]
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("schema error: {0}")]
@@ -93,6 +95,8 @@ pub enum BuiltinsError {
     Regex(#[from] regex::Error),
     #[error(transparent)]
     WorkflowPrototype(#[from] WorkflowPrototypeError),
+    #[error(transparent)]
+    ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error("Func Metadata error: {0}")]
     FuncMetadata(String),
     #[error("builtin {0} missing func argument {0}")]

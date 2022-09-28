@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use cyclone_core::{
     CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
-    FunctionResult, OutputStream, QualificationCheckRequest, QualificationCheckResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    ConfirmationRequest, ConfirmationResultSuccess, FunctionResult, OutputStream,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use futures::{StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Serialize};
@@ -15,9 +15,9 @@ use tokio::sync::mpsc;
 
 use self::subscription::{Subscription, SubscriptionError};
 use crate::{
-    nats_code_generation_subject, nats_command_run_subject, nats_qualification_check_subject,
-    nats_resolver_function_subject, nats_subject, nats_workflow_resolve_subject,
-    reply_mailbox_for_output, reply_mailbox_for_result,
+    nats_code_generation_subject, nats_command_run_subject, nats_confirmation_subject,
+    nats_qualification_check_subject, nats_resolver_function_subject, nats_subject,
+    nats_workflow_resolve_subject, reply_mailbox_for_output, reply_mailbox_for_result,
 };
 
 #[derive(Error, Debug)]
@@ -76,6 +76,35 @@ impl Client {
         request: &QualificationCheckRequest,
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<QualificationCheckResultSuccess>> {
+        self.execute_request(
+            nats_subject(self.subject_prefix(), subject_suffix),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_confirmation", skip_all)]
+    pub async fn execute_confirmation(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &ConfirmationRequest,
+    ) -> ClientResult<FunctionResult<ConfirmationResultSuccess>> {
+        self.execute_request(
+            nats_confirmation_subject(self.subject_prefix()),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_confirmation_with_subject", skip_all)]
+    pub async fn execute_confirmation_with_subject(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &ConfirmationRequest,
+        subject_suffix: impl AsRef<str>,
+    ) -> ClientResult<FunctionResult<ConfirmationResultSuccess>> {
         self.execute_request(
             nats_subject(self.subject_prefix(), subject_suffix),
             output_tx,
@@ -661,6 +690,49 @@ mod tests {
             FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "9012");
                 assert!(!success.qualified);
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("function did not succeed and should have: {:?}", failure)
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn executes_simple_confirmation() {
+        let prefix = nats_prefix();
+        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+        let client = client(prefix).await;
+
+        // Not going to check output here--we aren't emitting anything
+        let (tx, mut rx) = mpsc::channel(64);
+        tokio::spawn(async move {
+            while let Some(output) = rx.recv().await {
+                info!("output: {:?}", output)
+            }
+        });
+
+        let request = ConfirmationRequest {
+            execution_id: "7868".to_string(),
+            handler: "confirmItOut".to_string(),
+            component: ComponentView {
+                properties: serde_json::json!({"pkg": "cider"}),
+                system: None,
+                kind: ComponentKind::Standard,
+                    resources: Default::default(),
+            },
+            code_base64: base64::encode("function confirmItOut(component) { return { success: true, recommendedActions: ['vai te catar'] } }")
+        };
+
+        let result = client
+            .execute_confirmation(tx, &request)
+            .await
+            .expect("failed to execute confirmation");
+
+        match result {
+            FunctionResult::Success(success) => {
+                assert_eq!(success.execution_id, "7868");
+                assert!(success.success);
+                assert_eq!(success.recommended_actions, vec!["vai te catar".to_owned()]);
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)

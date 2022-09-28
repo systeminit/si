@@ -5,8 +5,8 @@ use std::{
 };
 
 use deadpool_cyclone::{
-    CodeGenerationRequest, CommandRunRequest, QualificationCheckRequest, ResolverFunctionRequest,
-    WorkflowResolveRequest,
+    CodeGenerationRequest, CommandRunRequest, ConfirmationRequest, QualificationCheckRequest,
+    ResolverFunctionRequest, WorkflowResolveRequest,
 };
 use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
@@ -17,8 +17,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    nats_code_generation_subject, nats_command_run_subject, nats_qualification_check_subject,
-    nats_resolver_function_subject, nats_workflow_resolve_subject,
+    nats_code_generation_subject, nats_command_run_subject, nats_confirmation_subject,
+    nats_qualification_check_subject, nats_resolver_function_subject,
+    nats_workflow_resolve_subject,
 };
 
 #[derive(Error, Debug)]
@@ -50,6 +51,26 @@ impl Subscriber {
         debug!(
             messaging.destination = &subject.as_str(),
             "subscribing for qualification check requests"
+        );
+        let inner = nats
+            .subscribe(subject)
+            .await
+            .map_err(SubscriberError::NatsSubscribe)?;
+
+        Ok(Subscription {
+            inner,
+            _phantom: PhantomData,
+        })
+    }
+
+    pub async fn confirmation(
+        nats: &NatsClient,
+        subject_prefix: Option<&str>,
+    ) -> Result<Subscription<ConfirmationRequest>> {
+        let subject = nats_confirmation_subject(subject_prefix);
+        debug!(
+            messaging.destination = &subject.as_str(),
+            "subscribing for confirmation requests"
         );
         let inner = nats
             .subscribe(subject)
