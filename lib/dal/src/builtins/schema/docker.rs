@@ -43,7 +43,7 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;
 
-    let mut secret_prop = Prop::new(ctx, "secret", PropKind::Integer).await?;
+    let mut secret_prop = Prop::new(ctx, "secret", PropKind::Integer, None).await?;
     secret_prop
         .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
@@ -129,17 +129,17 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     let ui_menu = SchemaUiMenu::new(ctx, "image", "docker", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
-    let image_prop = Prop::new(ctx, "image", PropKind::String).await?;
+    let image_prop = Prop::new(ctx, "image", PropKind::String, None).await?;
     image_prop
         .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
 
     // TODO: required, validate regex: "\\d+\\/(tcp|udp)", message: "invalid exposed port entry; must be [numeric]/(tcp|udp)",
-    let exposed_ports_prop = Prop::new(ctx, "ExposedPorts", PropKind::Array).await?;
+    let exposed_ports_prop = Prop::new(ctx, "ExposedPorts", PropKind::Array, None).await?;
     exposed_ports_prop
         .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
-    let exposed_port_prop = Prop::new(ctx, "ExposedPort", PropKind::String).await?;
+    let exposed_port_prop = Prop::new(ctx, "ExposedPort", PropKind::String, None).await?;
     exposed_port_prop
         .set_parent_prop(ctx, *exposed_ports_prop.id())
         .await?;

@@ -11,6 +11,7 @@ pub async fn create_selector_prop(
         ctx,
         "selector",
         PropKind::Object,
+        None,
         Some(parent_prop_id),
         Some(doc_url(
             "reference/kubernetes-api/common-definitions/label-selector/#LabelSelector",
@@ -22,7 +23,8 @@ pub async fn create_selector_prop(
         let match_labels_prop = BuiltinSchemaHelpers::create_prop(
             ctx,
             "matchLabels",
-            PropKind::Map, // How to specify it as an array of strings?
+            PropKind::Map,
+            None,
             Some(*selector_prop.id()),
             Some(doc_url(
                 "reference/kubernetes-api/common-definitions/label-selector/#LabelSelector",
@@ -33,6 +35,7 @@ pub async fn create_selector_prop(
             ctx,
             "labelValue",
             PropKind::String,
+            None,
             Some(*match_labels_prop.id()),
             Some(doc_url(
                 "reference/kubernetes-api/common-definitions/label-selector/#LabelSelector",

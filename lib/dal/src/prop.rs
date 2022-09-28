@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use si_data::PgError;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
@@ -111,6 +112,7 @@ pub struct Prop {
     name: String,
     kind: PropKind,
     widget_kind: WidgetKind,
+    widget_options: Option<Value>,
     doc_link: Option<String>,
     #[serde(flatten)]
     tenancy: WriteTenancy,
@@ -134,20 +136,30 @@ impl Prop {
     /// [`AttributeValue`](crate::AttributeValue) in a [`Prop`](Self)-specific context.
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
-    pub async fn new(ctx: &DalContext, name: impl AsRef<str>, kind: PropKind) -> PropResult<Self> {
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        kind: PropKind,
+        widget_kind_and_options: Option<(WidgetKind, Value)>,
+    ) -> PropResult<Self> {
         let name = name.as_ref();
-        let widget_kind = WidgetKind::from(kind);
+        let (widget_kind, widget_options) = match widget_kind_and_options {
+            Some((kind, options)) => (kind, Some(options)),
+            None => (WidgetKind::from(kind), None),
+        };
+
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &name,
                     &kind.as_ref(),
                     &widget_kind.as_ref(),
+                    &widget_options.as_ref(),
                 ],
             )
             .await?;
@@ -159,6 +171,7 @@ impl Prop {
     standard_model_accessor!(name, String, PropResult);
     standard_model_accessor!(kind, Enum(PropKind), PropResult);
     standard_model_accessor!(widget_kind, Enum(WidgetKind), PropResult);
+    standard_model_accessor!(widget_options, Option<Value>, PropResult);
     standard_model_accessor!(doc_link, Option<String>, PropResult);
 
     // FIXME(nick): change the relationship to a "belongs to" relationship and the name to

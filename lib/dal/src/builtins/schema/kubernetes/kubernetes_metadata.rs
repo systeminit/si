@@ -12,6 +12,7 @@ pub async fn create_metadata_prop(
         ctx,
         "metadata",
         PropKind::Object,
+        None,
         Some(parent_prop_id),
         Some(doc_url(
             "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
@@ -38,6 +39,7 @@ pub async fn create_metadata_prop(
             ctx,
             "name",
             PropKind::String,
+            None,
             Some(*metadata_prop.id()),
             Some(doc_url(
                 "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
@@ -51,6 +53,7 @@ pub async fn create_metadata_prop(
             ctx,
             "generateName",
             PropKind::String,
+            None,
             Some(*metadata_prop.id()),
             Some(doc_url(
                 "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
@@ -65,6 +68,7 @@ pub async fn create_metadata_prop(
             ctx,
             "namespace",
             PropKind::String,
+            None,
             Some(*metadata_prop.id()),
             Some(doc_url(
                 "concepts/overview/working-with-objects/namespaces/",
@@ -78,6 +82,7 @@ pub async fn create_metadata_prop(
             ctx,
             "labels",
             PropKind::Map,
+            None,
             Some(*metadata_prop.id()),
             Some(doc_url("concepts/overview/working-with-objects/labels/")),
         )
@@ -86,6 +91,7 @@ pub async fn create_metadata_prop(
             ctx,
             "labelValue",
             PropKind::String,
+            None,
             Some(*labels_prop.id()),
             Some(doc_url("concepts/overview/working-with-objects/labels/")),
         )
@@ -96,7 +102,8 @@ pub async fn create_metadata_prop(
         let annotations_prop = BuiltinSchemaHelpers::create_prop(
             ctx,
             "annotations",
-            PropKind::Map, // How to specify it as a map of string values?
+            PropKind::Map,
+            None, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),
             Some(doc_url(
                 "concepts/overview/working-with-objects/annotations/",
@@ -107,6 +114,7 @@ pub async fn create_metadata_prop(
             ctx,
             "annotationValue",
             PropKind::String,
+            None,
             Some(*annotations_prop.id()),
             Some(doc_url(
                 "concepts/overview/working-with-objects/annotations/",

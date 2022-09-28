@@ -8,6 +8,7 @@ use dal::{
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
+use std::option::Option::None;
 
 use crate::dal::test;
 
@@ -52,7 +53,7 @@ async fn qualification_view(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
 
-    let prop = Prop::new(ctx, "some_property", PropKind::String)
+    let prop = Prop::new(ctx, "some_property", PropKind::String, None)
         .await
         .expect("cannot create prop");
     prop.set_parent_prop(ctx, root.domain_prop_id)

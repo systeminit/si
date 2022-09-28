@@ -5,8 +5,8 @@ use dal::{
 };
 
 #[test]
-async fn schema_for_schema_variant(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+async fn property_editor_schema(ctx: &DalContext) {
+    let schema = Schema::find_by_attr(ctx, "name", &"aws_region".to_string())
         .await
         .expect("cannot find docker image schema")
         .pop()
@@ -21,7 +21,7 @@ async fn schema_for_schema_variant(ctx: &DalContext) {
 }
 
 #[test]
-async fn value_for_context(ctx: &DalContext) {
+async fn property_editor_value(ctx: &DalContext) {
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
         .expect("cannot find docker image schema")

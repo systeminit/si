@@ -432,7 +432,7 @@ pub async fn create_system(ctx: &DalContext) -> System {
 
 pub async fn create_prop(ctx: &DalContext) -> Prop {
     let name = generate_fake_name();
-    Prop::new(ctx, name, PropKind::String)
+    Prop::new(ctx, name, PropKind::String, None)
         .await
         .expect("cannot create prop")
 }
@@ -440,7 +440,7 @@ pub async fn create_prop(ctx: &DalContext) -> Prop {
 #[allow(clippy::too_many_arguments)]
 pub async fn create_prop_of_kind(ctx: &DalContext, prop_kind: PropKind) -> Prop {
     let name = generate_fake_name();
-    Prop::new(ctx, name, prop_kind)
+    Prop::new(ctx, name, prop_kind, None)
         .await
         .expect("cannot create prop")
 }
@@ -452,7 +452,7 @@ pub async fn create_prop_of_kind_with_name(
     name: impl AsRef<str>,
 ) -> Prop {
     let name = name.as_ref();
-    Prop::new(ctx, name, prop_kind)
+    Prop::new(ctx, name, prop_kind, None)
         .await
         .expect("cannot create prop")
 }
@@ -465,7 +465,7 @@ pub async fn create_prop_of_kind_and_set_parent_with_name(
     parent_prop_id: PropId,
 ) -> Prop {
     let name = name.as_ref();
-    let new_prop = Prop::new(ctx, name, prop_kind)
+    let new_prop = Prop::new(ctx, name, prop_kind, None)
         .await
         .expect("cannot create prop");
     new_prop

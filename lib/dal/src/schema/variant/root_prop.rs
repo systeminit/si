@@ -26,22 +26,22 @@ impl RootProp {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Self> {
-        let root_prop = Prop::new(ctx, "root", PropKind::Object).await?;
+        let root_prop = Prop::new(ctx, "root", PropKind::Object, None).await?;
         root_prop
             .add_schema_variant(ctx, &schema_variant_id)
             .await?;
 
-        let si_specific_prop = Prop::new(ctx, "si", PropKind::Object).await?;
+        let si_specific_prop = Prop::new(ctx, "si", PropKind::Object, None).await?;
         si_specific_prop
             .set_parent_prop(ctx, *root_prop.id())
             .await?;
 
-        let si_name_prop = Prop::new(ctx, "name", PropKind::String).await?;
+        let si_name_prop = Prop::new(ctx, "name", PropKind::String, None).await?;
         si_name_prop
             .set_parent_prop(ctx, *si_specific_prop.id())
             .await?;
 
-        let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object).await?;
+        let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object, None).await?;
         domain_specific_prop
             .set_parent_prop(ctx, *root_prop.id())
             .await?;

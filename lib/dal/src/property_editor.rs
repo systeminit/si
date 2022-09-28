@@ -72,6 +72,7 @@ impl From<&PropKind> for PropertyEditorPropKind {
     }
 }
 
+// TODO(nick,theo,wendy): consider passing "widget options" to _all_ widgets.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum PropertyEditorPropWidgetKind {
@@ -79,18 +80,26 @@ pub enum PropertyEditorPropWidgetKind {
     Checkbox,
     Header,
     Map,
-    Select { options: LabelList<i64> },
+    SecretSelect { options: LabelList<i64> },
+    Select { options: Option<Value> },
     Text,
 }
 
 impl PropertyEditorPropWidgetKind {
-    pub async fn new(ctx: &DalContext, widget_kind: WidgetKind) -> PropertyEditorResult<Self> {
+    pub async fn new(
+        ctx: &DalContext,
+        widget_kind: WidgetKind,
+        widget_options: Option<Value>,
+    ) -> PropertyEditorResult<Self> {
         Ok(match widget_kind {
             WidgetKind::Array => Self::Array,
             WidgetKind::Checkbox => Self::Checkbox,
             WidgetKind::Header => Self::Header,
             WidgetKind::Map => Self::Map,
-            WidgetKind::SecretSelect => Self::Select {
+            WidgetKind::Select => Self::Select {
+                options: widget_options,
+            },
+            WidgetKind::SecretSelect => Self::SecretSelect {
                 options: LabelList::new(
                     Secret::list(ctx)
                         .await?
@@ -129,7 +138,12 @@ impl PropertyEditorProp {
             id: prop.id().into(),
             name: prop.name().into(),
             kind: prop.kind().into(),
-            widget_kind: PropertyEditorPropWidgetKind::new(ctx, *prop.widget_kind()).await?,
+            widget_kind: PropertyEditorPropWidgetKind::new(
+                ctx,
+                *prop.widget_kind(),
+                prop.widget_options().map(|v| v.to_owned()),
+            )
+            .await?,
             doc_link: prop.doc_link().map(Into::into),
         })
     }

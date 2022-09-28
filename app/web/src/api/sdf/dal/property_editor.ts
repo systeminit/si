@@ -37,6 +37,10 @@ export interface PropertyEditorPropWidgetKindInteger {
 }
 export interface PropertyEditorPropWidgetKindSelect {
   kind: "select";
+  options?: JSON;
+}
+export interface PropertyEditorPropWidgetKindSecretSelect {
+  kind: "secretSelect";
   options: LabelList<string | number>;
 }
 export type PropertyEditorPropWidgetKind =
@@ -46,7 +50,8 @@ export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindInteger
   | PropertyEditorPropWidgetKindHeader
   | PropertyEditorPropWidgetKindArray
-  | PropertyEditorPropWidgetKindSelect;
+  | PropertyEditorPropWidgetKindSelect
+  | PropertyEditorPropWidgetKindSecretSelect;
 
 export interface PropertyEditorProp {
   id: number;

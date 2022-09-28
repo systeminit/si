@@ -13,6 +13,7 @@ CREATE TABLE props
     name                        text                     NOT NULL,
     kind                        text                     NOT NULL,
     widget_kind                 text                     NOT NULL,
+    widget_options              jsonb,
     doc_link                    text
 );
 SELECT standard_model_table_constraints_v1('props');
@@ -36,6 +37,7 @@ CREATE OR REPLACE FUNCTION prop_create_v1(
     this_name text,
     this_kind text,
     this_widget_kind text,
+    this_widget_options jsonb,
     OUT object json) AS
 $$
 DECLARE
@@ -49,11 +51,11 @@ BEGIN
     INSERT INTO props (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                        tenancy_workspace_ids,
                        visibility_change_set_pk, visibility_deleted_at,
-                       name, kind, widget_kind)
+                       name, kind, widget_kind, widget_options)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at, this_name, this_kind, this_widget_kind)
+            this_visibility_record.visibility_deleted_at, this_name, this_kind, this_widget_kind, this_widget_options)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
