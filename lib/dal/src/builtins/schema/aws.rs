@@ -42,6 +42,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     keypair(ctx).await?;
     ingress(ctx).await?;
     egress(ctx).await?;
+    security_group(ctx).await?;
     Ok(())
 }
 
@@ -60,7 +61,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
             None => return Ok(()),
         };
 
-    // Variant setup. The variant color was taken from the coreos logo.
+    // Variant setup.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
@@ -245,7 +246,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             None => return Ok(()),
         };
 
-    // Variant setup. The variant color was taken from the coreos logo.
+    // Variant setup.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
@@ -525,7 +526,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
             None => return Ok(()),
         };
 
-    // Variant setup. The variant color was taken from the coreos logo.
+    // Variant setup.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
@@ -647,7 +648,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
             None => return Ok(()),
         };
 
-    // Variant setup. The variant color was taken from the coreos logo.
+    // Variant setup.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
@@ -821,7 +822,7 @@ async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
             None => return Ok(()),
         };
 
-    // Variant setup. The variant color was taken from the coreos logo.
+    // Variant setup.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
@@ -928,7 +929,7 @@ async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
             None => return Ok(()),
         };
 
-    // Variant setup. The variant color was taken from the coreos logo.
+    // Variant setup.
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
     schema
@@ -1022,6 +1023,277 @@ async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
 
     // Wrap it up.
     schema_variant.finalize(ctx).await?;
+
+    Ok(())
+}
+
+async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
+    let name = "security_group".to_string();
+    let mut schema =
+        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
+            Some(schema) => schema,
+            None => return Ok(()),
+        };
+
+    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
+
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+        .await?;
+
+    let mut attribute_context_builder = AttributeContext::builder();
+    attribute_context_builder
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id());
+
+    // Diagram and UI Menu
+    let diagram_kind = schema
+        .diagram_kind()
+        .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+    SchemaUiMenu::new(ctx, "security group", "aws", &diagram_kind)
+        .await?
+        .set_schema(ctx, schema.id())
+        .await?;
+
+    // Prop Creation
+    let security_group_id_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "SecurityGroupId",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        None, // TODO: Link documentation for security groups
+    )
+    .await?;
+
+    BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "Description",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        None, // TODO: Link documentation for security groups
+    )
+    .await?;
+
+    BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "GroupName",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        None, // TODO: Link documentation for security groups
+    )
+    .await?;
+
+    let vpc_id_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "VpcId",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        None, // TODO: Link documentation for security groups
+    )
+    .await?;
+
+    let region_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "region",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        None, // TODO: Link documentation for aws regions
+    )
+    .await?;
+
+    let tags_map_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "tags",
+        PropKind::Map,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "tag",
+        PropKind::String,
+        None,
+        Some(*tags_map_prop.id()),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // Socket Creation
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+
+    let system_socket = Socket::new(
+        ctx,
+        "system",
+        SocketKind::Provider,
+        &SocketEdgeKind::System,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+    )
+    .await?;
+    schema_variant.add_socket(ctx, system_socket.id()).await?;
+
+    let (vpc_id_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "vpc_id",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::One,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    let (region_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "region",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    let (security_group_id_external_provider, mut output_socket) =
+        ExternalProvider::new_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "security group id",
+            None,
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    output_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    // Code Generation
+    let code_generation_func_name = "si:generateAwsJSON".to_owned();
+    let code_generation_func =
+        Func::find_by_attr(ctx, "name", &code_generation_func_name.to_owned())
+            .await?
+            .pop()
+            .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
+
+    let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
+    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
+    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
+    code_generation_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    CodeGenerationPrototype::new(
+        ctx,
+        *code_generation_func.id(),
+        code_generation_args_json,
+        CodeLanguage::Json,
+        code_generation_prototype_context,
+    )
+    .await?;
+
+    schema_variant.finalize(ctx).await?;
+
+    // Socket Binding
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
+    // security_group_id to output socket
+    let security_group_id_external_provider_attribute_prototype_id =
+        security_group_id_external_provider
+            .attribute_prototype_id()
+            .ok_or_else(|| {
+                BuiltinsError::MissingAttributePrototypeForExternalProvider(
+                    *security_group_id_external_provider.id(),
+                )
+            })?;
+
+    let security_group_id_internal_provider =
+        InternalProvider::get_for_prop(ctx, *security_group_id_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*security_group_id_prop.id())
+            })?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *security_group_id_external_provider_attribute_prototype_id,
+        "identity",
+        *security_group_id_internal_provider.id(),
+    )
+    .await?;
+
+    // region from input socket
+    let region_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*region_prop.id()),
+        ..base_attribute_read_context
+    };
+    let region_attribute_value =
+        AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                region_attribute_value_read_context,
+            ))?;
+    let mut region_attribute_prototype = region_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    region_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *region_attribute_prototype.id(),
+        "identity",
+        *region_explicit_internal_provider.id(),
+    )
+    .await?;
+
+    // vpc_id from input socket
+    let vpc_id_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*vpc_id_prop.id()),
+        ..base_attribute_read_context
+    };
+    let vpc_id_attribute_value =
+        AttributeValue::find_for_context(ctx, vpc_id_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                vpc_id_attribute_value_read_context,
+            ))?;
+    let mut vpc_id_attribute_prototype = vpc_id_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    vpc_id_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *vpc_id_attribute_prototype.id(),
+        "identity",
+        *vpc_id_explicit_internal_provider.id(),
+    )
+    .await?;
 
     Ok(())
 }
