@@ -1,10 +1,9 @@
 use pretty_assertions_sorted::assert_eq;
 
-use dal::func::backend::validation::ValidationKind;
-
 use dal::attribute::context::AttributeContextBuilder;
 use dal::func::backend::validation::validate_string::FuncBackendValidateStringValueArgs;
-
+use dal::func::backend::validation::ValidationKind;
+use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::test_harness::{
     create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
 };
@@ -193,6 +192,78 @@ async fn check_validations_for_component(ctx: &DalContext) {
     let mut expected_validation_status = None;
     for validation_status in &validation_statuses {
         if validation_status.attribute_value_id == updated_gecs_attribute_value_id {
+            if expected_validation_status.is_some() {
+                panic!(
+                    "found more than one expected validation status: {:?}",
+                    validation_statuses
+                );
+            }
+            expected_validation_status = Some(validation_status.clone());
+        }
+    }
+    let expected_validation_status =
+        expected_validation_status.expect("did not find expected validation status");
+    assert!(expected_validation_status.errors.is_empty());
+}
+
+/// This test ensures that validation statuses correspond to attribute values that exist in an
+/// attribute context that we expect (schema, schema variant, and component).
+#[test]
+async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
+    let mut harness = SchemaBuiltinsTestHarness::new();
+    let component_payload = harness
+        .create_component(ctx, "ksg", Builtin::AwsRegion)
+        .await;
+
+    let updated_region_attribute_value_id = component_payload
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/domain/region",
+            Some(serde_json::json!["us-east-1"]),
+        )
+        .await;
+
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "ksg"
+            },
+            "domain": {
+                "region": "us-east-1"
+            }
+        }], // actual
+        component_payload.component_view_properties(ctx).await // expected
+    );
+
+    // Ensure that we see exactly one expected validation status with exactly one expected
+    // validation error.
+    let validation_statuses =
+        ValidationResolver::find_status(ctx, component_payload.component_id, SystemId::NONE)
+            .await
+            .expect("could not find status for validation(s) of a given component");
+
+    let mut expected_validation_status = None;
+    for validation_status in &validation_statuses {
+        // Ensure that the attribute values found are of relevant attribute contexts.
+        let attribute_value = AttributeValue::get_by_id(ctx, &validation_status.attribute_value_id)
+            .await
+            .expect("could not get attribute value by id")
+            .expect("attribute value not found by id");
+        assert_eq!(
+            attribute_value.context.schema_id(),
+            component_payload.schema_id
+        );
+        assert_eq!(
+            attribute_value.context.schema_variant_id(),
+            component_payload.schema_variant_id
+        );
+        assert_eq!(
+            attribute_value.context.component_id(),
+            component_payload.component_id
+        );
+
+        // Now, we can find the expected validation status.
+        if validation_status.attribute_value_id == updated_region_attribute_value_id {
             if expected_validation_status.is_some() {
                 panic!(
                     "found more than one expected validation status: {:?}",
