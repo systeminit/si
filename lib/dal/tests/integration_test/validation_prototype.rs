@@ -27,16 +27,19 @@ async fn new(ctx: &DalContext) {
         .pop()
         .expect("no prop found");
 
-    let func_name = "si:validateStringEquals".to_string();
+    let func_name = "si:validateString".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
         .pop()
-        .expect("Missing builtin function si:validateStringEquals");
+        .expect("Missing builtin function si:validateString");
 
-    let args =
-        FuncBackendValidateStringValueArgs::new(Some("".to_string()), "amon amarth".to_string());
+    let args = FuncBackendValidateStringValueArgs::new(
+        Some("".to_string()),
+        "amon amarth".to_string(),
+        false,
+    );
 
     let mut validation_prototype_context = ValidationPrototypeContext::new();
     validation_prototype_context.set_prop_id(*first_prop.id());
@@ -72,16 +75,19 @@ async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
         .pop()
         .expect("no prop found");
 
-    let func_name = "si:validateStringEquals".to_string();
+    let func_name = "si:validateString".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
         .pop()
-        .expect("Missing builtin function si:validateStringEquals");
+        .expect("Missing builtin function si:validateString");
 
-    let first_args =
-        FuncBackendValidateStringValueArgs::new(Some("".to_string()), "amon amarth".to_string());
+    let first_args = FuncBackendValidateStringValueArgs::new(
+        Some("".to_string()),
+        "amon amarth".to_string(),
+        false,
+    );
 
     let mut validation_prototype_context = ValidationPrototypeContext::new();
     validation_prototype_context.set_prop_id(*first_prop.id());
@@ -94,8 +100,11 @@ async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
     .await
     .expect("cannot create new attribute prototype");
 
-    let second_args =
-        FuncBackendValidateStringValueArgs::new(Some("".to_string()), "twisty monkey".to_string());
+    let second_args = FuncBackendValidateStringValueArgs::new(
+        Some("".to_string()),
+        "twisty monkey".to_string(),
+        false,
+    );
     let mut validation_prototype_context = ValidationPrototypeContext::new();
     validation_prototype_context.set_prop_id(*first_prop.id());
     let _second_validation_prototype = ValidationPrototype::new(

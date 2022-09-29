@@ -8,9 +8,10 @@ use dal::test_harness::{
     create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
 };
 use dal::validation_prototype::ValidationPrototypeContext;
+use dal::validation_resolver::ValidationStatus;
 use dal::{
-    AttributeReadContext, AttributeValue, Component, ComponentView, DalContext, Func, PropKind,
-    SchemaKind, StandardModel, SystemId, ValidationPrototype, ValidationResolver,
+    AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentView, DalContext,
+    Func, PropKind, SchemaKind, StandardModel, SystemId, ValidationPrototype, ValidationResolver,
 };
 
 use crate::dal::test;
@@ -29,28 +30,48 @@ async fn check_validations_for_component(ctx: &DalContext) {
         .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await
         .expect("cannot set parent prop");
+    let prefix_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "the_tree_of_clues").await;
+    prefix_prop
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
+        .await
+        .expect("cannot set parent prop");
 
+    // Gather what we need to create validations
     let mut validation_context = ValidationPrototypeContext::new();
-    validation_context.set_prop_id(*gecs_prop.id());
     validation_context.set_schema_id(*schema.id());
     validation_context.set_schema_variant_id(*schema_variant.id());
-
-    let func_name = "si:validateStringEquals".to_string();
+    let func_name = "si:validateString".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("could not perform find by attr");
     let func = funcs.pop().expect("could not find func");
 
-    let expected = "stupidHorse".to_string();
+    // Match validation
+    validation_context.set_prop_id(*gecs_prop.id());
     let args = serde_json::to_value(FuncBackendValidateStringValueArgs::new(
         None,
-        expected.clone(),
+        "stupidHorse".to_string(),
+        false,
+    ))
+    .expect("could not convert args to Value");
+    ValidationPrototype::new(ctx, *func.id(), args, validation_context.clone())
+        .await
+        .expect("could not create validation prototype");
+
+    // Prefix validation
+    validation_context.set_prop_id(*prefix_prop.id());
+    let args = serde_json::to_value(FuncBackendValidateStringValueArgs::new(
+        None,
+        "tooth".to_string(),
+        true,
     ))
     .expect("could not convert args to Value");
     ValidationPrototype::new(ctx, *func.id(), args, validation_context)
         .await
         .expect("could not create validation prototype");
 
+    // Finalize schema
     schema_variant
         .finalize(ctx)
         .await
@@ -91,7 +112,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
     .expect("could not perform find for context")
     .expect("could not find attribute value");
 
-    let update_attribute_context = AttributeContextBuilder::from(base_attribute_read_context)
+    let gecs_update_attribute_context = AttributeContextBuilder::from(base_attribute_read_context)
         .set_prop_id(*gecs_prop.id())
         .to_context()
         .expect("could not convert builder to attribute context");
@@ -100,8 +121,36 @@ async fn check_validations_for_component(ctx: &DalContext) {
         ctx,
         *gecs_attribute_value.id(),
         Some(*domain_attribute_value.id()),
-        update_attribute_context,
+        gecs_update_attribute_context,
         Some(serde_json::json!["wrongLyrics"]),
+        None,
+    )
+    .await
+    .expect("could not update attribute value");
+
+    let prefix_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*prefix_prop.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await
+    .expect("could not perform find for context")
+    .expect("could not find attribute value");
+
+    let prefix_update_attribute_context =
+        AttributeContextBuilder::from(base_attribute_read_context)
+            .set_prop_id(*prefix_prop.id())
+            .to_context()
+            .expect("could not convert builder to attribute context");
+
+    let (_, updated_prefix_attribute_value_id) = AttributeValue::update_for_context(
+        ctx,
+        *prefix_attribute_value.id(),
+        Some(*domain_attribute_value.id()),
+        prefix_update_attribute_context,
+        Some(serde_json::json!["wrong song title"]),
         None,
     )
     .await
@@ -113,6 +162,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
                 "name": "hundo_gecs"
             },
             "domain": {
+                "the_tree_of_clues": "wrong song title",
                 "thousand_gecs": "wrongLyrics"
             }
         }], // actual
@@ -122,48 +172,64 @@ async fn check_validations_for_component(ctx: &DalContext) {
             .properties // expected
     );
 
-    // Ensure that we see exactly one expected validation status with exactly one expected
-    // validation error.
+    // Ensure that we see the exact expected validation statuses with the exact expected
+    // validation errors.
     let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
         .await
         .expect("could not find status for validation(s) of a given component");
+    let (match_validation_status, prefix_validation_status) = get_validation_statuses(
+        &validation_statuses,
+        updated_gecs_attribute_value_id,
+        updated_prefix_attribute_value_id,
+    );
 
-    let mut expected_validation_status = None;
-    for validation_status in &validation_statuses {
-        if validation_status.attribute_value_id == updated_gecs_attribute_value_id {
-            if expected_validation_status.is_some() {
-                panic!(
-                    "found more than one expected validation status: {:?}",
-                    validation_statuses
-                );
-            }
-            expected_validation_status = Some(validation_status.clone());
-        }
-    }
-    let expected_validation_status =
-        expected_validation_status.expect("did not find expected validation status");
-
-    let mut found_expected_validation_error = false;
-    for validation_error in &expected_validation_status.errors {
+    // Check match validation errors.
+    let mut found_match_validation_error = false;
+    for validation_error in &match_validation_status.errors {
         if validation_error.kind == ValidationKind::ValidateString {
-            if found_expected_validation_error {
+            if found_match_validation_error {
                 panic!(
-                    "found more than one expected validation error: {:?}",
+                    "found more than one match validation error: {:?}",
                     validation_error
                 );
             }
-            found_expected_validation_error = true;
+            found_match_validation_error = true;
         }
     }
-    assert!(found_expected_validation_error);
+    assert!(found_match_validation_error);
 
-    // Update the target field to a "valid" value.
+    // Check prefix validation errors.
+    let mut found_prefix_validation_error = false;
+    for validation_error in &prefix_validation_status.errors {
+        if validation_error.kind == ValidationKind::ValidateString {
+            if found_prefix_validation_error {
+                panic!(
+                    "found more than one prefix validation error: {:?}",
+                    validation_error
+                );
+            }
+            found_prefix_validation_error = true;
+        }
+    }
+    assert!(found_prefix_validation_error);
+
+    // Update the fields to "valid" values.
     let (_, updated_gecs_attribute_value_id) = AttributeValue::update_for_context(
         ctx,
         updated_gecs_attribute_value_id,
         Some(*domain_attribute_value.id()),
-        update_attribute_context,
-        Some(serde_json::json![expected]),
+        gecs_update_attribute_context,
+        Some(serde_json::json!["stupidHorse"]),
+        None,
+    )
+    .await
+    .expect("could not update attribute value");
+    let (_, updated_prefix_attribute_value_id) = AttributeValue::update_for_context(
+        ctx,
+        updated_prefix_attribute_value_id,
+        Some(*domain_attribute_value.id()),
+        prefix_update_attribute_context,
+        Some(serde_json::json!["toothless"]),
         None,
     )
     .await
@@ -175,6 +241,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
                 "name": "hundo_gecs"
             },
             "domain": {
+                "the_tree_of_clues": "toothless",
                 "thousand_gecs": "stupidHorse"
             }
         }], // actual
@@ -184,26 +251,49 @@ async fn check_validations_for_component(ctx: &DalContext) {
             .properties // expected
     );
 
-    // Ensure we see exactly one expected validation status with no errors.
+    // Ensure we see the exact validation status with no errors.
     let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
         .await
         .expect("could not find status for validation(s) of a given component");
+    let (match_validation_status, prefix_validation_status) = get_validation_statuses(
+        &validation_statuses,
+        updated_gecs_attribute_value_id,
+        updated_prefix_attribute_value_id,
+    );
+    assert!(match_validation_status.errors.is_empty());
+    assert!(prefix_validation_status.errors.is_empty());
+}
 
-    let mut expected_validation_status = None;
-    for validation_status in &validation_statuses {
-        if validation_status.attribute_value_id == updated_gecs_attribute_value_id {
-            if expected_validation_status.is_some() {
+fn get_validation_statuses(
+    validation_statuses: &Vec<ValidationStatus>,
+    match_attribute_value_id: AttributeValueId,
+    prefix_attribute_value_id: AttributeValueId,
+) -> (ValidationStatus, ValidationStatus) {
+    let mut match_validation_status = None;
+    let mut prefix_validation_status = None;
+    for validation_status in validation_statuses {
+        if validation_status.attribute_value_id == match_attribute_value_id {
+            if match_validation_status.is_some() {
                 panic!(
-                    "found more than one expected validation status: {:?}",
+                    "found more than one match validation status: {:?}",
                     validation_statuses
                 );
             }
-            expected_validation_status = Some(validation_status.clone());
+            match_validation_status = Some(validation_status.clone());
+        } else if validation_status.attribute_value_id == prefix_attribute_value_id {
+            if prefix_validation_status.is_some() {
+                panic!(
+                    "found more than one prefix validation status: {:?}",
+                    validation_statuses
+                );
+            }
+            prefix_validation_status = Some(validation_status.clone());
         }
     }
-    let expected_validation_status =
-        expected_validation_status.expect("did not find expected validation status");
-    assert!(expected_validation_status.errors.is_empty());
+    (
+        match_validation_status.expect("did not find match validation status"),
+        prefix_validation_status.expect("did not find prefix validation status"),
+    )
 }
 
 /// This test ensures that validation statuses correspond to attribute values that exist in an

@@ -147,11 +147,15 @@ impl SchemaBuiltinsTestHarness {
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {
         let mut prop_map = match builtin {
-            Builtin::AwsRegion => Self::prop_map_for_aws_region(ctx, schema_variant_id).await,
-            Builtin::CoreOsButane => Self::prop_map_for_coreos_butane(ctx, schema_variant_id).await,
-            Builtin::DockerImage => Self::prop_map_for_docker_image(ctx, schema_variant_id).await,
+            Builtin::AwsRegion => Self::cache_props_for_aws_region(ctx, schema_variant_id).await,
+            Builtin::CoreOsButane => {
+                Self::cache_props_for_coreos_butane(ctx, schema_variant_id).await
+            }
+            Builtin::DockerImage => {
+                Self::cache_props_for_docker_image(ctx, schema_variant_id).await
+            }
             Builtin::KubernetesNamespace => {
-                Self::prop_map_for_kubernetes_namespace(ctx, schema_variant_id).await
+                Self::cache_props_for_kubernetes_namespace(ctx, schema_variant_id).await
             }
             _ => HashMap::new(),
         };
@@ -166,10 +170,7 @@ impl SchemaBuiltinsTestHarness {
         prop_map
     }
 
-    /// Returns a [`PropMap`] for [`Builtin::AwsRegion`] with manually cached JSON
-    /// pointers for [`Props`](crate::Prop) from the associated builtins'
-    /// [`SchemaVariant`](crate::SchemaVariant).
-    async fn prop_map_for_aws_region(
+    async fn cache_props_for_aws_region(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {
@@ -182,10 +183,7 @@ impl SchemaBuiltinsTestHarness {
         prop_map
     }
 
-    /// Returns a [`PropMap`] for [`Builtin::CoreOsButane`] with manually cached JSON
-    /// pointers for [`Props`](crate::Prop) from the associated builtins'
-    /// [`SchemaVariant`](crate::SchemaVariant).
-    async fn prop_map_for_coreos_butane(
+    async fn cache_props_for_coreos_butane(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {
@@ -243,10 +241,7 @@ impl SchemaBuiltinsTestHarness {
         prop_map
     }
 
-    /// Returns a [`PropMap`] for [`Builtin::DockerImage`] with manually cached JSON
-    /// pointers for [`Props`](crate::Prop) from the associated builtins'
-    /// [`SchemaVariant`](crate::SchemaVariant).
-    async fn prop_map_for_docker_image(
+    async fn cache_props_for_docker_image(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {
@@ -277,10 +272,7 @@ impl SchemaBuiltinsTestHarness {
         prop_map
     }
 
-    /// Returns a [`PropMap`] for [`Builtin::KubernetesNamespace`] with manually cached JSON
-    /// pointers for [`Props`](crate::Prop) from the associated builtins'
-    /// [`SchemaVariant`](crate::SchemaVariant).
-    async fn prop_map_for_kubernetes_namespace(
+    async fn cache_props_for_kubernetes_namespace(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {

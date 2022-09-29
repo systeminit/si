@@ -47,6 +47,7 @@ async fn new(ctx: &DalContext) {
         serde_json::to_value(FuncBackendValidateStringValueArgs::new(
             None,
             "amon amarth".to_owned(),
+            false,
         ))
         .expect("cannot turn args into json"),
         context.clone(),
@@ -56,8 +57,11 @@ async fn new(ctx: &DalContext) {
 
     let component = create_component_for_schema(ctx, schema.id()).await;
 
-    let args =
-        FuncBackendValidateStringValueArgs::new(Some("".to_string()), "amon amarth".to_string());
+    let args = FuncBackendValidateStringValueArgs::new(
+        Some("".to_string()),
+        "amon amarth".to_string(),
+        false,
+    );
     let func_binding = FuncBinding::new(
         ctx,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -135,6 +139,7 @@ async fn find_errors(ctx: &DalContext) {
         serde_json::to_value(FuncBackendValidateStringValueArgs::new(
             None,
             "amon amarth".to_owned(),
+            false,
         ))
         .expect("cannot turn args into json"),
         context.clone(),
@@ -148,6 +153,7 @@ async fn find_errors(ctx: &DalContext) {
         serde_json::to_value(FuncBackendValidateStringValueArgs::new(
             None,
             "twisty monkey".to_owned(),
+            false,
         ))
         .expect("cannot turn args into json"),
         context,
@@ -155,8 +161,11 @@ async fn find_errors(ctx: &DalContext) {
     .await
     .expect("unable to create validation prototype");
 
-    let first_args =
-        FuncBackendValidateStringValueArgs::new(Some("".to_string()), "amon amarth".to_string());
+    let first_args = FuncBackendValidateStringValueArgs::new(
+        Some("".to_string()),
+        "amon amarth".to_string(),
+        false,
+    );
     let first_func_binding = FuncBinding::new(
         ctx,
         serde_json::to_value(first_args).expect("cannot turn args into json"),
@@ -205,6 +214,7 @@ async fn find_errors(ctx: &DalContext) {
     let second_args = FuncBackendValidateStringValueArgs::new(
         Some("not twisty monkey".to_string()),
         "twisty monkey".to_string(),
+        false,
     );
     let second_func_binding = FuncBinding::new(
         ctx,
