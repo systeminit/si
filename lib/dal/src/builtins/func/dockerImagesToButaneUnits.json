@@ -2,5 +2,9 @@
   "kind": "Json",
   "response_type": "Array",
   "code_file": "dockerImagesToButaneUnits.js",
-  "code_entrypoint": "dockerImagesToButaneUnits"
+  "code_entrypoint": "dockerImagesToButaneUnits",
+  "arguments": [{
+    "name": "images",
+    "kind": "Array"
+  }]
 }

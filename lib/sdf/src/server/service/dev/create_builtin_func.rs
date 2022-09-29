@@ -53,7 +53,7 @@ pub async fn create_builtin_func(
         _ => Err(FuncError::FuncNotSupported)?,
     };
 
-    dal::builtins::func_persist(&func).await?;
+    dal::builtins::func_persist(&ctx, &func).await?;
 
     // Update the ctx with the account details for proper WS signaling
     ctx.update_from_request_context(request_ctx.build(request.visibility));

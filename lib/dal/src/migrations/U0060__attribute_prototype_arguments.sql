@@ -10,8 +10,8 @@ CREATE TABLE attribute_prototype_arguments
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
+    func_argument_id            bigint                   NOT NULL,
     attribute_prototype_id      bigint                   NOT NULL,
-    name                        text                     NOT NULL,
     internal_provider_id        bigint                   NOT NULL,
     external_provider_id        bigint                   NOT NULL,
     tail_component_id           bigint                   NOT NULL,
@@ -20,7 +20,7 @@ CREATE TABLE attribute_prototype_arguments
 
 CREATE UNIQUE INDEX intra_component_argument
     ON attribute_prototype_arguments (attribute_prototype_id,
-                                      name,
+                                      func_argument_id,
                                       internal_provider_id,
                                       visibility_change_set_pk,
                                       (visibility_deleted_at IS NULL))
@@ -31,7 +31,7 @@ CREATE UNIQUE INDEX intra_component_argument
 
 CREATE UNIQUE INDEX inter_component_argument
     ON attribute_prototype_arguments (attribute_prototype_id,
-                                      name,
+                                      func_argument_id,
                                       external_provider_id,
                                       tail_component_id,
                                       head_component_id,
@@ -48,7 +48,7 @@ CREATE OR REPLACE FUNCTION attribute_prototype_argument_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_attribute_prototype_argument_id bigint,
-    this_name text,
+    this_func_argument_id bigint,
     this_internal_provider_id bigint,
     this_external_provider_id bigint,
     this_tail_component_id bigint,
@@ -70,7 +70,7 @@ BEGIN
                                                visibility_change_set_pk,
                                                visibility_deleted_at,
                                                attribute_prototype_id,
-                                               name,
+                                               func_argument_id,
                                                internal_provider_id,
                                                external_provider_id,
                                                tail_component_id,
@@ -82,7 +82,7 @@ BEGIN
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_attribute_prototype_argument_id,
-            this_name,
+            this_func_argument_id,
             this_internal_provider_id,
             this_external_provider_id,
             this_tail_component_id,

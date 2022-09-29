@@ -8,6 +8,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::context::UNSET_ID_VALUE;
+use crate::func::argument::FuncArgumentId;
 use crate::provider::internal::InternalProviderId;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeId,
@@ -61,8 +62,8 @@ pub struct AttributePrototypeArgument {
     /// Indicates the [`AttributePrototype`](crate::AttributePrototype) that [`Self`] is used as
     /// an argument for.
     attribute_prototype_id: AttributePrototypeId,
-    /// The "key" for a given argument.
-    name: String,
+    /// Where to find the name and type of the "key" for a given argument.
+    func_argument_id: FuncArgumentId,
     /// Where to find the value for a given argument for _intra_ [`Component`](crate::Component)
     /// connections.
     internal_provider_id: InternalProviderId,
@@ -98,7 +99,7 @@ impl AttributePrototypeArgument {
     pub async fn new_for_intra_component(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
-        name: impl AsRef<str>,
+        func_argument_id: FuncArgumentId,
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<Self> {
         // Ensure the value fields are what we expect.
@@ -109,7 +110,6 @@ impl AttributePrototypeArgument {
             return Err(AttributePrototypeArgumentError::RequiredValueFieldsUnset);
         }
 
-        let name = name.as_ref();
         let row = ctx
             .txns()
             .pg()
@@ -119,7 +119,7 @@ impl AttributePrototypeArgument {
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
-                    &name,
+                    &func_argument_id,
                     &internal_provider_id,
                     &external_provider_id,
                     &tail_component_id,
@@ -135,7 +135,7 @@ impl AttributePrototypeArgument {
     pub async fn new_for_inter_component(
         ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
-        name: impl AsRef<str>,
+        func_argument_id: FuncArgumentId,
         head_component_id: ComponentId,
         tail_component_id: ComponentId,
         external_provider_id: ExternalProviderId,
@@ -151,7 +151,6 @@ impl AttributePrototypeArgument {
         // For inter component connections, the internal provider id field must be unset.
         let internal_provider_id: InternalProviderId = UNSET_ID_VALUE.into();
 
-        let name = name.as_ref();
         let row = ctx
             .txns()
             .pg()
@@ -161,7 +160,7 @@ impl AttributePrototypeArgument {
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
-                    &name,
+                    &func_argument_id,
                     &internal_provider_id,
                     &external_provider_id,
                     &tail_component_id,
@@ -177,10 +176,13 @@ impl AttributePrototypeArgument {
         Pk(AttributePrototypeId),
         AttributePrototypeArgumentResult
     );
-    standard_model_accessor!(name, String, AttributePrototypeArgumentResult);
 
-    // FIXME(nick): add standard model accessor wrapper that disallows updating set field
-    // to become unset and vice versa.
+    standard_model_accessor!(
+        func_argument_id,
+        Pk(FuncArgumentId),
+        AttributePrototypeArgumentResult
+    );
+
     standard_model_accessor!(
         internal_provider_id,
         Pk(InternalProviderId),

@@ -8,15 +8,23 @@ use serde::{Deserialize, Serialize};
 
 use crate::BuiltinsError::SerdeJson;
 use crate::{
+    func::argument::{FuncArgument, FuncArgumentKind},
     BuiltinsError, BuiltinsResult, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
     StandardModel,
 };
+
+#[derive(Deserialize, Serialize, Debug)]
+struct FunctionMetadataArgument {
+    name: String,
+    kind: FuncArgumentKind,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 struct FunctionMetadata {
     #[serde(skip)]
     name: String,
     kind: FuncBackendKind,
+    arguments: Option<Vec<FunctionMetadataArgument>>,
     response_type: FuncBackendResponseType,
     display_name: Option<String>,
     description: Option<String>,
@@ -25,8 +33,8 @@ struct FunctionMetadata {
     code_entrypoint: Option<String>,
 }
 
-impl From<&Func> for FunctionMetadata {
-    fn from(f: &Func) -> Self {
+impl FunctionMetadata {
+    pub async fn from_func(ctx: &DalContext, f: &Func) -> Self {
         let func_name_regex = Regex::new(r"si:(?P<name>.*)").unwrap();
         let func_name = func_name_regex
             .captures(f.name())
@@ -47,7 +55,20 @@ impl From<&Func> for FunctionMetadata {
 
         let code_file = extension.map(|e| format!("{}.{}", func_name, e));
 
+        let arguments = Some(
+            FuncArgument::list_for_func(ctx, *f.id())
+                .await
+                .expect("could not list function arguments")
+                .iter()
+                .map(|arg| FunctionMetadataArgument {
+                    name: arg.name().to_string(),
+                    kind: *arg.kind(),
+                })
+                .collect(),
+        );
+
         FunctionMetadata {
+            arguments,
             name: func_name.to_string(),
             kind: *f.backend_kind(),
             response_type: *f.backend_response_type(),
@@ -92,7 +113,6 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
         if func_file_extension != "json" {
             continue;
         }
-
         let func_metadata: FunctionMetadata = {
             let file = File::open(entry.path())?;
             serde_json::from_reader(BufReader::new(file))
@@ -150,13 +170,19 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
             .set_link(ctx, func_metadata.link)
             .await
             .expect("cannot set func link");
+
+        if let Some(arguments) = func_metadata.arguments {
+            for arg in arguments {
+                FuncArgument::new(ctx, &arg.name, arg.kind, None, *new_func.id()).await?;
+            }
+        }
     }
 
     Ok(())
 }
 
-pub async fn persist(func: &Func) -> BuiltinsResult<()> {
-    let new_metadata: FunctionMetadata = func.into();
+pub async fn persist(ctx: &DalContext, func: &Func) -> BuiltinsResult<()> {
+    let new_metadata: FunctionMetadata = FunctionMetadata::from_func(ctx, func).await;
 
     let mut base_path = PathBuf::from(CARGO_MANIFEST_DIR);
     base_path.push("src/builtins/func");

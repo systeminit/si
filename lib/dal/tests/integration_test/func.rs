@@ -209,7 +209,7 @@ async fn func_argument_list_for_func(ctx: &DalContext) {
     let funcs = FuncArgument::list_for_func(ctx, 1.into())
         .await
         .expect("Could not list func arguments for func");
-    assert_eq!(6, funcs.len());
+    assert_eq!(7, funcs.len());
 }
 
 #[test]

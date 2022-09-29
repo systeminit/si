@@ -12,6 +12,7 @@ use crate::{
     SchemaVariantId, StandardModel,
 };
 
+use crate::func::argument::{FuncArgument, FuncArgumentId};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -101,12 +102,28 @@ impl BuiltinSchemaHelpers {
     /// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
     pub async fn setup_identity_func(
         ctx: &DalContext,
-    ) -> BuiltinsResult<(FuncId, FuncBindingId, FuncBindingReturnValueId)> {
+    ) -> BuiltinsResult<(
+        FuncId,
+        FuncBindingId,
+        FuncBindingReturnValueId,
+        FuncArgumentId,
+    )> {
         let identity_func_name = "si:identity".to_string();
         let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
             .await?
             .pop()
-            .ok_or(FuncError::NotFoundByName(identity_func_name))?;
+            .ok_or_else(|| FuncError::NotFoundByName(identity_func_name.clone()))?;
+
+        let identity_func_identity_arg = FuncArgument::list_for_func(ctx, *identity_func.id())
+            .await?
+            .pop()
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    identity_func_name.clone(),
+                    "identity".to_string(),
+                )
+            })?;
+
         let (identity_func_binding, identity_func_binding_return_value, _) =
             FuncBinding::find_or_create_and_execute(
                 ctx,
@@ -114,10 +131,12 @@ impl BuiltinSchemaHelpers {
                 *identity_func.id(),
             )
             .await?;
+
         Ok((
             *identity_func.id(),
             *identity_func_binding.id(),
             *identity_func_binding_return_value.id(),
+            *identity_func_identity_arg.id(),
         ))
     }
 

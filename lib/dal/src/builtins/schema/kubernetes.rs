@@ -3,6 +3,7 @@ use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
     code_generation_prototype::CodeGenerationPrototypeContext,
+    func::argument::FuncArgument,
     func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs,
     schema::{SchemaUiMenu, SchemaVariant},
     socket::SocketArity,
@@ -93,8 +94,12 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Create sockets
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        identity_func_identity_arg_id,
+    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     let (external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -158,7 +163,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *metadata_name_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *si_name_internal_provider.id(),
     )
     .await?;
@@ -179,7 +184,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,
-        "identity",
+        identity_func_identity_arg_id,
         *metadata_name_implicit_internal_provider.id(),
     )
     .await?;
@@ -294,8 +299,12 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        identity_func_identity_arg_id,
+    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     let (docker_image_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
@@ -394,7 +403,7 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *domain_namespace_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *kubernetes_namespace_explicit_internal_provider.id(),
     )
     .await?;
@@ -430,7 +439,7 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *template_namespace_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *kubernetes_namespace_explicit_internal_provider.id(),
     )
     .await?;
@@ -460,14 +469,22 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
     let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
         .await?
         .pop()
-        .ok_or(FuncError::NotFoundByName(transformation_func_name))?;
+        .ok_or_else(|| FuncError::NotFoundByName(transformation_func_name.clone()))?;
+    let images_arg = FuncArgument::find_by_name_for_func(ctx, "images", *transformation_func.id())
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                transformation_func_name.clone(),
+                "images".to_string(),
+            )
+        })?;
     containers_attribute_prototype
         .set_func_id(ctx, *transformation_func.id())
         .await?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *containers_attribute_prototype.id(),
-        "images",
+        *images_arg.id(),
         *docker_image_explicit_internal_provider.id(),
     )
     .await?;

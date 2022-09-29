@@ -62,7 +62,7 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
 
     let _ = QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
         BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     let system_socket = Socket::new(
@@ -149,8 +149,12 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut properties = HashMap::new();
     properties.insert("image".to_owned(), serde_json::json!(""));
 
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        identity_func_identity_arg_id,
+    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     let (_docker_hub_credential_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
@@ -239,7 +243,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *image_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *si_name_internal_provider.id(),
     )
     .await?;
@@ -259,7 +263,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
                     *docker_image_external_provider.id(),
                 )
             })?,
-        "identity",
+        identity_func_identity_arg_id,
         *root_implicit_internal_provider.id(),
     )
     .await?;

@@ -67,7 +67,6 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     // Finally, create the inter component connection.
     Edge::connect_providers_for_components(
         ctx,
-        "identity",
         *head_explicit_internal_provider.id(),
         head_deployment_payload.component_id,
         *tail_external_provider.id(),

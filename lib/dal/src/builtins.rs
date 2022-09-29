@@ -24,6 +24,7 @@ mod schema;
 mod workflow;
 
 // Expose the "persist" function for creating and editing builtin funcs while in dev mode.
+use crate::func::argument::FuncArgumentError;
 pub use func::persist as func_persist;
 
 #[derive(Error, Debug)]
@@ -46,6 +47,8 @@ pub enum BuiltinsError {
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
@@ -92,6 +95,8 @@ pub enum BuiltinsError {
     WorkflowPrototype(#[from] WorkflowPrototypeError),
     #[error("Func Metadata error: {0}")]
     FuncMetadata(String),
+    #[error("builtin {0} missing func argument {0}")]
+    BuiltinMissingFuncArgument(String, String),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
