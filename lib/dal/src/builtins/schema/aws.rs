@@ -801,7 +801,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
 
     let _key_type_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
-        "key type",
+        "KeyType",
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
@@ -809,15 +809,36 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    let _tags_prop = BuiltinSchemaHelpers::create_prop(
+    let tags_map_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "tags",
-        PropKind::Array,
+        PropKind::Map,
         None,
         Some(root_prop.domain_prop_id),
         Some(KEY_PAIR_DOCS_URL.to_string()),
     )
     .await?;
+
+    let _tags_map_item_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "tag",
+        PropKind::String,
+        None,
+        Some(*tags_map_prop.id()),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let aws_resource_type_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "awsResourceType",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
     let region_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "region",
@@ -825,6 +846,28 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         None,
         Some(root_prop.domain_prop_id),
         Some(KEY_PAIR_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // Code Generation Prototype
+    let code_generation_func_name = "si:generateAwsJSON".to_owned();
+    let code_generation_func =
+        Func::find_by_attr(ctx, "name", &code_generation_func_name.to_owned())
+            .await?
+            .pop()
+            .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
+
+    let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
+    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
+    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
+    code_generation_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    let _prototype = CodeGenerationPrototype::new(
+        ctx,
+        *code_generation_func.id(),
+        code_generation_args_json,
+        CodeLanguage::Json,
+        code_generation_prototype_context,
     )
     .await?;
 
@@ -878,6 +921,16 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
 
     // Wrap it up.
     schema_variant.finalize(ctx).await?;
+
+    // Set Defaults
+    BuiltinSchemaHelpers::set_default_value_for_prop(
+        ctx,
+        *aws_resource_type_prop.id(),
+        *schema.id(),
+        *schema_variant.id(),
+        serde_json::json!["key-pair"],
+    )
+    .await?;
 
     // Connect the "/root/domain/key id" prop to the external provider.
     let external_provider_attribute_prototype_id = key_name_external_provider
@@ -1248,6 +1301,16 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    let aws_resource_type_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "awsResourceType",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
     // Socket Creation
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
@@ -1331,7 +1394,18 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Wrap it up!
     schema_variant.finalize(ctx).await?;
+
+    // Set Defaults
+    BuiltinSchemaHelpers::set_default_value_for_prop(
+        ctx,
+        *aws_resource_type_prop.id(),
+        *schema.id(),
+        *schema_variant.id(),
+        serde_json::json!["security-group"],
+    )
+    .await?;
 
     // Socket Binding
     let base_attribute_read_context = AttributeReadContext {
