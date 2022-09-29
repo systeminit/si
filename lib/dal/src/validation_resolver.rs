@@ -140,11 +140,11 @@ impl ValidationResolver {
             .await?
             .ok_or(ValidationResolverError::SchemaNotFound)?;
         let context = AttributeReadContext {
+            prop_id: None,
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(component_id),
             system_id: Some(system_id),
-            schema_variant_id: Some(*schema_variant.id()),
-            schema_id: Some(*schema.id()),
-            prop_id: None,
             ..AttributeReadContext::default()
         };
         let rows = ctx
