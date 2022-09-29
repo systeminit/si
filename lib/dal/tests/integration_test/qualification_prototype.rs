@@ -125,7 +125,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
         (&fou, &fou_root),
     ] {
         // Is this the minimum for a schema variant that can have a component?
-        let func_name = "si:validateStringEquals".to_string();
+        let func_name = "si:validateString".to_string();
         let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await.unwrap();
         let func = funcs
             .pop()
@@ -148,6 +148,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
             serde_json::to_value(&FuncBackendValidateStringValueArgs::new(
                 None,
                 "Fou!".to_string(),
+                false,
             ))
             .unwrap(),
             validation_prototype_ctx.clone(),

@@ -8,11 +8,18 @@ use crate::func::backend::{FuncBackend, FuncBackendResult};
 pub struct FuncBackendValidateStringArrayValueArgs {
     pub value: Option<String>,
     pub expected: Vec<String>,
+    /// Display the expected list. This is preferable to disable if the list has many items
+    /// (e.g. 100+), but may be preferable to enable is the list has a few items (e.g. 4 or 5).
+    pub display_expected: bool,
 }
 
 impl FuncBackendValidateStringArrayValueArgs {
-    pub fn new(value: Option<String>, expected: Vec<String>) -> Self {
-        Self { value, expected }
+    pub fn new(value: Option<String>, expected: Vec<String>, display_expected: bool) -> Self {
+        Self {
+            value,
+            expected,
+            display_expected,
+        }
     }
 }
 
@@ -39,8 +46,13 @@ impl FuncBackend for FuncBackendValidateStringArrayValue {
         if let Some(value) = maybe_value {
             let valid = expected.iter().any(|e| e == &value);
             if !valid {
+                let message = if self.args.display_expected {
+                    format!("value ({value}) not found in list of expected values ({expected:?})")
+                } else {
+                    format!("value ({value}) not found in list of expected values")
+                };
                 validation_errors.push(ValidationError {
-                    message: format!("value ({value}) not found in list: {expected:?}"),
+                    message,
                     kind: ValidationKind::ValidateStringArray,
                     link: None,
                     level: None,

@@ -21,7 +21,8 @@ impl ValidationKind {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ValidationError {
     pub message: String,
-    /// This really should be an enum at some point, but we need to figure out the set of values it should be first.
+    /// This really should be an enum at some point, but we need to figure out the set of values it
+    /// should be first.
     pub level: Option<String>,
     pub kind: ValidationKind,
     pub link: Option<String>,

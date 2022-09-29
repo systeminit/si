@@ -8,11 +8,18 @@ use crate::func::backend::{FuncBackend, FuncBackendResult};
 pub struct FuncBackendValidateStringValueArgs {
     pub value: Option<String>,
     pub expected: String,
+    /// If enabled, check if the found value's _prefix_ is the expected value. If disabled, check
+    /// if the found value is _equivalent_ to the expected value.
+    pub check_prefix: bool,
 }
 
 impl FuncBackendValidateStringValueArgs {
-    pub fn new(value: Option<String>, expected: String) -> Self {
-        Self { value, expected }
+    pub fn new(value: Option<String>, expected: String, check_prefix: bool) -> Self {
+        Self {
+            value,
+            expected,
+            check_prefix,
+        }
     }
 }
 
@@ -37,7 +44,14 @@ impl FuncBackend for FuncBackendValidateStringValue {
         let mut validation_errors = vec![];
 
         if let Some(v) = value {
-            if v != expected {
+            if self.args.check_prefix && !v.starts_with(&expected) {
+                validation_errors.push(ValidationError {
+                    message: format!("value ({v}) does not contain prefix ({expected})"),
+                    kind: ValidationKind::ValidateString,
+                    link: None,
+                    level: None,
+                });
+            } else if !self.args.check_prefix && v != expected {
                 validation_errors.push(ValidationError {
                     message: format!("value ({v}) does not match expected ({expected})"),
                     kind: ValidationKind::ValidateString,

@@ -462,14 +462,17 @@ modify your test accordingly:
 
 ```rust
 // Note, you'll want to own your `DalContext` so that you can consume it
-// when commiting.
+// when commiting. Let's call it `octx` for "owned `ctx`".
 #[test]
-async fn your_dal_integration_test(ctx: DalContext) {
+async fn your_dal_integration_test(octx: DalContext) {
+    // Save the owned context for later.
+    let ctx = &octx;
+
     // Perform your test work, mutate the `ctx`, etc.
 
     // Construct a new ctx, resuing the connected `Connections` with identical
     // tenancies, visibility, and history actor
-    let ctx = commit_and_continue(ctx).await;
+    let ctx = commit_and_continue(octx).await;
 
     // More test code, if applicable.
 }
