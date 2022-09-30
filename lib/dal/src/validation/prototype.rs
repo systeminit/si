@@ -1,18 +1,20 @@
-use crate::DalContext;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use si_data::{NatsError, PgError};
-use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::validation::prototype::context::ValidationPrototypeContextBuilder;
 use crate::{
     func::FuncId,
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, HistoryEventError, PropId, SchemaId, SchemaVariantId, StandardModel,
+    standard_model_accessor, DalContext, HistoryEventError, PropId, SchemaVariantId, StandardModel,
     StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
 };
+use crate::{PropKind, ValidationPrototypeContext};
+
+pub mod context;
 
 #[derive(Error, Debug)]
 pub enum ValidationPrototypeError {
@@ -26,73 +28,20 @@ pub enum ValidationPrototypeError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+
+    #[error("prop for validation prototype context is not of primitive prop kind, found: {0:?}")]
+    ContextPropKindIsNotPrimitive(PropKind),
+    #[error("for builder {0:?}, the following fields must be set: {1:?}")]
+    PrerequisteFieldsUnset(ValidationPrototypeContextBuilder, Vec<&'static str>),
+    #[error("prop not found by id: {0}")]
+    PropNotFound(PropId),
 }
 
 pub type ValidationPrototypeResult<T> = Result<T, ValidationPrototypeError>;
 
-pub const UNSET_ID_VALUE: i64 = -1;
-
-const LIST_FOR_PROP: &str = include_str!("queries/validation_prototype_list_for_prop.sql");
+const LIST_FOR_PROP: &str = include_str!("../queries/validation_prototype_list_for_prop.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
-    include_str!("queries/validation_prototype_list_for_schema_variant.sql");
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct ValidationPrototypeContext {
-    prop_id: PropId,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
-}
-
-// Hrm - is this a universal resolver context? -- Adam
-impl Default for ValidationPrototypeContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ValidationPrototypeContext {
-    pub fn new() -> Self {
-        Self {
-            prop_id: UNSET_ID_VALUE.into(),
-            schema_id: UNSET_ID_VALUE.into(),
-            schema_variant_id: UNSET_ID_VALUE.into(),
-            system_id: UNSET_ID_VALUE.into(),
-        }
-    }
-
-    pub fn prop_id(&self) -> PropId {
-        self.prop_id
-    }
-
-    pub fn set_prop_id(&mut self, prop_id: PropId) {
-        self.prop_id = prop_id;
-    }
-
-    pub fn schema_id(&self) -> SchemaId {
-        self.schema_id
-    }
-
-    pub fn set_schema_id(&mut self, schema_id: SchemaId) {
-        self.schema_id = schema_id;
-    }
-
-    pub fn schema_variant_id(&self) -> SchemaVariantId {
-        self.schema_variant_id
-    }
-
-    pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
-        self.schema_variant_id = schema_variant_id;
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    pub fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
-    }
-}
+    include_str!("../queries/validation_prototype_list_for_schema_variant.sql");
 
 pk!(ValidationPrototypePk);
 pk!(ValidationPrototypeId);
@@ -207,17 +156,5 @@ impl ValidationPrototype {
             .await?;
         let object = objects_from_rows(rows)?;
         Ok(object)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::ValidationPrototypeContext;
-
-    #[test]
-    fn context_builder() {
-        let mut c = ValidationPrototypeContext::new();
-        c.set_prop_id(22.into());
-        assert_eq!(c.prop_id(), 22.into());
     }
 }

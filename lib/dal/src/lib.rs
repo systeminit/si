@@ -57,8 +57,7 @@ pub mod test;
 pub mod test_harness;
 pub mod timestamp;
 pub mod user;
-pub mod validation_prototype;
-pub mod validation_resolver;
+pub mod validation;
 pub mod visibility;
 pub mod workflow;
 pub mod workflow_prototype;
@@ -159,10 +158,13 @@ pub use standard_model::{StandardModel, StandardModelError, StandardModelResult}
 pub use system::{System, SystemError, SystemId, SystemPk, SystemResult};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserId, UserResult};
-pub use validation_prototype::{
-    ValidationPrototype, ValidationPrototypeError, ValidationPrototypeId,
+pub use validation::prototype::{
+    context::ValidationPrototypeContext, ValidationPrototype, ValidationPrototypeError,
+    ValidationPrototypeId,
 };
-pub use validation_resolver::{ValidationResolver, ValidationResolverError, ValidationResolverId};
+pub use validation::resolver::{
+    ValidationResolver, ValidationResolverError, ValidationResolverId, ValidationStatus,
+};
 use veritech::EncryptionKey;
 pub use visibility::{Visibility, VisibilityError};
 pub use workflow::{

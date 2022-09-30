@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::func::backend::validation::ValidationError;
+use crate::validation::ValidationError;
 use crate::DalContext;
 use crate::{
     func::{
@@ -46,9 +46,9 @@ pub enum ValidationResolverError {
 
 pub type ValidationResolverResult<T> = Result<T, ValidationResolverError>;
 
-const FIND_STATUS: &str = include_str!("./queries/validation_resolver_find_status.sql");
+const FIND_STATUS: &str = include_str!("../queries/validation_resolver_find_status.sql");
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ValidationStatus {
     pub attribute_value_id: AttributeValueId,
     pub errors: Vec<ValidationError>,

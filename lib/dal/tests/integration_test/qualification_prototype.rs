@@ -1,14 +1,13 @@
 use crate::dal::test;
+use dal::func::backend::validation::FuncBackendValidationArgs;
 use dal::qualification_prototype::QualificationPrototypeContext;
+use dal::validation::ValidationKind;
 use dal::{
-    component::ComponentKind,
-    func::backend::validation::validate_string::FuncBackendValidateStringValueArgs,
-    generate_name,
-    qualification_prototype::QualificationPrototypeContextField,
-    validation_prototype::{ValidationPrototype, ValidationPrototypeContext},
-    Component, DalContext, Func, FuncBackendKind, FuncBackendResponseType, Prop, PropKind,
-    QualificationPrototype, Schema, SchemaError, SchemaKind, SchemaVariant, StandardModel,
-    SystemId,
+    component::ComponentKind, generate_name,
+    qualification_prototype::QualificationPrototypeContextField, Component, DalContext, Func,
+    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, QualificationPrototype, Schema,
+    SchemaError, SchemaKind, SchemaVariant, StandardModel, SystemId, ValidationPrototype,
+    ValidationPrototypeContext,
 };
 use std::option::Option::None;
 
@@ -125,36 +124,42 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
         (&fou, &fou_root),
     ] {
         // Is this the minimum for a schema variant that can have a component?
-        let func_name = "si:validateString".to_string();
-        let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await.unwrap();
+        let func_name = "si:validation".to_string();
+        let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
+            .await
+            .expect("could not find func by name");
         let func = funcs
             .pop()
             .ok_or(SchemaError::MissingFunc(func_name))
-            .unwrap();
-        let mut validation_prototype_ctx = ValidationPrototypeContext::default();
-        validation_prototype_ctx.set_schema_id(*schema.id());
-        validation_prototype_ctx.set_schema_variant_id(*variant.id());
+            .expect("found not found");
+        let mut builder = ValidationPrototypeContext::builder();
+        builder.set_schema_id(*schema.id());
+        builder.set_schema_variant_id(*variant.id());
         let text_prop = Prop::new(ctx, "text", PropKind::String, None)
             .await
-            .unwrap();
+            .expect("could not create string prop");
         text_prop
             .set_parent_prop(ctx, root_prop.domain_prop_id)
             .await
-            .unwrap();
-        validation_prototype_ctx.set_prop_id(*text_prop.id());
+            .expect("could not set parent prop");
+
+        builder.set_prop_id(*text_prop.id());
         let _prototype = ValidationPrototype::new(
             ctx,
             *func.id(),
-            serde_json::to_value(&FuncBackendValidateStringValueArgs::new(
+            serde_json::to_value(&FuncBackendValidationArgs::new(
                 None,
-                "Fou!".to_string(),
-                false,
+                ValidationKind::StringEquals("Fou!".to_string()),
             ))
-            .unwrap(),
-            validation_prototype_ctx.clone(),
+            .expect("could not convert args to value"),
+            builder
+                .to_context(ctx)
+                .await
+                .expect("could not convert builder to context"),
         )
         .await
-        .unwrap();
+        .expect("could not create prototype");
+
         variant.finalize(ctx).await.expect("finalize variant");
     }
 
