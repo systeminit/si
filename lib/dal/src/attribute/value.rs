@@ -1096,20 +1096,16 @@ impl AttributeValue {
                     .set_parent_attribute_value(ctx, &parent_attribute_value_id)
                     .await?;
 
-                let prototype = AttributePrototype::new_with_existing_value(
+                let _prototype = AttributePrototype::new_with_existing_value(
                     ctx,
                     *unset_func.id(),
                     context,
                     None,
                     Some(parent_attribute_value_id),
-                    parent_attribute_value_id,
+                    *prop_attribute_value.id(),
                 )
                 .await
                 .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
-
-                prop_attribute_value
-                    .set_attribute_prototype(ctx, prototype.id())
-                    .await?;
 
                 // PropKind::Object is the only kind of Prop that can have child Props,
                 // and that we want to create unset AttributePrototypes & AttributeValue
