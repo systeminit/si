@@ -61,6 +61,7 @@ function darwin-bootstrap {
         awscli
         bash
         butane
+        coreutils
         git
         kubeval
         libtool
@@ -202,19 +203,21 @@ function install-butane-linux-amd64 {
 }
 
 function check-binaries {
-    local binaries=(
-        butane
-        cargo
-        docker
-        docker-compose
-        kubeval
-        node
-        npm
-        protoc
-        skopeo
-    )
+    # Ensure we can get the absolute path of the required binaries file.
+    REALPATH=realpath
+    if [ ! "$(command -v realpath)" ]; then
+        REALPATH=grealpath
+        if [ ! "$(command -v grealpath)" ]; then
+            die "realpath or grealpath must be installed and in PATH (from GNU coreutils)"
+        fi
+    fi
 
-    for binary in "${binaries[@]}"; do
+    # Get the binaries from the file.
+    SCRIPT_DIR=$(dirname $(${REALPATH} -s "$0"));
+    BINARIES=$(cat $SCRIPT_DIR/data/required-binaries.txt)
+
+    # Check if each required binary in PATH.
+    for binary in $BINARIES; do
         if ! [ "$(command -v ${binary})" ]; then
             die "\"$binary\" must be installed and in PATH"
         fi

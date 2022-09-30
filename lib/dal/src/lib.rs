@@ -180,14 +180,45 @@ pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, Workspa
 pub use write_tenancy::{WriteTenancy, WriteTenancyError};
 pub use ws_event::{WsEvent, WsEventError, WsPayload};
 
+#[cfg(debug_assertions)]
+const REQUIRED_BINARIES: &str = include_str!("../../../scripts/data/required-binaries.txt");
+
 #[derive(Error, Debug)]
 pub enum InitializationError {
-    #[error("failed ot initialize sodium oxide")]
+    #[error("missing required runtime dependencies: {0:?}")]
+    MissingRequiredRuntimeDependencies(Vec<&'static str>),
+    #[error("failed to initialize sodium oxide")]
     SodiumOxide,
 }
 
-pub fn init() -> Result<(), InitializationError> {
-    sodiumoxide::init().map_err(|()| InitializationError::SodiumOxide)
+pub type InitializationResult<T> = Result<T, InitializationError>;
+
+/// Perform base initializations before using the `dal`.
+pub fn init() -> InitializationResult<()> {
+    sodiumoxide::init().map_err(|()| InitializationError::SodiumOxide)?;
+
+    #[cfg(debug_assertions)]
+    check_runtime_dependencies()?;
+
+    Ok(())
+}
+
+/// Check that runtime dependencies are in `PATH`. This check only occurs in "dev mode" during
+/// [`init()`](init()).
+#[cfg(debug_assertions)]
+pub fn check_runtime_dependencies() -> InitializationResult<()> {
+    let mut missing_binaries = Vec::new();
+    for binary in REQUIRED_BINARIES.lines() {
+        if which::which(binary).is_err() {
+            missing_binaries.push(binary);
+        }
+    }
+    if !missing_binaries.is_empty() {
+        return Err(InitializationError::MissingRequiredRuntimeDependencies(
+            missing_binaries,
+        ));
+    }
+    Ok(())
 }
 
 mod embedded {

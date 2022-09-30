@@ -18,6 +18,9 @@ use crate::{
     DalContext, JwtSecretKey, ServicesContext,
 };
 
+#[cfg(debug_assertions)]
+use crate::check_runtime_dependencies;
+
 pub mod helpers;
 
 const DEFAULT_PG_DBNAME: &str = "si_test";
@@ -332,6 +335,11 @@ async fn global_setup(test_context_builer: TestContextBuilder) {
 
     debug!("initializing crypto");
     sodiumoxide::init().expect("failed to init sodiumoxide crypto");
+
+    #[cfg(debug_assertions)]
+    debug!("checking for required runtime dependencies");
+    #[cfg(debug_assertions)]
+    check_runtime_dependencies().unwrap();
 
     let nats_subject_prefix = nats_subject_prefix();
 
