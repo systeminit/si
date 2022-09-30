@@ -1,4 +1,4 @@
 {
-  "kind": "ValidateStringValue",
+  "kind": "Validation",
   "response_type": "Validation"
 }

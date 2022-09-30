@@ -7,7 +7,7 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech::{OutputStream, ResolverFunctionComponent};
 
-use crate::func::backend::validation::validate_string_array::FuncBackendValidateStringArrayValue;
+use crate::func::backend::validation::FuncBackendValidation;
 use crate::func::backend::{
     array::FuncBackendArray,
     boolean::FuncBackendBoolean,
@@ -21,7 +21,6 @@ use crate::func::backend::{
     map::FuncBackendMap,
     prop_object::FuncBackendPropObject,
     string::FuncBackendString,
-    validation::validate_string::FuncBackendValidateStringValue,
     FuncBackend, FuncDispatch, FuncDispatchContext,
 };
 use crate::DalContext;
@@ -300,11 +299,8 @@ impl FuncBinding {
             }
             FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await?,
             FuncBackendKind::Unset => (None, None),
-            FuncBackendKind::ValidateStringValue => {
-                FuncBackendValidateStringValue::create_and_execute(&self.args).await?
-            }
-            FuncBackendKind::ValidateStringArrayValue => {
-                FuncBackendValidateStringArrayValue::create_and_execute(&self.args).await?
+            FuncBackendKind::Validation => {
+                FuncBackendValidation::create_and_execute(&self.args).await?
             }
         };
         Ok(value)
@@ -377,8 +373,7 @@ impl FuncBinding {
             | FuncBackendKind::PropObject
             | FuncBackendKind::String
             | FuncBackendKind::Unset
-            | FuncBackendKind::ValidateStringValue
-            | FuncBackendKind::ValidateStringArrayValue => {}
+            | FuncBackendKind::Validation => {}
 
             FuncBackendKind::JsCodeGeneration
             | FuncBackendKind::JsQualification

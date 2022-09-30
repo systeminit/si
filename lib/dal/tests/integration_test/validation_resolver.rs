@@ -1,17 +1,16 @@
-use crate::dal::test;
+use dal::func::backend::validation::FuncBackendValidationArgs;
 use dal::test_harness::{
     create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
 };
+use dal::validation::ValidationKind;
 use dal::{
-    func::{
-        backend::validation::validate_string::FuncBackendValidateStringValueArgs,
-        binding::FuncBinding,
-    },
-    test_harness::create_component_for_schema,
-    validation_prototype::ValidationPrototypeContext,
-    AttributeContext, AttributeValue, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    PropKind, SchemaKind, StandardModel, SystemId, ValidationPrototype, ValidationResolver,
+    func::binding::FuncBinding, test_harness::create_component_for_schema, AttributeContext,
+    AttributeValue, DalContext, Func, FuncBackendKind, FuncBackendResponseType, PropKind,
+    SchemaKind, StandardModel, SystemId, ValidationPrototype, ValidationPrototypeContext,
+    ValidationResolver,
 };
+
+use crate::dal::test;
 
 const UNSET_ID_VALUE: i64 = -1;
 
@@ -31,36 +30,37 @@ async fn new(ctx: &DalContext) {
     let func = Func::new(
         ctx,
         "test:validateString",
-        FuncBackendKind::ValidateStringValue,
+        FuncBackendKind::Validation,
         FuncBackendResponseType::Validation,
     )
     .await
     .expect("cannot create func");
 
-    let mut context = ValidationPrototypeContext::new();
-    context.set_prop_id(*prop.id());
-    context.set_schema_id(*schema.id());
-    context.set_schema_variant_id(*schema_variant.id());
+    let mut builder = ValidationPrototypeContext::builder();
+    builder.set_prop_id(*prop.id());
+    builder.set_schema_id(*schema.id());
+    builder.set_schema_variant_id(*schema_variant.id());
     let prototype = ValidationPrototype::new(
         ctx,
         *func.id(),
-        serde_json::to_value(FuncBackendValidateStringValueArgs::new(
+        serde_json::to_value(FuncBackendValidationArgs::new(
             None,
-            "amon amarth".to_owned(),
-            false,
+            ValidationKind::StringEquals("amon amarth".to_owned()),
         ))
         .expect("cannot turn args into json"),
-        context.clone(),
+        builder
+            .to_context(ctx)
+            .await
+            .expect("could not convert builder to context"),
     )
     .await
     .expect("unable to create validation prototype");
 
     let component = create_component_for_schema(ctx, schema.id()).await;
 
-    let args = FuncBackendValidateStringValueArgs::new(
+    let args = FuncBackendValidationArgs::new(
         Some("".to_string()),
-        "amon amarth".to_string(),
-        false,
+        ValidationKind::StringEquals("amon amarth".to_string()),
     );
     let func_binding = FuncBinding::new(
         ctx,
@@ -123,26 +123,28 @@ async fn find_errors(ctx: &DalContext) {
     let func = Func::new(
         ctx,
         "test:validateString",
-        FuncBackendKind::ValidateStringValue,
+        FuncBackendKind::Validation,
         FuncBackendResponseType::Validation,
     )
     .await
     .expect("cannot create func");
 
-    let mut context = ValidationPrototypeContext::new();
-    context.set_prop_id(*prop.id());
-    context.set_schema_id(*schema.id());
-    context.set_schema_variant_id(*schema_variant.id());
+    let mut builder = ValidationPrototypeContext::builder();
+    builder.set_prop_id(*prop.id());
+    builder.set_schema_id(*schema.id());
+    builder.set_schema_variant_id(*schema_variant.id());
     let first_prototype = ValidationPrototype::new(
         ctx,
         *func.id(),
-        serde_json::to_value(FuncBackendValidateStringValueArgs::new(
+        serde_json::to_value(FuncBackendValidationArgs::new(
             None,
-            "amon amarth".to_owned(),
-            false,
+            ValidationKind::StringEquals("amon amarth".to_owned()),
         ))
         .expect("cannot turn args into json"),
-        context.clone(),
+        builder
+            .to_context(ctx)
+            .await
+            .expect("could not convert builder to context"),
     )
     .await
     .expect("unable to create validation prototype");
@@ -150,21 +152,22 @@ async fn find_errors(ctx: &DalContext) {
     let second_prototype = ValidationPrototype::new(
         ctx,
         *func.id(),
-        serde_json::to_value(FuncBackendValidateStringValueArgs::new(
+        serde_json::to_value(FuncBackendValidationArgs::new(
             None,
-            "twisty monkey".to_owned(),
-            false,
+            ValidationKind::StringEquals("twisty monkey".to_owned()),
         ))
         .expect("cannot turn args into json"),
-        context,
+        builder
+            .to_context(ctx)
+            .await
+            .expect("could not convert builder to context"),
     )
     .await
     .expect("unable to create validation prototype");
 
-    let first_args = FuncBackendValidateStringValueArgs::new(
+    let first_args = FuncBackendValidationArgs::new(
         Some("".to_string()),
-        "amon amarth".to_string(),
-        false,
+        ValidationKind::StringEquals("amon amarth".to_string()),
     );
     let first_func_binding = FuncBinding::new(
         ctx,
@@ -211,10 +214,9 @@ async fn find_errors(ctx: &DalContext) {
     .await
     .expect("cannot create new validation resolver");
 
-    let second_args = FuncBackendValidateStringValueArgs::new(
+    let second_args = FuncBackendValidationArgs::new(
         Some("not twisty monkey".to_string()),
-        "twisty monkey".to_string(),
-        false,
+        ValidationKind::StringEquals("twisty monkey".to_string()),
     );
     let second_func_binding = FuncBinding::new(
         ctx,

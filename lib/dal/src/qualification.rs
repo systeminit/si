@@ -6,10 +6,10 @@ use veritech::QualificationSubCheck;
 
 use crate::attribute::context::UNSET_ID_VALUE;
 use crate::func::{
-    backend::validation::ValidationError,
     binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     FuncMetadataView,
 };
+use crate::validation::ValidationError;
 use crate::ws_event::{WsEvent, WsPayload};
 use crate::{
     component, Component, ComponentId, DalContext, QualificationPrototype,

@@ -1,11 +1,10 @@
-use dal::{BillingAccountSignup, DalContext};
+use dal::func::backend::validation::FuncBackendValidationArgs;
+use dal::test::helpers::find_prop_and_parent_by_name;
+use dal::validation::ValidationKind;
+use dal::{BillingAccountSignup, DalContext, Prop};
+use dal::{Func, Schema, StandardModel, SystemId, ValidationPrototype, ValidationPrototypeContext};
 
 use crate::dal::test;
-use dal::{
-    func::backend::validation::validate_string::FuncBackendValidateStringValueArgs,
-    validation_prototype::{ValidationPrototypeContext, UNSET_ID_VALUE},
-    Func, Schema, StandardModel, SystemId, ValidationPrototype,
-};
 
 #[test]
 async fn new(ctx: &DalContext) {
@@ -20,34 +19,36 @@ async fn new(ctx: &DalContext) {
         .await
         .expect("cannot find default variant");
 
-    let first_prop = default_variant
-        .props(ctx)
+    let (prop_id, _) =
+        find_prop_and_parent_by_name(ctx, "image", "domain", None, *default_variant.id())
+            .await
+            .expect("could not find prop by name");
+    let prop = Prop::get_by_id(ctx, &prop_id)
         .await
-        .expect("cannot get props")
-        .pop()
-        .expect("no prop found");
+        .expect("could not find prop by id")
+        .expect("prop not found by id");
 
-    let func_name = "si:validateString".to_string();
+    let func_name = "si:validation".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
-    let func = funcs
-        .pop()
-        .expect("Missing builtin function si:validateString");
+    let func = funcs.pop().expect("Missing builtin function si:validation");
 
-    let args = FuncBackendValidateStringValueArgs::new(
+    let args = FuncBackendValidationArgs::new(
         Some("".to_string()),
-        "amon amarth".to_string(),
-        false,
+        ValidationKind::StringEquals("amon amarth".to_string()),
     );
 
-    let mut validation_prototype_context = ValidationPrototypeContext::new();
-    validation_prototype_context.set_prop_id(*first_prop.id());
+    let mut builder = ValidationPrototypeContext::builder();
+    builder.set_prop_id(*prop.id());
     let _validation_prototype = ValidationPrototype::new(
         ctx,
         *func.id(),
         serde_json::to_value(&args).expect("Serialization failed"),
-        validation_prototype_context,
+        builder
+            .to_context(ctx)
+            .await
+            .expect("could not convert builder to context"),
     )
     .await
     .expect("cannot create new attribute prototype");
@@ -55,7 +56,7 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
-    let unset_system_id: SystemId = UNSET_ID_VALUE.into();
+    let unset_system_id: SystemId = SystemId::NONE;
 
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
@@ -68,58 +69,61 @@ async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
         .await
         .expect("cannot find default variant");
 
-    let first_prop = default_variant
-        .props(ctx)
+    let (prop_id, _) =
+        find_prop_and_parent_by_name(ctx, "image", "domain", None, *default_variant.id())
+            .await
+            .expect("could not find prop by name");
+    let prop = Prop::get_by_id(ctx, &prop_id)
         .await
-        .expect("cannot get props")
-        .pop()
-        .expect("no prop found");
+        .expect("could not find prop by id")
+        .expect("prop not found by id");
 
-    let func_name = "si:validateString".to_string();
+    let func_name = "si:validation".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
-    let func = funcs
-        .pop()
-        .expect("Missing builtin function si:validateString");
+    let func = funcs.pop().expect("Missing builtin function si:validation");
 
-    let first_args = FuncBackendValidateStringValueArgs::new(
+    let first_args = FuncBackendValidationArgs::new(
         Some("".to_string()),
-        "amon amarth".to_string(),
-        false,
+        ValidationKind::StringEquals("amon amarth".to_string()),
     );
 
-    let mut validation_prototype_context = ValidationPrototypeContext::new();
-    validation_prototype_context.set_prop_id(*first_prop.id());
+    let mut builder = ValidationPrototypeContext::builder();
+    builder.set_prop_id(*prop.id());
     let _first_validation_prototype = ValidationPrototype::new(
         ctx,
         *func.id(),
         serde_json::to_value(&first_args).expect("Serialization failed"),
-        validation_prototype_context,
+        builder
+            .to_context(ctx)
+            .await
+            .expect("could not convert builder to context"),
     )
     .await
     .expect("cannot create new attribute prototype");
 
-    let second_args = FuncBackendValidateStringValueArgs::new(
+    let second_args = FuncBackendValidationArgs::new(
         Some("".to_string()),
-        "twisty monkey".to_string(),
-        false,
+        ValidationKind::StringEquals("twisty monkey".to_string()),
     );
-    let mut validation_prototype_context = ValidationPrototypeContext::new();
-    validation_prototype_context.set_prop_id(*first_prop.id());
+    let mut builder = ValidationPrototypeContext::builder();
+    builder.set_prop_id(*prop.id());
     let _second_validation_prototype = ValidationPrototype::new(
         ctx,
         *func.id(),
         serde_json::to_value(&second_args).expect("Serialization failed"),
-        validation_prototype_context,
+        builder
+            .to_context(ctx)
+            .await
+            .expect("could not convert builder to context"),
     )
     .await
     .expect("cannot create new attribute prototype");
 
-    let validation_results =
-        ValidationPrototype::list_for_prop(ctx, *first_prop.id(), unset_system_id)
-            .await
-            .expect("cannot find values");
+    let validation_results = ValidationPrototype::list_for_prop(ctx, *prop.id(), unset_system_id)
+        .await
+        .expect("cannot find values");
 
     assert_eq!(validation_results.len(), 2);
 }

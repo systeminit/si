@@ -81,10 +81,7 @@ pub enum FuncBackendKind {
     String,
     Unset,
     Json,
-    /// Validate that a [`String`] matches an expected [`String`].
-    ValidateStringValue,
-    /// Validate that a [`String`] exists in a [`Vec<String>`].
-    ValidateStringArrayValue,
+    Validation,
 }
 
 #[derive(

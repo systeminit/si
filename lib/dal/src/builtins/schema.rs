@@ -9,10 +9,12 @@ use crate::{
     },
     AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext, Func,
     FuncError, FuncId, Prop, PropError, PropId, PropKind, Schema, SchemaId, SchemaKind,
-    SchemaVariantId, StandardModel,
+    SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
 };
 
 use crate::func::argument::{FuncArgument, FuncArgumentId};
+use crate::func::backend::validation::FuncBackendValidationArgs;
+use crate::validation::ValidationKind;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -233,5 +235,34 @@ impl BuiltinSchemaHelpers {
             }
             _ => Err(BuiltinsError::NonPrimitivePropKind(*prop.kind())),
         }
+    }
+
+    /// Create a [`validation`](crate::validation) for a [`Prop`](crate::Prop) within a
+    /// [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant).
+    pub async fn create_validation(
+        ctx: &DalContext,
+        validation_kind: ValidationKind,
+        prop_id: PropId,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        let func_name = "si:validation".to_string();
+        let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
+        let func = funcs.pop().ok_or(FuncError::NotFoundByName(func_name))?;
+
+        let mut builder = ValidationPrototypeContext::builder();
+        builder
+            .set_prop_id(prop_id)
+            .set_schema_id(schema_id)
+            .set_schema_variant_id(schema_variant_id);
+
+        ValidationPrototype::new(
+            ctx,
+            *func.id(),
+            serde_json::to_value(FuncBackendValidationArgs::new(None, validation_kind))?,
+            builder.to_context(ctx).await?,
+        )
+        .await?;
+        Ok(())
     }
 }

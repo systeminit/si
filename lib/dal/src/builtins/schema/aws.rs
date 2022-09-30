@@ -5,17 +5,15 @@ use crate::builtins::BuiltinsError;
 use crate::code_generation_prototype::CodeGenerationPrototypeContext;
 use crate::edit_field::widget::WidgetKind;
 use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
-use crate::func::backend::validation::validate_string::FuncBackendValidateStringValueArgs;
-use crate::func::backend::validation::validate_string_array::FuncBackendValidateStringArrayValueArgs;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
-use crate::validation_prototype::ValidationPrototypeContext;
+use crate::validation::ValidationKind;
 use crate::{
     schema::{SchemaUiMenu, SchemaVariant},
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
-    ExternalProvider, Func, FuncError, InternalProvider, PropKind, QualificationPrototype,
-    SchemaError, SchemaKind, Socket, StandardModel, ValidationPrototype,
+    ExternalProvider, Func, InternalProvider, PropKind, QualificationPrototype, SchemaError,
+    SchemaKind, Socket, StandardModel,
 };
 
 // Reference: https://aws.amazon.com/trademark-guidelines/
@@ -93,22 +91,12 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    let mut validation_context = ValidationPrototypeContext::new();
-    validation_context.set_prop_id(*image_id_prop.id());
-    validation_context.set_schema_id(*schema.id());
-    validation_context.set_schema_variant_id(*schema_variant.id());
-    let func_name = "si:validateString".to_string();
-    let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
-    let func = funcs.pop().ok_or(FuncError::NotFoundByName(func_name))?;
-    ValidationPrototype::new(
+    BuiltinSchemaHelpers::create_validation(
         ctx,
-        *func.id(),
-        serde_json::to_value(FuncBackendValidateStringValueArgs::new(
-            None,
-            "ami-".to_string(),
-            true,
-        ))?,
-        validation_context,
+        ValidationKind::StringHasPrefix("ami-".to_string()),
+        *image_id_prop.id(),
+        *schema.id(),
+        *schema_variant.id(),
     )
     .await?;
 
@@ -292,10 +280,6 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop and validation creation
-    let mut validation_context = ValidationPrototypeContext::new();
-    validation_context.set_schema_id(*schema.id());
-    validation_context.set_schema_variant_id(*schema_variant.id());
-
     let image_id_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "ImageId",
@@ -305,19 +289,13 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         Some(EC2_DOCS_URL.to_string()),
     )
     .await?;
-    validation_context.set_prop_id(*image_id_prop.id());
-    let func_name = "si:validateString".to_string();
-    let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
-    let func = funcs.pop().ok_or(FuncError::NotFoundByName(func_name))?;
-    ValidationPrototype::new(
+
+    BuiltinSchemaHelpers::create_validation(
         ctx,
-        *func.id(),
-        serde_json::to_value(FuncBackendValidateStringValueArgs::new(
-            None,
-            "ami-".to_string(),
-            true,
-        ))?,
-        validation_context.clone(),
+        ValidationKind::StringHasPrefix("ami-".to_string()),
+        *image_id_prop.id(),
+        *schema.id(),
+        *schema_variant.id(),
     )
     .await?;
 
@@ -330,18 +308,14 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         Some(EC2_INSTANCE_TYPES_URL.to_string()),
     )
     .await?;
-    validation_context.set_prop_id(*instance_type_prop.id());
-    let func_name = "si:validateStringInStringArray".to_string();
-    let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
-    let func = funcs.pop().ok_or(FuncError::NotFoundByName(func_name))?;
+
     let expected: Vec<String> = serde_json::from_str(INSTANCE_TYPES)?;
-    ValidationPrototype::new(
+    BuiltinSchemaHelpers::create_validation(
         ctx,
-        *func.id(),
-        serde_json::to_value(FuncBackendValidateStringArrayValueArgs::new(
-            None, expected, false,
-        ))?,
-        validation_context,
+        ValidationKind::StringInStringArray(expected, false),
+        *instance_type_prop.id(),
+        *schema.id(),
+        *schema_variant.id(),
     )
     .await?;
 
@@ -745,26 +719,16 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Validation Creation
-    let mut validation_context = ValidationPrototypeContext::new();
-    validation_context.set_prop_id(*region_prop.id());
-    validation_context.set_schema_id(*schema.id());
-    validation_context.set_schema_variant_id(*schema_variant.id());
-
-    let func_name = "si:validateStringInStringArray".to_string();
-    let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
-    let func = funcs.pop().ok_or(FuncError::NotFoundByName(func_name))?;
-
     let expected = regions
         .iter()
         .map(|r| r.region_value.clone())
         .collect::<Vec<String>>();
-    let _region_prop_validation_prototype = ValidationPrototype::new(
+    BuiltinSchemaHelpers::create_validation(
         ctx,
-        *func.id(),
-        serde_json::to_value(FuncBackendValidateStringArrayValueArgs::new(
-            None, expected, true,
-        ))?,
-        validation_context,
+        ValidationKind::StringInStringArray(expected, true),
+        *region_prop.id(),
+        *schema.id(),
+        *schema_variant.id(),
     )
     .await?;
 

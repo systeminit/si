@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
-
 use si_data::{NatsError, PgError};
+use std::collections::HashMap;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -10,7 +9,7 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
-use crate::func::backend::validation::validate_string::FuncBackendValidateStringValueArgs;
+use crate::func::backend::validation::FuncBackendValidationArgs;
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
     js_qualification::FuncBackendJsQualificationArgs,
@@ -47,7 +46,6 @@ use crate::{
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
 
-use crate::func::backend::validation::validate_string_array::FuncBackendValidateStringArrayValueArgs;
 pub use view::{ComponentView, ComponentViewError};
 
 pub mod diff;
@@ -80,6 +78,8 @@ pub enum ComponentError {
     InternalProviderNotFoundForProp(PropId),
     #[error("invalid context(s) provided for diff")]
     InvalidContextForDiff,
+    #[error("invalid func backend kind (0:?) for checking validations (need validation kind)")]
+    InvalidFuncBackendKindForValidations(FuncBackendKind),
     #[error("missing attribute value for id: ({0})")]
     MissingAttributeValue(AttributeValueId),
     #[error("missing index map on attribute value: {0}")]
@@ -469,8 +469,17 @@ impl Component {
             let func = Func::get_by_id(ctx, &validation_prototype.func_id())
                 .await?
                 .ok_or_else(|| PropError::MissingFuncById(validation_prototype.func_id()))?;
+            if func.backend_kind() != &FuncBackendKind::Validation {
+                return Err(ComponentError::InvalidFuncBackendKindForValidations(
+                    *func.backend_kind(),
+                ));
+            }
 
-            let prepared_value = match &value {
+            let mut args = FuncBackendValidationArgs::deserialize(validation_prototype.args())?;
+
+            // NOTE(nick): we will need to check the "kind" on the args in the future if "value"
+            // can be something other than a string.
+            args.value = match &value {
                 Some(json_value) => match json_value.as_str() {
                     Some(v) => Some(v.to_string()),
                     None => {
@@ -482,24 +491,7 @@ impl Component {
                 },
                 None => None,
             };
-
-            let args_json = match func.backend_kind() {
-                FuncBackendKind::ValidateStringValue => {
-                    let mut args = FuncBackendValidateStringValueArgs::deserialize(
-                        validation_prototype.args(),
-                    )?;
-                    args.value = prepared_value;
-                    serde_json::to_value(args)?
-                }
-                FuncBackendKind::ValidateStringArrayValue => {
-                    let mut args = FuncBackendValidateStringArrayValueArgs::deserialize(
-                        validation_prototype.args(),
-                    )?;
-                    args.value = prepared_value;
-                    serde_json::to_value(args)?
-                }
-                kind => unimplemented!("Validator Backend not supported yet: {}", kind),
-            };
+            let args_json = serde_json::to_value(args)?;
 
             let (func_binding, _, created) =
                 FuncBinding::find_or_create_and_execute(ctx, args_json, *func.id()).await?;

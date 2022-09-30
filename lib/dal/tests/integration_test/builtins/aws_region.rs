@@ -1,7 +1,7 @@
 use pretty_assertions_sorted::assert_eq;
 
-use dal::func::backend::validation::ValidationKind;
 use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
+use dal::validation::ValidationErrorKind;
 use dal::{
     DalContext, Edge, ExternalProvider, InternalProvider, StandardModel, SystemId,
     ValidationResolver,
@@ -190,7 +190,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
 
     let mut found_expected_validation_error = false;
     for validation_error in &expected_validation_status.errors {
-        if validation_error.kind == ValidationKind::ValidateStringArray {
+        if validation_error.kind == ValidationErrorKind::StringNotInStringArray {
             if found_expected_validation_error {
                 panic!(
                     "found more than one expected validation error: {:?}",

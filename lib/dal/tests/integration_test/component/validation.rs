@@ -1,14 +1,14 @@
 use pretty_assertions_sorted::assert_eq;
 
 use dal::attribute::context::AttributeContextBuilder;
-use dal::func::backend::validation::validate_string::FuncBackendValidateStringValueArgs;
-use dal::func::backend::validation::ValidationKind;
+use dal::func::backend::validation::FuncBackendValidationArgs;
 use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::test_harness::{
     create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
 };
-use dal::validation_prototype::ValidationPrototypeContext;
-use dal::validation_resolver::ValidationStatus;
+use dal::validation::{ValidationErrorKind, ValidationKind};
+use dal::ValidationPrototypeContext;
+use dal::ValidationStatus;
 use dal::{
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentView, DalContext,
     Func, PropKind, SchemaKind, StandardModel, SystemId, ValidationPrototype, ValidationResolver,
@@ -38,38 +38,52 @@ async fn check_validations_for_component(ctx: &DalContext) {
         .expect("cannot set parent prop");
 
     // Gather what we need to create validations
-    let mut validation_context = ValidationPrototypeContext::new();
-    validation_context.set_schema_id(*schema.id());
-    validation_context.set_schema_variant_id(*schema_variant.id());
-    let func_name = "si:validateString".to_string();
+    let mut builder = ValidationPrototypeContext::builder();
+    builder.set_schema_id(*schema.id());
+    builder.set_schema_variant_id(*schema_variant.id());
+    let func_name = "si:validation".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("could not perform find by attr");
     let func = funcs.pop().expect("could not find func");
 
     // Match validation
-    validation_context.set_prop_id(*gecs_prop.id());
-    let args = serde_json::to_value(FuncBackendValidateStringValueArgs::new(
+    builder.set_prop_id(*gecs_prop.id());
+    let args = serde_json::to_value(FuncBackendValidationArgs::new(
         None,
-        "stupidHorse".to_string(),
-        false,
+        ValidationKind::StringEquals("stupidHorse".to_string()),
     ))
     .expect("could not convert args to Value");
-    ValidationPrototype::new(ctx, *func.id(), args, validation_context.clone())
-        .await
-        .expect("could not create validation prototype");
+    ValidationPrototype::new(
+        ctx,
+        *func.id(),
+        args,
+        builder
+            .to_context(ctx)
+            .await
+            .expect("could not convert builder to context"),
+    )
+    .await
+    .expect("could not create validation prototype");
 
     // Prefix validation
-    validation_context.set_prop_id(*prefix_prop.id());
-    let args = serde_json::to_value(FuncBackendValidateStringValueArgs::new(
+    builder.set_prop_id(*prefix_prop.id());
+    let args = serde_json::to_value(FuncBackendValidationArgs::new(
         None,
-        "tooth".to_string(),
-        true,
+        ValidationKind::StringHasPrefix("tooth".to_string()),
     ))
     .expect("could not convert args to Value");
-    ValidationPrototype::new(ctx, *func.id(), args, validation_context)
-        .await
-        .expect("could not create validation prototype");
+    ValidationPrototype::new(
+        ctx,
+        *func.id(),
+        args,
+        builder
+            .to_context(ctx)
+            .await
+            .expect("could not convert builder to context"),
+    )
+    .await
+    .expect("could not create validation prototype");
 
     // Finalize schema
     schema_variant
@@ -186,7 +200,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
     // Check match validation errors.
     let mut found_match_validation_error = false;
     for validation_error in &match_validation_status.errors {
-        if validation_error.kind == ValidationKind::ValidateString {
+        if validation_error.kind == ValidationErrorKind::StringDoesNotEqual {
             if found_match_validation_error {
                 panic!(
                     "found more than one match validation error: {:?}",
@@ -201,7 +215,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
     // Check prefix validation errors.
     let mut found_prefix_validation_error = false;
     for validation_error in &prefix_validation_status.errors {
-        if validation_error.kind == ValidationKind::ValidateString {
+        if validation_error.kind == ValidationErrorKind::StringDoesNotHavePrefix {
             if found_prefix_validation_error {
                 panic!(
                     "found more than one prefix validation error: {:?}",
