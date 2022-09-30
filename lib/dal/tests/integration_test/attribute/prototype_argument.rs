@@ -8,6 +8,7 @@ use dal::{
 };
 use dal::{AttributePrototypeArgument, DalContext, InternalProvider};
 
+use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::test_harness::create_prop_of_kind_and_set_parent_with_name;
 use pretty_assertions_sorted::assert_eq;
 
@@ -46,6 +47,9 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
     )
     .await
     .expect("cannot create func");
+    let func_arg = FuncArgument::new(ctx, "title", FuncArgumentKind::String, None, *func.id())
+        .await
+        .expect("cannot create func argument");
     let args = FuncBackendStringArgs::new("starfield".to_string());
     let func_binding = FuncBinding::new(
         ctx,
@@ -86,7 +90,7 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
     let argument = AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *attribute_prototype.id(),
-        "title",
+        *func_arg.id(),
         *internal_provider.id(),
     )
     .await
@@ -103,7 +107,10 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
         panic!("expected empty: found attribute prototype arguments returned more results than expected");
     }
 
-    assert_eq!(found_argument.name(), argument.name());
+    assert_eq!(
+        found_argument.func_argument_id(),
+        argument.func_argument_id()
+    );
     assert_eq!(
         found_argument.internal_provider_id(),
         argument.internal_provider_id()

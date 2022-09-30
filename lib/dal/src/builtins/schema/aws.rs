@@ -156,8 +156,13 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        identity_func_identity_arg_id,
+    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+
     let (image_id_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
@@ -221,7 +226,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,
-        "identity",
+        identity_func_identity_arg_id,
         *image_id_implicit_internal_provider.id(),
     )
     .await?;
@@ -251,7 +256,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *region_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *region_explicit_internal_provider.id(),
     )
     .await?;
@@ -455,9 +460,14 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
-    // TODO(nick): add the ability to use butane as input.
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    // TODO(nick): add the ability to use butane and ami as an inputs.
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        identity_func_identity_arg_id,
+    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+
     let (_butane_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
@@ -630,7 +640,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *region_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *region_explicit_internal_provider.id(),
     )
     .await?;
@@ -655,7 +665,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *image_id_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *image_id_explicit_internal_provider.id(),
     )
     .await?;
@@ -681,7 +691,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *keyname_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *keyname_explicit_internal_provider.id(),
     )
     .await?;
@@ -771,8 +781,12 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     // Output Socket
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        identity_func_identity_arg_id,
+    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
     let (region_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
@@ -805,7 +819,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,
-        "identity",
+        identity_func_identity_arg_id,
         *region_implicit_internal_provider.id(),
     )
     .await?;
@@ -938,8 +952,12 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     // Output Socket
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        identity_func_identity_arg_id,
+    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
     let (key_name_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
@@ -1000,7 +1018,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,
-        "identity",
+        identity_func_identity_arg_id,
         *key_name_internal_provider.id(),
     )
     .await?;
@@ -1031,7 +1049,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *region_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *region_explicit_internal_provider.id(),
     )
     .await?;
@@ -1121,7 +1139,7 @@ async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
         BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     // Input Socket
@@ -1228,7 +1246,7 @@ async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
         BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     // Input Socket
@@ -1364,8 +1382,12 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Socket Creation
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        identity_func_identity_arg_id,
+    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     let system_socket = Socket::new(
         ctx,
@@ -1485,7 +1507,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *security_group_id_external_provider_attribute_prototype_id,
-        "identity",
+        identity_func_identity_arg_id,
         *security_group_id_internal_provider.id(),
     )
     .await?;
@@ -1511,7 +1533,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *region_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *region_explicit_internal_provider.id(),
     )
     .await?;
@@ -1537,7 +1559,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *vpc_id_attribute_prototype.id(),
-        "identity",
+        identity_func_identity_arg_id,
         *vpc_id_explicit_internal_provider.id(),
     )
     .await?;

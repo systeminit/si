@@ -50,6 +50,7 @@ pub enum FuncArgumentKind {
     Object,
     String,
     Map,
+    Any,
 }
 
 impl From<PropKind> for FuncArgumentKind {

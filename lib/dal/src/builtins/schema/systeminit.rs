@@ -25,7 +25,7 @@ async fn system(ctx: &DalContext) -> BuiltinsResult<()> {
 
     schema_variant.finalize(ctx).await?;
 
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
         BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
     let (_component_output_provider, _component_output_socket) = ExternalProvider::new_with_socket(
         ctx,

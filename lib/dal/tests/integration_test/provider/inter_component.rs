@@ -45,8 +45,12 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
 
     // Collect the identity func information we need.
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        setup_identity_func(ctx).await;
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        id_func_arg_id,
+    ) = setup_identity_func(ctx).await;
 
     // Setup the "esp" intra component update functionality from "source" to "intermediate".
     let intermediate_attribute_value = AttributeValue::find_for_context(
@@ -73,7 +77,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *intermediate_attribute_prototype.id(),
-        "identity",
+        id_func_arg_id,
         *source_internal_provider.id(),
     )
     .await
@@ -140,7 +144,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         *esp_external_provider
             .attribute_prototype_id()
             .expect("no attribute prototype id for external provider"),
-        "identity",
+        id_func_arg_id,
         *esp_intermediate_internal_provider.id(),
     )
     .await
@@ -179,7 +183,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *swings_destination_attribute_prototype.id(),
-        "identity",
+        id_func_arg_id,
         *swings_explicit_internal_provider.id(),
     )
     .await
@@ -215,7 +219,6 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Connect the two components.
     Edge::connect_providers_for_components(
         ctx,
-        "identity",
         *swings_explicit_internal_provider.id(),
         swings_payload.component_id,
         *esp_external_provider.id(),
@@ -426,8 +429,12 @@ async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
 
 #[test]
 async fn with_deep_data_structure(ctx: &DalContext) {
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        setup_identity_func(ctx).await;
+    let (
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        id_func_arg_id,
+    ) = setup_identity_func(ctx).await;
 
     let mut source_schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (source_schema_variant, source_root) =
@@ -482,7 +489,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         *source_external_provider
             .attribute_prototype_id()
             .expect("no attribute prototype id for external provider"),
-        "identity",
+        id_func_arg_id,
         *source_internal_provider.id(),
     )
     .await
@@ -563,7 +570,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *destination_object_prototype.id(),
-        "identity",
+        id_func_arg_id,
         *destination_internal_provider.id(),
     )
     .await
@@ -627,7 +634,6 @@ async fn with_deep_data_structure(ctx: &DalContext) {
 
     Edge::connect_providers_for_components(
         ctx,
-        "identity",
         *destination_internal_provider.id(),
         *destination_component.id(),
         *source_external_provider.id(),

@@ -152,7 +152,6 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
     .expect("external provider not found");
     Edge::connect_providers_for_components(
         ctx,
-        "identity".to_string(),
         *head_deployment_spongebob_docker_image_provider.id(),
         head_deployment_spongebob_payload.component_id,
         *tail_fedora_provider.id(),
@@ -259,7 +258,6 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
     .expect("external provider not found");
     Edge::connect_providers_for_components(
         ctx,
-        "identity".to_string(),
         *head_deployment_spongebob_docker_image_provider.id(),
         head_deployment_spongebob_payload.component_id,
         *tail_alpine_provider.id(),
@@ -279,7 +277,6 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
     .expect("external provider not found");
     Edge::connect_providers_for_components(
         ctx,
-        "identity".to_string(),
         *head_deployment_kubernetes_namespace_provider.id(),
         head_deployment_spongebob_payload.component_id,
         *tail_namespace_provider.id(),
@@ -291,7 +288,6 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
     // Finally, connect fedora to the squidward deployment.
     Edge::connect_providers_for_components(
         ctx,
-        "identity".to_string(),
         *head_deployment_squidward_docker_image_provider.id(),
         head_deployment_squidward_payload.component_id,
         *tail_fedora_provider.id(),

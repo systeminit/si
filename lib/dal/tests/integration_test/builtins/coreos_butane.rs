@@ -159,7 +159,6 @@ async fn connected_butane_is_valid_ignition(ctx: &DalContext) {
     // Perform the two connections.
     Edge::connect_providers_for_components(
         ctx,
-        "identity",
         *butane_provider.id(),
         butane_payload.component_id,
         *alpine_provider.id(),
@@ -169,7 +168,6 @@ async fn connected_butane_is_valid_ignition(ctx: &DalContext) {
     .expect("could not connect providers for components");
     Edge::connect_providers_for_components(
         ctx,
-        "identity",
         *butane_provider.id(),
         butane_payload.component_id,
         *nginx_provider.id(),

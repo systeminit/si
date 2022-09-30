@@ -74,7 +74,6 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     // Finally, create the inter component connection.
     Edge::connect_providers_for_components(
         ctx,
-        "identity",
         *ec2_explicit_internal_provider.id(),
         ec2_payload.component_id,
         *region_external_provider.id(),

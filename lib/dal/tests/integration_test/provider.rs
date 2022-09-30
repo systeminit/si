@@ -18,7 +18,8 @@ async fn new_external(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let (func_id, func_binding_id, func_binding_return_value_id) = setup_identity_func(ctx).await;
+    let (func_id, func_binding_id, func_binding_return_value_id, _) =
+        setup_identity_func(ctx).await;
 
     let (external_provider, output_socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -54,7 +55,8 @@ async fn new_implicit_internal(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let (func_id, func_binding_id, func_binding_return_value_id) = setup_identity_func(ctx).await;
+    let (func_id, func_binding_id, func_binding_return_value_id, _) =
+        setup_identity_func(ctx).await;
 
     let (explicit_internal_provider, input_socket) = InternalProvider::new_explicit_with_socket(
         ctx,

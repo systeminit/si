@@ -1,4 +1,8 @@
 {
   "kind": "Identity",
-  "response_type": "Identity"
+  "response_type": "Identity",
+  "arguments": [{
+    "name": "identity" ,
+    "kind": "Any"
+  }]
 }

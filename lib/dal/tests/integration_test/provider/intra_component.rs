@@ -1,5 +1,6 @@
 use crate::dal::test;
 use dal::attribute::context::AttributeContextBuilder;
+use dal::func::argument::FuncArgument;
 use dal::func::binding::FuncBinding;
 use dal::provider::internal::InternalProvider;
 use dal::test_harness::{
@@ -174,6 +175,11 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         .expect("could not find func by name attr")
         .pop()
         .expect("identity func not found");
+    let identity_func_identity_arg = FuncArgument::list_for_func(ctx, *identity_func.id())
+        .await
+        .expect("cannot list identity func args")
+        .pop()
+        .expect("cannot find identity func identity arg");
     let (_identity_func_binding, _identity_func_binding_return_value, _) =
         FuncBinding::find_or_create_and_execute(
             ctx,
@@ -199,7 +205,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     let _argument = AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *destination_attribute_prototype.id(),
-        "identity",
+        *identity_func_identity_arg.id(),
         *source_internal_provider.id(),
     )
     .await

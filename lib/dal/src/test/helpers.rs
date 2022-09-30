@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 use crate::attribute::context::AttributeContextBuilder;
+use crate::func::argument::{FuncArgument, FuncArgumentId};
 use crate::func::binding::FuncBindingId;
 use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::node::NodeId;
@@ -195,12 +196,24 @@ pub async fn find_schema_and_default_variant_by_name(
 /// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
 pub async fn setup_identity_func(
     ctx: &DalContext,
-) -> (FuncId, FuncBindingId, FuncBindingReturnValueId) {
+) -> (
+    FuncId,
+    FuncBindingId,
+    FuncBindingReturnValueId,
+    FuncArgumentId,
+) {
     let identity_func: Func = Func::find_by_attr(ctx, "name", &"si:identity".to_string())
         .await
         .expect("could not find identity func by name attr")
         .pop()
         .expect("identity func not found");
+
+    let identity_func_identity_arg = FuncArgument::list_for_func(ctx, *identity_func.id())
+        .await
+        .expect("cannot list identity func args")
+        .pop()
+        .expect("cannot find identity func identity arg");
+
     let (identity_func_binding, identity_func_binding_return_value, _) =
         FuncBinding::find_or_create_and_execute(
             ctx,
@@ -213,6 +226,7 @@ pub async fn setup_identity_func(
         *identity_func.id(),
         *identity_func_binding.id(),
         *identity_func_binding_return_value.id(),
+        *identity_func_identity_arg.id(),
     )
 }
 
