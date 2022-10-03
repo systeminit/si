@@ -83,7 +83,7 @@ async fn include_component_in_system_on_head(
     let edge_kind = "system".to_string();
     let (system, system_node) = create_system_with_node(ctx, &wid).await;
 
-    let schema = find_schema_by_name(ctx, "docker_image").await;
+    let schema = find_schema_by_name(ctx, "Docker Image").await;
 
     let (first_component, first_component_node) =
         Component::new_for_schema_with_node(ctx, "first", schema.id())
@@ -147,7 +147,7 @@ async fn include_component_in_system_with_edit_sessions(ctx: &DalContext, wid: W
     let edge_kind = "system".to_string();
     let (system, system_node) = create_system_with_node(ctx, &wid).await;
 
-    let schema = find_schema_by_name(ctx, "docker_image").await;
+    let schema = find_schema_by_name(ctx, "Docker Image").await;
 
     let (first_component, first_component_node) =
         Component::new_for_schema_with_node(ctx, "first", schema.id())

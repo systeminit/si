@@ -11,11 +11,11 @@ export interface Confirmation {
 }
 
 export enum ComponentSchema {
-  DockerImage = "docker_image",
-  DockerHubCredential = "docker_hub_credential",
-  KubernetesNamespace = "kubernetes_namespace",
-  KubernetesDeployment = "kubernetes_deployment",
-  CoreOsButane = "coreos_butane",
+  DockerImage = "Docker Image",
+  DockerHubCredential = "Docker Hub Credential",
+  KubernetesNamespace = "Kubernetes Namespace",
+  KubernetesDeployment = "Kubernetes Deployment",
+  CoreOsButane = "Butane",
 }
 
 export type Resource = {

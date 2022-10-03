@@ -17,6 +17,9 @@ const INGRESS_EGRESS_DOCS_URL: &str =
     "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html";
 const SECURITY_GROUP_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html";
+const AWS_REGIONS_DOCS_URL: &str =
+    "https://docs.aws.amazon.com/general/latest/gr/rande.html#region-names-codes";
+
 const INGRESS_EGRESS_PROTOCOLS: &[&str; 3] = &["tcp", "udp", "icmp"];
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
@@ -50,7 +53,7 @@ async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let ui_menu = SchemaUiMenu::new(ctx, "Ingress", "aws", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "Ingress", "AWS", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop Creation
@@ -162,7 +165,7 @@ async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        None, // TODO: Link documentation for aws regions
+        Some(AWS_REGIONS_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -236,7 +239,7 @@ async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "region",
+            "Region",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -375,7 +378,7 @@ async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let ui_menu = SchemaUiMenu::new(ctx, "Egress", "aws", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "Egress", "AWS", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop Creation
@@ -487,7 +490,7 @@ async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        None, // TODO: Link documentation for aws regions
+        Some(AWS_REGIONS_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -561,7 +564,7 @@ async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "region",
+            "Region",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -701,7 +704,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    SchemaUiMenu::new(ctx, "Security Group", "aws", &diagram_kind)
+    SchemaUiMenu::new(ctx, "Security Group", "AWS", &diagram_kind)
         .await?
         .set_schema(ctx, schema.id())
         .await?;
@@ -713,7 +716,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        Some(SECURITY_GROUP_DOCS_URL.to_string()), // TODO: Link documentation for security groups
+        Some(SECURITY_GROUP_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -723,7 +726,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        Some(SECURITY_GROUP_DOCS_URL.to_string()), // TODO: Link documentation for security groups
+        Some(SECURITY_GROUP_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -733,7 +736,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        Some(SECURITY_GROUP_DOCS_URL.to_string()), // TODO: Link documentation for security groups
+        Some(SECURITY_GROUP_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -743,7 +746,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        Some(SECURITY_GROUP_DOCS_URL.to_string()), // TODO: Link documentation for security groups
+        Some(SECURITY_GROUP_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -753,7 +756,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        None, // TODO: Link documentation for aws regions
+        Some(AWS_REGIONS_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -826,7 +829,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "region",
+            "Region",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,

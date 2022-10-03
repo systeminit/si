@@ -134,7 +134,7 @@ async fn connected_butane_is_valid_ignition(ctx: &DalContext) {
     let alpine_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
         alpine_payload.schema_variant_id,
-        "docker_image",
+        "Container Image",
     )
     .await
     .expect("cannot find external provider")
@@ -142,7 +142,7 @@ async fn connected_butane_is_valid_ignition(ctx: &DalContext) {
     let nginx_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
         nginx_payload.schema_variant_id,
-        "docker_image",
+        "Container Image",
     )
     .await
     .expect("cannot find external provider")
@@ -150,7 +150,7 @@ async fn connected_butane_is_valid_ignition(ctx: &DalContext) {
     let butane_provider = InternalProvider::find_explicit_for_schema_variant_and_name(
         ctx,
         butane_payload.schema_variant_id,
-        "docker_image",
+        "Container Image",
     )
     .await
     .expect("cannot find explicit internal provider")

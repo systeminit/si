@@ -18,7 +18,7 @@ async fn get_node_menu(ctx: &DalContext) {
 
     let docker_image_item = items.iter().find(|(path, item)| {
         let mut path = path.clone();
-        item.name == "image" && path.pop().expect("path not found") == "docker"
+        item.name == "Image" && path.pop().expect("path not found") == "Docker"
     });
     assert!(
         docker_image_item.is_some(),

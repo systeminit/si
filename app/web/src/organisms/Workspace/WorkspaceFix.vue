@@ -49,10 +49,10 @@ const diagramData = computed(() => {
       // Default to "si" if we do not have a logo.
       let typeIcon = "si";
       if (
-        node.category === "aws" ||
-        node.category === "coreos" ||
-        node.category === "docker" ||
-        node.category === "kubernetes"
+        node.category === "AWS" ||
+        node.category === "CodeOS" ||
+        node.category === "Docker" ||
+        node.category === "Kubernetes"
       ) {
         typeIcon = node.category;
       }

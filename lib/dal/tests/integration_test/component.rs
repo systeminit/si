@@ -96,14 +96,14 @@ async fn qualification_view(ctx: &DalContext) {
 // expediency.
 #[test]
 async fn list_qualifications(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
         .await
         .expect("cannot find docker image schema")
         .pop()
         .expect("no docker image schema found");
     let (component, _node) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
         .await
-        .expect("cannot create docker_image component");
+        .expect("cannot create `Docker Image` component");
 
     component
         .check_qualifications(ctx, UNSET_ID_VALUE.into())
@@ -119,14 +119,14 @@ async fn list_qualifications(ctx: &DalContext) {
 // Also brittle, same reason
 #[test]
 async fn list_qualifications_by_component_id(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
         .await
         .expect("cannot find docker image schema")
         .pop()
         .expect("no docker image schema found");
     let (component, _node) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
         .await
-        .expect("cannot create docker_image component");
+        .expect("cannot create `Docker Image` component");
 
     component
         .check_qualifications(ctx, UNSET_ID_VALUE.into())

@@ -56,7 +56,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     let region_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
         region_payload.schema_variant_id,
-        "region",
+        "Region",
     )
     .await
     .expect("cannot find external provider")
@@ -65,7 +65,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
             ec2_payload.schema_variant_id,
-            "region",
+            "Region",
         )
         .await
         .expect("cannot find explicit internal provider")

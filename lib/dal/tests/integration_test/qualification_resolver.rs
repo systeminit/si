@@ -11,7 +11,7 @@ use dal::{
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let name = "docker_image".to_string();
+    let name = "Docker Image".to_string();
     let schema = Schema::find_by_attr(ctx, "name", &name)
         .await
         .expect("cannot find docker image")
@@ -20,7 +20,7 @@ async fn new(ctx: &DalContext) {
     let schema_variant = schema
         .default_variant(ctx)
         .await
-        .expect("No default schema variant found for schema docker_image");
+        .expect("No default schema variant found for schema Docker Image");
 
     let component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 
@@ -66,7 +66,7 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn find_for_prototype(ctx: &DalContext) {
-    let name = "docker_image".to_string();
+    let name = "Docker Image".to_string();
     let schema = Schema::find_by_attr(ctx, "name", &name)
         .await
         .expect("cannot find docker image")
@@ -76,7 +76,7 @@ async fn find_for_prototype(ctx: &DalContext) {
     let schema_variant = schema
         .default_variant(ctx)
         .await
-        .expect("No default schema variant found for schema docker_image");
+        .expect("No default schema variant found for schema `Docker Image`");
 
     let component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 

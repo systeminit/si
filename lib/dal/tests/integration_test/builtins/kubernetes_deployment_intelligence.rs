@@ -117,7 +117,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
             head_deployment_spongebob_payload.schema_variant_id,
-            "docker_image",
+            "Container Image",
         )
         .await
         .expect("cannot find explicit internal provider")
@@ -135,7 +135,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
             head_deployment_squidward_payload.schema_variant_id,
-            "docker_image",
+            "Container Image",
         )
         .await
         .expect("cannot find explicit internal provider")
@@ -145,7 +145,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
     let tail_fedora_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
         tail_fedora_payload.schema_variant_id,
-        "docker_image",
+        "Container Image",
     )
     .await
     .expect("cannot find external provider")
@@ -251,7 +251,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
     let tail_alpine_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
         tail_alpine_payload.schema_variant_id,
-        "docker_image",
+        "Container Image",
     )
     .await
     .expect("cannot find external provider")

@@ -6,11 +6,11 @@ use dal::{
 
 #[test]
 async fn property_editor_schema(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"aws_region".to_string())
+    let schema = Schema::find_by_attr(ctx, "name", &"Region".to_string())
         .await
-        .expect("cannot find docker image schema")
+        .expect("cannot find Region schema")
         .pop()
-        .expect("no docker image schema found");
+        .expect("no Region schema found");
     let schema_variant_id = schema
         .default_schema_variant_id()
         .expect("missing default schema variant id");
@@ -22,7 +22,7 @@ async fn property_editor_schema(ctx: &DalContext) {
 
 #[test]
 async fn property_editor_value(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
         .await
         .expect("cannot find docker image schema")
         .pop()

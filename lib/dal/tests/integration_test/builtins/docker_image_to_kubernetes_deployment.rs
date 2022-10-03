@@ -49,7 +49,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     let tail_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
         tail_docker_image_payload.schema_variant_id,
-        "docker_image",
+        "Container Image",
     )
     .await
     .expect("cannot find external provider")
@@ -58,7 +58,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
             head_deployment_payload.schema_variant_id,
-            "docker_image",
+            "Container Image",
         )
         .await
         .expect("cannot find explicit internal provider")

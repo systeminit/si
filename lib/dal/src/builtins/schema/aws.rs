@@ -25,12 +25,12 @@ const AWS_NODE_COLOR: i64 = 0xFF9900;
 const AMI_DOCS_URL: &str =
     "https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html";
 const EC2_DOCS_URL: &str = "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html";
+const AWS_REGIONS_DOCS_URL: &str =
+    "https://docs.aws.amazon.com/general/latest/gr/rande.html#region-names-codes";
 const EC2_TAG_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html";
 const EC2_INSTANCE_TYPES_URL: &str =
     "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html";
-const REGION_DOCS_URL: &str =
-    "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html";
 const KEY_PAIR_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html";
 
@@ -55,7 +55,7 @@ pub struct AwsRegion {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS AMI`](https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html).
 async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "aws_ami".to_string();
+    let name = "AMI".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
             Some(schema) => schema,
@@ -77,7 +77,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let ui_menu = SchemaUiMenu::new(ctx, "ami", "aws", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "AMI", "AWS", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop and validation creation
@@ -109,7 +109,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        Some(EC2_DOCS_URL.to_string()),
+        Some(AWS_REGIONS_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -158,7 +158,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         *schema.id(),
         *schema_variant.id(),
-        "image_id",
+        "Image ID",
         None,
         identity_func_id,
         identity_func_binding_id,
@@ -174,7 +174,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "region",
+            "Region",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -257,7 +257,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS EC2`](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html).
 async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "aws_ec2".to_string();
+    let name = "EC2 Instance".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
             Some(schema) => schema,
@@ -279,7 +279,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let ui_menu = SchemaUiMenu::new(ctx, "ec2", "aws", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "EC2 Instance", "AWS", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop and validation creation
@@ -406,7 +406,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        Some(EC2_DOCS_URL.to_string()),
+        Some(AWS_REGIONS_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -472,7 +472,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "image_id",
+            "Image ID",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -487,7 +487,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "key_name",
+            "Key Name",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -502,7 +502,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "region",
+            "Region",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -685,7 +685,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Region`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html).
 async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "aws_region".to_string();
+    let name = "Region".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
             Some(schema) => schema,
@@ -707,7 +707,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let ui_menu = SchemaUiMenu::new(ctx, "region", "aws", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "Region", "AWS", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop Creation
@@ -724,7 +724,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         Some((WidgetKind::Select, serialized_widget_options)),
         Some(root_prop.domain_prop_id),
-        Some(REGION_DOCS_URL.to_string()),
+        Some(AWS_REGIONS_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -769,7 +769,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         *schema.id(),
         *schema_variant.id(),
-        "region",
+        "Region",
         None,
         identity_func_id,
         identity_func_binding_id,
@@ -807,7 +807,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Key Pair`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html).
 async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "key_pair".to_string();
+    let name = "Key Pair".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
             Some(schema) => schema,
@@ -829,7 +829,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let ui_menu = SchemaUiMenu::new(ctx, "key pair", "aws", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "Key Pair", "AWS", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop Creation
@@ -889,7 +889,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
-        Some(KEY_PAIR_DOCS_URL.to_string()),
+        Some(AWS_REGIONS_DOCS_URL.to_string()),
     )
     .await?;
 
@@ -938,7 +938,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         *schema.id(),
         *schema_variant.id(),
-        "key_name",
+        "Key Name",
         None,
         identity_func_id,
         identity_func_binding_id,
@@ -955,7 +955,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "region",
+            "Region",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -999,7 +999,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    // Connect the "region" prop to the "region" explicit internal provider.
+    // Connect the "region" prop to the "Region" explicit internal provider.
     let base_attribute_read_context = AttributeReadContext {
         schema_id: Some(*schema.id()),
         schema_variant_id: Some(*schema_variant.id()),

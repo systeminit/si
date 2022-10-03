@@ -43,7 +43,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "kubernetes_namespace".to_string();
+    let name = "Kubernetes Namespace".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
             Some(schema) => schema,
@@ -66,7 +66,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let ui_menu = SchemaUiMenu::new(ctx, "namespace", "kubernetes", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "Namespace", "Kubernetes", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     let metadata_prop =
@@ -105,7 +105,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         *schema.id(),
         *schema_variant.id(),
-        "kubernetes_namespace",
+        "Kubernetes Namespace",
         None,
         identity_func_id,
         identity_func_binding_id,
@@ -204,7 +204,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "kubernetes_deployment".to_string();
+    let name = "Kubernetes Deployment".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
             Some(schema) => schema,
@@ -311,7 +311,7 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "docker_image",
+            "Container Image",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -326,7 +326,7 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "kubernetes_namespace",
+            "Kubernetes Namespace",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -350,7 +350,7 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .expect("no diagram kind for schema kind");
-    let ui_menu = SchemaUiMenu::new(ctx, "deployment", "kubernetes", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "Deployment", "Kubernetes", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     schema_variant.finalize(ctx).await?;
@@ -444,7 +444,7 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    // Connect the "/root/domain/spec/template/spec/containers" field to the "docker_image" explicit
+    // Connect the "/root/domain/spec/template/spec/containers" field to the "Container Image" explicit
     // internal provider. We need to use the appropriate function with and name the argument "images".
     let template_spec_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, *template_prop.id(), "spec").await?;

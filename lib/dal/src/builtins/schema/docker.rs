@@ -24,7 +24,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "docker_hub_credential".to_string();
+    let name = "Docker Hub Credential".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
             Some(schema) => schema,
@@ -80,7 +80,7 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         *schema.id(),
         *schema_variant.id(),
-        "docker_hub_credential",
+        "Docker Hub Credentials",
         None,
         identity_func_id,
         identity_func_binding_id,
@@ -97,14 +97,14 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let ui_menu = SchemaUiMenu::new(ctx, "credential", "docker", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "Credential", "Docker", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     Ok(())
 }
 
 async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "docker_image".to_string();
+    let name = "Docker Image".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
             Some(schema) => schema,
@@ -126,7 +126,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let ui_menu = SchemaUiMenu::new(ctx, "image", "docker", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "Image", "Docker", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     let image_prop = Prop::new(ctx, "image", PropKind::String, None).await?;
@@ -161,7 +161,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "docker_hub_credential",
+            "Docker Hub Credentials",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -175,7 +175,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         *schema.id(),
         *schema_variant.id(),
-        "docker_image",
+        "Container Image",
         None,
         identity_func_id,
         identity_func_binding_id,
