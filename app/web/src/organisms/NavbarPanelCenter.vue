@@ -31,10 +31,10 @@
 
     <SiBarButton
       tooltip-text="Act"
-      :selected="route.name === 'workspace-runtime'"
-      :router-link-to="{ name: 'workspace-runtime' }"
+      :selected="route.name === 'workspace-fix'"
+      :router-link-to="{ name: 'workspace-fix' }"
     >
-      <Icon name="play" />
+      <Icon name="tools" />
     </SiBarButton>
   </div>
 </template>

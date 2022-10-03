@@ -87,6 +87,8 @@ import GitMerge from "~icons/octicon/git-merge-24";
 
 // custom icons
 import Diagram from "@/assets/images/custom-icons/diagram.svg?component";
+import Tools from "@/assets/images/custom-icons/tools.svg?component";
+
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -131,6 +133,7 @@ const ICON_NAME_MAP = Object.freeze({
   selector: Selector,
   show: Eye,
   sun: Sun,
+  tools: Tools,
   trash: Trash,
   x: X,
   "x-circle": XCircle,

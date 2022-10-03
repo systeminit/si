@@ -229,7 +229,7 @@ const currentRoute = useRoute();
 const isViewMode = computed(
   () =>
     currentRoute.name === "workspace-view" ||
-    currentRoute.name === "workspace-runtime",
+    currentRoute.name === "workspace-fix",
 );
 
 const changeTab = (index: number) => {

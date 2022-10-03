@@ -53,6 +53,8 @@
 </template>
 
 <script lang="ts" setup>
+// TODO(wendy) - delete this component when we're done using it for reference
+
 import { ref, computed } from "vue";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import { TabPanel } from "@headlessui/vue";
