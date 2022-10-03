@@ -1,7 +1,7 @@
 use crate::dal::test;
 use dal::func::backend::validation::FuncBackendValidationArgs;
 use dal::qualification_prototype::QualificationPrototypeContext;
-use dal::validation::ValidationKind;
+use dal::validation::Validation;
 use dal::{
     component::ComponentKind, generate_name,
     qualification_prototype::QualificationPrototypeContextField, Component, DalContext, Func,
@@ -147,10 +147,10 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
         let _prototype = ValidationPrototype::new(
             ctx,
             *func.id(),
-            serde_json::to_value(&FuncBackendValidationArgs::new(
-                None,
-                ValidationKind::StringEquals("Fou!".to_string()),
-            ))
+            serde_json::to_value(&FuncBackendValidationArgs::new(Validation::StringEquals {
+                value: None,
+                expected: "Fou!".to_string(),
+            }))
             .expect("could not convert args to value"),
             builder
                 .to_context(ctx)

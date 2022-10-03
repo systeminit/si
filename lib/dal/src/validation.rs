@@ -10,10 +10,14 @@
 //! then a ["qualification"](crate::qualification) is used instead of a "validation".
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use thiserror::Error;
 
 pub mod prototype;
 pub mod resolver;
 
+/// Struct for creating a consumable error for the frontend when a "field" fails its validation
+/// check.
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ValidationError {
     pub message: String,
@@ -24,24 +28,121 @@ pub struct ValidationError {
     pub link: Option<String>,
 }
 
+#[derive(Error, Debug)]
+pub enum ValidationConstructorError {
+    #[error("invalid value kind; expected {0}, but found {1}")]
+    InvalidValueKind(&'static str, Value),
+}
+
+pub type ValidationConstructorResult<T> = Result<T, ValidationConstructorError>;
+
+/// This enum represents everything needed to create a ["validation"](crate::validation). At
+/// minimum, every variant has a field named "value" (or similar) to represent the incoming
+/// value to "validate". When creating a validation for the first time, the "value" (or similar)
+/// field is usually set to `None`.
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub enum ValidationKind {
-    /// Validate that the provided string equals the expected string (contained in this variant).
-    StringEquals(String),
-    /// Validate that the provided string has the expected string (contained in this variant) as
-    /// its prefix.
-    StringHasPrefix(String),
-    /// Validate that the provided string exists in at least one place in the expected string array
-    /// (contained in this variant). The second value in this variant is a boolean corresponding to
-    /// whether or not the expected array of strings should be displayed. As an example: if the
-    /// expected list contains over 100 items, it may be preferable to set the boolean to
-    /// `false`. If the expect list contains 4 or 5 items, it may be preferable to set the boolean
-    /// to `true`.
-    StringInStringArray(Vec<String>, bool),
+pub enum Validation {
+    /// Validate that the "value" integer is between the lower and upper bound integers.
+    IntegerIsBetweenTwoIntegers {
+        value: Option<i64>,
+        lower_bound: i64,
+        upper_bound: i64,
+    },
+    /// Validate that the "value" string is the same as the expected string.
+    StringEquals {
+        value: Option<String>,
+        expected: String,
+    },
+    /// Validate that the "value" string has the expected string as its prefix.
+    StringHasPrefix {
+        value: Option<String>,
+        expected: String,
+    },
+    /// Validate that the "value" string exists in at least one place in the expected string array.
+    StringInStringArray {
+        value: Option<String>,
+        expected: Vec<String>,
+        /// This field toggles whether or not the expected array of strings should be displayed in
+        /// the validation error message (if applicable).
+        ///
+        /// As an example: if the expected list contains over 100 items, it may be preferable to set
+        /// this field to `false`. If the expect list contains 4 or 5 items, it may be preferable to
+        /// set this field to `true`.
+        display_expected: bool,
+    },
+    /// Validate that the "value" string is a valid [IpAddr](std::net::IpAddr).
+    StringIsValidIpAddr { value: Option<String> },
+}
+
+impl Validation {
+    /// Returns a new [`Validation`](Self) with the "value" (or similar) field mutated. The
+    /// remaining fields' values will be identical.
+    pub fn update_value(self, value: &Option<Value>) -> ValidationConstructorResult<Self> {
+        let validation = match self {
+            Validation::IntegerIsBetweenTwoIntegers {
+                value: _,
+                lower_bound,
+                upper_bound,
+            } => Validation::IntegerIsBetweenTwoIntegers {
+                value: Self::value_as_i64(value)?,
+                lower_bound,
+                upper_bound,
+            },
+            Validation::StringEquals { value: _, expected } => Validation::StringEquals {
+                value: Self::value_as_string(value)?,
+                expected,
+            },
+            Validation::StringHasPrefix { value: _, expected } => Validation::StringHasPrefix {
+                value: Self::value_as_string(value)?,
+                expected,
+            },
+            Validation::StringInStringArray {
+                value: _,
+                expected,
+                display_expected,
+            } => Validation::StringInStringArray {
+                value: Self::value_as_string(value)?,
+                expected,
+                display_expected,
+            },
+            Validation::StringIsValidIpAddr { value: _ } => Validation::StringIsValidIpAddr {
+                value: Self::value_as_string(value)?,
+            },
+        };
+        Ok(validation)
+    }
+
+    fn value_as_string(maybe_value: &Option<Value>) -> ValidationConstructorResult<Option<String>> {
+        match maybe_value {
+            Some(value) => match value.as_str() {
+                Some(success_value) => Ok(Some(success_value.to_string())),
+                None => Err(ValidationConstructorError::InvalidValueKind(
+                    "String",
+                    value.clone(),
+                )),
+            },
+            None => Ok(None),
+        }
+    }
+
+    fn value_as_i64(maybe_value: &Option<Value>) -> ValidationConstructorResult<Option<i64>> {
+        match maybe_value {
+            Some(value) => match value.as_i64() {
+                Some(success_value) => Ok(Some(success_value)),
+                None => Err(ValidationConstructorError::InvalidValueKind(
+                    "i64",
+                    value.clone(),
+                )),
+            },
+            None => Ok(None),
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub enum ValidationErrorKind {
+    IntegerNotInBetweenTwoIntegers,
+    InvalidIpAddr,
     StringDoesNotEqual,
     StringDoesNotHavePrefix,
     StringNotInStringArray,
@@ -51,6 +152,8 @@ pub enum ValidationErrorKind {
 impl ValidationErrorKind {
     pub fn as_str(&self) -> &'static str {
         match self {
+            Self::IntegerNotInBetweenTwoIntegers => "IntegerNotInBetweenTwoIntegers",
+            Self::InvalidIpAddr => "InvalidIpAddr",
             Self::StringDoesNotEqual => "StringDoesNotEqual",
             Self::StringDoesNotHavePrefix => "StringDoesNotHavePrefix",
             Self::StringNotInStringArray => "StringNotInStringArray",

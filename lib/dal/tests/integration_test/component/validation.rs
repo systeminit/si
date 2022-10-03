@@ -6,7 +6,7 @@ use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::test_harness::{
     create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
 };
-use dal::validation::{ValidationErrorKind, ValidationKind};
+use dal::validation::{Validation, ValidationErrorKind};
 use dal::ValidationPrototypeContext;
 use dal::ValidationStatus;
 use dal::{
@@ -49,10 +49,10 @@ async fn check_validations_for_component(ctx: &DalContext) {
 
     // Match validation
     builder.set_prop_id(*gecs_prop.id());
-    let args = serde_json::to_value(FuncBackendValidationArgs::new(
-        None,
-        ValidationKind::StringEquals("stupidHorse".to_string()),
-    ))
+    let args = serde_json::to_value(FuncBackendValidationArgs::new(Validation::StringEquals {
+        value: None,
+        expected: "stupidHorse".to_string(),
+    }))
     .expect("could not convert args to Value");
     ValidationPrototype::new(
         ctx,
@@ -69,8 +69,10 @@ async fn check_validations_for_component(ctx: &DalContext) {
     // Prefix validation
     builder.set_prop_id(*prefix_prop.id());
     let args = serde_json::to_value(FuncBackendValidationArgs::new(
-        None,
-        ValidationKind::StringHasPrefix("tooth".to_string()),
+        Validation::StringHasPrefix {
+            value: None,
+            expected: "tooth".to_string(),
+        },
     ))
     .expect("could not convert args to Value");
     ValidationPrototype::new(
