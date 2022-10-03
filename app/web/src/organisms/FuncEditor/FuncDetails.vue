@@ -7,8 +7,8 @@
       <template #tabs>
         <SiTabHeader>Properties</SiTabHeader>
         <SiTabHeader v-if="editingFunc.kind === FuncBackendKind.JsAttribute"
-          >Bindings</SiTabHeader
-        >
+          >Bindings
+        </SiTabHeader>
       </template>
       <template #panels>
         <TabPanel class="overflow-auto grow">
@@ -26,7 +26,7 @@
             <VButton
               :disabled="
                 (!isDevMode && editingFunc.isBuiltin) ||
-                !editingFunc.isRevertable
+                !editingFunc.isRevertible
               "
               button-rank="tertiary"
               button-type="neutral"
@@ -92,14 +92,22 @@
             default-open
           >
             <FuncArguments
+              v-if="associations && associations.type === 'attribute'"
               :func-id="props.funcId"
+              :arguments="associations.arguments"
               :disabled="editingFunc.isBuiltin"
             />
           </SiCollapsible>
         </TabPanel>
 
         <TabPanel v-if="editingFunc.kind === FuncBackendKind.JsAttribute">
-          {{ inputSources }}
+          <AttributeBindings
+            v-if="associations && associations.type === 'attribute'"
+            :func-id="funcId"
+            :associations="associations"
+            :schema-variants="schemaVariantOptions"
+            :components="componentOptions"
+          />
         </TabPanel>
       </template>
     </SiTabGroup>
@@ -111,7 +119,7 @@
 
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
-import { ref, toRef, watch, computed, inject } from "vue";
+import { ref, toRef, watch, computed, provide } from "vue";
 import { refFrom } from "vuse-rx";
 import { map, take } from "rxjs/operators";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
@@ -124,7 +132,8 @@ import { EditingFunc } from "@/observable/func";
 import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
 import { FuncService, FuncAssociations } from "@/service/func";
-import { FuncBackendKind } from "@/api/sdf/dal/func";
+import { FuncBackendKind, FuncArgument } from "@/api/sdf/dal/func";
+import { DiagramSchemaVariant } from "@/api/sdf/dal/diagram";
 import {
   changeFunc,
   funcById,
@@ -134,6 +143,7 @@ import {
 } from "./func_state";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
+import AttributeBindings from "./AttributeBindings.vue";
 
 const props = defineProps<{
   funcId: number;
@@ -143,19 +153,18 @@ const isDevMode = import.meta.env.DEV;
 
 const funcId = toRef(props, "funcId", -1);
 
-const schemaVariantOptions = refFrom<Option[]>(
+const schemaVariants = refFrom<DiagramSchemaVariant[]>(
   DiagramService.listSchemaVariants().pipe(
-    map((schemaVariants) =>
-      schemaVariants.error
-        ? []
-        : schemaVariants.map((v) => ({
-            label: v.schemaName,
-            value: v.id,
-          })),
-    ),
+    map((schemaVariants) => (schemaVariants.error ? [] : schemaVariants)),
   ),
   [],
 );
+
+const schemaVariantOptions = computed<Option[]>(() =>
+  schemaVariants.value.map((v) => ({ label: v.schemaName, value: v.id })),
+);
+
+provide("schemaVariantOptions", schemaVariantOptions);
 
 const components = refFrom(
   ComponentService.listComponentsIdentification().pipe(
@@ -164,7 +173,9 @@ const components = refFrom(
   [],
 );
 
-const componentOptions = computed(() =>
+provide("components", components);
+
+const componentOptions = computed<Option[]>(() =>
   components.value.map((c) => ({
     label: c.label,
     value: c.value.componentId,
@@ -173,6 +184,16 @@ const componentOptions = computed(() =>
 
 const editingFunc = ref<EditingFunc>(nullEditingFunc);
 const associations = ref<FuncAssociations | undefined>(undefined);
+const funcArgumentsIdMap = computed(() =>
+  associations.value?.type === "attribute"
+    ? associations.value.arguments.reduce((idMap, arg) => {
+        idMap[arg.id] = arg;
+        return idMap;
+      }, {} as { [key: number]: FuncArgument })
+    : {},
+);
+
+provide("funcArgumentsIdMap", funcArgumentsIdMap);
 
 watch(
   [funcId, funcState],
@@ -202,6 +223,4 @@ const revertFunc = async () => {
 const execFunc = () => {
   FuncService.execFunc({ id: editingFunc.value.id });
 };
-
-const inputSources = inject("inputSources");
 </script>

@@ -7,13 +7,11 @@ use si_data::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::context::UNSET_ID_VALUE;
-use crate::func::argument::FuncArgumentId;
-use crate::provider::internal::InternalProviderId;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeId,
-    ComponentId, DalContext, ExternalProviderId, HistoryEventError, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    attribute::context::UNSET_ID_VALUE, func::argument::FuncArgumentId, impl_standard_model, pk,
+    provider::internal::InternalProviderId, standard_model, standard_model_accessor,
+    AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, HistoryEventError,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
@@ -21,6 +19,8 @@ const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
 const LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE_AND_HEAD_COMPONENT_ID: &str = include_str!(
     "../../queries/attribute_prototype_argument_list_by_name_for_attribute_prototype_and_head_component_id.sql"
 );
+const LIST_FOR_FUNC_ARGUMENT_ID: &str =
+    include_str!("../../queries/attribute_prototype_argument_list_for_func_argument.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeArgumentError {
@@ -176,13 +176,11 @@ impl AttributePrototypeArgument {
         Pk(AttributePrototypeId),
         AttributePrototypeArgumentResult
     );
-
     standard_model_accessor!(
         func_argument_id,
         Pk(FuncArgumentId),
         AttributePrototypeArgumentResult
     );
-
     standard_model_accessor!(
         internal_provider_id,
         Pk(InternalProviderId),
@@ -217,7 +215,7 @@ impl AttributePrototypeArgument {
             return Err(AttributePrototypeArgumentError::CannotFlipUnsetFieldToSet(
                 "InternalProviderId",
             ));
-        }
+        };
         if self.internal_provider_id == UNSET_ID_VALUE.into()
             && internal_provider_id != UNSET_ID_VALUE.into()
         {
@@ -337,7 +335,7 @@ impl AttributePrototypeArgument {
     /// List all [`AttributePrototypeArguments`](Self) by name for a given
     /// [`AttributePrototype`](crate::AttributePrototype). This function should be used instead of
     /// [`Self::list_for_attribute_prototype()`] if the caller needs to group arguments that share
-    /// the same "name" sharing the same name.
+    /// the same "name"
     #[tracing::instrument(skip(ctx))]
     pub async fn list_by_name_for_attribute_prototype_and_head_component_id(
         ctx: &DalContext,
@@ -371,5 +369,21 @@ impl AttributePrototypeArgument {
             result.push(AttributePrototypeArgumentGroup { name, arguments });
         }
         Ok(result)
+    }
+
+    /// List all [`AttributePrototypeArguments`](Self) for a given [`FuncArgument`](crate::func::argument::FuncArgument).
+    pub async fn list_by_func_argument_id(
+        ctx: &DalContext,
+        func_argument_id: FuncArgumentId,
+    ) -> AttributePrototypeArgumentResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_FUNC_ARGUMENT_ID,
+                &[ctx.read_tenancy(), ctx.visibility(), &func_argument_id],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 }

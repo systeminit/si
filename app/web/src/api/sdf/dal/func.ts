@@ -40,11 +40,11 @@ export enum FuncArgumentKind {
   Object = "Object",
   String = "String",
   Map = "Map",
+  Any = "Any",
 }
 
 export interface FuncArgument {
   id: number;
-  funcId: number;
   name: string;
   kind: FuncArgumentKind;
   elementKind?: FuncArgumentKind;

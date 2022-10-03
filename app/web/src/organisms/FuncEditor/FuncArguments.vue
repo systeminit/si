@@ -38,13 +38,14 @@
           class="flex-1"
           placeholder="Argument name"
           :disabled="disabled"
-          @change="saveArgument(arg)"
+          @blur="saveArguments"
         />
         <SelectMenu
           v-model="arg.kind"
           class="flex-auto"
           :options="kindOptions"
           :disabled="disabled"
+          @change="saveArguments"
         />
         <VButton
           class="flex-none"
@@ -52,7 +53,7 @@
           button-rank="primary"
           button-type="destructive"
           :disabled="disabled"
-          @click="deleteArgument(arg.id)"
+          @click="deleteArgument(arg.name)"
         />
       </li>
     </ul>
@@ -62,10 +63,10 @@
 <script lang="ts" setup>
 import { ref, toRef, watch } from "vue";
 import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
-import { FuncService } from "@/service/func.js";
 import VButton from "@/molecules/VButton.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
+import { updateAttributeFuncArguments } from "@/organisms/FuncEditor/func_state";
 
 const generateKindOptions = () => {
   const options: Option[] = [];
@@ -78,7 +79,7 @@ const generateKindOptions = () => {
 const kindToOption = (kind?: FuncArgumentKind): Option =>
   kind
     ? { label: kind as string, value: kind as string }
-    : { label: "None", value: "None" };
+    : { label: "None", value: 0 };
 
 const kindOptions = generateKindOptions();
 // we haven't implemented element kinds yet
@@ -86,6 +87,7 @@ const kindOptions = generateKindOptions();
 
 const props = defineProps<{
   funcId: number;
+  arguments: FuncArgument[];
   disabled?: boolean;
 }>();
 
@@ -97,6 +99,7 @@ const defaultNewArg = {
 };
 
 const funcId = toRef(props, "funcId", -1);
+const args = toRef(props, "arguments", []);
 const newArg = ref<EditingFuncArgument>(defaultNewArg);
 
 interface EditingFuncArgument {
@@ -114,45 +117,43 @@ const argsToEditingArgs = (args: FuncArgument[]) =>
     elementKind: kindToOption(elementKind),
   }));
 
+const editingArgsToArgs = (editingArgs: EditingFuncArgument[]) =>
+  editingArgs.map(({ id, name, kind, elementKind }) => ({
+    id,
+    name,
+    kind: kind.value as FuncArgumentKind,
+    elementKind: elementKind?.value
+      ? (elementKind.value as FuncArgumentKind)
+      : undefined,
+  }));
+
 const editingArgs = ref<EditingFuncArgument[]>([]);
 
-const fetchArguments = async (funcId: number) => {
-  const funcArgs = (await FuncService.listArguments({ funcId })).arguments;
-  editingArgs.value = argsToEditingArgs(funcArgs);
-};
-
-fetchArguments(props.funcId);
-
 watch(
-  [funcId],
-  ([funcId]) => {
-    fetchArguments(funcId);
-    FuncService.listInputSources();
+  args,
+  (args) => {
+    editingArgs.value = argsToEditingArgs(args);
   },
   { immediate: true },
 );
 
 const addArgument = async () => {
-  await FuncService.createArgument({
-    funcId: funcId.value,
-    name: newArg.value.name,
-    kind: newArg.value.kind.value as FuncArgumentKind,
-  });
+  editingArgs.value.push({ ...newArg.value });
   newArg.value.name = "";
   newArg.value.kind = kindToOption(FuncArgumentKind.String);
-  fetchArguments(funcId.value);
+
+  saveArguments();
 };
 
-const saveArgument = async (arg: EditingFuncArgument) => {
-  await FuncService.saveArgument({
-    id: arg.id,
-    name: arg.name,
-    kind: arg.kind.value as FuncArgumentKind,
-  });
+const saveArguments = () => {
+  updateAttributeFuncArguments(
+    funcId.value,
+    editingArgsToArgs(editingArgs.value),
+  );
 };
 
-const deleteArgument = async (id: number) => {
-  await FuncService.deleteArgument({ id });
-  editingArgs.value = editingArgs.value.filter((a) => a.id !== id);
+const deleteArgument = async (name: string) => {
+  editingArgs.value = editingArgs.value.filter((a) => a.name !== name);
+  saveArguments();
 };
 </script>

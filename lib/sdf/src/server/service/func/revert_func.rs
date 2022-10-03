@@ -1,8 +1,10 @@
 use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
+use dal::func::argument::FuncArgument;
 use dal::{
-    Func, FuncBackendKind, FuncId, QualificationPrototype, StandardModel, Visibility, WsEvent,
+    AttributePrototype, Func, FuncBackendKind, FuncId, QualificationPrototype, StandardModel,
+    Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -33,13 +35,19 @@ pub async fn revert_func(
         .await?
         .ok_or(FuncError::FuncNotFound)?;
 
-    let is_revertable = super::is_func_revertable(&ctx, &func).await?;
+    let is_revertible = super::is_func_revertible(&ctx, &func).await?;
 
-    if !is_revertable {
-        Err(FuncError::FuncNotRevertable)?
+    if !is_revertible {
+        Err(FuncError::FuncNotRevertible)?
     } else {
         match func.backend_kind() {
-            FuncBackendKind::JsAttribute => {}
+            FuncBackendKind::JsAttribute => {
+                for proto in AttributePrototype::find_for_func(&ctx, func.id()).await? {
+                    if proto.visibility().in_change_set() {
+                        AttributePrototype::hard_delete_if_in_changeset(&ctx, proto.id()).await?;
+                    }
+                }
+            }
             FuncBackendKind::JsQualification => {
                 for proto in QualificationPrototype::find_for_func(&ctx, func.id()).await? {
                     if proto.visibility().in_change_set() {
@@ -48,6 +56,12 @@ pub async fn revert_func(
                 }
             }
             _ => {}
+        }
+
+        for arg in FuncArgument::list_for_func(&ctx, *func.id()).await? {
+            if arg.visibility().in_change_set() {
+                arg.hard_delete(&ctx).await?;
+            }
         }
 
         func.hard_delete(&ctx).await?;

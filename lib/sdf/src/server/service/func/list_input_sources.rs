@@ -43,6 +43,8 @@ pub struct ListInputSourcesResponse {
 
 // We take the tree and recompose it as a list using depth-first search, filtering out props that
 // do not have an internal provider id (and thus cannot be used as function input sources)
+// we have to recompose it as a list to ensure props are listed in the correct order, since
+// the SQL query is limited in some respects.
 fn prop_tree_to_list(prop_tree: &PropTree) -> Vec<InputSourceProp> {
     let mut prop_sources = vec![];
 
@@ -51,16 +53,16 @@ fn prop_tree_to_list(prop_tree: &PropTree) -> Vec<InputSourceProp> {
 
         while let Some(cur) = work_queue.pop_front() {
             for child in &cur.children {
-                work_queue.push_front(&child);
+                work_queue.push_front(child);
             }
 
             // No internal provider id? Not a valid source
             if let Some(internal_provider_id) = cur.internal_provider_id {
                 prop_sources.push(InputSourceProp {
-                    schema_variant_id: cur.schema_variant_id.clone(),
-                    internal_provider_id: internal_provider_id.clone(),
-                    prop_id: cur.prop_id.clone(),
-                    kind: cur.kind.clone(),
+                    schema_variant_id: cur.schema_variant_id,
+                    internal_provider_id,
+                    prop_id: cur.prop_id,
+                    kind: cur.kind,
                     name: cur.name.clone(),
                     path: cur.path.clone(),
                 });
@@ -78,7 +80,7 @@ pub async fn list_input_sources(
 ) -> FuncResult<Json<ListInputSourcesResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let sockets = dbg!(InternalProvider::list_for_input_sockets(&ctx)
+    let sockets = InternalProvider::list_for_input_sockets(&ctx)
         .await?
         .iter()
         .map(|ip| InputSourceSocket {
@@ -86,7 +88,7 @@ pub async fn list_input_sources(
             schema_variant_id: ip.schema_variant_id().to_owned(),
             name: ip.name().to_owned(),
         })
-        .collect());
+        .collect();
 
     let props = prop_tree_to_list(&PropTree::new(&ctx).await?);
 

@@ -4,7 +4,6 @@ import { GlobalErrorService } from "@/service/global_error";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { ApiResponse } from "@/api/sdf";
 import { memoizedVisibilitySdfPipe } from "@/utils/memoizedVisibilitySdfPipes";
-import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
 
 export interface InputSourceSocket {
   schemaVariantId: number;

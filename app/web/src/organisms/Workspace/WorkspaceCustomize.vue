@@ -63,7 +63,7 @@ import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { DevService } from "@/service/dev";
 import { ListInputSourcesResponse } from "@/service/func/list_input_sources";
-import { clearFuncs, setFuncRevertable } from "../FuncEditor/func_state";
+import { clearFuncs, updateFuncFromSave } from "../FuncEditor/func_state";
 
 const isDevMode = import.meta.env.DEV;
 
@@ -86,8 +86,34 @@ const isLoading = ref(true);
 const funcList = ref<ListFuncsResponse>({ funcs: [] });
 const inputSources = refFrom<ListInputSourcesResponse>(
   FuncService.listInputSources(),
+  { sockets: [], props: [] },
 );
+
+// internal provider id to prop or socket name
+const idToSourceNameMap = computed(() => {
+  const idMap: { [key: number]: string } = {};
+  for (const socket of inputSources?.value.sockets ?? []) {
+    idMap[socket.internalProviderId] = `Socket: ${socket.name}`;
+  }
+  for (const prop of inputSources?.value.props ?? []) {
+    idMap[prop.internalProviderId] = `Attribute: ${prop.path}${prop.name}`;
+  }
+
+  return idMap;
+});
+
+// prop id to prop name
+const idToPropNameMap = computed(() => {
+  const idMap: { [key: number]: string } = {};
+  for (const prop of inputSources?.value.props ?? []) {
+    idMap[prop.propId] = `${prop.path}${prop.name}`;
+  }
+  return idMap;
+});
+
 provide("inputSources", inputSources);
+provide("idToSourceNameMap", idToSourceNameMap);
+provide("idToPropNameMap", idToPropNameMap);
 
 FuncService.listFuncs().subscribe((funcs) => {
   funcList.value = funcs;
@@ -130,11 +156,13 @@ saveFuncToBackend$
       } else {
         const result = await FuncService.saveFunc(saveReq);
         if (result.success) {
-          setFuncRevertable(saveReq.id, result.isRevertable);
+          updateFuncFromSave(
+            saveReq.id,
+            result.isRevertible,
+            result.associations,
+          );
         }
       }
     }),
   );
-
-provide("input_sources", FuncService.listInputSources());
 </script>

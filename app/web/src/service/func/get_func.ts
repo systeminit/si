@@ -12,7 +12,7 @@ export interface GetFuncArgs {
 
 export interface GetFuncResponse extends Func {
   isBuiltin: boolean;
-  isRevertable: boolean;
+  isRevertible: boolean;
   associations?: FuncAssociations;
 }
 
@@ -49,5 +49,5 @@ export const nullFunc: GetFuncResponse = {
   name: "",
   code: undefined,
   isBuiltin: false,
-  isRevertable: false,
+  isRevertible: false,
 };
