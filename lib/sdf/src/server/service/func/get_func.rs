@@ -1,7 +1,7 @@
 use super::{FuncAssociations, FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{Func, FuncBackendKind, FuncId, QualificationPrototype, StandardModel, Visibility};
+use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -22,7 +22,7 @@ pub struct GetFuncResponse {
     pub description: Option<String>,
     pub code: Option<String>,
     pub is_builtin: bool,
-    pub is_revertable: bool,
+    pub is_revertible: bool,
     pub associations: Option<FuncAssociations>,
 }
 
@@ -37,44 +37,5 @@ pub async fn get_func(
         .await?
         .ok_or(FuncError::FuncNotFound)?;
 
-    let associations = match func.backend_kind() {
-        FuncBackendKind::JsQualification => {
-            let protos = QualificationPrototype::find_for_func(&ctx, func.id()).await?;
-
-            let mut schema_variant_ids = vec![];
-            let mut component_ids = vec![];
-
-            for proto in protos {
-                if proto.context().schema_variant_id().is_some() {
-                    schema_variant_ids.push(proto.context().schema_variant_id());
-                } else if proto.context().component_id().is_some() {
-                    component_ids.push(proto.context().component_id());
-                }
-            }
-
-            Some(FuncAssociations::Qualification {
-                schema_variant_ids,
-                component_ids,
-            })
-        }
-        FuncBackendKind::JsAttribute => None,
-        _ => None,
-    };
-
-    let is_revertable = super::is_func_revertable(&ctx, &func).await?;
-
-    Ok(Json(GetFuncResponse {
-        id: func.id().to_owned(),
-        handler: func.handler().map(|h| h.to_owned()),
-        kind: func.backend_kind().to_owned(),
-        name: func
-            .display_name()
-            .unwrap_or_else(|| func.name())
-            .to_owned(),
-        description: func.description().map(|d| d.to_owned()),
-        code: func.code_plaintext()?,
-        is_builtin: func.is_builtin(),
-        is_revertable,
-        associations,
-    }))
+    Ok(Json(super::get_func_view(&ctx, &func).await?))
 }

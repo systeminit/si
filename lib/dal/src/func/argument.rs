@@ -1,7 +1,7 @@
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, DalContext, FuncId,
-    HistoryEventError, PropKind, StandardModel, StandardModelError, Timestamp, Visibility,
-    WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeArgument,
+    AttributePrototypeArgumentError, AttributePrototypeId, DalContext, FuncId, HistoryEventError,
+    PropKind, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 const LIST_FOR_FUNC: &str = include_str!("../queries/func_argument_list_for_func.sql");
+const LIST_FOR_FUNC_WITH_PROTOTTYPE_ARGUMENTS: &str =
+    include_str!("../queries/func_argument_list_for_func_with_prototype_arguments.sql");
 const FIND_BY_NAME_FOR_FUNC: &str =
     include_str!("../queries/func_argument_find_by_name_for_func.sql");
 
@@ -24,6 +26,8 @@ pub enum FuncArgumentError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
 }
 
 type FuncArgumentResult<T> = Result<T, FuncArgumentError>;
@@ -147,6 +151,49 @@ impl FuncArgument {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
+    /// List all [`FuncArgument`](Self) for the provided [`FuncId`](crate::FuncId) along with the
+    /// [`AttributePrototypeArgument`](crate::AttributePrototypeArgument) that corresponds to it
+    /// *if* one exists.
+    pub async fn list_for_func_with_prototype_arguments(
+        ctx: &DalContext,
+        func_id: FuncId,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> FuncArgumentResult<Vec<(Self, Option<AttributePrototypeArgument>)>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_FUNC_WITH_PROTOTTYPE_ARGUMENTS,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &func_id,
+                    &attribute_prototype_id,
+                ],
+            )
+            .await?;
+
+        let mut result = vec![];
+
+        for row in rows.into_iter() {
+            let func_argument_json: serde_json::Value = row.try_get("func_argument_object")?;
+            let prototype_argument_json: Option<serde_json::Value> =
+                row.try_get("prototype_argument_object")?;
+
+            result.push((
+                serde_json::from_value(func_argument_json)?,
+                match prototype_argument_json {
+                    Some(prototype_argument_json) => {
+                        Some(serde_json::from_value(prototype_argument_json)?)
+                    }
+                    None => None,
+                },
+            ));
+        }
+
+        Ok(result)
+    }
+
     pub async fn find_by_name_for_func(
         ctx: &DalContext,
         name: &str,
@@ -166,5 +213,27 @@ impl FuncArgument {
                 None => None,
             },
         )
+    }
+
+    /// Remove the [`FuncArgument`](Self) along with any [`AttributePrototypeArgument`](crate::AttributePrototypeArgument) rows that reference it.
+    /// This should be used instead of the [`delete`](Self::delete) method since it keeps the two tables in sync.
+    pub async fn remove(
+        ctx: &DalContext,
+        func_argument_id: &FuncArgumentId,
+    ) -> FuncArgumentResult<()> {
+        let func_arg = match FuncArgument::get_by_id(ctx, func_argument_id).await? {
+            Some(func_arg) => func_arg,
+            None => return Ok(()),
+        };
+
+        for prototype_argument in
+            AttributePrototypeArgument::list_by_func_argument_id(ctx, *func_argument_id).await?
+        {
+            prototype_argument.delete(ctx).await?;
+        }
+
+        func_arg.delete(ctx).await?;
+
+        Ok(())
     }
 }

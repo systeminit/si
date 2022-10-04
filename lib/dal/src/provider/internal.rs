@@ -34,6 +34,8 @@ const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/internal_provider_list_for_schema_variant.sql");
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
     include_str!("../queries/internal_provider_list_for_attribute_prototype.sql");
+const LIST_FOR_INPUT_SOCKETS: &str =
+    include_str!("../queries/internal_provider_list_for_input_sockets_for_all_schema_variants.sql");
 
 #[derive(Error, Debug)]
 pub enum InternalProviderError {
@@ -567,6 +569,19 @@ impl InternalProvider {
                     ctx.visibility(),
                     &attribute_prototype_id,
                 ],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find all [`Self`] which are also input sockets.
+    pub async fn list_for_input_sockets(ctx: &DalContext) -> InternalProviderResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_INPUT_SOCKETS,
+                &[ctx.read_tenancy(), ctx.visibility()],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)

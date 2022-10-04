@@ -1,13 +1,11 @@
+import { FuncArgument } from "@/api/sdf/dal/func";
 import { listFuncs } from "./func/list_funcs";
 import { getFunc } from "./func/get_func";
 import { createFunc } from "./func/create_func";
 import { saveFunc } from "./func/save_func";
 import { execFunc } from "./func/exec_func";
 import { revertFunc } from "./func/revert_func";
-import { listArguments } from "./func/list_arguments";
-import { createArgument } from "./func/create_argument";
-import { saveArgument } from "./func/save_argument";
-import { deleteArgument } from "./func/delete_argument";
+import { listInputSources } from "./func/list_input_sources";
 
 export interface QualificationAssocations {
   type: "qualification";
@@ -15,7 +13,27 @@ export interface QualificationAssocations {
   componentIds: number[];
 }
 
-export type FuncAssociations = QualificationAssocations;
+export interface AttributePrototypeArgumentView {
+  funcArgumentId: number;
+  id?: number;
+  internalProviderId?: number;
+}
+
+export interface AttributePrototypeView {
+  id: number;
+  schemaVariantId: number;
+  componentId?: number;
+  propId: number;
+  prototypeArguments: AttributePrototypeArgumentView[];
+}
+
+export interface AttributeAssocations {
+  type: "attribute";
+  prototypes: AttributePrototypeView[];
+  arguments: FuncArgument[];
+}
+
+export type FuncAssociations = QualificationAssocations | AttributeAssocations;
 
 export const FuncService = {
   listFuncs,
@@ -24,8 +42,5 @@ export const FuncService = {
   saveFunc,
   execFunc,
   revertFunc,
-  listArguments,
-  createArgument,
-  deleteArgument,
-  saveArgument,
+  listInputSources,
 };

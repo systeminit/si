@@ -155,21 +155,7 @@ impl AttributePrototype {
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<Self> {
-        let row = ctx
-            .txns()
-            .pg()
-            .query_one(
-                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
-                &[
-                    ctx.write_tenancy(),
-                    ctx.visibility(),
-                    &context,
-                    &func_id,
-                    &key,
-                ],
-            )
-            .await?;
-        let object: AttributePrototype = standard_model::finish_create_from_row(ctx, row).await?;
+        let object = Self::new_with_context_only(ctx, func_id, context, key.as_deref()).await?;
 
         let value = AttributeValue::new(
             ctx,
@@ -274,6 +260,30 @@ impl AttributePrototype {
         Ok(object)
     }
 
+    pub async fn new_with_context_only(
+        ctx: &DalContext,
+        func_id: FuncId,
+        context: AttributeContext,
+        key: Option<&str>,
+    ) -> AttributePrototypeResult<Self> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &context,
+                    &func_id,
+                    &key,
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::finish_create_from_row(ctx, row).await?)
+    }
+
     standard_model_accessor!(func_id, Pk(FuncId), AttributePrototypeResult);
     standard_model_accessor!(key, Option<String>, AttributePrototypeResult);
     standard_model_has_many!(
@@ -283,6 +293,96 @@ impl AttributePrototype {
         returns: AttributeValue,
         result: AttributePrototypeResult,
     );
+
+    /// Permanently deletes the [`AttributePrototype`] for the given id along with any
+    /// corresponding [`AttributeValue`](crate::AttributeValue) prototype and
+    /// any [`AttributePrototypeArguments`](crate::AttributePrototypeArgument)
+    /// for the prototype, if and only if any of the above values are in a changeset (i.e.,
+    /// not in HEAD). The effect is to revert the prototype, it's values, and arguments,
+    /// to the HEAD state. Marking them as soft-deleted would propagate the deletion up to
+    /// HEAD. The implementation here is almost identical to that of
+    /// [`AttributePrototype::remove`](crate::AttributePrototype::remove)` but (1)
+    /// checks for in_change_set and (2) hard deletes.
+    pub async fn hard_delete_if_in_changeset(
+        ctx: &DalContext,
+        attribute_prototype_id: &AttributePrototypeId,
+    ) -> AttributePrototypeResult<()> {
+        let attribute_prototype =
+            match AttributePrototype::get_by_id(ctx, attribute_prototype_id).await? {
+                Some(v) => v,
+                None => return Ok(()),
+            };
+        if attribute_prototype.context.is_least_specific() {
+            return Err(
+                AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
+                    *attribute_prototype_id,
+                ),
+            );
+        }
+
+        // Delete all values and arguments found for a prototype before deleting the prototype.
+        let attribute_values = attribute_prototype.attribute_values(ctx).await?;
+        for argument in
+            AttributePrototypeArgument::list_for_attribute_prototype(ctx, *attribute_prototype_id)
+                .await?
+        {
+            if argument.visibility().in_change_set() {
+                argument.hard_delete(ctx).await?;
+            }
+        }
+        if attribute_prototype.visibility().in_change_set() {
+            attribute_prototype.hard_delete(ctx).await?;
+        }
+
+        // Start with the initial value(s) from the prototype and build a work queue based on the
+        // value's children (and their children, recursively). Once we find the child values,
+        // we can delete the current value in the queue and its prototype.
+        let mut work_queue = attribute_values;
+        while let Some(current_value) = work_queue.pop() {
+            let child_attribute_values = current_value.child_attribute_values(ctx).await?;
+            if !child_attribute_values.is_empty() {
+                work_queue.extend(child_attribute_values);
+            }
+
+            // Delete the prototype if we find one and if its context is not "least-specific".
+            if let Some(current_prototype) = current_value.attribute_prototype(ctx).await? {
+                if current_prototype.context.is_least_specific() {
+                    return Err(
+                        AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
+                            *current_prototype.id(),
+                        ),
+                    );
+                }
+                // Delete all arguments found for a prototype before deleting the prototype.
+                for argument in AttributePrototypeArgument::list_for_attribute_prototype(
+                    ctx,
+                    *current_prototype.id(),
+                )
+                .await?
+                {
+                    if argument.visibility().in_change_set() {
+                        argument.hard_delete(ctx).await?;
+                    }
+                }
+                if current_prototype.visibility().in_change_set() {
+                    current_prototype.hard_delete(ctx).await?;
+                }
+            }
+
+            // Delete the value if its context is not "least-specific".
+            if current_value.context.is_least_specific() {
+                return Err(
+                    AttributePrototypeError::LeastSpecificContextValueRemovalNotAllowed(
+                        *current_value.id(),
+                    ),
+                );
+            }
+            if current_value.visibility().in_change_set() {
+                current_value.hard_delete(ctx).await?;
+            }
+        }
+        Ok(())
+    }
 
     /// Deletes the [`AttributePrototype`] corresponding to a provided ID. Before deletion occurs,
     /// its corresponding [`AttributeValue`](crate::AttributeValue), all of its child values

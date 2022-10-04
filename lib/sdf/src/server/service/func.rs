@@ -7,7 +7,10 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::service::func::get_func::GetFuncResponse;
+use dal::func::argument::FuncArgument;
 use dal::{
+    attribute::context::AttributeContextBuilder,
     attribute::{
         context::AttributeContextBuilderError,
         value::dependent_update::collection::AttributeValueDependentCollectionHarness,
@@ -18,22 +21,23 @@ use dal::{
         binding_return_value::FuncBindingReturnValueError,
     },
     job::definition::DependentValuesUpdate,
-    AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeError,
-    AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
-    Func, FuncBackendKind, FuncBinding, FuncBindingError, Prop, PropError, PropKind,
-    QualificationPrototypeError, ReadTenancyError, SchemaVariantId, StandardModel,
+    prop_tree::PropTreeError,
+    schema::variant::SchemaVariantError,
+    AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeArgumentError,
+    AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId, AttributeValue,
+    AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext, Func,
+    FuncBackendKind, FuncBinding, FuncBindingError, FuncId, InternalProviderError,
+    InternalProviderId, Prop, PropError, PropId, PropKind, QualificationPrototype,
+    QualificationPrototypeError, ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel,
     StandardModelError, TransactionsError, Visibility, WriteTenancyError, WsEventError,
 };
 
-pub mod create_argument;
 pub mod create_func;
-pub mod delete_argument;
 pub mod exec_func;
 pub mod get_func;
-pub mod list_arguments;
 pub mod list_funcs;
+pub mod list_input_sources;
 pub mod revert_func;
-pub mod save_argument;
 pub mod save_func;
 
 #[derive(Error, Debug)]
@@ -60,6 +64,8 @@ pub enum FuncError {
     SerdeJson(#[from] serde_json::Error),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("component error: {0}")]
@@ -76,6 +82,12 @@ pub enum FuncError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
+    #[error("prop tree error: {0}")]
+    PropTree(#[from] PropTreeError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
 
     #[error("Function not found")]
     FuncNotFound,
@@ -95,12 +107,22 @@ pub enum FuncError {
     PropNotFound,
     #[error("func binding return value not found")]
     FuncBindingReturnValueMissing,
-    #[error("func is not revertable")]
-    FuncNotRevertable,
+    #[error("func is not revertible")]
+    FuncNotRevertible,
     #[error("func argument already exists for that name")]
     FuncArgumentAlreadyExists,
     #[error("func argument not found")]
     FuncArgNotFound,
+    #[error("attribute prototype {0} has no prop_id")]
+    AttributePrototypeMissingPropId(AttributePrototypeId),
+    #[error("attribute prototype {0} schema_variant is missingj")]
+    AttributePrototypeMissingSchemaVariant(AttributePrototypeId),
+    #[error("attribute prototype {0} schema is missing")]
+    AttributePrototypeMissingSchema(AttributePrototypeId),
+    #[error("attribute prototype {0} is missing its prop {1}")]
+    AttributePrototypeMissingProp(AttributePrototypeId, PropId),
+    #[error("attribute prototype {0} is missing argument {1}")]
+    AttributePrototypeMissingArgument(AttributePrototypeId, AttributePrototypeArgumentId),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
@@ -118,6 +140,45 @@ impl IntoResponse for FuncError {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeArgumentView {
+    func_argument_id: FuncArgumentId,
+    id: Option<AttributePrototypeArgumentId>,
+    internal_provider_id: Option<InternalProviderId>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributePrototypeView {
+    id: AttributePrototypeId,
+    schema_variant_id: SchemaVariantId,
+    component_id: Option<ComponentId>,
+    prop_id: PropId,
+    prototype_arguments: Vec<AttributePrototypeArgumentView>,
+}
+
+impl AttributePrototypeView {
+    pub async fn into_context(&self, ctx: &DalContext) -> FuncResult<AttributeContext> {
+        // should context need schema id if it has schema variant id, since a schema variant
+        // can only belong to one schema?
+        let schema_id = *SchemaVariant::get_by_id(ctx, &self.schema_variant_id)
+            .await?
+            .ok_or(FuncError::AttributePrototypeMissingSchemaVariant(self.id))?
+            .schema(ctx)
+            .await?
+            .ok_or(FuncError::AttributePrototypeMissingSchema(self.id))?
+            .id();
+
+        Ok(AttributeContextBuilder::new()
+            .set_prop_id(self.prop_id)
+            .set_schema_id(schema_id)
+            .set_schema_variant_id(self.schema_variant_id)
+            .set_component_id(self.component_id.unwrap_or(ComponentId::NONE))
+            .to_context()?)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
@@ -125,9 +186,13 @@ pub enum FuncAssociations {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
     },
+    Attribute {
+        prototypes: Vec<AttributePrototypeView>,
+        arguments: Vec<FuncArgumentView>,
+    },
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct FuncArgumentView {
     pub id: FuncArgumentId,
@@ -136,7 +201,7 @@ pub struct FuncArgumentView {
     pub element_kind: Option<FuncArgumentKind>,
 }
 
-async fn is_func_revertable(ctx: &DalContext, func: &Func) -> FuncResult<bool> {
+async fn is_func_revertible(ctx: &DalContext, func: &Func) -> FuncResult<bool> {
     // Clone a new ctx vith head visibility
     let ctx = ctx.clone_with_new_visibility(Visibility::new_head(false));
     let head_func = Func::get_by_id(&ctx, func.id()).await?;
@@ -261,6 +326,127 @@ async fn update_attribute_value_by_func_for_context(
 
     Ok(())
 }
+async fn prototype_view_for_prototype(
+    ctx: &DalContext,
+    func_id: FuncId,
+    proto: &AttributePrototype,
+) -> FuncResult<AttributePrototypeView> {
+    let prop_id = if proto.context.prop_id().is_some() {
+        proto.context.prop_id()
+    } else {
+        return Err(FuncError::AttributePrototypeMissingPropId(*proto.id()));
+    };
+
+    let component_id = if proto.context.component_id().is_some() {
+        Some(proto.context.component_id())
+    } else {
+        None
+    };
+
+    let schema_variant_id = if proto.context.schema_variant_id().is_none() {
+        let prop = Prop::get_by_id(ctx, &prop_id)
+            .await?
+            .ok_or_else(|| FuncError::AttributePrototypeMissingProp(*proto.id(), prop_id))?;
+
+        match prop.schema_variants(ctx).await?.pop() {
+            Some(schema_variant) => *schema_variant.id(),
+            None => {
+                return Err(FuncError::AttributePrototypeMissingSchemaVariant(
+                    *proto.id(),
+                ))
+            }
+        }
+    } else {
+        proto.context.schema_variant_id()
+    };
+
+    let prototype_arguments =
+        FuncArgument::list_for_func_with_prototype_arguments(ctx, func_id, *proto.id())
+            .await?
+            .iter()
+            .map(
+                |(func_arg, maybe_proto_arg)| AttributePrototypeArgumentView {
+                    func_argument_id: *func_arg.id(),
+                    id: maybe_proto_arg.as_ref().map(|proto_arg| *proto_arg.id()),
+                    internal_provider_id: maybe_proto_arg
+                        .as_ref()
+                        .map(|proto_arg| proto_arg.internal_provider_id()),
+                },
+            )
+            .collect();
+
+    Ok(AttributePrototypeView {
+        id: *proto.id(),
+        prop_id,
+        component_id,
+        schema_variant_id,
+        prototype_arguments,
+    })
+}
+
+pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncResponse> {
+    let associations = match func.backend_kind() {
+        FuncBackendKind::JsQualification => {
+            let protos = QualificationPrototype::find_for_func(ctx, func.id()).await?;
+
+            let mut schema_variant_ids = vec![];
+            let mut component_ids = vec![];
+
+            for proto in protos {
+                if proto.context().schema_variant_id().is_some() {
+                    schema_variant_ids.push(proto.context().schema_variant_id());
+                } else if proto.context().component_id().is_some() {
+                    component_ids.push(proto.context().component_id());
+                }
+            }
+
+            Some(FuncAssociations::Qualification {
+                schema_variant_ids,
+                component_ids,
+            })
+        }
+        FuncBackendKind::JsAttribute => {
+            let protos = AttributePrototype::find_for_func(ctx, func.id()).await?;
+            let mut prototype_views = vec![];
+
+            for proto in &protos {
+                prototype_views.push(prototype_view_for_prototype(ctx, *func.id(), proto).await?);
+            }
+
+            Some(FuncAssociations::Attribute {
+                prototypes: prototype_views,
+                arguments: FuncArgument::list_for_func(ctx, *func.id())
+                    .await?
+                    .iter()
+                    .map(|arg| FuncArgumentView {
+                        id: *arg.id(),
+                        name: arg.name().to_owned(),
+                        kind: arg.kind().to_owned(),
+                        element_kind: arg.element_kind().cloned(),
+                    })
+                    .collect(),
+            })
+        }
+        _ => None,
+    };
+
+    let is_revertible = is_func_revertible(ctx, func).await?;
+
+    Ok(GetFuncResponse {
+        id: func.id().to_owned(),
+        handler: func.handler().map(|h| h.to_owned()),
+        kind: func.backend_kind().to_owned(),
+        name: func
+            .display_name()
+            .unwrap_or_else(|| func.name())
+            .to_owned(),
+        description: func.description().map(|d| d.to_owned()),
+        code: func.code_plaintext()?,
+        is_builtin: func.is_builtin(),
+        is_revertible,
+        associations,
+    })
+}
 
 pub fn routes() -> Router {
     Router::new()
@@ -270,8 +456,8 @@ pub fn routes() -> Router {
         .route("/save_func", post(save_func::save_func))
         .route("/exec_func", post(exec_func::exec_func))
         .route("/revert_func", post(revert_func::revert_func))
-        .route("/list_arguments", get(list_arguments::list_arguments))
-        .route("/create_argument", post(create_argument::create_argument))
-        .route("/delete_argument", post(delete_argument::delete_argument))
-        .route("/save_argument", post(save_argument::save_argument))
+        .route(
+            "/list_input_sources",
+            get(list_input_sources::list_input_sources),
+        )
 }
