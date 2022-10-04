@@ -1,6 +1,6 @@
 use dal::func::backend::validation::FuncBackendValidationArgs;
 use dal::test::helpers::find_prop_and_parent_by_name;
-use dal::validation::ValidationKind;
+use dal::validation::Validation;
 use dal::{BillingAccountSignup, DalContext, Prop};
 use dal::{Func, Schema, StandardModel, SystemId, ValidationPrototype, ValidationPrototypeContext};
 
@@ -34,10 +34,10 @@ async fn new(ctx: &DalContext) {
         .expect("Error fetching builtin function");
     let func = funcs.pop().expect("Missing builtin function si:validation");
 
-    let args = FuncBackendValidationArgs::new(
-        Some("".to_string()),
-        ValidationKind::StringEquals("amon amarth".to_string()),
-    );
+    let args = FuncBackendValidationArgs::new(Validation::StringEquals {
+        value: Some("".to_string()),
+        expected: "amon amarth".to_string(),
+    });
 
     let mut builder = ValidationPrototypeContext::builder();
     builder.set_prop_id(*prop.id());
@@ -84,10 +84,10 @@ async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
         .expect("Error fetching builtin function");
     let func = funcs.pop().expect("Missing builtin function si:validation");
 
-    let first_args = FuncBackendValidationArgs::new(
-        Some("".to_string()),
-        ValidationKind::StringEquals("amon amarth".to_string()),
-    );
+    let first_args = FuncBackendValidationArgs::new(Validation::StringEquals {
+        value: Some("".to_string()),
+        expected: "amon amarth".to_string(),
+    });
 
     let mut builder = ValidationPrototypeContext::builder();
     builder.set_prop_id(*prop.id());
@@ -103,10 +103,10 @@ async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
     .await
     .expect("cannot create new attribute prototype");
 
-    let second_args = FuncBackendValidationArgs::new(
-        Some("".to_string()),
-        ValidationKind::StringEquals("twisty monkey".to_string()),
-    );
+    let second_args = FuncBackendValidationArgs::new(Validation::StringEquals {
+        value: Some("".to_string()),
+        expected: "twisty monkey".to_string(),
+    });
     let mut builder = ValidationPrototypeContext::builder();
     builder.set_prop_id(*prop.id());
     let _second_validation_prototype = ValidationPrototype::new(

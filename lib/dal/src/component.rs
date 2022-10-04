@@ -23,6 +23,7 @@ use crate::qualification_resolver::QualificationResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::SocketEdgeKind;
+use crate::validation::ValidationConstructorError;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
     edge::EdgeId,
@@ -88,6 +89,8 @@ pub enum ComponentError {
     MultipleRootProps(Vec<Prop>),
     #[error("root prop not found for schema variant: {0}")]
     RootPropNotFound(SchemaVariantId),
+    #[error("validation error: {0}")]
+    Validation(#[from] ValidationConstructorError),
 
     // FIXME: change the below to be alphabetical and re-join with the above variants.
     #[error(transparent)]
@@ -144,8 +147,8 @@ pub enum ComponentError {
     MissingFunc(String),
     #[error("func binding return value: {0} not found")]
     FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
-    #[error("invalid prop value; expected {0} but got {1}")]
-    InvalidPropValue(String, Value),
+    #[error("invalid prop value kind; expected {0} but found {1}")]
+    InvalidPropValue(&'static str, Value),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("validation resolver error: {0}")]
@@ -412,7 +415,6 @@ impl Component {
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
 
-        // TODO(nick): use system.
         let base_attribute_read_context = AttributeReadContext {
             prop_id: None,
             external_provider_id: Some(ExternalProviderId::NONE),
@@ -436,18 +438,19 @@ impl Component {
 
             // Grab the data necessary for assembling the func arguments. We'll check if it's in
             // the cache first.
-            let (value, attribute_value_id) = match cache.get(&prop_id) {
+            let (maybe_value, attribute_value_id) = match cache.get(&prop_id) {
                 Some((value, attribute_value_id)) => (value.to_owned(), *attribute_value_id),
                 None => {
-                    let attribute_value = AttributeValue::find_for_context(
-                        ctx,
-                        AttributeReadContext {
-                            prop_id: Some(prop_id),
-                            ..base_attribute_read_context
-                        },
-                    )
-                    .await?
-                    .expect("poop canoe");
+                    let attribute_read_context = AttributeReadContext {
+                        prop_id: Some(prop_id),
+                        ..base_attribute_read_context
+                    };
+                    let attribute_value =
+                        AttributeValue::find_for_context(ctx, attribute_read_context)
+                            .await?
+                            .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                                attribute_read_context,
+                            ))?;
 
                     let value = match FuncBindingReturnValue::get_by_id(
                         ctx,
@@ -475,26 +478,14 @@ impl Component {
                 ));
             }
 
+            // Deserialize the args, update the "value", and serialize the mutated args.
             let mut args = FuncBackendValidationArgs::deserialize(validation_prototype.args())?;
+            args.validation = args.validation.update_value(&maybe_value)?;
+            let mutated_args = serde_json::to_value(args)?;
 
-            // NOTE(nick): we will need to check the "kind" on the args in the future if "value"
-            // can be something other than a string.
-            args.value = match &value {
-                Some(json_value) => match json_value.as_str() {
-                    Some(v) => Some(v.to_string()),
-                    None => {
-                        return Err(ComponentError::InvalidPropValue(
-                            "String".to_string(),
-                            json_value.clone(),
-                        ));
-                    }
-                },
-                None => None,
-            };
-            let args_json = serde_json::to_value(args)?;
-
+            // Now, we can load in the mutated args!
             let (func_binding, _, created) =
-                FuncBinding::find_or_create_and_execute(ctx, args_json, *func.id()).await?;
+                FuncBinding::find_or_create_and_execute(ctx, mutated_args, *func.id()).await?;
 
             // If the func binding was newly created, then we need to also create a validation
             // resolver.

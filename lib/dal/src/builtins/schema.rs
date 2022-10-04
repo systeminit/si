@@ -14,7 +14,7 @@ use crate::{
 
 use crate::func::argument::{FuncArgument, FuncArgumentId};
 use crate::func::backend::validation::FuncBackendValidationArgs;
-use crate::validation::ValidationKind;
+use crate::validation::Validation;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -239,9 +239,11 @@ impl BuiltinSchemaHelpers {
 
     /// Create a [`validation`](crate::validation) for a [`Prop`](crate::Prop) within a
     /// [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant).
+    ///
+    /// Users of this helper should provide a [`None`] value to the "value" (or similar) field.
     pub async fn create_validation(
         ctx: &DalContext,
-        validation_kind: ValidationKind,
+        validation: Validation,
         prop_id: PropId,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
@@ -259,7 +261,7 @@ impl BuiltinSchemaHelpers {
         ValidationPrototype::new(
             ctx,
             *func.id(),
-            serde_json::to_value(FuncBackendValidationArgs::new(None, validation_kind))?,
+            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
             builder.to_context(ctx).await?,
         )
         .await?;
