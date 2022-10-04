@@ -11,7 +11,7 @@
         </SiTabHeader>
       </template>
       <template #panels>
-        <TabPanel class="overflow-auto grow">
+        <TabPanel class="grow">
           <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
             <VButton
               :disabled="!isDevMode && editingFunc.isBuiltin"

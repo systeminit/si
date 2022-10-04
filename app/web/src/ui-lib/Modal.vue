@@ -42,7 +42,7 @@
               </div>
 
               <div
-                class="py-1 px-2 border-t dark:border-black flex flex-col place-content-center overflow-hidden"
+                class="py-1 px-2 border-t dark:border-black flex flex-col place-content-center"
               >
                 <slot name="content" />
 
@@ -94,7 +94,7 @@ import {
   DialogTitle,
   TransitionChild,
   TransitionRoot,
-} from "@headlessui/vue";
+} from "@headlessui/vue"
 import { PropType, computed } from "vue";
 import VButton from "@/molecules/VButton.vue";
 
@@ -122,7 +122,7 @@ const dialogPanelClasses = computed(() => {
   if (props.size === "xl") size = "max-w-xl";
   if (props.size === "2xl") size = "max-w-2xl";
 
-  return `${size} w-full transform overflow-hidden rounded bg-white dark:bg-neutral-900 text-left align-middle shadow-xl transition-all text-black dark:text-white`;
+  return `${size} w-full transform rounded bg-white dark:bg-neutral-900 text-left align-middle shadow-xl transition-all text-black dark:text-white`;
 });
 
 const emit = defineEmits<{

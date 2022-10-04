@@ -29,7 +29,7 @@
             leave-to="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
           >
             <DialogPanel
-              class="relative transform overflow-hidden rounded-md bg-shade-0 text-neutral-900 text-left shadow-xl transition-all dark:bg-neutral-800 dark:text-neutral-50 sm:w-full sm:max-w-sm"
+              class="relative transform rounded-md bg-shade-0 text-neutral-900 text-left shadow-xl transition-all dark:bg-neutral-800 dark:text-neutral-50 sm:w-full sm:max-w-sm"
             >
               <DialogTitle
                 as="h3"

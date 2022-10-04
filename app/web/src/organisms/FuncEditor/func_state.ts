@@ -59,7 +59,7 @@ export const removeAttributePrototype = (
     return;
   }
 
-  // This is code duplicatey but we need to narrow the type heret
+  // This is code duplicatey but we need to narrow the type here
   const currentFunc = funcState.funcs[currentFuncIdx];
   if (currentFunc.associations?.type !== "attribute") {
     return;
