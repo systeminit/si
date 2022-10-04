@@ -80,15 +80,16 @@ import Selector from "~icons/heroicons-solid/selector";
 import Lock from "~icons/heroicons-solid/lock-closed";
 import LockOpen from "~icons/heroicons-solid/lock-open";
 
+import Diagram from "~icons/raphael/diagram";
+
 // octicons (from github) available as no suffix, -16, -24
 import GitBranch from "~icons/octicon/git-branch-24";
 import GitCommit from "~icons/octicon/git-commit-24";
 import GitMerge from "~icons/octicon/git-merge-24";
+import Tools from "~icons/octicon/tools";
 
 // custom icons
-import Diagram from "@/assets/images/custom-icons/diagram.svg?component";
-import Tools from "@/assets/images/custom-icons/tools.svg?component";
-
+// import Icon from "@/assets/images/custom-icons/icon.svg?component";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */

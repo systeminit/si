@@ -31,7 +31,7 @@ const emit = defineEmits<{
 }>();
 
 const props = defineProps({
-  placeholder: { type: String, default: "search..." },
+  placeholder: { type: String, default: "search" },
   modelValue: { type: String },
   autoSearch: { type: Boolean },
 });

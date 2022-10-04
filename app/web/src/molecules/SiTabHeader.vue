@@ -21,19 +21,19 @@
           classesF + ' ' + (selected ? selectedClassesF : defaultClassesF)
         "
       >
-        <div class="overflow-hidden text-ellipsis">
+        <span class="overflow-hidden text-ellipsis">
           <slot />
-        </div>
-        <div>
+        </span>
+        <span>
           <slot name="icon" />
-        </div>
+        </span>
       </span>
     </button>
   </Tab>
   <div
-    v-if="afterMargin > 0"
-    class="border-b border-neutral-300 dark:border-neutral-600"
-    :class="'w-' + afterMargin + (selectedToFront ? ' order-2' : '')"
+    v-if="noAfterMargin === false"
+    class="border-b border-neutral-300 dark:border-neutral-600 w-2"
+    :class="selectedToFront ? 'order-2' : ''"
   ></div>
 </template>
 
@@ -47,7 +47,7 @@ const props = defineProps<{
   selectedClasses?: string;
 }>();
 
-const afterMargin = inject("afterMargin", 0);
+const noAfterMargin = inject("noAfterMargin", false);
 const selectedToFront = inject("selectedTabToFront", false);
 const classesF = inject("tabClasses", props.classes);
 const defaultClassesF = inject("defaultTabClasses", props.defaultClasses);
