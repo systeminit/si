@@ -2,7 +2,7 @@
   <Disclosure v-slot="{ open }" :as="as" :default-open="defaultOpen">
     <DisclosureButton :class="disclosureButtonClasses">
       <Icon
-        :name="open ? 'chevron--up' : 'chevron--down'"
+        :name="open ? 'chevron--down' : 'chevron--right'"
         size="sm"
         class="mr-1.5 dark:text-white flex-shrink-0 block"
       />
@@ -32,6 +32,7 @@ const props = defineProps({
   showLabelAndSlot: { type: Boolean, default: false },
   as: { type: String },
   contentAs: { type: String },
+  buttonClasses: { type: String, default: "" },
   defaultOpen: { type: Boolean, default: true },
   textSize: {
     type: String as PropType<"sm" | "md" | "lg">,
@@ -42,8 +43,7 @@ const props = defineProps({
 });
 
 const disclosureButtonClasses = computed(() => {
-  let classes =
-    "flex w-full px-2 py-2 text-left font-medium focus:outline-none items-center";
+  let classes = `${props.buttonClasses} flex w-full px-2 py-2 text-left font-medium focus:outline-none items-center`;
 
   if (!props.hideBottomBorder) {
     if (props.forceTheme === "dark") {

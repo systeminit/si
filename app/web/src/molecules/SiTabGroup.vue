@@ -18,11 +18,9 @@
           :class="clsx('si-tab-group__tabs', tabListClasses)"
         >
           <div
-            v-if="startMargin > 0"
-            :class="
-              'w-' + startMargin + (selectedTabToFront ? ' order-first' : '')
-            "
-            class="border-b border-neutral-300 dark:border-neutral-600"
+            v-if="noStartMargin === false"
+            :class="selectedTabToFront ? ' order-first' : ''"
+            class="w-2 border-b border-neutral-300 dark:border-neutral-600"
           ></div>
           <slot name="tabs" />
           <div ref="endSpace"></div>
@@ -65,8 +63,8 @@ const props = withDefaults(
     tabClasses?: string;
     defaultTabClasses?: string;
     selectedTabClasses?: string;
-    startMargin?: number;
-    afterMargin?: number;
+    noStartMargin?: boolean;
+    noAfterMargin?: boolean;
     topMargin?: number;
     selectedTabToFront?: boolean;
     tabWidthMaximum?: number;
@@ -83,8 +81,8 @@ const props = withDefaults(
     selectedTabClasses:
       "border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold",
     topMargin: 2,
-    startMargin: 4,
-    afterMargin: 2,
+    noStartMargin: false,
+    noAfterMargin: false,
     selectedTabToFront: false,
     tabWidthMaximum: 0,
   },
@@ -146,7 +144,7 @@ onBeforeUnmount(() => {
   resizeObserver.unobserve(tabList.value?.$el);
 });
 
-provide("afterMargin", props.afterMargin);
+provide("noAfterMargin", props.noAfterMargin);
 provide("tabClasses", props.tabClasses);
 provide("defaultTabClasses", props.defaultTabClasses);
 provide("selectedTabClasses", props.selectedTabClasses);

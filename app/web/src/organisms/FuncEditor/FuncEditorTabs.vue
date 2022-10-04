@@ -4,8 +4,8 @@
     :selected-index="selectedTab"
     selected-tab-to-front
     :tab-width-maximum="0.3"
-    :start-margin="0"
-    :after-margin="0"
+    no-start-margin
+    no-after-margin
     :top-margin="0"
     @change="changeTab"
   >

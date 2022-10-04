@@ -21,6 +21,7 @@ import _ from "lodash";
 import SiPanel from "@/atoms/SiPanel.vue";
 import DiagramService2 from "@/service/diagram2";
 import { QualificationService } from "@/service/qualification";
+import { ChangeSetService } from "@/service/change_set";
 import FixPicker from "../FixPicker.vue";
 import FixHistory from "../FixHistory.vue";
 import { DiagramStatusIcon } from "../GenericDiagram/diagram_types";
@@ -38,6 +39,8 @@ const qualificationStatusToIconMap: Record<
 
 const rawDiagramData = DiagramService2.useDiagramData();
 const qualificationSummary = QualificationService.useQualificationSummary();
+
+ChangeSetService.switchToHead();
 
 const diagramData = computed(() => {
   return {
