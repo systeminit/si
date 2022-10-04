@@ -32,7 +32,7 @@ impl Builtin {
             Builtin::AwsEc2 => "EC2 Instance",
             Builtin::AwsRegion => "Region",
             Builtin::CoreOsButane => "Butane",
-            Builtin::DockerHubCredential => "Docker Hub Credentials",
+            Builtin::DockerHubCredential => "Docker Hub Credential",
             Builtin::DockerImage => "Docker Image",
             Builtin::KubernetesDeployment => "Kubernetes Deployment",
             Builtin::KubernetesNamespace => "Kubernetes Namespace",

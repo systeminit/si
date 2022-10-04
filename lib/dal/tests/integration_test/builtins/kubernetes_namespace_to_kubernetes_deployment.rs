@@ -49,7 +49,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     let tail_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
         tail_namespace_payload.schema_variant_id,
-        "kubernetes_namespace",
+        "Kubernetes Namespace",
     )
     .await
     .expect("cannot find external provider")
@@ -58,7 +58,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
             head_deployment_payload.schema_variant_id,
-            "kubernetes_namespace",
+            "Kubernetes Namespace",
         )
         .await
         .expect("cannot find explicit internal provider")

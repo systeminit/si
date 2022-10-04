@@ -42,14 +42,14 @@ async fn new(ctx: &DalContext) {
         .iter()
         .find(|s| {
             s.edge_kind() == &SocketEdgeKind::ConfigurationOutput
-                && s.name() == "docker_hub_credential"
+                && s.name() == "Docker Hub Credential"
         })
         .expect("cannot find output socket");
     let input_socket = image_sockets
         .iter()
         .find(|s| {
             s.edge_kind() == &SocketEdgeKind::ConfigurationInput
-                && s.name() == "docker_hub_credential"
+                && s.name() == "Docker Hub Credential"
         })
         .expect("cannot find input socket");
 
