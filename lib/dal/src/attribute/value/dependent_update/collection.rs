@@ -94,7 +94,7 @@ impl AttributeValueDependentCollectionHarness {
                         *ancestor_implicit_internal_provider.id(),
                     )
                     .await
-                    .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
+                    .map_err(|e| AttributeValueError::AttributePrototype(e.to_string()))?;
                 let attribute_values_in_progress =
                     Self::find_or_create_attribute_values_that_need_to_be_updated(
                         ctx,
@@ -130,7 +130,7 @@ impl AttributeValueDependentCollectionHarness {
                 source_attribute_context.internal_provider_id(),
             )
             .await
-            .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
+            .map_err(|e| AttributeValueError::AttributePrototype(e.to_string()))?;
 
         // These are the attribute prototypes who do not have corresponding external providers
         // (i.e. "consumption" from "explicit internal providers").
@@ -146,7 +146,7 @@ impl AttributeValueDependentCollectionHarness {
                     source_attribute_context.component_id(),
                 )
                 .await
-                .map_err(|e| AttributeValueError::ExternalProvider(format!("{e}")))?;
+                .map_err(|e| AttributeValueError::ExternalProvider(e.to_string()))?;
 
             for external_provider in &external_providers_found {
                 // Use everything from the source context, but change the least specific field to
@@ -205,14 +205,14 @@ impl AttributeValueDependentCollectionHarness {
                 source_attribute_context.component_id(),
             )
             .await
-            .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
+            .map_err(|e| AttributeValueError::AttributePrototype(e.to_string()))?;
 
         for attribute_prototype_group in attribute_prototype_groups {
             let attribute_prototype = attribute_prototype_group.attribute_prototype;
             let internal_providers_found =
                 InternalProvider::list_for_attribute_prototype(ctx, *attribute_prototype.id())
                     .await
-                    .map_err(|e| AttributeValueError::InternalProvider(format!("{e}")))?;
+                    .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
 
             for internal_provider in internal_providers_found {
                 // We need to create an ugly ass context that uses the following:

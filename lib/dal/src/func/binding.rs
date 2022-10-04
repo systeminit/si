@@ -161,7 +161,9 @@ impl FuncBinding {
         let created: bool = row.try_get("created")?;
 
         let json_object: serde_json::Value = row.try_get("object")?;
-        let object: FuncBinding = if created {
+        let object: FuncBinding = serde_json::from_value(json_object)?;
+
+        if created {
             let _history_event = HistoryEvent::new(
                 ctx,
                 FuncBinding::history_event_label(vec!["create"]),
@@ -169,12 +171,7 @@ impl FuncBinding {
                 &serde_json::json![{ "visibility": ctx.visibility() }],
             )
             .await?;
-            let object: FuncBinding = serde_json::from_value(json_object)?;
-            object.set_func(ctx, &func_id).await?;
-            object
-        } else {
-            serde_json::from_value(json_object)?
-        };
+        }
 
         Ok((object, created))
     }

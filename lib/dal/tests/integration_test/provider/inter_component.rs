@@ -8,7 +8,7 @@ use dal::{
     AttributeValue, Component, ComponentView, DalContext, DiagramKind, Edge, ExternalProvider,
     InternalProvider, PropKind, SchemaKind, StandardModel,
 };
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
 
 use crate::dal::test;
@@ -20,7 +20,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     let swings_payload = setup_swings(ctx).await;
 
     // Ensure setup went as expected.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "object": {
@@ -34,7 +34,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         }], // expected
         esp_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {},
             "si": {
@@ -93,7 +93,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         .await;
 
     // Ensure that they look as we expect.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "object": {
@@ -107,7 +107,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         }], // expected
         esp_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {},
             "si": {
@@ -192,7 +192,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Ensure that both components look as we expect when not "connected". The creation of both the
     // "esp" external provider and the "swings" implicit internal provider should not affect intra
     // component identity update working.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "object": {
@@ -206,7 +206,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         }], // expected
         esp_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {},
             "si": {
@@ -228,7 +228,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     .expect("could not connect providers");
 
     // Ensure that both components continue to look as we expect.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "object": {
@@ -242,7 +242,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         }], // expected
         esp_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {},
             "si": {
@@ -262,7 +262,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         .await;
 
     // Observe that inter component identity updating work.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "object": {
@@ -276,7 +276,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         }], // expected
         esp_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "destination": "two",
@@ -589,7 +589,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         ..AttributeReadContext::default()
     };
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -617,7 +617,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         ..AttributeReadContext::default()
     };
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -697,7 +697,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .await
     .expect("cannot update source foo_string");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -716,7 +716,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             .properties,
     );
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -781,7 +781,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .await
     .expect("cannot update source bar_string");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -801,7 +801,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             .properties,
     );
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {

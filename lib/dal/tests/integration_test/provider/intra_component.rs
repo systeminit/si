@@ -8,7 +8,7 @@ use dal::test_harness::{
 };
 use dal::{AttributePrototypeArgument, AttributeValue, Component, ComponentView};
 use dal::{AttributeReadContext, DalContext, Func, PropKind, SchemaKind, StandardModel};
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn intra_component_identity_update(ctx: &DalContext) {
@@ -139,7 +139,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     .expect("cannot set value for context");
 
     // Ensure that our rendered data matches what was intended.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "object": {
@@ -212,7 +212,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     .expect("could not create attribute prototype argument");
 
     // Ensure that the shape has not changed after creating the provider and updating the prototype.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "object": {
@@ -244,7 +244,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     .expect("could not update attribute value");
 
     // Observe that both the source and destination fields were updated.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "object": {
@@ -276,7 +276,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     .expect("could not update attribute value");
 
     // Observe it again!
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "object": {

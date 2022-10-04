@@ -8,13 +8,13 @@ CREATE TABLE attribute_values
     tenancy_workspace_ids                  bigint[],
     visibility_change_set_pk               bigint                   NOT NULL DEFAULT -1,
     visibility_deleted_at                  timestamp with time zone,
-    attribute_context_prop_id              bigint,
-    attribute_context_internal_provider_id bigint,
-    attribute_context_external_provider_id bigint,
-    attribute_context_schema_id            bigint,
-    attribute_context_schema_variant_id    bigint,
-    attribute_context_component_id         bigint,
-    attribute_context_system_id            bigint,
+    attribute_context_prop_id              bigint                   NOT NULL,
+    attribute_context_internal_provider_id bigint                   NOT NULL,
+    attribute_context_external_provider_id bigint                   NOT NULL,
+    attribute_context_schema_id            bigint                   NOT NULL,
+    attribute_context_schema_variant_id    bigint                   NOT NULL,
+    attribute_context_component_id         bigint                   NOT NULL,
+    attribute_context_system_id            bigint                   NOT NULL,
     created_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
     proxy_for_attribute_value_id           bigint,
@@ -90,43 +90,5 @@ BEGIN
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
-END;
-$$ LANGUAGE PLPGSQL VOLATILE;
-
-CREATE OR REPLACE FUNCTION attribute_value_remove_proxies_v1(
-    this_tenancy jsonb,
-    this_visibility jsonb,
-    this_attribute_value_id bigint,
-    OUT succeeded boolean) AS
-$$
-DECLARE
-    this_tenancy_record    tenancy_record_v1;
-    this_visibility_record visibility_record_v1;
-    this_found_proxy       RECORD;
-BEGIN
-    succeeded := True;
-    this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
-    this_visibility_record := visibility_json_to_columns_v1(this_visibility);
-
-    FOR this_found_proxy IN
-        SELECT attribute_values.*
-        FROM attribute_values
-        WHERE proxy_for_attribute_value_id = this_attribute_value_id
-        LOOP
-            IF this_found_proxy.sealed_proxy = True THEN
-                EXECUTE format('SELECT update_by_id_v1(%1$L, %2$L, %3$L, %4$L, %5$L, %6$L)',
-                               'attribute_values', 'proxy_for_attribute_value_id',
-                               this_tenancy, this_visibility, this_found_proxy.id, NULL);
-                EXECUTE format('SELECT update_by_id_v1(%1$L, %2$L, %3$L, %4$L, %5$L, %6$L)',
-                               'attribute_values', 'sealed_proxy',
-                               this_tenancy, this_visibility, this_found_proxy.id, False);
-            ELSE
-                EXECUTE format('SELECT attribute_value_remove_proxies_v1(%1$L, %2$L, %3$L)',
-                               this_tenancy, this_visibility, this_found_proxy.id);
-                EXECUTE format('SELECT delete_by_id_v1(%1$L, %2$L, %3$L, %4$L)',
-                               'attribute_values',
-                               this_tenancy, this_visibility, this_found_proxy.id);
-            END IF;
-        END LOOP;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
