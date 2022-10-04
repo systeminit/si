@@ -15,7 +15,7 @@ export interface InputSourceProp {
   propId: number;
   kind: PropKind;
   schemaVariantId: number;
-  internalProviderId: number;
+  internalProviderId?: number;
   path: string;
   name: string;
 }

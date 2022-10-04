@@ -1,13 +1,13 @@
 <template>
   <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
     <VButton
-        :disabled="disabled"
-        button-rank="primary"
-        button-type="success"
-        icon="plus"
-        label="Add binding"
-        size="md"
-        @click="openModal()"
+      :disabled="disabled"
+      button-rank="primary"
+      button-type="success"
+      icon="plus"
+      label="Add binding"
+      size="md"
+      @click="openModal()"
     />
   </div>
   <ul class="flex flex-col p-3 gap-1">
@@ -43,44 +43,44 @@
       </ul>
       <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
         <VButton
-            :disabled="disabled"
-            button-rank="primary"
-            button-type="neutral"
-            label="Edit binding "
-            size="md"
-            @click="openModal(proto.id)"
+          :disabled="disabled"
+          button-rank="primary"
+          button-type="neutral"
+          label="Edit binding "
+          size="md"
+          @click="openModal(proto.id)"
         />
         <VButton
-            :disabled="disabled"
-            button-rank="tertiary"
-            button-type="destructive"
-            icon="x"
-            label="Remove Binding"
-            size="sm"
-            @click="removeBinding(proto.id)"
+          :disabled="disabled"
+          button-rank="tertiary"
+          button-type="destructive"
+          icon="x"
+          label="Remove Binding"
+          size="sm"
+          @click="removeBinding(proto.id)"
         />
       </div>
     </li>
   </ul>
   <AttributeBindingsModal
-      :func-id="funcId"
-      :components="components"
-      :schema-variants="schemaVariants"
-      :open="isModalOpen"
-      :prototype="editingPrototype"
-      :edit="editingPrototype !== undefined"
-      type="save"
-      @close="closeModal()"
-      @save="saveModal"
+    :func-id="funcId"
+    :components="components"
+    :schema-variants="schemaVariants"
+    :open="isModalOpen"
+    :prototype="editingPrototype"
+    :edit="editingPrototype !== undefined"
+    type="save"
+    @close="closeModal()"
+    @save="saveModal"
   />
 </template>
 
 <script lang="ts" setup>
-import {computed, inject, ref, Ref} from "vue";
-import {AttributeAssocations, AttributePrototypeView} from "@/service/func";
+import { computed, inject, ref, Ref } from "vue";
+import { AttributeAssocations, AttributePrototypeView } from "@/service/func";
 import VButton from "@/molecules/VButton.vue";
-import {Option} from "@/molecules/SelectMenu.vue";
-import {FuncArgument} from "@/api/sdf/dal/func";
+import { Option } from "@/molecules/SelectMenu.vue";
+import { FuncArgument } from "@/api/sdf/dal/func";
 import {
   removeAttributePrototype,
   saveAttributePrototype,
@@ -93,7 +93,7 @@ const makeEmptyPrototype = (): AttributePrototypeView => ({
   schemaVariantId: -1,
   componentId: -1,
   propId: -1,
-  prototypeArguments: props.associations.arguments.map(({id}) => ({
+  prototypeArguments: props.associations.arguments.map(({ id }) => ({
     funcArgumentId: id,
   })),
 });
@@ -104,7 +104,7 @@ const closeModal = () => {
 };
 
 const removeBinding = (prototypeId?: number) =>
-    prototypeId && removeAttributePrototype(props.funcId, prototypeId);
+  prototypeId && removeAttributePrototype(props.funcId, prototypeId);
 
 const saveModal = (prototype?: AttributePrototypeView) => {
   if (prototype) {
@@ -118,18 +118,18 @@ const openModal = (prototypeId?: number) => {
   editingPrototype.value = makeEmptyPrototype();
   if (prototypeId) {
     editingPrototype.value = props.associations.prototypes.find(
-        (proto) => proto.id === prototypeId,
+      (proto) => proto.id === prototypeId,
     );
   }
   isModalOpen.value = true;
 };
 
 const idToSourceNameMap =
-    inject<Ref<{ [key: number]: string }>>("idToSourceNameMap");
+  inject<Ref<{ [key: number]: string }>>("idToSourceNameMap");
 const idToPropNameMap =
-    inject<Ref<{ [key: number]: string }>>("idToPropNameMap");
+  inject<Ref<{ [key: number]: string }>>("idToPropNameMap");
 const funcArgumentsIdMap =
-    inject<Ref<{ [key: number]: FuncArgument }>>("funcArgumentsIdMap");
+  inject<Ref<{ [key: number]: FuncArgument }>>("funcArgumentsIdMap");
 
 const props = defineProps<{
   funcId: number;
@@ -142,18 +142,18 @@ const props = defineProps<{
 const prototypeView = computed(() => {
   return props.associations.prototypes.map((proto) => {
     const schemaVariant =
-        props.schemaVariants.find((sv) => sv.value === proto.schemaVariantId)
-            ?.label ?? "none";
+      props.schemaVariants.find((sv) => sv.value === proto.schemaVariantId)
+        ?.label ?? "none";
     const component =
-        props.components.find((c) => c.value === proto.componentId)?.label ??
-        "all";
+      props.components.find((c) => c.value === proto.componentId)?.label ??
+      "all";
     const prop = idToPropNameMap?.value[proto.propId] ?? "none";
 
     const args = proto.prototypeArguments.map((arg) => ({
       name: funcArgumentsIdMap?.value[arg.funcArgumentId]?.name ?? "none",
       prop: arg.internalProviderId
-          ? idToSourceNameMap?.value[arg.internalProviderId] ?? "none"
-          : "none",
+        ? idToSourceNameMap?.value[arg.internalProviderId] ?? "none"
+        : "none",
     }));
 
     return {

@@ -96,7 +96,9 @@ const idToSourceNameMap = computed(() => {
     idMap[socket.internalProviderId] = `Socket: ${socket.name}`;
   }
   for (const prop of inputSources?.value.props ?? []) {
-    idMap[prop.internalProviderId] = `Attribute: ${prop.path}${prop.name}`;
+    if (prop.internalProviderId) {
+      idMap[prop.internalProviderId] = `Attribute: ${prop.path}${prop.name}`;
+    }
   }
 
   return idMap;

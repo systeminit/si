@@ -20,7 +20,7 @@ pub struct InputSourceSocket {
 #[serde(rename_all = "camelCase")]
 pub struct InputSourceProp {
     pub schema_variant_id: SchemaVariantId,
-    pub internal_provider_id: InternalProviderId,
+    pub internal_provider_id: Option<InternalProviderId>,
     pub prop_id: PropId,
     pub kind: PropKind,
     pub name: String,
@@ -52,21 +52,24 @@ fn prop_tree_to_list(prop_tree: &PropTree) -> Vec<InputSourceProp> {
         let mut work_queue = VecDeque::from([root]);
 
         while let Some(cur) = work_queue.pop_front() {
-            for child in &cur.children {
-                work_queue.push_front(child);
+            // Don't add the children of arrays or maps (yet!)
+            match cur.kind {
+                PropKind::Array | PropKind::Map => {}
+                _ => {
+                    for child in &cur.children {
+                        work_queue.push_front(child);
+                    }
+                }
             }
 
-            // No internal provider id? Not a valid source
-            if let Some(internal_provider_id) = cur.internal_provider_id {
-                prop_sources.push(InputSourceProp {
-                    schema_variant_id: cur.schema_variant_id,
-                    internal_provider_id,
-                    prop_id: cur.prop_id,
-                    kind: cur.kind,
-                    name: cur.name.clone(),
-                    path: cur.path.clone(),
-                });
-            }
+            prop_sources.push(InputSourceProp {
+                schema_variant_id: cur.schema_variant_id,
+                internal_provider_id: cur.internal_provider_id,
+                prop_id: cur.prop_id,
+                kind: cur.kind,
+                name: cur.name.clone(),
+                path: cur.path.clone(),
+            });
         }
     }
 
