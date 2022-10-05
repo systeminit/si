@@ -39,6 +39,7 @@ pub mod organization;
 pub mod prop;
 pub mod prop_tree;
 pub mod property_editor;
+pub mod prototype_context;
 pub mod provider;
 pub mod qualification;
 pub mod qualification_check;

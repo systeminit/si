@@ -9,6 +9,7 @@ use thiserror::Error;
 
 use crate::service::func::get_func::GetFuncResponse;
 use dal::func::argument::FuncArgument;
+use dal::prototype_context::GetContext;
 use dal::{
     attribute::context::AttributeContextBuilder,
     attribute::{
@@ -22,14 +23,16 @@ use dal::{
     },
     job::definition::DependentValuesUpdate,
     prop_tree::PropTreeError,
+    prototype_context::PrototypeContext,
     schema::variant::SchemaVariantError,
     AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId, AttributeValue,
-    AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext, Func,
-    FuncBackendKind, FuncBinding, FuncBindingError, FuncId, InternalProviderError,
-    InternalProviderId, Prop, PropError, PropId, PropKind, QualificationPrototype,
-    QualificationPrototypeError, ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, TransactionsError, Visibility, WriteTenancyError, WsEventError,
+    AttributeValueError, AttributeValueId, CodeGenerationPrototype, CodeGenerationPrototypeError,
+    CodeLanguage, ComponentError, ComponentId, DalContext, Func, FuncBackendKind, FuncBinding,
+    FuncBindingError, FuncId, InternalProviderError, InternalProviderId, Prop, PropError, PropId,
+    PropKind, QualificationPrototype, QualificationPrototypeError, ReadTenancyError, SchemaVariant,
+    SchemaVariantId, StandardModel, StandardModelError, TransactionsError, Visibility,
+    WriteTenancyError, WsEventError,
 };
 
 pub mod create_func;
@@ -88,6 +91,8 @@ pub enum FuncError {
     PropTree(#[from] PropTreeError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("code generation prototype error: {0}")]
+    CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
 
     #[error("Function not found")]
     FuncNotFound,
@@ -186,6 +191,13 @@ pub enum FuncAssociations {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
     },
+    #[serde(rename_all = "camelCase")]
+    CodeGeneration {
+        schema_variant_ids: Vec<SchemaVariantId>,
+        component_ids: Vec<ComponentId>,
+        format: CodeLanguage,
+    },
+    #[serde(rename_all = "camelCase")]
     Attribute {
         prototypes: Vec<AttributePrototypeView>,
         arguments: Vec<FuncArgumentView>,
@@ -384,27 +396,29 @@ async fn prototype_view_for_prototype(
     })
 }
 
+fn prototype_context_into_schema_variants_and_components<P, C>(
+    prototype_contexts: &[P],
+) -> (Vec<SchemaVariantId>, Vec<ComponentId>)
+where
+    P: GetContext<C>,
+    C: PrototypeContext,
+{
+    let mut schema_variant_ids = vec![];
+    let mut component_ids = vec![];
+
+    for context in prototype_contexts {
+        if context.context().component_id().is_some() {
+            component_ids.push(context.context().component_id())
+        } else if context.context().schema_variant_id().is_some() {
+            schema_variant_ids.push(context.context().schema_variant_id());
+        }
+    }
+
+    (schema_variant_ids, component_ids)
+}
+
 pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncResponse> {
     let associations = match func.backend_kind() {
-        FuncBackendKind::JsQualification => {
-            let protos = QualificationPrototype::find_for_func(ctx, func.id()).await?;
-
-            let mut schema_variant_ids = vec![];
-            let mut component_ids = vec![];
-
-            for proto in protos {
-                if proto.context().schema_variant_id().is_some() {
-                    schema_variant_ids.push(proto.context().schema_variant_id());
-                } else if proto.context().component_id().is_some() {
-                    component_ids.push(proto.context().component_id());
-                }
-            }
-
-            Some(FuncAssociations::Qualification {
-                schema_variant_ids,
-                component_ids,
-            })
-        }
         FuncBackendKind::JsAttribute => {
             let protos = AttributePrototype::find_for_func(ctx, func.id()).await?;
             let mut prototype_views = vec![];
@@ -425,6 +439,34 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                         element_kind: arg.element_kind().cloned(),
                     })
                     .collect(),
+            })
+        }
+        FuncBackendKind::JsCodeGeneration => {
+            let protos = CodeGenerationPrototype::list_for_func(ctx, *func.id()).await?;
+
+            let format = match protos.get(0) {
+                Some(proto) => *proto.format(),
+                None => CodeLanguage::Unknown,
+            };
+
+            let (schema_variant_ids, component_ids) =
+                prototype_context_into_schema_variants_and_components(&protos);
+
+            Some(FuncAssociations::CodeGeneration {
+                schema_variant_ids,
+                component_ids,
+                format,
+            })
+        }
+        FuncBackendKind::JsQualification => {
+            let protos = QualificationPrototype::list_for_func(ctx, func.id()).await?;
+
+            let (schema_variant_ids, component_ids) =
+                prototype_context_into_schema_variants_and_components(&protos);
+
+            Some(FuncAssociations::Qualification {
+                schema_variant_ids,
+                component_ids,
             })
         }
         _ => None,

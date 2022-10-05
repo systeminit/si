@@ -6,6 +6,7 @@ use thiserror::Error;
 use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 
+use crate::prototype_context::{GetContext, PrototypeContext};
 use crate::{
     func::FuncId,
     impl_standard_model, pk,
@@ -41,7 +42,7 @@ pub type QualificationPrototypeResult<T> = Result<T, QualificationPrototypeError
 
 const FIND_FOR_CONTEXT: &str =
     include_str!("./queries/qualification_prototype_find_for_context.sql");
-const FIND_FOR_FUNC: &str = include_str!("./queries/qualification_prototype_find_for_func.sql");
+const LIST_FOR_FUNC: &str = include_str!("queries/qualification_prototype_list_for_func.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct QualificationPrototypeContext {
@@ -55,6 +56,24 @@ pub struct QualificationPrototypeContext {
 impl Default for QualificationPrototypeContext {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl PrototypeContext for QualificationPrototypeContext {
+    fn component_id(&self) -> ComponentId {
+        self.component_id
+    }
+
+    fn schema_id(&self) -> SchemaId {
+        self.schema_id
+    }
+
+    fn schema_variant_id(&self) -> SchemaVariantId {
+        self.schema_variant_id
+    }
+
+    fn system_id(&self) -> SystemId {
+        self.system_id
     }
 }
 
@@ -105,32 +124,16 @@ impl QualificationPrototypeContext {
         }
     }
 
-    pub fn component_id(&self) -> ComponentId {
-        self.component_id
-    }
-
     pub fn set_component_id(&mut self, component_id: ComponentId) {
         self.component_id = component_id;
-    }
-
-    pub fn schema_id(&self) -> SchemaId {
-        self.schema_id
     }
 
     pub fn set_schema_id(&mut self, schema_id: SchemaId) {
         self.schema_id = schema_id;
     }
 
-    pub fn schema_variant_id(&self) -> SchemaVariantId {
-        self.schema_variant_id
-    }
-
     pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
         self.schema_variant_id = schema_variant_id;
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
     }
 
     pub fn set_system_id(&mut self, system_id: SystemId) {
@@ -199,6 +202,18 @@ impl_standard_model! {
     table_name: "qualification_prototypes",
     history_event_label_base: "qualification_prototype",
     history_event_message_name: "Qualification Prototype"
+}
+
+impl GetContext<QualificationPrototypeContext> for QualificationPrototype {
+    fn context(&self) -> QualificationPrototypeContext {
+        let mut context = QualificationPrototypeContext::new();
+        context.set_component_id(self.component_id);
+        context.set_schema_id(self.schema_id);
+        context.set_schema_variant_id(self.schema_variant_id);
+        context.set_system_id(self.system_id);
+
+        context
+    }
 }
 
 impl QualificationPrototype {
@@ -297,7 +312,7 @@ impl QualificationPrototype {
         Ok(objects_from_rows(rows)?)
     }
 
-    pub async fn find_for_func(
+    pub async fn list_for_func(
         ctx: &DalContext,
         func_id: &FuncId,
     ) -> QualificationPrototypeResult<Vec<Self>> {
@@ -305,22 +320,12 @@ impl QualificationPrototype {
             .txns()
             .pg()
             .query(
-                FIND_FOR_FUNC,
+                LIST_FOR_FUNC,
                 &[ctx.read_tenancy(), ctx.visibility(), func_id],
             )
             .await?;
         let object = objects_from_rows(rows)?;
         Ok(object)
-    }
-
-    pub fn context(&self) -> QualificationPrototypeContext {
-        let mut context = QualificationPrototypeContext::new();
-        context.set_component_id(self.component_id);
-        context.set_schema_id(self.schema_id);
-        context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(self.system_id);
-
-        context
     }
 
     async fn create_missing_prototypes(
@@ -367,7 +372,7 @@ impl QualificationPrototype {
                 .map(|field| (*field).into())
                 .collect();
 
-        for proto in Self::find_for_func(ctx, func_id).await? {
+        for proto in Self::list_for_func(ctx, func_id).await? {
             let component_id = proto.component_id();
             let schema_variant_id = proto.schema_variant_id();
 

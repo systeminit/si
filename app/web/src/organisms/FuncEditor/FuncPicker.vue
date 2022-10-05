@@ -164,6 +164,7 @@ const onSearch = (search: string) => {
 const funcTypes = {
   [FuncBackendKind.JsQualification]: "Qualifications",
   [FuncBackendKind.JsAttribute]: "Attributes",
+  [FuncBackendKind.JsCodeGeneration]: "Code Generation",
 };
 
 const funcCreateTypes = {

@@ -49,7 +49,7 @@ pub async fn revert_func(
                 }
             }
             FuncBackendKind::JsQualification => {
-                for proto in QualificationPrototype::find_for_func(&ctx, func.id()).await? {
+                for proto in QualificationPrototype::list_for_func(&ctx, func.id()).await? {
                     if proto.visibility().in_change_set() {
                         proto.hard_delete(&ctx).await?;
                     }

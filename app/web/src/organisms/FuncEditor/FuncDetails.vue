@@ -73,12 +73,23 @@
             </div>
           </SiCollapsible>
           <SiCollapsible
-            v-if="editingFunc.kind === FuncBackendKind.JsQualification"
+            v-if="
+              editingFunc.kind === FuncBackendKind.JsQualification ||
+              editingFunc.kind === FuncBackendKind.JsCodeGeneration
+            "
             label="Run On"
             default-open
           >
             <QualificationDetails
               v-if="associations && associations.type === 'qualification'"
+              v-model="associations"
+              :components="componentDropdownOptions"
+              :schema-variants="schemaVariantDropdownOptions"
+              :disabled="editingFunc.isBuiltin"
+              @change="updateFunc"
+            />
+            <CodeGenerationDetails
+              v-if="associations && associations.type === 'codeGeneration'"
               v-model="associations"
               :components="componentDropdownOptions"
               :schema-variants="schemaVariantDropdownOptions"
@@ -138,9 +149,11 @@ import {
   insertFunc,
   nullEditingFunc,
 } from "./func_state";
+
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
+import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 
 const props = defineProps<{
   funcId: number;

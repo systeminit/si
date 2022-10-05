@@ -7,9 +7,12 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor, CodeLanguage,
-    ComponentId, HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
-    SystemId, Timestamp, Visibility, WriteTenancy,
+    func::FuncId,
+    impl_standard_model, pk,
+    prototype_context::{GetContext, PrototypeContext},
+    standard_model, standard_model_accessor, CodeLanguage, ComponentId, HistoryEventError,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -37,8 +40,10 @@ pub enum CodeGenerationPrototypeError {
 pub type CodeGenerationPrototypeResult<T> = Result<T, CodeGenerationPrototypeError>;
 
 pub const UNSET_ID_VALUE: i64 = -1;
+
 const FIND_FOR_CONTEXT: &str =
     include_str!("./queries/code_generation_prototype_find_for_context.sql");
+const LIST_FOR_FUNC: &str = include_str!("queries/code_generation_prototype_list_for_func.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct CodeGenerationPrototypeContext {
@@ -55,6 +60,24 @@ impl Default for CodeGenerationPrototypeContext {
     }
 }
 
+impl PrototypeContext for CodeGenerationPrototypeContext {
+    fn component_id(&self) -> ComponentId {
+        self.component_id
+    }
+
+    fn schema_id(&self) -> SchemaId {
+        self.schema_id
+    }
+
+    fn schema_variant_id(&self) -> SchemaVariantId {
+        self.schema_variant_id
+    }
+
+    fn system_id(&self) -> SystemId {
+        self.system_id
+    }
+}
+
 impl CodeGenerationPrototypeContext {
     pub fn new() -> Self {
         Self {
@@ -65,32 +88,16 @@ impl CodeGenerationPrototypeContext {
         }
     }
 
-    pub fn component_id(&self) -> ComponentId {
-        self.component_id
-    }
-
     pub fn set_component_id(&mut self, component_id: ComponentId) {
         self.component_id = component_id;
-    }
-
-    pub fn schema_id(&self) -> SchemaId {
-        self.schema_id
     }
 
     pub fn set_schema_id(&mut self, schema_id: SchemaId) {
         self.schema_id = schema_id;
     }
 
-    pub fn schema_variant_id(&self) -> SchemaVariantId {
-        self.schema_variant_id
-    }
-
     pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
         self.schema_variant_id = schema_variant_id;
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
     }
 
     pub fn set_system_id(&mut self, system_id: SystemId) {
@@ -127,6 +134,12 @@ impl_standard_model! {
     table_name: "code_generation_prototypes",
     history_event_label_base: "code_generation_prototype",
     history_event_message_name: "CodeGeneration Prototype"
+}
+
+impl GetContext<CodeGenerationPrototypeContext> for CodeGenerationPrototype {
+    fn context(&self) -> CodeGenerationPrototypeContext {
+        self.context.clone()
+    }
 }
 
 impl CodeGenerationPrototype {
@@ -186,11 +199,27 @@ impl CodeGenerationPrototype {
         let object = standard_model::objects_from_rows(rows)?;
         Ok(object)
     }
+
+    pub async fn list_for_func(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> CodeGenerationPrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_FUNC,
+                &[ctx.read_tenancy(), ctx.visibility(), &func_id],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::CodeGenerationPrototypeContext;
+    use crate::prototype_context::PrototypeContext;
 
     #[test]
     fn context_builder() {

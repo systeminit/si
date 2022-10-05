@@ -207,7 +207,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
     .await
     .expect("could not set code on func");
 
-    assert!(QualificationPrototype::find_for_func(ctx, func.id())
+    assert!(QualificationPrototype::list_for_func(ctx, func.id())
         .await
         .expect("could not get protos for func")
         .is_empty());
@@ -229,7 +229,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
         .await
         .expect("could not associate");
 
-        let prototypes = QualificationPrototype::find_for_func(ctx, func.id())
+        let prototypes = QualificationPrototype::list_for_func(ctx, func.id())
             .await
             .expect("could not get protos for func");
 
@@ -247,7 +247,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
     )
     .await
     .expect("could not clear associations");
-    assert!(QualificationPrototype::find_for_func(ctx, func.id())
+    assert!(QualificationPrototype::list_for_func(ctx, func.id())
         .await
         .expect("could not get protos for func")
         .is_empty());

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display};
 
-#[derive(Deserialize, Serialize, Debug, Clone, Display, AsRefStr, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Display, AsRefStr, PartialEq, Eq, Copy)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum CodeLanguage {
