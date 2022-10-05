@@ -82,7 +82,6 @@ export const useQualificationsStore = () => {
             params: {
               visibility_change_set_pk: changeSetId,
             },
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               // response also includes component totals, but we'll ignore it and use getters instead
               const byComponentId = _.keyBy(response.components, "componentId");
@@ -113,7 +112,6 @@ export const useQualificationsStore = () => {
               visibility_change_set_pk: changeSetId,
               workspaceId,
             },
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               this.qualificationsByComponentId[componentId] = response;
             },

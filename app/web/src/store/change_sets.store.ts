@@ -58,7 +58,6 @@ export function useChangeSetsStore() {
             // TODO: probably want to fetch all change sets, not just open (or could have a filter)
             // this endpoint currently returns dropdown-y data, should just return the change set data itself
             url: "change_set/list_open_change_sets",
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               // this.changeSetsById = _.keyBy(response.changeSets, "id");
 
@@ -86,7 +85,6 @@ export function useChangeSetsStore() {
             params: {
               changeSetName: name,
             },
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.id] = response.changeSet;
             },

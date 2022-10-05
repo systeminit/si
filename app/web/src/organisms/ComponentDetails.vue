@@ -9,11 +9,7 @@
     <template #panels>
       <TabPanel class="w-full">
         <!-- FIXME(nick): remove AttributeViewer's requirement of a componentId -->
-        <AttributeViewer
-          :component-id="props.componentIdentification.componentId"
-          :component-identification="props.componentIdentification"
-          class="dark:text-neutral-50 text-neutral-900"
-        />
+        <AttributeViewer class="dark:text-neutral-50 text-neutral-900" />
       </TabPanel>
 
       <TabPanel class="w-full h-full overflow-hidden">
@@ -21,7 +17,7 @@
           <template #title>
             <span
               class="text-lg ml-4 whitespace-nowrap overflow-hidden text-ellipsis"
-              >{{ props.componentName }} Code</span
+              >{{ selectedComponent.displayName }} Code</span
             >
           </template>
 
@@ -39,7 +35,7 @@
 
       <TabPanel class="w-full">
         <SiCollapsible
-          v-for="(resource, index) in props.componentIdentification.resources"
+          v-for="(resource, index) in selectedComponent.resources"
           :key="resource.key"
           :label="resource.key"
           :default-open="index === 0"
@@ -68,12 +64,11 @@
 import { TabPanel } from "@headlessui/vue";
 import { combineLatest, from, ReplaySubject, switchMap } from "rxjs";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx/src";
-import { computed, ref, toRefs } from "vue";
+import { computed, ref } from "vue";
 import { tag } from "rxjs-spy/operators";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
-import { ComponentIdentification } from "@/api/sdf/dal/component";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import HealthIcon from "@/molecules/HealthIcon.vue";
@@ -82,33 +77,28 @@ import { GlobalErrorService } from "@/service/global_error";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { eventCodeGenerated$ } from "@/observable/code";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
+import { useComponentsStore } from "@/store/components.store";
 
-const props = defineProps<{
-  componentIdentification: ComponentIdentification;
-  componentName: string;
-}>();
+const componentsStore = useComponentsStore();
+const selectedComponent = computed(() => componentsStore.selectedComponent);
 
-const { componentIdentification } = toRefs(props);
-const componentIdentification$ = fromRef(componentIdentification, {
-  immediate: true,
-});
+const selectedComponent$ = fromRef(selectedComponent);
 
 const codeGenerated$ = new ReplaySubject<true>();
 codeGenerated$.next(true); // we must fetch on setup if code gen is enabled
 eventCodeGenerated$.pipe(untilUnmounted).subscribe(async (codeGenerationId) => {
   if (
-    props.componentIdentification.componentId ===
-    codeGenerationId?.payload.data?.componentId
+    selectedComponent.value?.id === codeGenerationId?.payload.data?.componentId
   ) {
     codeGenerated$.next(true);
   }
 });
 
 const codeViews = refFrom<CodeView[]>(
-  combineLatest([componentIdentification$, codeGenerated$]).pipe(
-    switchMap(([componentIdentification]) => {
+  combineLatest([selectedComponent$, codeGenerated$]).pipe(
+    switchMap(([_componentIdentification]) => {
       return ComponentService.getCode({
-        componentId: componentIdentification.componentId,
+        componentId: selectedComponent.value.id,
       });
     }),
     switchMap((response) => {
@@ -135,7 +125,7 @@ const currentSyncAnimate = ref<boolean>(false);
 const generateCode = () => {
   currentSyncAnimate.value = true;
   ComponentService.generateCode({
-    componentId: props.componentIdentification.componentId,
+    componentId: selectedComponent.value.id,
   }).subscribe((reply) => {
     currentSyncAnimate.value = false;
     if (reply.error) {
