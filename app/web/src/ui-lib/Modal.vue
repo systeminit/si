@@ -94,7 +94,7 @@ import {
   DialogTitle,
   TransitionChild,
   TransitionRoot,
-} from "@headlessui/vue"
+} from "@headlessui/vue";
 import { PropType, computed } from "vue";
 import VButton from "@/molecules/VButton.vue";
 

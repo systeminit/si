@@ -8,7 +8,7 @@ use crate::dal::test;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
         .await
         .expect("cannot find docker image")
         .pop()
@@ -58,7 +58,7 @@ async fn new(ctx: &DalContext) {
 async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
     let unset_system_id: SystemId = SystemId::NONE;
 
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
         .await
         .expect("cannot find docker image")
         .pop()

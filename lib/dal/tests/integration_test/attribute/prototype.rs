@@ -16,7 +16,7 @@ use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 
 #[test]
 async fn new_attribute_prototype(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
         .await
         .expect("cannot find docker image")
         .pop()

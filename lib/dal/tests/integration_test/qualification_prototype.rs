@@ -13,7 +13,7 @@ use std::option::Option::None;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let name = "docker_image".to_string();
+    let name = "Docker Image".to_string();
     let schema = Schema::find_by_attr(ctx, "name", &name)
         .await
         .expect("cannot find docker image")
@@ -44,7 +44,7 @@ async fn find_for_component(ctx: &DalContext) {
     // with that for now, but not for long. If it breaks before we fix it - future person, I'm
     // sorry. ;)
 
-    let name = "docker_image".to_string();
+    let name = "Docker Image".to_string();
     let schema = Schema::find_by_attr(ctx, "name", &name)
         .await
         .expect("cannot find docker image")

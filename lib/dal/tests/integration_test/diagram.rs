@@ -53,7 +53,7 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
                 && s.kind() == &SocketKind::Provider
                 && s.diagram_kind() == &DiagramKind::Configuration
                 && s.arity() == &SocketArity::Many
-                && s.name() == "docker_hub_credential"
+                && s.name() == "Docker Hub Credential"
         })
         .expect("cannot find output socket");
 
@@ -64,7 +64,7 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
                 && s.kind() == &SocketKind::Provider
                 && s.diagram_kind() == &DiagramKind::Configuration
                 && s.arity() == &SocketArity::Many
-                && s.name() == "docker_hub_credential"
+                && s.name() == "Docker Hub Credential"
         })
         .expect("cannot find input socket");
 

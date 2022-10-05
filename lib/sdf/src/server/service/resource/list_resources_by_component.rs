@@ -148,7 +148,7 @@ pub async fn list_resources_by_component(
 
         let value = match component_schema {
             Some(schema) => match schema.name() {
-                "docker_image" => {
+                "Docker Image" => {
                     mock_docker(component_id, component_name, schema.name().to_string())
                 }
                 _ => mock_default(component_id, component_name, schema.name().to_string()),

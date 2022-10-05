@@ -103,7 +103,7 @@ async fn resolve(ctx: &DalContext) {
         .pop()
         .expect("unable to find docker image resource refresh workflow prototype");
 
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image")
+    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image")
         .await
         .expect("unable to find docker image schema")
         .pop()
@@ -156,7 +156,7 @@ async fn run(ctx: &DalContext) {
         .pop()
         .expect("unable to find docker image resource refresh workflow prototype");
 
-    let schema = Schema::find_by_attr(ctx, "name", &"docker_image")
+    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image")
         .await
         .expect("unable to find docker image schema")
         .pop()

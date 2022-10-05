@@ -29,13 +29,13 @@ impl Builtin {
     /// Converts a [`Builtin`](Self) to its [`Schema`](crate::Schema) name.
     pub fn as_str(&self) -> &'static str {
         match &self {
-            Builtin::AwsEc2 => "aws_ec2",
-            Builtin::AwsRegion => "aws_region",
-            Builtin::CoreOsButane => "coreos_butane",
-            Builtin::DockerHubCredential => "docker_hub_credential",
-            Builtin::DockerImage => "docker_image",
-            Builtin::KubernetesDeployment => "kubernetes_deployment",
-            Builtin::KubernetesNamespace => "kubernetes_namespace",
+            Builtin::AwsEc2 => "EC2 Instance",
+            Builtin::AwsRegion => "Region",
+            Builtin::CoreOsButane => "Butane",
+            Builtin::DockerHubCredential => "Docker Hub Credential",
+            Builtin::DockerImage => "Docker Image",
+            Builtin::KubernetesDeployment => "Kubernetes Deployment",
+            Builtin::KubernetesNamespace => "Kubernetes Namespace",
         }
     }
 }

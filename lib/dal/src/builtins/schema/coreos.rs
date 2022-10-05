@@ -1,5 +1,4 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
-
 use crate::func::argument::FuncArgument;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::{
@@ -22,7 +21,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).
 async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "coreos_butane".to_string();
+    let name = "Butane".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
             Some(schema) => schema,
@@ -46,7 +45,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
     let diagram_kind = schema
         .diagram_kind()
         .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    let ui_menu = SchemaUiMenu::new(ctx, "butane", "coreos", &diagram_kind).await?;
+    let ui_menu = SchemaUiMenu::new(ctx, "Butane", "CoreOS", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop creation
@@ -181,7 +180,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
             ctx,
             *schema.id(),
             *schema_variant.id(),
-            "docker_image",
+            "Container Image",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -191,7 +190,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?;
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-    // Enable connections from the "docker_image" explicit internal provider to the
+    // Enable connections from the "Container Image" explicit internal provider to the
     // "/root/domain/systemd/units/" field. We need to use the appropriate function with and name
     // the argument "images".
     let units_attribute_value_read_context = AttributeReadContext {
@@ -237,7 +236,7 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         ctx,
         *schema.id(),
         *schema_variant.id(),
-        "user_data",
+        "User Data",
         None,
         identity_func_id,
         identity_func_binding_id,

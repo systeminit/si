@@ -10,7 +10,7 @@ use dal::{
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let name = "kubernetes_deployment".to_string();
+    let name = "Kubernetes Deployment".to_string();
     let schema = Schema::find_by_attr(ctx, "name", &name)
         .await
         .expect("cannot find kubernetes deployment")
@@ -53,7 +53,7 @@ async fn find_for_component(ctx: &DalContext, _nba: BillingAccountSignup) {
     // TODO: This test is brittle, because it relies on the behavior of kubernetes_deployment. I'm okay
     // with that for now, but not for long. If it breaks before we fix it - future person, I'm
     // sorry. ;)
-    let name = "kubernetes_deployment".to_string();
+    let name = "Kubernetes Deployment".to_string();
     let schema = Schema::find_by_attr(ctx, "name", &name)
         .await
         .expect("cannot find kubernetes deployment")
