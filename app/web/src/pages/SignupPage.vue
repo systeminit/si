@@ -12,10 +12,10 @@
         </Stack>
       </div>
 
-      <form @submit.prevent="onSubmit">
+      <form @submit.prevent="trySignup">
         <Card rounded>
           <Stack spacing="md">
-            <ErrorMessage :message="errorMessage" />
+            <ErrorMessage :request-status="signupReqStatus" />
             <VormInput
               v-model="signupPayload.billingAccountName"
               label="Billing Account Name"
@@ -61,7 +61,12 @@
               placeholder="provided to you by SI"
             />
 
-            <VButton2 :disabled="validationState.isError" submit>
+            <VButton2
+              :disabled="validationState.isError"
+              :request-status="signupReqStatus"
+              loading-text="Creating your account"
+              submit
+            >
               Create Account
             </VButton2>
           </Stack>
@@ -81,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { reactive } from "vue";
 import { useRouter, RouterLink } from "vue-router";
 import { useHead } from "@vueuse/head";
 
@@ -92,9 +97,9 @@ import VormInput from "@/ui-lib/forms/VormInput.vue";
 import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
-import { SignupService } from "@/service/signup";
 import Stack from "@/ui-lib/layout/Stack.vue";
 import RichText from "@/ui-lib/RichText.vue";
+import { useAuthStore } from "@/store/auth.store";
 
 useHead({ title: "Sign Up" });
 
@@ -111,18 +116,14 @@ const signupPayload = reactive({
   signupSecret: import.meta.env.DEV ? "cool-steam" : "",
 });
 
-const errorMessage = ref<string>();
+const authStore = useAuthStore();
+const signupReqStatus = authStore.getRequestStatus("SIGNUP");
 
-function onSubmit() {
+async function trySignup() {
   // touch all inputs, bail if we have any errors
   if (validationMethods.hasError()) return;
 
-  SignupService.createAccount(signupPayload).subscribe((response) => {
-    if (response.error) {
-      errorMessage.value = response.error.message;
-    } else {
-      router.push({ name: "login" });
-    }
-  });
+  const req = await authStore.SIGNUP(signupPayload);
+  if (req.result.success) router.push({ name: "login" });
 }
 </script>

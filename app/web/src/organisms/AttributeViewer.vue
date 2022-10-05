@@ -88,7 +88,7 @@ import { ComponentService } from "@/service/component";
 import { SystemService } from "@/service/system";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Icon from "@/ui-lib/Icon.vue";
-import { eventChangeSetWritten$ } from "@/observable/change_set";
+import { eventChangeSetWritten$ } from "@/service/change_set";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";

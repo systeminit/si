@@ -12,10 +12,10 @@
         </Stack>
       </div>
 
-      <form @submit.prevent="onSubmit">
+      <form @submit.prevent="tryPasswordLogin">
         <Card rounded>
           <Stack spacing="md">
-            <ErrorMessage :message="errorMessage" />
+            <ErrorMessage :request-status="loginReqStatus" />
             <VormInput
               v-model="loginPayload.billingAccountName"
               label="Billing Account Name"
@@ -39,7 +39,12 @@
               autocomplete="current-password"
             />
 
-            <VButton2 :disabled="validationState.isError" submit>
+            <VButton2
+              :disabled="validationState.isError"
+              :request-status="loginReqStatus"
+              loading-text="Logging you in"
+              submit
+            >
               Log In
             </VButton2>
           </Stack>
@@ -59,11 +64,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { computed, reactive } from "vue";
+import { useRouter, RouterLink, useRoute } from "vue-router";
 import { useHead } from "@vueuse/head";
 
-import { SessionService } from "@/service/session";
 import siLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import AppLayout from "@/templates/AppLayout.vue";
 import Card from "@/ui-lib/Card.vue";
@@ -73,10 +77,12 @@ import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
 import RichText from "@/ui-lib/RichText.vue";
+import { useAuthStore } from "@/store/auth.store";
 
 useHead({ title: "Login" });
 
 const router = useRouter();
+const route = useRoute();
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
@@ -87,18 +93,20 @@ const loginPayload = reactive({
   userPassword: import.meta.env.DEV ? "Password123!" : "",
 });
 
-const errorMessage = ref<string>();
+const authStore = useAuthStore();
+const loginReqStatus = authStore.getRequestStatus("LOGIN");
 
-function onSubmit() {
+async function tryPasswordLogin() {
   // touch all inputs, bail if we have any errors
   if (validationMethods.hasError()) return;
 
-  SessionService.login(loginPayload).subscribe((response) => {
-    if (!response || response.error) {
-      errorMessage.value = "Login error; please try again!";
-    } else {
-      router.push({ name: "home" });
-    }
-  });
+  const req = await authStore.LOGIN(loginPayload);
+  if (req.result.success) onLoginSuccess();
+}
+
+const redirectAfterLogin = computed(() => route.query.redirect as string);
+
+function onLoginSuccess() {
+  router.push(redirectAfterLogin.value || { name: "home" });
 }
 </script>

@@ -1,81 +1,46 @@
 <template>
   <StatusBarTab :selected="props.selected">
     <template #icon><Icon class="text-white" name="clock" /></template>
-    <template #name>{{ title }}</template>
+    <template #name>{{
+      stats.total > 0 ? "Changes" : "No Changes Yet..."
+    }}</template>
     <template #summary>
-      <StatusBarTabPill v-if="total > 0">
-        <span class="font-bold">Total:&nbsp; {{ total }}</span>
+      <StatusBarTabPill v-if="stats.total > 0">
+        <span class="font-bold">Total:&nbsp; {{ stats.total }}</span>
       </StatusBarTabPill>
       <StatusBarTabPill
-        v-if="added > 0"
+        v-if="stats.added > 0"
         class="bg-success-100 text-success-700 font-bold"
       >
-        + {{ added }}
+        + {{ stats.added }}
       </StatusBarTabPill>
       <StatusBarTabPill
-        v-if="modified > 0"
+        v-if="stats.modified > 0"
         class="bg-warning-100 text-warning-700 font-bold"
       >
-        ~ {{ modified }}
+        ~ {{ stats.modified }}
       </StatusBarTabPill>
       <StatusBarTabPill
-        v-if="deleted > 0"
+        v-if="stats.deleted > 0"
         class="bg-destructive-100 text-destructive-700 font-bold"
       >
-        - {{ deleted }}
+        - {{ stats.deleted }}
       </StatusBarTabPill>
     </template>
   </StatusBarTab>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { untilUnmounted } from "vuse-rx";
+import { computed } from "vue";
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
-import { ChangeSetService } from "@/service/change_set";
-import { GlobalErrorService } from "@/service/global_error";
 import Icon from "@/ui-lib/Icon.vue";
+import { useComponentsStore } from "@/store/components.store";
 
 const props = defineProps<{
   selected: boolean;
 }>();
 
-const added = ref<number>(0);
-const modified = ref<number>(0);
-const deleted = ref<number>(0);
-const total = computed(
-  (): number => added.value + modified.value + deleted.value,
-);
-const title = computed((): string => {
-  if (total.value > 0) {
-    return "Changes";
-  }
-  return "No Changes Yet...";
-});
-
-untilUnmounted(ChangeSetService.getStats()).subscribe((response) => {
-  if (response.error) {
-    GlobalErrorService.set(response);
-  } else {
-    // Reset each counter in case the stat(s) are empty.
-    let tempAdded = 0;
-    let tempModified = 0;
-    let tempDeleted = 0;
-
-    for (const statsGroup of response.componentStats.stats) {
-      if (statsGroup.componentStatus === "added") {
-        tempAdded += 1;
-      } else if (statsGroup.componentStatus === "modified") {
-        tempModified += 1;
-      } else {
-        tempDeleted += 1;
-      }
-    }
-
-    added.value = tempAdded;
-    modified.value = tempModified;
-    deleted.value = tempDeleted;
-  }
-});
+const componentsStore = useComponentsStore();
+const stats = computed(() => componentsStore.changeStatsSummary);
 </script>

@@ -1,7 +1,6 @@
 import { HistoryActor } from "@/api/sdf/dal/history_actor";
 import { ResourceRefreshId } from "@/observable/resource";
 import { CodeGenerationId } from "@/observable/code";
-import { CheckedQualificationId } from "@/observable/qualification";
 import { DependentValuesUpdated } from "@/observable/attribute_value";
 import { Resource } from "@/api/sdf/dal/resource";
 import { WorkflowRunnerState } from "@/service/workflow/run";
@@ -18,34 +17,9 @@ export interface WsPayload {
   data: unknown;
 }
 
-export interface WsChangeSetCreated extends WsPayload {
-  kind: "ChangeSetCreated";
-  data: number;
-}
-
-export interface WsChangeSetApplied extends WsPayload {
-  kind: "ChangeSetApplied";
-  data: number;
-}
-
-export interface WsChangeSetCanceled extends WsPayload {
-  kind: "ChangeSetCanceled";
-  data: number;
-}
-
-export interface WsChangeSetWritten extends WsPayload {
-  kind: "ChangeSetWritten";
-  data: number;
-}
-
 export interface WsResourceRefreshed extends WsPayload {
   kind: "ResourceRefreshed";
   data: ResourceRefreshId;
-}
-
-export interface WsCheckedQualifications extends WsPayload {
-  kind: "CheckedQualifications";
-  data: CheckedQualificationId;
 }
 
 export interface WsDependentValuesUpdated extends WsPayload {
@@ -80,13 +54,8 @@ export interface WsCommandReturn extends WsPayload {
 }
 
 export type WsPayloadKinds =
-  | WsChangeSetCreated
-  | WsChangeSetApplied
-  | WsChangeSetCanceled
-  | WsChangeSetWritten
   | WsResourceRefreshed
   | WsCodeGenerated
-  | WsCheckedQualifications
   | WsSecretCreated
   | WsDependentValuesUpdated
   | WsCommandOutput

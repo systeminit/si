@@ -44,8 +44,8 @@ import StatusBarTabPanelComponentList, {
   ComponentListItem,
   FilterOption,
 } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
-import { SelectionService } from "@/service/selection";
 import { ResourceService, Resource } from "@/service/resource";
+import { useComponentsStore } from "@/store/components.store";
 import ConfirmationsResourceList from "./ConfirmationsResourceList.vue";
 import ConfirmationViewerMultiple from "./ConfirmationViewerMultiple.vue";
 
@@ -70,7 +70,8 @@ const changeSelectedFilter = (newFilter: FilterOption) => {
   selectedFilter.value = newFilter;
 };
 
-const selectedComponentId = SelectionService.useSelectedComponentId();
+const componentsStore = useComponentsStore();
+const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 
 const selectedResourceId = ref(undefined as undefined | number);
 

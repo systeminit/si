@@ -29,7 +29,7 @@
                 : confirmClick
             }}
           </slot>
-          <slot v-else />
+          <slot v-else>{{ label }}</slot>
         </span>
         <Icon v-if="iconRight" class="vbutton__icon" :name="iconRight" />
       </template>
@@ -38,12 +38,12 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onBeforeUnmount } from "vue";
+import { ref, computed, onBeforeUnmount, watch } from "vue";
 import { RouterLink } from "vue-router";
 import _ from "lodash";
 
 import Icon, { IconNames } from "@/ui-lib/Icon.vue";
-// import type { ApiRequestStatus } from "@/utils/pinia-api-tools";
+import type { ApiRequestStatus } from "@/utils/pinia_api_tools";
 import type { PropType } from "vue";
 
 const SHOW_SUCCESS_DELAY = 2000;
@@ -64,6 +64,8 @@ const props = defineProps({
   variant: { type: String as PropType<ButtonVariants>, default: "solid" },
   tone: { type: String as PropType<ButtonTones>, default: "action" },
 
+  label: { type: String },
+
   icon: String as PropType<IconNames>,
   iconRight: String as PropType<IconNames>,
   href: String,
@@ -75,9 +77,9 @@ const props = defineProps({
   loading: Boolean,
   loadingText: { type: String, default: "Loading..." },
 
-  // requestStatus: {
-  //   type: [Boolean, Object] as PropType<false | ApiRequestStatus>, // can be false if passing 'someCondition && status'
-  // },
+  requestStatus: {
+    type: [Boolean, Object] as PropType<false | ApiRequestStatus>, // can be false if passing 'someCondition && status'
+  },
 
   clickSuccess: { type: Boolean },
   successText: { type: String, default: "Success!" },
@@ -137,27 +139,27 @@ const dynamicAttrs = computed(() => {
 // watch request status and show a success message for a short time when request goes through
 const showSuccess = ref(false);
 
-// watch(
-//   () => props.requestStatus,
-//   (newStatus, oldStatus, onInvalidate) => {
-//     // TODO: look over the reactivity / types here...
+watch(
+  () => props.requestStatus,
+  (newStatus, oldStatus, onInvalidate) => {
+    // TODO: look over the reactivity / types here...
 
-//     // status object can change without values changing if using a keyed request status with a /*
-//     // that returns an object of keyed statuses
-//     if (_.isEqual(newStatus, oldStatus)) return;
-//     if (!newStatus) return;
+    // status object can change without values changing if using a keyed request status with a /*
+    // that returns an object of keyed statuses
+    if (_.isEqual(newStatus, oldStatus)) return;
+    if (!newStatus) return;
 
-//     // toggle button to show a success message for a short period
-//     if (newStatus.isSuccess && props.successText) {
-//       showSuccess.value = true;
-//       const timeout = setTimeout(() => {
-//         showSuccess.value = false;
-//       }, SHOW_SUCCESS_DELAY);
-//       onInvalidate(() => clearTimeout(timeout));
-//     }
-//   },
-//   { deep: true },
-// );
+    // toggle button to show a success message for a short period
+    if (newStatus.isSuccess && props.successText) {
+      showSuccess.value = true;
+      const timeout = setTimeout(() => {
+        showSuccess.value = false;
+      }, SHOW_SUCCESS_DELAY);
+      onInvalidate(() => clearTimeout(timeout));
+    }
+  },
+  { deep: true },
+);
 
 // confirm click functionality -- requires the user to click twice to confirm
 // can be a nicer lightweight alternative to a modal

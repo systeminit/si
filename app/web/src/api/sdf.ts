@@ -1,10 +1,9 @@
 import { fromFetch } from "rxjs/fetch";
 import { from, mergeMap, Observable } from "rxjs";
 import _ from "lodash";
-import { SdfWs } from "@/api/sdf/ws";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { SessionService } from "@/service/session";
-import { API_HTTP_URL, API_WS_URL } from "@/utils/api";
+import { API_HTTP_URL } from "@/utils/api";
 
 export class FetchError extends Error {
   response: Response;
@@ -30,34 +29,16 @@ export type ApiResponse<T> = (T & { error?: never }) | ApiResponseError;
 
 export class SDF {
   baseUrl: URL;
-  wsBaseUrl: URL;
   currentToken?: string;
-
-  ws?: SdfWs;
 
   constructor() {
     this.baseUrl = new URL(API_HTTP_URL);
-    this.wsBaseUrl = new URL(`${API_WS_URL}/billing_account_updates`); // this seems wrong... but no
-    this.startUpdate();
-  }
-
-  startUpdate() {
-    if (!this.ws && this.token) {
-      this.setupUpdate();
-    }
-  }
-
-  setupUpdate() {
-    const url = new URL(this.wsBaseUrl.toString());
-    url.searchParams.set("token", `Bearer ${this.token}`);
-    this.ws = new SdfWs(url.toString());
   }
 
   set token(token: SDF["currentToken"]) {
     this.currentToken = token;
     if (token) {
       localStorage.setItem("si-sdf-token", token);
-      this.setupUpdate();
     } else {
       localStorage.removeItem("si-sdf-token");
     }

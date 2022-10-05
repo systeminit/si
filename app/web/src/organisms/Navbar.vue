@@ -11,15 +11,23 @@
               <div class="flex-col flex text-left">
                 <div class="text-xs font-medium">WORKSPACE:</div>
                 <div class="flex-row flex font-semibold">
-                  <span>{{ selectedWorkspaceName }}</span>
-                  <SiArrow :nudge="hovered || open" class="ml-1 w-5" />
+                  <span v-if="workspacesReqStatus.isPending">loading...</span>
+                  <template v-else>
+                    <span>{{ selectedWorkspace?.name || "- none -" }}</span>
+                    <SiArrow :nudge="hovered || open" class="ml-1 w-5" />
+                  </template>
                 </div>
               </div>
             </template>
 
             <template #dropdownContent>
-              <SiDropdownItem checked class="text-sm">
-                {{ selectedWorkspaceName }}
+              <SiDropdownItem
+                v-for="workspace in workspaces"
+                :key="workspace.id"
+                :checked="workspace.id === selectedWorkspaceId"
+                class="text-sm"
+              >
+                {{ workspace.name }}
               </SiDropdownItem>
             </template>
           </SiBarButton>
@@ -36,32 +44,33 @@
 </template>
 
 <script setup lang="ts">
-import { refFrom } from "vuse-rx";
 import { computed } from "vue";
 import SiLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import SiLogoWtsDev from "@/assets/images/si-logo-wts-dev.svg?url";
-import { WorkspaceService } from "@/service/workspace";
-import { Workspace } from "@/api/sdf/dal/workspace";
 import NavbarPanelRight from "@/organisms/NavbarPanelRight.vue";
 import NavbarPanelCenter from "@/organisms/NavbarPanelCenter.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
+import { useWorkspacesStore } from "@/store/workspaces.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const isDevMode = import.meta.env.DEV;
 
 const logo = computed(() => (isDevMode ? SiLogoWtsDev : SiLogoWts));
 
-const workspace = refFrom<Workspace | null>(
-  WorkspaceService.currentWorkspace(),
+const workspacesStore = useWorkspacesStore();
+const workspaces = computed(() => workspacesStore.allWorkspaces);
+const selectedWorkspaceId = computed(() => workspacesStore.selectedWorkspaceId);
+const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
+
+const workspacesReqStatus = workspacesStore.getRequestStatus(
+  "FETCH_USER_WORKSPACES",
 );
 
-// FIXME(nick): this should contain a real list of available workspaces. This
-// will likely be an observable.
-const selectedWorkspaceName = computed(() => {
-  if (workspace.value) {
-    return workspace.value.name;
-  }
-  return "- none -";
-});
+// including here so the changeset store always has something using it
+// TODO: may want to move this to main app or app layout...
+// but basically it should always be loaded when we are logged in (on app pages)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const changeSetsStore = useChangeSetsStore();
 </script>

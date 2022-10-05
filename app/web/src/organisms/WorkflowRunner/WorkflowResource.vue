@@ -38,7 +38,7 @@ import { PropType, computed } from "vue";
 import { ThemeValue } from "@/observable/theme";
 import HealthIcon from "@/molecules/HealthIcon.vue";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
-import { SelectionService } from "@/service/selection";
+import { useComponentsStore } from "@/store/components.store";
 import SiCollapsible from "../SiCollapsible.vue";
 import CodeViewer from "../CodeViewer.vue";
 import { ComponentListItem } from "../StatusBar/StatusBarTabPanelComponentList.vue";
@@ -69,8 +69,10 @@ const borderClasses = computed(() => {
   return `${classes}border-b border-neutral-200 dark:border-neutral-600`;
 });
 
+const componentsStore = useComponentsStore();
+
 const showConfirmationsFor = (componentId: number) => {
-  SelectionService.setSelectedComponentId(componentId);
+  componentsStore.setSelectedComponentId(componentId);
   // TODO(wendy) - code to open the StatusBar to the Confirmations panel
 };
 </script>

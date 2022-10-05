@@ -80,8 +80,8 @@
             <QualificationDetails
               v-if="associations && associations.type === 'qualification'"
               v-model="associations"
-              :components="componentOptions"
-              :schema-variants="schemaVariantOptions"
+              :components="componentDropdownOptions"
+              :schema-variants="schemaVariantDropdownOptions"
               :disabled="editingFunc.isBuiltin"
               @change="updateFunc"
             />
@@ -105,8 +105,8 @@
             v-if="associations && associations.type === 'attribute'"
             :func-id="funcId"
             :associations="associations"
-            :schema-variants="schemaVariantOptions"
-            :components="componentOptions"
+            :schema-variants="schemaVariantDropdownOptions"
+            :components="componentDropdownOptions"
           />
         </TabPanel>
       </template>
@@ -120,20 +120,17 @@
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
 import { ref, toRef, watch, computed, provide } from "vue";
-import { refFrom } from "vuse-rx";
-import { map, take } from "rxjs/operators";
+import { take } from "rxjs/operators";
+import _ from "lodash";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-import { Option } from "@/molecules/SelectMenu.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import { DiagramService } from "@/service/diagram";
 import { EditingFunc } from "@/observable/func";
-import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
 import { FuncService, FuncAssociations } from "@/service/func";
 import { FuncBackendKind, FuncArgument } from "@/api/sdf/dal/func";
-import { DiagramSchemaVariant } from "@/api/sdf/dal/diagram";
+import { useComponentsStore } from "@/store/components.store";
 import {
   changeFunc,
   funcById,
@@ -153,34 +150,21 @@ const isDevMode = import.meta.env.DEV;
 
 const funcId = toRef(props, "funcId", -1);
 
-const schemaVariants = refFrom<DiagramSchemaVariant[]>(
-  DiagramService.listSchemaVariants().pipe(
-    map((schemaVariants) => (schemaVariants.error ? [] : schemaVariants)),
-  ),
-  [],
-);
-
-const schemaVariantOptions = computed<Option[]>(() =>
-  schemaVariants.value.map((v) => ({ label: v.schemaName, value: v.id })),
-);
-
-provide("schemaVariantOptions", schemaVariantOptions);
-
-const components = refFrom(
-  ComponentService.listComponentsIdentification().pipe(
-    map((components) => (components.error ? [] : components.list)),
-  ),
-  [],
-);
-
-provide("components", components);
-
-const componentOptions = computed<Option[]>(() =>
-  components.value.map((c) => ({
-    label: c.label,
-    value: c.value.componentId,
+const componentsStore = useComponentsStore();
+const schemaVariantDropdownOptions = computed(() =>
+  _.map(componentsStore.schemaVariants, (sv) => ({
+    label: sv.schemaName,
+    value: sv.id,
   })),
 );
+provide("schemaVariantOptions", schemaVariantDropdownOptions);
+const componentDropdownOptions = computed(() =>
+  _.map(componentsStore.allComponents, (c) => ({
+    label: c.displayName,
+    value: c.id,
+  })),
+);
+provide("components", componentDropdownOptions);
 
 const editingFunc = ref<EditingFunc>(nullEditingFunc);
 const associations = ref<FuncAssociations | undefined>(undefined);

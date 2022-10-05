@@ -5,7 +5,11 @@
       class="flex flex-row items-center text-center w-full h-full bg-shade-100"
     >
       <p class="w-full text-3xl text-neutral-500">
-        {{ selectedComponentText }}
+        {{
+          selectedComponentId
+            ? `Selected Component ID: ${selectedComponentId}`
+            : "No Component Selected"
+        }}
       </p>
     </div>
   </div>
@@ -16,17 +20,12 @@ import { computed } from "vue";
 import StatusBarTabPanelComponentList, {
   ComponentListItem,
 } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
-import { SelectionService } from "@/service/selection";
+import { useComponentsStore } from "@/store/components.store";
 
 const props = defineProps<{
   componentList: ComponentListItem[];
 }>();
 
-const selectedComponentId = SelectionService.useSelectedComponentId();
-const selectedComponentText = computed((): string => {
-  if (selectedComponentId.value) {
-    return `Selected Component ID: ${selectedComponentId.value}`;
-  }
-  return "No Component Selected";
-});
+const componentsStore = useComponentsStore();
+const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 </script>

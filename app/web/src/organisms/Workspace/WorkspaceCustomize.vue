@@ -58,7 +58,7 @@ import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
 import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import { visibility$ } from "@/observable/visibility";
 import { saveFuncToBackend$ } from "@/observable/func";
-import { eventChangeSetWritten$ } from "@/observable/change_set";
+import { eventChangeSetWritten$ } from "@/service/change_set";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { DevService } from "@/service/dev";

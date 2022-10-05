@@ -680,7 +680,7 @@ defineExpose({
     background-repeat: no-repeat;
 
     &.--placeholder-selected {
-      color: #777;
+      color: white;
       font-style: italic;
     }
 
@@ -706,7 +706,7 @@ defineExpose({
   }
 
   &::placeholder {
-    color: #aaa;
+    color: white;
     font-style: italic;
   }
 
