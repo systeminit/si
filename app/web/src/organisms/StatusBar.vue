@@ -98,13 +98,11 @@
             <template #name>Confirmations</template>
             <template #summary>
               <StatusBarTabPill
-                v-if="
-                  qualificationSummary?.total && qualificationSummary?.total > 0
-                "
+                v-if="qualificationComponentStats.total"
                 class="border-white"
               >
                 Total:
-                <b class="ml-1">{{ qualificationSummary?.total }}</b>
+                <b class="ml-1">{{ qualificationComponentStats.total }}</b>
               </StatusBarTabPill>
             </template>
           </StatusBarTab>
@@ -208,12 +206,12 @@ import ChangeSetTab from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTab.vue";
 import ChangeSetTabPanel from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTabPanel.vue";
 import QualificationTabPanel from "@/organisms/StatusBarTabs/Qualification/QualificationTabPanel.vue";
 import QualificationTab from "@/organisms/StatusBarTabs/Qualification/QualificationTab.vue";
-import { QualificationService } from "@/service/qualification";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 import GenericTabPanel from "@/organisms/StatusBarTabs/GenericTabPanel.vue";
 import Icon from "@/ui-lib/Icon.vue";
+import { useQualificationsStore } from "@/store/qualifications.store";
 import WorkflowHistoryTab from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryTab.vue";
 import WorkflowHistoryPanel, {
   SortOption,
@@ -273,8 +271,10 @@ const changeWorkflowSort = (newSort: SortOption) => {
   selectedWorkflowSort.value = newSort;
 };
 
-// TODO(nick): move these to new home(s) once the view tabs are moved out of here.
-const qualificationSummary = QualificationService.useQualificationSummary();
+const qualificationsStore = useQualificationsStore();
+const qualificationComponentStats = computed(
+  () => qualificationsStore.componentStats,
+);
 
 const componentList = ref<ComponentListItem[]>([]);
 untilUnmounted(ComponentService.listComponentsIdentification()).subscribe(

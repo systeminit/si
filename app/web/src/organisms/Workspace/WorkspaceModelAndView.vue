@@ -29,11 +29,11 @@
 
   <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
     <GenericDiagram
-      v-if="diagramData"
+      v-if="diagramNodes"
       ref="diagramRef"
       :custom-config="diagramCustomConfig"
-      :nodes="diagramData?.nodes"
-      :edges="diagramData?.edges"
+      :nodes="diagramNodes"
+      :edges="diagramEdges"
       :read-only="isViewMode"
       @insert-element="onDiagramInsertElement"
       @move-element="onDiagramMoveElement"
@@ -75,10 +75,7 @@ import ComponentDetails from "@/organisms/ComponentDetails.vue";
 import { ComponentService } from "@/service/component";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import { ChangeSetService } from "@/service/change_set";
-import { SelectionService } from "@/service/selection";
-import { QualificationService } from "@/service/qualification";
-import DiagramService2 from "@/service/diagram2";
+import { useComponentsStore } from "@/store/components.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette, { SelectAssetEvent } from "../AssetPalette.vue";
 import {
@@ -87,7 +84,6 @@ import {
   DrawEdgeEvent,
   DiagramElementIdentifier,
   DeleteElementsEvent,
-  DiagramStatusIcon,
 } from "../GenericDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline.vue";
 import { LogoIcons } from "./logo_icons";
@@ -97,74 +93,19 @@ const currentRoute = useRoute();
 // TODO: we'll very likely split view mode from compose mode again, so this is just temporary
 // but for now we watch if the route is for view mode, and if so, switch to head and toggle a few things
 const isViewMode = computed(() => currentRoute.name === "workspace-view");
-watch(currentRoute, () => {
-  if (isViewMode.value) ChangeSetService.switchToHead();
-});
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 
-const rawDiagramData = DiagramService2.useDiagramData();
-const qualificationSummary = QualificationService.useQualificationSummary();
+const componentsStore = useComponentsStore();
+// TODO: probably want to get more generic component data and then transform into diagram nodes
+const diagramEdges = computed(() => componentsStore.diagramEdges);
+const diagramNodes = computed(() => componentsStore.diagramNodes);
 
-const selectedComponentId = SelectionService.useSelectedComponentId();
+const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 
 const diagramCustomConfig = {
   icons: LogoIcons,
 };
-
-type QualificationStatus = "success" | "failure" | "running";
-const qualificationStatusToIconMap: Record<
-  QualificationStatus,
-  DiagramStatusIcon
-> = {
-  success: { icon: "check", tone: "success" },
-  failure: { icon: "alert", tone: "error" },
-  running: { icon: "loading", tone: "info" },
-};
-
-// TODO: we'll probably want to link the qualification data to the components in the service layer / store
-// so that it will be reusable elsewhere... but we'll temporarily do it here to get it working
-const diagramData = computed(() => {
-  return {
-    ...rawDiagramData.value,
-    nodes: _.map(rawDiagramData.value?.nodes, (node) => {
-      // Default to "si" if we do not have a logo.
-      let typeIcon = "si";
-      if (
-        node.category === "AWS" ||
-        node.category === "CoreOS" ||
-        node.category === "Docker" ||
-        node.category === "Kubernetes"
-      ) {
-        typeIcon = node.category;
-      }
-
-      const componentQualificationSummary = _.find(
-        qualificationSummary.value?.components,
-        (cq) => cq.componentId.toString() === node.id,
-      );
-      let summaryStatus: QualificationStatus | undefined;
-      if (componentQualificationSummary) {
-        if (
-          componentQualificationSummary.total >
-          componentQualificationSummary.succeeded +
-            componentQualificationSummary.failed
-        )
-          summaryStatus = "running";
-        else if (componentQualificationSummary.failed > 0)
-          summaryStatus = "failure";
-        else summaryStatus = "success";
-      }
-      return {
-        ...node,
-        typeIcon,
-        statusIcons: summaryStatus
-          ? [qualificationStatusToIconMap[summaryStatus]]
-          : [],
-      };
-    }),
-  };
-});
 
 const componentsListApiResponse = useObservable(
   ComponentService.listComponentsIdentification(),
@@ -194,7 +135,7 @@ function onSelectAssetToInsert(e: SelectAssetEvent) {
   lastInsertSelection.value = { schemaId: e.schemaId };
   diagramRef.value?.beginInsertElement("node");
 }
-watch(diagramData, () => {
+watch([diagramNodes, diagramEdges], () => {
   // TODO: this should be firing off the callback only when we find the matching new node, but we dont have the new ID yet
   _.each(insertCallbacks, (insertCallback, newNodeId) => {
     insertCallback();
@@ -206,19 +147,17 @@ async function onDrawEdge(e: DrawEdgeEvent) {
   const [fromNodeId, fromSocketId] = e.fromSocketId.split("-");
   const [toNodeId, toSocketId] = e.toSocketId.split("-");
 
-  await DiagramService2.actions.createConnection({
-    fromNodeId,
-    fromSocketId,
-    toNodeId,
-    toSocketId,
-  });
+  await componentsStore.CREATE_COMPONENT_CONNECTION(
+    { componentId: parseInt(fromNodeId), socketId: parseInt(fromSocketId) },
+    { componentId: parseInt(toNodeId), socketId: parseInt(toSocketId) },
+  );
 }
 
 async function onDiagramInsertElement(e: InsertElementEvent) {
   if (!lastInsertSelection.value)
     throw new Error("missing insert selection metadata");
 
-  await DiagramService2.actions.createNode(
+  await componentsStore.CREATE_COMPONENT(
     lastInsertSelection.value.schemaId,
     e.position,
   );
@@ -234,23 +173,23 @@ function onDiagramMoveElement(e: MoveElementEvent) {
   // eventually we will want to send those to the backend for realtime multiplayer
   // But for now we just send off the final position
   if (!e.isFinal) return;
-  DiagramService2.actions.updateNodePosition(e.id, e.position);
+  componentsStore.SET_COMPONENT_DIAGRAM_POSITION(parseInt(e.id), e.position);
 }
 
 function onDiagramUpdateSelection(newSelection: DiagramElementIdentifier[]) {
   // for now, we dont support multiselect anywhere outside the diagram, so we just act like nothing is selected
   if (newSelection.length !== 1) {
-    SelectionService.setSelectedComponentId(null);
+    componentsStore.setSelectedComponentId(null);
     return;
   }
 
   const selectedElement = newSelection[0];
   // we also dont support selecting things other than nodes outside the diagram
   if (selectedElement.diagramElementType !== "node") {
-    SelectionService.setSelectedComponentId(null);
+    componentsStore.setSelectedComponentId(null);
     return;
   }
-  SelectionService.setSelectedComponentId(parseInt(selectedElement.id));
+  componentsStore.setSelectedComponentId(parseInt(selectedElement.id));
 }
 
 function onDiagramDelete(_e: DeleteElementsEvent) {
@@ -259,7 +198,7 @@ function onDiagramDelete(_e: DeleteElementsEvent) {
 }
 
 function onOutlineSelectComponent(id: number) {
-  SelectionService.setSelectedComponentId(id);
+  componentsStore.setSelectedComponentId(id);
 }
 
 watch(

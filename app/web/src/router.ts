@@ -1,59 +1,72 @@
 import {
   createRouter,
   createWebHistory,
-  NavigationGuardNext,
   RouteLocationNormalized,
   RouteRecordRaw,
 } from "vue-router";
 import _ from "lodash";
-import { SessionService } from "@/service/session";
+import { useAuthStore } from "./store/auth.store";
+import { castNumericParam, useRouterStore } from "./store/router.store";
 
 // Cannot use inside the template directly.
 const isDevMode = import.meta.env.DEV;
 
 const routes: RouteRecordRaw[] = [
   {
+    path: "/store-test",
+    name: "store-test",
+    meta: { public: true },
+    component: () => import("@/pages/store_test/StoreTestPage.vue"),
+  },
+  {
     path: "/diagram",
     name: "diagram",
+    meta: { public: true },
     component: () => import("@/organisms/GenericDiagram/DiagramDemoPage.vue"),
   },
   {
     path: "/",
     name: "home",
-    redirect: { name: "workspace-index" },
+    component: () => import("@/pages/HomePage.vue"),
   },
   {
     path: "/w",
     name: "workspace-index",
-    component: () => import("@/templates/WorkspaceIndex.vue"),
+    redirect: { name: "home" },
   },
   {
     name: "workspace-single",
     path: "/w/:workspaceId",
     component: () => import("@/templates/WorkspaceSingle.vue"),
-    redirect: { name: "workspace-compose" },
-    props: (route) => {
-      let workspaceId;
-      if (_.isArray(route.params.workspaceId)) {
-        workspaceId = Number.parseInt(route.params.workspaceId[0]);
-      } else {
-        workspaceId = Number.parseInt(route.params.workspaceId);
-      }
+    // TODO: will probably want a workspace "home" page at some point
+    redirect(to) {
       return {
-        workspaceId,
+        name: "workspace-compose",
+        params: { ...to.params, changeSetId: "auto" },
       };
     },
+    props: castNumberProps, // will cast all props - even for child routes
     children: [
       {
-        path: "c",
+        path: ":changeSetId",
+        name: "change-set-home",
+        // TODO: will probably want a change set "home" page at some point
+        redirect(to) {
+          return {
+            name: "workspace-compose",
+            params: to.params,
+          };
+        },
+      },
+      {
+        path: ":changeSetId/c",
         name: "workspace-compose",
         component: () =>
           import("@/organisms/Workspace/WorkspaceModelAndView.vue"),
       },
       {
-        path: "l/:funcId?",
+        path: ":changeSetId/l/:funcId?",
         name: "workspace-lab",
-        props: true,
         component: () => import("@/organisms/Workspace/WorkspaceCustomize.vue"),
       },
       {
@@ -81,69 +94,83 @@ const routes: RouteRecordRaw[] = [
   },
   // Auth
   {
-    path: "/authenticate",
+    path: "/authenticate/*",
     name: "authenticate",
     redirect: { name: "login" },
   },
   {
-    path: "/authenticate/login",
+    path: "/login",
     name: "login",
+    meta: { public: true },
     component: () => import("@/pages/LoginPage.vue"),
   },
   {
-    path: "/authenticate/signup",
+    path: "/signup",
     name: "signup",
+    meta: { public: true },
     component: () => import("@/pages/SignupPage.vue"),
   },
+  {
+    path: "/logout",
+    name: "logout",
+    beforeEnter: () => {
+      const authStore = useAuthStore();
+      authStore.localLogout();
+      return { name: "login" };
+    },
+    component: () => import("@/pages/LoginPage.vue"), // just need something here for TS, but guard always redirects
+  },
+
   // 404
   {
     path: "/404",
     name: "notFound",
+    meta: { public: true },
     component: () => import("@/pages/NotFound.vue"),
   },
   {
     path: "/:catchAll(.*)",
-    redirect: "/404",
+    // redirect: "/404", // makes it harder to see what the failing url was
+    meta: { public: true },
+    component: () => import("@/pages/NotFound.vue"),
   },
 ];
-
-export const routeCheck = async (
-  to: RouteLocationNormalized,
-  _from: RouteLocationNormalized,
-  next: NavigationGuardNext,
-) => {
-  if (
-    to.path === "/authenticate/signup" ||
-    to.path === "/authenticate/login" ||
-    to.path === "/diagram"
-  ) {
-    return next();
-  }
-
-  const authenticated = await SessionService.isAuthenticated();
-  if (authenticated === false || authenticated.error) {
-    if (authenticated.error) {
-      console.log("Error checking authentication", authenticated);
-    }
-    return next("/authenticate/login");
-  } else {
-    return next();
-  }
-};
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
 });
 
-router.beforeEach(
-  async (
-    to: RouteLocationNormalized,
-    from: RouteLocationNormalized,
-    next: NavigationGuardNext,
-  ) => {
-    await routeCheck(to, from, next);
-  },
-);
+router.beforeEach((to, _from) => {
+  // check if meta info for route (or parent) requires auth or not
+  // NOTE - this will not support a public parent with private children
+  if (!to.matched.some((route) => route.meta.public)) {
+    // check in auth store and redirect to login page if not logged in
+    const authStore = useAuthStore();
+
+    if (!authStore.userIsLoggedIn) {
+      return {
+        name: "login",
+        query: { redirect: to.fullPath },
+      };
+    }
+  }
+  return true;
+});
+
+// set current route in the pinia store
+// which is useful so we can set the currently selected workspace/change set from it
+router.beforeResolve((to) => {
+  const routerStore = useRouterStore();
+  routerStore.currentRoute = to;
+});
+
+// automatically cast any integer string params into proper numbers
+// so that components can set params to expect a Number
+// NOTE - this is so that when we user router link or programatically navigate that we can set the param as an int
+// and it will act the same as when the url is typed in
+function castNumberProps(route: RouteLocationNormalized) {
+  return _.mapValues(route.params, castNumericParam);
+}
 
 export default router;

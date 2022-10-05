@@ -1,15 +1,7 @@
-import {
-  combineLatest,
-  map,
-  Observable,
-  shareReplay,
-  startWith,
-  switchMap,
-} from "rxjs";
+import { combineLatest, map, Observable, shareReplay, switchMap } from "rxjs";
 import { ApiResponse, sdf } from "@/api/sdf";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { GlobalErrorService } from "@/service/global_error";
-import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 
 export interface ResourceSummaryForComponent {
@@ -34,7 +26,8 @@ export function listByComponent(): Observable<
   if (listByComponentObservableCache) return listByComponentObservableCache;
   listByComponentObservableCache = combineLatest([
     standardVisibilityTriggers$,
-    eventCheckedQualifications$.pipe(startWith(null)),
+    // removed this observable - does not seem to be the right event anyway
+    // eventCheckedQualifications$.pipe(startWith(null)),
   ]).pipe(
     switchMap(([[visibility]]) => {
       return sdf

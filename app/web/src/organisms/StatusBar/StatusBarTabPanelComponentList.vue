@@ -43,7 +43,7 @@
             : 'hover:bg-black'
         "
         class="py-xs pl-sm pr-xs cursor-pointer flex justify-between items-center leading-tight"
-        @click="SelectionService.setSelectedComponentId(component.id)"
+        @click="componentsStore.setSelectedComponentId(component.id)"
       >
         <span class="shrink h-full min-w-0 truncate mr-3">
           {{ component.name }}
@@ -72,11 +72,11 @@ import StatusIndicatorIcon, {
 } from "@/molecules/StatusIndicatorIcon.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
-import { SelectionService } from "@/service/selection";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import HealthIcon from "@/molecules/HealthIcon.vue";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { Resource } from "@/service/resource";
+import { useComponentsStore } from "@/store/components.store";
 
 export interface ComponentListItem {
   id: number;
@@ -117,5 +117,6 @@ const filterOptions = computed(() => {
   return [defaultFilterOption];
 });
 
-const selectedComponentId = SelectionService.useSelectedComponentId();
+const componentsStore = useComponentsStore();
+const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 </script>

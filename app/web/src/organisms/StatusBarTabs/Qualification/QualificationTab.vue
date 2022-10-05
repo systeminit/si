@@ -1,48 +1,35 @@
 <template>
   <StatusBarTab :selected="selected">
     <template #icon>
-      <StatusIndicatorIcon :status="tabQualificationsIconStatus" />
+      <StatusIndicatorIcon :status="overallStatus" />
     </template>
     <template #name>
-      <template v-if="tabQualificationsIconStatus === 'loading'">
-        Running...
-      </template>
-      <template
-        v-else-if="
-          qualificationSummary?.total && qualificationSummary?.total > 0
-        "
-      >
-        Qualifications
-      </template>
+      <template v-if="overallStatus === 'running'"> Running... </template>
+      <template v-else-if="componentStats.total > 0"> Qualifications </template>
       <template v-else>No Qualifications Run...</template>
     </template>
-    <template v-if="qualificationSummary !== undefined" #summary>
-      <StatusBarTabPill
-        v-if="qualificationSummary?.total && qualificationSummary?.total > 0"
-        class="border-white"
-      >
+    <template v-if="componentStats.total" #summary>
+      <StatusBarTabPill v-if="componentStats.total" class="border-white">
         Total:
-        <b class="ml-1">{{ qualificationSummary?.total }}</b>
+        <b class="ml-1">{{ componentStats.total }}</b>
       </StatusBarTabPill>
       <StatusBarTabPill
-        v-if="
-          qualificationSummary?.succeeded && qualificationSummary?.succeeded > 0
-        "
+        v-if="componentStats.success"
         class="bg-success-100 text-success-600 font-bold"
       >
         <StatusIndicatorIcon status="success" />
         <div class="pl-px">
-          {{ qualificationSummary?.succeeded }}
+          {{ componentStats.success }}
         </div>
       </StatusBarTabPill>
 
       <StatusBarTabPill
-        v-if="qualificationSummary?.failed && qualificationSummary?.failed > 0"
+        v-if="componentStats.failure"
         class="bg-destructive-100 text-destructive-600 font-bold"
       >
         <StatusIndicatorIcon status="failure" />
         <div class="pl-px">
-          {{ qualificationSummary?.failed }}
+          {{ componentStats.failure }}
         </div>
       </StatusBarTabPill>
     </template>
@@ -54,22 +41,11 @@ import { computed } from "vue";
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
-import { QualificationService } from "@/service/qualification";
+import { useQualificationsStore } from "@/store/qualifications.store";
 
 defineProps<{ selected: boolean }>();
 
-// Loads data for qualifications - total, succeeded, failed
-const qualificationSummary = QualificationService.useQualificationSummary();
-
-const tabQualificationsIconStatus = computed(() => {
-  if (qualificationSummary.value === undefined) return "loading";
-
-  const { total, succeeded, failed } = qualificationSummary.value;
-
-  if (succeeded + failed !== total) return "loading";
-
-  if (failed > 0) return "failure";
-
-  return "success";
-});
+const qualificationStore = useQualificationsStore();
+const componentStats = computed(() => qualificationStore.componentStats);
+const overallStatus = computed(() => qualificationStore.overallStatus);
 </script>

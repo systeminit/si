@@ -12,11 +12,11 @@
         v-for="component in filteredComponenets"
         :key="component.id"
         class="border-b-2 dark:border-neutral-600 cursor-pointer"
-        @click="emit('select', parseInt(component.id))"
+        @click="emit('select', component.id)"
       >
         <span
           :class="
-            selectedComponentId === parseInt(component.id)
+            selectedComponentId === component.id
               ? ['bg-action-500 text-white']
               : ['hover:bg-action-400 hover:text-white']
           "
@@ -27,17 +27,17 @@
         >
           <span
             class="whitespace-nowrap text-ellipsis overflow-hidden shrink leading-tight"
-            >{{ component.subtitle || "si-123" }}</span
+            >{{ component.displayName || "si-123" }}</span
           >
           <i
             :class="
-              selectedComponentId === parseInt(component.id)
+              selectedComponentId === component.id
                 ? ['bg-action-500 text-white']
                 : ['text-neutral-500 group-hover:text-white']
             "
             class="text-sm pl-1 flex-none"
           >
-            {{ component.title }}
+            {{ component.schemaName }}
           </i>
         </span>
       </li>
@@ -49,7 +49,7 @@
 import { computed, ref } from "vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import { colors } from "@/utils/design_token_values";
-import DiagramService2 from "@/service/diagram2";
+import { useComponentsStore } from "@/store/components.store";
 
 // TODO: deal with ids as numbers vs strings...
 
@@ -57,28 +57,26 @@ defineProps<{
   selectedComponentId?: number;
 }>();
 
-// simply reusing the diagram data for now... this may change
-const diagramData = DiagramService2.useDiagramData();
-
 const emit = defineEmits<{
   (e: "select", componentId: number): void;
 }>();
+
+const componentsStore = useComponentsStore();
 
 const filterString = ref("");
 function onSearchUpdated(newFilterString: string) {
   filterString.value = newFilterString;
 }
 
-const allComponents = computed(() => {
-  return diagramData.value?.nodes || [];
-});
+const allComponents = computed(() => componentsStore.allComponents);
+
 const filteredComponenets = computed(() => {
   if (!filterString.value) return allComponents.value;
   const searchLower = filterString.value.toLowerCase();
   return allComponents.value.filter((item) => {
     return (
-      item.title.toLowerCase().includes(searchLower) ||
-      item.subtitle?.toLowerCase().includes(searchLower)
+      item.displayName.toLowerCase().includes(searchLower) ||
+      item.schemaName.toLowerCase().includes(searchLower)
     );
   });
 });

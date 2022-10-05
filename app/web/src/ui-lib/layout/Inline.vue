@@ -120,7 +120,7 @@ export default Inline;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: @spacing-sizes[xs];
+  gap: @spacing-rem[xs];
 
   // could set this up to only be there if tagname is ol/ul, but doesn't hurt anything
   list-style: none;
@@ -131,7 +131,7 @@ export default Inline;
     flex-direction: row-reverse;
   }
 
-  each(@spacing-sizes, .(@size-px, @size-name){
+  each(@spacing-rem, .(@size-px, @size-name){
     &.--spacing-@{size-name} {
       gap: @size-px;
     }
@@ -150,7 +150,7 @@ export default Inline;
   each(@breakpoints, .(@bp-name){
     @mq-var-name: ~'mq-@{bp-name}';
     @media @@mq-var-name {
-      each(@spacing-sizes, .(@size-px, @size-name){
+      each(@spacing-rem, .(@size-px, @size-name){
         &.--spacing-@{size-name}-@{bp-name} {
           gap: @size-px;
         }

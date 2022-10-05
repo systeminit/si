@@ -34,7 +34,7 @@ const divClasses = computed(() => {
       return "border-warning-600 text-warning-500";
     case props.status === "failure" || props.health === ResourceHealth.Error:
       return "border-destructive-600 text-destructive-500";
-    case props.status === "loading":
+    case props.status === "running":
       return "border-action-600 text-action-500";
     default:
       return "";

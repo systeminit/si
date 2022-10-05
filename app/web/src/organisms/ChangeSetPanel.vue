@@ -1,33 +1,34 @@
 <template>
   <div>
-    <section class="px-[0.9375rem] my-[0.625rem]">
-      <h1
-        class="mb-[0.3125rem] text-neutral-900 type-bold-sm dark:text-neutral-50"
-      >
-        Change Set
-      </h1>
+    <section class="p-sm">
+      <div class="flex items-center gap-x-xs">
+        <VormInput
+          class="flex-grow"
+          type="dropdown"
+          :model-value="selectedChangeSetId"
+          label="Change Set"
+          placeholder="no changeset selected"
+          :options="changeSetDropdownOptions"
+          @update:model-value="onSelectChangeSet"
+        >
+          <VormInputOption value="NEW">
+            - Create new change set -
+          </VormInputOption>
+        </VormInput>
 
-      <div class="mb-3 flex items-center gap-x-[0.9375rem]">
-        <SelectMenu
-          v-model="changeSet"
-          :disabled="showCreateDialog"
-          :options="openChangeSets"
-          class="flex-grow min-w-0"
-          @change="updateSelectedChangeSet"
-        />
-        <VButton
-          button-rank="primary"
-          button-type="action"
-          icon="git-merge"
-          label="Apply"
-          size="sm"
-          @click="applyChangeSet"
-        />
+        <VormInput type="container">
+          <VButton2 icon="git-merge" size="sm" @click="applyChangeSet">
+            Apply
+          </VButton2>
+        </VormInput>
       </div>
     </section>
-    <ChangeSetPanelDialog :show="showCreateDialog" @close="closeCreateDialog">
+    <ChangeSetPanelDialog
+      :show="showDialog === 'create'"
+      @close="onCloseCreateDialog"
+    >
       <template #title>Create Change Set</template>
-      <template #error>
+      <!-- <template #error>
         <div
           v-if="createChangeSetErrorMessage"
           class="mb-4 border bg-warning-300 py-1 px-2"
@@ -46,7 +47,7 @@
             {{ createChangeSetErrorMessage }}
           </p>
         </div>
-      </template>
+      </template> -->
       <template #body>
         <div>
           <p class="pb-2 type-regular-sm">
@@ -61,47 +62,34 @@
           </p>
         </div>
         <div class="pt-2">
-          <label class="type-medium-xs" for="changeSetName"
-            >Change Set Name:</label
-          >
-          <input
-            id="newChangeSetName"
-            v-model="createChangeSetName"
-            class="block w-full rounded-[0.1875rem] border-neutral-300 bg-shade-0 text-neutral-900 shadow-sm type-regular-xs hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
-            name="changeSetName"
-            placeholder="name"
-            type="text"
-            @keyup.enter="createChangeSet"
-          />
-          <p class="pt-4 type-regular-sm">
-            In the future, you can create new change sets by selecting
-            <b>- new -</b> in the <b>Change Set drop down</b>.
-          </p>
+          <VormInput v-model="createChangeSetName" label="Change set name" />
         </div>
       </template>
       <template #buttons>
-        <div class="flex flex-row-reverse justify-between pt-2">
-          <VButton
-            :disabled="createButtonDisabled"
-            button-rank="primary"
-            button-type="success"
-            icon="plus-square"
+        <div class="flex flex-row-reverse gap-sm">
+          <VButton2
+            :disabled="false"
+            tone="success"
+            icon="plus-circle"
             label="Create"
-            size="xs"
-            @click="createChangeSet"
+            class="flex-grow"
+            @click="onCreateChangeSet"
           />
-          <VButton
-            button-rank="tertiary"
-            button-type="destructive"
-            icon="trash"
+          <VButton2
+            tone="destructive"
+            variant="ghost"
+            icon="x-circle"
             label="Cancel"
-            size="xs"
-            @click="closeCreateDialog"
+            @click="onCloseCreateDialog"
           />
         </div>
       </template>
     </ChangeSetPanelDialog>
-    <ChangeSetPanelDialog :show="showSelectDialog" @close="closeSelectDialog">
+
+    <ChangeSetPanelDialog
+      :show="showDialog === 'select'"
+      @close="onCloseSelectDialog"
+    >
       <template #title>Select Change Set</template>
       <template #body>
         <div class="type-regular-sm pb-2">
@@ -110,55 +98,49 @@
             <b>- new -</b> to create a new Change Set.
           </p>
         </div>
-        <div>
-          <SelectMenu
-            v-model="changeSet"
-            :options="openChangeSets"
+        <Stack>
+          <VormInput
+            type="dropdown"
+            :model-value="selectedChangeSetId"
+            :options="changeSetDropdownOptions"
+            placeholder="Select an existing change set"
             class="flex-grow"
-            @change="updateSelectedChangeSet"
+            @update:model-value="onSelectChangeSet"
           />
-        </div>
-      </template>
-      <template #buttons>
-        <div class="mt-2 flex flex-row justify-between">
-          <VButton
-            button-rank="tertiary"
-            button-type="destructive"
-            icon="trash"
-            label="Cancel"
-            size="xs"
-            @click="closeSelectDialog"
-          />
-        </div>
+          <Divider label="or" />
+          <VButton2 icon="plus-circle">Create a new change set</VButton2>
+        </Stack>
       </template>
     </ChangeSetPanelDialog>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
-import { refFrom, untilUnmounted } from "vuse-rx";
-import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
-import { ChangeSet } from "@/api/sdf/dal/change_set";
-import { Workspace } from "@/api/sdf/dal/workspace";
-import { ChangeSetService } from "@/service/change_set";
-import { GlobalErrorService } from "@/service/global_error";
-import { WorkspaceService } from "@/service/workspace";
-import VButton from "@/molecules/VButton.vue";
+import { computed, ref, watch } from "vue";
+import _ from "lodash";
+import { useRoute, useRouter } from "vue-router";
+import { useChangeSetsStore } from "@/store/change_sets.store";
+import VormInput from "@/ui-lib/forms/VormInput.vue";
+import VButton2 from "@/ui-lib/VButton2.vue";
+import VormInputOption from "@/ui-lib/forms/VormInputOption.vue";
+import { useWorkspacesStore } from "@/store/workspaces.store";
+import Divider from "@/ui-lib/layout/Divider.vue";
 import ChangeSetPanelDialog from "./ChangeSetPanelDialog.vue";
+import Stack from "../ui-lib/layout/Stack.vue";
 
-// The "create new change set" option
-const CHANGE_SET_NEW = { label: "- new -", value: -3 };
+const workspacesStore = useWorkspacesStore();
+const selectedWorkspaceId = computed(() => workspacesStore.selectedWorkspaceId);
 
-// The default change sets list
-const DEFAULT_CHANGE_SETS = [CHANGE_SET_NEW];
+const changeSetsStore = useChangeSetsStore();
+const openChangeSets = computed(() => changeSetsStore.openChangeSets);
+const selectedChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
 
-// The list of open change sets
-const openChangeSets = ref<Option[]>(DEFAULT_CHANGE_SETS);
+const changeSetDropdownOptions = computed(() =>
+  _.map(openChangeSets.value, (cs) => ({ value: cs.id, label: cs.name })),
+);
 
-// The currently selected change set with the value being its primary key
-const changeSet = ref(CHANGE_SET_NEW);
+const router = useRouter();
+const route = useRoute();
 
 // Determines whether or not to display a dialog
 const showDialog = ref<false | "create" | "select">(false);
@@ -166,113 +148,51 @@ const showDialog = ref<false | "create" | "select">(false);
 // The name for a new change set
 const createChangeSetName = ref("");
 
-// An optional error message to be displayed when creating a change set fails
-const createChangeSetErrorMessage = ref<string | null>(null);
-
-// Determines if the create new change set button should be disabled
-const createButtonDisabled = computed(() => {
-  return createChangeSetName.value.length < 1;
-});
-
-// Determines whether or not to display create dialog
-const showCreateDialog = computed(() => {
-  return showDialog.value === "create";
-});
-
-// Determines whether or not to display select dialog
-const showSelectDialog = computed(() => {
-  return showDialog.value === "select";
-});
-
-// Current workspace
-const currentWorkspace = refFrom<Workspace | null>(
-  WorkspaceService.currentWorkspace(),
-);
-
-// Current change set
-const currentChangeSet = refFrom<ChangeSet | null>(
-  ChangeSetService.currentChangeSet(),
-);
-
-const router = useRouter();
-
-// When the change set selection is changed, ignoring selections that don't
-// update the currently selected
-const updateSelectedChangeSet = () => {
-  if (changeSet.value.value === CHANGE_SET_NEW.value) {
+function onSelectChangeSet(newVal: number | "NEW") {
+  if (newVal === "NEW") {
     showDialog.value = "create";
-  } else if (currentChangeSet.value?.pk !== changeSet.value.value) {
-    GlobalErrorService.setIfError(
-      ChangeSetService.updateSelectedChangeSet({
-        nextChangeSetPk: changeSet.value.value,
-      }),
-    );
+  } else if (newVal && route.name) {
+    router.push({
+      name: route.name,
+      params: {
+        ...route.params,
+        changeSetId: newVal,
+      },
+    });
     showDialog.value = false;
   }
-};
-
-// When creatintg a new change set, uses the name from the create dialog
-const createChangeSet = () => {
-  ChangeSetService.createChangeSet({
-    changeSetName: createChangeSetName.value,
-  }).subscribe(async (response) => {
-    if (response.error) {
-      // Display the error message in the create dialog if creation failed
-      createChangeSetErrorMessage.value = response.error.message;
-    } else {
-      createChangeSetName.value = "";
-      showDialog.value = false;
-    }
-  });
-};
-
-// When the create dialog is closed without creating a new change set
-const closeCreateDialog = async () => {
-  // If the list of open change sets is 1 or less then there are no open change
-  // sets so we'll redirect to the view page as the user chose not to create a
-  // new change set and the compose view requires an open change set.
-  if (openChangeSets.value.length <= 1) {
-    await navigateToView();
-  } else {
-    // Clear the name in the form
-    createChangeSetName.value = "";
-    // Update the change set select to return to the current change set
-    // value--it will currently be the "new" option at this moment.
-    if (currentChangeSet.value) {
-      changeSet.value = {
-        label: currentChangeSet.value.name,
-        value: currentChangeSet.value.pk,
-      };
-      showDialog.value = false;
-    } else {
-      showDialog.value = "select";
-    }
+}
+async function onCreateChangeSet() {
+  const createReq = await changeSetsStore.CREATE_CHANGE_SET(
+    createChangeSetName.value,
+  );
+  if (createReq.result.success) {
+    // reusing above to navigate to new change set... will probably clean this all up later
+    onSelectChangeSet(createReq.result.data.changeSet.id);
   }
-};
-
-// When the select dialog is closed without selecting a new change set
-const closeSelectDialog = async () => {
-  await navigateToView();
-};
+}
 
 // Saves the current edit session and then applies the current change set
 const applyChangeSet = async () => {
-  ChangeSetService.applyChangeSet().subscribe(async (response) => {
-    if (response.error) {
-      GlobalErrorService.set(response);
-    } else {
-      await navigateToView();
-    }
-  });
+  const applyReq = await changeSetsStore.APPLY_CHANGE_SET();
+  if (applyReq.result.success) await navigateToViewMode();
 };
 
+watch(openChangeSets, () => {
+  if (!openChangeSets.value.length) {
+    showDialog.value = "create";
+  } else if (!selectedChangeSetId.value) {
+    showDialog.value = "select";
+  }
+});
+
 // Navigates to the workspace view page
-const navigateToView = async () => {
-  if (currentWorkspace.value) {
+const navigateToViewMode = async () => {
+  if (selectedWorkspaceId.value) {
     await router.push({
       name: "workspace-view",
-      path: "/new/w/:workspaceId/v",
-      params: { workspaceId: currentWorkspace.value.id },
+      path: "/w/:workspaceId/v",
+      params: { workspaceId: selectedWorkspaceId.value },
     });
   } else {
     // Fallback to the workspace list page in the case we can't yet determine
@@ -281,34 +201,12 @@ const navigateToView = async () => {
   }
 };
 
-// Keeps the list of open change sets up to date
-untilUnmounted(ChangeSetService.listOpenChangeSets()).subscribe((response) => {
-  if (response.error) {
-    GlobalErrorService.set(response);
-    // If we encounter an error, continue with an empty option list
-    openChangeSets.value = DEFAULT_CHANGE_SETS;
-  } else {
-    // If no open change sets are returned, display the create change set
-    // dialog
-    if (!response.list.length) {
-      showDialog.value = "create";
-    }
-    openChangeSets.value = [...response.list, ...DEFAULT_CHANGE_SETS];
-  }
-});
-
-// Updates the currently selected change set if it is updated externally
-untilUnmounted(ChangeSetService.currentChangeSet()).subscribe(
-  (currentChangeSet) => {
-    if (currentChangeSet) {
-      changeSet.value = {
-        label: currentChangeSet.name,
-        value: currentChangeSet.pk,
-      };
-    } else {
-      showDialog.value = "select";
-      changeSet.value = CHANGE_SET_NEW;
-    }
-  },
-);
+function onCloseCreateDialog() {
+  showDialog.value = false;
+  if (!selectedChangeSetId.value) navigateToViewMode();
+}
+function onCloseSelectDialog() {
+  showDialog.value = false;
+  if (!selectedChangeSetId.value) navigateToViewMode();
+}
 </script>

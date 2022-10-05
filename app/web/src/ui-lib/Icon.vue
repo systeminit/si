@@ -43,7 +43,7 @@ import CheckCircle from "~icons/material-symbols/check-circle";
 import AlertTriangle from "~icons/material-symbols/warning";
 import XCircle from "~icons/material-symbols/cancel";
 import QuestionMarkCircle from "~icons/heroicons-solid/question-mark-circle";
-import Play from "~icons/material-symbols/play-arrow-rounded";
+import Play from "~icons/ion/play-sharp";
 
 import PlusSquare from "~icons/fa/plus-square-o";
 

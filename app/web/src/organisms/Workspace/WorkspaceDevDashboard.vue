@@ -19,16 +19,10 @@ import { computed } from "vue";
 import { DevService } from "@/service/dev";
 
 const currentGitSha = DevService.useCurrentGitSha();
-const gitSha = computed((): string | null => {
-  if (currentGitSha && currentGitSha.value) {
-    return currentGitSha.value.sha;
-  }
-  return null;
-});
-const gitShaLink = computed((): string | null => {
-  if (gitSha.value) {
-    return `https://github.com/systeminit/si/commit/${gitSha.value}`;
-  }
-  return null;
-});
+const gitSha = computed(() => currentGitSha?.value?.sha || null);
+const gitShaLink = computed(() =>
+  gitSha.value
+    ? `https://github.com/systeminit/si/commit/${gitSha.value}`
+    : null,
+);
 </script>

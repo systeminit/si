@@ -37,15 +37,13 @@
               >
                 <slot name="title"></slot>
               </DialogTitle>
-              <div class="type-regular-sm px-3">
+              <div class="type-regular-sm p-sm">
                 <slot name="error"></slot>
               </div>
-              <div>
-                <div class="px-3 pt-2">
-                  <slot name="body"></slot>
-                </div>
+              <div class="p-sm pb-0">
+                <slot name="body"></slot>
               </div>
-              <div class="pl-4 pr-4 pb-3">
+              <div class="p-sm">
                 <slot name="buttons"></slot>
               </div>
             </DialogPanel>

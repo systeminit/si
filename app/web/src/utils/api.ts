@@ -1,4 +1,5 @@
 import Axios from "axios";
+import { useAuthStore } from "@/store/auth.store";
 
 // api base url - can use a proxy or set a full url
 let apiUrl: string;
@@ -17,6 +18,16 @@ const api = Axios.create({
   },
   baseURL: API_HTTP_URL,
 });
-// can add axios interceptors to add auth headers, handle logout errors, etc...
+
+// add axios interceptors to add auth headers, handle logout errors, etc...
+api.interceptors.request.use((config) => {
+  // inject auth token from the store as a custom header
+  const authStore = useAuthStore();
+  config.headers = config.headers || {};
+  if (authStore.token) {
+    config.headers.authorization = `Bearer ${authStore.token}`;
+  }
+  return config;
+});
 
 export default api;

@@ -2,7 +2,7 @@
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
     <StatusBarTabPanelComponentList
-      :component-list="list"
+      :component-list="componentsList"
       :selected-filter="selectedFilter"
       :filter-options="filterOptions"
       @filter="changeSelectedFilter"
@@ -10,20 +10,11 @@
 
     <!-- Selected component view -->
     <div
-      v-if="selectedComponentId && selectedComponentStatsGroup"
+      v-if="selectedComponent"
       class="w-full h-full flex flex-col bg-shade-100"
     >
       <div
-        v-if="!filterMatchesSelectedComponentStatus"
-        class="flex flex-row items-center text-center w-full h-full bg-shade-100"
-      >
-        <p class="w-full text-3xl text-neutral-500">
-          Selected Component Has Not Been {{ selectedFilter.title }}
-        </p>
-      </div>
-
-      <div
-        v-else-if="selectedComponentStatsGroup.componentStatus === 'added'"
+        v-if="selectedComponent.changeStatus === 'added'"
         class="w-full h-full p-2 first-letter:overflow-hidden flex flex-row flex-wrap"
       >
         <div
@@ -44,14 +35,14 @@
       </div>
 
       <div
-        v-else-if="selectedComponentStatsGroup.componentStatus === 'deleted'"
+        v-else-if="selectedComponent.changeStatus === 'deleted'"
         class="flex flex-row items-center text-center w-full h-full"
       >
         <p class="w-full text-3xl text-destructive-300">Component Deleted</p>
       </div>
 
       <div
-        v-else-if="selectedComponentStatsGroup.componentStatus === 'modified'"
+        v-else-if="selectedComponent.changeStatus === 'modified'"
         class="overflow-x-hidden flex flex-row flex-wrap p-2"
       >
         <div
@@ -89,19 +80,16 @@
 <script setup lang="ts">
 import { from, switchMap, map, combineLatest } from "rxjs";
 import { computed, ref } from "vue";
-import { refFrom, fromRef, untilUnmounted } from "vuse-rx";
+import { refFrom, fromRef } from "vuse-rx";
 import _ from "lodash";
-import { ComponentStats } from "@/api/sdf/dal/change_set";
-import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import { ComponentService } from "@/service/component";
 import { ComponentDiff } from "@/api/sdf/dal/component";
-import { SelectionService } from "@/service/selection";
 import StatusBarTabPanelComponentList, {
-  ComponentListItem,
   FilterOption,
 } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
+import { useComponentsStore } from "@/store/components.store";
 
 const defaultFilterOption = {
   value: "all",
@@ -128,65 +116,36 @@ const changeSelectedFilter = (newFilter: FilterOption) => {
   selectedFilter.value = newFilter;
 };
 
-// Only display individual component data if the filter is valid for the component status.
-// The filter is valid in two scenarios:
-// 1) If a component is selected _and_ the selected filter value is "all"
-// 2) If a component is selected _and_ its status matches the selected filter value
-const filterMatchesSelectedComponentStatus = computed((): boolean => {
-  if (selectedComponentStatsGroup.value) {
-    if (
-      selectedFilter.value.value === "all" ||
-      selectedComponentStatsGroup.value.componentStatus ===
-        selectedFilter.value.value
-    ) {
-      return true;
-    }
-    // Fall back to false if we have a selected component, but it doesn't pass the condition.
-  }
-  return false;
-});
+const componentsStore = useComponentsStore();
 
-const list = computed((): ComponentListItem[] => {
-  if (!stats.value) return [];
-
-  let list = [];
-  for (const statsGroup of stats.value.stats) {
-    list.push({
-      id: statsGroup.componentId,
-      name: statsGroup.componentName,
-      status: statsGroup.componentStatus,
-    });
-  }
-
-  // Filter the results if a filter has been selected.
-  if (
-    selectedFilter.value &&
-    selectedFilter.value.value !== defaultFilterOption.value
-  ) {
-    list = list.filter((item) => item.status === selectedFilter.value.value);
-  }
-
-  return list;
-});
-
-const stats = ref<ComponentStats>({ stats: [] });
-
-untilUnmounted(ChangeSetService.getStats()).subscribe((response) => {
-  if (response.error) {
-    GlobalErrorService.set(response);
-  } else {
-    stats.value = response.componentStats;
-  }
-});
-
-const selectedComponentId = SelectionService.useSelectedComponentId();
-const localSelectedComponentId$ = fromRef(selectedComponentId);
-const selectedComponentStatsGroup = computed(() => {
-  return _.find(
-    stats.value.stats,
-    (statsGroup) => statsGroup.componentId === selectedComponentId.value,
+// first filter down all components to only those changed
+const changedComponents = computed(() =>
+  _.filter(componentsStore.allComponents, (c) => !!c.changeStatus),
+);
+// now filter based on selected filter (added/modified/deleted)
+const filteredChangedComponents = computed(() => {
+  if (selectedFilter.value.value === "all") return changedComponents.value;
+  return _.filter(
+    changedComponents.value,
+    (c) => c.changeStatus === selectedFilter.value.value,
   );
 });
+// convert into format needed by StatusBarTabPanelComponentList
+const componentsList = computed(() =>
+  _.map(filteredChangedComponents.value, (c) => ({
+    id: c.id,
+    name: c.displayName,
+    status: c.changeStatus,
+  })),
+);
+
+const selectedComponentId = computed(() => componentsStore.selectedComponentId);
+const selectedComponent = computed(() =>
+  _.find(
+    filteredChangedComponents.value,
+    (c) => c.id === selectedComponentId.value,
+  ),
+);
 
 // FIXME(nick): we should be using the "unknown" language if there's no code once mode switching is reactive.
 const codeRecord = computed((): Record<string, string> => {
@@ -217,7 +176,7 @@ const getCodeLanguage = (title: string) => {
 };
 
 const componentDiff = refFrom<ComponentDiff | null>(
-  combineLatest([localSelectedComponentId$]).pipe(
+  combineLatest([fromRef(selectedComponentId)]).pipe(
     switchMap(([selectedComponentId]) => {
       if (selectedComponentId) {
         return ComponentService.getDiff({

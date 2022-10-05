@@ -6,36 +6,22 @@ import { createHead } from "@vueuse/head";
 
 import "@/assets/style/main.css";
 import "@/assets/style/tailwind.css";
-import { ChangeSetService } from "@/service/change_set";
-import { SessionService } from "@/service/session";
-import { SignupService } from "@/service/signup";
+
 import App from "@/App.vue";
 import { bottleSetup } from "./di";
 import router from "./router";
+import store from "./store";
 
 // @ts-ignore
 const _spy = create();
-
-// Expose our internal services to Cypress, so we can use them
-// directly in tests.
-// @ts-ignore
-if (window.Cypress) {
-  // @ts-ignore
-  window.SignupService = SignupService;
-  // @ts-ignore
-  window.SessionService = SessionService;
-  // @ts-ignore
-  window.ChangeSetService = ChangeSetService;
-}
 
 bottleSetup();
 
 const app = createApp(App);
 
-const head = createHead();
-app.use(head);
-
+app.use(createHead());
 app.use(router);
+app.use(store);
 
 // we attach to the #app-layout div (in AppLayout.vue) to stay within an overflow hidden div and not mess with page scrollbars
 app.use(FloatingVue, { container: "#app-layout" });

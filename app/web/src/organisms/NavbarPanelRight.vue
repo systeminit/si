@@ -39,7 +39,6 @@ import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import SiThemeSwitcher from "@/organisms/SiThemeSwitcher.vue";
-import { SessionService } from "@/service/session";
 import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
 import Icon from "@/ui-lib/Icon.vue";
 
@@ -53,8 +52,7 @@ const copyURL = () => {
 const isDevMode = import.meta.env.DEV;
 
 const onLogout = async () => {
-  await SessionService.logout();
-  await router.push({ name: "login" });
+  await router.push({ name: "logout" });
 };
 const onDevDashboard = async () => {
   if (import.meta.env.DEV) {

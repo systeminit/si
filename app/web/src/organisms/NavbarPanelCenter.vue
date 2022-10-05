@@ -5,7 +5,10 @@
     <SiBarButton
       tooltip-text="Model"
       :selected="route.name === 'workspace-compose'"
-      :router-link-to="{ name: 'workspace-compose' }"
+      :router-link-to="{
+        name: 'workspace-compose',
+        params: { changeSetId: 'auto' },
+      }"
     >
       <Icon name="diagram" />
     </SiBarButton>
@@ -13,13 +16,16 @@
     <SiBarButton
       tooltip-text="Customize"
       :selected="route.name === 'workspace-lab'"
-      :router-link-to="{ name: 'workspace-lab' }"
+      :router-link-to="{
+        name: 'workspace-lab',
+        params: { changeSetId: 'auto' },
+      }"
     >
       <Icon name="beaker" />
     </SiBarButton>
 
     <!-- Vertical bar -->
-    <div class="w-0.5 h-8 self-center mx-2 bg-white"></div>
+    <div class="w-0.5 h-8 self-center mx-xs bg-white"></div>
 
     <SiBarButton
       tooltip-text="Analyze"

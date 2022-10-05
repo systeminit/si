@@ -77,7 +77,7 @@ const props = defineProps<{
 }>();
 
 const qualificationStatus = computed(() => {
-  if (_.isNil(props.qualification.result)) return "loading";
+  if (_.isNil(props.qualification.result)) return "running";
 
   if (props.qualification.result.success) return "success";
 

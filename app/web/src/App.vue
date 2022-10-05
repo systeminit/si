@@ -1,5 +1,6 @@
 <template>
-  <router-view />
+  <RealtimeConnectionStatus />
+  <router-view :key="selectedWorkspace?.id" />
 </template>
 
 <script lang="ts" setup>
@@ -14,6 +15,10 @@ import { Theme } from "@/observable/theme";
 import { useThemeProvider } from "./composables/injectTheme";
 import { useCustomFontsLoadedProvider } from "./composables/useFontLoaded";
 import { tw } from "./utils/style_helpers";
+import { useAuthStore } from "./store/auth.store";
+import { useWorkspacesStore } from "./store/workspaces.store";
+import { useRealtimeStore } from "./store/realtime/realtime.store";
+import RealtimeConnectionStatus from "./molecules/RealtimeConnectionStatus.vue";
 
 onBeforeMount(restoreFromSession);
 
@@ -36,6 +41,18 @@ useHead(
     title: "DevOps without papercuts",
   })),
 );
+
+// check for auth token in local storage and initialize auth in store if found
+// this token will be automatically injected into API requests
+const authStore = useAuthStore();
+authStore.initFromStorage();
+
+const workspacesStore = useWorkspacesStore();
+const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
+
+// initialize the realtime store - it will dispatch messages to other stores and back to rxjs services
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const realtimeStore = useRealtimeStore();
 </script>
 
 <style>

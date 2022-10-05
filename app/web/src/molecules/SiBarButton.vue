@@ -4,7 +4,7 @@
     v-if="!$slots.dropdownContent || routerLinkTo"
     v-tooltip.bottom="tooltipText"
     :to="routerLinkTo"
-    class="relative block h-full flex items-center"
+    class="relative h-full flex items-center"
     :class="buttonClasses(false)"
     :aria-label="props.tooltipText"
     @click="emit('click')"

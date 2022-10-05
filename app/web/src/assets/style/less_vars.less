@@ -111,7 +111,6 @@
 @wide-bp: 1920px;
 @huge-bp: 2560px;
 
-
 // DO NOT MODIFY ///////////////////////////////////////////////////////////////////////////////////
 // (these are based on the above)
 
@@ -145,3 +144,16 @@
 
 @mq-mobile-only: ~"only screen and (max-width:@{tablet-bp-minus-1})";
 @mq-tablet-only: ~"only screen and (min-width:@{tablet-bp}) and (max-width:@{desktop-bp-minus-1})";
+
+// Other values used in layout library
+@horizontal-align-options: {
+  left: flex-start;
+  center: center;
+  right: flex-end;
+}
+
+@vertical-align-options: {
+  top: flex-start;
+  center: center;
+  bottom: flex-end;
+}
