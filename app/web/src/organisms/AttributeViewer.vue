@@ -41,20 +41,12 @@
 
     <PropertyEditor
       v-if="editorContext"
-      class=""
       :editor-context="editorContext"
-      @updated-property="updateProperty($event)"
-      @add-to-array="addToArray($event)"
-      @add-to-map="addToMap($event)"
+      @updated-property="updateProperty"
+      @add-to-array="addToArray"
+      @add-to-map="addToMap"
       @create-attribute-func="onCreateAttributeFunc"
     />
-
-    <!--
-    <EditFormComponent
-      v-if="editFields"
-      :edit-fields="editFields"
-      :component-identification="componentIdentification"
-    /> -->
   </div>
 </template>
 
