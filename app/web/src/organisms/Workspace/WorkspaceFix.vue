@@ -1,5 +1,5 @@
 <template>
-  <SiPanel remember-size-key="workflow-left" side="left" :min-size="220">
+  <SiPanel remember-size-key="workflow-left" side="left" :min-size="315">
     <FixPicker />
   </SiPanel>
   <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
