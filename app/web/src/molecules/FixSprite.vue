@@ -11,7 +11,17 @@
         class="flex flex-row items-center gap-2.5 text-sm relative"
         :class="classes"
       >
-        <VormInput type="checkbox" no-label />
+        <VormInput
+          :model-value="selected"
+          type="checkbox"
+          no-label
+          @click.stop
+          @update:model-value="
+            (c) => {
+              emit('toggle', c);
+            }
+          "
+        />
         <Icon name="tools" size="xl" class="text-destructive-500" />
         <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
           {{ fix.name }}
@@ -27,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, PropType } from "vue";
 import Icon from "@/ui-lib/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
@@ -38,10 +48,15 @@ type Fix = {
   recommendation: string;
 };
 
-const props = defineProps<{
-  fix: Fix;
-  class?: string;
-}>();
+const props = defineProps({
+  fix: { type: Object as PropType<Fix>, required: true },
+  class: { type: String },
+  selected: { type: Boolean, default: false },
+});
 
 const classes = computed(() => props.class);
+
+const emit = defineEmits<{
+  (e: "toggle", checked: boolean): void;
+}>();
 </script>
