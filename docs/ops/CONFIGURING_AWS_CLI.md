@@ -24,4 +24,6 @@ passing the following responses to each prompt:
 - Default region name: `us-east-2`
 - Default output format: Leave empty
 
+> The title of the **1password** item is "Amazon SI Production".
+
 

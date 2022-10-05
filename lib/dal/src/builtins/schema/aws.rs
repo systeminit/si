@@ -282,7 +282,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     let ui_menu = SchemaUiMenu::new(ctx, "EC2 Instance", "AWS", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
-    // Prop and validation creation
+    // Prop: /root/domain/ImageId
     let image_id_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "ImageId",
@@ -305,6 +305,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/InstanceType
     let instance_type_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "InstanceType",
@@ -329,6 +330,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/KeyName
     let key_name_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "KeyName",
@@ -339,6 +341,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/SecurityGroupIds
     let security_groups_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "SecurityGroupIds",
@@ -349,6 +352,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/SecurityGroupIds/SecurityGroupId
     let _security_group_id_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "SecurityGroupId",
@@ -359,6 +363,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/tags
     let tags_map_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "tags",
@@ -370,6 +375,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // TODO(victor): Make one item of the list have key `Name` and value equal to /root/si/name
+    // Prop: /root/domain/tags/tag
     let _tags_map_item_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "tag",
@@ -380,6 +386,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/UserData
     let _user_data_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "UserData",
@@ -390,6 +397,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/awsResourceType
     let aws_resource_type_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "awsResourceType",
@@ -400,6 +408,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/region
     let region_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "region",
@@ -832,7 +841,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     let ui_menu = SchemaUiMenu::new(ctx, "Key Pair", "AWS", &diagram_kind).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
-    // Prop Creation
+    // Prop: /root/domain/KeyName
     let key_name_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "KeyName",
@@ -843,6 +852,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/KeyType
     let _key_type_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "KeyType",
@@ -853,6 +863,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/tags
     let tags_map_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "tags",
@@ -863,6 +874,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/tags/tag
     let _tags_map_item_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "tag",
@@ -873,6 +885,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/awsResourceType
     let aws_resource_type_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "awsResourceType",
@@ -883,6 +896,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Prop: /root/domain/region
     let region_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "region",
