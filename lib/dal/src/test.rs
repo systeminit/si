@@ -23,6 +23,13 @@ use crate::check_runtime_dependencies;
 
 pub mod helpers;
 
+#[cfg(debug_assertions)]
+pub const CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE: &str =
+    "failed to canonicalize cyclone bin path (you likely need to build cyclone: cargo build --bin cyclone)";
+#[cfg(not(debug_assertions))]
+pub const CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE: &str =
+    "failed to canonicalize cyclone bin path";
+
 const DEFAULT_PG_DBNAME: &str = "si_test";
 
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
@@ -290,7 +297,7 @@ pub async fn veritech_server_for_uds_cyclone(
             .try_cyclone_cmd_path(
                 dir.join("../../target/debug/cyclone")
                     .canonicalize()
-                    .expect("failed to canonicalize cyclone bin path")
+                    .expect(CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE)
                     .to_string_lossy()
                     .to_string(),
             )
