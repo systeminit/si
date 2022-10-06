@@ -24,7 +24,7 @@
         :key="i"
         @destroy="destroyWidget(i)"
       />
-      <div>Count = {{ count }}</div>
+      <div>Count = {{ store.counter }}</div>
     </Stack>
   </div>
 </template>
@@ -42,10 +42,8 @@ import CounterWidget from "./CounterWidget.vue";
 const widgets = reactive({} as Record<number, true>);
 const numWidgets = computed(() => _.keys(widgets).length);
 
-// const store = useCounterStore();
+const store = useCounterStore();
 // const store = useCounterStore2();
-// const count = computed(() => store.counter);
-const count = computed(() => 999);
 
 let widgetIdCounter = 0;
 function addWidget() {

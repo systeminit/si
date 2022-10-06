@@ -17,7 +17,7 @@
         <div class="w-full h-full flex flex-row relative overflow-hidden">
           <router-view :key="selectedChangeSet?.id" />
         </div>
-        <StatusBar class="flex-none" />
+        <StatusBar :key="selectedChangeSet?.id" class="flex-none" />
       </template>
       <template v-else>
         <div class="flex-grow text-white p-lg">
@@ -83,7 +83,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeMount, PropType, reactive, watch } from "vue";
+import { computed, PropType, reactive, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import _ from "lodash";
 import Navbar from "@/organisms/Navbar.vue";
@@ -120,8 +120,8 @@ const changeSetsReqStatus =
 const selectedChangeSet = computed(() => changeSetsStore.selectedChangeSet);
 
 // this page is the parent of many child routes so we watch the route rather than use mounted hooks
-watch([route, changeSetsReqStatus], handleAutoRedirect);
-onBeforeMount(handleAutoRedirect);
+watch(changeSetsReqStatus, handleChangeSetsLoaded);
+watch(route, handleUrlChange, { immediate: true });
 
 function routeToChangeSet(id: ChangeSetId, replace = false) {
   // reroutes to a specific changeset but keeps the same route name
@@ -135,13 +135,32 @@ function routeToChangeSet(id: ChangeSetId, replace = false) {
   });
 }
 
-function handleAutoRedirect() {
-  if (props.changeSetId !== "auto" || !changeSetsReqStatus.value.isSuccess)
-    return;
+function handleUrlChange() {
+  // if id looks like a number, we set it in the store
+  if (_.isNumber(props.changeSetId)) {
+    changeSetsStore.selectedChangeSetId = props.changeSetId;
+    // if undefined, that means the route has no changeSetId param, so we select "head"
+  } else if (props.changeSetId === undefined) {
+    changeSetsStore.selectedChangeSetId = -1;
+    // if "auto", we do our best to autoselect, and show a selection screen otherwise
+  } else if (props.changeSetId === "auto") {
+    tryAutoSelect();
+  }
+}
+function handleChangeSetsLoaded() {
+  if (changeSetsReqStatus.value.isSuccess && props.changeSetId === "auto") {
+    tryAutoSelect();
+  }
+}
 
+// gets called on url change when id is "auto", and also when change set's are loaded
+function tryAutoSelect() {
   const autoSelectChangeSetId = changeSetsStore.getAutoSelectedChangeSetId();
   if (autoSelectChangeSetId) {
     routeToChangeSet(autoSelectChangeSetId, true);
+  } else {
+    // only clear the selected change set id if we are on "auto" mode and we can't autoamtically select
+    changeSetsStore.selectedChangeSetId = null;
   }
 }
 
