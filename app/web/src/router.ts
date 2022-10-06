@@ -68,7 +68,9 @@ const routes: RouteRecordRaw[] = [
         path: ":changeSetId/l/:funcId?",
         name: "workspace-lab",
         component: () => import("@/organisms/Workspace/WorkspaceCustomize.vue"),
-        props: castNumberProps,
+        props: (route: RouteLocationNormalized) => ({
+          funcId: castNumberProps(route).funcId,
+        }),
       },
       {
         path: "v",

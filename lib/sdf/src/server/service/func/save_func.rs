@@ -4,10 +4,12 @@ use super::{
 };
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
+use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
-    func::argument::FuncArgument, qualification_prototype::QualificationPrototypeContextField,
-    AttributePrototype, AttributePrototypeArgument, DalContext, Func, FuncBackendKind, FuncId,
-    QualificationPrototype, StandardModel, Visibility, WsEvent,
+    func::argument::FuncArgument,
+    prototype_context::{associate_prototypes, HasPrototypeContext, PrototypeContextField},
+    AttributePrototype, AttributePrototypeArgument, CodeGenerationPrototype, DalContext, Func,
+    FuncBackendKind, FuncId, QualificationPrototype, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -172,7 +174,7 @@ async fn save_attr_func_arguments(
     Ok(())
 }
 
-pub async fn save_func(
+pub async fn save_func<'a>(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SaveFuncRequest>,
@@ -194,9 +196,11 @@ pub async fn save_func(
     func.set_code_plaintext(&ctx, request.code.as_deref())
         .await?;
 
+    let func_id_copy = *func.id();
+
     match func.backend_kind() {
         FuncBackendKind::JsQualification => {
-            let mut associations: Vec<QualificationPrototypeContextField> = vec![];
+            let mut associations: Vec<PrototypeContextField> = vec![];
             if let Some(FuncAssociations::Qualification {
                 schema_variant_ids,
                 component_ids,
@@ -204,14 +208,70 @@ pub async fn save_func(
             {
                 associations.append(&mut schema_variant_ids.iter().map(|f| (*f).into()).collect());
                 associations.append(&mut component_ids.iter().map(|f| (*f).into()).collect());
-            };
+                let create_prototype_closure =
+                    move |ctx: DalContext, context_field: PrototypeContextField| async move {
+                        QualificationPrototype::new(
+                            &ctx,
+                            func_id_copy,
+                            QualificationPrototype::new_context_for_context_field(context_field),
+                        )
+                        .await?;
 
-            let _ = QualificationPrototype::associate_prototypes_with_func_and_objects(
-                &ctx,
-                func.id(),
-                &associations,
-            )
-            .await?;
+                        Ok(())
+                    };
+
+                associate_prototypes(
+                    &ctx,
+                    &QualificationPrototype::list_for_func(&ctx, func.id()).await?,
+                    &associations,
+                    Box::new(create_prototype_closure),
+                )
+                .await?;
+            };
+        }
+        FuncBackendKind::JsCodeGeneration => {
+            let mut associations: Vec<PrototypeContextField> = vec![];
+            if let Some(FuncAssociations::CodeGeneration {
+                schema_variant_ids,
+                component_ids,
+                format,
+            }) = request.associations
+            {
+                associations.append(&mut schema_variant_ids.iter().map(|f| (*f).into()).collect());
+                associations.append(&mut component_ids.iter().map(|f| (*f).into()).collect());
+
+                let mut existing_protos =
+                    CodeGenerationPrototype::list_for_func(&ctx, *func.id()).await?;
+                for proto in existing_protos.iter_mut() {
+                    if *proto.format() != format {
+                        proto.set_format(&ctx, format).await?;
+                    }
+                }
+
+                let create_prototype_closure =
+                    move |ctx: DalContext, context_field: PrototypeContextField| async move {
+                        let code_gen_args = FuncBackendJsCodeGenerationArgs::default();
+                        let code_gen_args_json = serde_json::to_value(&code_gen_args)?;
+                        CodeGenerationPrototype::new(
+                            &ctx,
+                            func_id_copy,
+                            code_gen_args_json.clone(),
+                            format,
+                            CodeGenerationPrototype::new_context_for_context_field(context_field),
+                        )
+                        .await?;
+
+                        Ok(())
+                    };
+
+                associate_prototypes(
+                    &ctx,
+                    &existing_protos,
+                    &associations,
+                    Box::new(create_prototype_closure),
+                )
+                .await?;
+            };
         }
         FuncBackendKind::JsAttribute => {
             if let Some(FuncAssociations::Attribute {

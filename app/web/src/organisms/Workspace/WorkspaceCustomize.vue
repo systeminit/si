@@ -67,7 +67,9 @@ import { clearFuncs, updateFuncFromSave } from "../FuncEditor/func_state";
 
 const isDevMode = import.meta.env.DEV;
 
-const props = defineProps<{ funcId?: number }>();
+const props = defineProps<{
+  funcId?: number;
+}>();
 
 const selectedFuncId = computed(() => {
   const funcId = props.funcId ?? -1;

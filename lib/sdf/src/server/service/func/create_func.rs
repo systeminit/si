@@ -2,12 +2,13 @@ use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::func::FuncError;
 use axum::Json;
+use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
     attribute::context::AttributeContextBuilder, generate_name,
-    qualification_prototype::QualificationPrototypeContext, AttributeValue, AttributeValueId,
-    ComponentId, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    FuncBindingReturnValue, FuncId, QualificationPrototype, SchemaId, SchemaVariantId,
-    StandardModel, Visibility, WsEvent,
+    prototype_context::HasPrototypeContext, qualification_prototype::QualificationPrototypeContext,
+    AttributeValue, AttributeValueId, CodeGenerationPrototype, CodeLanguage, ComponentId,
+    DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, FuncId,
+    QualificationPrototype, SchemaId, SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -48,6 +49,16 @@ pub struct CreateFuncResponse {
 static ATTRIBUTE_CODE_HANDLER_PLACEHOLDER: &str = "HANDLER";
 static ATTRIBUTE_CODE_DEFAULT_HANDLER: &str = "attribute";
 static ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER: &str = "FUNCTION_RETURN_VALUE";
+
+const DEFAULT_CODE_GENERATION_FORMAT: CodeLanguage = CodeLanguage::Json;
+static DEFAULT_CODE_GENERATION_CODE: &str = "
+function generateCode(component) {
+    return {
+        format: \"json\",
+        code: JSON.stringify(component.properties),
+    };
+}
+";
 
 static DEFAULT_ATTRIBUTE_CODE_TEMPLATE: &str = "/*
 */
@@ -141,6 +152,35 @@ async fn copy_attribute_func(ctx: &DalContext, func_to_copy: &Func) -> FuncResul
         .await?;
     func.set_code_base64(ctx, func_to_copy.code_base64())
         .await?;
+
+    Ok(func)
+}
+
+async fn create_code_gen_func(ctx: &DalContext) -> FuncResult<Func> {
+    let mut func = Func::new(
+        ctx,
+        generate_name(None),
+        FuncBackendKind::JsCodeGeneration,
+        FuncBackendResponseType::CodeGeneration,
+    )
+    .await?;
+
+    func.set_code_plaintext(ctx, Some(DEFAULT_CODE_GENERATION_CODE))
+        .await?;
+    func.set_handler(ctx, Some("generateCode".to_owned()))
+        .await?;
+
+    let code_gen_args = FuncBackendJsCodeGenerationArgs::default();
+    let code_gen_args_json = serde_json::to_value(&code_gen_args)?;
+
+    CodeGenerationPrototype::new(
+        ctx,
+        *func.id(),
+        code_gen_args_json,
+        DEFAULT_CODE_GENERATION_FORMAT,
+        CodeGenerationPrototype::new_context(),
+    )
+    .await?;
 
     Ok(func)
 }
@@ -288,6 +328,7 @@ pub async fn create_func(
             None => create_attribute_func(&ctx, None, None, None, None, None, None).await?,
         },
         FuncBackendKind::JsQualification => create_qualification_func(&ctx).await?,
+        FuncBackendKind::JsCodeGeneration => create_code_gen_func(&ctx).await?,
         _ => Err(FuncError::FuncNotSupported)?,
     };
 

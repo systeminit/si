@@ -9,6 +9,7 @@ use telemetry::prelude::*;
 use crate::{
     func::FuncId,
     impl_standard_model, pk,
+    prototype_context::{HasPrototypeContext, PrototypeContext},
     standard_model::{self, objects_from_rows, TypeHint},
     standard_model_accessor, ComponentId, DalContext, HistoryEvent, HistoryEventError, SchemaId,
     SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
@@ -41,7 +42,7 @@ pub type QualificationPrototypeResult<T> = Result<T, QualificationPrototypeError
 
 const FIND_FOR_CONTEXT: &str =
     include_str!("./queries/qualification_prototype_find_for_context.sql");
-const FIND_FOR_FUNC: &str = include_str!("./queries/qualification_prototype_find_for_func.sql");
+const LIST_FOR_FUNC: &str = include_str!("queries/qualification_prototype_list_for_func.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct QualificationPrototypeContext {
@@ -58,6 +59,39 @@ impl Default for QualificationPrototypeContext {
     }
 }
 
+impl PrototypeContext for QualificationPrototypeContext {
+    fn component_id(&self) -> ComponentId {
+        self.component_id
+    }
+
+    fn set_component_id(&mut self, component_id: ComponentId) {
+        self.component_id = component_id;
+    }
+
+    fn schema_id(&self) -> SchemaId {
+        self.schema_id
+    }
+
+    fn set_schema_id(&mut self, schema_id: SchemaId) {
+        self.schema_id = schema_id;
+    }
+    fn schema_variant_id(&self) -> SchemaVariantId {
+        self.schema_variant_id
+    }
+
+    fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
+        self.schema_variant_id = schema_variant_id;
+    }
+
+    fn system_id(&self) -> SystemId {
+        self.system_id
+    }
+
+    fn set_system_id(&mut self, system_id: SystemId) {
+        self.system_id = system_id;
+    }
+}
+
 impl QualificationPrototypeContext {
     pub fn new() -> Self {
         Self {
@@ -66,75 +100,6 @@ impl QualificationPrototypeContext {
             schema_variant_id: SchemaVariantId::NONE,
             system_id: SystemId::NONE,
         }
-    }
-
-    pub fn new_for_context_field(context_field: QualificationPrototypeContextField) -> Self {
-        match context_field {
-            QualificationPrototypeContextField::Schema(schema_id) => {
-                QualificationPrototypeContext {
-                    component_id: ComponentId::NONE,
-                    schema_id,
-                    schema_variant_id: SchemaVariantId::NONE,
-                    system_id: SystemId::NONE,
-                }
-            }
-            QualificationPrototypeContextField::System(system_id) => {
-                QualificationPrototypeContext {
-                    component_id: ComponentId::NONE,
-                    schema_id: SchemaId::NONE,
-                    schema_variant_id: SchemaVariantId::NONE,
-                    system_id,
-                }
-            }
-            QualificationPrototypeContextField::SchemaVariant(schema_variant_id) => {
-                QualificationPrototypeContext {
-                    component_id: ComponentId::NONE,
-                    schema_id: SchemaId::NONE,
-                    schema_variant_id,
-                    system_id: SystemId::NONE,
-                }
-            }
-            QualificationPrototypeContextField::Component(component_id) => {
-                QualificationPrototypeContext {
-                    component_id,
-                    schema_id: SchemaId::NONE,
-                    schema_variant_id: SchemaVariantId::NONE,
-                    system_id: SystemId::NONE,
-                }
-            }
-        }
-    }
-
-    pub fn component_id(&self) -> ComponentId {
-        self.component_id
-    }
-
-    pub fn set_component_id(&mut self, component_id: ComponentId) {
-        self.component_id = component_id;
-    }
-
-    pub fn schema_id(&self) -> SchemaId {
-        self.schema_id
-    }
-
-    pub fn set_schema_id(&mut self, schema_id: SchemaId) {
-        self.schema_id = schema_id;
-    }
-
-    pub fn schema_variant_id(&self) -> SchemaVariantId {
-        self.schema_variant_id
-    }
-
-    pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
-        self.schema_variant_id = schema_variant_id;
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    pub fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
     }
 }
 
@@ -160,38 +125,6 @@ pub struct QualificationPrototype {
     visibility: Visibility,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum QualificationPrototypeContextField {
-    Component(ComponentId),
-    Schema(SchemaId),
-    SchemaVariant(SchemaVariantId),
-    System(SystemId),
-}
-
-impl From<ComponentId> for QualificationPrototypeContextField {
-    fn from(component_id: ComponentId) -> Self {
-        QualificationPrototypeContextField::Component(component_id)
-    }
-}
-
-impl From<SchemaId> for QualificationPrototypeContextField {
-    fn from(schema_id: SchemaId) -> Self {
-        QualificationPrototypeContextField::Schema(schema_id)
-    }
-}
-
-impl From<SchemaVariantId> for QualificationPrototypeContextField {
-    fn from(schema_variant_id: SchemaVariantId) -> Self {
-        QualificationPrototypeContextField::SchemaVariant(schema_variant_id)
-    }
-}
-
-impl From<SystemId> for QualificationPrototypeContextField {
-    fn from(system_id: SystemId) -> Self {
-        QualificationPrototypeContextField::System(system_id)
-    }
-}
-
 impl_standard_model! {
     model: QualificationPrototype,
     pk: QualificationPrototypePk,
@@ -199,6 +132,22 @@ impl_standard_model! {
     table_name: "qualification_prototypes",
     history_event_label_base: "qualification_prototype",
     history_event_message_name: "Qualification Prototype"
+}
+
+impl HasPrototypeContext<QualificationPrototypeContext> for QualificationPrototype {
+    fn context(&self) -> QualificationPrototypeContext {
+        let mut context = QualificationPrototypeContext::new();
+        context.set_component_id(self.component_id);
+        context.set_schema_id(self.schema_id);
+        context.set_schema_variant_id(self.schema_variant_id);
+        context.set_system_id(self.system_id);
+
+        context
+    }
+
+    fn new_context() -> QualificationPrototypeContext {
+        QualificationPrototypeContext::new()
+    }
 }
 
 impl QualificationPrototype {
@@ -297,7 +246,7 @@ impl QualificationPrototype {
         Ok(objects_from_rows(rows)?)
     }
 
-    pub async fn find_for_func(
+    pub async fn list_for_func(
         ctx: &DalContext,
         func_id: &FuncId,
     ) -> QualificationPrototypeResult<Vec<Self>> {
@@ -305,96 +254,12 @@ impl QualificationPrototype {
             .txns()
             .pg()
             .query(
-                FIND_FOR_FUNC,
+                LIST_FOR_FUNC,
                 &[ctx.read_tenancy(), ctx.visibility(), func_id],
             )
             .await?;
         let object = objects_from_rows(rows)?;
         Ok(object)
-    }
-
-    pub fn context(&self) -> QualificationPrototypeContext {
-        let mut context = QualificationPrototypeContext::new();
-        context.set_component_id(self.component_id);
-        context.set_schema_id(self.schema_id);
-        context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(self.system_id);
-
-        context
-    }
-
-    async fn create_missing_prototypes(
-        ctx: &DalContext,
-        func_id: &FuncId,
-        existing_for_field: &[QualificationPrototypeContextField],
-        desired_for_field: &[QualificationPrototypeContextField],
-    ) -> QualificationPrototypeResult<Vec<Self>> {
-        let mut new_protos = vec![];
-
-        for desired in desired_for_field {
-            if existing_for_field.contains(desired) {
-                continue;
-            }
-
-            new_protos.push(
-                QualificationPrototype::new(
-                    ctx,
-                    *func_id,
-                    QualificationPrototypeContext::new_for_context_field(*desired),
-                )
-                .await?,
-            );
-        }
-
-        Ok(new_protos)
-    }
-
-    /// Given a list of `QualificationPrototypeContextField`s (specifically here only
-    /// `SchemaVariantId` and `ComponentId` context fields, make them the only context fields for
-    /// which we have a prototype connected to the given function by deleting any that are not
-    /// in the list and creating any that do not currently exist.
-    pub async fn associate_prototypes_with_func_and_objects<
-        T: Into<QualificationPrototypeContextField> + Copy,
-    >(
-        ctx: &DalContext,
-        func_id: &FuncId,
-        prototype_context_field_ids: &[T],
-    ) -> QualificationPrototypeResult<Vec<Self>> {
-        let mut existing_field_ids = vec![];
-        let prototype_context_field_ids: Vec<QualificationPrototypeContextField> =
-            prototype_context_field_ids
-                .iter()
-                .map(|field| (*field).into())
-                .collect();
-
-        for proto in Self::find_for_func(ctx, func_id).await? {
-            let component_id = proto.component_id();
-            let schema_variant_id = proto.schema_variant_id();
-
-            if component_id.is_none() && schema_variant_id.is_none() {
-                continue;
-            }
-
-            if component_id.is_some() && !prototype_context_field_ids.contains(&component_id.into())
-                || schema_variant_id.is_some()
-                    && !prototype_context_field_ids.contains(&schema_variant_id.into())
-            {
-                proto.delete(ctx).await?;
-                continue;
-            } else if component_id.is_some() {
-                existing_field_ids.push(component_id.into());
-            } else if schema_variant_id.is_some() {
-                existing_field_ids.push(schema_variant_id.into());
-            }
-        }
-
-        Self::create_missing_prototypes(
-            ctx,
-            func_id,
-            &existing_field_ids,
-            &prototype_context_field_ids,
-        )
-        .await
     }
 }
 

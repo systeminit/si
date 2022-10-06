@@ -1,12 +1,13 @@
 use crate::dal::test;
 use dal::func::backend::validation::FuncBackendValidationArgs;
+use dal::prototype_context::{associate_prototypes, HasPrototypeContext};
 use dal::qualification_prototype::QualificationPrototypeContext;
 use dal::validation::Validation;
 use dal::{
-    component::ComponentKind, generate_name,
-    qualification_prototype::QualificationPrototypeContextField, Component, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, QualificationPrototype, Schema,
-    SchemaError, SchemaKind, SchemaVariant, StandardModel, SystemId, ValidationPrototype,
+    component::ComponentKind, generate_name, prototype_context::PrototypeContext,
+    prototype_context::PrototypeContextField, Component, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, Prop, PropKind, QualificationPrototype, Schema, SchemaError,
+    SchemaKind, SchemaVariant, StandardModel, SystemId, ValidationPrototype,
     ValidationPrototypeContext,
 };
 use std::option::Option::None;
@@ -207,7 +208,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
     .await
     .expect("could not set code on func");
 
-    assert!(QualificationPrototype::find_for_func(ctx, func.id())
+    assert!(QualificationPrototype::list_for_func(ctx, func.id())
         .await
         .expect("could not get protos for func")
         .is_empty());
@@ -218,18 +219,34 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
         (&cinglé, &component_cinglé),
         (&fou, &component_fou),
     ] {
-        let associations: Vec<QualificationPrototypeContextField> =
+        let associations: Vec<PrototypeContextField> =
             vec![(*variant.id()).into(), (*component.id()).into()];
 
-        let _ = QualificationPrototype::associate_prototypes_with_func_and_objects(
+        let func_id_copy = *func.id();
+        let create_prototype_closure =
+            move |ctx: DalContext, context_field: PrototypeContextField| async move {
+                QualificationPrototype::new(
+                    &ctx,
+                    func_id_copy,
+                    QualificationPrototype::new_context_for_context_field(context_field),
+                )
+                .await?;
+
+                Ok(())
+            };
+
+        associate_prototypes(
             ctx,
-            func.id(),
+            &QualificationPrototype::list_for_func(ctx, func.id())
+                .await
+                .expect("could not get protos for func"),
             &associations,
+            Box::new(create_prototype_closure),
         )
         .await
         .expect("could not associate");
 
-        let prototypes = QualificationPrototype::find_for_func(ctx, func.id())
+        let prototypes = QualificationPrototype::list_for_func(ctx, func.id())
             .await
             .expect("could not get protos for func");
 
@@ -239,15 +256,30 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
     }
 
     // clear prototypes
-    let associations: Vec<QualificationPrototypeContextField> = vec![];
-    let _ = QualificationPrototype::associate_prototypes_with_func_and_objects(
+    let associations: Vec<PrototypeContextField> = vec![];
+    let func_id_copy = *func.id();
+    let create_prototype_closure = move |ctx: DalContext, context_field: PrototypeContextField| async move {
+        QualificationPrototype::new(
+            &ctx,
+            func_id_copy,
+            QualificationPrototype::new_context_for_context_field(context_field),
+        )
+        .await?;
+
+        Ok(())
+    };
+    associate_prototypes(
         ctx,
-        func.id(),
+        &QualificationPrototype::list_for_func(ctx, func.id())
+            .await
+            .expect("could not get protos for func"),
         &associations,
+        Box::new(create_prototype_closure),
     )
     .await
     .expect("could not clear associations");
-    assert!(QualificationPrototype::find_for_func(ctx, func.id())
+
+    assert!(QualificationPrototype::list_for_func(ctx, func.id())
         .await
         .expect("could not get protos for func")
         .is_empty());
