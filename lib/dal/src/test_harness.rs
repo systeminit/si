@@ -8,6 +8,7 @@ use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
 use uuid::Uuid;
 use veritech::{EncryptionKey, Instance, StandardConfig};
 
+use crate::test::CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE;
 use crate::{
     billing_account::BillingAccountSignup,
     component::ComponentKind,
@@ -154,7 +155,7 @@ async fn veritech_server_for_uds_cyclone(
             .try_cyclone_cmd_path(
                 dir.join("../../target/debug/cyclone")
                     .canonicalize()
-                    .expect("failed to canonicalize cyclone bin path")
+                    .expect(CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE)
                     .to_string_lossy()
                     .to_string(),
             )
