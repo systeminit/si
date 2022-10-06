@@ -15,9 +15,10 @@
       <div>Determining fixes for updated model...</div>
 
       <div class="mt-2 flex gap-5">
-        <ProgressBar :completion-rate="fixData.executed / fixData.total" />
+        <ProgressBar :completion-rate="fixComponentsProgress" />
         <span class="whitespace-nowrap flex-shrink-0">
-          {{ fixData.executed }} of {{ fixData.total }} Synced
+          {{ fixesStore.processedFixComponents }} of
+          {{ fixesStore.totalFixComponents }} Synced
         </span>
       </div>
     </div>
@@ -34,14 +35,13 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import clsx from "clsx";
-import { interval } from "rxjs";
-import { untilUnmounted } from "vuse-rx";
 import SiPanel from "@/atoms/SiPanel.vue";
 
 import { useComponentsStore } from "@/store/components.store";
 import ProgressBar from "@/atoms/ProgressBar.vue";
+import { useFixesStore } from "@/store/fixes.store";
 import FixPicker from "../FixPicker.vue";
 import FixHistory from "../FixHistory.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
@@ -50,18 +50,19 @@ const componentsStore = useComponentsStore();
 const diagramNodes = computed(() => componentsStore.diagramNodes);
 const diagramEdges = computed(() => componentsStore.diagramEdges);
 
-// TODO(victor): This is temporary data just to animate the workspace. It will be removed once we plug the backend in
-const fixData = ref({
-  executed: 0,
-  total: 12,
+const fixesStore = useFixesStore();
+const loadFixesReqStatus = fixesStore.getRequestStatus("LOAD_FIXES");
+
+const fixComponentsProgress = computed(() => {
+  if (loadFixesReqStatus.value.isSuccess && fixesStore.totalFixComponents > 0) {
+    return fixesStore.processedFixComponents / fixesStore.totalFixComponents;
+  }
+  return 0;
 });
 
-interval(1500)
-  .pipe(untilUnmounted)
-  .subscribe(() => {
-    fixData.value.executed =
-      fixData.value.total !== fixData.value.executed
-        ? fixData.value.executed + 1
-        : 0;
-  });
+/*
+ * - Analyze fixes from diagram/show status bar/spinner every component (if we can!)/jitter/Populate fix list
+ * - wait for fix resources click:
+ * - Spin every item of fix list/sync with "Applying Fixes"/Fixed items go to "Fixed list"
+ * */
 </script>

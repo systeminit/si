@@ -597,7 +597,7 @@ const currentSelection = computed({
   },
   set(newSelection) {
     const sortedDeduped = _.sortBy(_.uniq(newSelection), "id");
-    // dont set the array if its the same, helps us only care about actual changes
+    // don't set the array if it's the same, helps us only care about actual changes
     if (_.isEqual(currentSelection.value, sortedDeduped)) return;
     _rawSelection.value = sortedDeduped;
   },
@@ -655,7 +655,7 @@ function handleMouseDownSelection() {
   }
 
   // nodes can be multi-selected, so we have some extra behaviour
-  // TODO: other elements may also share this behavoiur
+  // TODO: other elements may also share this behaviour
   if (hoveredElement.value.diagramElementType === "node") {
     // when clicking on an element that is NOT currently selected, we act right away
     // but if the element IS selected, this could be beginning of dragging
@@ -695,7 +695,7 @@ function beginDragSelect() {
   if (!containerPointerPos.value) return;
   dragSelectSelectionPreview.value = [];
   dragSelectActive.value = true;
-  // this triggers after the user breaks the dragging threshold, so we dont start at curent position, but where they clicked
+  // this triggers after the user breaks the dragging threshold, so we don't start at current position, but where they clicked
   dragSelectStartPos.value = convertContainerCoordsToGridCoords(
     containerPointerPos.value,
   );
@@ -718,7 +718,7 @@ function onDragSelectMove() {
     if (inSelectionBox)
       selectedInBox.push({ diagramElementType: "node", id: nodeId });
   });
-  // if holding shift key, we'll add/toggle the existing selection with whats in the box
+  // if holding shift key, we'll add/toggle the existing selection with what's in the box
   // NOTE - weird edge cases around what if you let go of shift after beginning the drag which we are ignoring
   if (lastMouseDownEvent.value?.shiftKey) {
     dragSelectSelectionPreview.value = _.xorBy(
@@ -814,7 +814,7 @@ function onDragElementsMove() {
       draggedElementsPositionsPreDrag.value?.[i],
       delta,
     );
-    // track the position locally, so we dont need to rely on parent to store the temporary position
+    // track the position locally, so we don't need to rely on parent to store the temporary position
     movedElementPositions[el.id] = newPosition;
     emit("move-element", {
       id: el.id,
@@ -880,7 +880,7 @@ function triggerDragToEdgeScrolling() {
     );
   }
 
-  // track total amount scrolled becuase we need to offset from original drag click location
+  // track total amount scrolled because we need to offset from original drag click location
   totalScrolledDuringDrag.value.x += deltaX;
   totalScrolledDuringDrag.value.y += deltaY;
 

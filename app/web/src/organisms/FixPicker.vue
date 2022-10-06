@@ -23,9 +23,11 @@
             label="Select All"
             no-label
             @update:model-value="selectAll"
-            >Select All</VormInput
-          >
-          <VButton2 icon="tools" tone="action">Fix Resources</VButton2>
+            >Select All
+          </VormInput>
+          <VButton2 icon="tools" tone="action" @click="fixesStore.EXECUTE_FIXES"
+            >Fix Resources
+          </VButton2>
         </div>
         <ul class="overflow-y-auto">
           <SiCollapsible as="li" class="w-full" content-as="ul" default-open>
@@ -46,6 +48,7 @@
             </template>
             <template #default>
               <li v-for="fix in fixes" :key="fix.id">
+                {{ fix.status }}
                 <FixSprite
                   :fix="fix"
                   :selected="fixSelection[fix.id]"
@@ -65,9 +68,8 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
 import { TabPanel } from "@headlessui/vue";
-import { reactive } from "vue";
+import { reactive, computed } from "vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
@@ -76,28 +78,17 @@ import Icon from "@/ui-lib/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import FixSprite from "@/molecules/FixSprite.vue";
+import { useFixesStore } from "@/store/fixes.store";
 import SiCollapsible from "./SiCollapsible.vue";
 
 const selectAll = (checked: boolean) => {
-  _.each(fixSelection, (_v, k) => {
-    fixSelection[k] = checked;
-  });
+  for (const key in fixSelection) {
+    fixSelection[key] = checked;
+  }
 };
 
-const fixes = [
-  {
-    id: 1,
-    name: "This is a fix!",
-    recommendation:
-      "this is what we recommend you do - just fix this thing and you will be all good",
-  },
-  {
-    id: 2,
-    name: "Also a fix.",
-    recommendation: "honestly idk, you figure it out",
-  },
-];
-
+const fixesStore = useFixesStore();
+const fixes = computed(() => fixesStore.allFixes);
 const fixSelection: Record<string, boolean> = reactive({
   1: false,
   2: false,
