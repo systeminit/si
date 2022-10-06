@@ -1,4 +1,5 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
+use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{

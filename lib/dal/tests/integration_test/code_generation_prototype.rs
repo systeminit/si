@@ -4,8 +4,8 @@ use crate::dal::test;
 use dal::code_generation_prototype::CodeGenerationPrototypeContext;
 use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
-    code_generation_prototype::UNSET_ID_VALUE, CodeGenerationPrototype, CodeLanguage, Component,
-    Func, Schema, StandardModel,
+    code_generation_prototype::UNSET_ID_VALUE, prototype_context::PrototypeContext,
+    CodeGenerationPrototype, CodeLanguage, Component, Func, Schema, StandardModel,
 };
 
 #[test]

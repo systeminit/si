@@ -1,5 +1,6 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::func::argument::FuncArgument;
+use crate::prototype_context::PrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::{
     qualification_prototype::QualificationPrototypeContext,

@@ -5,6 +5,7 @@ use crate::builtins::BuiltinsError;
 use crate::code_generation_prototype::CodeGenerationPrototypeContext;
 use crate::edit_field::widget::WidgetKind;
 use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
+use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::validation::Validation;

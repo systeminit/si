@@ -5,6 +5,7 @@ use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
     component::ComponentKind,
     edit_field::widget::*,
+    prototype_context::PrototypeContext,
     qualification_prototype::QualificationPrototypeContext,
     schema::{SchemaUiMenu, SchemaVariant},
     socket::SocketArity,

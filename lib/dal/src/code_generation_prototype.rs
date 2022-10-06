@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::{
     func::FuncId,
     impl_standard_model, pk,
-    prototype_context::{GetContext, PrototypeContext},
+    prototype_context::{HasPrototypeContext, PrototypeContext},
     standard_model, standard_model_accessor, CodeLanguage, ComponentId, HistoryEventError,
     SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
     WriteTenancy,
@@ -65,16 +65,32 @@ impl PrototypeContext for CodeGenerationPrototypeContext {
         self.component_id
     }
 
+    fn set_component_id(&mut self, component_id: ComponentId) {
+        self.component_id = component_id;
+    }
+
     fn schema_id(&self) -> SchemaId {
         self.schema_id
+    }
+
+    fn set_schema_id(&mut self, schema_id: SchemaId) {
+        self.schema_id = schema_id;
     }
 
     fn schema_variant_id(&self) -> SchemaVariantId {
         self.schema_variant_id
     }
 
+    fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
+        self.schema_variant_id = schema_variant_id;
+    }
+
     fn system_id(&self) -> SystemId {
         self.system_id
+    }
+
+    fn set_system_id(&mut self, system_id: SystemId) {
+        self.system_id = system_id;
     }
 }
 
@@ -86,22 +102,6 @@ impl CodeGenerationPrototypeContext {
             schema_variant_id: UNSET_ID_VALUE.into(),
             system_id: UNSET_ID_VALUE.into(),
         }
-    }
-
-    pub fn set_component_id(&mut self, component_id: ComponentId) {
-        self.component_id = component_id;
-    }
-
-    pub fn set_schema_id(&mut self, schema_id: SchemaId) {
-        self.schema_id = schema_id;
-    }
-
-    pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
-        self.schema_variant_id = schema_variant_id;
-    }
-
-    pub fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
     }
 }
 
@@ -136,9 +136,13 @@ impl_standard_model! {
     history_event_message_name: "CodeGeneration Prototype"
 }
 
-impl GetContext<CodeGenerationPrototypeContext> for CodeGenerationPrototype {
+impl HasPrototypeContext<CodeGenerationPrototypeContext> for CodeGenerationPrototype {
     fn context(&self) -> CodeGenerationPrototypeContext {
         self.context.clone()
+    }
+
+    fn new_context() -> CodeGenerationPrototypeContext {
+        CodeGenerationPrototypeContext::new()
     }
 }
 

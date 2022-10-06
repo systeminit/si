@@ -1,6 +1,10 @@
 {
   "kind": "JsCodeGeneration",
+  "arguments": [],
   "response_type": "CodeGeneration",
+  "display_name": "si:generateYAML",
+  "description": null,
+  "link": null,
   "code_file": "generateYAML.js",
   "code_entrypoint": "generateYAML"
 }

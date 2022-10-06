@@ -1,6 +1,10 @@
 {
   "kind": "JsCodeGeneration",
+  "arguments": [],
   "response_type": "CodeGeneration",
+  "display_name": "si:generateAwsJSON",
+  "description": null,
+  "link": null,
   "code_file": "generateAwsJSON.js",
   "code_entrypoint": "generateAwsJSON"
 }

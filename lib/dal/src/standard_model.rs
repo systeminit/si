@@ -587,7 +587,7 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn delete(self, ctx: &DalContext) -> StandardModelResult<()>
+    async fn delete(&self, ctx: &DalContext) -> StandardModelResult<()>
     where
         Self: Send + Sync + Sized,
     {

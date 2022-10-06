@@ -170,6 +170,7 @@ const funcTypes = {
 const funcCreateTypes = {
   [FuncBackendKind.JsQualification]: "Qualification",
   [FuncBackendKind.JsAttribute]: "Attribute",
+  [FuncBackendKind.JsCodeGeneration]: "Code Generation",
 };
 
 const props = defineProps<{

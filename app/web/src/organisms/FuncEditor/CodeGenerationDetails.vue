@@ -32,6 +32,7 @@
       class="w-4/5"
       :options="formatOptions"
       :disabledi="props.disabled"
+      @change="updateAssociations"
     />
   </div>
 </template>

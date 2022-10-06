@@ -9,7 +9,6 @@ use thiserror::Error;
 
 use crate::service::func::get_func::GetFuncResponse;
 use dal::func::argument::FuncArgument;
-use dal::prototype_context::GetContext;
 use dal::{
     attribute::context::AttributeContextBuilder,
     attribute::{
@@ -23,7 +22,7 @@ use dal::{
     },
     job::definition::DependentValuesUpdate,
     prop_tree::PropTreeError,
-    prototype_context::PrototypeContext,
+    prototype_context::{HasPrototypeContext, PrototypeContext, PrototypeContextError},
     schema::variant::SchemaVariantError,
     AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId, AttributeValue,
@@ -93,6 +92,8 @@ pub enum FuncError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("code generation prototype error: {0}")]
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
+    #[error("prototype context error: {0}")]
+    PrototypeContext(#[from] PrototypeContextError),
 
     #[error("Function not found")]
     FuncNotFound,
@@ -400,7 +401,7 @@ fn prototype_context_into_schema_variants_and_components<P, C>(
     prototype_contexts: &[P],
 ) -> (Vec<SchemaVariantId>, Vec<ComponentId>)
 where
-    P: GetContext<C>,
+    P: HasPrototypeContext<C>,
     C: PrototypeContext,
 {
     let mut schema_variant_ids = vec![];
