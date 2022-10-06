@@ -1,14 +1,12 @@
 use std::{env, path::Path, sync::Arc};
 
-use anyhow::Result;
+use color_eyre::Result;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
-
 use uuid::Uuid;
 use veritech::{EncryptionKey, Instance, StandardConfig};
 
-use crate::test::CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE;
 use crate::{
     billing_account::BillingAccountSignup,
     component::ComponentKind,
@@ -19,6 +17,7 @@ use crate::{
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
+    test::CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE,
     BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, DiagramKind,
     EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
     Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
@@ -195,8 +194,7 @@ fn nats_prefix() -> String {
 }
 
 pub async fn one_time_setup() -> Result<()> {
-    let _ = crate::test::TestContext::global().await;
-    Ok(())
+    crate::test::TestContext::global().await.map(|_| ())
 }
 
 pub fn generate_fake_name() -> String {

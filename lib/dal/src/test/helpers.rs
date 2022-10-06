@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
+use color_eyre::Result;
 use names::{Generator, Name};
 use serde_json::Value;
-use std::collections::HashMap;
 
 use crate::attribute::context::AttributeContextBuilder;
 use crate::func::argument::{FuncArgument, FuncArgumentId};
@@ -38,7 +40,9 @@ pub fn generate_fake_name() -> String {
 pub async fn billing_account_signup(
     ctx: &DalContext,
     jwt_secret_key: &JwtSecretKey,
-) -> (BillingAccountSignup, String) {
+) -> Result<(BillingAccountSignup, String)> {
+    use color_eyre::eyre::WrapErr;
+
     let ctx = ctx.clone_with_universal_head();
 
     let billing_account_name = generate_fake_name();
@@ -54,13 +58,13 @@ pub async fn billing_account_signup(
         &user_password,
     )
     .await
-    .expect("cannot signup a new billing_account");
+    .wrap_err("cannot signup a new billing_account")?;
     let auth_token = nba
         .user
         .login(&ctx, jwt_secret_key, nba.billing_account.id(), "snakes")
         .await
-        .expect("cannot log in newly created user");
-    (nba, auth_token)
+        .wrap_err("cannot log in newly created user")?;
+    Ok((nba, auth_token))
 }
 
 pub async fn create_group(ctx: &DalContext) -> Group {

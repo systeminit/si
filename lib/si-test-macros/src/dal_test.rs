@@ -36,9 +36,9 @@ pub(crate) fn expand(item: ItemFn, _args: AttributeArgs) -> TokenStream {
     let params = &item.sig.inputs;
     // Note that Rust doesn't allow a test function with `#[should_panic]` that has a non-unit
     // return value. Huh
-    let output = match &item.sig.output {
-        ReturnType::Default => quote! {},
-        ReturnType::Type(_, typeness) => quote! {-> #typeness},
+    let (rt_is_result, output) = match &item.sig.output {
+        ReturnType::Default => (false, quote! {}),
+        ReturnType::Type(_, typeness) => (true, quote! {-> #typeness}),
     };
     let test_attr = quote! {#[::core::prelude::v1::test]};
 
@@ -48,29 +48,50 @@ pub(crate) fn expand(item: ItemFn, _args: AttributeArgs) -> TokenStream {
     let fn_setup = fn_setup(item.sig.inputs.iter());
     let fn_setups = fn_setup.code;
     let fn_args = fn_setup.fn_args;
+    let fn_call = if rt_is_result {
+        quote! {let _ = test_fn(#fn_args).await?;}
+    } else {
+        quote! {test_fn(#fn_args).await;}
+    };
+    let color_eyre_init = expand_color_eyre_init();
     let tracing_init = expand_tracing_init();
     let rt = expand_runtime(worker_threads, thread_stack_size);
 
     quote! {
         #test_attr
         #(#attrs)*
-        fn #test_name() #output {
-            async fn inner(#params) #output #body
+        fn #test_name() -> ::color_eyre::Result<()> {
+            use ::color_eyre::eyre::WrapErr;
+
+            async fn test_fn(#params) #output #body
 
             #[inline]
-            async fn imp() #output {
+            async fn spawned_task() -> ::color_eyre::Result<()> {
                 #fn_setups
-                inner(#fn_args).await
+                #fn_call
+                Ok(())
             }
 
-            #tracing_init
+            ::dal::test::COLOR_EYRE_INIT.call_once(|| {
+                #color_eyre_init
+                #tracing_init
+            });
 
             let thread_builder = ::std::thread::Builder::new().stack_size(#thread_stack_size);
-            let thread_handler = thread_builder.spawn(|| {
+            let thread_join_handle = thread_builder.spawn(|| {
                 #[allow(clippy::expect_used)]
-                #rt.block_on(imp())
-            }).unwrap();
-            thread_handler.join().unwrap();
+                #rt.block_on(spawned_task())
+            }).expect("failed to spawn thread at OS level");
+            let test_result = match thread_join_handle.join() {
+                Ok(r) => r,
+                Err(err) => {
+                    // Spawned test task panicked
+                    ::std::panic::resume_unwind(err);
+                }
+            };
+            let _ = test_result?;
+
+            Ok(())
         }
     }
 }
@@ -332,7 +353,7 @@ impl FnSetupExpander {
 
         let var = Ident::new("test_context", Span::call_site());
         self.code.extend(quote! {
-            let test_context = ::dal::test::TestContext::global().await;
+            let test_context = ::dal::test::TestContext::global().await?;
         });
         self.test_context = Some(Arc::new(var));
 
@@ -385,7 +406,7 @@ impl FnSetupExpander {
             let #var = ::dal::test::veritech_server_for_uds_cyclone(
                 #test_context.nats_config().clone(),
                 #nats_subject_prefix.clone(),
-            ).await;
+            ).await?;
         });
         self.veritech_server = Some(Arc::new(var));
 
@@ -472,7 +493,7 @@ impl FnSetupExpander {
             let mut #var = #dal_context_builder
                 .connections()
                 .await
-                .expect("failed to build connections");
+                .wrap_err("failed to build connections")?;
         });
         self.connections = Some(Arc::new(var));
 
@@ -492,7 +513,7 @@ impl FnSetupExpander {
             let #var = #dal_context_builder
                 .connections()
                 .await
-                .expect("failed to build connections");
+                .wrap_err("failed to build connections")?;
         });
         self.owned_connections = Some(Arc::new(var));
 
@@ -512,7 +533,7 @@ impl FnSetupExpander {
             let mut #var = #connections
                 .start_txns()
                 .await
-                .expect("failed to start transactions");
+                .wrap_err("failed to start transactions")?;
         });
         self.transactions = Some(Arc::new(var));
 
@@ -539,7 +560,7 @@ impl FnSetupExpander {
                 let r = ::dal::test::helpers::billing_account_signup(
                     &ctx,
                     #test_context.jwt_secret_key(),
-                ).await;
+                ).await?;
                 #transactions = ctx.into();
                 r
             };
@@ -765,7 +786,7 @@ impl FnSetupExpander {
                 ctx
                     .update_to_workspace_tenancies(*#nba.workspace.id())
                     .await
-                    .expect("failed to update dal context to workspace tenancies");
+                    .wrap_err("failed to update dal context to workspace tenancies")?;
 
                 ::dal::test::DalContextHead(ctx)
             };
@@ -798,7 +819,7 @@ impl FnSetupExpander {
                 ctx
                     .update_to_workspace_tenancies(*#nba.workspace.id())
                     .await
-                    .expect("failed to update dal context to workspace tenancies");
+                    .wrap_err("failed to update dal context to workspace tenancies")?;
                 ctx
             };
             let #var = ::dal::test::DalContextHeadRef(&_dchr);
@@ -831,7 +852,7 @@ impl FnSetupExpander {
                 ctx
                     .update_to_workspace_tenancies(*#nba.workspace.id())
                     .await
-                    .expect("failed to update dal context to workspace tenancies");
+                    .wrap_err("failed to update dal context to workspace tenancies")?;
                 ctx
             };
             let #var = ::dal::test::DalContextHeadMutRef(&mut _dchmr);
@@ -880,6 +901,52 @@ fn path_as_string(path: &Path) -> String {
         .join("::")
 }
 
+fn expand_color_eyre_init() -> TokenStream {
+    quote! {
+        ::color_eyre::config::HookBuilder::default()
+            .add_frame_filter(Box::new(|frames| {
+                let mut displayed = ::std::collections::HashSet::new();
+                let filters = &[
+                    "tokio::",
+                    "<futures_util::",
+                    "std::panic",
+                    "test::run_test_in_process",
+                    "core::ops::function::FnOnce::call_once",
+                    "std::thread::local",
+                    "<core::future::",
+                    "<alloc::boxed::Box",
+                    "<std::panic::AssertUnwindSafe",
+                    "core::result::Result",
+                    "<T as futures_util",
+                    "<tracing_futures::Instrumented",
+                    "test::assert_test_result",
+                    "spandoc::",
+                ];
+
+                frames.retain(|frame| {
+                    let loc = (frame.lineno, &frame.filename);
+                    let inserted = displayed.insert(loc);
+
+                    if !inserted {
+                        return false;
+                    }
+
+                    !filters.iter().any(|f| {
+                        let name = if let Some(name) = frame.name.as_ref() {
+                            name.as_str()
+                        } else {
+                            return true;
+                        };
+
+                        name.starts_with(f)
+                    })
+                });
+            }))
+            .install()
+            .unwrap();
+    }
+}
+
 fn expand_tracing_init() -> TokenStream {
     let span_events_env_var = SPAN_EVENTS_ENV_VAR;
     let log_env_var = LOG_ENV_VAR;
@@ -926,6 +993,7 @@ fn expand_tracing_init() -> TokenStream {
             .with_env_filter(::tracing_subscriber::EnvFilter::from_env(#log_env_var))
             .with_span_events(event_filter)
             .with_test_writer()
+            .pretty()
             .finish();
         let _ = ::tracing::subscriber::set_global_default(subscriber);
     }

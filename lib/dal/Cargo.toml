@@ -7,11 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.40"
 async-recursion = "1.0.0"
 async-trait = "0.1.51"
 base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
+color-eyre = { version = "0.6.1" }
 derive_more = "0.99.16"
 diff = "0.1"
 dyn-clone = "1.0.6"
@@ -48,5 +48,5 @@ which = "4.3.0"
 pretty_assertions_sorted = "1.1.2"
 si-test-macros = { path = "../../lib/si-test-macros" }
 tracing = { version = "0.1" }
-tracing-subscriber = { version = "0.3.11", default-features = false, features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "0.3.11", default-features = false, features = ["ansi", "env-filter", "fmt"] }
 veritech = { path = "../../lib/veritech", features = ["client", "server"] }

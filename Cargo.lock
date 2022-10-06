@@ -732,11 +732,11 @@ dependencies = [
 name = "dal"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-recursion",
  "async-trait",
  "base64",
  "chrono",
+ "color-eyre",
  "derive_more",
  "diff",
  "dyn-clone",
@@ -2923,6 +2923,7 @@ dependencies = [
  "axum-macros",
  "base64",
  "chrono",
+ "color-eyre",
  "dal",
  "derive_builder",
  "faktory-async",
