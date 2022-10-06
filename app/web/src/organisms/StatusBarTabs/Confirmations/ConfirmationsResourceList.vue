@@ -40,11 +40,11 @@ import { PropType } from "vue";
 import clsx from "clsx";
 import HealthIcon from "@/molecules/HealthIcon.vue";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
-import { Resource } from "@/service/resource";
+import { MockResource } from "@/service/resource";
 
 defineProps({
   resources: {
-    type: Array as PropType<Resource[]>,
+    type: Array as PropType<MockResource[]>,
     default: () => [],
   },
   component: {

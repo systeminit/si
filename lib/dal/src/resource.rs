@@ -1,17 +1,19 @@
-use crate::DalContext;
+//! This module contains [`Resource`], which there can only exist _one_ or _zero_ of for a given
+//! [`Component`](crate::Component) and [`System`](crate::System).
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
+use serde_json::{Value as JsonValue, Value};
 use si_data::PgError;
 use strum_macros::Display;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
+    impl_standard_model, pk, standard_model, standard_model_accessor,
     ws_event::{WsEvent, WsPayload},
-    ActionPrototype, ActionPrototypeError, Component, ComponentError, ComponentId,
-    HistoryEventError, StandardModel, StandardModelError, System, SystemId, Timestamp, Visibility,
+    ActionPrototype, ActionPrototypeError, Component, ComponentError, ComponentId, DalContext,
+    HistoryEventError, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
     WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowRunner,
     WorkflowRunnerError, WriteTenancy, WsEventError,
 };
@@ -36,33 +38,28 @@ pub enum ResourceError {
     Component(#[from] Box<ComponentError>),
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
-    #[error("system id is required: -1 was used")]
-    SystemIdRequired,
-    #[error("no component set for resource {0}")]
-    NoComponent(ResourceId),
-    #[error("no schema variant for component {0}")]
-    NoSchemaVariant(ComponentId),
+
+    #[error("found unset component id (must use a \"set\" component id)")]
+    FoundUnsetComponentId,
     #[error("no schema for component {0}")]
     NoSchema(ComponentId),
-    #[error("workflow prototype not found for {0}")]
-    PrototypeNotFound(WorkflowPrototypeId),
+    #[error("no schema variant for component {0}")]
+    NoSchemaVariant(ComponentId),
+    #[error("workflow prototype not found {0}")]
+    WorkflowPrototypeNotFound(WorkflowPrototypeId),
 }
 
 pub type ResourceResult<T> = Result<T, ResourceError>;
 
-const FIND_BY_KEY: &str = include_str!("./queries/resource_find_by_key.sql");
-const LIST_BY_COMPONENT_AND_SYSTEM: &str =
-    include_str!("./queries/resource_list_by_component_and_system.sql");
+const GET_BY_COMPONENT_AND_SYSTEM: &str =
+    include_str!("queries/resource_get_by_component_and_system.sql");
 
 pk!(ResourcePk);
 pk!(ResourceId);
 
 impl From<Resource> for veritech::ResourceView {
     fn from(res: Resource) -> Self {
-        Self {
-            key: res.key,
-            data: res.data,
-        }
+        Self { data: res.data }
     }
 }
 
@@ -73,8 +70,9 @@ impl From<Resource> for veritech::ResourceView {
 pub struct Resource {
     pk: ResourcePk,
     id: ResourceId,
-    key: String,
-    data: serde_json::Value,
+    data: Value,
+    component_id: ComponentId,
+    system_id: SystemId,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -95,97 +93,59 @@ impl_standard_model! {
 impl Resource {
     /// For a [`Resource`] to be uniquely identified, we need to know both
     /// which [`Component`] it is the "real world" representation of, and also
-    /// the [`System`] in which that component being referred to.
+    /// the [`System`](crate::System) in which that component being referred to.
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
+        data: Value,
         component_id: ComponentId,
         system_id: SystemId,
-        key: String,
-        data: serde_json::Value,
     ) -> ResourceResult<Self> {
+        if component_id == ComponentId::NONE {
+            return Err(ResourceError::FoundUnsetComponentId);
+        }
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM resource_create_v1($1, $2, $3, $4)",
-                &[ctx.write_tenancy(), ctx.visibility(), &key, &data],
+                "SELECT object FROM resource_create_v1($1, $2, $3, $4, $5)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &data,
+                    &component_id,
+                    &system_id,
+                ],
             )
             .await?;
-        let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
-
-        object.set_component(ctx, &component_id).await?;
-        if system_id.is_some() {
-            object.set_system(ctx, &system_id).await?;
-        }
-
-        Ok(object)
+        Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
 
-    standard_model_accessor!(key, String, ResourceResult);
     standard_model_accessor!(data, Json<JsonValue>, ResourceResult);
-
-    standard_model_belongs_to!(
-        lookup_fn: component,
-        set_fn: set_component,
-        unset_fn: unset_component,
-        table: "resource_belongs_to_component",
-        model_table: "components",
-        belongs_to_id: ComponentId,
-        returns: Component,
-        result: ResourceResult,
-    );
-
-    standard_model_belongs_to!(
-        lookup_fn: system,
-        set_fn: set_system,
-        unset_fn: unset_system,
-        table: "resource_belongs_to_system",
-        model_table: "systems",
-        belongs_to_id: SystemId,
-        returns: System,
-        result: ResourceResult,
-    );
 
     pub async fn upsert(
         ctx: &DalContext,
+        data: Value,
         component_id: ComponentId,
         system_id: SystemId,
-        key: String,
-        data: serde_json::Value,
     ) -> ResourceResult<Self> {
-        let resource = Self::find_by_key(ctx, component_id, &key).await?;
+        let resource = Self::get_by_component_and_system(ctx, component_id, system_id).await?;
         if let Some(mut resource) = resource {
-            resource.set_data(ctx, data).await?;
+            if resource.data != data {
+                resource.set_data(ctx, data).await?;
+            }
             Ok(resource)
         } else {
-            Ok(Self::new(ctx, component_id, system_id, key, data).await?)
+            Ok(Self::new(ctx, data, component_id, system_id).await?)
         }
     }
 
-    pub async fn find_by_key(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        key: &str,
-    ) -> ResourceResult<Option<Self>> {
-        let row = ctx
-            .txns()
-            .pg()
-            .query_opt(
-                FIND_BY_KEY,
-                &[ctx.read_tenancy(), ctx.visibility(), &component_id, &key],
-            )
-            .await?;
-        let objects = standard_model::option_object_from_row(row)?;
-        Ok(objects)
-    }
-
     pub async fn refresh(&mut self, ctx: &DalContext) -> ResourceResult<()> {
-        let component = self
-            .component(ctx)
+        let component = Component::get_by_id(ctx, &self.component_id)
             .await?
-            .ok_or(ResourceError::NoComponent(self.id))?;
+            .ok_or(ComponentError::NotFound(self.component_id))
+            .map_err(Box::new)?;
         let schema_variant = component
             .schema_variant(ctx)
             .await
@@ -208,33 +168,31 @@ impl Resource {
             Some(action) => action,
             None => return Ok(()),
         };
+
         let prototype = WorkflowPrototype::get_by_id(ctx, &action.workflow_prototype_id())
             .await?
-            .ok_or_else(|| ResourceError::PrototypeNotFound(action.workflow_prototype_id()))?;
+            .ok_or_else(|| {
+                ResourceError::WorkflowPrototypeNotFound(action.workflow_prototype_id())
+            })?;
         let run_id: usize = rand::random();
         let (_runner, _state, _func_binding_return_values, _created_resources, _updated_resources) =
-            WorkflowRunner::run(ctx, run_id, *prototype.id(), *component.id()).await?;
-
-        let system_id = self
-            .system(ctx)
-            .await?
-            .map_or(SystemId::NONE, |system| *system.id());
-        WsEvent::resource_refreshed(ctx, *component.id(), system_id)
+            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.component_id).await?;
+        WsEvent::resource_refreshed(ctx, self.component_id, self.system_id)
             .publish(ctx)
             .await?;
         Ok(())
     }
 
-    pub async fn list_by_component(
+    pub async fn get_by_component_and_system(
         ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
-    ) -> ResourceResult<Vec<Self>> {
-        let rows = ctx
+    ) -> ResourceResult<Option<Self>> {
+        let maybe_row = ctx
             .txns()
             .pg()
-            .query(
-                LIST_BY_COMPONENT_AND_SYSTEM,
+            .query_opt(
+                GET_BY_COMPONENT_AND_SYSTEM,
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
@@ -243,8 +201,8 @@ impl Resource {
                 ],
             )
             .await?;
-        let objects = standard_model::objects_from_rows(rows)?;
-        Ok(objects)
+        let object = standard_model::option_object_from_row(maybe_row)?;
+        Ok(object)
     }
 }
 
@@ -265,8 +223,7 @@ pub struct ResourceView {
     pub updated_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
     pub error: Option<String>,
-    pub key: String,
-    pub data: serde_json::Value,
+    pub data: Value,
     pub health: ResourceHealth,
     pub entity_type: String,
 }
@@ -280,7 +237,6 @@ impl ResourceView {
             created_at: resource.timestamp().created_at,
             updated_at: resource.timestamp().updated_at,
             error: None,
-            key: resource.key,
             data: resource.data,
             health: ResourceHealth::Ok,
             entity_type: "idk bro".to_owned(),

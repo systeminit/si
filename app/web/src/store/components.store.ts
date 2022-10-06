@@ -37,8 +37,8 @@ type Component = {
   schemaVariantName: string;
   color: string;
   changeStatus?: ComponentStatus;
-  // TODO: probably want to move these to a different store and not load them all the time
-  resources?: Resource[];
+  // TODO: probably want to move this to a different store and not load it all the time
+  resource: Resource;
 };
 
 type SocketId = number;
@@ -101,7 +101,7 @@ export const useComponentsStore = () => {
               schemaName: ci.schemaName,
               schemaVariantId: ci.schemaVariantId,
               schemaVariantName: ci.schemaVariantName,
-              resources: ci.resources,
+              resource: ci.resource,
               color: diagramNode?.color,
               changeStatus: this.componentChangeStatusById[ci.componentId],
             } as Component;

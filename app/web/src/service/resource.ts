@@ -18,7 +18,7 @@ export enum ComponentSchema {
   CoreOsButane = "Butane",
 }
 
-export type Resource = {
+export type MockResource = {
   id: number;
   name: string;
   kind: string;

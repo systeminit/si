@@ -1,12 +1,13 @@
 use crate::dal::test;
+use dal::test_harness::create_component_and_schema;
 use dal::workflow_runner::workflow_runner_state::WorkflowRunnerStatus;
 
 use dal::DalContext;
 use dal::{
     func::binding::FuncBinding, workflow_prototype::WorkflowPrototypeContext,
-    workflow_runner::WorkflowRunnerContext, AttributeReadContext, Component, ComponentId,
-    ComponentView, Func, Schema, StandardModel, SystemId, WorkflowPrototype, WorkflowPrototypeId,
-    WorkflowResolverId, WorkflowRunner,
+    workflow_runner::WorkflowRunnerContext, AttributeReadContext, Component, ComponentView, Func,
+    Schema, StandardModel, SystemId, WorkflowPrototype, WorkflowPrototypeId, WorkflowResolverId,
+    WorkflowRunner,
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -107,7 +108,22 @@ async fn fail(ctx: &DalContext) {
         .pop()
         .unwrap_or_else(|| panic!("function not found: {}", name));
 
-    let prototype_context = WorkflowPrototypeContext::new();
+    let component = create_component_and_schema(ctx).await;
+    let schema = component
+        .schema(ctx)
+        .await
+        .expect("error while accessing schema for component")
+        .expect("no schema for component");
+    let schema_variant = component
+        .schema_variant(ctx)
+        .await
+        .expect("error while accessing schema variant for component")
+        .expect("no schema variant for component");
+
+    let mut prototype_context = WorkflowPrototypeContext::new();
+    prototype_context.set_schema_id(*schema.id());
+    prototype_context.set_schema_variant_id(*schema_variant.id());
+    prototype_context.set_component_id(*component.id());
     let prototype = WorkflowPrototype::new(
         ctx,
         *func.id(),
@@ -118,7 +134,7 @@ async fn fail(ctx: &DalContext) {
     .await
     .expect("cannot create new prototype");
 
-    let (_, state, _, _, _) = WorkflowRunner::run(ctx, 0, *prototype.id(), ComponentId::NONE)
+    let (_, state, _, _, _) = WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id())
         .await
         .expect("unable to run workflow");
     assert_eq!(
@@ -163,7 +179,7 @@ async fn run(ctx: &DalContext) {
     let component_view = ComponentView::for_context(ctx, context)
         .await
         .expect("unable to generate component view for docker image component");
-    assert_eq!(component_view.resources.len(), 0);
+    assert!(component_view.resource.is_none());
 
     let (_runner, state, _func_bindings, _, _) =
         WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id())
@@ -174,5 +190,5 @@ async fn run(ctx: &DalContext) {
     let component_view = ComponentView::for_context(ctx, context)
         .await
         .expect("unable to generate component view for docker image component");
-    assert_eq!(component_view.resources.len(), 1);
+    assert!(component_view.resource.is_some());
 }

@@ -8,12 +8,11 @@
   <div v-else class="w-full h-full">
     <template v-for="component in components" :key="component.id">
       <WorkflowResource
-        v-for="resource in component.resources"
-        :key="resource.id"
-        :name="resource.name"
-        :kind="resource.kind"
+        v-if="component.resource"
+        :name="component.name"
+        :kind="component.resource.kind"
         :output="whiskersJson"
-        :status="resource.health || 'Unknown'"
+        :status="component.resource.health || 'Unknown'"
         :default-closed="defaultClosed"
         :component="component"
       />

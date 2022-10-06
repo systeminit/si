@@ -6,7 +6,7 @@ use dal::{
     },
     Component, DalContext, Prop, PropKind, Schema, SchemaKind, StandardModel,
 };
-use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
+use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 use std::option::Option::None;
 
@@ -75,7 +75,7 @@ async fn qualification_view(ctx: &DalContext) {
         .await
         .expect("cannot create QualificationCheckComponent");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::to_value(&qualification_check_component)
             .expect("cannot serialize QualificationCheckComponent"),
         json!({
@@ -83,7 +83,7 @@ async fn qualification_view(ctx: &DalContext) {
                 "system": null,
                 "kind": "standard",
                 "properties": { "si": { "name": "mastodon" }, "domain": {} },
-                "resources": []
+                "resource": null,
             },
             "parents": [],
             "codes": []

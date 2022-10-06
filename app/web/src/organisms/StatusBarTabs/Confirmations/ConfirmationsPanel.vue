@@ -25,10 +25,7 @@
         }}
       </p>
     </div>
-    <ConfirmationViewerMultiple
-      v-else-if="selectedResource"
-      :resource="selectedResource"
-    />
+    <ConfirmationViewerMultiple v-else-if="resource" :resource="resource" />
     <div
       v-else
       class="flex flex-row items-center text-center w-full h-full bg-shade-100"
@@ -44,7 +41,7 @@ import StatusBarTabPanelComponentList, {
   ComponentListItem,
   FilterOption,
 } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
-import { ResourceService, Resource } from "@/service/resource";
+import { ResourceService } from "@/service/resource";
 import { useComponentsStore } from "@/store/components.store";
 import ConfirmationsResourceList from "./ConfirmationsResourceList.vue";
 import ConfirmationViewerMultiple from "./ConfirmationViewerMultiple.vue";
@@ -81,14 +78,22 @@ const selectResource = (id: number) => {
 
 const resourceSummary = ResourceService.useResourceSummary();
 
-const resourcesList = computed(() => {
-  console.log(selectedComponent.value?.resources);
-  if (selectedComponent.value && selectedComponent.value.resources)
-    return selectedComponent.value.resources;
-  else {
-    const empty: Resource[] = [];
-    return empty;
+const resource = computed(() => {
+  console.log(selectedComponent.value?.resource);
+  if (selectedComponent.value && selectedComponent.value.resource) {
+    return selectedComponent.value.resource;
   }
+  return undefined;
+});
+
+// FIXME: since there can only be one (or none) Resource for a Component and System, this list
+// should be replaced by a single Resource. For now, this is used to maintain compatability.
+const resourcesList = computed(() => {
+  const resources = [];
+  if (resource.value) {
+    resources.push(resource.value);
+  }
+  return resources;
 });
 
 watch(selectedComponentId, () => {
@@ -104,7 +109,7 @@ const componentsList = computed((): ComponentListItem[] => {
       name: component.name,
       schema: component.schema,
       health: component.health,
-      resources: component.resources,
+      resource: component.resource,
     });
   }
   return list;
@@ -113,12 +118,6 @@ const componentsList = computed((): ComponentListItem[] => {
 const selectedComponent = computed(() => {
   return componentsList.value.find((c) => {
     return c.id === selectedComponentId.value;
-  });
-});
-
-const selectedResource = computed(() => {
-  return resourcesList.value.find((r) => {
-    return r.id === selectedResourceId.value;
   });
 });
 </script>

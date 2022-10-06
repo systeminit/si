@@ -53,7 +53,7 @@ pub struct ComponentView {
     pub system: Option<System>,
     pub kind: ComponentKind,
     pub properties: serde_json::Value,
-    pub resources: Vec<veritech::ResourceView>,
+    pub resource: Option<veritech::ResourceView>,
 }
 
 impl Default for ComponentView {
@@ -62,7 +62,7 @@ impl Default for ComponentView {
             system: Default::default(),
             kind: Default::default(),
             properties: serde_json::json!({}),
-            resources: Default::default(),
+            resource: None,
         }
     }
 }
@@ -127,21 +127,19 @@ impl ComponentView {
             .unwrap_or(&serde_json::Value::Null)
             .clone();
 
-        let resources = Resource::list_by_component(
+        let resource = Resource::get_by_component_and_system(
             ctx,
             component_id,
             context.system_id().unwrap_or(SystemId::NONE),
         )
         .await?
-        .into_iter()
-        .map(Into::into)
-        .collect();
+        .map(|r| r.into());
 
         Ok(ComponentView {
             system,
             kind: *component.kind(),
             properties,
-            resources,
+            resource,
         })
     }
 
@@ -214,7 +212,7 @@ impl From<ComponentView> for veritech::ComponentView {
             }),
             kind: view.kind.into(),
             properties: view.properties,
-            resources: view.resources,
+            resource: view.resource,
         }
     }
 }

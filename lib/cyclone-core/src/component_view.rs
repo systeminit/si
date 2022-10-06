@@ -22,8 +22,7 @@ pub struct SystemView {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ResourceView {
-    pub key: String,
-    pub data: serde_json::Value,
+    pub data: Value,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -32,7 +31,7 @@ pub struct ComponentView {
     pub system: Option<SystemView>,
     pub kind: ComponentKind,
     pub properties: Value,
-    pub resources: Vec<ResourceView>,
+    pub resource: Option<ResourceView>,
 }
 
 impl Default for ComponentView {
@@ -41,7 +40,7 @@ impl Default for ComponentView {
             system: Default::default(),
             kind: Default::default(),
             properties: serde_json::json!({}),
-            resources: Default::default(),
+            resource: None,
         }
     }
 }
