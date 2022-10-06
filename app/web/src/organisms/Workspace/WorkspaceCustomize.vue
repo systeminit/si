@@ -67,10 +67,10 @@ import { clearFuncs, updateFuncFromSave } from "../FuncEditor/func_state";
 
 const isDevMode = import.meta.env.DEV;
 
-const props = defineProps<{ funcId?: string }>();
+const props = defineProps<{ funcId?: number }>();
 
 const selectedFuncId = computed(() => {
-  const funcId = parseInt(props.funcId ?? "");
+  const funcId = props.funcId ?? -1;
   if (Number.isNaN(funcId)) {
     return -1;
   }
