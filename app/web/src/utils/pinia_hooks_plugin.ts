@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { defineStore, PiniaPlugin, PiniaPluginContext } from "pinia";
-import { getCurrentInstance, ref } from "vue";
+import {
+  ComponentInternalInstance,
+  computed,
+  getCurrentInstance,
+  reactive,
+} from "vue";
 import isPromise from "is-promise";
 
 type MaybePromise<T> = T | Promise<T>;
@@ -21,38 +26,8 @@ export function addStoreHooks<T extends ReturnType<typeof defineStore>>(
     // and it does all work correctly there
 
     const store = useStoreFn(...(args as any[])) as any;
-
     const component = getCurrentInstance();
-    const componentAny = component as any;
-
-    if (component) {
-      // console.log(
-      //   `${store.$id} - useStore called by ${component.type.__name} -- mounted? ${component.isMounted}`,
-      // );
-
-      // calling lifecycle hooks here (ie beforeMount) causes problems for useStore calls within other store getters/actions
-      // so we're injecting the hooks directly into the vue component instance
-      // this is probably inadvisable... but seems like it will work
-
-      // as an added bonus, this means `watch` calls in our onActivated hook are not bound to the first component that used this store
-      // so they will not be destroyed on unmount. This requires us to clean up after ourselves, but it is the desired behaviour.
-
-      // onBeforeMount(() => { store.incrementUseCounter(); });
-      if (component.isMounted) {
-        // console.log("component already mounted");
-        store.incrementUseCounter();
-      } else {
-        componentAny.m = componentAny.m || [];
-        componentAny.m.push(() => {
-          store.incrementUseCounter();
-        });
-      }
-      // onBeforeUnmount(() => { store.decrementUseCounter(); });
-      componentAny.bum = componentAny.bum || [];
-      componentAny.bum.push(() => {
-        store.decrementUseCounter();
-      });
-    }
+    if (component) store.trackStoreUsedByComponent(component);
     return store;
   };
 }
@@ -65,24 +40,33 @@ export const piniaHooksPlugin: PiniaPlugin = ({
 }: PiniaPluginContext) => {
   /* eslint-disable no-param-reassign */
 
-  // console.log("plugin called on store -", store.$id);
-  // console.log(store, storeOptions);
-
   // might not need this check, but not sure this plugin code is guaranteed to only be called once
-  if (store._numStoreUsers) return;
+  if (store._trackedStoreUsers) return;
 
-  // attach new counter to track number of components using this store
-  store._numStoreUsers = ref(0);
-  // expose our new store property in devtools
+  // keep a list of all components using this store
+  store._trackedStoreUsers = reactive<Record<string, boolean>>({});
+  store._trackedStoreUsersCount = computed(
+    () => Object.keys(store._trackedStoreUsers).length,
+  );
+  // expose this info to devtools
   // TODO: determine the best way to safely check in both vite and webpack setups
   if (import.meta.env.DEV || process.env.NODE_ENV === "development") {
-    store._customProperties.add("_numStoreUsers");
+    store._customProperties.add("_trackedStoreUsers");
+    store._customProperties.add("_trackedStoreUsersCount");
   }
 
-  store.incrementUseCounter = () => {
+  function trackStoreUse(
+    component: ComponentInternalInstance,
+    trackedComponentId: string,
+  ) {
+    // bail if already tracked - which can happen when stores are using each other in getters
+    if (store._trackedStoreUsers[trackedComponentId]) return;
+
+    store._trackedStoreUsers[trackedComponentId] = true;
     // console.log(store.$id, "+");
-    store._numStoreUsers++;
-    if (store._numStoreUsers === 1 && storeOptions.onActivated) {
+    // store._trackedStoreUsersCount++;
+    if (store._trackedStoreUsersCount === 1 && storeOptions.onActivated) {
+      console.log(`${store.$id} - ACTIVATE`);
       // activation fn can return a deactivate / cleanup fn
       store.onDeactivated = storeOptions.onActivated.call(store);
 
@@ -94,15 +78,56 @@ export const piniaHooksPlugin: PiniaPlugin = ({
         });
       }
     }
-  };
-  store.decrementUseCounter = () => {
-    // console.log(store.$id, "-");
-    store._numStoreUsers--;
-    if (store._numStoreUsers === 0 && store.onDeactivated) {
-      store.onDeactivated.call(store);
-    }
-    if (store._numStoreUsers < 0) {
-      throw new Error("pinia_hooks_plugin - store use counter below 0!");
+
+    // attach the the unmounted hook here so it only ever gets added once
+    // (because we bailed above if this component was already tracked)
+    const componentAny = component as any;
+    // onBeforeUnmount(() => { store.unmarkStoreUsedByComponent(); });
+    componentAny.bum = componentAny.bum || [];
+    componentAny.bum.push(() => {
+      // console.log(`[${store.$id}] -- ${trackedComponentId} un-used`);
+      if (!store._trackedStoreUsers[trackedComponentId]) {
+        throw new Error(
+          `[${store.$id}] Expected to find component ${trackedComponentId} in list of users`,
+        );
+      }
+      delete store._trackedStoreUsers[trackedComponentId];
+      if (store._trackedStoreUsersCount === 0 && store.onDeactivated) {
+        console.log(`${store.$id} - DEACTIVATE`);
+        store.onDeactivated.call(store);
+      }
+    });
+  }
+
+  store.trackStoreUsedByComponent = (component: ComponentInternalInstance) => {
+    // console.log(
+    //   `[${store.$id}] track use by ${component.type.__name} -- mounted? ${component.isMounted}`,
+    //   component,
+    // );
+
+    // calling lifecycle hooks here (ie beforeMount) causes problems for useStore calls within other store getters/actions
+    // so we're injecting the hooks directly into the vue component instance
+    // this is probably inadvisable... but seems to work and I don't believe this will change any time soon
+
+    // as an added bonus, this means `watch` calls in our onActivated hook are not bound to the first component that used this store
+    // so they will not be destroyed on unmount. This requires us to clean up after ourselves, but it is the desired behaviour.
+
+    // onBeforeMount(() => { store.markStoreUsedByComponent(); });
+    const componentIdForUseTracking = `${component.type.__name}/${component.uid}`;
+    const componentAny = component as any;
+
+    // console.log(
+    //   `tracking ${componentIdForUseTracking}`,
+    //   JSON.stringify(store._trackedStoreUsers),
+    // );
+    if (component.isMounted) {
+      trackStoreUse(component, componentIdForUseTracking);
+    } else {
+      // note - this can happen multiple times, but we handle this case in `trackStoreUse()`
+      componentAny.m = componentAny.m || [];
+      componentAny.m.push(() => {
+        trackStoreUse(component, componentIdForUseTracking);
+      });
     }
   };
 };

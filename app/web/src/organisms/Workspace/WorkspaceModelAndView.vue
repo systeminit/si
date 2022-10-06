@@ -49,11 +49,7 @@
     :default-size="380"
     :min-size="300"
   >
-    <ComponentDetails
-      v-if="selectedComponent"
-      :component-identification="selectedComponent"
-      :component-name="selectedComponentLabel || 'selected component'"
-    />
+    <ComponentDetails v-if="selectedComponent" />
     <div v-else class="p-4">
       <template v-if="isViewMode">
         Select a single component to see more details
@@ -67,12 +63,10 @@
 import { TabPanel } from "@headlessui/vue";
 import _ from "lodash";
 import { computed, ref, watch } from "vue";
-import { useObservable } from "@vueuse/rxjs";
 import { useRoute } from "vue-router";
 import SiPanel from "@/atoms/SiPanel.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import ComponentDetails from "@/organisms/ComponentDetails.vue";
-import { ComponentService } from "@/service/component";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { useComponentsStore } from "@/store/components.store";
@@ -107,26 +101,7 @@ const diagramCustomConfig = {
   icons: LogoIcons,
 };
 
-const componentsListApiResponse = useObservable(
-  ComponentService.listComponentsIdentification(),
-);
-const componentsById = computed(() => {
-  if (componentsListApiResponse.value?.error) return {};
-  return _.keyBy(
-    componentsListApiResponse.value?.list,
-    (i) => i.value.componentId,
-  );
-});
-
-const selectedComponent = computed(() => {
-  if (!selectedComponentId.value) return;
-  return componentsById.value[selectedComponentId.value]?.value;
-});
-// TODO: bit weird how the label is stored split - ideally wouldnt need to pass it in anyway
-const selectedComponentLabel = computed(() => {
-  if (!selectedComponentId.value) return;
-  return componentsById.value[selectedComponentId.value]?.label;
-});
+const selectedComponent = computed(() => componentsStore.selectedComponent);
 
 const lastInsertSelection = ref<{ schemaId: number }>();
 const insertCallbacks: Record<string, () => void> = {};

@@ -1,4 +1,3 @@
-import { listComponentsIdentification } from "./component/list_components_identification";
 import { getComponentsMetadata } from "./component/get_components_metadata";
 import { getCode } from "./component/get_code";
 import { generateCode } from "./component/generate_code";
@@ -10,7 +9,6 @@ import { insertFromEditField } from "./component/insert_property_editor_value";
 import { getDiff } from "./component/get_diff";
 
 export const ComponentService = {
-  listComponentsIdentification,
   getComponentsMetadata,
   getCode,
   getDiff,

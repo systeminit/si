@@ -5,7 +5,7 @@ import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 export const useCounterStore = addStoreHooks(
   defineStore("counter", {
     state: () => ({
-      counter: 7,
+      counter: 20,
       foo: 111,
     }),
     getters: {

@@ -4,9 +4,7 @@
       class="flex flex-row items-center h-10 px-6 py-2 text-base align-middle"
     >
       <div class="text-lg whitespace-nowrap overflow-hidden text-ellipsis">
-        {{
-          componentMetadata?.schemaName || componentIdentification.schemaName
-        }}
+        {{ selectedComponent.schemaName }}
       </div>
       <div class="ml-2 flex" :aria-label="qualificationTooltip">
         <Icon name="check-circle" :class="qualificationColorClass" />
@@ -52,7 +50,7 @@
 
 <script setup lang="ts">
 // import EditFormComponent from "@/organisms/EditFormComponent.vue";
-import { toRefs, computed } from "vue";
+import { computed } from "vue";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import _, { parseInt } from "lodash";
 import { tag } from "rxjs-spy/operators";
@@ -62,7 +60,6 @@ import { switchMap } from "rxjs/operators";
 import { FuncService } from "@/service/func";
 import { GlobalErrorService } from "@/service/global_error";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
-import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { componentsMetadata$ } from "@/observable/component";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
 import SiLink from "@/atoms/SiLink.vue";
@@ -83,23 +80,16 @@ import Icon from "@/ui-lib/Icon.vue";
 import { eventChangeSetWritten$ } from "@/service/change_set";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
+import { useComponentsStore } from "@/store/components.store";
 import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";
-
-// TODO(nick): we technically only need one prop. We're sticking with two to not mess
-// with the reactivity guarantees in place.
-const props = defineProps<{
-  componentId: number;
-  componentIdentification: ComponentIdentification;
-}>();
 
 const routeToFunc = useRouteToFunc();
 
-const { componentId, componentIdentification } = toRefs(props);
+const componentsStore = useComponentsStore();
+const selectedComponent = computed(() => componentsStore.selectedComponent);
+const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 
-// We need an observable stream of props.componentId. We also want
-// that stream to emit a value immediately (the first value, as well as all
-// subsequent. values)
-const componentId$ = fromRef<number>(componentId, { immediate: true });
+const componentId$ = fromRef(selectedComponentId, { immediate: true });
 
 const editorContext = refFrom<PropertyEditorContext | undefined>(
   combineLatest([
@@ -107,16 +97,16 @@ const editorContext = refFrom<PropertyEditorContext | undefined>(
     SystemService.currentSystem(),
     standardVisibilityTriggers$,
   ]).pipe(
-    switchMap(([componentId, system, _triggers]) => {
+    switchMap(([_component, system, _triggers]) => {
       const schema = ComponentService.getPropertyEditorSchema({
-        componentId,
+        componentId: selectedComponent.value.id,
       }).pipe(take(1));
       const values = ComponentService.getPropertyEditorValues({
-        componentId,
+        componentId: selectedComponent.value.id,
         systemId: system?.id ?? -1,
       }).pipe(take(1));
       const validations = ComponentService.getPropertyEditorValidations({
-        componentId,
+        componentId: selectedComponent.value.id,
         systemId: system?.id ?? -1,
       }).pipe(take(1));
       return from([[schema, values, validations]]);
@@ -177,11 +167,11 @@ const editorContext = refFrom<PropertyEditorContext | undefined>(
 
 const componentMetadata = refFrom<ComponentMetadata | null>(
   combineLatest([componentId$, componentsMetadata$]).pipe(
-    map(([componentId, componentsMetadata]) => {
+    map(([_component, componentsMetadata]) => {
       if (!componentsMetadata) return null;
 
       for (const metadata of componentsMetadata) {
-        if (metadata.componentId === componentId) {
+        if (metadata.componentId === selectedComponent.value.id) {
           return metadata;
         }
       }
@@ -273,10 +263,10 @@ const updateProperty = (update: UpdatedProperty) => {
       attribute_context_prop_id: update.propId,
       attribute_context_internal_provider_id: -1,
       attribute_context_external_provider_id: -1,
-      attribute_context_schema_id: componentIdentification.value.schemaId,
+      attribute_context_schema_id: selectedComponent.value.schemaId,
       attribute_context_schema_variant_id:
-        componentIdentification.value.schemaVariantId,
-      attribute_context_component_id: componentIdentification.value.componentId,
+        selectedComponent.value.schemaVariantId,
+      attribute_context_component_id: selectedComponent.value.id,
       attribute_context_system_id: -1,
     },
   }).subscribe((result) => {
@@ -293,10 +283,10 @@ const addToArray = (event: AddToArray) => {
       attribute_context_prop_id: event.propId,
       attribute_context_internal_provider_id: -1,
       attribute_context_external_provider_id: -1,
-      attribute_context_schema_id: componentIdentification.value.schemaId,
+      attribute_context_schema_id: selectedComponent.value.schemaId,
       attribute_context_schema_variant_id:
-        componentIdentification.value.schemaVariantId,
-      attribute_context_component_id: componentIdentification.value.componentId,
+        selectedComponent.value.schemaVariantId,
+      attribute_context_component_id: selectedComponent.value.id,
       attribute_context_system_id: -1,
     },
   }).subscribe((result) => {
@@ -313,10 +303,10 @@ const addToMap = (event: AddToMap) => {
       attribute_context_prop_id: event.propId,
       attribute_context_internal_provider_id: -1,
       attribute_context_external_provider_id: -1,
-      attribute_context_schema_id: componentIdentification.value.schemaId,
+      attribute_context_schema_id: selectedComponent.value.schemaId,
       attribute_context_schema_variant_id:
-        componentIdentification.value.schemaVariantId,
-      attribute_context_component_id: componentIdentification.value.componentId,
+        selectedComponent.value.schemaVariantId,
+      attribute_context_component_id: selectedComponent.value.id,
       attribute_context_system_id: -1,
     },
   }).subscribe((result) => {
@@ -336,9 +326,9 @@ const onCreateAttributeFunc = async (
     options: {
       valueId,
       parentValueId,
-      componentId: props.componentId,
-      schemaVariantId: props.componentIdentification.schemaVariantId,
-      schemaId: props.componentIdentification.schemaId,
+      componentId: selectedComponent.value.id,
+      schemaVariantId: selectedComponent.value.schemaVariantId,
+      schemaId: selectedComponent.value.schemaId,
       currentFuncId: currentFunc.id,
       type: "attributeOptions",
     },

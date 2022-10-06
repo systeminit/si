@@ -8,6 +8,7 @@ import { Organization } from "@/api/sdf/dal/organization";
 import { workspace$ } from "@/observable/workspace";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useRouterStore } from "./router.store";
+import { useAuthStore } from "./auth.store";
 
 type WorkspaceId = number;
 type OrganizationId = number;
@@ -56,14 +57,21 @@ export const useWorkspacesStore = addStoreHooks(
       },
     },
     onActivated() {
-      this.FETCH_USER_WORKSPACES();
+      const authStore = useAuthStore();
+      watch(
+        () => authStore.userIsLoggedIn,
+        (loggedIn) => {
+          if (loggedIn) this.FETCH_USER_WORKSPACES();
+        },
+        { immediate: true },
+      );
+
       watch(
         () => this.selectedWorkspace,
         () => {
           workspace$.next(this.selectedWorkspace);
         },
       );
-
       // TODO: subscribe to realtime - changes to workspaces, or new workspaces available
 
       // NOTE - dont need to clean up here, since there is only one workspace store and it will always be loaded

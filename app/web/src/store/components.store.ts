@@ -17,6 +17,9 @@ import {
   DiagramSchemaVariants,
 } from "@/api/sdf/dal/diagram";
 import { ComponentStats, ComponentStatus } from "@/api/sdf/dal/change_set";
+import { LabelList } from "@/api/sdf/dal/label_list";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
+import { Resource } from "@/api/sdf/dal/resource";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -29,8 +32,13 @@ type Component = {
   id: ComponentId;
   displayName: string;
   schemaName: string;
+  schemaId: number;
+  schemaVariantId: number;
+  schemaVariantName: string;
   color: string;
   changeStatus?: ComponentStatus;
+  // TODO: probably want to move these to a different store and not load them all the time
+  resources?: Resource[];
 };
 
 type SocketId = number;
@@ -66,6 +74,10 @@ export const useComponentsStore = () => {
         // componentsById: {} as Record<ComponentId, Component>,
         // connectionsById: {} as Record<ConnectionId, Connection>,
         // added / deleted / modified
+        componentIdentificationsById: {} as Record<
+          ComponentId,
+          ComponentIdentification
+        >,
         componentChangeStatusById: {} as Record<ComponentId, ComponentStatus>,
 
         rawDiagramNodes: [] as DiagramNodeDef[],
@@ -79,21 +91,21 @@ export const useComponentsStore = () => {
         // transforming the diagram-y data back into more generic looking data
         // TODO: ideally we just fetch it like this...
         componentsById(): Record<ComponentId, Component> {
-          return _.transform(
-            this.diagramNodes,
-            (acc, node) => {
-              const nodeId = parseInt(node.id);
-              acc[nodeId] = {
-                /* eslint-disable @typescript-eslint/no-non-null-assertion */
-                id: nodeId,
-                displayName: node.subtitle!,
-                schemaName: node.title!,
-                color: node.color!,
-                changeStatus: this.componentChangeStatusById[nodeId],
-              };
-            },
-            {} as Record<ComponentId, Component>,
-          );
+          const diagramNodesById = _.keyBy(this.rawDiagramNodes, (n) => n.id);
+          return _.mapValues(this.componentIdentificationsById, (ci) => {
+            const diagramNode = diagramNodesById[ci.componentId];
+            return {
+              id: ci.componentId,
+              displayName: diagramNode?.subtitle,
+              schemaId: ci.schemaId,
+              schemaName: ci.schemaName,
+              schemaVariantId: ci.schemaVariantId,
+              schemaVariantName: ci.schemaVariantName,
+              resources: ci.resources,
+              color: diagramNode?.color,
+              changeStatus: this.componentChangeStatusById[ci.componentId],
+            } as Component;
+          });
         },
         allComponents(): Component[] {
           return _.values(this.componentsById);
@@ -154,7 +166,9 @@ export const useComponentsStore = () => {
                     const schemaVariant =
                       this.schemaVariantsById[item.schema_id];
                     const colorInt = schemaVariant?.color;
-                    const color = colorInt ? colorInt.toString(16) : "#777";
+                    const color = colorInt
+                      ? `#${colorInt.toString(16)}`
+                      : "#777";
 
                     return {
                       displayName: item.name,
@@ -189,20 +203,40 @@ export const useComponentsStore = () => {
         },
       },
       actions: {
+        // TODO: change these endpoints to return a more complete picture of component data in one call
+
         // actually fetches diagram-style data, but we have a computed getter to turn back into more generic component data above
-        async FETCH_COMPONENTS() {
+        async FETCH_DIAGRAM_DATA() {
           return new ApiRequest<DiagramContent>({
             method: "get",
             url: "diagram/get_diagram",
             params: {
               visibility_change_set_pk: changeSetId,
             },
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               // for now just storing the diagram-y data
               // but I think ideally we fetch more generic component data and then transform into diagram format as necessary
               this.rawDiagramNodes = response.nodes;
               this.diagramEdges = response.edges;
+            },
+          });
+        },
+        // fetches a dropdown-style list of some component data, also including resources?
+        async FETCH_COMPONENTS() {
+          return new ApiRequest<{ list: LabelList<ComponentIdentification> }>({
+            method: "get",
+            url: "component/list_components_identification",
+            params: {
+              visibility_change_set_pk: changeSetId,
+              workspaceId,
+            },
+            onSuccess: (response) => {
+              // endpoint returns dropdown-y data
+              const rawIdentifications = _.map(response.list, "value");
+              this.componentIdentificationsById = _.keyBy(
+                rawIdentifications,
+                (c) => c.componentId,
+              );
             },
           });
         },
@@ -245,7 +279,6 @@ export const useComponentsStore = () => {
             params: {
               visibility_change_set_pk: changeSetId,
             },
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               this.componentChangeStatusById = _.transform(
                 response.componentStats.stats,
@@ -273,7 +306,6 @@ export const useComponentsStore = () => {
               systemId: this.selectedSystemId,
               visibility_change_set_pk: changeSetId,
             },
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               // record position change rather than wait for re-fetch
             },
@@ -290,7 +322,6 @@ export const useComponentsStore = () => {
               visibility_change_set_pk: changeSetId,
               workspaceId,
             },
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               // TODO: store componenet details rather than waiting for re-fetch
             },
@@ -312,7 +343,6 @@ export const useComponentsStore = () => {
               visibility_change_set_pk: changeSetId,
               workspaceId,
             },
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               // TODO: store componenet details rather than waiting for re-fetch
             },
@@ -332,6 +362,7 @@ export const useComponentsStore = () => {
         },
       },
       onActivated() {
+        this.FETCH_DIAGRAM_DATA();
         this.FETCH_COMPONENTS();
         this.FETCH_AVAILABLE_SCHEMAS();
         this.FETCH_NODE_ADD_MENU();
@@ -349,6 +380,7 @@ export const useComponentsStore = () => {
               if (writtenChangeSetId !== changeSetId) return;
 
               // probably want to get pushed updates instead of blindly refetching, but this is the first step of getting things working
+              this.FETCH_DIAGRAM_DATA();
               this.FETCH_COMPONENTS();
               this.FETCH_CHANGE_STATS();
             },

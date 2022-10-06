@@ -10,7 +10,6 @@ import { LabelList } from "@/api/sdf/dal/label_list";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { changeSet$, eventChangeSetWritten$ } from "@/service/change_set";
 import { useWorkspacesStore } from "./workspaces.store";
-import { useRouterStore } from "./router.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
 export type ChangeSetId = number;
@@ -23,6 +22,7 @@ export function useChangeSetsStore() {
     defineStore(`w${workspaceId || "NONE"}/change-sets`, {
       state: () => ({
         changeSetsById: {} as Record<ChangeSetId, ChangeSet>,
+        selectedChangeSetId: null as ChangeSetId | null,
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
@@ -32,21 +32,10 @@ export function useChangeSetsStore() {
             (cs) => cs.status === ChangeSetStatus.Open,
           );
         },
-        selectedChangeSetId(): ChangeSetId | null {
-          // selecting HEAD = -1
-          // TODO: this is all a bit confusing...
-          const routerStore = useRouterStore();
-          const urlSelectedChangeSetId = routerStore.urlSelectedChangeSetId;
-          if (!urlSelectedChangeSetId) return -1;
-          return this.selectedChangeSet?.id || null;
-        },
-        selectedChangeSet: (state) => {
-          const routerStore = useRouterStore();
-          const urlSelectedChangeSetId = routerStore.urlSelectedChangeSetId;
-          return urlSelectedChangeSetId
-            ? state.changeSetsById[urlSelectedChangeSetId as ChangeSetId]
-            : null;
-        },
+        selectedChangeSet: (state) =>
+          state.selectedChangeSetId
+            ? state.changeSetsById[state.selectedChangeSetId] || null
+            : null,
 
         // expose here so other stores can get it without needing to call useWorkspaceStore directly
         selectedWorkspaceId: () => workspaceId,
@@ -58,7 +47,6 @@ export function useChangeSetsStore() {
             // TODO: probably want to fetch all change sets, not just open (or could have a filter)
             // this endpoint currently returns dropdown-y data, should just return the change set data itself
             url: "change_set/list_open_change_sets",
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               // this.changeSetsById = _.keyBy(response.changeSets, "id");
 
@@ -86,7 +74,6 @@ export function useChangeSetsStore() {
             params: {
               changeSetName: name,
             },
-            headers: { WorkspaceId: workspaceId },
             onSuccess: (response) => {
               this.changeSetsById[response.changeSet.id] = response.changeSet;
             },
@@ -113,7 +100,6 @@ export function useChangeSetsStore() {
         // - change_set/update_selected_change_set (was just fetching the change set info)
 
         getAutoSelectedChangeSetId() {
-          console.log(this.openChangeSets);
           // returning `false` means we cannot auto select
           if (!this.openChangeSets.length) return false; // no open change sets
           if (this.openChangeSets.length === 1)
@@ -181,7 +167,6 @@ export function useChangeSetsStore() {
         ]);
 
         return () => {
-          console.log("DEACTIVATE CHANGE SETvS STORE", workspaceId);
           stopWatchSelectedChangeSet();
           realtimeStore.unsubscribe(this.$id);
         };
