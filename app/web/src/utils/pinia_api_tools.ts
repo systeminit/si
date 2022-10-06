@@ -19,6 +19,7 @@ import { PiniaPlugin, PiniaPluginContext } from "pinia";
 import { AxiosInstance } from "axios";
 import { computed, ComputedRef, reactive, unref, Ref } from "vue";
 import _ from "lodash";
+import promiseDelay from "@/utils/promise_delay";
 import defer, { DeferredPromise } from "./defer_promise";
 
 // TODO: need to rework these types, and be more flexible... See vue-query for ideas
@@ -53,6 +54,7 @@ declare module "pinia" {
       requestKey: keyof ApiRequestActionsOnly<A>, // will allow only action names that return an ApiRequest
       ...keyedByArgs: RequestStatusKeyArg[]
     ): ComputedRef<ApiRequestStatus>;
+
     getRequestStatuses(
       requestKey: keyof ApiRequestActionsOnly<A>, // will allow only action names that return an ApiRequest
       keyedByArgs: RequestStatusKeyArg[] | ComputedRef<RequestStatusKeyArg[]>,
@@ -126,11 +128,6 @@ export type ApiRequestStatus = Partial<RawApiRequestStatus> & {
 };
 
 type RawRequestStatusesByKey = Record<string, RawApiRequestStatus>;
-
-const timeout = (delayInMs: number) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, delayInMs);
-  });
 
 const TRACKING_KEY_SEPARATOR = "%";
 
@@ -219,7 +216,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       try {
         // add artificial delay - helpful to test loading states in UI when using local API which is very fast
         if (import.meta.env.VITE_DELAY_API_REQUESTS) {
-          await timeout(
+          await promiseDelay(
             parseInt(import.meta.env.VITE_DELAY_API_REQUESTS as string),
           );
         }
@@ -323,6 +320,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         return actionResult;
       };
     }
+
     const apiRequestActions: any = {};
     _.each(storeOptions.actions, (actionDef: any, actionName: string) => {
       // we wrap all async actions with a function that checks if the result is an ApiRequest
