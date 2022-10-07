@@ -39,7 +39,7 @@
 import { KonvaEventObject } from "konva/lib/Node";
 import { computed, PropType } from "vue";
 import tinycolor from "tinycolor2";
-import { useTheme } from "@/composables/injectTheme";
+import { useTheme } from "@/ui-lib/theme_tools";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeDef,
@@ -48,7 +48,7 @@ import {
 
 import { SOCKET_SIZE, DIAGRAM_FONT_FAMILY } from "./diagram_constants";
 
-const theme = useTheme();
+const { theme } = useTheme();
 
 const props = defineProps({
   socket: {

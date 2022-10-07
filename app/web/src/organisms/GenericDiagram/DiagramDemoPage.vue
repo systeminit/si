@@ -42,13 +42,12 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, reactive, ref, watch } from "vue";
+import { reactive, ref, watch } from "vue";
 import _ from "lodash";
 import { colors } from "@/utils/design_token_values";
 import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
 import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
-import { useThemeProvider } from "@/composables/injectTheme";
-import { ThemeValue } from "@/observable/theme";
+import { useThemeContainer, ThemeValue } from "@/ui-lib/theme_tools";
 import GenericDiagram from "./GenericDiagram.vue";
 import {
   DeleteElementsEvent,
@@ -65,7 +64,7 @@ const zoom = ref(1);
 watch(zoom, () => diagramRef?.value?.setZoom(zoom.value));
 
 const theme = ref<ThemeValue>("dark");
-useThemeProvider(computed(() => theme.value));
+useThemeContainer(theme.value);
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 

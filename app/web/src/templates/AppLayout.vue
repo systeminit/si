@@ -4,7 +4,7 @@
     id="app-layout"
     :class="
       clsx(
-        'flex flex-col w-full bg-black text-white',
+        'flex flex-col w-full dark:bg-black dark:text-white',
         pageMode === 'fullscreen' && 'overflow-hidden h-screen',
         pageMode === 'scroll' && 'items-center justify-center min-h-screen',
         pageMode === 'modal' &&

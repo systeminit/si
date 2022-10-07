@@ -210,11 +210,15 @@ import GenericTabPanel from "@/organisms/StatusBarTabs/GenericTabPanel.vue";
 import Icon from "@/ui-lib/Icon.vue";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useComponentsStore } from "@/store/components.store";
+import { useThemeContainer } from "@/ui-lib/theme_tools";
 import WorkflowHistoryTab from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryTab.vue";
 import WorkflowHistoryPanel, {
   SortOption,
 } from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryPanel.vue";
 import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
+
+// override theme to be always dark within status bar
+useThemeContainer("dark");
 
 // Tab 0 is our phantom empty panel
 const selectedTab = ref(0);

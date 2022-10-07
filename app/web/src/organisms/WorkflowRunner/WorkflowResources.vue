@@ -14,7 +14,6 @@
         :kind="resource.kind"
         :output="whiskersJson"
         :status="resource.health || 'Unknown'"
-        :force-theme="forceTheme"
         :default-closed="defaultClosed"
         :component="component"
       />
@@ -25,7 +24,6 @@
     kind="aws region"
     output="whatever"
     status="Ok"
-    :force-theme="forceTheme"
     :default-closed="defaultClosed"
   />
   <WorkflowResource
@@ -33,7 +31,6 @@
     kind="aws instance"
     output="whatever"
     status="Error"
-    :force-theme="forceTheme"
     :default-closed="defaultClosed"
   />
   <WorkflowResource
@@ -41,21 +38,17 @@
     kind="other resource"
     output="whatever"
     status="Unknown"
-    :force-theme="forceTheme"
     :default-closed="defaultClosed"
-    :hide-bottom-border-while-closed="forceTheme === 'dark'"
   /> -->
 </template>
 
 <script lang="ts" setup>
 import { PropType } from "vue";
-import { ThemeValue } from "@/observable/theme";
 import WorkflowResource from "./WorkflowResource.vue";
 import { ComponentListItem } from "../StatusBar/StatusBarTabPanelComponentList.vue";
 
 defineProps({
   components: { type: Array as PropType<ComponentListItem[]> },
-  forceTheme: { type: String as PropType<ThemeValue> },
   defaultClosed: { type: Boolean, default: true },
 });
 

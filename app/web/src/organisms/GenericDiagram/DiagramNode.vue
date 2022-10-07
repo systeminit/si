@@ -182,7 +182,7 @@ import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
-import { useTheme } from "@/composables/injectTheme";
+import { useTheme } from "@/ui-lib/theme_tools";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeDef,
@@ -225,7 +225,7 @@ const props = defineProps({
 
 const emit = defineEmits(["resize", "hover:start", "hover:end"]);
 
-const theme = useTheme();
+const { theme } = useTheme();
 const diagramConfig = useDiagramConfig();
 
 const titleTextRef = ref();

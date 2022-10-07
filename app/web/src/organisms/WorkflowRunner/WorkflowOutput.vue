@@ -1,5 +1,5 @@
 <template>
-  <CodeViewer :code="logs.join('\n')" :force-theme="forceTheme" border>
+  <CodeViewer :code="logs.join('\n')" border>
     <template #title>
       <WorkflowStatusIcon :status="status" show-text />
     </template>
@@ -10,7 +10,6 @@
 import { PropType } from "vue";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import WorkflowStatusIcon from "@/molecules/WorkflowStatusIcon.vue";
-import { ThemeValue } from "@/observable/theme";
 
 defineProps({
   logs: { type: Array<string>, required: true },
@@ -18,6 +17,5 @@ defineProps({
     type: String as PropType<"running" | "success" | "failure">,
     required: true,
   },
-  forceTheme: { type: String as PropType<ThemeValue> },
 });
 </script>

@@ -20,7 +20,7 @@
         <StatusBar :key="selectedChangeSet?.id" class="flex-none" />
       </template>
       <template v-else>
-        <div class="flex-grow text-white p-lg">
+        <div class="flex-grow p-lg">
           <template v-if="changeSetsReqStatus.isPending">
             <h2>Loading change sets...</h2>
           </template>
