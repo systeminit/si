@@ -1,16 +1,12 @@
 <template>
   <AppLayout page-mode="modal" class="font-medium">
     <Stack spacing="lg" class="max-w-md">
-      <div class="text-neutral-200 flex flex-row gap-md px-lg">
-        <img class="h-16" :src="siLogoWts" alt="System Initiative" />
-        <Stack spacing="md">
-          <h2 class="text-4xl font-extrabold capsize">Log In</h2>
-          <RichText class="capsize">
-            Don't have an account?
-            <router-link :to="{ name: 'signup' }">Create one!</router-link>
-          </RichText>
-        </Stack>
-      </div>
+      <AuthPageHeader
+        title="Log In"
+        alt-action-text="Don't have an account?"
+        alt-action-link-text="Create one!"
+        alt-action-route-name="signup"
+      />
 
       <form @submit.prevent="tryPasswordLogin">
         <Card rounded>
@@ -65,10 +61,9 @@
 
 <script setup lang="ts">
 import { computed, reactive } from "vue";
-import { useRouter, RouterLink, useRoute } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { useHead } from "@vueuse/head";
 
-import siLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import AppLayout from "@/templates/AppLayout.vue";
 import Card from "@/ui-lib/Card.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
@@ -76,13 +71,13 @@ import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
-import RichText from "@/ui-lib/RichText.vue";
 import { useAuthStore } from "@/store/auth.store";
-
-useHead({ title: "Login" });
+import AuthPageHeader from "./AuthPageHeader.vue";
 
 const router = useRouter();
 const route = useRoute();
+
+useHead({ title: "Log in" });
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 

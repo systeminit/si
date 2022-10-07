@@ -152,6 +152,7 @@ import Icon from "@/ui-lib/Icon.vue";
 import { useValidatedInput, validators } from "./helpers/form-validation";
 import { useDisabledBySelfOrParent } from "./helpers/form-disabling";
 import VormInputOption from "./VormInputOption.vue";
+import { useTheme } from "../theme_tools";
 import type { PropType, ComponentInternalInstance } from "vue";
 
 type InputTypes =
@@ -309,11 +310,14 @@ watch(
   },
 );
 
+const { theme } = useTheme();
+
 const computedClasses = computed(() => ({
   "--error": validationState.isError,
   "--focused": isFocus.value,
   "--disabled": disabledBySelfOrParent.value,
   [`--type-${props.type}`]: true,
+  [`--theme-${theme.value}`]: true,
 }));
 
 // shared counter to generate unique IDs used for label + input tag binding
@@ -598,40 +602,49 @@ defineExpose({
 </script>
 
 <style lang="less" scoped>
-// TODO: remove all these colors and use tw classes
+// TODO: probably remove all these colors and use tw classes?
 
-@border-color--default: @colors-neutral-600;
-@border-color--hover: @colors-neutral-500;
-@border-color--focus: @colors-action-500;
-@border-color--error: @colors-destructive-500;
-
-@backround-color--default: @colors-black;
-@text-color--default: @colors-white;
-@text-color--error: @colors-destructive-600;
-
-@vertical-gap: 12px;
+@vertical-gap: 8px;
 
 .vorm-input {
+  --text-color: @colors-black;
+  --text-color-error: @colors-destructive-600;
+  --text-color-muted: @colors-neutral-500;
+  --border-color: @colors-neutral-300;
+  --bg-color: @colors-white;
+
+  color: var(--text-color);
+
+  &.--theme-dark {
+    --text-color: @colors-white;
+    --border-color: @colors-neutral-600;
+    --bg-color: @colors-black;
+  }
+
   &.--error {
-    .vorm-input__label {
-      color: @text-color--error;
-    }
-    .vorm-input__input {
-      border-color: @border-color--error;
-      color: @text-color--error;
-    }
+    // --text-color: @colors-destructive-600;
+    --border-color: @colors-destructive-500;
   }
 
   &.--focused {
+    // --border-color: @colors-action-500;
     .vorm-input__input {
       box-shadow: none;
-      outline: 2px solid @border-color--focus;
+      outline: 2px solid @colors-action-500;
       outline-offset: -2px;
     }
   }
 
   &.--disabled {
-    color: #777;
+    --text-color: @colors-neutral-500;
+    --text-color-muted: @colors-neutral-400;
+    --bg-color: @colors-neutral-100;
+
+    &.--theme-dark {
+      --text-color: @colors-neutral-500;
+      --text-color-muted: @colors-neutral-500;
+      --bg-color: @colors-neutral-900;
+    }
 
     input,
     select,
@@ -639,27 +652,23 @@ defineExpose({
       cursor: not-allowed;
       color: currentColor;
     }
-
-    .vorm-input__input {
-      opacity: 0.3;
-    }
   }
 }
 
 // this class is on whatever the input is, whether its input, textarea, select, etc
 .vorm-input__input {
   width: 100%;
-  border: 1px solid @border-color--default;
+  border: 1px solid var(--border-color);
   border-radius: 3px;
   transition: border-color 0.15s;
   padding: 8px 12px;
   height: 40px;
-  color: @text-color--default;
+  color: var(--text-color);
   font: inherit;
-  background-color: @backround-color--default;
+  background-color: var(--bg-color);
 
   &:hover {
-    border-color: @border-color--hover;
+    --border-color: @colors-neutral-500;
   }
 
   textarea& {
@@ -710,9 +719,9 @@ defineExpose({
     font-style: italic;
   }
 
-  &:focus {
-    border-color: @border-color--focus;
-  }
+  // &:focus {
+  //   border-color: @border-color--focus;
+  // }
 
   // &:focus {
   //   // we have a custom focus style instead
@@ -729,18 +738,6 @@ defineExpose({
   font-weight: 700;
   padding-left: 1px;
 
-  // TODO: replace this hacky capsize fix
-  // &::before {
-  //   content: "";
-  //   margin-bottom: -0.2em;
-  //   display: table;
-  // }
-  // &::after {
-  //   content: "";
-  //   margin-top: -0.3em;
-  //   display: table;
-  // }
-
   > .icon {
     margin-right: 4px;
     height: 14px;
@@ -752,29 +749,19 @@ defineExpose({
   margin-right: 4px;
   width: 12px;
   height: 12px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-top: -1px;
 }
 
 .vorm-input__instructions,
 .vorm-input__error-message {
   @apply capsize text-xs;
   padding-top: @vertical-gap;
-
-  // TODO: replace this hacky capsize fix
-  &::before {
-    content: "";
-    margin-bottom: -4px;
-    display: table;
-  }
-  &::after {
-    content: "";
-    margin-top: -4px;
-    display: table;
-  }
 }
 
 .vorm-input__instructions {
-  color: #777;
-
+  color: var(--text-color-muted);
   a {
     color: currentColor;
     text-decoration: underline;
@@ -792,7 +779,7 @@ defineExpose({
 }
 
 .vorm-input__error-message {
-  color: @text-color--error;
+  color: var(--text-color-error);
 }
 
 .vorm-input__input-wrap {
@@ -801,7 +788,6 @@ defineExpose({
 
 .vorm-input__pass-show-hide-toggle {
   cursor: pointer;
-  color: #333;
   user-select: none;
   opacity: 0.8;
   font-size: 12px;
@@ -839,6 +825,25 @@ defineExpose({
     margin-right: 8px;
     flex-shrink: 0;
     cursor: pointer;
+
+    // tailwind base classes are messing with this majorly, so have to reset it a bit
+    background-color: var(--bg-color);
+    border-color: var(--border-color);
+
+    // TODO: rework how checkboxes are set up... this is because tailwind inserts a background image
+    // so below we copied their SVG but just changed the bg colors
+
+    // we probably want to just put an actual Icon(name="check") in the markup instead...
+    &:checked {
+      background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='black' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+    }
+  }
+  &.--theme-dark {
+    .vorm-input__input {
+      &:checked {
+        background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+      }
+    }
   }
 
   .vorm-input__checkbox-text {
