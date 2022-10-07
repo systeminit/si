@@ -12,6 +12,7 @@
         :class="classes"
       >
         <VormInput
+          v-if="fix.status === 'unstarted'"
           :model-value="selected"
           type="checkbox"
           no-label
@@ -21,6 +22,24 @@
               emit('toggle', c);
             }
           "
+        />
+        <Icon
+          v-else-if="fix.status === 'running'"
+          name="loader"
+          class="text-action-300"
+          size="xl"
+        />
+        <Icon
+          v-else-if="fix.status === 'failure'"
+          name="x-circle"
+          class="text-destructive-500"
+          size="xl"
+        />
+        <Icon
+          v-else-if="fix.status === 'success'"
+          name="check-circle"
+          class="text-success-500"
+          size="xl"
         />
         <Icon name="tools" size="xl" class="text-destructive-500" />
         <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
@@ -41,12 +60,7 @@ import { computed, PropType } from "vue";
 import Icon from "@/ui-lib/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-
-type Fix = {
-  id: number;
-  name: string;
-  recommendation: string;
-};
+import { Fix } from "@/store/fixes.store";
 
 const props = defineProps({
   fix: { type: Object as PropType<Fix>, required: true },

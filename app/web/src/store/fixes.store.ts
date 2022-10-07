@@ -10,7 +10,7 @@ import { LoginResponse } from "@/service/session";
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 
 export type FixId = number;
-type Fix = {
+export type Fix = {
   id: FixId;
   name: string;
   recommendation: string;
@@ -55,12 +55,12 @@ export const useFixesStore = () => {
             },
           });
         },
-        async EXECUTE_FIXES() {
+        async EXECUTE_FIXES(fixes: Array<Fix>) {
           return new ApiRequest<LoginResponse>({
             method: "get",
             url: "/session/get_defaults",
             onSuccess: (response) => {
-              this.executeMockFixes().then(() => {});
+              this.executeMockFixes(fixes).then(() => {});
             },
           });
         },
@@ -89,8 +89,8 @@ export const useFixesStore = () => {
             await promiseDelay(500);
           }
         },
-        async executeMockFixes() {
-          for (const fix of this.allFixes) {
+        async executeMockFixes(fixes: Array<Fix>) {
+          for (const fix of fixes) {
             this.updateFix({
               ...fix,
               status: "running",
@@ -101,7 +101,7 @@ export const useFixesStore = () => {
 
           await promiseDelay(1000);
 
-          for (const fix of this.allFixes) {
+          for (const fix of fixes) {
             this.updateFix({
               ...fix,
               status: "success",

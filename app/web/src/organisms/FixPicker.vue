@@ -25,7 +25,11 @@
             @update:model-value="selectAll"
             >Select All
           </VormInput>
-          <VButton2 icon="tools" tone="action" @click="fixesStore.EXECUTE_FIXES"
+          <VButton2
+            :disabled="selectedFixes.length < 1"
+            icon="tools"
+            tone="action"
+            @click="fixesStore.EXECUTE_FIXES(selectedFixes)"
             >Fix Resources
           </VButton2>
         </div>
@@ -48,7 +52,6 @@
             </template>
             <template #default>
               <li v-for="fix in fixes" :key="fix.id">
-                {{ fix.status }}
                 <FixSprite
                   :fix="fix"
                   :selected="fixSelection[fix.id]"
@@ -92,5 +95,10 @@ const fixes = computed(() => fixesStore.allFixes);
 const fixSelection: Record<string, boolean> = reactive({
   1: false,
   2: false,
+});
+const selectedFixes = computed(() => {
+  return fixes.value.filter((fix) => {
+    return fixSelection[fix.id] && fix.status === "unstarted";
+  });
 });
 </script>
