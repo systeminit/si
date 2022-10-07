@@ -18,7 +18,15 @@
         <slot name="actionButtons"></slot>
       </div>
     </div>
-    <div class="w-full h-full overflow-auto" :class="borderClasses">
+    <div
+      :class="
+        clsx(
+          'w-full h-full overflow-auto',
+          border && 'border',
+          themeClasses('border-neutral-300', 'dark:border-neutral-600'),
+        )
+      "
+    >
       <div
         ref="editorMountRef"
         class="w-full h-full overflow-auto"
@@ -49,13 +57,12 @@ import {
 import { properties as JsonModeParser } from "@codemirror/legacy-modes/mode/properties";
 import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";
 import { diff as DiffModeParser } from "@codemirror/legacy-modes/mode/diff";
+import clsx from "clsx";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
 // NOTE(nick): this took a long ass time to find. Javascript's JSON mode doesn't work. This does.
 
-import { useTheme } from "@/composables/injectTheme";
-import { ThemeValue } from "@/observable/theme";
-
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
+import { themeClasses, useTheme } from "@/ui-lib/theme_tools";
 
 const props = defineProps({
   code: { type: String },
@@ -66,21 +73,11 @@ const props = defineProps({
   fontSize: { type: String },
   // // Format: "0.0px" or "0%"
   height: { type: String },
-  forceTheme: { type: String as PropType<ThemeValue> },
   titleClasses: { type: String, default: "h-10" },
   border: { type: Boolean, default: false },
 });
 
-const borderClasses = computed(() => {
-  if (props.forceTheme === "dark" && props.border) {
-    return "border border-neutral-600";
-  } else if (props.forceTheme === "light" && props.border) {
-    return "border border-neutral-300";
-  }
-  return props.border
-    ? "border border-neutral-300 dark:border-neutral-600"
-    : "";
-});
+const { theme } = useTheme();
 
 const editorMountRef = ref();
 const readOnly = new Compartment();
@@ -95,13 +92,11 @@ const CODE_PARSER_LOOKUP = {
   unknown: YamlModeParser,
 };
 
-const theme = useTheme();
-
 const editorThemeExtension = computed(() => {
   return {
     dark: gruvboxDark,
     light: basicLight,
-  }[props.forceTheme || theme.value];
+  }[theme.value];
 });
 
 const editorStyleExtension = computed(() => {

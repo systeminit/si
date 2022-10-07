@@ -13,7 +13,7 @@
 <script lang="ts" setup>
 import { Vector2d } from "konva/lib/types";
 import { computed, PropType } from "vue";
-import { useTheme } from "@/composables/injectTheme";
+import { useTheme } from "@/ui-lib/theme_tools";
 
 const props = defineProps({
   fromPoint: {
@@ -25,7 +25,7 @@ const props = defineProps({
   },
 });
 
-const theme = useTheme();
+const { theme } = useTheme();
 
 const points = computed(() => {
   if (!props.fromPoint || !props.toPoint) return;

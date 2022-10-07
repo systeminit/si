@@ -4,37 +4,32 @@
 </template>
 
 <script lang="ts" setup>
-import { refFrom } from "vuse-rx/src";
 import { computed, onBeforeMount } from "vue";
 import "floating-vue/dist/style.css";
 
 import { useHead } from "@vueuse/head";
 import { restoreFromSession } from "@/observable/session_state";
-import { ThemeService } from "@/service/theme";
-import { Theme } from "@/observable/theme";
-import { useThemeProvider } from "./composables/injectTheme";
 import { useCustomFontsLoadedProvider } from "./composables/useFontLoaded";
 import { tw } from "./utils/style_helpers";
 import { useAuthStore } from "./store/auth.store";
 import { useWorkspacesStore } from "./store/workspaces.store";
 import { useRealtimeStore } from "./store/realtime/realtime.store";
 import RealtimeConnectionStatus from "./molecules/RealtimeConnectionStatus.vue";
+import { useThemeContainer } from "./ui-lib/theme_tools";
 
 onBeforeMount(restoreFromSession);
-
-const theme = refFrom<Theme>(ThemeService.currentTheme());
-const themeValue = computed(() => theme.value?.value || "light");
-useThemeProvider(themeValue);
-
 useCustomFontsLoadedProvider();
+
+// provides the root theme value to all children, and returns that root theme to use below
+const { theme: rootTheme } = useThemeContainer();
 
 useHead(
   computed(() => ({
     bodyAttrs: {
       // add some base classes we need these type classes set for capsize plugin to work throughout
       // and add dark mode style/class
-      class: tw`font-sans text-base leading-none ${themeValue.value}`,
-      style: `color-scheme: ${themeValue.value};`,
+      class: tw`font-sans text-base leading-none ${rootTheme.value}`,
+      style: `color-scheme: ${rootTheme.value};`,
     },
     // set up title template and a default
     titleTemplate: "%s | System Init",

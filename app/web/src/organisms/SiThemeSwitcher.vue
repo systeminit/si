@@ -1,27 +1,27 @@
 <template>
   <!-- FIXME(nick,theo): dropdown-classes needs to be removed in favor of the dropdown knowing whether or not it is offscreen. -->
   <SiBarButton tooltip-text="Change theme" dropdown-classes="-right-12">
-    <Icon :name="lightmode ? 'sun' : 'moon'" />
+    <Icon :name="currentTheme === 'light' ? 'sun' : 'moon'" />
 
     <template #dropdownContent>
       <SiDropdownItem
         class="text-sm"
-        :checked="theme?.source === 'system'"
-        @select="ThemeService.resetToSystems"
+        :checked="!userOverrideTheme"
+        @select="userOverrideTheme = null"
       >
         System theme
       </SiDropdownItem>
       <SiDropdownItem
         class="text-sm"
-        :checked="theme?.source === 'user' && theme?.value === 'light'"
-        @select="ThemeService.setTo('light')"
+        :checked="userOverrideTheme === 'light'"
+        @select="userOverrideTheme = 'light'"
       >
         Light theme
       </SiDropdownItem>
       <SiDropdownItem
         class="text-sm"
-        :checked="theme?.source === 'user' && theme?.value === 'dark'"
-        @select="ThemeService.setTo('dark')"
+        :checked="userOverrideTheme === 'dark'"
+        @select="userOverrideTheme = 'dark'"
       >
         Dark theme
       </SiDropdownItem>
@@ -30,16 +30,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { refFrom } from "vuse-rx/src";
-import { ThemeService } from "@/service/theme";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
-import { Theme } from "@/observable/theme";
 import Icon from "@/ui-lib/Icon.vue";
+import { userOverrideTheme, useTheme } from "@/ui-lib/theme_tools";
 
-const theme = refFrom<Theme>(ThemeService.currentTheme());
-const lightmode = computed(() => {
-  return theme.value?.value === "light";
-});
+const { theme: currentTheme } = useTheme();
 </script>

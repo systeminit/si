@@ -22,8 +22,8 @@ import { basicLight } from "cm6-theme-basic-light";
 import { javascript } from "@codemirror/lang-javascript";
 import { linter, lintGutter } from "@codemirror/lint";
 import { createLintSource } from "@/utils/typescriptLinter";
-import { useTheme } from "@/composables/injectTheme";
 import { EditingFunc } from "@/observable/func";
+import { useTheme } from "@/ui-lib/theme_tools";
 import { changeFunc, funcById, funcState, nullEditingFunc } from "./func_state";
 
 const isDevMode = import.meta.env.DEV;
@@ -65,7 +65,7 @@ const themeCompartment = new Compartment();
 const lintCompartment = new Compartment();
 const lintSource = createLintSource();
 
-const appTheme = useTheme();
+const { theme: appTheme } = useTheme();
 const codeMirrorTheme = computed(() =>
   appTheme.value === "dark" ? gruvboxDark : basicLight,
 );

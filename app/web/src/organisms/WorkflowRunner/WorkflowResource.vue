@@ -4,7 +4,6 @@
     :default-open="!defaultClosed"
     text-size="md"
     show-label-and-slot
-    :force-theme="forceTheme"
     :hide-bottom-border="hideBottomBorderWhileClosed"
   >
     <div
@@ -21,11 +20,16 @@
       <HealthIcon :health="status" size="md" hide-text />
     </template>
     <div
-      class="px-xs pb-xs max-h-96 overflow-hidden flex"
-      :class="borderClasses"
+      :class="
+        clsx(
+          'px-xs pb-xs max-h-96 overflow-hidden flex border-b',
+          hideBottomBorderWhileClosed && 'border-t',
+          themeClasses('border-neutral-200', 'border-neutral-600'),
+        )
+      "
     >
       <div class="flex-grow">
-        <CodeViewer :code="output" border :force-theme="forceTheme">
+        <CodeViewer :code="output" border>
           <template #title><HealthIcon :health="status" /></template>
         </CodeViewer>
       </div>
@@ -34,11 +38,12 @@
 </template>
 
 <script lang="ts" setup>
-import { PropType, computed } from "vue";
-import { ThemeValue } from "@/observable/theme";
+import { PropType } from "vue";
+import clsx from "clsx";
 import HealthIcon from "@/molecules/HealthIcon.vue";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { useComponentsStore } from "@/store/components.store";
+import { themeClasses } from "@/ui-lib/theme_tools";
 import SiCollapsible from "../SiCollapsible.vue";
 import CodeViewer from "../CodeViewer.vue";
 import { ComponentListItem } from "../StatusBar/StatusBarTabPanelComponentList.vue";
@@ -52,21 +57,8 @@ const props = defineProps({
   kind: { type: String, required: true },
   output: { type: String, required: true },
   status: { type: String as PropType<ResourceHealth>, required: true },
-  forceTheme: { type: String as PropType<ThemeValue> },
   hideBottomBorderWhileClosed: { type: Boolean, default: false },
   defaultClosed: { type: Boolean, default: false },
-});
-
-const borderClasses = computed(() => {
-  let classes = "";
-
-  if (props.hideBottomBorderWhileClosed) classes = "border-t";
-
-  if (props.forceTheme === "dark")
-    return `${classes} border-b border-neutral-600`;
-  else if (props.forceTheme === "light")
-    return `${classes}border-b border-neutral-200`;
-  return `${classes}border-b border-neutral-200 dark:border-neutral-600`;
 });
 
 const componentsStore = useComponentsStore();

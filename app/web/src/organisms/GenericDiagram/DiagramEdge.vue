@@ -28,8 +28,8 @@
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
 import { computed, PropType } from "vue";
-import { useTheme } from "@/composables/injectTheme";
 import { colors } from "@/utils/design_token_values";
+import { useTheme } from "@/ui-lib/theme_tools";
 import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
 import { DiagramEdgeDef } from "./diagram_types";
 import { pointAlongLine } from "./utils/math";
@@ -52,7 +52,7 @@ const props = defineProps({
 
 const emit = defineEmits(["hover:start", "hover:end"]);
 
-const theme = useTheme();
+const { theme } = useTheme();
 
 const strokeColor = computed(() =>
   theme.value === "dark" ? colors.shade[0] : colors.shade[100],

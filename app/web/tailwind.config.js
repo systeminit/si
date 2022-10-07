@@ -1,7 +1,7 @@
 const formsPlugin = require("@tailwindcss/forms");
 const colors = require("tailwindcss/colors");
 const capsizePlugin = require("tailwindcss-capsize");
-const themeValues = require("./src/assets/style/tailwind_customization/theme_values.js");
+const themeValues = require("./src/assets/style/tailwind_customization/tailwind_theme_values.js");
 const typographyPlugin = require("./src/assets/style/tailwind_customization/typography_plugin.js");
 
 module.exports = {

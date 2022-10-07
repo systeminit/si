@@ -39,7 +39,7 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import { useTheme } from "@/composables/injectTheme";
+import { useTheme } from "@/ui-lib/theme_tools";
 import { colors } from "../../utils/design_token_values";
 
 const props = defineProps({
@@ -76,7 +76,7 @@ const ySteps = computed(() =>
   generateGridPositions(props.gridMinY, props.gridMaxY),
 );
 
-const theme = useTheme();
+const { theme } = useTheme();
 const bgColor = computed(() =>
   theme.value === "dark" ? colors.neutral[900] : colors.neutral[50],
 );
