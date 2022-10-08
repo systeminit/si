@@ -41,7 +41,12 @@
           class="text-success-500"
           size="xl"
         />
-        <Icon name="tools" size="xl" class="text-destructive-500" />
+        <Icon
+          v-if="fix.status !== 'success'"
+          name="tools"
+          size="xl"
+          class="text-destructive-500"
+        />
         <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
           {{ fix.name }}
         </div>
