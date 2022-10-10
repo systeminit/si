@@ -1,16 +1,12 @@
 <template>
   <AppLayout page-mode="modal" class="font-medium">
     <Stack spacing="lg" class="max-w-md">
-      <div class="text-neutral-200 flex flex-row gap-md px-lg">
-        <img class="h-16" :src="siLogoWts" alt="System Initiative" />
-        <Stack spacing="md">
-          <h2 class="text-4xl font-extrabold capsize">Sign Up</h2>
-          <RichText class="capsize">
-            Already have an account?
-            <router-link :to="{ name: 'login' }">Log in!</router-link>
-          </RichText>
-        </Stack>
-      </div>
+      <AuthPageHeader
+        title="Sign Up"
+        alt-action-text="Already have an account?"
+        alt-action-link-text="Log in!"
+        alt-action-route-name="login"
+      />
 
       <form @submit.prevent="trySignup">
         <Card rounded>
@@ -33,6 +29,7 @@
               required
               placeholder="ex: John Smith"
             />
+
             <VormInput
               v-model="signupPayload.userEmail"
               type="email"
@@ -87,10 +84,9 @@
 
 <script setup lang="ts">
 import { reactive } from "vue";
-import { useRouter, RouterLink } from "vue-router";
+import { useRouter } from "vue-router";
 import { useHead } from "@vueuse/head";
 
-import siLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import AppLayout from "@/templates/AppLayout.vue";
 import Card from "@/ui-lib/Card.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
@@ -98,8 +94,8 @@ import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
-import RichText from "@/ui-lib/RichText.vue";
 import { useAuthStore } from "@/store/auth.store";
+import AuthPageHeader from "./AuthPageHeader.vue";
 
 useHead({ title: "Sign Up" });
 

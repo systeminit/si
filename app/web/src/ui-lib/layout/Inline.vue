@@ -29,7 +29,7 @@ const propsDefinition = {
     type: Boolean,
     default: false,
   },
-};
+} as const;
 
 function flipAlignIfReversed(
   reverse: boolean | undefined,

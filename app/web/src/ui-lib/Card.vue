@@ -1,18 +1,31 @@
 <template>
   <div
     :class="
-      clsx('bg-neutral-900 p-lg shadow text-white', rounded && 'rounded-sm')
+      clsx(
+        themeClasses('bg-neutral-200 text-black', 'bg-neutral-800 text-white'),
+        'p-lg shadow',
+        rounded && 'rounded-sm',
+      )
     "
   >
     <slot />
 
-    <hr v-if="$slots.footer" class="border border-shade-100 -mx-lg my-lg" />
+    <hr
+      v-if="$slots.footer"
+      :class="
+        clsx(
+          'border -mx-lg my-lg',
+          themeClasses('border-neutral-100', 'border-neutral-900'),
+        )
+      "
+    />
     <slot name="footer" />
   </div>
 </template>
 
 <script lang="ts" setup>
 import clsx from "clsx";
+import { themeClasses } from "./theme_tools";
 
 const props = defineProps({
   rounded: Boolean,

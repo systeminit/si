@@ -16,7 +16,7 @@ const propsDefinition = {
   ...responsiveSpacingProps("sm"),
   tagName: { type: String as PropType<"div" | "section">, default: "div" },
   dividers: Boolean,
-};
+} as const;
 
 const Stack = (
   props: FunctionalComponentPropsType<typeof propsDefinition>,
