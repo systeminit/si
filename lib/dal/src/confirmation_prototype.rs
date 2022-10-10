@@ -6,11 +6,11 @@ use thiserror::Error;
 use crate::{
     func::backend::js_confirmation::{ConfirmationResult, FuncBackendJsConfirmationArgs},
     func::FuncId,
-    impl_standard_model, pk, standard_model, standard_model_accessor, ActionPrototype, Component,
-    ComponentError, ComponentId, ConfirmationResolver, ConfirmationResolverContext,
-    ConfirmationResolverError, DalContext, FuncBinding, FuncBindingError, HistoryEventError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, ActionPrototype,
+    ActionPrototypeError, Component, ComponentError, ComponentId, ConfirmationResolver,
+    ConfirmationResolverContext, ConfirmationResolverError, DalContext, FuncBinding,
+    FuncBindingError, HistoryEventError, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -29,6 +29,8 @@ pub enum ConfirmationPrototypeError {
     FuncBinding(#[from] FuncBindingError),
     #[error(transparent)]
     ConfirmationResolver(#[from] ConfirmationResolverError),
+    #[error(transparent)]
+    ActionPrototype(#[from] ActionPrototypeError),
 }
 
 pub type ConfirmationPrototypeResult<T> = Result<T, ConfirmationPrototypeError>;
@@ -240,9 +242,14 @@ impl ConfirmationPrototype {
         {
             let mut recommended_actions = Vec::with_capacity(value.recommended_actions.len());
             for action_name in value.recommended_actions {
-                let action = ActionPrototype::find_by_attr(ctx, "name", &action_name)
-                    .await?
-                    .pop();
+                let action = ActionPrototype::find_by_name(
+                    ctx,
+                    &action_name,
+                    self.schema_id,
+                    self.schema_variant_id,
+                    system_id,
+                )
+                .await?;
                 if let Some(action) = action {
                     recommended_actions.push(action);
                 } else {
@@ -265,10 +272,10 @@ impl ConfirmationPrototype {
         };
 
         let mut context = ConfirmationResolverContext::new();
-        context.set_component_id(self.component_id);
+        context.set_component_id(component_id);
         context.set_schema_id(self.schema_id);
         context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(self.system_id);
+        context.set_system_id(system_id);
         if let Some(mut resolver) =
             ConfirmationResolver::find_for_prototype(ctx, self.id(), context.clone())
                 .await?
