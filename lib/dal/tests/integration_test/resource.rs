@@ -2,7 +2,7 @@ use dal::DalContext;
 
 use crate::dal::test;
 use dal::test_harness::create_component_and_schema;
-use dal::{Resource, StandardModel, SystemId, WorkflowPrototypeId};
+use dal::{Resource, StandardModel, SystemId};
 
 #[test]
 async fn new(ctx: &DalContext) {
@@ -14,7 +14,6 @@ async fn new(ctx: &DalContext) {
         SystemId::NONE,
         "key".to_owned(),
         serde_json::Value::Null,
-        WorkflowPrototypeId::NONE,
     )
     .await
     .expect("cannot create resource for component/system");
@@ -30,7 +29,6 @@ async fn list_by_component(ctx: &DalContext) {
         SystemId::NONE,
         "key".to_owned(),
         serde_json::Value::Null,
-        WorkflowPrototypeId::NONE,
     )
     .await
     .expect("cannot create resource for component/system");

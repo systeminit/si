@@ -304,5 +304,13 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     };
     ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
 
+    let name = "refresh";
+    let context = ActionPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
+
     Ok(())
 }

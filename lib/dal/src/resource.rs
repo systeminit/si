@@ -10,9 +10,10 @@ use thiserror::Error;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     ws_event::{WsEvent, WsPayload},
-    Component, ComponentId, HistoryEventError, StandardModel, StandardModelError, System, SystemId,
-    Timestamp, Visibility, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
-    WorkflowRunner, WorkflowRunnerError, WriteTenancy, WsEventError,
+    ActionPrototype, ActionPrototypeError, Component, ComponentError, ComponentId,
+    HistoryEventError, StandardModel, StandardModelError, System, SystemId, Timestamp, Visibility,
+    WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowRunner,
+    WorkflowRunnerError, WriteTenancy, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -31,11 +32,19 @@ pub enum ResourceError {
     WorkflowPrototype(#[from] WorkflowPrototypeError),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
+    #[error(transparent)]
+    Component(#[from] Box<ComponentError>),
+    #[error(transparent)]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("system id is required: -1 was used")]
     SystemIdRequired,
     #[error("no component set for resource {0}")]
     NoComponent(ResourceId),
-    #[error("prototype not found {0}")]
+    #[error("no schema variant for component {0}")]
+    NoSchemaVariant(ComponentId),
+    #[error("no schema for component {0}")]
+    NoSchema(ComponentId),
+    #[error("workflow prototype not found for {0}")]
     PrototypeNotFound(WorkflowPrototypeId),
 }
 
@@ -66,7 +75,6 @@ pub struct Resource {
     id: ResourceId,
     key: String,
     data: serde_json::Value,
-    refresh_workflow_id: WorkflowPrototypeId,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -96,20 +104,13 @@ impl Resource {
         system_id: SystemId,
         key: String,
         data: serde_json::Value,
-        refresh_workflow_id: WorkflowPrototypeId,
     ) -> ResourceResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM resource_create_v1($1, $2, $3, $4, $5)",
-                &[
-                    ctx.write_tenancy(),
-                    ctx.visibility(),
-                    &key,
-                    &data,
-                    &refresh_workflow_id,
-                ],
+                "SELECT object FROM resource_create_v1($1, $2, $3, $4)",
+                &[ctx.write_tenancy(), ctx.visibility(), &key, &data],
             )
             .await?;
         let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
@@ -124,7 +125,6 @@ impl Resource {
 
     standard_model_accessor!(key, String, ResourceResult);
     standard_model_accessor!(data, Json<JsonValue>, ResourceResult);
-    standard_model_accessor!(refresh_workflow_id, Pk(WorkflowPrototypeId), ResourceResult);
 
     standard_model_belongs_to!(
         lookup_fn: component,
@@ -154,17 +154,13 @@ impl Resource {
         system_id: SystemId,
         key: String,
         data: serde_json::Value,
-        refresh_workflow_id: WorkflowPrototypeId,
     ) -> ResourceResult<Self> {
         let resource = Self::find_by_key(ctx, component_id, &key).await?;
         if let Some(mut resource) = resource {
             resource.set_data(ctx, data).await?;
-            resource
-                .set_refresh_workflow_id(ctx, refresh_workflow_id)
-                .await?;
             Ok(resource)
         } else {
-            Ok(Self::new(ctx, component_id, system_id, key, data, refresh_workflow_id).await?)
+            Ok(Self::new(ctx, component_id, system_id, key, data).await?)
         }
     }
 
@@ -190,9 +186,31 @@ impl Resource {
             .component(ctx)
             .await?
             .ok_or(ResourceError::NoComponent(self.id))?;
-        let prototype = WorkflowPrototype::get_by_id(ctx, &self.refresh_workflow_id)
+        let schema_variant = component
+            .schema_variant(ctx)
+            .await
+            .map_err(Box::new)?
+            .ok_or_else(|| ResourceError::NoSchemaVariant(*component.id()))?;
+        let schema = component
+            .schema(ctx)
+            .await
+            .map_err(Box::new)?
+            .ok_or_else(|| ResourceError::NoSchema(*component.id()))?;
+        let action = match ActionPrototype::find_by_name(
+            ctx,
+            "refresh",
+            *schema.id(),
+            *schema_variant.id(),
+            SystemId::NONE,
+        )
+        .await?
+        {
+            Some(action) => action,
+            None => return Ok(()),
+        };
+        let prototype = WorkflowPrototype::get_by_id(ctx, &action.workflow_prototype_id())
             .await?
-            .ok_or(ResourceError::PrototypeNotFound(self.refresh_workflow_id))?;
+            .ok_or_else(|| ResourceError::PrototypeNotFound(action.workflow_prototype_id()))?;
         let run_id: usize = rand::random();
         let (_runner, _state, _func_binding_return_values, _created_resources, _updated_resources) =
             WorkflowRunner::run(ctx, run_id, *prototype.id(), *component.id()).await?;
