@@ -412,9 +412,10 @@ impl LocalUdsInstanceSpec {
         if self.qualification {
             cmd.arg("--enable-qualification");
         }
-        if self.confirmation {
-            cmd.arg("--enable-confirmation");
-        }
+        // NOTE: Not implemented yet on the other side.
+        //if self.confirmation {
+        //    cmd.arg("--enable-confirmation");
+        //}
         if self.resolver {
             cmd.arg("--enable-resolver");
         }
