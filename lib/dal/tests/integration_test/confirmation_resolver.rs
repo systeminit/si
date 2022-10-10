@@ -22,11 +22,16 @@ async fn new(ctx: &DalContext) {
         .pop()
         .expect("unable to find for context");
 
-    let action = ActionPrototype::find_by_attr(ctx, "name", &"create")
-        .await
-        .expect("unable to find action")
-        .pop()
-        .expect("unable to find action");
+    let action = ActionPrototype::find_by_name(
+        ctx,
+        "create",
+        prototype.schema_id(),
+        prototype.schema_variant_id(),
+        SystemId::NONE,
+    )
+    .await
+    .expect("unable to find action")
+    .expect("unable to find action");
 
     let mut context = ConfirmationResolverContext::new();
     context.set_schema_id(prototype.schema_id());

@@ -12,6 +12,8 @@ use crate::{
     Timestamp, Visibility, WorkflowPrototypeId, WriteTenancy,
 };
 
+const FIND_BY_NAME: &str = include_str!("./queries/action_prototype_find_by_name.sql");
+
 #[derive(Error, Debug)]
 pub enum ActionPrototypeError {
     #[error("error serializing/deserializing json: {0}")]
@@ -218,6 +220,33 @@ impl ActionPrototype {
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
+        Ok(object)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn find_by_name(
+        ctx: &DalContext,
+        name: &str,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+        system_id: SystemId,
+    ) -> ActionPrototypeResult<Option<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_BY_NAME,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &name,
+                    &system_id,
+                    &schema_variant_id,
+                    &schema_id,
+                ],
+            )
+            .await?;
+        let object = standard_model::option_object_from_row(rows)?;
         Ok(object)
     }
 

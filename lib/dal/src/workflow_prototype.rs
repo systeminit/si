@@ -6,15 +6,12 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    func::FuncId,
-    impl_standard_model, pk,
-    standard_model::{self, objects_from_rows},
-    standard_model_accessor,
-    workflow_resolver::WorkflowResolverContext,
-    AttributeReadContext, Component, ComponentId, ComponentView, DalContext, Func, FuncBinding,
-    FuncBindingError, HistoryEventError, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, Timestamp, Visibility, WorkflowError, WorkflowResolver,
-    WorkflowResolverError, WorkflowView, WriteTenancy, WsEvent, WsEventError,
+    func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor,
+    workflow_resolver::WorkflowResolverContext, AttributeReadContext, Component, ComponentId,
+    ComponentView, DalContext, Func, FuncBinding, FuncBindingError, HistoryEventError, SchemaId,
+    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
+    WorkflowError, WorkflowResolver, WorkflowResolverError, WorkflowView, WriteTenancy, WsEvent,
+    WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -319,7 +316,7 @@ impl WorkflowPrototype {
                 ],
             )
             .await?;
-        let object = objects_from_rows(rows)?;
+        let object = standard_model::objects_from_rows(rows)?;
         Ok(object)
     }
 
