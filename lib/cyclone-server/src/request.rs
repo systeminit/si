@@ -1,5 +1,5 @@
 use cyclone_core::{
-    CodeGenerationRequest, CommandRunRequest, ComponentKind, ComponentView,
+    CodeGenerationRequest, CommandRunRequest, ComponentKind, ComponentView, ConfirmationRequest,
     QualificationCheckRequest, ResolverFunctionRequest, SensitiveString, WorkflowResolveRequest,
 };
 use serde_json::Value;
@@ -279,7 +279,28 @@ impl ListSecrets for CommandRunRequest {
     }
 }
 
+impl ListSecrets for ConfirmationRequest {
+    fn list_secrets(
+        &self,
+        _key: &DecryptionKey,
+    ) -> Result<Vec<SensitiveString>, DecryptionKeyError> {
+        // TODO(fnichol): we'll need to populate/consume secrets here shortly
+        Ok(vec![])
+    }
+}
+
 impl DecryptRequest for CommandRunRequest {
+    fn decrypt_request(
+        self,
+        _key: &DecryptionKey,
+    ) -> Result<serde_json::Value, DecryptionKeyError> {
+        let value = serde_json::to_value(&self)?;
+        // TODO(fnichol): we'll need to process the request with decrypted secrets
+        Ok(value)
+    }
+}
+
+impl DecryptRequest for ConfirmationRequest {
     fn decrypt_request(
         self,
         _key: &DecryptionKey,

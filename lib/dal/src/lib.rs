@@ -9,6 +9,7 @@ use strum_macros::{Display, EnumString, EnumVariantNames};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+pub mod action_prototype;
 pub mod attribute;
 pub mod billing_account;
 pub mod builtins;
@@ -18,6 +19,8 @@ pub mod code_generation_prototype;
 pub mod code_generation_resolver;
 pub mod code_view;
 pub mod component;
+pub mod confirmation_prototype;
+pub mod confirmation_resolver;
 pub mod context;
 pub mod cyclone_key_pair;
 pub mod diagram;
@@ -69,6 +72,9 @@ pub mod workspace;
 pub mod write_tenancy;
 pub mod ws_event;
 
+pub use action_prototype::{
+    ActionPrototype, ActionPrototypeContext, ActionPrototypeError, ActionPrototypeId,
+};
 pub use attribute::value::view::AttributeView;
 pub use attribute::{
     context::{
@@ -101,6 +107,14 @@ pub use code_generation_resolver::{
 };
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{Component, ComponentError, ComponentId, ComponentView};
+pub use confirmation_prototype::{
+    ConfirmationPrototype, ConfirmationPrototypeContext, ConfirmationPrototypeError,
+    ConfirmationPrototypeId,
+};
+pub use confirmation_resolver::{
+    ConfirmationResolver, ConfirmationResolverContext, ConfirmationResolverError,
+    ConfirmationResolverId,
+};
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
     Transactions, TransactionsError,

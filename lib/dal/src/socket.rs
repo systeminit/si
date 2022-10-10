@@ -157,6 +157,7 @@ impl Socket {
         lookup_fn: types,
         associate_fn: add_type,
         disassociate_fn: remove_type,
+        disassociate_all_fn: remove_all_types,
         table_name: "socket_many_to_many_schema_variants",
         left_table: "sockets",
         left_id: SocketId,

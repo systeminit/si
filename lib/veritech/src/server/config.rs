@@ -126,6 +126,10 @@ fn create_hardcoded_cyclone_spec() -> Result<CycloneSpec> {
             .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?
             .resolver()
             .qualification()
+            .confirmation()
+            .code_generation()
+            .workflow()
+            .command()
             .build()
             .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?,
     ))

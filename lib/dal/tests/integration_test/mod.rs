@@ -1,3 +1,4 @@
+mod action_prototype;
 mod attribute;
 mod billing_account;
 mod builtins;
@@ -6,6 +7,8 @@ mod change_set;
 mod code_generation_prototype;
 mod code_generation_resolver;
 mod component;
+mod confirmation_prototype;
+mod confirmation_resolver;
 mod diagram;
 mod edge;
 mod func;

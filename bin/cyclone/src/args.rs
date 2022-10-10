@@ -80,6 +80,30 @@ pub(crate) struct Args {
     #[clap(long, group = "code_generation")]
     pub(crate) disable_code_generation: bool,
 
+    /// Enables workflow endpoint.
+    #[clap(long, group = "workflow")]
+    pub(crate) enable_workflow: bool,
+
+    /// Disables workflow endpoint.
+    #[clap(long, group = "workflow")]
+    pub(crate) disable_workflow: bool,
+
+    /// Enables command run endpoint.
+    #[clap(long, group = "command_run")]
+    pub(crate) enable_command_run: bool,
+
+    /// Disables command run endpoint.
+    #[clap(long, group = "command_run")]
+    pub(crate) disable_command_run: bool,
+
+    /// Enables configuration endpoint.
+    #[clap(long, group = "configuration")]
+    pub(crate) enable_configuration: bool,
+
+    /// Disables configuration endpoint.
+    #[clap(long, group = "configuration")]
+    pub(crate) disable_configuration: bool,
+
     /// Path to the lang server program.
     #[clap(long, env = "SI_LANG_SERVER", hide_env = true)]
     pub(crate) lang_server: PathBuf,

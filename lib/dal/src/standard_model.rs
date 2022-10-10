@@ -330,6 +330,27 @@ pub async fn disassociate_many_to_many<
     Ok(())
 }
 
+#[instrument(skip(ctx))]
+pub async fn disassociate_all_many_to_many<LeftId: Send + Sync + ToSql>(
+    ctx: &DalContext,
+    table: &str,
+    left_object_id: &LeftId,
+) -> StandardModelResult<()> {
+    ctx.txns()
+        .pg()
+        .query_one(
+            "SELECT disassociate_all_many_to_many_v1($1, $2, $3, $4)",
+            &[
+                &table,
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                &left_object_id,
+            ],
+        )
+        .await?;
+    Ok(())
+}
+
 pub fn objects_from_rows<OBJECT: DeserializeOwned>(
     rows: Vec<PgRow>,
 ) -> StandardModelResult<Vec<OBJECT>> {

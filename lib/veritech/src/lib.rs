@@ -28,15 +28,17 @@ pub use client::{Client, ClientError, ClientResult};
 #[cfg(feature = "client")]
 pub use cyclone_core::{
     CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest,
-    CommandRunResultSuccess, ComponentKind, ComponentView, EncryptionKey, EncryptionKeyError,
-    FunctionResult, FunctionResultFailure, OutputStream, QualificationCheckComponent,
-    QualificationCheckRequest, QualificationCheckResultSuccess, QualificationSubCheck,
-    QualificationSubCheckStatus, ResolverFunctionComponent, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ResourceView, SensitiveContainer, SystemView,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    CommandRunResultSuccess, ComponentKind, ComponentView, ConfirmationRequest,
+    ConfirmationResultSuccess, EncryptionKey, EncryptionKeyError, FunctionResult,
+    FunctionResultFailure, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
+    QualificationCheckResultSuccess, QualificationSubCheck, QualificationSubCheckStatus,
+    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ResourceView, SensitiveContainer, SystemView, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 
 const NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT: &str = "veritech.fn.qualificationcheck";
+const NATS_CONFIRMATION_DEFAULT_SUBJECT: &str = "veritech.fn.confirmation";
 const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfunction";
 const NATS_CODE_GENERATION_DEFAULT_SUBJECT: &str = "veritech.fn.codegeneration";
 const NATS_WORKFLOW_RESOLVE_DEFAULT_SUBJECT: &str = "veritech.fn.workflowresolve";
@@ -54,6 +56,10 @@ pub(crate) fn reply_mailbox_for_result(reply_mailbox: &str) -> String {
 
 pub(crate) fn nats_qualification_check_subject(prefix: Option<&str>) -> String {
     nats_subject(prefix, NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT)
+}
+
+pub(crate) fn nats_confirmation_subject(prefix: Option<&str>) -> String {
+    nats_subject(prefix, NATS_CONFIRMATION_DEFAULT_SUBJECT)
 }
 
 pub(crate) fn nats_resolver_function_subject(prefix: Option<&str>) -> String {

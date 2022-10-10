@@ -1,0 +1,6 @@
+{
+  "kind": "JsCommand",
+  "response_type": "Command",
+  "code_file": "dockerImageCreateCommand.js",
+  "code_entrypoint": "create"
+}

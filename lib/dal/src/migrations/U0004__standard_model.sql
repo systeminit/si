@@ -841,6 +841,37 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
+CREATE OR REPLACE FUNCTION disassociate_all_many_to_many_v1(this_table_name text,
+                                                            this_tenancy jsonb,
+                                                            this_visibility jsonb,
+                                                            this_left_object_id bigint
+) RETURNS VOID AS
+$$
+DECLARE
+    update_query text;
+BEGIN
+
+    update_query :=
+            format('UPDATE %1$I SET visibility_deleted_at = now() ' ||
+                   '  WHERE left_object_id = %2$L ' ||
+                   '    AND in_tenancy_v1(%3$L, ' ||
+                   '                    %1$I.tenancy_universal, ' ||
+                   '                    %1$I.tenancy_billing_account_ids,' ||
+                   '                    %1$I.tenancy_organization_ids,' ||
+                   '                    %1$I.tenancy_workspace_ids)' ||
+                   '    AND is_visible_v1(%4$L,' ||
+                   '                    %1$I.visibility_change_set_pk,' ||
+                   '                    %1$I.visibility_deleted_at)',
+                   this_table_name,
+                   this_left_object_id,
+                   this_tenancy,
+                   this_visibility
+                );
+    RAISE DEBUG 'disassociate all many to many: %', update_query;
+    EXECUTE update_query;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
+
 CREATE OR REPLACE FUNCTION set_belongs_to_v1(this_table_name text,
                                              this_tenancy jsonb,
                                              this_visibility jsonb,

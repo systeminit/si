@@ -10,10 +10,11 @@ pub use watch::{Watch, WatchError, WatchStarted};
 
 pub use cyclone_core::{
     CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
-    EncryptionKey, EncryptionKeyError, LivenessStatus, LivenessStatusParseError,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
-    ReadinessStatusParseError, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ConfirmationRequest, ConfirmationResultSuccess, EncryptionKey, EncryptionKeyError,
+    LivenessStatus, LivenessStatusParseError, QualificationCheckRequest,
+    QualificationCheckResultSuccess, ReadinessStatus, ReadinessStatusParseError,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 pub use hyper::client::connect::Connection;
 pub use hyperlocal::UnixStream;

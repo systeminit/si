@@ -70,6 +70,7 @@ impl QualificationCheck {
         lookup_fn: schema_variants,
         associate_fn: add_schema_variant,
         disassociate_fn: remove_schema_variant,
+        disassociate_all_fn: remove_all_schema_variants,
         table_name: "qualification_check_many_to_many_schema_variants",
         left_table: "qualification_checks",
         left_id: QualificationCheckId,

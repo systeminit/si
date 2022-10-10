@@ -1174,37 +1174,22 @@ impl Component {
         ctx: &DalContext,
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
-        let attribute_context = AttributeReadContext {
-            prop_id: None,
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            component_id: Some(*self.id()),
-            system_id: Some(system_id),
-            ..AttributeReadContext::default()
-        };
-
-        let component = ComponentView::for_context(ctx, attribute_context).await?;
-        Ok(component)
+        Self::view(ctx, self.id, system_id).await
     }
 
-    pub async fn veritech_qualification_check_component(
-        &self,
+    pub async fn view(
         ctx: &DalContext,
+        component_id: ComponentId,
         system_id: SystemId,
-    ) -> ComponentResult<veritech::QualificationCheckComponent> {
-        let schema = self
+    ) -> ComponentResult<ComponentView> {
+        let component = Self::get_by_id(ctx, &component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(component_id))?;
+        let schema = component
             .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
-        let schema_variant = self
+        let schema_variant = component
             .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
@@ -1212,25 +1197,28 @@ impl Component {
             prop_id: None,
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
-            component_id: Some(*self.id()),
+            component_id: Some(*component.id()),
             system_id: Some(system_id),
             ..AttributeReadContext::default()
         };
+        Ok(ComponentView::for_context(ctx, read_context).await?)
+    }
 
+    pub async fn veritech_qualification_check_component(
+        &self,
+        ctx: &DalContext,
+        system_id: SystemId,
+    ) -> ComponentResult<veritech::QualificationCheckComponent> {
         let parent_ids = Edge::list_parents_for_component(ctx, *self.id()).await?;
 
         let mut parents = Vec::new();
         for id in parent_ids {
-            let read_context = AttributeReadContext {
-                component_id: Some(id),
-                ..read_context
-            };
-            let view = ComponentView::for_context(ctx, read_context).await?;
-            parents.push(veritech::ComponentView::from(view));
+            let view = Self::view(ctx, id, system_id).await?;
+            parents.push(view.into());
         }
 
         let qualification_view = veritech::QualificationCheckComponent {
-            data: ComponentView::for_context(ctx, read_context).await?.into(),
+            data: Self::view(ctx, self.id, system_id).await?.into(),
             codes: Self::list_code_generated_by_component_id(ctx, *self.id(), system_id)
                 .await?
                 .into_iter()

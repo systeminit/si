@@ -96,12 +96,12 @@ async fn fb(ctx: &DalContext, name: &str, args: serde_json::Value) -> serde_json
 
 #[test]
 async fn resolve(ctx: &DalContext) {
-    let title = "Docker Image Resource Refresh";
+    let title = "Docker Image Resource Create";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
         .expect("unable to find workflow by attr")
         .pop()
-        .expect("unable to find docker image resource refresh workflow prototype");
+        .expect("unable to find docker image resource create workflow prototype");
 
     let schema = Schema::find_by_attr(ctx, "name", &"Docker Image")
         .await
@@ -135,10 +135,10 @@ async fn resolve(ctx: &DalContext) {
         .expect("unable to extract tree");
 
     let expected_json = json!({
-        "name": "si:dockerImageRefreshWorkflow",
+        "name": "si:dockerImageCreateWorkflow",
         "kind": "conditional",
         "steps": [
-            { "func_binding": fb(ctx, "si:dockerImageRefreshCommand", json!([ serde_json::to_value(component_view).expect("unable to serialize component view") ])).await },
+            { "func_binding": fb(ctx, "si:dockerImageCreateCommand", json!([ serde_json::to_value(component_view).expect("unable to serialize component view") ])).await },
         ],
     });
     assert_eq!(
@@ -149,12 +149,12 @@ async fn resolve(ctx: &DalContext) {
 
 #[test]
 async fn run(ctx: &DalContext) {
-    let title = "Docker Image Resource Refresh";
+    let title = "Docker Image Resource Create";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
         .expect("unable to find workflow by attr")
         .pop()
-        .expect("unable to find docker image resource refresh workflow prototype");
+        .expect("unable to find docker image resource create workflow prototype");
 
     let schema = Schema::find_by_attr(ctx, "name", &"Docker Image")
         .await

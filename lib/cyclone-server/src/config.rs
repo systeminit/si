@@ -45,6 +45,9 @@ pub struct Config {
     #[builder(default = "true")]
     enable_command_run: bool,
 
+    #[builder(default = "true")]
+    enable_confirmation: bool,
+
     #[builder(default = "IncomingStream::default()")]
     incoming_stream: IncomingStream,
 
@@ -102,6 +105,12 @@ impl Config {
     #[must_use]
     pub fn enable_command_run(&self) -> bool {
         self.enable_command_run
+    }
+
+    /// Gets a reference to the config's enable confirmation
+    #[must_use]
+    pub fn enable_confirmation(&self) -> bool {
+        self.enable_confirmation
     }
 
     /// Gets a reference to the config's incoming stream.

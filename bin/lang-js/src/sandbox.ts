@@ -36,6 +36,8 @@ const codeGenerationSandbox = {
   YAML: { stringify: yaml.dump },
 };
 
+const confirmationSandbox = {};
+
 const workflowResolveSandbox = {};
 
 function commandRunSandbox(executionId: string): Sandbox {
@@ -73,6 +75,11 @@ export function createSandbox(
       return {
         ...commonSandbox(executionId),
         ...resolverFunctionSandbox,
+      };
+    case FunctionKind.Confirmation:
+      return {
+        ...commonSandbox(executionId),
+        ...confirmationSandbox,
       };
     case FunctionKind.WorkflowResolve:
       return {

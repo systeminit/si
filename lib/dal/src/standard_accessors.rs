@@ -4,6 +4,7 @@ macro_rules! standard_model_many_to_many {
         lookup_fn: $lookup_fn:ident,
         associate_fn: $associate_fn:ident,
         disassociate_fn: $disassociate_fn:ident,
+        disassociate_all_fn: $disassociate_all_fn:ident,
         table_name: $table_name:expr,
         left_table: $left_table:expr,
         left_id: $left_id:ident,
@@ -72,6 +73,27 @@ macro_rules! standard_model_many_to_many {
                 &Self::history_event_label(vec![stringify!($disassociate_fn)]),
                 &Self::history_event_message(format!("disassociated {}", stringify!($returns))),
                 &serde_json::json![{ "pk": self.pk, "left_id": self.id(), "right_id": &right_id  }],
+            )
+            .await?;
+            Ok(())
+        }
+
+        #[telemetry::tracing::instrument(skip_all)]
+        pub async fn $disassociate_all_fn(
+            &self,
+            ctx: &$crate::DalContext,
+        ) -> $result_type<()> {
+            $crate::standard_model::disassociate_all_many_to_many(
+                ctx,
+                $table_name,
+                self.id(),
+            )
+            .await?;
+            let _history_event = $crate::HistoryEvent::new(
+                ctx,
+                &Self::history_event_label(vec![stringify!($disassociate_fn)]),
+                &Self::history_event_message(format!("disassociated all from {}", self.id)),
+                &serde_json::json![{ "pk": self.pk, "left_id": self.id() }],
             )
             .await?;
             Ok(())
