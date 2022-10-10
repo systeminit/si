@@ -317,11 +317,7 @@ pub async fn veritech_server_for_uds_cyclone(
                     .to_string(),
             )
             .expect("failed to setup lang_js_cmd_path")
-            .qualification()
-            .resolver()
-            .code_generation()
-            .workflow()
-            .command()
+            .all_endpoints()
             .build()
             .expect("failed to build cyclone spec"),
     );

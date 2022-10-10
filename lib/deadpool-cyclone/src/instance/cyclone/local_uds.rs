@@ -481,6 +481,16 @@ impl LocalUdsInstanceSpecBuilder {
     pub fn command(&mut self) -> &mut Self {
         self._command(true)
     }
+
+    /// Enables all available endpoints for a spawned Cyclone server
+    pub fn all_endpoints(&mut self) -> &mut Self {
+        self.code_generation()
+            .command()
+            .confirmation()
+            .qualification()
+            .resolver()
+            .workflow()
+    }
 }
 
 /// Socket strategy when spawning [`Instance`]s using a local Unix domain socket.

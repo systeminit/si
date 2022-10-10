@@ -96,6 +96,14 @@ pub(crate) struct Args {
     #[clap(long, group = "command_run")]
     pub(crate) disable_command_run: bool,
 
+    /// Enables confirmation endpoint.
+    #[clap(long, group = "confirmation")]
+    pub(crate) enable_confirmation: bool,
+
+    /// Disables confirmation endpoint.
+    #[clap(long, group = "confirmation")]
+    pub(crate) disable_confirmation: bool,
+
     /// Enables configuration endpoint.
     #[clap(long, group = "configuration")]
     pub(crate) enable_configuration: bool,
@@ -164,6 +172,12 @@ impl TryFrom<Args> for Config {
             builder.enable_code_generation(true);
         } else if args.disable_code_generation {
             builder.enable_code_generation(false);
+        }
+
+        if args.enable_confirmation {
+            builder.enable_confirmation(true);
+        } else if args.disable_confirmation {
+            builder.enable_confirmation(false);
         }
 
         if args.oneshot {
