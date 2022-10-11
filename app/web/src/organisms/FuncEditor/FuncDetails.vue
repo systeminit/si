@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="props.funcId > 0"
+    v-if="funcId > 0"
     class="absolute h-full w-full flex flex-col overflow-hidden"
   >
     <SiTabGroup :selected-index="0">
@@ -83,16 +83,12 @@
             <QualificationDetails
               v-if="associations && associations.type === 'qualification'"
               v-model="associations"
-              :components="componentDropdownOptions"
-              :schema-variants="schemaVariantDropdownOptions"
               :disabled="editingFunc.isBuiltin"
               @change="updateFunc"
             />
             <CodeGenerationDetails
               v-if="associations && associations.type === 'codeGeneration'"
               v-model="associations"
-              :components="componentDropdownOptions"
-              :schema-variants="schemaVariantDropdownOptions"
               :disabled="editingFunc.isBuiltin"
               @change="updateFunc"
             />
@@ -104,7 +100,7 @@
           >
             <FuncArguments
               v-if="associations && associations.type === 'attribute'"
-              :func-id="props.funcId"
+              :func-id="funcId"
               :arguments="associations.arguments"
               :disabled="editingFunc.isBuiltin"
             />
@@ -116,8 +112,6 @@
             v-if="associations && associations.type === 'attribute'"
             :func-id="funcId"
             :associations="associations"
-            :schema-variants="schemaVariantDropdownOptions"
-            :components="componentDropdownOptions"
           />
         </TabPanel>
       </template>
@@ -130,54 +124,32 @@
 
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
-import { ref, toRef, watch, computed, provide } from "vue";
-import { take } from "rxjs/operators";
-import _ from "lodash";
+import { toRef, ref, watch, computed, provide } from "vue";
+import { storeToRefs } from "pinia";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { EditingFunc } from "@/observable/func";
 import VButton from "@/molecules/VButton.vue";
-import { FuncService, FuncAssociations } from "@/service/func";
+import { FuncAssociations } from "@/service/func";
 import { FuncBackendKind, FuncArgument } from "@/api/sdf/dal/func";
-import { useComponentsStore } from "@/store/components.store";
-import {
-  changeFunc,
-  funcById,
-  funcState,
-  insertFunc,
-  nullEditingFunc,
-} from "./func_state";
-
+import { useFuncStore, nullEditingFunc } from "@/store/funcs.store";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 
-const props = defineProps<{
-  funcId: number;
-}>();
+const funcStore = useFuncStore();
+const { getFuncById } = storeToRefs(funcStore);
 
-const isDevMode = import.meta.env.DEV;
+const props = defineProps<{
+  funcId?: number;
+}>();
 
 const funcId = toRef(props, "funcId", -1);
 
-const componentsStore = useComponentsStore();
-const schemaVariantDropdownOptions = computed(() =>
-  _.map(componentsStore.schemaVariants, (sv) => ({
-    label: sv.schemaName,
-    value: sv.id,
-  })),
-);
-provide("schemaVariantOptions", schemaVariantDropdownOptions);
-const componentDropdownOptions = computed(() =>
-  _.map(componentsStore.allComponents, (c) => ({
-    label: c.displayName,
-    value: c.id,
-  })),
-);
-provide("components", componentDropdownOptions);
+const isDevMode = import.meta.env.DEV;
 
 const editingFunc = ref<EditingFunc>(nullEditingFunc);
 const associations = ref<FuncAssociations | undefined>(undefined);
@@ -193,31 +165,26 @@ const funcArgumentsIdMap = computed(() =>
 provide("funcArgumentsIdMap", funcArgumentsIdMap);
 
 watch(
-  [funcId, funcState],
-  async ([currentFuncId]) => {
-    editingFunc.value = funcById(currentFuncId) ?? nullEditingFunc;
+  funcId,
+  (newFuncId) => {
+    editingFunc.value = getFuncById.value(newFuncId) ?? nullEditingFunc;
     associations.value = editingFunc.value.associations;
   },
   { immediate: true },
 );
 
 const updateFunc = () => {
-  changeFunc({
+  funcStore.UPDATE_FUNC({
     ...editingFunc.value,
     associations: associations.value,
   });
 };
 
 const revertFunc = async () => {
-  const result = await FuncService.revertFunc({ id: editingFunc.value.id });
-  if (result.success) {
-    FuncService.getFunc({ id: editingFunc.value.id })
-      .pipe(take(1))
-      .subscribe(insertFunc);
-  }
+  funcStore.REVERT_FUNC(editingFunc.value.id);
 };
 
 const execFunc = () => {
-  FuncService.execFunc({ id: editingFunc.value.id });
+  funcStore.EXEC_FUNC(editingFunc.value.id);
 };
 </script>

@@ -10,7 +10,7 @@
     <RunOnSelector
       v-model="selectedComponents"
       thing-label="components"
-      :options="components"
+      :options="componentOptions"
       :disabled="props.disabled"
       @change="updateAssociations"
     />
@@ -20,7 +20,7 @@
     <RunOnSelector
       v-model="selectedVariants"
       thing-label="schema variants"
-      :options="schemaVariants"
+      :options="schemaVariantOptions"
       :disabled="props.disabled"
       @change="updateAssociations"
     />
@@ -39,15 +39,18 @@
 
 <script lang="ts" setup>
 import { ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
 import { CodeGenerationAssociations } from "@/service/func";
 import { toOptionValues } from "@/organisms/FuncEditor/utils";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
+import { useFuncStore } from "@/store/funcs.store";
 import RunOnSelector from "./RunOnSelector.vue";
 
+const funcStore = useFuncStore();
+const { componentOptions, schemaVariantOptions } = storeToRefs(funcStore);
+
 const props = defineProps<{
-  schemaVariants: Option[];
-  components: Option[];
   modelValue: CodeGenerationAssociations;
   disabled?: boolean;
 }>();
@@ -71,16 +74,17 @@ const formatOptions: Option[] = [
   },
 ];
 
+const getFormatOption = (format: CodeLanguage): Option =>
+  formatOptions.find(({ value }) => value === (format as string)) ??
+  formatOptions[2];
+
 const selectedVariants = ref<Option[]>(
-  toOptionValues(props.schemaVariants, props.modelValue.schemaVariantIds),
+  toOptionValues(schemaVariantOptions.value, props.modelValue.schemaVariantIds),
 );
 const selectedComponents = ref<Option[]>(
-  toOptionValues(props.components, props.modelValue.componentIds),
+  toOptionValues(componentOptions.value, props.modelValue.componentIds),
 );
-const selectedFormat = ref<Option>(
-  formatOptions.find(({ value }) => value === props.modelValue.format) ??
-    formatOptions[2],
-);
+const selectedFormat = ref<Option>(getFormatOption(props.modelValue.format));
 
 const emit = defineEmits<{
   (e: "update:modelValue", v: CodeGenerationAssociations): void;
@@ -91,13 +95,14 @@ watch(
   () => props.modelValue,
   (mv) => {
     selectedVariants.value = toOptionValues(
-      props.schemaVariants,
+      schemaVariantOptions.value,
       mv.schemaVariantIds,
     );
     selectedComponents.value = toOptionValues(
-      props.components,
+      componentOptions.value,
       mv.componentIds,
     );
+    selectedFormat.value = getFormatOption(props.modelValue.format);
   },
   { immediate: true },
 );

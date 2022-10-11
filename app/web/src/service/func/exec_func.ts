@@ -1,8 +1,5 @@
-import { firstValueFrom } from "rxjs";
-import Bottle from "bottlejs";
-import { ApiResponse, SDF } from "@/api/sdf";
-import { GlobalErrorService } from "@/service/global_error";
-import { visibility$ } from "@/observable/visibility";
+import { Visibility } from "@/api/sdf/dal/visibility";
+import { ApiRequest } from "@/utils/pinia_api_tools";
 
 export interface ExecFuncRequest {
   id: number;
@@ -12,23 +9,13 @@ export interface ExecFuncResponse {
   success: boolean;
 }
 
-export const execFunc: (
-  func: ExecFuncRequest,
-) => Promise<ExecFuncResponse> = async (args) => {
-  const visibility = await firstValueFrom(visibility$);
-  const bottle = Bottle.pop("default");
-  const sdf: SDF = bottle.container.SDF;
-
-  const response = await firstValueFrom(
-    sdf.post<ApiResponse<ExecFuncResponse>>("func/exec_func", {
-      ...args,
-      ...visibility,
-    }),
-  );
-
-  if (response.error) {
-    GlobalErrorService.set(response);
-    return { success: false };
-  }
-  return response as ExecFuncResponse;
-};
+export const execFunc = (
+  params: ExecFuncRequest & Visibility,
+  onSuccess?: (response: ExecFuncResponse) => void,
+) =>
+  new ApiRequest<ExecFuncResponse, typeof params>({
+    method: "post",
+    url: "func/exec_func",
+    params,
+    onSuccess,
+  });

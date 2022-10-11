@@ -10,7 +10,7 @@
     <RunOnSelector
       v-model="selectedComponents"
       thing-label="components"
-      :options="components"
+      :options="componentOptions"
       :disabled="props.disabled"
       @change="updateAssociations"
     />
@@ -20,7 +20,7 @@
     <RunOnSelector
       v-model="selectedVariants"
       thing-label="schema variants"
-      :options="schemaVariants"
+      :options="schemaVariantOptions"
       :disabled="props.disabled"
       @change="updateAssociations"
     />
@@ -29,23 +29,26 @@
 
 <script lang="ts" setup>
 import { ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import { Option } from "@/molecules/SelectMenu.vue";
 import { QualificationAssocations } from "@/service/func";
 import { toOptionValues } from "@/organisms/FuncEditor/utils";
+import { useFuncStore } from "@/store/funcs.store";
 import RunOnSelector from "./RunOnSelector.vue";
 
+const funcStore = useFuncStore();
+const { componentOptions, schemaVariantOptions } = storeToRefs(funcStore);
+
 const props = defineProps<{
-  schemaVariants: Option[];
-  components: Option[];
   modelValue: QualificationAssocations;
   disabled?: boolean;
 }>();
 
 const selectedVariants = ref<Option[]>(
-  toOptionValues(props.schemaVariants, props.modelValue.schemaVariantIds),
+  toOptionValues(schemaVariantOptions.value, props.modelValue.schemaVariantIds),
 );
 const selectedComponents = ref<Option[]>(
-  toOptionValues(props.components, props.modelValue.componentIds),
+  toOptionValues(componentOptions.value, props.modelValue.componentIds),
 );
 
 const emit = defineEmits<{
@@ -57,11 +60,11 @@ watch(
   () => props.modelValue,
   (mv) => {
     selectedVariants.value = toOptionValues(
-      props.schemaVariants,
+      schemaVariantOptions.value,
       mv.schemaVariantIds,
     );
     selectedComponents.value = toOptionValues(
-      props.components,
+      componentOptions.value,
       mv.componentIds,
     );
   },

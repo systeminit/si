@@ -5,12 +5,7 @@
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
       <div class="relative flex-grow">
-        <FuncPicker
-          :func-list="funcList"
-          :selected-func-id="selectedFuncId"
-          @selected-func="selectFunc"
-          @create-func="createFunc"
-        />
+        <FuncPicker @create-func="createFunc" />
       </div>
     </div>
   </SiPanel>
@@ -18,11 +13,7 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
     <div class="inset-2 bottom-0 absolute">
-      <FuncEditorTabs
-        v-if="selectedFuncId > 0 && !isLoading"
-        :selected-func-id="selectedFuncId"
-        @selected-func="selectFunc"
-      />
+      <FuncEditorTabs v-if="selectedFuncId > 0" />
       <div
         v-else
         class="p-2 text-center text-neutral-400 dark:text-neutral-300"
@@ -31,39 +22,28 @@
       </div>
     </div>
   </div>
-  <SiPanel
-    remember-size-key="func-details"
-    :hidden="isLoading"
-    side="right"
-    :min-size="200"
-  >
-    <!-- if hiding is added later, condition is selectedFuncId < 1 -->
-    <FuncDetails :func-id="selectedFuncId" />
+  <SiPanel remember-size-key="func-details" side="right" :min-size="200">
+    <FuncDetails v-if="!isLoadingFunc" :func-id="funcIdParam" />
   </SiPanel>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, provide } from "vue";
-import { untilUnmounted, refFrom } from "vuse-rx";
-import { bufferTime } from "rxjs/operators";
-import { firstValueFrom } from "rxjs";
+import { toRef, watch } from "vue";
 import _ from "lodash";
+import { storeToRefs } from "pinia";
 import SiPanel from "@/atoms/SiPanel.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
 import FuncEditorTabs from "@/organisms/FuncEditor/FuncEditorTabs.vue";
-import { FuncService } from "@/service/func";
-import { SaveFuncRequest } from "@/service/func/save_func";
 import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
-import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
-import { visibility$ } from "@/observable/visibility";
-import { saveFuncToBackend$ } from "@/observable/func";
-import { eventChangeSetWritten$ } from "@/service/change_set";
+import { ListedFuncView } from "@/service/func/list_funcs";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { DevService } from "@/service/dev";
-import { ListInputSourcesResponse } from "@/service/func/list_input_sources";
-import { clearFuncs, updateFuncFromSave } from "../FuncEditor/func_state";
+import { useFuncStore, createFuncPromise } from "@/store/funcs.store";
+
+const funcStore = useFuncStore();
+const { isLoadingFunc, selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 
@@ -71,58 +51,24 @@ const props = defineProps<{
   funcId?: number;
 }>();
 
-const selectedFuncId = computed(() => {
-  const funcId = props.funcId ?? -1;
-  if (Number.isNaN(funcId)) {
-    return -1;
-  }
-  return funcId;
-});
+const funcIdParam = toRef(props, "funcId", -1);
+
+watch(
+  () => funcIdParam.value,
+  (funcIdParam) => {
+    let funcId = funcIdParam ?? -1;
+    if (Number.isNaN(funcIdParam)) {
+      funcId = -1;
+    }
+    funcStore.SELECT_FUNC(funcId);
+  },
+  { immediate: true },
+);
 
 const routeToFunc = useRouteToFunc();
 const selectFunc = (func: ListedFuncView) => {
   routeToFunc(func.id);
 };
-
-const isLoading = ref(true);
-const funcList = ref<ListFuncsResponse>({ funcs: [] });
-const inputSources = refFrom<ListInputSourcesResponse>(
-  FuncService.listInputSources(),
-  { sockets: [], props: [] },
-);
-
-// internal provider id to prop or socket name
-const idToSourceNameMap = computed(() => {
-  const idMap: { [key: number]: string } = {};
-  for (const socket of inputSources?.value.sockets ?? []) {
-    idMap[socket.internalProviderId] = `Socket: ${socket.name}`;
-  }
-  for (const prop of inputSources?.value.props ?? []) {
-    if (prop.internalProviderId) {
-      idMap[prop.internalProviderId] = `Attribute: ${prop.path}${prop.name}`;
-    }
-  }
-
-  return idMap;
-});
-
-// prop id to prop name
-const idToPropNameMap = computed(() => {
-  const idMap: { [key: number]: string } = {};
-  for (const prop of inputSources?.value.props ?? []) {
-    idMap[prop.propId] = `${prop.path}${prop.name}`;
-  }
-  return idMap;
-});
-
-provide("inputSources", inputSources);
-provide("idToSourceNameMap", idToSourceNameMap);
-provide("idToPropNameMap", idToPropNameMap);
-
-FuncService.listFuncs().subscribe((funcs) => {
-  funcList.value = funcs;
-  isLoading.value = false;
-});
 
 const createFunc = async ({
   isBuiltin,
@@ -136,37 +82,8 @@ const createFunc = async ({
   const func =
     isDevMode && isBuiltin && !_.isNil(name)
       ? await DevService.createBuiltinFunc({ name, kind })
-      : await FuncService.createFunc({ kind });
+      : await createFuncPromise({ kind });
 
-  await firstValueFrom(eventChangeSetWritten$);
   selectFunc(func);
 };
-
-visibility$.subscribe(async () => {
-  clearFuncs();
-});
-
-saveFuncToBackend$
-  .pipe(untilUnmounted, bufferTime(2000))
-  .subscribe((saveRequests) =>
-    Object.values(
-      saveRequests.reduce(
-        (acc, saveReq) => ({ ...acc, [saveReq.id]: saveReq }),
-        {} as { [key: number]: SaveFuncRequest },
-      ),
-    ).forEach(async (saveReq) => {
-      if (isDevMode && saveReq.isBuiltin) {
-        DevService.saveBuiltinFunc(saveReq);
-      } else {
-        const result = await FuncService.saveFunc(saveReq);
-        if (result.success) {
-          updateFuncFromSave(
-            saveReq.id,
-            result.isRevertible,
-            result.associations,
-          );
-        }
-      }
-    }),
-  );
 </script>
