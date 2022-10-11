@@ -10,7 +10,7 @@ import { tag } from "rxjs-spy/operators/tag";
 
 import { switchMap } from "rxjs/operators";
 import { NO_CHANGE_SET_PK, Visibility } from "@/api/sdf/dal/visibility";
-import { changeSet$ } from "@/service/change_set";
+import { changeSet$, eventChangeSetWritten$ } from "@/service/change_set";
 
 export const visibility$: Observable<Visibility> = combineLatest([
   changeSet$,
@@ -28,5 +28,5 @@ export const visibility$: Observable<Visibility> = combineLatest([
 
 export const standardVisibilityTriggers$ = combineLatest([
   visibility$,
-  changeSet$,
+  eventChangeSetWritten$,
 ]).pipe(tag("standard-visibility"), shareReplay(1));

@@ -400,9 +400,10 @@ impl LocalHttpInstanceSpec {
         if self.qualification {
             cmd.arg("--enable-qualification");
         }
-        if self.confirmation {
-            cmd.arg("--enable-confirmation");
-        }
+        // NOTE: Not yet implemented on the other side.
+        // if self.confirmation {
+        //     cmd.arg("--enable-confirmation");
+        // }
         if self.resolver {
             cmd.arg("--enable-resolver");
         }
