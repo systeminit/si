@@ -124,12 +124,7 @@ fn create_hardcoded_cyclone_spec() -> Result<CycloneSpec> {
             .cyclone_decryption_key_path(cfg.cyclone_decryption_key_path)
             .try_lang_server_cmd_path(cfg.lang_server_cmd_path)
             .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?
-            .resolver()
-            .qualification()
-            .confirmation()
-            .code_generation()
-            .workflow()
-            .command()
+            .all_endpoints()
             .build()
             .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?,
     ))

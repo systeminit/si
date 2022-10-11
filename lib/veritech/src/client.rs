@@ -458,7 +458,7 @@ mod tests {
                 .cyclone_decryption_key_path("../../lib/cyclone-server/src/dev.decryption.key")
                 .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
                 .expect("failed to setup lang_js_cmd_path")
-                .resolver()
+                .all_endpoints()
                 .build()
                 .expect("failed to build cyclone spec"),
         );
