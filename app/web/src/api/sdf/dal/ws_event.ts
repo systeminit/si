@@ -53,10 +53,20 @@ export interface WsCommandReturn extends WsPayload {
   };
 }
 
+export interface WsFixReturn extends WsPayload {
+  kind: "FixReturn";
+  data: {
+    confirmation_resolver_id: number;
+    output: string[];
+    runnerState: WorkflowRunnerState;
+  };
+}
+
 export type WsPayloadKinds =
   | WsResourceRefreshed
   | WsCodeGenerated
   | WsSecretCreated
   | WsDependentValuesUpdated
   | WsCommandOutput
-  | WsCommandReturn;
+  | WsCommandReturn
+  | WsFixReturn;
