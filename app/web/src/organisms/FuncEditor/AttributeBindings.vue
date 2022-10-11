@@ -64,8 +64,6 @@
   </ul>
   <AttributeBindingsModal
     :func-id="funcId"
-    :components="components"
-    :schema-variants="schemaVariants"
     :open="isModalOpen"
     :prototype="editingPrototype"
     :edit="editingPrototype !== undefined"
@@ -77,15 +75,20 @@
 
 <script lang="ts" setup>
 import { computed, inject, ref, Ref } from "vue";
+import { storeToRefs } from "pinia";
 import { AttributeAssocations, AttributePrototypeView } from "@/service/func";
 import VButton from "@/molecules/VButton.vue";
-import { Option } from "@/molecules/SelectMenu.vue";
 import { FuncArgument } from "@/api/sdf/dal/func";
-import {
-  removeAttributePrototype,
-  saveAttributePrototype,
-} from "@/organisms/FuncEditor/func_state";
+import { useFuncStore } from "@/store/funcs.store";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
+
+const funcStore = useFuncStore();
+const {
+  propIdToSourceName,
+  providerIdToSourceName,
+  schemaVariantOptions,
+  componentOptions,
+} = storeToRefs(funcStore);
 
 const editingPrototype = ref<AttributePrototypeView | undefined>(undefined);
 const makeEmptyPrototype = (): AttributePrototypeView => ({
@@ -104,11 +107,11 @@ const closeModal = () => {
 };
 
 const removeBinding = (prototypeId?: number) =>
-  prototypeId && removeAttributePrototype(props.funcId, prototypeId);
+  prototypeId && funcStore.REMOVE_ATTR_PROTOTYPE(props.funcId, prototypeId);
 
 const saveModal = (prototype?: AttributePrototypeView) => {
   if (prototype) {
-    saveAttributePrototype(props.funcId, prototype);
+    funcStore.UPDATE_ATTR_PROTOTYPE(props.funcId, prototype);
   }
   closeModal();
 };
@@ -124,35 +127,30 @@ const openModal = (prototypeId?: number) => {
   isModalOpen.value = true;
 };
 
-const idToSourceNameMap =
-  inject<Ref<{ [key: number]: string }>>("idToSourceNameMap");
-const idToPropNameMap =
-  inject<Ref<{ [key: number]: string }>>("idToPropNameMap");
 const funcArgumentsIdMap =
   inject<Ref<{ [key: number]: FuncArgument }>>("funcArgumentsIdMap");
 
 const props = defineProps<{
   funcId: number;
   associations: AttributeAssocations;
-  schemaVariants: Option[];
-  components: Option[];
   disabled?: boolean;
 }>();
 
 const prototypeView = computed(() => {
   return props.associations.prototypes.map((proto) => {
     const schemaVariant =
-      props.schemaVariants.find((sv) => sv.value === proto.schemaVariantId)
-        ?.label ?? "none";
+      schemaVariantOptions.value.find(
+        (sv) => sv.value === proto.schemaVariantId,
+      )?.label ?? "none";
     const component =
-      props.components.find((c) => c.value === proto.componentId)?.label ??
-      "all";
-    const prop = idToPropNameMap?.value[proto.propId] ?? "none";
+      componentOptions.value.find((c) => c.value === proto.componentId)
+        ?.label ?? "all";
+    const prop = propIdToSourceName.value[proto.propId] ?? "none";
 
     const args = proto.prototypeArguments.map((arg) => ({
       name: funcArgumentsIdMap?.value[arg.funcArgumentId]?.name ?? "none",
       prop: arg.internalProviderId
-        ? idToSourceNameMap?.value[arg.internalProviderId] ?? "none"
+        ? providerIdToSourceName.value[arg.internalProviderId] ?? "none"
         : "none",
     }));
 

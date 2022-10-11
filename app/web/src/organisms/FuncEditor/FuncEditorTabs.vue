@@ -1,21 +1,20 @@
 <template>
   <SiTabGroup
-    :key="tabGroupRerenderKey"
-    :selected-index="selectedTab"
+    :selected-index="selectedFuncIndex"
     selected-tab-to-front
     :tab-width-maximum="0.3"
     no-start-margin
     no-after-margin
     :top-margin="0"
-    @change="changeTab"
+    @change="routeToFuncByIndex"
   >
     <template #tabs>
-      <SiTabHeader v-for="func in funcState.funcs" :key="func.id">
+      <SiTabHeader v-for="func in openFuncsList" :key="func.id">
         {{ func.name }}
         <template #icon>
           <button
             class="inline-block rounded-sm w-5 ml-1"
-            @click="closeFunc(func)"
+            @click="closeFunc(func.id)"
           >
             <Icon name="x" />
           </button>
@@ -24,17 +23,17 @@
     </template>
     <template #dropdownitems>
       <SiDropdownItem
-        v-for="func in funcState.funcs"
+        v-for="func in openFuncsList"
         :key="func.id"
-        :checked="findTabIndexForFunc(funcState.funcs, func) === selectedTab"
-        @select="changeTab(findTabIndexForFunc(funcState.funcs, func))"
+        :checked="func.id === selectedFuncId"
+        @select="routeToFunc(func.id)"
       >
         {{ func.name }}
       </SiDropdownItem>
     </template>
     <template #panels>
       <TabPanel
-        v-for="func in funcState.funcs"
+        v-for="func in openFuncsList"
         :key="func.id"
         class="h-full overflow-auto"
       >
@@ -45,79 +44,37 @@
 </template>
 
 <script lang="ts" setup>
-import { toRef, computed, ref } from "vue";
-import { fromRef } from "vuse-rx/src";
 import { TabPanel } from "@headlessui/vue";
-import { switchMap, take } from "rxjs/operators";
-import { of } from "rxjs";
-import { FuncService } from "@/service/func";
+import { storeToRefs } from "pinia";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
-import { ListedFuncView, nullListFunc } from "@/service/func/list_funcs";
 import Icon from "@/ui-lib/Icon.vue";
-import { funcState, funcById, removeFunc, insertFunc } from "./func_state";
+import { useFuncStore } from "@/store/funcs.store";
+import { useRouteToFunc } from "@/utils/useRouteToFunc";
 
-const props = defineProps<{
-  selectedFuncId: number;
-}>();
+const routeToFunc = useRouteToFunc();
+const funcStore = useFuncStore();
+const {
+  openFuncsList,
+  selectedFuncId,
+  selectedFuncIndex,
+  getFuncByIndex,
+  getIndexForFunc,
+} = storeToRefs(funcStore);
 
-const emits = defineEmits<{
-  (e: "selectedFunc", v: ListedFuncView): void;
-}>();
-
-const selectFunc = (func: ListedFuncView) => {
-  emits("selectedFunc", func);
+const closeFunc = (funcId: number) => {
+  const funcIndex = getIndexForFunc.value(funcId);
+  if (funcId === selectedFuncId.value) {
+    const newIndex = funcIndex - 1;
+    routeToFuncByIndex(newIndex < 0 ? 0 : newIndex);
+  }
+  funcStore.CLOSE_FUNC(funcId);
 };
 
-const selectedFuncId = toRef(props, "selectedFuncId", 0);
-const selectedFuncId$ = fromRef(selectedFuncId, { immediate: true });
-
-const findTabIndexForFunc = (
-  funcList: { id: number }[],
-  func: { id: number },
-) => funcList.findIndex((fn) => fn.id === func.id);
-
-const selectedTab = computed(() =>
-  findTabIndexForFunc(funcState.funcs, { id: selectedFuncId.value }),
-);
-
-const changeTab = (index: number) => {
-  if (index < 0) {
-    index = 0;
-  }
-
-  if (index > funcState.funcs.length - 1) {
-    index--;
-  }
-  if (funcState.funcs.length) {
-    selectFunc(funcState.funcs[index]);
-  } else {
-    selectFunc(nullListFunc);
-  }
+const routeToFuncByIndex = (index: number) => {
+  const func = getFuncByIndex.value(index);
+  routeToFunc(func.id);
 };
-
-const tabGroupRerenderKey = ref(0);
-
-const closeFunc = (func: ListedFuncView) => {
-  const funcTab = findTabIndexForFunc(funcState.funcs, func);
-  const currentTab = selectedTab.value;
-  removeFunc(func);
-  if (funcTab === currentTab) {
-    changeTab(funcTab - 1);
-  }
-  tabGroupRerenderKey.value += 1;
-};
-
-selectedFuncId$
-  .pipe(
-    switchMap((selectedFuncId) => {
-      const existingFunc = funcById(selectedFuncId);
-      return existingFunc
-        ? of({ ...existingFunc })
-        : FuncService.getFunc({ id: selectedFuncId }).pipe(take(1));
-    }),
-  )
-  .subscribe(insertFunc);
 </script>

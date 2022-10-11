@@ -26,7 +26,7 @@
         <SelectMenu
           v-model="selectedComponent"
           class="flex-auto"
-          :options="componentOptions"
+          :options="filteredComponentOptions"
         />
         <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
           Output location:
@@ -64,13 +64,19 @@
 
 <script lang="ts" setup>
 import { inject, watch, computed, toRef, ref, Ref } from "vue";
+import { storeToRefs } from "pinia";
 import Modal from "@/ui-lib/Modal.vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
-import { ListInputSourcesResponse } from "@/service/func/list_input_sources";
 import { AttributePrototypeView } from "@/service/func";
-import { LabelList } from "@/api/sdf/dal/label_list.js";
-import { ComponentIdentification } from "@/api/sdf/dal/component.js";
 import { FuncArgument } from "@/api/sdf/dal/func";
+import { useFuncStore } from "@/store/funcs.store";
+import { useComponentsStore } from "@/store/components.store";
+
+const componentsStore = useComponentsStore();
+const { allComponents } = storeToRefs(componentsStore);
+
+const funcStore = useFuncStore();
+const { schemaVariantOptions, inputSources } = storeToRefs(funcStore);
 
 const props = withDefaults(
   defineProps<{
@@ -107,10 +113,6 @@ const selectedComponent = ref<Option>(allComponentsOption);
 const selectedOutputLocation = ref<Option>(noneOutputLocation);
 const editableBindings = ref<EditingBinding[]>([]);
 
-const inputSources = inject<Ref<ListInputSourcesResponse>>("inputSources");
-const components =
-  inject<Ref<LabelList<ComponentIdentification>>>("components");
-const schemaVariantOptions = inject<Ref<Option[]>>("schemaVariantOptions");
 const funcArgumentsIdMap =
   inject<Ref<{ [key: number]: FuncArgument }>>("funcArgumentsIdMap");
 
@@ -128,17 +130,17 @@ const editedPrototype = computed(() => ({
   ),
 }));
 
-const componentOptions = computed<Option[]>(() =>
+const filteredComponentOptions = computed<Option[]>(() =>
   [allComponentsOption].concat(
-    components?.value
+    allComponents.value
       .filter(
         (c) =>
           selectedVariant.value.value === -1 ||
-          c.value.schemaVariantId === selectedVariant.value.value,
+          c.schemaVariantId === selectedVariant.value.value,
       )
-      .map(({ label, value }) => ({
-        label,
-        value: value.componentId,
+      .map(({ displayName, id }) => ({
+        label: displayName,
+        value: id,
       })) ?? [],
   ),
 );
@@ -195,11 +197,11 @@ const inputSourceOptions = computed<Option[]>(() => {
 watch(
   () => selectedVariant.value,
   (selectedVariant, oldValue) => {
-    const componentIdent = components?.value.find(
-      (c) => c.value.componentId === selectedComponent.value.value,
+    const componentIdent = allComponents.value.find(
+      (c) => c.id === selectedComponent.value.value,
     );
 
-    if (componentIdent?.value.schemaVariantId !== selectedVariant.value) {
+    if (componentIdent?.schemaVariantId !== selectedVariant.value) {
       selectedComponent.value = allComponentsOption;
     }
 
@@ -214,16 +216,16 @@ watch(
 watch(
   () => selectedComponent.value,
   (selectedComponent) => {
-    const componentIdent = components?.value.find(
-      (c) => c.value.componentId === selectedComponent.value,
+    const componentIdent = allComponents.value.find(
+      (c) => c.id === selectedComponent.value,
     );
     if (
       componentIdent &&
-      selectedVariant.value.value !== componentIdent.value.schemaVariantId
+      selectedVariant.value.value !== componentIdent.schemaVariantId
     ) {
       selectedVariant.value =
         schemaVariantOptions?.value.find(
-          (sv) => sv.value === componentIdent?.value.schemaVariantId,
+          (sv) => sv.value === componentIdent?.schemaVariantId,
         ) ?? noneVariant;
     }
   },
@@ -239,7 +241,7 @@ watch(
         (sv) => sv.value === prototype.value?.schemaVariantId,
       ) ?? noneVariant;
     selectedComponent.value =
-      componentOptions.value.find(
+      filteredComponentOptions.value.find(
         (c) => c.value === prototype.value?.componentId,
       ) ?? allComponentsOption;
     selectedOutputLocation.value =

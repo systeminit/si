@@ -1,9 +1,6 @@
-import { firstValueFrom } from "rxjs";
-import Bottle from "bottlejs";
-import { ApiResponse, SDF } from "@/api/sdf";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
-import { GlobalErrorService } from "@/service/global_error";
-import { visibility$ } from "@/observable/visibility";
+import { Visibility } from "@/api/sdf/dal/visibility";
+import { ApiRequest } from "@/utils/pinia_api_tools";
 
 export type CreateFuncResponse = Func;
 
@@ -31,23 +28,13 @@ export const nullFunc: CreateFuncResponse = {
   isBuiltin: false,
 };
 
-export const createFunc: (
-  args: CreateFuncRequest,
-) => Promise<CreateFuncResponse> = async (args) => {
-  const visibility = await firstValueFrom(visibility$);
-  const bottle = Bottle.pop("default");
-  const sdf: SDF = bottle.container.SDF;
-  const response = await firstValueFrom(
-    sdf.post<ApiResponse<CreateFuncResponse>>("func/create_func", {
-      ...args,
-      ...visibility,
-    }),
-  );
-
-  if (response.error) {
-    GlobalErrorService.set(response);
-    return nullFunc;
-  }
-
-  return response as CreateFuncResponse;
-};
+export const createFunc = (
+  params: CreateFuncRequest & Visibility,
+  onSuccess: (response: CreateFuncResponse) => void,
+) =>
+  new ApiRequest<CreateFuncResponse, typeof params>({
+    method: "post",
+    url: "func/create_func",
+    params,
+    onSuccess,
+  });

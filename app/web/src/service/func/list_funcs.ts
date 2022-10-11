@@ -1,9 +1,6 @@
-import { Observable } from "rxjs";
-import { map } from "rxjs/operators";
-import { ApiResponse } from "@/api/sdf";
-import { memoizedVisibilitySdfPipe } from "@/utils/memoizedVisibilitySdfPipes";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
-import { GlobalErrorService } from "@/service/global_error";
+import { ApiRequest } from "@/utils/pinia_api_tools";
+import { Visibility } from "@/api/sdf/dal/visibility";
 
 export type ListedFuncView = Omit<Func, "code">;
 
@@ -19,26 +16,15 @@ export const nullListFunc: ListedFuncView = {
   isBuiltin: false,
 };
 
-const memo: {
-  [key: string]: Observable<ListFuncsResponse>;
-} = {};
-
-export const listFuncs: () => Observable<ListFuncsResponse> =
-  memoizedVisibilitySdfPipe(
-    (visibility, sdf) =>
-      sdf
-        .get<ApiResponse<ListFuncsResponse>>("func/list_funcs", {
-          ...visibility,
-        })
-        .pipe(
-          map((response) => {
-            if (response.error) {
-              GlobalErrorService.set(response);
-              return { funcs: [] } as ListFuncsResponse;
-            }
-
-            return response as ListFuncsResponse;
-          }),
-        ),
-    memo,
-  );
+export const listFuncs = (
+  visibility: Visibility,
+  onSuccess: (response: ListFuncsResponse) => void,
+) =>
+  new ApiRequest<ListFuncsResponse, Visibility>({
+    method: "get",
+    url: "func/list_funcs",
+    params: {
+      ...visibility,
+    },
+    onSuccess,
+  });

@@ -66,7 +66,9 @@ import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
 import VButton from "@/molecules/VButton.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
-import { updateAttributeFuncArguments } from "@/organisms/FuncEditor/func_state";
+import { useFuncStore } from "@/store/funcs.store";
+
+const funcStore = useFuncStore();
 
 const generateKindOptions = () => {
   const options: Option[] = [];
@@ -146,7 +148,7 @@ const addArgument = async () => {
 };
 
 const saveArguments = () => {
-  updateAttributeFuncArguments(
+  funcStore.UPDATE_ATTR_FUNC_ARGS(
     funcId.value,
     editingArgsToArgs(editingArgs.value),
   );

@@ -54,10 +54,8 @@ import { computed } from "vue";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import _, { parseInt } from "lodash";
 import { tag } from "rxjs-spy/operators";
-import { combineLatest, forkJoin, from, map, take, firstValueFrom } from "rxjs";
+import { combineLatest, forkJoin, from, map, take } from "rxjs";
 import { switchMap } from "rxjs/operators";
-
-import { FuncService } from "@/service/func";
 import { GlobalErrorService } from "@/service/global_error";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { componentsMetadata$ } from "@/observable/component";
@@ -77,12 +75,13 @@ import { ComponentService } from "@/service/component";
 import { SystemService } from "@/service/system";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Icon from "@/ui-lib/Icon.vue";
-import { eventChangeSetWritten$ } from "@/service/change_set";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { useComponentsStore } from "@/store/components.store";
+import { useFuncStore } from "@/store/funcs.store";
 import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";
 
+const funcStore = useFuncStore();
 const routeToFunc = useRouteToFunc();
 
 const componentsStore = useComponentsStore();
@@ -321,21 +320,21 @@ const onCreateAttributeFunc = async (
   valueId: number,
   parentValueId?: number,
 ) => {
-  const newFunc = await FuncService.createFunc({
-    kind: FuncBackendKind.JsAttribute,
-    options: {
-      valueId,
-      parentValueId,
-      componentId: selectedComponent.value.id,
-      schemaVariantId: selectedComponent.value.schemaVariantId,
-      schemaId: selectedComponent.value.schemaId,
-      currentFuncId: currentFunc.id,
-      type: "attributeOptions",
+  funcStore.CREATE_FUNC(
+    {
+      kind: FuncBackendKind.JsAttribute,
+      options: {
+        valueId,
+        parentValueId,
+        componentId: selectedComponent.value.id,
+        schemaVariantId: selectedComponent.value.schemaVariantId,
+        schemaId: selectedComponent.value.schemaId,
+        currentFuncId: currentFunc.id,
+        type: "attributeOptions",
+      },
     },
-  });
-
-  await firstValueFrom(eventChangeSetWritten$);
-  await routeToFunc(newFunc.id);
+    (response) => routeToFunc(response.id),
+  );
 };
 
 const hackAwayTheZeroElementOfContainers = (

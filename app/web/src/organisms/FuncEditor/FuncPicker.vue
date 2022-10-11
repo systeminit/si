@@ -75,7 +75,7 @@
             </template>
             <template #default>
               <li
-                v-for="func in filteredList.filter((f) => f.kind === kind)"
+                v-for="func in filteredList.filter((f) => f && f.kind === kind)"
                 :key="func.id"
               >
                 <SiFuncSprite
@@ -88,7 +88,7 @@
                   :name="func.name"
                   class="border border-transparent dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
                   color="#921ed6"
-                  @click="selectFunc(func)"
+                  @click="routeToFunc(func.id)"
                 />
               </li>
             </template>
@@ -139,12 +139,12 @@ import {
   TabPanel,
 } from "@headlessui/vue";
 import validator from "validator";
+import { storeToRefs } from "pinia";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import SiSearch from "@/molecules/SiSearch.vue";
 import VButton from "@/molecules/VButton.vue";
 import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
@@ -152,6 +152,13 @@ import { FuncBackendKind } from "@/api/sdf/dal/func";
 import NewFuncDropdown from "@/organisms/NewFuncDropdown.vue";
 import Modal from "@/ui-lib/Modal.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
+
+import { useFuncStore } from "@/store/funcs.store";
+import { useRouteToFunc } from "@/utils/useRouteToFunc";
+
+const routeToFunc = useRouteToFunc();
+const funcStore = useFuncStore();
+const { funcList, selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 
@@ -173,41 +180,20 @@ const funcCreateTypes = {
   [FuncBackendKind.JsCodeGeneration]: "Code Generation",
 };
 
-const props = defineProps<{
-  funcList: ListFuncsResponse;
-  selectedFuncId: number;
-}>();
-
-const selectedFunc = computed(() =>
-  props.funcList.funcs.find((f) => f.id === props.selectedFuncId),
+const filteredList = computed(() =>
+  searchString.value.length > 0
+    ? funcList.value.filter((f) =>
+        f.name.toLocaleLowerCase().includes(searchString.value),
+      )
+    : funcList.value,
 );
 
-const filteredList = computed(() => {
-  const filteredList =
-    searchString.value.length > 0
-      ? props.funcList.funcs.filter((f) =>
-          f.name.toLocaleLowerCase().includes(searchString.value),
-        )
-      : props.funcList.funcs;
-
-  if (selectedFunc.value && !filteredList.includes(selectedFunc.value)) {
-    filteredList.push(selectedFunc.value);
-  }
-
-  return filteredList;
-});
-
 const emits = defineEmits<{
-  (e: "selectedFunc", v: ListedFuncView): void;
   (
     e: "createFunc",
     v: { kind: FuncBackendKind; isBuiltin: boolean; name?: string },
   ): void;
 }>();
-
-const selectFunc = (func: ListedFuncView) => {
-  emits("selectedFunc", func);
-};
 
 const createFunc = (kind: FuncBackendKind) => {
   emits("createFunc", { kind, isBuiltin: false });

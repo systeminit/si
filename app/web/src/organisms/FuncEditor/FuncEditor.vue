@@ -21,43 +21,55 @@ import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
 import { javascript } from "@codemirror/lang-javascript";
 import { linter, lintGutter } from "@codemirror/lint";
+import { storeToRefs } from "pinia";
 import { createLintSource } from "@/utils/typescriptLinter";
 import { EditingFunc } from "@/observable/func";
+import { useFuncStore, nullEditingFunc } from "@/store/funcs.store";
 import { useTheme } from "@/ui-lib/theme_tools";
-import { changeFunc, funcById, funcState, nullEditingFunc } from "./func_state";
+
+const funcStore = useFuncStore();
+const { selectedFunc, getFuncById } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 
-const props = defineProps<{
-  funcId: number;
-}>();
-
-const funcId = toRef(props, "funcId", -1);
-const editingFunc = ref<EditingFunc>(funcById(funcId.value) ?? nullEditingFunc);
+const editingFunc = ref<EditingFunc>(selectedFunc.value);
 const editorMount = ref();
 let view: EditorView;
 
-watch([funcId, funcState], async ([currentFuncId], [prevFuncId]) => {
-  editingFunc.value = funcById(currentFuncId) ?? nullEditingFunc;
-  const currentDoc = view.state.doc.toString();
-  const funcCode = editingFunc.value.code;
+const props = defineProps<{
+  funcId?: number;
+}>();
 
-  // We only care about this if the code changes from outside the editor itself
-  // and we didn't just switch to a new doc. This condition prevents a cycle
-  // with the updateListener
-  if (prevFuncId !== currentFuncId || currentDoc === funcCode) {
-    return;
-  }
+const funcId = toRef(props, "funcId", -1);
 
-  const updateTransaction = view.state.update({
-    changes: {
-      from: 0,
-      to: view.state.doc.length,
-      insert: editingFunc.value.code,
-    },
-  });
-  view.update([updateTransaction]);
-});
+watch(
+  () => selectedFunc.value,
+  async (selectedFunc, prevFunc) => {
+    editingFunc.value = selectedFunc ?? nullEditingFunc;
+    const currentDoc = view?.state.doc.toString();
+    const funcCode = editingFunc.value.code;
+
+    // We only care about this if the code changes from outside the editor itself
+    // and we didn't just switch to a new doc. This condition prevents a cycle
+    // with the updateListener
+    if (
+      editingFunc.value?.id !== prevFunc?.id ||
+      currentDoc === funcCode ||
+      typeof view === "undefined"
+    ) {
+      return;
+    }
+
+    const updateTransaction = view.state.update({
+      changes: {
+        from: 0,
+        to: view.state.doc.length,
+        insert: editingFunc.value.code,
+      },
+    });
+    view.update([updateTransaction]);
+  },
+);
 
 const language = new Compartment();
 const readOnly = new Compartment();
@@ -76,12 +88,13 @@ watch(codeMirrorTheme, () => {
 });
 
 const mountEditor = async () => {
+  editingFunc.value = getFuncById.value(funcId.value) ?? nullEditingFunc;
   const updateListener = EditorView.updateListener.of((update) => {
     if (!update.docChanged) {
       return;
     }
     const newCode = update.view.state.doc.toString();
-    changeFunc({ ...editingFunc.value, code: newCode });
+    funcStore.UPDATE_FUNC({ ...editingFunc.value, code: newCode });
   });
 
   const editorState = EditorState.create({

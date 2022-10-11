@@ -14,6 +14,7 @@ declare module "pinia" {
   export interface DefineStoreOptionsBase<S, Store> {
     // adds our new custom option for activation/deactivation hook
     onActivated?: (this: Store) => MaybePromise<void | (() => void)>;
+    trackStoreUsedByComponent?: (component: ComponentInternalInstance) => void;
   }
 }
 
@@ -21,11 +22,7 @@ export function addStoreHooks<T extends ReturnType<typeof defineStore>>(
   useStoreFn: T,
 ) {
   return (...args: Parameters<T>): ReturnType<T> => {
-    // NOTE - was fighting against the TS types in here and couldn't quite get it right
-    // however it's not important to have it working here versus in _consumers_ of the store
-    // and it does all work correctly there
-
-    const store = useStoreFn(...(args as any[])) as any;
+    const store = useStoreFn.apply(null, [...args]) as ReturnType<T>;
     const component = getCurrentInstance();
     if (component) store.trackStoreUsedByComponent(component);
     return store;

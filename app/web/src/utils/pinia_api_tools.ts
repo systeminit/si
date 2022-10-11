@@ -17,7 +17,14 @@ NOTES / TODOS / IDEAS
 
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
 import { AxiosInstance } from "axios";
-import { computed, ComputedRef, reactive, unref, Ref } from "vue";
+import {
+  computed,
+  ComputedRef,
+  reactive,
+  unref,
+  Ref,
+  ComponentInternalInstance,
+} from "vue";
 import _ from "lodash";
 import promiseDelay from "@/utils/promise_delay";
 import defer, { DeferredPromise } from "./defer_promise";
@@ -64,10 +71,11 @@ declare module "pinia" {
   // augments the store's state
   export interface PiniaCustomStateProperties<S> {
     apiRequestStatuses: RawRequestStatusesByKey;
+    trackStoreUsedByComponent(component: ComponentInternalInstance): void;
   }
 }
 
-export class ApiRequest<Response = any> {
+export class ApiRequest<Response = any, QueryParams = Record<string, unknown>> {
   // these are used to attach the result which can be used directly by the caller
   // most data and request status info should be used via the store, but it is useful sometimes
   private rawResponseData: Response | undefined;
@@ -92,15 +100,20 @@ export class ApiRequest<Response = any> {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor
-  constructor(public requestSpec: ApiRequestDescription<Response>) {}
+  constructor(
+    public requestSpec: ApiRequestDescription<Response, QueryParams>,
+  ) {}
 }
 
 // types to describe our api request definitions
 type ApiRequestDescriptionGenerator = (payload: any) => ApiRequestDescription;
-export type ApiRequestDescription<Response = any> = {
+export type ApiRequestDescription<
+  Response = any,
+  QueryParams = Record<string, unknown>,
+> = {
   method?: "get" | "patch" | "post" | "put" | "delete"; // defaults to get if empty,
   url: string;
-  params?: Record<string, any>;
+  params?: QueryParams;
   keyRequestStatusBy?: RawRequestStatusKeyArg | RawRequestStatusKeyArg[];
   onSuccess?(response: Response): Promise<void> | void;
   onFail?(response: any): Promise<void> | void;

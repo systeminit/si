@@ -1,9 +1,6 @@
-import { Observable } from "rxjs";
-import { map } from "rxjs/operators";
-import { GlobalErrorService } from "@/service/global_error";
 import { PropKind } from "@/api/sdf/dal/prop";
-import { ApiResponse } from "@/api/sdf";
-import { memoizedVisibilitySdfPipe } from "@/utils/memoizedVisibilitySdfPipes";
+import { Visibility } from "@/api/sdf/dal/visibility";
+import { ApiRequest } from "@/utils/pinia_api_tools";
 
 export interface InputSourceSocket {
   schemaVariantId: number;
@@ -25,26 +22,13 @@ export interface ListInputSourcesResponse {
   props: InputSourceProp[];
 }
 
-const memo: {
-  [key: string]: Observable<ListInputSourcesResponse>;
-} = {};
-
-export const listInputSources: () => Observable<ListInputSourcesResponse> =
-  memoizedVisibilitySdfPipe(
-    (visibility, sdf) =>
-      sdf
-        .get<ApiResponse<ListInputSourcesResponse>>("func/list_input_sources", {
-          ...visibility,
-        })
-        .pipe(
-          map((response) => {
-            if (response.error) {
-              GlobalErrorService.set(response);
-              return { sockets: [], props: [] };
-            }
-
-            return response as ListInputSourcesResponse;
-          }),
-        ),
-    memo,
-  );
+export const listInputSources = (
+  visibility: Visibility,
+  onSuccess: (response: ListInputSourcesResponse) => void,
+) =>
+  new ApiRequest<ListInputSourcesResponse, Visibility>({
+    method: "get",
+    url: "func/list_input_sources",
+    params: { ...visibility },
+    onSuccess,
+  });
