@@ -225,13 +225,8 @@ impl WorkflowRunner {
         // Perform the workflow runner "run" by running the workflow tree.
         let func_binding_return_values = tree.run(ctx, run_id).await?;
         let (func_id, func_binding_id, created_resources, updated_resources) =
-            Self::process_successful_workflow_run(
-                ctx,
-                &func_binding_return_values,
-                prototype_id,
-                component_id,
-            )
-            .await?;
+            Self::process_successful_workflow_run(ctx, &func_binding_return_values, component_id)
+                .await?;
         let (workflow_runner_status, error_message) =
             Self::detect_failure_from_tree_execution(&func_binding_return_values);
 
@@ -296,7 +291,6 @@ impl WorkflowRunner {
     async fn process_successful_workflow_run(
         ctx: &DalContext,
         func_binding_return_values: &Vec<FuncBindingReturnValue>,
-        prototype_id: WorkflowPrototypeId,
         component_id: ComponentId,
     ) -> WorkflowRunnerResult<(FuncId, FuncBindingId, Vec<Resource>, Vec<Resource>)> {
         let identity = Func::find_by_attr(ctx, "name", &"si:identity")
@@ -327,23 +321,16 @@ impl WorkflowRunner {
                 let result = CommandRunResult::deserialize(value)?;
                 for (key, value) in result.updated {
                     updated_resources.push(
-                        Resource::upsert(
-                            ctx,
-                            component_id,
-                            SystemId::NONE,
-                            key,
-                            value,
-                            prototype_id,
-                        )
-                        .await
-                        .map_err(Box::new)?,
+                        Resource::upsert(ctx, component_id, SystemId::NONE, key, value)
+                            .await
+                            .map_err(Box::new)?,
                     );
                 }
                 for (key, value) in result.created {
                     // If the function creates multiple resources with the same key we will duplicate them
                     // Otherwise a EC2 instance might get lost if the command function has a glitch
                     created_resources.push(
-                        Resource::new(ctx, component_id, SystemId::NONE, key, value, prototype_id)
+                        Resource::new(ctx, component_id, SystemId::NONE, key, value)
                             .await
                             .map_err(Box::new)?,
                     );
