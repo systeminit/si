@@ -23,7 +23,7 @@
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    <FuncDetails v-if="!isLoadingFunc" :func-id="funcIdParam" />
+    <FuncDetails v-if="!funcReqStatus.isPending" :func-id="funcIdParam" />
   </SiPanel>
 </template>
 
@@ -40,10 +40,11 @@ import { ListedFuncView } from "@/service/func/list_funcs";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { DevService } from "@/service/dev";
-import { useFuncStore, createFuncPromise } from "@/store/funcs.store";
+import { useFuncStore } from "@/store/funcs.store";
 
 const funcStore = useFuncStore();
-const { isLoadingFunc, selectedFuncId } = storeToRefs(funcStore);
+const funcReqStatus = funcStore.getRequestStatus("FETCH_FUNC");
+const { selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 
@@ -79,11 +80,19 @@ const createFunc = async ({
   isBuiltin: boolean;
   name?: string;
 }) => {
-  const func =
-    isDevMode && isBuiltin && !_.isNil(name)
-      ? await DevService.createBuiltinFunc({ name, kind })
-      : await createFuncPromise({ kind });
+  let func;
 
-  selectFunc(func);
+  if (isDevMode && isBuiltin && !_.isNil(name)) {
+    func = await DevService.createBuiltinFunc({ name, kind });
+  } else {
+    const res = await funcStore.CREATE_FUNC({ kind });
+    if (res.result.success) {
+      func = res.result.data;
+    }
+  }
+
+  if (func) {
+    selectFunc(func);
+  }
 };
 </script>

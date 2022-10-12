@@ -30,7 +30,7 @@ export const nullFunc: CreateFuncResponse = {
 
 export const createFunc = (
   params: CreateFuncRequest & Visibility,
-  onSuccess: (response: CreateFuncResponse) => void,
+  onSuccess?: (response: CreateFuncResponse) => void,
 ) =>
   new ApiRequest<CreateFuncResponse, typeof params>({
     method: "post",

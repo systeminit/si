@@ -43,8 +43,6 @@ export interface FuncStore {
   selectedFuncId: FuncId;
   editingFunc: EditingFunc;
   inputSources: ListInputSourcesResponse;
-  isLoadingFuncList: boolean;
-  isLoadingFunc: boolean;
 }
 
 export const useFuncStore = () => {
@@ -63,8 +61,6 @@ export const useFuncStore = () => {
       selectedFuncId: -1,
       editingFunc: nullEditingFunc,
       inputSources: { sockets: [], props: [] },
-      isLoadingFuncList: false,
-      isLoadingFunc: false,
     }),
     getters: {
       getFuncById:
@@ -150,10 +146,8 @@ export const useFuncStore = () => {
         }
       },
       async FETCH_FUNC_LIST() {
-        this.isLoadingFuncList = true;
         return listFuncs(visibility, (response) => {
           this.funcList = response.funcs;
-          this.isLoadingFuncList = false;
         });
       },
       async FETCH_INPUT_SOURCE_LIST() {
@@ -162,10 +156,8 @@ export const useFuncStore = () => {
         });
       },
       async FETCH_FUNC(funcId: FuncId) {
-        this.isLoadingFunc = true;
         return getFunc({ ...visibility, id: funcId }, (response) => {
           this.openFuncs[response.id] = response;
-          this.isLoadingFunc = false;
         });
       },
       async REVERT_FUNC(funcId: number) {
@@ -178,21 +170,16 @@ export const useFuncStore = () => {
       },
       async CREATE_FUNC(
         createFuncRequest: CreateFuncRequest,
-        onSuccess: (response: CreateFuncResponse) => void,
       ) {
         return createFunc(
           {
             ...visibility,
             ...createFuncRequest,
           },
-          (response) => {
-            onSuccess(response);
-          },
         );
       },
       async SAVE_FUNC(
         saveFuncRequest: SaveFuncRequest,
-        onSuccess?: (response: SaveFuncResponse) => void,
       ) {
         return saveFunc(
           {
@@ -206,10 +193,6 @@ export const useFuncStore = () => {
               this.openFuncs[saveFuncRequest.id].associations = associations;
             }
             this.openFuncs[saveFuncRequest.id].isRevertible = isRevertible;
-
-            if (onSuccess) {
-              onSuccess(response);
-            }
           },
         );
       },
@@ -303,19 +286,3 @@ export const useFuncStore = () => {
 
   return addStoreHooks(store)();
 };
-
-export const saveFuncPromise = (
-  func: SaveFuncRequest,
-): Promise<SaveFuncResponse> =>
-  new Promise((resolve) => {
-    const funcStore = useFuncStore();
-    funcStore.SAVE_FUNC(func, (response) => resolve(response));
-  });
-
-export const createFuncPromise = (
-  func: CreateFuncRequest,
-): Promise<CreateFuncResponse> =>
-  new Promise((resolve) => {
-    const funcStore = useFuncStore();
-    funcStore.CREATE_FUNC(func, (response) => resolve(response));
-  });

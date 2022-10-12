@@ -45,7 +45,9 @@ type SubType<Base, CheckExtends> = Pick<
 // here we are filtering all of the actions down to those that return an ApiRequest object only
 type ApiRequestActionsOnly<A> = SubType<
   A,
-  (...args: any) => Promise<ApiRequest> | ApiRequest
+  (
+    ...args: any
+  ) => Promise<ApiRequest<unknown, unknown>> | ApiRequest<unknown, unknown>
 >;
 
 // augment pinia TS types for our plugin - see https://pinia.vuejs.org/core-concepts/plugins.html#typescript
