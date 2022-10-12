@@ -14,6 +14,5 @@ export const eventCommandReturn$ =
   new Subject<WsEvent<WsCommandReturn> | null>();
 eventCommandReturn$.next(null);
 
-export const eventFixReturn$ =
-  new Subject<WsEvent<WsFixReturn> | null>();
+export const eventFixReturn$ = new Subject<WsEvent<WsFixReturn> | null>();
 eventFixReturn$.next(null);

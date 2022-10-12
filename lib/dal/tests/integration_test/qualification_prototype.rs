@@ -6,8 +6,8 @@ use dal::validation::Validation;
 use dal::{
     component::ComponentKind, generate_name, prototype_context::PrototypeContext,
     prototype_context::PrototypeContextField, Component, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, Prop, PropKind, QualificationPrototype, Schema, SchemaError,
-    SchemaKind, SchemaVariant, StandardModel, SystemId, ValidationPrototype,
+    FuncBackendResponseType, Prop, PropKind, PrototypeListForFunc, QualificationPrototype, Schema,
+    SchemaError, SchemaKind, SchemaVariant, StandardModel, SystemId, ValidationPrototype,
     ValidationPrototypeContext,
 };
 use std::option::Option::None;
@@ -208,7 +208,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
     .await
     .expect("could not set code on func");
 
-    assert!(QualificationPrototype::list_for_func(ctx, func.id())
+    assert!(QualificationPrototype::list_for_func(ctx, *func.id())
         .await
         .expect("could not get protos for func")
         .is_empty());
@@ -237,7 +237,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
 
         associate_prototypes(
             ctx,
-            &QualificationPrototype::list_for_func(ctx, func.id())
+            &QualificationPrototype::list_for_func(ctx, *func.id())
                 .await
                 .expect("could not get protos for func"),
             &associations,
@@ -246,7 +246,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
         .await
         .expect("could not associate");
 
-        let prototypes = QualificationPrototype::list_for_func(ctx, func.id())
+        let prototypes = QualificationPrototype::list_for_func(ctx, *func.id())
             .await
             .expect("could not get protos for func");
 
@@ -270,7 +270,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
     };
     associate_prototypes(
         ctx,
-        &QualificationPrototype::list_for_func(ctx, func.id())
+        &QualificationPrototype::list_for_func(ctx, *func.id())
             .await
             .expect("could not get protos for func"),
         &associations,
@@ -279,7 +279,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
     .await
     .expect("could not clear associations");
 
-    assert!(QualificationPrototype::list_for_func(ctx, func.id())
+    assert!(QualificationPrototype::list_for_func(ctx, *func.id())
         .await
         .expect("could not get protos for func")
         .is_empty());

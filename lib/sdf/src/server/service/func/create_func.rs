@@ -7,8 +7,9 @@ use dal::{
     attribute::context::AttributeContextBuilder, generate_name,
     prototype_context::HasPrototypeContext, qualification_prototype::QualificationPrototypeContext,
     AttributeValue, AttributeValueId, CodeGenerationPrototype, CodeLanguage, ComponentId,
-    DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, FuncId,
-    QualificationPrototype, SchemaId, SchemaVariantId, StandardModel, Visibility, WsEvent,
+    ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
+    FuncBindingReturnValue, FuncId, QualificationPrototype, SchemaId, SchemaVariantId,
+    StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -46,77 +47,14 @@ pub struct CreateFuncResponse {
     pub schema_variants: Vec<SchemaVariantId>,
 }
 
-static ATTRIBUTE_CODE_HANDLER_PLACEHOLDER: &str = "HANDLER";
-static ATTRIBUTE_CODE_DEFAULT_HANDLER: &str = "attribute";
-static ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER: &str = "FUNCTION_RETURN_VALUE";
-
-const DEFAULT_CODE_GENERATION_FORMAT: CodeLanguage = CodeLanguage::Json;
-static DEFAULT_CODE_GENERATION_CODE: &str = "
-function generateCode(component) {
-    return {
-        format: \"json\",
-        code: JSON.stringify(component.properties),
-    };
-}
-";
-
-static DEFAULT_ATTRIBUTE_CODE_TEMPLATE: &str = "/*
-*/
-function HANDLER(component) {
-    return FUNCTION_RETURN_VALUE;
-}
-";
-
-pub static DEFAULT_QUALIFICATION_CODE: &str = "/*
-* Your qualification function
-* The signature should never be changed
-*
-* The input type is `Component`
-* The return type is `Qualification`
-*
-* interface System {
-*   name: string;
-* }
-*
-* // The properties are derived from the fields in the Attributes panel
-* interface Properties {
-*   si: unknown;
-*   domain: unknown
-* }
-*
-* enum Kind {
-*   Standard,
-*   Credential
-* }
-*
-* interface Data {
-*   system: System | null;
-*   kind: Kind;
-*   properties: Properties;
-* }
-*
-* interface Code {
-*   format: string;
-*   code: string | null;
-* }
-*
-* interface Component {
-*   data: Data;
-*   parents: Component[]; // The parent's parents won't be available
-*   codes: Code[];
-* }
-*
-* interface Qualification {
-*   qualified: boolean;
-*   message: string;
-* }
-*/
-async function qualification(component) {
-  return {
-    qualified: true,
-    message: 'Component qualified'
-  };
-}";
+pub static ATTRIBUTE_CODE_HANDLER_PLACEHOLDER: &str = "HANDLER";
+pub static ATTRIBUTE_CODE_DEFAULT_HANDLER: &str = "attribute";
+pub static ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER: &str = "FUNCTION_RETURN_VALUE";
+pub static DEFAULT_ATTRIBUTE_CODE_TEMPLATE: &str = include_str!("./defaults/attribute_template.ts");
+pub static DEFAULT_CODE_GENERATION_FORMAT: CodeLanguage = CodeLanguage::Json;
+pub static DEFAULT_CODE_GENERATION_CODE: &str = include_str!("./defaults/code_generation.ts");
+pub static DEFAULT_QUALIFICATION_CODE: &str = include_str!("./defaults/qualification.ts");
+pub static DEFAULT_CONFIRMATION_CODE: &str = include_str!("./defaults/confirmation.ts");
 
 async fn create_qualification_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
@@ -152,6 +90,24 @@ async fn copy_attribute_func(ctx: &DalContext, func_to_copy: &Func) -> FuncResul
         .await?;
     func.set_code_base64(ctx, func_to_copy.code_base64())
         .await?;
+
+    Ok(func)
+}
+
+async fn create_confirmation_func(ctx: &DalContext) -> FuncResult<Func> {
+    let mut func = Func::new(
+        ctx,
+        generate_name(None),
+        FuncBackendKind::JsConfirmation,
+        FuncBackendResponseType::Confirmation,
+    )
+    .await?;
+
+    func.set_code_plaintext(ctx, Some(DEFAULT_CONFIRMATION_CODE))
+        .await?;
+    func.set_handler(ctx, Some("confirm".to_owned())).await?;
+
+    ConfirmationPrototype::new(ctx, *func.id(), ConfirmationPrototype::new_context()).await?;
 
     Ok(func)
 }
@@ -329,6 +285,7 @@ pub async fn create_func(
         },
         FuncBackendKind::JsQualification => create_qualification_func(&ctx).await?,
         FuncBackendKind::JsCodeGeneration => create_code_gen_func(&ctx).await?,
+        FuncBackendKind::JsConfirmation => create_confirmation_func(&ctx).await?,
         _ => Err(FuncError::FuncNotSupported)?,
     };
 

@@ -75,7 +75,8 @@
           <SiCollapsible
             v-if="
               editingFunc.kind === FuncBackendKind.JsQualification ||
-              editingFunc.kind === FuncBackendKind.JsCodeGeneration
+              editingFunc.kind === FuncBackendKind.JsCodeGeneration ||
+              editingFunc.kind === FuncBackendKind.JsConfirmation
             "
             label="Run On"
             default-open
@@ -88,6 +89,12 @@
             />
             <CodeGenerationDetails
               v-if="associations && associations.type === 'codeGeneration'"
+              v-model="associations"
+              :disabled="editingFunc.isBuiltin"
+              @change="updateFunc"
+            />
+            <ConfirmationDetails
+              v-if="associations && associations.type === 'confirmation'"
               v-model="associations"
               :disabled="editingFunc.isBuiltin"
               @change="updateFunc"
@@ -139,6 +146,7 @@ import QualificationDetails from "./QualificationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
+import ConfirmationDetails from "./ConfirmationDetails.vue";
 
 const funcStore = useFuncStore();
 const { getFuncById } = storeToRefs(funcStore);

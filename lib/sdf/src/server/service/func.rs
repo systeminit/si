@@ -27,11 +27,12 @@ use dal::{
     AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId, AttributeValue,
     AttributeValueError, AttributeValueId, CodeGenerationPrototype, CodeGenerationPrototypeError,
-    CodeLanguage, ComponentError, ComponentId, DalContext, Func, FuncBackendKind, FuncBinding,
-    FuncBindingError, FuncId, InternalProviderError, InternalProviderId, Prop, PropError, PropId,
-    PropKind, QualificationPrototype, QualificationPrototypeError, ReadTenancyError, SchemaVariant,
-    SchemaVariantId, StandardModel, StandardModelError, TransactionsError, Visibility,
-    WriteTenancyError, WsEventError,
+    CodeLanguage, ComponentError, ComponentId, ConfirmationPrototype, ConfirmationPrototypeError,
+    DalContext, Func, FuncBackendKind, FuncBinding, FuncBindingError, FuncId,
+    InternalProviderError, InternalProviderId, Prop, PropError, PropId, PropKind,
+    PrototypeListForFunc, PrototypeListForFuncError, QualificationPrototype,
+    QualificationPrototypeError, ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel,
+    StandardModelError, TransactionsError, Visibility, WriteTenancyError, WsEventError,
 };
 
 pub mod create_func;
@@ -94,6 +95,10 @@ pub enum FuncError {
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("prototype context error: {0}")]
     PrototypeContext(#[from] PrototypeContextError),
+    #[error("prototype list for func error: {0}")]
+    PrototypeListForFunc(#[from] PrototypeListForFuncError),
+    #[error("confirmation prototype error: {0}")]
+    ConfirmationPrototype(#[from] ConfirmationPrototypeError),
 
     #[error("Function not found")]
     FuncNotFound,
@@ -202,6 +207,11 @@ pub enum FuncAssociations {
     Attribute {
         prototypes: Vec<AttributePrototypeView>,
         arguments: Vec<FuncArgumentView>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Confirmation {
+        schema_variant_ids: Vec<SchemaVariantId>,
+        component_ids: Vec<ComponentId>,
     },
 }
 
@@ -459,8 +469,19 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                 format,
             })
         }
+        FuncBackendKind::JsConfirmation => {
+            let protos = ConfirmationPrototype::list_for_func(ctx, *func.id()).await?;
+
+            let (schema_variant_ids, component_ids) =
+                prototype_context_into_schema_variants_and_components(&protos);
+
+            Some(FuncAssociations::Confirmation {
+                schema_variant_ids,
+                component_ids,
+            })
+        }
         FuncBackendKind::JsQualification => {
-            let protos = QualificationPrototype::list_for_func(ctx, func.id()).await?;
+            let protos = QualificationPrototype::list_for_func(ctx, *func.id()).await?;
 
             let (schema_variant_ids, component_ids) =
                 prototype_context_into_schema_variants_and_components(&protos);
@@ -470,6 +491,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                 component_ids,
             })
         }
+
         _ => None,
     };
 

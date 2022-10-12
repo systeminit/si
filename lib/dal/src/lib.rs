@@ -43,6 +43,7 @@ pub mod prop;
 pub mod prop_tree;
 pub mod property_editor;
 pub mod prototype_context;
+pub mod prototype_list_for_func;
 pub mod provider;
 pub mod qualification;
 pub mod qualification_check;
@@ -147,6 +148,9 @@ pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
 pub use prop::{Prop, PropError, PropId, PropKind, PropPk, PropResult};
+pub use prototype_list_for_func::{
+    PrototypeListForFunc, PrototypeListForFuncError, PrototypeListForFuncResult,
+};
 pub use provider::external::{ExternalProvider, ExternalProviderError, ExternalProviderId};
 pub use provider::internal::{InternalProvider, InternalProviderError, InternalProviderId};
 pub use qualification::{QualificationError, QualificationView};

@@ -172,12 +172,14 @@ const funcTypes = {
   [FuncBackendKind.JsQualification]: "Qualifications",
   [FuncBackendKind.JsAttribute]: "Attributes",
   [FuncBackendKind.JsCodeGeneration]: "Code Generation",
+  [FuncBackendKind.JsConfirmation]: "Confirmation",
 };
 
 const funcCreateTypes = {
   [FuncBackendKind.JsQualification]: "Qualification",
   [FuncBackendKind.JsAttribute]: "Attribute",
   [FuncBackendKind.JsCodeGeneration]: "Code Generation",
+  [FuncBackendKind.JsConfirmation]: "Confirmation",
 };
 
 const filteredList = computed(() =>

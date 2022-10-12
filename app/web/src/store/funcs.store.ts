@@ -5,11 +5,7 @@ import { ListedFuncView, listFuncs } from "@/service/func/list_funcs";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { getFunc, GetFuncResponse } from "@/service/func/get_func";
 import { revertFunc } from "@/service/func/revert_func";
-import {
-  createFunc,
-  CreateFuncRequest,
-  CreateFuncResponse,
-} from "@/service/func/create_func";
+import { createFunc, CreateFuncRequest } from "@/service/func/create_func";
 import {
   listInputSources,
   ListInputSourcesResponse,
@@ -17,7 +13,7 @@ import {
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { execFunc } from "@/service/func/exec_func";
 import { saveFunc, SaveFuncRequest } from "@/service/func/save_func";
-import { SaveFuncResponse, DevService } from "@/service/dev";
+import { DevService } from "@/service/dev";
 import { FuncArgument, FuncBackendKind } from "@/api/sdf/dal/func";
 import { AttributePrototypeView } from "@/service/func";
 import { useChangeSetsStore } from "./change_sets.store";
@@ -168,19 +164,13 @@ export const useFuncStore = () => {
       async EXEC_FUNC(funcId: number) {
         return execFunc({ ...visibility, id: funcId });
       },
-      async CREATE_FUNC(
-        createFuncRequest: CreateFuncRequest,
-      ) {
-        return createFunc(
-          {
-            ...visibility,
-            ...createFuncRequest,
-          },
-        );
+      async CREATE_FUNC(createFuncRequest: CreateFuncRequest) {
+        return createFunc({
+          ...visibility,
+          ...createFuncRequest,
+        });
       },
-      async SAVE_FUNC(
-        saveFuncRequest: SaveFuncRequest,
-      ) {
+      async SAVE_FUNC(saveFuncRequest: SaveFuncRequest) {
         return saveFunc(
           {
             ...visibility,
