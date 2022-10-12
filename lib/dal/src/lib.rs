@@ -1,5 +1,8 @@
 //! The Data Access Layer (DAL) for System Initiative.
 
+use std::collections::VecDeque;
+use std::io;
+use std::process::{Command, Stdio};
 use std::sync::Arc;
 
 use rand::Rng;
@@ -198,11 +201,17 @@ pub use ws_event::{WsEvent, WsEventError, WsPayload};
 
 #[cfg(debug_assertions)]
 const REQUIRED_BINARIES: &str = include_str!("../../../scripts/data/required-binaries.txt");
+#[cfg(debug_assertions)]
+const REQUIRED_COMMANDS: &str = include_str!("../../../scripts/data/required-commands.txt");
 
 #[derive(Error, Debug)]
 pub enum InitializationError {
-    #[error("missing required runtime dependencies: {0:?}")]
-    MissingRequiredRuntimeDependencies(Vec<&'static str>),
+    #[error("command not found from parts: {0:?}")]
+    CommandNotFoundFromParts(Vec<&'static str>),
+    #[error(
+        "missing required runtime dependencies ({0:?}) and/or required commands failed ({1:?})"
+    )]
+    MissingRequiredRuntimeDependencies(Vec<&'static str>, Vec<(&'static str, io::Error)>),
     #[error("failed to initialize sodium oxide")]
     SodiumOxide,
 }
@@ -224,14 +233,31 @@ pub fn init() -> InitializationResult<()> {
 #[cfg(debug_assertions)]
 pub fn check_runtime_dependencies() -> InitializationResult<()> {
     let mut missing_binaries = Vec::new();
+    let mut failed_commands = Vec::new();
+
     for binary in REQUIRED_BINARIES.lines() {
         if which::which(binary).is_err() {
             missing_binaries.push(binary);
         }
     }
+    for command in REQUIRED_COMMANDS.lines() {
+        let mut parts = command.split(' ').collect::<VecDeque<&str>>();
+        let command = parts.pop_front().ok_or_else(|| {
+            InitializationError::CommandNotFoundFromParts(Vec::from(parts.clone()))
+        })?;
+        if let Err(e) = Command::new(command)
+            .args(parts)
+            .stdout(Stdio::null())
+            .spawn()
+        {
+            failed_commands.push((command, e))
+        }
+    }
+
     if !missing_binaries.is_empty() {
         return Err(InitializationError::MissingRequiredRuntimeDependencies(
             missing_binaries,
+            failed_commands,
         ));
     }
     Ok(())

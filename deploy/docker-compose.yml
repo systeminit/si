@@ -1,6 +1,6 @@
 version: "3"
 
-# NOTE(nick): "depends_on" will start parent containers when using docker-compose run, so we should
+# NOTE(nick): "depends_on" will start parent containers when using `docker compose` run, so we should
 # try to only use it when necessary.
 
 services:

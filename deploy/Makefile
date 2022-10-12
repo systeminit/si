@@ -12,7 +12,7 @@ boostrap:
 # This target does not compose down beforehand.
 partial: init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
-		docker-compose \
+		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
 		up -d nats pg otel faktory
@@ -21,7 +21,7 @@ partial: init
 # local development and testing.
 dev: down init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
-		docker-compose \
+		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
 		up
@@ -30,7 +30,7 @@ dev: down init
 # This is the target to run in production.
 prod: init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
-		docker-compose \
+		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
 		up -d
@@ -39,7 +39,7 @@ web: init
 	# REPOPATH=$(REPOPATH) $(MAKEPATH)/scripts/check-for-artifacts-before-mounting.sh
 	$(MAKEPATH)/scripts/generate-ci-yml.sh $(CI_FROM_REF) $(CI_TO_REF)
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) REPOPATH=$(REPOPATH) \
-		docker-compose \
+		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
 			-f $(MAKEPATH)/docker-compose.ci.yml \
@@ -48,18 +48,18 @@ web: init
 ci: init
 	REPOPATH=$(REPOPATH) $(MAKEPATH)/scripts/check-for-artifacts-before-mounting.sh
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) REPOPATH=$(REPOPATH) \
-		docker-compose \
+		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
 			-f $(MAKEPATH)/docker-compose.ci.yml \
 		up -d
 
 down:
-	-docker-compose -f $(MAKEPATH)/docker-compose.yml \
+	-docker compose -f $(MAKEPATH)/docker-compose.yml \
 		down
 
 init:
 	if [ ! -f $(MAKEPATH)/docker-compose.env.yml ]; then \
 		echo "version: \"3\"" > $(MAKEPATH)/docker-compose.env.yml; \
 	fi
-	docker-compose -f $(MAKEPATH)/docker-compose.yml pull
+	docker compose -f $(MAKEPATH)/docker-compose.yml pull

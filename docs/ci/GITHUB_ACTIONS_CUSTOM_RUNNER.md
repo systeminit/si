@@ -15,7 +15,7 @@ sudo hostnamectl set-hostname ci-2
 sudo dnf -y upgrade
 sudo dnf -y install @development-tools nvme-cli lld clang cmake openssl libev libevent jq dnf-plugins-core make git lld skopeo wget butane golang-github-instrumenta-kubeval
 sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
-sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose
+sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 sudo systemctl start docker
 sudo systemctl enable docker
 ```

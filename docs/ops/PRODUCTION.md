@@ -14,7 +14,7 @@ You can log in interactively with:
 ssh fedora@prod-1
 ```
 
-The environment is running via [docker-compose](https://docs.docker.com/compose/) out of the `deploy` directory.
+The environment is running via [`docker compose`](https://docs.docker.com/compose/) out of the `deploy` directory.
 
 ## Updates
 

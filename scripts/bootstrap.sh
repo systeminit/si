@@ -116,26 +116,30 @@ function pop-bootstrap {
     # opinionated work.
     ubuntu-bootstrap
 
-    if [ "${SI_WSL2}" == "false" ]; then
-        if [ ! $(command -v docker) ]; then
-            sudo apt update
-            sudo apt install -y ca-certificates curl gnupg lsb-release
-            sudo mkdir -p /etc/apt/keyrings
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
-                $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-            sudo apt update
-            sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-            sudo service docker start
-            sudo docker run hello-world
-            sudo usermod -aG docker $SI_USER
-        fi
+    # NOTE(nick): the following installation blocks aren't "Pop!_OS-specific" and can be done for Ubuntu
+    # users as well. Since they are opinionated installation methods, I did not want to require them
+    # for all Ubuntu users.
 
-        # Ensure docker is installed before installing docker-compose v1.
-        if [ $(command -v docker) ] && [ ! $(command -v docker-compose) ]; then
-            sudo apt update
-            sudo apt install -y docker-compose
-        fi
+    # Install docker with the compose plugin if not found on the system.
+    if [ "${SI_WSL2}" == "false" ] && [ ! $(command -v docker) ]; then
+        sudo apt update
+        sudo apt install -y ca-certificates curl gnupg lsb-release
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+            $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        sudo apt update
+        sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+        sudo service docker start
+        sudo docker run hello-world
+        sudo usermod -aG docker $SI_USER
+    fi
+
+    # Install LTS node and npm if not found on the system.
+    if [ ! $(command -v node) ] && [ ! $(command -v npm) ]; then
+        curl -sL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+        sudo apt update
+        sudo apt install -y nodejs
     fi
 }
 
@@ -175,9 +179,6 @@ concurrency (>= 46 parallel test threads).
 
 Please follow the directions at https://docs.docker.com/engine/install/ubuntu/ to
 install the latest version of Docker.
-
-You will also need docker-compose v1 installed, which should be available in the
-Ubuntu repositories: sudo apt info docker-compose
 ========================================= NOTE ========================================="
     fi
 }
@@ -237,8 +238,8 @@ function install-butane-linux-amd64 {
     rm -rf /tmp/butane-download
 }
 
-function check-binaries {
-    # Ensure we can get the absolute path of the required binaries file.
+function check-dependencies {
+    # Ensure we can get the absolute path of the required files.
     REALPATH=realpath
     if [ ! "$(command -v realpath)" ]; then
         REALPATH=grealpath
@@ -247,22 +248,29 @@ function check-binaries {
         fi
     fi
 
-    # Get the binaries from the file.
+    # Get the binaries and commands from their respective files.
     SCRIPT_DIR=$(dirname $(${REALPATH} -s "$0"));
     BINARIES=$(cat $SCRIPT_DIR/data/required-binaries.txt)
+    COMMANDS=$(cat $SCRIPT_DIR/data/required-commands.txt)
 
-    # Check if each required binary in PATH.
-    for binary in $BINARIES; do
-        if ! [ "$(command -v ${binary})" ]; then
-            die "\"$binary\" must be installed and in PATH"
+    # Check if each required binary is in PATH.
+    for BINARY in $BINARIES; do
+        if ! [ "$(command -v ${BINARY})" ]; then
+            die "\"$BINARY\" must be installed and in PATH"
         fi
     done
-}
 
-function check-node {
-    # Check added due to vercel/pkg requirement: https://github.com/vercel/pkg/issues/838
-    if [ "$(node -pe process.release.lts)" = "undefined" ] && [ "$SI_OS" = "darwin" ] && [ "$SI_ARCH" = "arm64" ]; then
-        die "must use an LTS release of node for \"$SI_OS\" on \"$SI_ARCH\""
+    # Check if each required command executes successfully.
+    local IFS=$'\n'
+    for COMMAND in $COMMANDS; do
+        if ! eval ${COMMAND} > /dev/null; then
+            die "\"$COMMAND\" failed: potential missing dependencies"
+        fi
+    done
+
+    # Reference: https://github.com/vercel/pkg/issues/838
+    if [ "$(node -pe process.release.lts)" = "undefined" ]; then
+        die "must use the latest LTS release of node"
     fi
 }
 
@@ -281,6 +289,5 @@ Success! Ready to build System Initiative with your config 🦀:
 determine-user
 set-config
 perform-bootstrap
-check-binaries
-check-node
+check-dependencies
 print-success
