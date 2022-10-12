@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::{
     func::backend::js_confirmation::{ConfirmationResult, FuncBackendJsConfirmationArgs},
     func::FuncId,
-    impl_standard_model, pk,
+    impl_prototype_list_for_func, impl_standard_model, pk,
     prototype_context::{HasPrototypeContext, PrototypeContext},
     standard_model, standard_model_accessor, ActionPrototype, ActionPrototypeError, Component,
     ComponentError, ComponentId, ConfirmationResolver, ConfirmationResolverContext,
@@ -307,6 +307,8 @@ impl ConfirmationPrototype {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 }
+
+impl_prototype_list_for_func! {model: ConfirmationPrototype}
 
 #[cfg(test)]
 mod test {

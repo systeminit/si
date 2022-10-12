@@ -1,7 +1,7 @@
 use crate::{
-    CodeGenerationPrototypeError, ComponentId, DalContext, QualificationPrototypeError,
-    ReadTenancyError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
-    TransactionsError, WriteTenancyError,
+    CodeGenerationPrototypeError, ComponentId, ConfirmationPrototypeError, DalContext,
+    QualificationPrototypeError, ReadTenancyError, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, SystemId, TransactionsError, WriteTenancyError,
 };
 use std::future::Future;
 use thiserror::Error;
@@ -24,6 +24,8 @@ pub enum PrototypeContextError {
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error(transparent)]
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
+    #[error(transparent)]
+    ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
 }

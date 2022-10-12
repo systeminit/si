@@ -3,8 +3,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::func::argument::FuncArgument;
 use dal::{
-    AttributePrototype, Func, FuncBackendKind, FuncId, QualificationPrototype, StandardModel,
-    Visibility, WsEvent,
+    AttributePrototype, Func, FuncBackendKind, FuncId, PrototypeListForFunc,
+    QualificationPrototype, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -49,7 +49,7 @@ pub async fn revert_func(
                 }
             }
             FuncBackendKind::JsQualification => {
-                for proto in QualificationPrototype::list_for_func(&ctx, func.id()).await? {
+                for proto in QualificationPrototype::list_for_func(&ctx, *func.id()).await? {
                     if proto.visibility().in_change_set() {
                         proto.hard_delete(&ctx).await?;
                     }

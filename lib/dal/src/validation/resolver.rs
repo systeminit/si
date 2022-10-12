@@ -18,6 +18,7 @@ use crate::{
     ValidationPrototype, ValidationPrototypeId, Visibility, WriteTenancy,
 };
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
 pub enum ValidationResolverError {
     #[error("error serializing/deserializing json: {0}")]

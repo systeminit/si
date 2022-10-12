@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::{
     func::FuncId,
-    impl_standard_model, pk,
+    impl_prototype_list_for_func, impl_standard_model, pk,
     prototype_context::{HasPrototypeContext, PrototypeContext},
     standard_model, standard_model_accessor, CodeLanguage, ComponentId, HistoryEventError,
     SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
@@ -43,7 +43,6 @@ pub const UNSET_ID_VALUE: i64 = -1;
 
 const FIND_FOR_CONTEXT: &str =
     include_str!("./queries/code_generation_prototype_find_for_context.sql");
-const LIST_FOR_FUNC: &str = include_str!("queries/code_generation_prototype_list_for_func.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct CodeGenerationPrototypeContext {
@@ -203,22 +202,9 @@ impl CodeGenerationPrototype {
         let object = standard_model::objects_from_rows(rows)?;
         Ok(object)
     }
-
-    pub async fn list_for_func(
-        ctx: &DalContext,
-        func_id: FuncId,
-    ) -> CodeGenerationPrototypeResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                LIST_FOR_FUNC,
-                &[ctx.read_tenancy(), ctx.visibility(), &func_id],
-            )
-            .await?;
-        Ok(standard_model::objects_from_rows(rows)?)
-    }
 }
+
+impl_prototype_list_for_func! {model: CodeGenerationPrototype}
 
 #[cfg(test)]
 mod test {

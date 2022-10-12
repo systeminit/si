@@ -1,0 +1,75 @@
+use crate::{
+    standard_model::objects_from_rows, DalContext, FuncId, ReadTenancyError, StandardModel,
+    StandardModelError, TransactionsError, WriteTenancyError,
+};
+use async_trait::async_trait;
+use serde::de::DeserializeOwned;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum PrototypeListForFuncError {
+    #[error(transparent)]
+    Pg(#[from] si_data::PgError),
+    #[error(transparent)]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
+    #[error("write tenancy error: {0}")]
+    WriteTenancy(#[from] WriteTenancyError),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+}
+
+pub type PrototypeListForFuncResult<T> = Result<T, PrototypeListForFuncError>;
+
+#[async_trait]
+pub trait PrototypeListForFunc
+where
+    Self: Sized + DeserializeOwned + StandardModel,
+{
+    async fn list_for_func(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> PrototypeListForFuncResult<Vec<Self>>;
+}
+
+pub async fn prototype_list_for_func<T: DeserializeOwned>(
+    ctx: &DalContext,
+    table_name: &str,
+    func_id: FuncId,
+) -> PrototypeListForFuncResult<Vec<T>> {
+    let txns = ctx.txns();
+    let rows = txns
+        .pg()
+        .query(
+            "SELECT * FROM prototype_list_for_func_v1($1, $2, $3, $4)",
+            &[&table_name, ctx.read_tenancy(), ctx.visibility(), &func_id],
+        )
+        .await?;
+
+    Ok(objects_from_rows(rows)?)
+}
+
+#[macro_export]
+macro_rules! impl_prototype_list_for_func {
+    (model: $model:ident) => {
+        #[async_trait::async_trait]
+        impl $crate::PrototypeListForFunc for $model {
+            async fn list_for_func(
+                ctx: &DalContext,
+                func_id: FuncId,
+            ) -> $crate::PrototypeListForFuncResult<Vec<Self>> {
+                $crate::prototype_list_for_func::prototype_list_for_func(
+                    ctx,
+                    $model::table_name(),
+                    func_id,
+                )
+                .await
+            }
+        }
+    };
+}

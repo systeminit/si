@@ -41,6 +41,7 @@ pub async fn list_funcs(
             &FuncBackendKind::JsQualification.as_ref().to_string(),
             &FuncBackendKind::JsAttribute.as_ref().to_string(),
             &FuncBackendKind::JsCodeGeneration.as_ref().to_string(),
+            &FuncBackendKind::JsConfirmation.as_ref().to_string(),
         ],
     )
     .await?

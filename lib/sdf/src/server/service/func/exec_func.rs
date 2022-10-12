@@ -3,8 +3,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
     job::definition::Qualification, AttributePrototype, Component, DalContext, Func,
-    FuncBackendKind, FuncId, QualificationPrototype, QualificationPrototypeError, StandardModel,
-    SystemId, Visibility, WsEvent,
+    FuncBackendKind, FuncId, PrototypeListForFunc, QualificationPrototype,
+    QualificationPrototypeError, StandardModel, SystemId, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -47,7 +47,7 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
 }
 
 async fn run_qualifications(ctx: &DalContext, func: &Func) -> FuncResult<()> {
-    for proto in QualificationPrototype::list_for_func(ctx, func.id()).await? {
+    for proto in QualificationPrototype::list_for_func(ctx, *func.id()).await? {
         let component_id = proto.component_id();
         let schema_variant_id = proto.schema_variant_id();
 

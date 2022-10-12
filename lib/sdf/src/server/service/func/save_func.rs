@@ -8,8 +8,9 @@ use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
     func::argument::FuncArgument,
     prototype_context::{associate_prototypes, HasPrototypeContext, PrototypeContextField},
-    AttributePrototype, AttributePrototypeArgument, CodeGenerationPrototype, DalContext, Func,
-    FuncBackendKind, FuncId, QualificationPrototype, StandardModel, Visibility, WsEvent,
+    AttributePrototype, AttributePrototypeArgument, CodeGenerationPrototype, ConfirmationPrototype,
+    DalContext, Func, FuncBackendKind, FuncId, PrototypeListForFunc, QualificationPrototype,
+    StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -222,7 +223,7 @@ pub async fn save_func<'a>(
 
                 associate_prototypes(
                     &ctx,
-                    &QualificationPrototype::list_for_func(&ctx, func.id()).await?,
+                    &QualificationPrototype::list_for_func(&ctx, *func.id()).await?,
                     &associations,
                     Box::new(create_prototype_closure),
                 )
@@ -272,6 +273,37 @@ pub async fn save_func<'a>(
                 )
                 .await?;
             };
+        }
+        FuncBackendKind::JsConfirmation => {
+            let mut associations: Vec<PrototypeContextField> = vec![];
+            if let Some(FuncAssociations::Confirmation {
+                schema_variant_ids,
+                component_ids,
+            }) = request.associations
+            {
+                associations.append(&mut schema_variant_ids.iter().map(|f| (*f).into()).collect());
+                associations.append(&mut component_ids.iter().map(|f| (*f).into()).collect());
+
+                let create_prototype_closure =
+                    move |ctx: DalContext, context_field: PrototypeContextField| async move {
+                        ConfirmationPrototype::new(
+                            &ctx,
+                            func_id_copy,
+                            ConfirmationPrototype::new_context_for_context_field(context_field),
+                        )
+                        .await?;
+
+                        Ok(())
+                    };
+
+                associate_prototypes(
+                    &ctx,
+                    &ConfirmationPrototype::list_for_func(&ctx, *func.id()).await?,
+                    &associations,
+                    Box::new(create_prototype_closure),
+                )
+                .await?;
+            }
         }
         FuncBackendKind::JsAttribute => {
             if let Some(FuncAssociations::Attribute {

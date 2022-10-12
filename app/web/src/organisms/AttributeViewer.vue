@@ -320,20 +320,18 @@ const onCreateAttributeFunc = async (
   valueId: number,
   parentValueId?: number,
 ) => {
-  let res = await funcStore.CREATE_FUNC(
-    {
-      kind: FuncBackendKind.JsAttribute,
-      options: {
-        valueId,
-        parentValueId,
-        componentId: selectedComponent.value.id,
-        schemaVariantId: selectedComponent.value.schemaVariantId,
-        schemaId: selectedComponent.value.schemaId,
-        currentFuncId: currentFunc.id,
-        type: "attributeOptions",
-      },
+  const res = await funcStore.CREATE_FUNC({
+    kind: FuncBackendKind.JsAttribute,
+    options: {
+      valueId,
+      parentValueId,
+      componentId: selectedComponent.value.id,
+      schemaVariantId: selectedComponent.value.schemaVariantId,
+      schemaId: selectedComponent.value.schemaId,
+      currentFuncId: currentFunc.id,
+      type: "attributeOptions",
     },
-  );
+  });
   if (res.result.success) {
     routeToFunc(res.result.data.id);
   }

@@ -15,6 +15,12 @@ export interface CodeGenerationAssociations {
   format: CodeLanguage;
 }
 
+export interface ConfirmationAssociations {
+  type: "confirmation";
+  schemaVariantIds: number[];
+  componentIds: number[];
+}
+
 export interface QualificationAssocations {
   type: "qualification";
   schemaVariantIds: number[];
@@ -44,6 +50,7 @@ export interface AttributeAssocations {
 export type FuncAssociations =
   | AttributeAssocations
   | CodeGenerationAssociations
+  | ConfirmationAssociations
   | QualificationAssocations;
 
 export const FuncService = {

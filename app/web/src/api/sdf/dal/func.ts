@@ -4,6 +4,7 @@ export enum FuncBackendKind {
   Identity = "Identity",
   Integer = "Integer",
   JsQualification = "JsQualification",
+  JsConfirmation = "JsConfirmation",
   JsCodeGeneration = "JsCodeGeneration",
   JsAttribute = "JsAttribute",
   Map = "Map",
@@ -18,6 +19,7 @@ const CUSTOMIZABLE_FUNCS = [
   FuncBackendKind.JsQualification,
   FuncBackendKind.JsAttribute,
   FuncBackendKind.JsCodeGeneration,
+  FuncBackendKind.JsConfirmation,
 ];
 
 export const isCustomizableFuncKind = (f: FuncBackendKind) =>
