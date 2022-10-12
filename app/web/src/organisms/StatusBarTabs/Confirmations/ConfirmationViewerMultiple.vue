@@ -13,10 +13,10 @@
 </template>
 
 <script lang="ts" setup>
-import { Resource } from "@/service/resource";
+import { MockResource } from "@/service/resource";
 import ConfirmationViewerSingle from "./ConfirmationViewerSingle.vue";
 
 defineProps<{
-  resource: Resource;
+  resource: MockResource;
 }>();
 </script>

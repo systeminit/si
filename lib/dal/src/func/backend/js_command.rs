@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use telemetry::tracing::trace;
 use veritech::{CommandRunRequest, CommandRunResultSuccess, FunctionResult, OutputStream};
 
@@ -72,10 +71,11 @@ impl FuncDispatch for FuncBackendJsCommand {
         Ok(value)
     }
 }
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CommandRunResult {
-    pub created: HashMap<String, serde_json::Value>,
-    pub updated: HashMap<String, serde_json::Value>,
+    pub value: serde_json::Value,
+    pub created: bool,
     pub error: Option<String>,
 }
 
@@ -84,7 +84,7 @@ impl ExtractPayload for CommandRunResultSuccess {
 
     fn extract(self) -> FuncBackendResult<Self::Payload> {
         Ok(CommandRunResult {
-            updated: self.updated,
+            value: self.value,
             created: self.created,
             error: self.error,
         })

@@ -3,13 +3,14 @@ import { ApiResponse, sdf } from "@/api/sdf";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { GlobalErrorService } from "@/service/global_error";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
+import { MockResource } from "../resource";
 
 export interface ResourceSummaryForComponent {
   id: number;
   name: string;
   health: ResourceHealth;
   schema: string;
-  resources: [];
+  resource?: MockResource;
 }
 
 export interface ListByComponentResponse {

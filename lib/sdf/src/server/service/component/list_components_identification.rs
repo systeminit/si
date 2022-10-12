@@ -27,7 +27,7 @@ pub struct ListComponentsIdentificationItem {
     pub schema_name: String,
     pub diagram_kind: DiagramKind,
     pub schema_variant_name: String,
-    pub resources: Vec<ResourceView>,
+    pub resource: Option<ResourceView>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -51,11 +51,9 @@ pub async fn list_components_identification(
             Some(component) => component,
             None => continue,
         };
-        let resources = Resource::list_by_component(&ctx, *component.id(), SystemId::NONE)
+        let resource = Resource::get_by_component_and_system(&ctx, *component.id(), SystemId::NONE)
             .await?
-            .into_iter()
-            .map(ResourceView::new)
-            .collect();
+            .map(ResourceView::new);
 
         let schema_variant = component
             .schema_variant(&ctx)
@@ -76,7 +74,7 @@ pub async fn list_components_identification(
             schema_id: *schema.id(),
             schema_name: schema.name().to_owned(),
             diagram_kind,
-            resources,
+            resource,
         };
         label_entries.push(LabelEntry {
             label: component

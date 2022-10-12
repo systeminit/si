@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,8 +13,8 @@ pub struct CommandRunRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CommandRunResultSuccess {
     pub execution_id: String,
-    pub updated: HashMap<String, serde_json::Value>,
-    pub created: HashMap<String, serde_json::Value>,
+    pub value: serde_json::Value,
+    pub created: bool,
     // Collects the error if the function throws
     pub error: Option<String>,
 }

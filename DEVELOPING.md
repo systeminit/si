@@ -11,7 +11,6 @@ information.
 - [Learning About SI Concepts](#learning-about-si-concepts)
 - [Repository Structure](#repository-structure)
 - [Preparing Your Changes and Running Tests](#preparing-your-changes-and-running-tests)
-- [Troubleshooting](#troubleshooting)
 
 ## Supported Developer Environments
 

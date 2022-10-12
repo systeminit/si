@@ -3,7 +3,7 @@
     <template #tabs>
       <SiTabHeader>Attributes</SiTabHeader>
       <SiTabHeader>Code</SiTabHeader>
-      <SiTabHeader>Resources</SiTabHeader>
+      <SiTabHeader>Resource</SiTabHeader>
     </template>
 
     <template #panels>
@@ -35,21 +35,25 @@
 
       <TabPanel class="w-full">
         <SiCollapsible
-          v-for="(resource, index) in selectedComponent.resources"
-          :key="resource.key"
-          :label="resource.key"
-          :default-open="index === 0"
+          v-if="selectedComponent.resource"
           text-size="md"
           show-label-and-slot
         >
           <template #label>
-            <HealthIcon :health="resource.health" size="md" hide-text />
+            <HealthIcon
+              :health="selectedComponent.resource.health"
+              size="md"
+              hide-text
+            />
           </template>
           <div class="px-xs pb-xs max-h-96 overflow-hidden flex">
             <div class="flex-grow">
-              <CodeViewer :code="JSON.stringify(resource.data)" border>
+              <CodeViewer
+                :code="JSON.stringify(selectedComponent.resource.data)"
+                border
+              >
                 <template #title
-                  ><HealthIcon :health="resource.health"
+                  ><HealthIcon :health="selectedComponent.resource.health"
                 /></template>
               </CodeViewer>
             </div>

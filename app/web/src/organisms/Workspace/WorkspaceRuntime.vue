@@ -135,7 +135,7 @@ const componentsList = computed((): ComponentListItem[] => {
       name: component.name,
       schema: component.schema,
       health: component.health,
-      resources: component.resources,
+      resource: component.resource,
     });
   }
   return list;

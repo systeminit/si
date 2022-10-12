@@ -75,7 +75,7 @@ import SiArrow from "@/atoms/SiArrow.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import HealthIcon from "@/molecules/HealthIcon.vue";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
-import { Resource } from "@/service/resource";
+import { MockResource } from "@/service/resource";
 import { useComponentsStore } from "@/store/components.store";
 
 export interface ComponentListItem {
@@ -84,7 +84,7 @@ export interface ComponentListItem {
   schema?: string;
   status?: Status;
   health?: ResourceHealth;
-  resources?: Resource[];
+  resource?: MockResource;
 }
 
 export interface FilterOption {

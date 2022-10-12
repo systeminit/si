@@ -224,6 +224,11 @@ impl WorkflowRunner {
 
         // Perform the workflow runner "run" by running the workflow tree.
         let func_binding_return_values = tree.run(ctx, run_id).await?;
+
+        // FIXME(nick): right now, there's nothing stopping a WorkflowTree from operating on
+        // multiple Components across multiple Systems. Therefore, we take in a "vec" of resources
+        // here even though we know that there can only be one (or none) Resource for a given
+        // Component and System.
         let (func_id, func_binding_id, created_resources, updated_resources) =
             Self::process_successful_workflow_run(ctx, &func_binding_return_values, component_id)
                 .await?;
@@ -319,18 +324,17 @@ impl WorkflowRunner {
 
             if let Some(value) = return_value.value() {
                 let result = CommandRunResult::deserialize(value)?;
-                for (key, value) in result.updated {
-                    updated_resources.push(
-                        Resource::upsert(ctx, component_id, SystemId::NONE, key, value)
-                            .await
-                            .map_err(Box::new)?,
-                    );
-                }
-                for (key, value) in result.created {
+                if result.created {
                     // If the function creates multiple resources with the same key we will duplicate them
                     // Otherwise a EC2 instance might get lost if the command function has a glitch
                     created_resources.push(
-                        Resource::new(ctx, component_id, SystemId::NONE, key, value)
+                        Resource::new(ctx, result.value, component_id, SystemId::NONE)
+                            .await
+                            .map_err(Box::new)?,
+                    );
+                } else {
+                    updated_resources.push(
+                        Resource::upsert(ctx, result.value, component_id, SystemId::NONE)
                             .await
                             .map_err(Box::new)?,
                     );

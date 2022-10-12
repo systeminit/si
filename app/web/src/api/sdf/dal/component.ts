@@ -14,7 +14,7 @@ export interface ComponentIdentification {
   schemaId: number;
   schemaName: string;
   diagramKind: DiagramKind;
-  resources: Resource[];
+  resource?: Resource;
 }
 
 export interface ComponentDiff {

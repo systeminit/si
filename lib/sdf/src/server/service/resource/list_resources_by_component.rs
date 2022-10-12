@@ -28,7 +28,7 @@ pub struct MockComponent {
     id: ComponentId,
     name: String,
     schema: String,
-    resources: Vec<MockResource>,
+    resource: MockResource,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -76,8 +76,7 @@ fn mock_default(id: ComponentId, name: String, schema: String) -> MockComponent 
     confirmations.push(confirmation);
 
     // Create resource
-    let mut resources = Vec::new();
-    let resouce = MockResource {
+    let resource = MockResource {
         id: 1,
         name: "unknown".to_string(),
         kind: "unknown".to_string(),
@@ -85,13 +84,12 @@ fn mock_default(id: ComponentId, name: String, schema: String) -> MockComponent 
         status: MockStatus::Pending,
         confirmations,
     };
-    resources.push(resouce);
 
     // Return component
     MockComponent {
         name,
         id,
-        resources,
+        resource,
         schema,
     }
 }
@@ -109,8 +107,7 @@ fn mock_docker(id: ComponentId, name: String, schema: String) -> MockComponent {
     confirmations.push(confirmation);
 
     // Create resource
-    let mut resources = Vec::new();
-    let resouce = MockResource {
+    let resource = MockResource {
         id: 1,
         name: "whiskers".to_string(),
         kind: "docker image".to_string(),
@@ -118,13 +115,12 @@ fn mock_docker(id: ComponentId, name: String, schema: String) -> MockComponent {
         status: MockStatus::Created,
         confirmations,
     };
-    resources.push(resouce);
 
     // Return component
     MockComponent {
         name,
         id,
-        resources,
+        resource,
         schema,
     }
 }

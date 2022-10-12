@@ -8,25 +8,30 @@ CREATE TABLE resources
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
-    key                         text                     NOT NULL,
     data                        jsonb                    NOT NULL,
+    component_id                bigint                   NOT NULL,
+    system_id                   bigint                   NOT NULL,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW()
 );
-SELECT standard_model_table_constraints_v1('resources');
-SELECT belongs_to_table_create_v1('resource_belongs_to_component', 'resources', 'components');
-SELECT belongs_to_table_create_v1('resource_belongs_to_system', 'resources', 'systems');
 
+CREATE UNIQUE INDEX unique_resources
+    ON resources (component_id,
+                  system_id,
+                  visibility_change_set_pk,
+                  (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
+
+SELECT standard_model_table_constraints_v1('resources');
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('resources', 'model', 'resource', 'Resource'),
-       ('resource_belongs_to_component', 'belongs_to', 'resource.component', 'Resource <> Component'),
-       ('resource_belongs_to_system', 'belongs_to', 'resource.system', 'Resource <> System');
+VALUES ('resources', 'model', 'resource', 'Resource');
 
 CREATE OR REPLACE FUNCTION resource_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_key text,
     this_data jsonb,
+    this_component_id bigint,
+    this_system_id bigint,
     OUT object json) AS
 $$
 DECLARE
@@ -43,16 +48,18 @@ BEGIN
                            tenancy_workspace_ids,
                            visibility_change_set_pk,
                            visibility_deleted_at,
-                           key,
-                           data)
+                           data,
+                           component_id,
+                           system_id)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
-            this_key,
-            this_data)
+            this_data,
+            this_component_id,
+            this_system_id)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
