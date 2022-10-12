@@ -6,11 +6,13 @@ use thiserror::Error;
 use crate::{
     func::backend::js_confirmation::{ConfirmationResult, FuncBackendJsConfirmationArgs},
     func::FuncId,
-    impl_standard_model, pk, standard_model, standard_model_accessor, ActionPrototype,
-    ActionPrototypeError, Component, ComponentError, ComponentId, ConfirmationResolver,
-    ConfirmationResolverContext, ConfirmationResolverError, DalContext, FuncBinding,
-    FuncBindingError, HistoryEventError, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
+    impl_standard_model, pk,
+    prototype_context::{HasPrototypeContext, PrototypeContext},
+    standard_model, standard_model_accessor, ActionPrototype, ActionPrototypeError, Component,
+    ComponentError, ComponentId, ConfirmationResolver, ConfirmationResolverContext,
+    ConfirmationResolverError, DalContext, FuncBinding, FuncBindingError, HistoryEventError,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -53,6 +55,39 @@ impl Default for ConfirmationPrototypeContext {
     }
 }
 
+impl PrototypeContext for ConfirmationPrototypeContext {
+    fn component_id(&self) -> ComponentId {
+        self.component_id
+    }
+
+    fn set_component_id(&mut self, component_id: ComponentId) {
+        self.component_id = component_id;
+    }
+
+    fn schema_id(&self) -> SchemaId {
+        self.schema_id
+    }
+
+    fn set_schema_id(&mut self, schema_id: SchemaId) {
+        self.schema_id = schema_id;
+    }
+    fn schema_variant_id(&self) -> SchemaVariantId {
+        self.schema_variant_id
+    }
+
+    fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
+        self.schema_variant_id = schema_variant_id;
+    }
+
+    fn system_id(&self) -> SystemId {
+        self.system_id
+    }
+
+    fn set_system_id(&mut self, system_id: SystemId) {
+        self.system_id = system_id;
+    }
+}
+
 impl ConfirmationPrototypeContext {
     pub fn new() -> Self {
         Self {
@@ -61,71 +96,6 @@ impl ConfirmationPrototypeContext {
             schema_variant_id: SchemaVariantId::NONE,
             system_id: SystemId::NONE,
         }
-    }
-
-    pub fn new_for_context_field(context_field: ConfirmationPrototypeContextField) -> Self {
-        match context_field {
-            ConfirmationPrototypeContextField::Schema(schema_id) => ConfirmationPrototypeContext {
-                component_id: ComponentId::NONE,
-                schema_id,
-                schema_variant_id: SchemaVariantId::NONE,
-                system_id: SystemId::NONE,
-            },
-            ConfirmationPrototypeContextField::System(system_id) => ConfirmationPrototypeContext {
-                component_id: ComponentId::NONE,
-                schema_id: SchemaId::NONE,
-                schema_variant_id: SchemaVariantId::NONE,
-                system_id,
-            },
-            ConfirmationPrototypeContextField::SchemaVariant(schema_variant_id) => {
-                ConfirmationPrototypeContext {
-                    component_id: ComponentId::NONE,
-                    schema_id: SchemaId::NONE,
-                    schema_variant_id,
-                    system_id: SystemId::NONE,
-                }
-            }
-            ConfirmationPrototypeContextField::Component(component_id) => {
-                ConfirmationPrototypeContext {
-                    component_id,
-                    schema_id: SchemaId::NONE,
-                    schema_variant_id: SchemaVariantId::NONE,
-                    system_id: SystemId::NONE,
-                }
-            }
-        }
-    }
-
-    pub fn component_id(&self) -> ComponentId {
-        self.component_id
-    }
-
-    pub fn set_component_id(&mut self, component_id: ComponentId) {
-        self.component_id = component_id;
-    }
-
-    pub fn schema_id(&self) -> SchemaId {
-        self.schema_id
-    }
-
-    pub fn set_schema_id(&mut self, schema_id: SchemaId) {
-        self.schema_id = schema_id;
-    }
-
-    pub fn schema_variant_id(&self) -> SchemaVariantId {
-        self.schema_variant_id
-    }
-
-    pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
-        self.schema_variant_id = schema_variant_id;
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    pub fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
     }
 }
 
@@ -151,38 +121,6 @@ pub struct ConfirmationPrototype {
     visibility: Visibility,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ConfirmationPrototypeContextField {
-    Component(ComponentId),
-    Schema(SchemaId),
-    SchemaVariant(SchemaVariantId),
-    System(SystemId),
-}
-
-impl From<ComponentId> for ConfirmationPrototypeContextField {
-    fn from(component_id: ComponentId) -> Self {
-        ConfirmationPrototypeContextField::Component(component_id)
-    }
-}
-
-impl From<SchemaId> for ConfirmationPrototypeContextField {
-    fn from(schema_id: SchemaId) -> Self {
-        ConfirmationPrototypeContextField::Schema(schema_id)
-    }
-}
-
-impl From<SchemaVariantId> for ConfirmationPrototypeContextField {
-    fn from(schema_variant_id: SchemaVariantId) -> Self {
-        ConfirmationPrototypeContextField::SchemaVariant(schema_variant_id)
-    }
-}
-
-impl From<SystemId> for ConfirmationPrototypeContextField {
-    fn from(system_id: SystemId) -> Self {
-        ConfirmationPrototypeContextField::System(system_id)
-    }
-}
-
 impl_standard_model! {
     model: ConfirmationPrototype,
     pk: ConfirmationPrototypePk,
@@ -190,6 +128,22 @@ impl_standard_model! {
     table_name: "confirmation_prototypes",
     history_event_label_base: "confirmation_prototype",
     history_event_message_name: "Confirmation Prototype"
+}
+
+impl HasPrototypeContext<ConfirmationPrototypeContext> for ConfirmationPrototype {
+    fn context(&self) -> ConfirmationPrototypeContext {
+        let mut context = ConfirmationPrototypeContext::new();
+        context.set_component_id(self.component_id);
+        context.set_schema_id(self.schema_id);
+        context.set_schema_variant_id(self.schema_variant_id);
+        context.set_system_id(self.system_id);
+
+        context
+    }
+
+    fn new_context() -> ConfirmationPrototypeContext {
+        ConfirmationPrototypeContext::new()
+    }
 }
 
 impl ConfirmationPrototype {
@@ -351,16 +305,6 @@ impl ConfirmationPrototype {
             .await?;
 
         Ok(standard_model::objects_from_rows(rows)?)
-    }
-
-    pub fn context(&self) -> ConfirmationPrototypeContext {
-        let mut context = ConfirmationPrototypeContext::new();
-        context.set_component_id(self.component_id);
-        context.set_schema_id(self.schema_id);
-        context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(self.system_id);
-
-        context
     }
 }
 
