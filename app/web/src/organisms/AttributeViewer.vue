@@ -320,7 +320,7 @@ const onCreateAttributeFunc = async (
   valueId: number,
   parentValueId?: number,
 ) => {
-  funcStore.CREATE_FUNC(
+  let res = await funcStore.CREATE_FUNC(
     {
       kind: FuncBackendKind.JsAttribute,
       options: {
@@ -333,8 +333,10 @@ const onCreateAttributeFunc = async (
         type: "attributeOptions",
       },
     },
-    (response) => routeToFunc(response.id),
   );
+  if (res.result.success) {
+    routeToFunc(res.result.data.id);
+  }
 };
 
 const hackAwayTheZeroElementOfContainers = (
