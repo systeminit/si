@@ -5,9 +5,15 @@
     </template>
     <template #panels>
       <TabPanel :key="0" class="h-full overflow-auto">
-        <SiSearch auto-search class="border-b-0" />
+        <div
+          v-if="fixBatchesWithFixes.length === 0"
+          class="m-6 p-3 border border-neutral-300 dark:border-neutral-600 rounded-md h-64 flex items-center text-neutral-300 dark:text-neutral-600 font-bold"
+        >
+          No fixes have been made ... yet
+        </div>
 
-        <div>
+        <div v-else>
+          <SiSearch auto-search class="border-b-0" />
           <SiCollapsible
             v-for="(fixBatch, batch_index) of fixBatchesWithFixes"
             :key="batch_index"
@@ -23,7 +29,7 @@
                 <div class="text-success-500 tracking-tight font-bold">
                   {{ fixBatch.fixes.length }} resources fixed
                 </div>
-                <div class="">by: {{ fixBatch.author }}</div>
+                <div class="">by: {{ fixBatch.author.email }}</div>
               </div>
 
               <ul class="pl-5 mt-2">
@@ -62,7 +68,7 @@ import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-import { useFixesStore } from "@/store/fixes.store";
+import { useFixesStore } from "@/store/fixes/fixes.store";
 
 const fixesStore = useFixesStore();
 

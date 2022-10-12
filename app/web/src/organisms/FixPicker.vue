@@ -33,24 +33,31 @@
             >Fix Resources
           </VButton2>
         </div>
-        <ul class="overflow-y-auto">
-          <SiCollapsible as="li" class="w-full" content-as="ul" default-open>
-            <template #label>
-              <div class="flex flex-row w-full items-center justify-between">
-                <div class="mr-2 whitespace-nowrap">Resources</div>
-                <div
-                  class="py-1 px-2 rounded whitespace-nowrap flex flex-row items-center text-destructive-500 bg-destructive-50 dark:text-destructive-100 dark:bg-destructive-500"
-                >
-                  <Icon
-                    name="tools"
-                    size="xs"
-                    class="text-destructive-500 dark:text-destructive-100"
-                  />
-                  {{ fixes.length }}
-                </div>
+        <SiCollapsible as="div" class="w-full" content-as="ul" default-open>
+          <template #label>
+            <div class="flex flex-row w-full items-center justify-between">
+              <div class="mr-2 whitespace-nowrap">Resources</div>
+              <div
+                class="py-1 px-2 rounded whitespace-nowrap flex flex-row items-center text-destructive-500 bg-destructive-50 dark:text-destructive-100 dark:bg-destructive-500"
+              >
+                <Icon
+                  name="tools"
+                  size="xs"
+                  class="text-destructive-500 dark:text-destructive-100"
+                />
+                {{ fixes.length }}
               </div>
-            </template>
-            <template #default>
+            </div>
+          </template>
+          <template #default>
+            <TransitionGroup
+              enter-active-class="duration-500 ease-out"
+              enter-from-class="transform opacity-0"
+              enter-to-class="opacity-100"
+              leave-active-class="duration-500 ease-in"
+              leave-from-class="opacity-100 "
+              leave-to-class="transform opacity-0"
+            >
               <li v-for="fix in fixes" :key="fix.id">
                 <FixSprite
                   :fix="fix"
@@ -62,9 +69,9 @@
                   "
                 />
               </li>
-            </template>
-          </SiCollapsible>
-        </ul>
+            </TransitionGroup>
+          </template>
+        </SiCollapsible>
       </TabPanel>
     </template>
   </SiTabGroup>
@@ -72,7 +79,8 @@
 
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
-import { reactive, computed } from "vue";
+import { reactive, ref, computed, onBeforeUnmount, onBeforeMount } from "vue";
+import { addSeconds } from "date-fns";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
@@ -81,24 +89,41 @@ import Icon from "@/ui-lib/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import FixSprite from "@/molecules/FixSprite.vue";
-import { useFixesStore } from "@/store/fixes.store";
+import { useFixesStore, Fix } from "@/store/fixes/fixes.store";
 import SiCollapsible from "./SiCollapsible.vue";
 
 const selectAll = (checked: boolean) => {
-  for (const key in fixSelection) {
-    fixSelection[key] = checked;
+  for (const fix of fixes.value) {
+    fixSelection[fix.id] = checked;
   }
 };
 
 const fixesStore = useFixesStore();
-const fixes = computed(() => fixesStore.allFixes);
-const fixSelection: Record<string, boolean> = reactive({
-  1: false,
-  2: false,
-});
+const fixes = computed(() =>
+  fixesStore.allFixes.filter(
+    (fix: Fix) =>
+      fix.finishedAt === undefined ||
+      fix.finishedAt > addSeconds(currentTime.value, -3),
+  ),
+);
+const fixSelection: Record<string, boolean> = reactive({});
+
 const selectedFixes = computed(() => {
   return fixes.value.filter((fix) => {
     return fixSelection[fix.id] && fix.status === "unstarted";
   });
+});
+
+const currentTime = ref(new Date());
+let dateIntervalId: Timeout;
+
+onBeforeMount(() => {
+  dateIntervalId = setInterval(() => {
+    currentTime.value = new Date();
+  }, 500);
+});
+
+onBeforeUnmount(() => {
+  clearInterval(dateIntervalId);
 });
 </script>

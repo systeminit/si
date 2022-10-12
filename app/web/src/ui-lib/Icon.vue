@@ -224,16 +224,17 @@ const svgRotateClass = computed(() => {
   }[rotate];
 });
 
-const sizeClasses = computed(() => {
-  return {
-    full: "w-full h-full",
-    xs: "w-4 h-4",
-    sm: "w-5 h-5",
-    md: "w-6 h-6",
-    lg: "w-8 h-8",
-    xl: "w-9 h-9",
-  }[props.size];
-});
+const sizeClasses = computed(
+  () =>
+    ({
+      full: "w-full h-full",
+      xs: "w-4 h-4",
+      sm: "w-5 h-5",
+      md: "w-6 h-6",
+      lg: "w-8 h-8",
+      xl: "w-9 h-9",
+    }[props.size]),
+);
 
 const AUTO_SPIN_ICONS = ["loader", "refresh-active"];
 </script>

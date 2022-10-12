@@ -1,11 +1,5 @@
 <template>
-  <SiCollapsible
-    as="li"
-    class="w-full"
-    content-as="ul"
-    :default-open="false"
-    hide-bottom-border
-  >
+  <SiCollapsible :default-open="false" hide-bottom-border>
     <template #label>
       <div
         class="flex flex-row items-center gap-2.5 text-sm relative"
@@ -24,28 +18,17 @@
           "
         />
         <Icon
-          v-else-if="fix.status === 'running'"
-          name="loader"
-          class="text-action-300"
-          size="xl"
+          v-else
+          :name="statusIconProps.name"
+          :class="clsx('shrink-0', statusIconProps.color)"
+          size="lg"
         />
-        <Icon
-          v-else-if="fix.status === 'failure'"
-          name="x-circle"
-          class="text-destructive-500"
-          size="xl"
-        />
-        <Icon
-          v-else-if="fix.status === 'success'"
-          name="check-circle"
-          class="text-success-500"
-          size="xl"
-        />
+
         <Icon
           v-if="fix.status !== 'success'"
           name="tools"
-          size="xl"
-          class="text-destructive-500"
+          size="lg"
+          class="text-destructive-500 shrink-0"
         />
         <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
           {{ fix.name }}
@@ -61,11 +44,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType } from "vue";
-import Icon from "@/ui-lib/Icon.vue";
+import { Ref, computed, PropType } from "vue";
+import clsx from "clsx";
+import Icon, { IconNames } from "@/ui-lib/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-import { Fix } from "@/store/fixes.store";
+import { Fix } from "@/store/fixes/fixes.store";
 
 const props = defineProps({
   fix: { type: Object as PropType<Fix>, required: true },
@@ -78,4 +62,17 @@ const classes = computed(() => props.class);
 const emit = defineEmits<{
   (e: "toggle", checked: boolean): void;
 }>();
+
+const statusIconProps: Ref<{ name: IconNames; color: string }> = computed(
+  () => {
+    switch (props.fix.status) {
+      case "failure":
+        return { name: "x-circle", color: "text-destructive-500" };
+      case "success":
+        return { name: "check-circle", color: "text-success-500" };
+      default:
+        return { name: "loader", color: "text-action-300" };
+    }
+  },
+);
 </script>

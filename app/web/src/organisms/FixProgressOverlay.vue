@@ -12,22 +12,31 @@
       {{ fixState.summary }}
     </div>
 
-    <div v-if="fixState.rate < 1" class="mt-2 flex gap-5">
-      <ProgressBar :completion-rate="fixState.rate" />
-      <span class="whitespace-nowrap flex-shrink-0">
-        {{ fixState.executed }} of
-        <span v-if="fixState.total > 0">
-          {{ fixState.total }}
+    <Transition
+      enter-active-class="duration-300 ease-out"
+      enter-from-class="transform opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="delay-1000 duration-200 ease-in"
+      leave-from-class="opacity-100 "
+      leave-to-class="transform opacity-0"
+    >
+      <div v-show="fixState.rate < 1" class="mt-2 flex gap-5">
+        <ProgressBar :completion-rate="fixState.rate" />
+        <span class="whitespace-nowrap flex-shrink-0">
+          {{ fixState.executed }} of
+          <span v-if="fixState.total > 0">
+            {{ fixState.total }}
+          </span>
+          <Icon
+            v-else
+            name="loader"
+            size="xs"
+            class="inline-block align-middle"
+          />
+          Synced
         </span>
-        <Icon
-          v-else
-          name="loader"
-          size="xs"
-          class="inline-block align-middle"
-        />
-        Synced
-      </span>
-    </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -35,7 +44,7 @@
 import clsx from "clsx";
 import { computed } from "vue";
 import ProgressBar from "@/atoms/ProgressBar.vue";
-import { useFixesStore } from "@/store/fixes.store";
+import { useFixesStore } from "@/store/fixes/fixes.store";
 import Icon from "@/ui-lib/Icon.vue";
 
 const fixesStore = useFixesStore();

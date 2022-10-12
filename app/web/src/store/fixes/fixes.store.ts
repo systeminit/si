@@ -6,6 +6,9 @@ import { useComponentsStore } from "@/store/components.store";
 import promiseDelay from "@/utils/promise_delay";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 import { LoginResponse } from "@/service/session";
+import hardcodedOutputs from "@/store/fixes/hardcoded_fix_outputs";
+import { User } from "@/api/sdf/dal/user";
+import { useAuthStore } from "@/store/auth.store";
 
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 
@@ -16,12 +19,14 @@ export type Fix = {
   recommendation: string;
   status: FixStatus;
   output?: string; // TODO(victor): output possibly comes from another endpoint, and should be linked at runtime. This is good for now.
+  startedAt?: Date;
+  finishedAt?: Date;
 };
 
 export type FixBatchId = number;
 export type FixBatch = {
   id: FixBatchId;
-  author: string;
+  author: User;
   timestamp: Date;
 };
 
@@ -115,12 +120,20 @@ export const useFixesStore = () => {
             await promiseDelay(500);
             this.processedFixComponents += 1;
 
-            if (["Region", "Docker Image"].includes(component.schemaName))
+            if (
+              [
+                "Region",
+                "Docker Image",
+                "Butane",
+                "Credential",
+                "AMI",
+              ].includes(component.schemaName)
+            )
               continue;
 
             this.updateFix({
               id: component.id,
-              name: `Create ${component.schemaName} on your cloud provider`,
+              name: `Create ${component.schemaName}`,
               recommendation:
                 _.sample([
                   "this is what we recommend you do - just fix this thing and you will be all good",
@@ -128,14 +141,17 @@ export const useFixesStore = () => {
                   "This one should be pretty simple",
                 ]) ?? "",
               status: "unstarted",
+              output: hardcodedOutputs[component.schemaName] ?? "{}",
             });
-            await promiseDelay(1500); // Extra delay on items that will generate fixes
+            await promiseDelay(100); // Extra delay on items that will generate fixes
           }
         },
         async executeMockFixes(fixes: Array<Fix>) {
+          const authStore = useAuthStore();
+
           const fixBatch = <FixBatch>{
             id: _.random(100),
-            author: "couldbe@you.com",
+            author: authStore.user,
             timestamp: new Date(),
           };
 
@@ -152,6 +168,7 @@ export const useFixesStore = () => {
 
             this.updateFix({
               ...fix,
+              startedAt: new Date(),
               status: "running",
             });
 
@@ -159,25 +176,8 @@ export const useFixesStore = () => {
 
             this.updateFix({
               ...fix,
+              finishedAt: new Date(),
               status: "success",
-              output: JSON.stringify(
-                _.sample([
-                  {
-                    ipsum: "Dolor",
-                    long: "This is a very long string that should not break the interface at all",
-                    sit: 13,
-                  },
-                  {
-                    ipsum: "Dolor",
-                    sit: 13,
-                  },
-                  {
-                    ipsum: ["line", "line", "line"],
-                  },
-                ]),
-                null,
-                2,
-              ),
             });
           }
 
