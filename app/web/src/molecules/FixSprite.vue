@@ -1,36 +1,55 @@
 <template>
-  <SiCollapsible :default-open="false" hide-bottom-border>
+  <SiCollapsible
+    as="li"
+    class="w-full"
+    content-as="ul"
+    :default-open="false"
+    hide-bottom-border
+  >
+    <template #prefix>
+      <VormInput
+        v-if="fix.status === 'unstarted'"
+        :model-value="selected"
+        type="checkbox"
+        no-label
+        @click.stop
+        @update:model-value="
+          (c) => {
+            emit('toggle', c);
+          }
+        "
+      />
+      <Icon
+        v-else-if="fix.status === 'running'"
+        name="loader"
+        :class="clsx('shrink-0', statusIconProps.color)"
+        size="lg"
+      />
+      <Icon
+        v-else
+        :name="statusIconProps.name"
+        :class="clsx('shrink-0', statusIconProps.color)"
+        size="lg"
+      />
+      <Icon
+        v-if="fix.status !== 'success'"
+        name="tools"
+        size="lg"
+        :class="clsx('shrink-0', statusIconProps.color)"
+      />
+    </template>
     <template #label>
       <div
         class="flex flex-row items-center gap-2.5 text-sm relative"
         :class="classes"
       >
-        <VormInput
-          v-if="fix.status === 'unstarted'"
-          :model-value="selected"
-          type="checkbox"
-          no-label
-          @click.stop
-          @update:model-value="
-            (c) => {
-              emit('toggle', c);
-            }
-          "
-        />
-        <Icon
-          v-else
-          :name="statusIconProps.name"
-          :class="clsx('shrink-0', statusIconProps.color)"
-          size="lg"
-        />
-
         <Icon
           v-if="fix.status !== 'success'"
           name="tools"
-          size="lg"
+          size="md"
           class="text-destructive-500 shrink-0"
         />
-        <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
+        <div class="w-full text-ellipsis overflow-hidden line-clamp-2">
           {{ fix.name }}
         </div>
       </div>

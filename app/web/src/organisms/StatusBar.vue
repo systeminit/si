@@ -81,6 +81,7 @@
             </template>
           </StatusBarTab>
         </Tab>
+        <!--
         <Tab
           v-slot="{ selected }"
           :aria-hidden="!isViewMode"
@@ -88,6 +89,7 @@
         >
           <WorkflowHistoryTab :selected="selected" />
         </Tab>
+        -->
         <Tab
           v-slot="{ selected }"
           :aria-hidden="!isViewMode"
@@ -166,6 +168,7 @@
             <!-- TOOD(nick): replace with a Costs tab panel -->
             <GenericTabPanel :component-list="componentList" />
           </TabPanel>
+          <!-- TODO(wendy) - remove this panel eventually, old Workflow History panel
           <TabPanel
             :aria-hidden="!isViewMode"
             :class="[isViewMode ? '' : 'hidden']"
@@ -180,6 +183,7 @@
               @sort="changeWorkflowSort"
             />
           </TabPanel>
+          -->
           <TabPanel
             :aria-hidden="!isViewMode"
             :class="[isViewMode ? '' : 'hidden']"

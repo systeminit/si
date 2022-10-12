@@ -1,6 +1,7 @@
 const formsPlugin = require("@tailwindcss/forms");
 const colors = require("tailwindcss/colors");
 const capsizePlugin = require("tailwindcss-capsize");
+const lineClampPlugin = require("@tailwindcss/line-clamp");
 const themeValues = require("./src/assets/style/tailwind_customization/tailwind_theme_values.js");
 const typographyPlugin = require("./src/assets/style/tailwind_customization/typography_plugin.js");
 
@@ -54,5 +55,5 @@ module.exports = {
       opacity: ["disabled"],
     },
   },
-  plugins: [capsizePlugin, formsPlugin, typographyPlugin],
+  plugins: [capsizePlugin, formsPlugin, typographyPlugin, lineClampPlugin],
 };

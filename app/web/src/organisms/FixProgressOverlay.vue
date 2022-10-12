@@ -9,7 +9,10 @@
     "
   >
     <div>
-      {{ fixState.summary }}
+      {{ fixState.summary
+      }}<span v-if="fixState.highlightedSummary" class="text-destructive-500">{{
+        fixState.highlightedSummary
+      }}</span>
     </div>
 
     <Transition
@@ -65,6 +68,7 @@ const fixState = computed(() => {
       executed,
       total,
       summary: "Applying fixes...",
+      highlightedSummary: "",
     };
   } else {
     let rate = 0;
@@ -76,10 +80,12 @@ const fixState = computed(() => {
     }
 
     let summary = "Determining fixes for updated model...";
+    let highlightedSummary = "";
     if (rate === 1) {
       summary = "Model up-to-date";
       if (fixesStore.unstartedFixes.length !== 0) {
-        summary += ` - ${fixesStore.unstartedFixes.length} Resources need to be fixed`;
+        summary += " - ";
+        highlightedSummary = `${fixesStore.unstartedFixes.length} Resources need to be fixed`;
       }
     }
 
@@ -88,6 +94,7 @@ const fixState = computed(() => {
       executed: fixesStore.processedFixComponents,
       total: fixesStore.totalFixComponents,
       summary,
+      highlightedSummary,
     };
   }
 });

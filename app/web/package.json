@@ -73,6 +73,7 @@
   },
   "devDependencies": {
     "@iconify/json": "^2.1.96",
+    "@tailwindcss/line-clamp": "^0.4.2",
     "@types/chart.js": "^2.9.37",
     "@types/codemirror": "^5.60.5",
     "@types/fontfaceobserver": "^2.1.0",

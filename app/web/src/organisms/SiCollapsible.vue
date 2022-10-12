@@ -17,6 +17,7 @@
         )
       "
     >
+      <slot name="prefix" />
       <Icon
         :name="open ? 'chevron--down' : 'chevron--right'"
         size="sm"

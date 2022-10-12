@@ -45,7 +45,7 @@
                   size="xs"
                   class="text-destructive-500 dark:text-destructive-100"
                 />
-                {{ fixes.length }}
+                <span class="pl-1">{{ fixes.length }}</span>
               </div>
             </div>
           </template>
@@ -64,7 +64,7 @@
                   :selected="fixSelection[fix.id]"
                   @toggle="
                     (c) => {
-                      fixSelection[fix.id] = c;
+                      fixSelection[fix.id.toString()] = c;
                     }
                   "
                 />
@@ -107,7 +107,6 @@ const fixes = computed(() =>
   ),
 );
 const fixSelection: Record<string, boolean> = reactive({});
-
 const selectedFixes = computed(() => {
   return fixes.value.filter((fix) => {
     return fixSelection[fix.id] && fix.status === "unstarted";
