@@ -12,7 +12,7 @@ use tokio::{
 use dal::{
     job::consumer::{JobConsumer, JobConsumerError},
     job::definition::{
-        CodeGeneration, DependentValuesUpdate, Qualification, Qualifications, WorkflowRun,
+        CodeGeneration, DependentValuesUpdate, Fixes, Qualification, Qualifications, WorkflowRun,
     },
     CycloneKeyPair, DalContext, DalContextBuilder, JobFailure, JobFailureError, ServicesContext,
     TransactionsError,
@@ -270,7 +270,7 @@ async fn start_job_executor(
 }
 
 macro_rules! job_match {
-    ($job:ident, $( $job_struct:ident ),* ) => {
+    ($job:ident, $( $job_struct:ident ),* $(,)* ) => {
         match $job.kind() {
             $(
                 stringify!($job_struct) => Ok(Box::new($job_struct::try_from($job)?) as Box<dyn JobConsumer + Send + Sync>),
@@ -292,7 +292,8 @@ async fn execute_job_fallible(
         Qualifications,
         CodeGeneration,
         DependentValuesUpdate,
-        WorkflowRun
+        WorkflowRun,
+        Fixes,
     ) {
         Ok(job) => job,
         Err(err) => return Err(err),

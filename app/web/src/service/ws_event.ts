@@ -4,7 +4,7 @@ import { eventResourceRefreshed$ } from "@/observable/resource";
 import { eventDependentValuesUpdated$ } from "@/observable/attribute_value";
 import { eventCodeGenerated$ } from "@/observable/code";
 import { eventSecretCreated$ } from "@/observable/secret";
-import { eventCommandOutput$, eventCommandReturn$ } from "@/observable/command";
+import { eventCommandOutput$, eventCommandReturn$, eventFixReturn$ } from "@/observable/command";
 
 const eventMap: {
   [E in WsPayloadKinds["kind"]]?:  // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,6 +20,7 @@ const eventMap: {
   SecretCreated: eventSecretCreated$,
   CommandOutput: eventCommandOutput$,
   CommandReturn: eventCommandReturn$,
+  FixReturn: eventFixReturn$,
 };
 
 export function dispatch(wsEvent: WsEvent<WsPayloadKinds>) {
