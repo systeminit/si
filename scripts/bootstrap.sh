@@ -111,6 +111,34 @@ function fedora-bootstrap {
     sudo dnf install -y "${pkgs[@]}"
 }
 
+function pop-bootstrap {
+    # Run the Ubuntu bootstrap function first, and then do
+    # opinionated work.
+    ubuntu-bootstrap
+
+    if [ "${SI_WSL2}" == "false" ]; then
+        if [ ! $(command -v docker) ]; then
+            sudo apt update
+            sudo apt install -y ca-certificates curl gnupg lsb-release
+            sudo mkdir -p /etc/apt/keyrings
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+                $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+            sudo apt update
+            sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+            sudo service docker start
+            sudo docker run hello-world
+            sudo usermod -aG docker $SI_USER
+        fi
+
+        # Ensure docker is installed before installing docker-compose v1.
+        if [ $(command -v docker) ] && [ ! $(command -v docker-compose) ]; then
+            sudo apt update
+            sudo apt install -y docker-compose
+        fi
+    fi
+}
+
 function ubuntu-bootstrap {
     local pkgs=(
         awscli
@@ -139,14 +167,18 @@ function ubuntu-bootstrap {
     install-butane-linux-amd64
 
     if [ "${SI_WSL2}" == "false" ]; then
-        echo "========================================= NOTE ========================================="
-        echo "Versions of Docker server <20.10.12 (the currently packaged versions for Ubuntu <= 21.10"
-        echo "have issues that cause the networking to become unreliable at moderate levels of"
-        echo "concurrency (>= 46 parallel test threads)."
-        echo
-        echo "Please follow the directions at https://docs.docker.com/engine/install/ubuntu/ to"
-        echo "install the latest version of Docker."
-        echo "========================================= NOTE ========================================="
+        echo "\
+========================================= NOTE =========================================
+Versions of Docker server <20.10.12 (the currently packaged versions for Ubuntu <= 21.10
+have issues that cause the networking to become unreliable at moderate levels of
+concurrency (>= 46 parallel test threads).
+
+Please follow the directions at https://docs.docker.com/engine/install/ubuntu/ to
+install the latest version of Docker.
+
+You will also need docker-compose v1 installed, which should be available in the
+Ubuntu repositories: sudo apt info docker-compose
+========================================= NOTE ========================================="
     fi
 }
 
@@ -161,8 +193,11 @@ function perform-bootstrap {
         fedora-bootstrap
     elif [ "$SI_OS" = "ubuntu" ] && [ "$SI_ARCH" = "x86_64" ]; then
         ubuntu-bootstrap
+    elif [ "$SI_OS" = "pop" ] && [ "$SI_ARCH" = "x86_64" ]; then
+        pop-bootstrap
     else
-        die "detected distro \"$SI_OS\" and architecture \"$SI_ARCH\" combination
+        die "\
+detected distro \"$SI_OS\" and architecture \"$SI_ARCH\" combination
 have not yet been validated
 
   - if you would like to add this combination, edit \"./scripts/bootstrap.sh\"

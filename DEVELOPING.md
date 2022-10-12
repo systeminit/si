@@ -17,11 +17,12 @@ information.
 
 | Environment | `x84_64 (amd64)` | `aarch64 (arm64)` |
 |-------------|------------------|-------------------|
-| Arch Linux  | ✅                | 🚫                |
-| Fedora      | ✅                | 🚫                |
-| macOS       | ✅                | ✅                 |
-| Ubuntu      | ✅                | 🚫                |
-| WSL2        | ✅                | 🚫                |
+| Arch Linux  | ✅               | 🚫                |
+| Fedora      | ✅               | 🚫                |
+| macOS       | ✅               | ✅                |
+| Pop!_OS     | ✅               | 🚫                |
+| Ubuntu      | ✅               | 🚫                |
+| WSL2        | ✅               | 🚫                |
 
 We recommend using the latest stable Rust toolchain and latest LTS Node toolchain for your environment.
 If unsure, the following tools are recommended to help manage your toolchains:
