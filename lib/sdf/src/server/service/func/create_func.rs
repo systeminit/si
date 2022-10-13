@@ -51,10 +51,15 @@ pub static ATTRIBUTE_CODE_HANDLER_PLACEHOLDER: &str = "HANDLER";
 pub static ATTRIBUTE_CODE_DEFAULT_HANDLER: &str = "attribute";
 pub static ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER: &str = "FUNCTION_RETURN_VALUE";
 pub static DEFAULT_ATTRIBUTE_CODE_TEMPLATE: &str = include_str!("./defaults/attribute_template.ts");
+pub static DEFAULT_CODE_GENERATION_HANDLER: &str = "generateCode";
 pub static DEFAULT_CODE_GENERATION_FORMAT: CodeLanguage = CodeLanguage::Json;
 pub static DEFAULT_CODE_GENERATION_CODE: &str = include_str!("./defaults/code_generation.ts");
+pub static DEFAULT_QUALIFICATION_HANDLER: &str = "qualification";
 pub static DEFAULT_QUALIFICATION_CODE: &str = include_str!("./defaults/qualification.ts");
+pub static DEFAULT_CONFIRMATION_HANDLER: &str = "confirm";
 pub static DEFAULT_CONFIRMATION_CODE: &str = include_str!("./defaults/confirmation.ts");
+pub static DEFAULT_COMMAND_HANDLER: &str = "command";
+pub static DEFAULT_COMMAND_CODE: &str = include_str!("./defaults/command.ts");
 
 async fn create_qualification_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
@@ -67,11 +72,27 @@ async fn create_qualification_func(ctx: &DalContext) -> FuncResult<Func> {
 
     func.set_code_plaintext(ctx, Some(DEFAULT_QUALIFICATION_CODE))
         .await?;
-    func.set_handler(ctx, Some("qualification".to_owned()))
+    func.set_handler(ctx, Some(DEFAULT_QUALIFICATION_HANDLER))
         .await?;
 
     let _ =
         QualificationPrototype::new(ctx, *func.id(), QualificationPrototypeContext::new()).await?;
+
+    Ok(func)
+}
+
+async fn create_command_func(ctx: &DalContext) -> FuncResult<Func> {
+    let mut func = Func::new(
+        ctx,
+        generate_name(None),
+        FuncBackendKind::JsCommand,
+        FuncBackendResponseType::Command,
+    )
+    .await?;
+
+    func.set_code_plaintext(ctx, Some(DEFAULT_COMMAND_CODE))
+        .await?;
+    func.set_handler(ctx, Some(DEFAULT_COMMAND_HANDLER)).await?;
 
     Ok(func)
 }
@@ -105,7 +126,8 @@ async fn create_confirmation_func(ctx: &DalContext) -> FuncResult<Func> {
 
     func.set_code_plaintext(ctx, Some(DEFAULT_CONFIRMATION_CODE))
         .await?;
-    func.set_handler(ctx, Some("confirm".to_owned())).await?;
+    func.set_handler(ctx, Some(DEFAULT_CONFIRMATION_HANDLER))
+        .await?;
 
     ConfirmationPrototype::new(ctx, *func.id(), ConfirmationPrototype::new_context()).await?;
 
@@ -123,7 +145,7 @@ async fn create_code_gen_func(ctx: &DalContext) -> FuncResult<Func> {
 
     func.set_code_plaintext(ctx, Some(DEFAULT_CODE_GENERATION_CODE))
         .await?;
-    func.set_handler(ctx, Some("generateCode".to_owned()))
+    func.set_handler(ctx, Some(DEFAULT_CODE_GENERATION_HANDLER))
         .await?;
 
     let code_gen_args = FuncBackendJsCodeGenerationArgs::default();
@@ -286,6 +308,7 @@ pub async fn create_func(
         FuncBackendKind::JsQualification => create_qualification_func(&ctx).await?,
         FuncBackendKind::JsCodeGeneration => create_code_gen_func(&ctx).await?,
         FuncBackendKind::JsConfirmation => create_confirmation_func(&ctx).await?,
+        FuncBackendKind::JsCommand => create_command_func(&ctx).await?,
         _ => Err(FuncError::FuncNotSupported)?,
     };
 

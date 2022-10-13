@@ -4,6 +4,7 @@ export enum FuncBackendKind {
   Identity = "Identity",
   Integer = "Integer",
   JsQualification = "JsQualification",
+  JsCommand = "JsCommand",
   JsConfirmation = "JsConfirmation",
   JsCodeGeneration = "JsCodeGeneration",
   JsAttribute = "JsAttribute",
