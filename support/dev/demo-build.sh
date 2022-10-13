@@ -6,6 +6,7 @@ main() {
   if [ -n "${DEBUG:-}" ]; then set -v; fi
   if [ -n "${TRACE:-}" ]; then set -xv; fi
 
+  # NOTE(nick): we are now using "docker compose v2", so I am unsure if this works.
   set -x
   env \
     DOCKER_BUILDKIT=1 \

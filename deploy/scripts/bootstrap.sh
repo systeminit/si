@@ -28,13 +28,16 @@ function verify-fedora {
 function install-docker {
     dnf -y install dnf-plugins-core
     dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
-    dnf install -y docker-ce docker-ce-cli containerd.io docker-compose
+    dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
     systemctl start docker
     systemctl enable docker
     docker run hello-world
 }
 
 verify-fedora
-if [ ! "$(command -v docker)" ] || [ ! "$(command -v docker-compose)" ]; then
+if [ ! "$(command -v docker)" ]; then
+    install-docker
+fi
+if ! eval "docker compose version" > /dev/null; then
     install-docker
 fi

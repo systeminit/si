@@ -103,7 +103,7 @@ passing the following responses to each prompt:
 ### Checking for Potential Service Conflicts (3/5)
 
 SI uses external services in conjunction with its native components.
-These external services are deployed via `docker-compose` and are configured to stick to their default settings as
+These external services are deployed via [`docker compose`](https://docs.docker.com/compose/) and are configured to stick to their default settings as
 closely as possible, including port settings.
 Thus, it is worth checking if you are running these services to avoid conflicts when running SI.
 Potentially conflicting services include, but are not limited to, the following:
