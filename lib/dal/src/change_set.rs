@@ -11,8 +11,8 @@ use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
 use crate::ws_event::{WsEvent, WsPayload};
 use crate::{
-    pk, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Timestamp,
-    WriteTenancy, WsEventError,
+    job::definition::Confirmations, pk, HistoryEvent, HistoryEventError, LabelListError,
+    StandardModelError, Timestamp, WriteTenancy, WsEventError,
 };
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
@@ -91,7 +91,7 @@ impl ChangeSet {
         let _history_event =
             HistoryEvent::new(ctx, "change_set.create", "Change Set created", &json).await?;
         let object: Self = serde_json::from_value(json)?;
-        WsEvent::change_set_created(ctx, &object)
+        WsEvent::change_set_created(ctx, object.pk)
             .publish(ctx)
             .await?;
         Ok(object)
@@ -118,7 +118,11 @@ impl ChangeSet {
             &serde_json::json![{ "pk": &self.pk }],
         )
         .await?;
-        WsEvent::change_set_applied(ctx, self).publish(ctx).await?;
+        WsEvent::change_set_applied(ctx, self.pk)
+            .await
+            .publish(ctx)
+            .await?;
+
         Ok(())
     }
 
@@ -149,16 +153,18 @@ impl ChangeSet {
 }
 
 impl WsEvent {
-    pub fn change_set_created(ctx: &DalContext, change_set: &ChangeSet) -> Self {
-        WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set.pk))
+    pub fn change_set_created(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {
+        WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_pk))
     }
 
-    pub fn change_set_applied(ctx: &DalContext, change_set: &ChangeSet) -> Self {
-        WsEvent::new(ctx, WsPayload::ChangeSetApplied(change_set.pk))
+    pub async fn change_set_applied(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {
+        ctx.enqueue_job(Confirmations::new(ctx)).await;
+
+        WsEvent::new(ctx, WsPayload::ChangeSetApplied(change_set_pk))
     }
 
-    pub fn change_set_canceled(ctx: &DalContext, change_set: &ChangeSet) -> Self {
-        WsEvent::new(ctx, WsPayload::ChangeSetCanceled(change_set.pk))
+    pub fn change_set_canceled(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {
+        WsEvent::new(ctx, WsPayload::ChangeSetCanceled(change_set_pk))
     }
 
     pub fn change_set_written(ctx: &DalContext) -> Self {

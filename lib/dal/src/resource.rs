@@ -129,15 +129,17 @@ impl Resource {
         data: Value,
         component_id: ComponentId,
         system_id: SystemId,
-    ) -> ResourceResult<Self> {
+    ) -> ResourceResult<(Self, bool)> {
         let resource = Self::get_by_component_and_system(ctx, component_id, system_id).await?;
         if let Some(mut resource) = resource {
             if resource.data != data {
                 resource.set_data(ctx, data).await?;
+                Ok((resource, true))
+            } else {
+                Ok((resource, false))
             }
-            Ok(resource)
         } else {
-            Ok(Self::new(ctx, data, component_id, system_id).await?)
+            Ok((Self::new(ctx, data, component_id, system_id).await?, true))
         }
     }
 

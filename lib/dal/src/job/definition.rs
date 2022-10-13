@@ -1,4 +1,5 @@
 mod code_generation;
+mod confirmations;
 mod dependent_values_update;
 mod fix;
 mod qualification;
@@ -6,6 +7,7 @@ mod qualifications;
 mod workflow_run;
 
 pub use code_generation::CodeGeneration;
+pub use confirmations::Confirmations;
 pub use dependent_values_update::DependentValuesUpdate;
 pub use fix::Fixes;
 pub use qualification::Qualification;

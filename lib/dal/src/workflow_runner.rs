@@ -16,7 +16,7 @@ use crate::{
     InternalProviderError, Resource, ResourceError, ResourceId, SchemaId, SchemaVariantId,
     StandardModel, StandardModelError, SystemId, Timestamp, Visibility, WorkflowError,
     WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowResolverError,
-    WorkflowResolverId, WriteTenancy, WsEvent, WsEventError, WsPayload,
+    WorkflowResolverId, WriteTenancy, WsEvent, WsEventError,
 };
 
 pub mod workflow_runner_state;
@@ -181,17 +181,21 @@ impl WorkflowRunner {
 
         let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
 
-        for resource in created_resources {
-            object.add_created_resource(ctx, &resource).await?;
+        for resource in &created_resources {
+            object.add_created_resource(ctx, resource).await?;
         }
 
-        for resource in updated_resources {
-            object.add_updated_resource(ctx, &resource).await?;
+        for resource in &updated_resources {
+            object.add_updated_resource(ctx, resource).await?;
         }
 
-        WsEvent::new(ctx, WsPayload::ChangeSetApplied(ChangeSetPk::NONE))
-            .publish(ctx)
-            .await?;
+        if !created_resources.is_empty() || !updated_resources.is_empty() {
+            WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
+                .await
+                .publish(ctx)
+                .await?;
+        }
+
         Ok(object)
     }
 
@@ -333,11 +337,13 @@ impl WorkflowRunner {
                             .map_err(Box::new)?,
                     );
                 } else {
-                    updated_resources.push(
+                    let (resource, created) =
                         Resource::upsert(ctx, result.value, component_id, SystemId::NONE)
                             .await
-                            .map_err(Box::new)?,
-                    );
+                            .map_err(Box::new)?;
+                    if created {
+                        updated_resources.push(resource);
+                    }
                 }
             }
         }
