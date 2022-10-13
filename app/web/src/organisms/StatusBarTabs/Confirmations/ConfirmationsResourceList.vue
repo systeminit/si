@@ -5,7 +5,7 @@
       class="h-11 w-full border-b border-shade-100 text-lg px-4 flex items-center flex-none"
     >
       <span class="block whitespace-nowrap text-ellipsis overflow-hidden"
-        >Resources</span
+        >Resources Menu</span
       >
     </div>
     <!-- List of resources -->

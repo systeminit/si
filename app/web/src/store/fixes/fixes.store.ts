@@ -138,7 +138,9 @@ export const useFixesStore = () => {
                 _.sample([
                   "this is what we recommend you do - just fix this thing and you will be all good",
                   "honestly idk, you figure it out",
-                  "This one should be pretty simple",
+                  "this one should be pretty simple",
+                  "run this fix and you will be golden",
+                  "don't just sit there, run the fix!",
                 ]) ?? "",
               status: "unstarted",
               output: hardcodedOutputs[component.schemaName] ?? "{}",

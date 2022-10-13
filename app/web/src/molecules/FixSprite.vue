@@ -4,7 +4,7 @@
     class="w-full"
     content-as="ul"
     :default-open="false"
-    hide-bottom-border
+    hide-bottom-border-when-open
   >
     <template #prefix>
       <VormInput
@@ -50,8 +50,28 @@
       </div>
     </template>
     <template #default>
-      <div class="pl-8 pr-2 py-4">
-        <span class="font-bold">Recommendation: </span>{{ fix.recommendation }}
+      <div class="flex flex-row justify-around text-sm">
+        <div class="flex flex-col">
+          <div class="font-bold">Cloud Provider:</div>
+          <div>idk</div>
+        </div>
+        <div class="flex flex-col">
+          <div class="font-bold">Environment:</div>
+          <div>idk</div>
+        </div>
+      </div>
+      <div
+        :class="
+          clsx(
+            'pl-8 pr-2 py-4 text-sm border-b',
+            themeClasses('border-neutral-200', 'border-neutral-600'),
+          )
+        "
+      >
+        <div class="flex flex-col">
+          <div class="font-bold">Recommendation:</div>
+          <div>{{ fix.recommendation }}</div>
+        </div>
       </div>
     </template>
   </SiCollapsible>
@@ -64,6 +84,7 @@ import Icon, { IconNames } from "@/ui-lib/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { Fix } from "@/store/fixes/fixes.store";
+import { themeClasses } from "@/ui-lib/theme_tools";
 
 const props = defineProps({
   fix: { type: Object as PropType<Fix>, required: true },
