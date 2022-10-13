@@ -10,7 +10,7 @@ name = "pinga"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "3.1.12", features = ["derive", "color", "env"] }
+clap = { version = "4.0.14", features = ["derive", "color", "env", "wrap_help"] }
 color-eyre = { version = "0.6.1" }
 telemetry = { path = "../../lib/telemetry-rs", features = ["application"] }
 tokio = { version = "1.12.0", features = ["full"] }
