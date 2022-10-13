@@ -2,10 +2,10 @@
   <div class="w-60 shrink-0 border-shade-100 h-full flex flex-col border-l">
     <!-- Filter button and its dropdown -->
     <div
-      class="h-11 w-full border-b border-shade-100 text-sm px-4 flex items-center flex-none"
+      class="h-11 w-full border-b border-shade-100 text-lg px-4 flex items-center flex-none"
     >
       <span class="block whitespace-nowrap text-ellipsis overflow-hidden"
-        >Resources For {{ component.name }}</span
+        >Resources</span
       >
     </div>
     <!-- List of resources -->
@@ -39,17 +39,12 @@
 import { PropType } from "vue";
 import clsx from "clsx";
 import HealthIcon from "@/molecules/HealthIcon.vue";
-import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 import { MockResource } from "@/service/resource";
 
 defineProps({
   resources: {
     type: Array as PropType<MockResource[]>,
     default: () => [],
-  },
-  component: {
-    type: Object as PropType<ComponentListItem>,
-    required: true,
   },
   selected: { type: Number },
 });
