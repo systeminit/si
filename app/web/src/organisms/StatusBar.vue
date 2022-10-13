@@ -5,7 +5,7 @@
     side="bottom"
     :min-resize="0"
     :max-resize="0.8"
-    :class="clsx(!panelOpen && 'h-12')"
+    :class="clsx(!panelOpen && 'h-12', themeContainerClasses)"
     :resizeable="panelOpen"
     :default-size="320"
     :min-size="280"
@@ -222,7 +222,7 @@ import WorkflowHistoryPanel, {
 import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
 
 // override theme to be always dark within status bar
-useThemeContainer("dark");
+const { themeContainerClasses } = useThemeContainer("dark");
 
 // Tab 0 is our phantom empty panel
 const selectedTab = ref(0);

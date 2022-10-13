@@ -38,3 +38,12 @@ body {
 .driven-field {
   color: #69c6e3;
 }
+
+/* Classes for applying forced theme to scrollbars */
+.color-scheme-light {
+  color-scheme: light;
+}
+
+.color-scheme-dark {
+  color-scheme: dark;
+}

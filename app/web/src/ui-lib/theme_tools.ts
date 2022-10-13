@@ -81,8 +81,11 @@ export function useThemeContainer(themeValue?: ThemeValue | Ref<ThemeValue>) {
   // but useHead does not support merging for bodyAttrs yet - https://github.com/vueuse/head/issues/55
   // so we have to do this in App.vue anyway
 
+  const themeContainerClasses = computed(
+    () => `color-scheme-${providedTheme.value}`,
+  ); // currently just used for scrollbars
   // we'll also return the theme being provided in case the component needs it (like to inject into head)
-  return { theme: providedTheme };
+  return { theme: providedTheme, themeContainerClasses };
 }
 
 // used by components who just want to use the current theme

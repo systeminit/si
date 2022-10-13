@@ -1,6 +1,6 @@
 <template>
   <SiCollapsible
-    as="li"
+    as="div"
     class="w-full"
     content-as="ul"
     :default-open="false"
@@ -11,7 +11,7 @@
         v-if="fix.status === 'unstarted'"
         :model-value="selected"
         type="checkbox"
-        class="pl-1"
+        class="flex-none pl-1"
         no-label
         @click.stop
         @update:model-value="
@@ -23,54 +23,60 @@
       <Icon
         v-else-if="fix.status === 'running'"
         name="loader"
-        :class="clsx('shrink-0', statusIconProps.color)"
+        :class="clsx('flex-none pl-1', statusIconProps.color)"
         size="lg"
       />
       <Icon
         v-else
         :name="statusIconProps.name"
-        :class="clsx('shrink-0', statusIconProps.color)"
+        :class="clsx('flex-none pl-1', statusIconProps.color)"
         size="lg"
       />
     </template>
     <template #label>
       <div
-        class="flex flex-row items-center gap-2.5 text-sm relative"
+        class="flex gap-2 items-center text-sm relative min-w-0"
         :class="classes"
       >
         <Icon
           v-if="fix.status !== 'success'"
           name="tools"
           size="md"
-          class="text-destructive-500 shrink-0"
+          class="text-destructive-500 flex-none"
         />
-        <div class="w-full text-ellipsis overflow-hidden line-clamp-2">
-          {{ fix.name }}
+        <div class="flex flex-col min-w-0">
+          <span class="font-bold truncate"> {{ fix.name }}</span>
+          <span class="text-xs text-neutral-700 dark:text-neutral-300 truncate">
+            <!-- TODO(wendy) - sometimes the component name doesn't load properly? not sure why -->
+            {{ fix.componentName ? fix.componentName : "unknown" }}
+          </span>
         </div>
       </div>
     </template>
     <template #default>
-      <div class="flex flex-row justify-around text-sm">
-        <div class="flex flex-col">
-          <div class="font-bold">Cloud Provider:</div>
-          <div>idk</div>
-        </div>
-        <div class="flex flex-col">
-          <div class="font-bold">Environment:</div>
-          <div>idk</div>
-        </div>
-      </div>
       <div
         :class="
           clsx(
-            'pl-8 pr-2 py-4 text-sm border-b',
+            'w-full pl-[4.25rem] pr-4 border-b',
             themeClasses('border-neutral-200', 'border-neutral-600'),
           )
         "
       >
-        <div class="flex flex-col">
-          <div class="font-bold">Recommendation:</div>
-          <div>{{ fix.recommendation }}</div>
+        <div class="flex flex-row justify-between text-sm">
+          <div class="flex flex-col">
+            <div class="font-bold">Cloud Provider:</div>
+            <div>{{ fix.provider ? fix.provider : "unknown" }}</div>
+          </div>
+          <div class="flex flex-col">
+            <div class="font-bold">Environment:</div>
+            <div>dev</div>
+          </div>
+        </div>
+        <div class="py-4 text-sm">
+          <div class="flex flex-col">
+            <div class="font-bold">Recommendation:</div>
+            <div>{{ fix.recommendation }}</div>
+          </div>
         </div>
       </div>
     </template>

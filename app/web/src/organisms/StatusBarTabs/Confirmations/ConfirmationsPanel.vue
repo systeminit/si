@@ -25,8 +25,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
-import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
+import { computed, ref } from "vue";
 import {
   ResourceService,
   MockResource,
@@ -52,11 +51,21 @@ const resourcesList = computed((): MockResource[] => {
   }
   const list: MockResource[] = [];
   for (const component of resourceSummary.value.components) {
-    const fix = fixes.value[component.id];
+    const fix = fixes.value[component.id]; // TODO(wendy+victor) - currently every fix has the same id as it's component, this will likely change!
     let created = false;
     if (fix) {
       const fixStatus = fix.status;
       if (fixStatus === "success") created = true;
+    } else if (
+      [
+        "Region",
+        "Docker Image",
+        "Butane",
+        "Docker Hub Credential",
+        "AMI",
+      ].includes(component.schema)
+    ) {
+      created = true;
     }
     const confirmations: Confirmation[] = [
       created
@@ -95,5 +104,5 @@ const selectedResource = computed(() => {
 });
 
 const fixesStore = useFixesStore();
-const fixes = computed(() => fixesStore.$state.fixesById);
+const fixes = computed(() => fixesStore.fixesById);
 </script>
