@@ -9,8 +9,8 @@ use thiserror::Error;
 
 use crate::{
     func::binding_return_value::FuncBindingReturnValueError, workflow_runner::WorkflowRunnerError,
-    AccessBuilder, AttributeValueError, ComponentError, DalContext, DalContextBuilder,
-    StandardModelError, TransactionsError, Visibility, WsEventError,
+    AccessBuilder, AttributeValueError, ComponentError, ConfirmationPrototypeError, DalContext,
+    DalContextBuilder, StandardModelError, TransactionsError, Visibility, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -31,6 +31,8 @@ pub enum JobConsumerError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error(transparent)]
+    ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
     #[error(transparent)]
