@@ -95,6 +95,13 @@
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
         >
+          <FixHistoryTab :selected="selected" />
+        </Tab>
+        <Tab
+          v-slot="{ selected }"
+          :aria-hidden="!isViewMode"
+          :class="[isViewMode ? '' : 'hidden']"
+        >
           <StatusBarTab :selected="selected">
             <template #icon><Icon name="check-badge" /></template>
             <template #name>Confirmations</template>
@@ -189,6 +196,13 @@
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
+            <FixHistoryPanel />
+          </TabPanel>
+          <TabPanel
+            :aria-hidden="!isViewMode"
+            :class="[isViewMode ? '' : 'hidden']"
+            class="h-full"
+          >
             <ConfirmationsPanel />
           </TabPanel>
         </TabPanels>
@@ -220,6 +234,8 @@ import WorkflowHistoryPanel, {
   SortOption,
 } from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryPanel.vue";
 import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
+import FixHistoryTab from "./StatusBarTabs/Fix/FixHistoryTab.vue";
+import FixHistoryPanel from "./StatusBarTabs/Fix/FixHistoryPanel.vue";
 
 // override theme to be always dark within status bar
 const { themeContainerClasses } = useThemeContainer("dark");
