@@ -72,11 +72,13 @@ const fixState = computed(() => {
     };
   } else {
     let rate = 0;
-    if (
-      loadFixesReqStatus.value.isSuccess &&
-      fixesStore.totalFixComponents > 0
-    ) {
-      rate = fixesStore.processedFixComponents / fixesStore.totalFixComponents;
+    if (loadFixesReqStatus.value.isSuccess) {
+      if (fixesStore.totalFixComponents > 0) {
+        rate =
+          fixesStore.processedFixComponents / fixesStore.totalFixComponents;
+      } else {
+        rate = 1;
+      }
     }
 
     let summary = "Determining fixes for updated model...";

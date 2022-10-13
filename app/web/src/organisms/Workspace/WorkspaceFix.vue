@@ -29,10 +29,4 @@ import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 const componentsStore = useComponentsStore();
 const diagramNodes = computed(() => componentsStore.diagramNodes);
 const diagramEdges = computed(() => componentsStore.diagramEdges);
-
-/*
- * - Analyze fixes from diagram/show status bar/spinner every component (if we can!)/jitter/Populate fix list
- * - wait for fix resources click:
- * - Spin every item of fix list/sync with "Applying Fixes"/Fixed items go to "Fixed list"
- * */
 </script>
