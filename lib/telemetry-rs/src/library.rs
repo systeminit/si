@@ -273,12 +273,12 @@ pub enum Verbosity {
 impl Verbosity {
     #[must_use]
     pub fn increase(self) -> Self {
-        self.as_usize().saturating_add(1).into()
+        self.as_u8().saturating_add(1).into()
     }
 
     #[must_use]
     pub fn decrease(self) -> Self {
-        self.as_usize().saturating_sub(1).into()
+        self.as_u8().saturating_sub(1).into()
     }
 
     fn is_debug_or_lower(&self) -> bool {
@@ -286,7 +286,7 @@ impl Verbosity {
     }
 
     #[inline]
-    fn as_usize(self) -> usize {
+    fn as_u8(self) -> u8 {
         self.into()
     }
 }
@@ -297,8 +297,8 @@ impl Default for Verbosity {
     }
 }
 
-impl From<usize> for Verbosity {
-    fn from(value: usize) -> Self {
+impl From<u8> for Verbosity {
+    fn from(value: u8) -> Self {
         match value {
             0 => Self::InfoAll,
             1 => Self::DebugAppAndInfoAll,
@@ -309,7 +309,7 @@ impl From<usize> for Verbosity {
     }
 }
 
-impl From<Verbosity> for usize {
+impl From<Verbosity> for u8 {
     fn from(value: Verbosity) -> Self {
         match value {
             Verbosity::InfoAll => 0,

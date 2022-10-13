@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use cyclone_server::{Config, ConfigError, IncomingStream};
 
 const NAME: &str = "cyclone";
@@ -15,117 +15,117 @@ pub(crate) fn parse() -> Args {
 /// Cyclone is a software component of the System Initiative which handles requested execution of
 /// small functions in a backing language server.
 #[derive(Debug, Parser)]
-#[clap(name = NAME, max_term_width = 100)]
+#[command(name = NAME, max_term_width = 100)]
 #[allow(clippy::struct_excessive_bools)]
 pub(crate) struct Args {
     /// Sets the verbosity mode.
     ///
     /// Multiple -v options increase verbosity. The maximum is 4.
-    #[clap(short = 'v', long = "verbose", parse(from_occurrences))]
-    pub(crate) verbose: usize,
+    #[arg(short = 'v', long = "verbose", action = ArgAction::Count)]
+    pub(crate) verbose: u8,
 
     /// Disable OpenTelemetry on startup
-    #[clap(long)]
+    #[arg(long)]
     pub(crate) disable_opentelemetry: bool,
 
     /// Binds service to a socket address [example: 0.0.0.0:5157]
-    #[clap(long, group = "bind")]
+    #[arg(long, group = "bind")]
     pub(crate) bind_addr: Option<SocketAddr>,
 
     /// Binds service to a unix domain socket [example: /var/run/cyclone.sock]
-    #[clap(long, group = "bind")]
+    #[arg(long, group = "bind")]
     pub(crate) bind_uds: Option<PathBuf>,
 
     /// Enables active/watch behavior.
-    #[clap(long, group = "watch")]
+    #[arg(long, group = "watch")]
     pub(crate) enable_watch: bool,
 
     /// Disables active/watch behavior.
-    #[clap(long, group = "watch")]
+    #[arg(long, group = "watch")]
     pub(crate) disable_watch: bool,
 
     /// Active/watch timeout in seconds.
-    #[clap(long, default_value = "10")]
+    #[arg(long, default_value = "10")]
     pub(crate) watch_timeout: u64,
 
     /// Enables ping endpoint.
-    #[clap(long, group = "ping")]
+    #[arg(long, group = "ping")]
     pub(crate) enable_ping: bool,
 
     /// Disables ping endpoint.
-    #[clap(long, group = "ping")]
+    #[arg(long, group = "ping")]
     pub(crate) disable_ping: bool,
 
     /// Enables qualification endpoint.
-    #[clap(long, group = "qualification")]
+    #[arg(long, group = "qualification")]
     pub(crate) enable_qualification: bool,
 
     /// Disables qualification endpoint.
-    #[clap(long, group = "qualification")]
+    #[arg(long, group = "qualification")]
     pub(crate) disable_qualification: bool,
 
     /// Enables resolver endpoint.
-    #[clap(long, group = "resolver")]
+    #[arg(long, group = "resolver")]
     pub(crate) enable_resolver: bool,
 
     /// Disables resolver endpoint.
-    #[clap(long, group = "resolver")]
+    #[arg(long, group = "resolver")]
     pub(crate) disable_resolver: bool,
 
     /// Enables code generation endpoint.
-    #[clap(long, group = "code_generation")]
+    #[arg(long, group = "code_generation")]
     pub(crate) enable_code_generation: bool,
 
     /// Disables code generation endpoint.
-    #[clap(long, group = "code_generation")]
+    #[arg(long, group = "code_generation")]
     pub(crate) disable_code_generation: bool,
 
     /// Enables workflow endpoint.
-    #[clap(long, group = "workflow")]
+    #[arg(long, group = "workflow")]
     pub(crate) enable_workflow: bool,
 
     /// Disables workflow endpoint.
-    #[clap(long, group = "workflow")]
+    #[arg(long, group = "workflow")]
     pub(crate) disable_workflow: bool,
 
     /// Enables command run endpoint.
-    #[clap(long, group = "command_run")]
+    #[arg(long, group = "command_run")]
     pub(crate) enable_command_run: bool,
 
     /// Disables command run endpoint.
-    #[clap(long, group = "command_run")]
+    #[arg(long, group = "command_run")]
     pub(crate) disable_command_run: bool,
 
     /// Enables confirmation endpoint.
-    #[clap(long, group = "confirmation")]
+    #[arg(long, group = "confirmation")]
     pub(crate) enable_confirmation: bool,
 
     /// Disables confirmation endpoint.
-    #[clap(long, group = "confirmation")]
+    #[arg(long, group = "confirmation")]
     pub(crate) disable_confirmation: bool,
 
     /// Enables configuration endpoint.
-    #[clap(long, group = "configuration")]
+    #[arg(long, group = "configuration")]
     pub(crate) enable_configuration: bool,
 
     /// Disables configuration endpoint.
-    #[clap(long, group = "configuration")]
+    #[arg(long, group = "configuration")]
     pub(crate) disable_configuration: bool,
 
     /// Path to the lang server program.
-    #[clap(long, env = "SI_LANG_SERVER", hide_env = true)]
+    #[arg(long, env = "SI_LANG_SERVER", hide_env = true)]
     pub(crate) lang_server: PathBuf,
 
     /// Limits execution requests to 1 before shutting down
-    #[clap(long, group = "limit_requests")]
+    #[arg(long, group = "request_limiting")]
     pub(crate) oneshot: bool,
 
     /// Limits execution requests to the given value before shutting down
-    #[clap(long, group = "limit_requests")]
+    #[arg(long, group = "request_limiting")]
     pub(crate) limit_requests: Option<u32>,
 
     /// Cyclone decryption key file location [example: /run/cyclone/cyclone.key]
-    #[clap(long)]
+    #[arg(long)]
     pub(crate) decryption_key: PathBuf,
 }
 
@@ -187,5 +187,16 @@ impl TryFrom<Args> for Config {
         }
 
         builder.build().map_err(Into::into)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn verify_command() {
+        use clap::CommandFactory;
+        Args::command().debug_assert()
     }
 }
