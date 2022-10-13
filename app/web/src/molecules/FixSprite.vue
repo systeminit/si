@@ -11,6 +11,7 @@
         v-if="fix.status === 'unstarted'"
         :model-value="selected"
         type="checkbox"
+        class="pl-1"
         no-label
         @click.stop
         @update:model-value="
@@ -30,12 +31,6 @@
         :name="statusIconProps.name"
         :class="clsx('shrink-0', statusIconProps.color)"
         size="lg"
-      />
-      <Icon
-        v-if="fix.status !== 'success'"
-        name="tools"
-        size="lg"
-        :class="clsx('shrink-0', statusIconProps.color)"
       />
     </template>
     <template #label>
