@@ -16,8 +16,10 @@ export type FixId = number;
 export type Fix = {
   id: FixId;
   name: string;
+  componentName: string;
   recommendation: string;
   status: FixStatus;
+  provider?: string;
   output?: string; // TODO(victor): output possibly comes from another endpoint, and should be linked at runtime. This is good for now.
   startedAt?: Date;
   finishedAt?: Date;
@@ -125,22 +127,41 @@ export const useFixesStore = () => {
                 "Region",
                 "Docker Image",
                 "Butane",
-                "Credential",
+                "Docker Hub Credential",
                 "AMI",
               ].includes(component.schemaName)
             )
               continue;
 
+            // TODO(wendy+victor) - This system will eventually be replaced with something cleaner!
+            const providers: Record<string, string> = {
+              AMI: "AWS",
+              "EC2 Instance": "AWS",
+              Egress: "AWS",
+              Ingress: "AWS",
+              "Key Pair": "AWS",
+              Region: "AWS",
+              "Security Group": "AWS",
+              Butane: "CoreOS",
+              "Kubernetes Deployment": "Kubernetes",
+              "Kubernetes Namespace": "Kubernetes",
+            };
+            const provider = providers[component.schemaName];
+
             this.updateFix({
-              id: component.id,
+              id: component.id, // TODO(wendy+victor) - Each fix should probably have a unique id eventually instead of just having the same id as it's component!
               name: `Create ${component.schemaName}`,
+              componentName: component.displayName,
               recommendation:
                 _.sample([
                   "this is what we recommend you do - just fix this thing and you will be all good",
                   "honestly idk, you figure it out",
-                  "This one should be pretty simple",
+                  "this one should be pretty simple",
+                  "run this fix and you will be golden",
+                  "don't just sit there, run the fix!",
                 ]) ?? "",
               status: "unstarted",
+              provider,
               output: hardcodedOutputs[component.schemaName] ?? "{}",
             });
             await promiseDelay(100); // Extra delay on items that will generate fixes

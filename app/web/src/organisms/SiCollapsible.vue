@@ -5,10 +5,11 @@
         clsx(
           buttonClasses,
           'flex w-full px-2 py-2 text-left font-medium focus:outline-none items-center',
-          !hideBottomBorder && [
-            'border-b',
-            themeClasses('border-neutral-200', 'border-neutral-600'),
-          ],
+          !hideBottomBorder &&
+            !(hideBottomBorderWhenOpen && open) && [
+              'border-b',
+              themeClasses('border-neutral-200', 'border-neutral-600'),
+            ],
           {
             sm: 'text-sm',
             md: 'text-base',
@@ -17,6 +18,7 @@
         )
       "
     >
+      <slot name="prefix" />
       <Icon
         :name="open ? 'chevron--down' : 'chevron--right'"
         size="sm"
@@ -44,7 +46,7 @@ import clsx from "clsx";
 import Icon from "@/ui-lib/Icon.vue";
 import { themeClasses } from "@/ui-lib/theme_tools";
 
-const props = defineProps({
+defineProps({
   label: { type: String },
   showLabelAndSlot: { type: Boolean, default: false },
   as: { type: String },
@@ -55,6 +57,7 @@ const props = defineProps({
     type: String as PropType<"sm" | "md" | "lg">,
     default: "sm",
   },
+  hideBottomBorderWhenOpen: { type: Boolean, default: false },
   hideBottomBorder: { type: Boolean, default: false },
 });
 

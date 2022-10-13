@@ -5,7 +5,7 @@
     side="bottom"
     :min-resize="0"
     :max-resize="0.8"
-    :class="clsx(!panelOpen && 'h-12')"
+    :class="clsx(!panelOpen && 'h-12', themeContainerClasses)"
     :resizeable="panelOpen"
     :default-size="320"
     :min-size="280"
@@ -81,12 +81,21 @@
             </template>
           </StatusBarTab>
         </Tab>
+        <!--
         <Tab
           v-slot="{ selected }"
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
         >
           <WorkflowHistoryTab :selected="selected" />
+        </Tab>
+        -->
+        <Tab
+          v-slot="{ selected }"
+          :aria-hidden="!isViewMode"
+          :class="[isViewMode ? '' : 'hidden']"
+        >
+          <FixHistoryTab :selected="selected" />
         </Tab>
         <Tab
           v-slot="{ selected }"
@@ -166,6 +175,7 @@
             <!-- TOOD(nick): replace with a Costs tab panel -->
             <GenericTabPanel :component-list="componentList" />
           </TabPanel>
+          <!-- TODO(wendy) - remove this panel eventually, old Workflow History panel
           <TabPanel
             :aria-hidden="!isViewMode"
             :class="[isViewMode ? '' : 'hidden']"
@@ -179,6 +189,14 @@
               :selected-sort="selectedWorkflowSort"
               @sort="changeWorkflowSort"
             />
+          </TabPanel>
+          -->
+          <TabPanel
+            :aria-hidden="!isViewMode"
+            :class="[isViewMode ? '' : 'hidden']"
+            class="h-full"
+          >
+            <FixHistoryPanel />
           </TabPanel>
           <TabPanel
             :aria-hidden="!isViewMode"
@@ -216,9 +234,11 @@ import WorkflowHistoryPanel, {
   SortOption,
 } from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryPanel.vue";
 import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
+import FixHistoryTab from "./StatusBarTabs/Fix/FixHistoryTab.vue";
+import FixHistoryPanel from "./StatusBarTabs/Fix/FixHistoryPanel.vue";
 
 // override theme to be always dark within status bar
-useThemeContainer("dark");
+const { themeContainerClasses } = useThemeContainer("dark");
 
 // Tab 0 is our phantom empty panel
 const selectedTab = ref(0);

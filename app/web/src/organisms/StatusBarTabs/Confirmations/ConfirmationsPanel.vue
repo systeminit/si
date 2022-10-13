@@ -1,31 +1,20 @@
 <template>
   <div class="flex flex-row h-full w-full">
-    <StatusBarTabPanelComponentList
-      :component-list="componentsList"
-      :selected-filter="selectedFilter"
-      :filter-options="filterOptions"
-      @filter="changeSelectedFilter"
-    />
     <ConfirmationsResourceList
-      v-if="selectedComponent !== undefined"
-      :component="selectedComponent"
       :resources="resourcesList"
       :selected="selectedResourceId"
       @select="selectResource"
     />
     <div
-      v-if="selectedComponent === undefined || selectedResourceId === undefined"
+      v-if="selectedResourceId === undefined"
       class="flex flex-row items-center text-center w-full h-full bg-shade-100"
     >
-      <p class="w-full text-3xl text-neutral-500">
-        {{
-          selectedComponent === undefined
-            ? "No Component Selected"
-            : "No Resource Selected"
-        }}
-      </p>
+      <p class="w-full text-3xl text-neutral-500">No Resource Selected</p>
     </div>
-    <ConfirmationViewerMultiple v-else-if="resource" :resource="resource" />
+    <ConfirmationViewerMultiple
+      v-else-if="selectedResource"
+      :resource="selectedResource"
+    />
     <div
       v-else
       class="flex flex-row items-center text-center w-full h-full bg-shade-100"
@@ -36,39 +25,16 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
-import StatusBarTabPanelComponentList, {
-  ComponentListItem,
-  FilterOption,
-} from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
-import { ResourceService } from "@/service/resource";
-import { useComponentsStore } from "@/store/components.store";
+import { computed, ref } from "vue";
+import {
+  ResourceService,
+  MockResource,
+  Confirmation,
+} from "@/service/resource";
+import { useFixesStore } from "@/store/fixes/fixes.store";
+import { ResourceHealth, ResourceStatus } from "@/api/sdf/dal/resource";
 import ConfirmationsResourceList from "./ConfirmationsResourceList.vue";
 import ConfirmationViewerMultiple from "./ConfirmationViewerMultiple.vue";
-
-const defaultFilterOption = {
-  value: "all",
-  title: "Show All",
-};
-const filterOptions: FilterOption[] = [
-  defaultFilterOption,
-  {
-    value: "success",
-    title: "Success",
-  },
-  {
-    value: "failure",
-    title: "Failure",
-  },
-];
-
-const selectedFilter = ref<FilterOption>(defaultFilterOption);
-const changeSelectedFilter = (newFilter: FilterOption) => {
-  selectedFilter.value = newFilter;
-};
-
-const componentsStore = useComponentsStore();
-const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 
 const selectedResourceId = ref(undefined as undefined | number);
 
@@ -78,46 +44,65 @@ const selectResource = (id: number) => {
 
 const resourceSummary = ResourceService.useResourceSummary();
 
-const resource = computed(() => {
-  console.log(selectedComponent.value?.resource);
-  if (selectedComponent.value && selectedComponent.value.resource) {
-    return selectedComponent.value.resource;
+const resourcesList = computed((): MockResource[] => {
+  if (resourceSummary.value === undefined) {
+    const empty: MockResource[] = [];
+    return empty;
   }
-  return undefined;
-});
-
-// FIXME: since there can only be one (or none) Resource for a Component and System, this list
-// should be replaced by a single Resource. For now, this is used to maintain compatability.
-const resourcesList = computed(() => {
-  const resources = [];
-  if (resource.value) {
-    resources.push(resource.value);
-  }
-  return resources;
-});
-
-watch(selectedComponentId, () => {
-  selectedResourceId.value = undefined;
-});
-
-const componentsList = computed((): ComponentListItem[] => {
-  if (resourceSummary.value === undefined) return [];
-  const list: ComponentListItem[] = [];
+  const list: MockResource[] = [];
   for (const component of resourceSummary.value.components) {
-    list.push({
+    const fix = fixes.value[component.id]; // TODO(wendy+victor) - currently every fix has the same id as it's component, this will likely change!
+    let created = false;
+    if (fix) {
+      const fixStatus = fix.status;
+      if (fixStatus === "success") created = true;
+    } else if (
+      [
+        "Region",
+        "Docker Image",
+        "Butane",
+        "Docker Hub Credential",
+        "AMI",
+      ].includes(component.schema)
+    ) {
+      created = true;
+    }
+    const confirmations: Confirmation[] = [
+      created
+        ? {
+            title: "Does The Resource Exist?",
+            health: "ok" as ResourceHealth,
+            description:
+              "Checks if the resource actually exists. This resource exists!",
+          }
+        : {
+            title: "Does The Resource Exist?",
+            health: "error" as ResourceHealth,
+            description:
+              "Checks if the resource actually exists. This resource has not been created yet. Please run the fix above to create it!",
+          },
+    ];
+    const resource: MockResource = {
       id: component.id,
       name: component.name,
-      schema: component.schema,
-      health: component.health,
-      resource: component.resource,
-    });
+      kind: component.schema,
+      health: created ? ("ok" as ResourceHealth) : ("error" as ResourceHealth),
+      status: created
+        ? ("Created" as ResourceStatus)
+        : ("Pending" as ResourceStatus),
+      confirmations,
+    };
+    list.push(resource);
   }
   return list;
 });
 
-const selectedComponent = computed(() => {
-  return componentsList.value.find((c) => {
-    return c.id === selectedComponentId.value;
+const selectedResource = computed(() => {
+  return resourcesList.value.find((r) => {
+    return r.id === selectedResourceId.value;
   });
 });
+
+const fixesStore = useFixesStore();
+const fixes = computed(() => fixesStore.fixesById);
 </script>
