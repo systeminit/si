@@ -171,8 +171,9 @@ const onSearch = (search: string) => {
 const funcTypes = {
   [FuncBackendKind.JsQualification]: "Qualifications",
   [FuncBackendKind.JsAttribute]: "Attributes",
-  [FuncBackendKind.JsCodeGeneration]: "Code Generation",
-  [FuncBackendKind.JsConfirmation]: "Confirmation",
+  [FuncBackendKind.JsCodeGeneration]: "Code Generators",
+  [FuncBackendKind.JsConfirmation]: "Confirmations",
+  [FuncBackendKind.JsCommand]: "Commands",
 };
 
 const funcCreateTypes = {
@@ -180,6 +181,7 @@ const funcCreateTypes = {
   [FuncBackendKind.JsAttribute]: "Attribute",
   [FuncBackendKind.JsCodeGeneration]: "Code Generation",
   [FuncBackendKind.JsConfirmation]: "Confirmation",
+  [FuncBackendKind.JsCommand]: "Command",
 };
 
 const filteredList = computed(() =>
