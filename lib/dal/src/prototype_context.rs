@@ -1,7 +1,7 @@
 use crate::{
-    CodeGenerationPrototypeError, ComponentId, ConfirmationPrototypeError, DalContext,
-    QualificationPrototypeError, ReadTenancyError, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, TransactionsError, WriteTenancyError,
+    CodeGenerationPrototypeError, ComponentId, ConfirmationPrototypeError, DalContext, FuncError,
+    FuncId, QualificationPrototypeError, ReadTenancyError, SchemaId, SchemaVariantId,
+    StandardModel, StandardModelError, SystemId, TransactionsError, WriteTenancyError,
 };
 use std::future::Future;
 use thiserror::Error;
@@ -26,8 +26,12 @@ pub enum PrototypeContextError {
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error(transparent)]
     ConfirmationPrototype(#[from] ConfirmationPrototypeError),
+    #[error(transparent)]
+    Func(#[from] FuncError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("func {0} not found")]
+    FuncNotFound(FuncId),
 }
 
 pub type PrototypeContextResult<T> = Result<T, PrototypeContextError>;

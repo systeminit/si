@@ -294,7 +294,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ConfirmationPrototype::new(ctx, *func.id(), context).await?;
+    ConfirmationPrototype::new(ctx, "Has docker image resource?", *func.id(), context).await?;
 
     let name = "create";
     let context = ActionPrototypeContext {

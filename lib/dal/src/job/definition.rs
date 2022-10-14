@@ -1,7 +1,7 @@
 mod code_generation;
 mod confirmations;
 mod dependent_values_update;
-mod fix;
+pub mod fix;
 mod qualification;
 mod qualifications;
 mod workflow_run;

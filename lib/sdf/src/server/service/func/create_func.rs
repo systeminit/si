@@ -129,7 +129,13 @@ async fn create_confirmation_func(ctx: &DalContext) -> FuncResult<Func> {
     func.set_handler(ctx, Some(DEFAULT_CONFIRMATION_HANDLER))
         .await?;
 
-    ConfirmationPrototype::new(ctx, *func.id(), ConfirmationPrototype::new_context()).await?;
+    ConfirmationPrototype::new(
+        ctx,
+        func.display_name().unwrap_or("unknown"),
+        *func.id(),
+        ConfirmationPrototype::new_context(),
+    )
+    .await?;
 
     Ok(func)
 }
