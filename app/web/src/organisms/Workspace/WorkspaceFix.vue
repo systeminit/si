@@ -19,7 +19,6 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import SiPanel from "@/atoms/SiPanel.vue";
-
 import { useComponentsStore } from "@/store/components.store";
 import FixProgressOverlay from "@/organisms/FixProgressOverlay.vue";
 import FixPicker from "../FixPicker.vue";
