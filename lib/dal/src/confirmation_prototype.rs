@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
 use si_data::PgError;
 use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::{
     func::backend::js_confirmation::{ConfirmationResult, FuncBackendJsConfirmationArgs},
@@ -37,8 +38,9 @@ pub enum ConfirmationPrototypeError {
 
 pub type ConfirmationPrototypeResult<T> = Result<T, ConfirmationPrototypeError>;
 
-const FIND_FOR_CONTEXT: &str =
-    include_str!("./queries/confirmation_prototype_find_for_context.sql");
+const LIST_FOR_CONTEXT: &str = include_str!("queries/confirmation_prototype_list_for_context.sql");
+const GET_BY_COMPONENT_AND_NAME: &str =
+    include_str!("queries/confirmation_prototype_get_by_component_and_name.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ConfirmationPrototypeContext {
@@ -276,7 +278,7 @@ impl ConfirmationPrototype {
     standard_model_accessor!(system_id, Pk(SystemId), ConfirmationPrototypeResult);
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn find_for_component(
+    pub async fn list_for_component(
         ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
@@ -296,7 +298,7 @@ impl ConfirmationPrototype {
             .txns()
             .pg()
             .query(
-                FIND_FOR_CONTEXT,
+                LIST_FOR_CONTEXT,
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
@@ -309,6 +311,35 @@ impl ConfirmationPrototype {
             .await?;
 
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn get_by_component_and_name(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        name: impl AsRef<str>,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+        system_id: SystemId,
+    ) -> ConfirmationPrototypeResult<Option<Self>> {
+        let name = name.as_ref();
+        let maybe_row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                GET_BY_COMPONENT_AND_NAME,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &component_id,
+                    &name,
+                    &schema_id,
+                    &schema_variant_id,
+                    &system_id,
+                ],
+            )
+            .await?;
+        Ok(standard_model::option_object_from_row(maybe_row)?)
     }
 }
 

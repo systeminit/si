@@ -113,14 +113,12 @@ function fedora-bootstrap {
 
 function pop-bootstrap {
     local pkgs=(
-        awscli
         build-essential
         git
         libprotobuf-dev
         lld
         make
         protobuf-compiler
-        skopeo
         wget
     )
 
@@ -136,7 +134,7 @@ function pop-bootstrap {
     brew update
     brew upgrade
     brew cleanup
-    brew install kubeval butane
+    brew install gcc kubeval butane skopeo awscli
 
     if [ "${SI_WSL2}" == "false" ] && [ ! $(command -v docker) ]; then
         sudo apt update

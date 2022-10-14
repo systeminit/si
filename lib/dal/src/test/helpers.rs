@@ -324,7 +324,7 @@ pub struct ComponentPayload {
 
 impl ComponentPayload {
     /// Get the [`PropId`](crate::Prop) (value) corresponding to the "json pointer name" (key)
-    /// in the "prop_map".
+    /// in the "prop_map" (e.g. "/root/si/name" passed in as the name).
     pub fn get_prop_id(&self, prop_name: &str) -> PropId {
         *self
             .prop_map

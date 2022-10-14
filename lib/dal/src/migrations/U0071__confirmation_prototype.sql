@@ -17,8 +17,18 @@ CREATE TABLE confirmation_prototypes
     schema_variant_id           bigint                   NOT NULL,
     system_id                   bigint                   NOT NULL
 );
-SELECT standard_model_table_constraints_v1('confirmation_prototypes');
 
+CREATE UNIQUE INDEX unique_confirmation_prototype
+    ON confirmation_prototypes (component_id,
+                                schema_id,
+                                schema_variant_id,
+                                system_id,
+                                name,
+                                visibility_change_set_pk,
+                                (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
+
+SELECT standard_model_table_constraints_v1('confirmation_prototypes');
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('confirmation_prototypes', 'model', 'confirmation_prototype', 'Confirmation Prototype');
 
@@ -42,24 +52,24 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO confirmation_prototypes (tenancy_universal,
-                                          tenancy_billing_account_ids,
-                                          tenancy_organization_ids,
-                                          tenancy_workspace_ids,
-                                          visibility_change_set_pk,
-                                          visibility_deleted_at,
-					  name,
-                                          func_id,
-                                          component_id,
-                                          schema_id,
-                                          schema_variant_id,
-                                          system_id)
+                                         tenancy_billing_account_ids,
+                                         tenancy_organization_ids,
+                                         tenancy_workspace_ids,
+                                         visibility_change_set_pk,
+                                         visibility_deleted_at,
+                                         name,
+                                         func_id,
+                                         component_id,
+                                         schema_id,
+                                         schema_variant_id,
+                                         system_id)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
-	    this_name,
+            this_name,
             this_func_id,
             this_component_id,
             this_schema_id,

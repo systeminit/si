@@ -1,9 +1,10 @@
+use pretty_assertions_sorted::assert_eq;
+
 use dal::{
     confirmation_prototype::ConfirmationPrototypeContext,
     test_harness::create_component_for_schema, ConfirmationPrototype, DalContext, Func, Schema,
     StandardModel, SystemId,
 };
-use pretty_assertions_sorted::assert_eq;
 
 use crate::dal::test;
 
@@ -51,7 +52,7 @@ async fn find_for_component(ctx: &DalContext) {
         .expect("unable to create confirmation prototype");
 
     let found_prototypes =
-        ConfirmationPrototype::find_for_component(ctx, *component.id(), SystemId::NONE)
+        ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
             .await
             .expect("could not find for context");
     // doesnt find builtins
@@ -68,7 +69,7 @@ async fn run(ctx: &DalContext) {
         .expect("unable to find schema");
     let component = create_component_for_schema(ctx, schema.id()).await;
 
-    let prototype = ConfirmationPrototype::find_for_component(ctx, *component.id(), SystemId::NONE)
+    let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
         .await
         .expect("could not find for context")
         .pop()
