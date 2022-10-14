@@ -24,12 +24,14 @@ use tokio_postgres::{
     SimpleQueryMessage, Statement, ToStatement,
 };
 
-use crate::SensitiveString;
+use crate::{ResultExt, SensitiveString};
 
 pub use tokio_postgres::error::SqlState;
 
 const MIGRATION_LOCK_NUMBER: i64 = 42;
 const MAX_POOL_SIZE_MINIMUM: usize = 32;
+
+const TEST_QUERY: &str = "SELECT 1";
 
 #[derive(thiserror::Error, Debug)]
 pub enum PgError {
@@ -63,6 +65,8 @@ pub enum PgPoolError {
     ResolveHostname(std::io::Error),
     #[error("resolved hostname returned no entries")]
     ResolveHostnameNoEntries,
+    #[error("test connection query returned incorrect result; expected={0}, got={1}")]
+    TestConnectionResult(i32, i32),
 }
 
 pub type PgPoolResult<T> = Result<T, PgPoolError>;
@@ -221,6 +225,52 @@ impl PgPool {
         drop(tokio::spawn(test_connection_task(pg_pool.clone())));
 
         Ok(pg_pool)
+    }
+
+    // Attempts to establish a database connection and returns an error if not successful.
+    #[instrument(
+        name = "pool.test_connection",
+        skip_all,
+        level = "debug",
+        fields(
+            db.system = %self.metadata.db_system,
+            db.connection_string = %self.metadata.db_connection_string,
+            db.name = %self.metadata.db_name,
+            db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
+            net.peer.ip = %self.metadata.net_peer_ip,
+            net.peer.port = %self.metadata.net_peer_port,
+            net.transport = %self.metadata.net_transport,
+        )
+    )]
+    pub async fn test_connection(&self) -> PgPoolResult<()> {
+        let conn = self.pool.get().await.si_inspect_err(
+            |err| warn!(error = %err, "failed to get test database connection from pool"),
+        )?;
+        debug!("connected to database");
+        let row = conn
+            .query_one(TEST_QUERY, &[])
+            .await
+            .si_inspect_err(|err| {
+                warn!(
+                    error = %err,
+                    db.statement = &TEST_QUERY,
+                    "failed to execute test query"
+                )
+            })?;
+        let col: i32 = row.try_get(0).si_inspect_err(|err| {
+            warn!(
+                error = %err,
+                db.statement = &TEST_QUERY,
+                "failed to parse column 0 of row from test query result"
+            )
+        })?;
+        if col != 1 {
+            warn!("test query did not return expected value; expected=1, got={col}");
+            return Err(PgPoolError::TestConnectionResult(1, col));
+        }
+        debug!("test connection successful");
+        Ok(())
     }
 
     /// Retrieve object from pool or wait for one to become available.
@@ -2587,34 +2637,6 @@ impl PgOwnedTransaction {
     }
 }
 
-#[instrument(skip_all, level = "debug")]
 async fn test_connection_task(check_pool: PgPool) {
-    const QUERY: &str = "SELECT 1";
-    let conn = match check_pool.get().await {
-        Ok(conn) => conn,
-        Err(err) => {
-            warn!(error = %err, "failed to get initial database connection from pool");
-            return;
-        }
-    };
-    debug!("got initial database connection");
-    let row = match conn.query_one(QUERY, &[]).await {
-        Ok(row) => row,
-        Err(err) => {
-            warn!(error = %err, db.statement = &QUERY, "failed to execute validation query");
-            return;
-        }
-    };
-    let col: i32 = match row.try_get(0) {
-        Ok(col) => col,
-        Err(err) => {
-            warn!(error = %err, "failed to parse column 0 of row");
-            return;
-        }
-    };
-    if col != 1 {
-        warn!("validation query did not return 1; val={}", col);
-        return;
-    }
-    debug!("successfully connected to database and executed initial validation query");
+    let _result = check_pool.test_connection().await;
 }

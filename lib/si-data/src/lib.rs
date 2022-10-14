@@ -31,3 +31,9 @@ pub use nats::{Client as NatsClient, Error as NatsError, NatsConfig, NatsTxn};
 
 mod sensitive_string;
 pub use sensitive_string::SensitiveString;
+
+mod result_ext;
+pub use result_ext::ResultExt;
+
+mod option_ext;
+pub use option_ext::OptionExt;

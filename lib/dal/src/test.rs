@@ -1,13 +1,18 @@
 //! This module provides helpers and resources for constructing and running integration tests.
 
 use std::{
+    borrow::Cow,
     env,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Once},
 };
 
+use color_eyre::{
+    eyre::{eyre, WrapErr},
+    Result,
+};
 use lazy_static::lazy_static;
-use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
+use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig, ResultExt};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 use uuid::Uuid;
@@ -39,9 +44,11 @@ const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
 const JWT_PUBLIC_FILENAME: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/public.pem");
 const JWT_PRIVATE_FILENAME: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/private.pem");
 
+pub static COLOR_EYRE_INIT: Once = Once::new();
+
 lazy_static! {
     static ref CONFIG: Config = Config::default();
-    static ref TEST_CONTEXT_BUILDER: Mutex<Option<TestContextBuilder>> = Mutex::new(None);
+    static ref TEST_CONTEXT_BUILDER: Mutex<ContextBuilderState> = Mutex::new(Default::default());
 }
 
 /// A [`DalContext`] for a workspace in a billing account which is not in a change set nor an edit
@@ -126,6 +133,29 @@ impl Default for Config {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
+enum ContextBuilderState {
+    Uninitialized,
+    Created(TestContextBuilder),
+    Errored(Cow<'static, str>),
+}
+
+impl ContextBuilderState {
+    fn created(builder: TestContextBuilder) -> Self {
+        Self::Created(builder)
+    }
+
+    fn errored(message: impl Into<Cow<'static, str>>) -> Self {
+        Self::Errored(message.into())
+    }
+}
+
+impl Default for ContextBuilderState {
+    fn default() -> Self {
+        Self::Uninitialized
+    }
+}
+
 /// A context used for preparing and running tests containing DAL objects.
 #[derive(Clone, Debug)]
 pub struct TestContext {
@@ -151,49 +181,51 @@ impl TestContext {
     ///
     /// This functions wraps over a mutex which ensures that only the first caller will run global
     /// database creation, migrations, and other preparations.
-    pub async fn global() -> Self {
+    pub async fn global() -> Result<Self> {
         let mut mutex_guard = TEST_CONTEXT_BUILDER.lock().await;
 
-        if let Some(test_context) = &*mutex_guard {
-            return test_context.build().await;
-        }
+        match &*mutex_guard {
+            ContextBuilderState::Uninitialized => {
+                let test_context_builder = TestContextBuilder::create(CONFIG.clone())
+                    .await
+                    .si_inspect_err(|err| {
+                        *mutex_guard = ContextBuilderState::errored(err.to_string());
+                    })?;
 
-        let test_context_builder = TestContextBuilder::create(CONFIG.clone()).await;
+                // The stack gets too deep here, so we'll spawn the work as a task with a new
+                // thread stack just for the global setup
+                let handle = tokio::spawn(global_setup(test_context_builder.clone()));
 
-        // The stack gets too deep here, so we'll spawn the work as a task with a new thread stack
-        // just for the global setup
-        tokio::spawn(global_setup(test_context_builder.clone()))
-            .await
-            .expect("failed to join task");
-
-        *mutex_guard = Some(test_context_builder.clone());
-        test_context_builder.build().await
-    }
-
-    /// Builds a [`TestContext`] from a given configuration.
-    pub async fn create(config: Config) -> Self {
-        let pg_pool = PgPool::new(&config.pg_pool)
-            .await
-            .expect("failed to create PgPool");
-        let nats_conn = NatsClient::new(&config.nats)
-            .await
-            .expect("failed to create NatsClient");
-        let job_processor =
-            Box::new(SyncProcessor::new()) as Box<dyn JobQueueProcessor + Send + Sync>;
-        let encryption_key = Arc::new(
-            EncryptionKey::load(&config.encryption_key_path)
-                .await
-                .expect("failed to load EncryptionKey"),
-        );
-        let jwt_secret_key = JwtSecretKey::default();
-
-        Self {
-            config,
-            pg_pool,
-            nats_conn,
-            job_processor,
-            encryption_key,
-            jwt_secret_key,
+                // Join this task and wait on its completion
+                match handle.await {
+                    // Global setup completed successfully
+                    Ok(Ok(())) => {
+                        debug!("task global_setup was successful");
+                        *mutex_guard = ContextBuilderState::created(test_context_builder.clone());
+                        test_context_builder.build().await
+                    }
+                    // Global setup errored
+                    Ok(Err(err)) => {
+                        *mutex_guard = ContextBuilderState::errored(err.to_string());
+                        Err(err)
+                    }
+                    // Tokio task panicked or was cancelled
+                    Err(err) => {
+                        if err.is_panic() {
+                            error!(error = %err, "spawned task global_setup panicked!");
+                        } else if err.is_cancelled() {
+                            error!(error = %err, "spawned task global_setup was cancelled!");
+                        }
+                        *mutex_guard = ContextBuilderState::errored(err.to_string());
+                        Err(err.into())
+                    }
+                }
+            }
+            ContextBuilderState::Created(builder) => builder.build().await,
+            ContextBuilderState::Errored(message) => {
+                error!(error = %message, "global setup failed, aborting test");
+                Err(eyre!("global setup failed: {}", message))
+            }
         }
     }
 
@@ -243,40 +275,40 @@ struct TestContextBuilder {
 
 impl TestContextBuilder {
     /// Creates a new builder.
-    async fn create(config: Config) -> Self {
+    async fn create(config: Config) -> Result<Self> {
         let encryption_key = Arc::new(
             EncryptionKey::load(&config.encryption_key_path)
                 .await
-                .expect("failed to load EncryptionKey"),
+                .wrap_err("failed to load EncryptionKey")?,
         );
         let jwt_secret_key = JwtSecretKey::default();
 
-        Self {
+        Ok(Self {
             config,
             encryption_key,
             jwt_secret_key,
-        }
+        })
     }
 
     /// Builds and returns a new [`TestContext`] with its own connection pooling.
-    async fn build(&self) -> TestContext {
+    async fn build(&self) -> Result<TestContext> {
         let pg_pool = PgPool::new(&self.config.pg_pool)
             .await
-            .expect("failed to create PgPool");
+            .wrap_err("failed to create PgPool")?;
         let nats_conn = NatsClient::new(&self.config.nats)
             .await
-            .expect("failed to create NatsClient");
+            .wrap_err("failed to create NatsClient")?;
         let job_processor =
             Box::new(SyncProcessor::new()) as Box<dyn JobQueueProcessor + Send + Sync>;
 
-        TestContext {
+        Ok(TestContext {
             config: self.config.clone(),
             pg_pool,
             nats_conn,
             job_processor,
             encryption_key: self.encryption_key.clone(),
             jwt_secret_key: self.jwt_secret_key.clone(),
-        }
+        })
     }
 }
 
@@ -290,69 +322,72 @@ pub fn nats_subject_prefix() -> String {
 pub async fn veritech_server_for_uds_cyclone(
     nats_config: NatsConfig,
     nats_subject_prefix: String,
-) -> veritech::Server {
+) -> Result<veritech::Server> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let cyclone_spec = veritech::CycloneSpec::LocalUds(
         veritech::LocalUdsInstance::spec()
             .try_cyclone_cmd_path(
                 dir.join("../../target/debug/cyclone")
                     .canonicalize()
-                    .expect(CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE)
+                    .wrap_err(CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE)?
                     .to_string_lossy()
                     .to_string(),
             )
-            .expect("failed to setup cyclone_cmd_path")
+            .wrap_err("failed to setup cyclone_cmd_path")?
             .cyclone_decryption_key_path(
                 dir.join("../../lib/cyclone-server/src/dev.decryption.key")
                     .canonicalize()
-                    .expect("failed to canonicalize cyclone decryption key path")
+                    .wrap_err("failed to canonicalize cyclone decryption key path")?
                     .to_string_lossy()
                     .to_string(),
             )
             .try_lang_server_cmd_path(
                 dir.join("../../bin/lang-js/target/lang-js")
                     .canonicalize()
-                    .expect("failed to canonicalize lang-js path")
+                    .wrap_err("failed to canonicalize lang-js path")?
                     .to_string_lossy()
                     .to_string(),
             )
-            .expect("failed to setup lang_js_cmd_path")
+            .wrap_err("failed to setup lang_js_cmd_path")?
             .all_endpoints()
             .build()
-            .expect("failed to build cyclone spec"),
+            .wrap_err("failed to build cyclone spec")?,
     );
     let config = veritech::Config::builder()
         .nats(nats_config)
         .subject_prefix(nats_subject_prefix)
         .cyclone_spec(cyclone_spec)
         .build()
-        .expect("failed to build spec");
-    veritech::Server::for_cyclone_uds(config)
+        .wrap_err("failed to build spec")?;
+    let server = veritech::Server::for_cyclone_uds(config)
         .await
-        .expect("failed to create server")
+        .wrap_err("failed to create Veritech server")?;
+
+    Ok(server)
 }
 
-async fn global_setup(test_context_builer: TestContextBuilder) {
+async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     info!("running global test setup");
-    let test_context = test_context_builer.build().await;
+    let test_context = test_context_builer.build().await?;
 
     debug!("initializing crypto");
-    sodiumoxide::init().expect("failed to init sodiumoxide crypto");
+    sodiumoxide::init().map_err(|_| eyre!("failed to init sodiumoxide crypto"))?;
 
     #[cfg(debug_assertions)]
-    debug!("checking for required runtime dependencies");
-    #[cfg(debug_assertions)]
-    check_runtime_dependencies().unwrap();
+    {
+        info!("checking for required runtime dependencies");
+        check_runtime_dependencies()?;
+    }
 
     let nats_subject_prefix = nats_subject_prefix();
 
     // Start up a Veritech server as a task exclusively to allow the migrations to run
-    debug!("starting Veritech server for initial migrations");
+    info!("starting Veritech server for initial migrations");
     let veritech_server = veritech_server_for_uds_cyclone(
         test_context.config.nats.clone(),
         nats_subject_prefix.clone(),
     )
-    .await;
+    .await?;
     let veritech_server_handle = veritech_server.shutdown_handle();
     tokio::spawn(veritech_server.run());
 
@@ -361,30 +396,37 @@ async fn global_setup(test_context_builer: TestContextBuilder) {
         .create_services_context(nats_subject_prefix)
         .await;
 
+    info!("testing database connection");
+    services_ctx
+        .pg_pool()
+        .test_connection()
+        .await
+        .wrap_err("failed to connect to database, is it running and available?")?;
+
     // Ensure the database is totally clean, then run all migrations
-    debug!("dropping and re-creating the database schema");
+    info!("dropping and re-creating the database schema");
     services_ctx
         .pg_pool()
         .drop_and_create_public_schema()
         .await
-        .expect("failed to drop and create the database");
-    debug!("running database migrations");
+        .wrap_err("failed to drop and create the database")?;
+    info!("running database migrations");
     crate::migrate(services_ctx.pg_pool())
         .await
-        .expect("failed to migrate database");
+        .wrap_err("failed to migrate database")?;
 
     // Setup the JWT-signing key in the database
     {
-        debug!("creating jwt key in database");
+        info!("creating jwt key in database");
         let mut pg_conn = services_ctx
             .pg_pool()
             .get()
             .await
-            .expect("failed to get pg connection");
+            .wrap_err("failed to get pg connection")?;
         let pg_txn = pg_conn
             .transaction()
             .await
-            .expect("failed to start pg transaction");
+            .wrap_err("failed to start pg transaction")?;
         crate::create_jwt_key_if_missing(
             &pg_txn,
             JWT_PUBLIC_FILENAME,
@@ -392,13 +434,14 @@ async fn global_setup(test_context_builer: TestContextBuilder) {
             &test_context.jwt_secret_key.key,
         )
         .await
-        .expect("failed to create jwt key");
+        .wrap_err("failed to create jwt key")?;
         pg_txn
             .commit()
             .await
-            .expect("failed to commit jwt key insertion txn");
+            .wrap_err("failed to commit jwt key insertion txn")?;
     }
 
+    info!("creating builtins");
     crate::migrate_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
@@ -407,11 +450,13 @@ async fn global_setup(test_context_builer: TestContextBuilder) {
         services_ctx.encryption_key(),
     )
     .await
-    .expect("failed to run builtin migrations");
+    .wrap_err("failed to run builtin migrations")?;
 
     // Shutdown the Veritech server (each test gets their own server instance with an exclusively
     // unique subject prefix)
+    info!("shutting down initial migrations Veritech server");
     veritech_server_handle.shutdown().await;
 
     info!("global test setup complete");
+    Ok(())
 }

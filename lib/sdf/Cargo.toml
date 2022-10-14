@@ -38,7 +38,8 @@ rand = "0.8"
 thiserror = { version = "1.0" }
 
 [dev-dependencies]
+color-eyre = { version = "0.6.1" }
 serde_url_params = "0.2.1"
 si-test-macros = { path = "../../lib/si-test-macros" }
 tracing = { version = "0.1" }
-tracing-subscriber = { version = "0.3.11", default-features = false, features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "0.3.11", default-features = false, features = ["ansi", "env-filter", "fmt"] }
