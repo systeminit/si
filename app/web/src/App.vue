@@ -4,7 +4,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeMount } from "vue";
+import { computed } from "vue";
 import "floating-vue/dist/style.css";
 
 import { useHead } from "@vueuse/head";
@@ -43,7 +43,7 @@ authStore.initFromStorage();
 const workspacesStore = useWorkspacesStore();
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 
-// initialize the realtime store - it will dispatch messages to other stores and back to rxjs services
+// initialize the realtime store - which will watch for auth and open/close websocket
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const realtimeStore = useRealtimeStore();
 </script>

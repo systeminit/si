@@ -43,7 +43,7 @@ export const useComponentAttributesStore = () => {
     defineStore(`cs${changeSetId}/component_attributes`, {
       state: () => ({
         // TODO: likely want to restructure how this data is sent and stored
-        // but we'll just move into store as first step...
+        // but we'll just move into a pinia store as the first step...
         schema: null as PropertyEditorSchema | null,
         validations: null as PropertyEditorValidation[] | null,
         values: null as PropertyEditorValues | null,
@@ -144,11 +144,13 @@ export const useComponentAttributesStore = () => {
           });
         },
 
-        reloadPropertyEditorData() {
+        reloadPropertyEditorData(skipClearingData = false) {
           // resetting the values here so we dont have unrelated data in the store at the same time
-          this.schema = null;
-          this.values = null;
-          this.validations = null;
+          if (!skipClearingData) {
+            this.schema = null;
+            this.values = null;
+            this.validations = null;
+          }
           this.FETCH_PROPERTY_EDITOR_SCHEMA();
           this.FETCH_PROPERTY_EDITOR_VALUES();
           this.FETCH_PROPERTY_EDITOR_VALIDATIONS();
@@ -181,17 +183,21 @@ export const useComponentAttributesStore = () => {
         const stopWatchSelectedComponent = watch(
           () => this.selectedComponentId,
           () => {
+            if (!this.selectedComponentId) return;
             this.reloadPropertyEditorData();
           },
         );
 
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
-          // {
-          //   eventType: "ChangeSetWritten",
-          //   callback: (writtenChangeSetId) => {
-          //     if (writtenChangeSetId !== changeSetId) return;
-          //   },
-          // },
+          {
+            eventType: "ChangeSetWritten",
+            callback: (writtenChangeSetId) => {
+              if (writtenChangeSetId !== changeSetId) return;
+              // for now we'll re-fetch everything without clearing the data first
+              // but longterm this should be much more targeted and smarter...
+              this.reloadPropertyEditorData(true);
+            },
+          },
         ]);
 
         return () => {

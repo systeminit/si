@@ -51,7 +51,7 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
 import Icon from "@/ui-lib/Icon.vue";
-import { useFuncStore } from "@/store/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 
 const routeToFunc = useRouteToFunc();

@@ -8,7 +8,6 @@ import { ApiRequest } from "@/utils/pinia_api_tools";
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
-import { changeSet$, eventChangeSetWritten$ } from "@/service/change_set";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
@@ -127,9 +126,6 @@ export function useChangeSetsStore() {
         const stopWatchSelectedChangeSet = watch(
           () => this.selectedChangeSet,
           () => {
-            // pass along selected change set to rxjs
-            changeSet$.next(this.selectedChangeSet);
-
             // store last used change set (per workspace) in localstorage
             if (this.selectedChangeSet && workspaceId) {
               storage.setItem(
@@ -159,8 +155,7 @@ export function useChangeSetsStore() {
           {
             eventType: "ChangeSetWritten",
             callback: () => {
-              // this observable is just used as a signal...
-              eventChangeSetWritten$.next(true);
+              // could refetch the change sets here, but not useful right now...
             },
           },
         ]);

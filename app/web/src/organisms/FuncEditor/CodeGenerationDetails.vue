@@ -41,10 +41,10 @@
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
-import { CodeGenerationAssociations } from "@/service/func";
+import { CodeGenerationAssociations } from "@/store/func/types";
 import { toOptionValues } from "@/organisms/FuncEditor/utils";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
-import { useFuncStore } from "@/store/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import RunOnSelector from "./RunOnSelector.vue";
 
 const funcStore = useFuncStore();

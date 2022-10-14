@@ -76,10 +76,13 @@
 <script lang="ts" setup>
 import { computed, inject, ref, Ref } from "vue";
 import { storeToRefs } from "pinia";
-import { AttributeAssocations, AttributePrototypeView } from "@/service/func";
+import {
+  AttributeAssocations,
+  AttributePrototypeView,
+} from "@/store/func/types";
 import VButton from "@/molecules/VButton.vue";
 import { FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore } from "@/store/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
 
 const funcStore = useFuncStore();
@@ -107,11 +110,11 @@ const closeModal = () => {
 };
 
 const removeBinding = (prototypeId?: number) =>
-  prototypeId && funcStore.REMOVE_ATTR_PROTOTYPE(props.funcId, prototypeId);
+  prototypeId && funcStore.removeFuncAttrPrototype(props.funcId, prototypeId);
 
 const saveModal = (prototype?: AttributePrototypeView) => {
   if (prototype) {
-    funcStore.UPDATE_ATTR_PROTOTYPE(props.funcId, prototype);
+    funcStore.updateFuncAttrPrototype(props.funcId, prototype);
   }
   closeModal();
 };

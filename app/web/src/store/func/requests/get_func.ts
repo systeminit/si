@@ -1,7 +1,7 @@
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
-import { FuncAssociations } from "@/service/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { ApiRequest } from "@/utils/pinia_api_tools";
+import { FuncAssociations } from "../types";
 
 export interface GetFuncArgs {
   id: number;

@@ -165,7 +165,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
       "payload",
     ) as RealtimeEventMetadata;
 
-    console.log("ws message!", messageEventData);
+    console.log("WS message", eventKind, eventData);
 
     _.each(subscriptions, (sub) => {
       // TODO: also filter by topic once we receive this info from the backend

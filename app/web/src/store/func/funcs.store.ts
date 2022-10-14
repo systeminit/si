@@ -1,24 +1,30 @@
+import _ from "lodash";
 import { defineStore } from "pinia";
-import { bufferTime } from "rxjs/operators";
-import { EditingFunc, saveFuncToBackend$ } from "@/observable/func";
-import { ListedFuncView, listFuncs } from "@/service/func/list_funcs";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
-import { getFunc, GetFuncResponse } from "@/service/func/get_func";
-import { revertFunc } from "@/service/func/revert_func";
-import { createFunc, CreateFuncRequest } from "@/service/func/create_func";
+
+import { Visibility } from "@/api/sdf/dal/visibility";
+import { FuncArgument, FuncBackendKind } from "@/api/sdf/dal/func";
+
+import { useChangeSetsStore } from "../change_sets.store";
+import { useRealtimeStore } from "../realtime/realtime.store";
+import { useComponentsStore } from "../components.store";
+
+import { AttributePrototypeView, EditingFunc, FuncAssociations } from "./types";
+import { ListedFuncView, listFuncs } from "./requests/list_funcs";
+import { getFunc } from "./requests/get_func";
+import { revertFunc } from "./requests/revert_func";
+import {
+  createBuiltinFunc,
+  CreateBuiltinFuncRequest,
+  createFunc,
+  CreateFuncRequest,
+} from "./requests/create_func";
 import {
   listInputSources,
   ListInputSourcesResponse,
-} from "@/service/func/list_input_sources";
-import { Visibility } from "@/api/sdf/dal/visibility";
-import { execFunc } from "@/service/func/exec_func";
-import { saveFunc, SaveFuncRequest } from "@/service/func/save_func";
-import { DevService } from "@/service/dev";
-import { FuncArgument, FuncBackendKind } from "@/api/sdf/dal/func";
-import { AttributePrototypeView } from "@/service/func";
-import { useChangeSetsStore } from "./change_sets.store";
-import { useRealtimeStore } from "./realtime/realtime.store";
-import { useComponentsStore } from "./components.store";
+} from "./requests/list_input_sources";
+import { execFunc } from "./requests/exec_func";
+import { saveFunc } from "./requests/save_func";
 
 export const nullEditingFunc: EditingFunc = {
   id: 0,
@@ -32,15 +38,6 @@ export const nullEditingFunc: EditingFunc = {
 
 type FuncId = number;
 
-export interface FuncStore {
-  funcList: ListedFuncView[];
-  openFuncs: Record<FuncId, EditingFunc>;
-  openFuncsList: ListedFuncView[];
-  selectedFuncId: FuncId;
-  editingFunc: EditingFunc;
-  inputSources: ListInputSourcesResponse;
-}
-
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
   const changeSetStore = useChangeSetsStore();
@@ -50,25 +47,27 @@ export const useFuncStore = () => {
   };
 
   const store = defineStore(`cs${selectedChangeSetId}/funcs`, {
-    state: (): FuncStore => ({
-      funcList: [],
-      openFuncs: {},
-      openFuncsList: [],
-      selectedFuncId: -1,
-      editingFunc: nullEditingFunc,
-      inputSources: { sockets: [], props: [] },
+    state: () => ({
+      funcList: [] as ListedFuncView[],
+      openFuncsById: {} as Record<FuncId, EditingFunc>,
+      openFuncsList: [] as ListedFuncView[],
+      selectedFuncId: -1 as FuncId,
+      editingFunc: nullEditingFunc as EditingFunc,
+      inputSources: { sockets: [], props: [] } as ListInputSourcesResponse,
+
+      saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
     }),
     getters: {
       getFuncById:
         (state) =>
         (funcId: FuncId): EditingFunc | undefined =>
-          state.openFuncs[funcId],
+          state.openFuncsById[funcId],
       selectedFuncIndex: (state) =>
         state.openFuncsList.findIndex((f) => f.id === state.selectedFuncId),
       getFuncByIndex: (state) => (index: number) => state.openFuncsList[index],
       getIndexForFunc: (state) => (funcId: FuncId) =>
         state.openFuncsList.findIndex((f) => f.id === funcId),
-      selectedFunc: (state) => state.openFuncs[state.selectedFuncId],
+      selectedFunc: (state) => state.openFuncsById[state.selectedFuncId],
       schemaVariantOptions() {
         return componentsStore.schemaVariants.map((sv) => ({
           label: sv.schemaName,
@@ -106,7 +105,7 @@ export const useFuncStore = () => {
     },
     actions: {
       async SELECT_FUNC(funcId: FuncId) {
-        const existing = this.getFuncById(funcId);
+        const existing = this.openFuncsById[funcId];
         if (existing) {
           this.selectedFuncId = funcId;
           this.ADD_FUNC_TO_OPEN_LIST(funcId);
@@ -116,10 +115,10 @@ export const useFuncStore = () => {
         await this.FETCH_FUNC(funcId);
         this.selectedFuncId = funcId;
         this.ADD_FUNC_TO_OPEN_LIST(funcId);
-        return this.getFuncById(funcId);
+        return this.openFuncsById[funcId];
       },
       ADD_FUNC_TO_OPEN_LIST(funcId: FuncId) {
-        const func = this.getFuncById(funcId);
+        const func = this.openFuncsById[funcId];
         if (func && this.getIndexForFunc(funcId) === -1) {
           this.openFuncsList.push(func as ListedFuncView);
         }
@@ -153,7 +152,7 @@ export const useFuncStore = () => {
       },
       async FETCH_FUNC(funcId: FuncId) {
         return getFunc({ ...visibility, id: funcId }, (response) => {
-          this.openFuncs[response.id] = response;
+          this.openFuncsById[response.id] = response;
         });
       },
 
@@ -171,28 +170,15 @@ export const useFuncStore = () => {
           ...createFuncRequest,
         });
       },
-      async SAVE_FUNC(saveFuncRequest: SaveFuncRequest) {
-        return saveFunc(
-          {
-            ...visibility,
-            ...saveFuncRequest,
-          },
-          (response) => {
-            const { associations, isRevertible } = response;
+      async CREATE_BUIILTIN_FUNC(createFuncRequest: CreateBuiltinFuncRequest) {
+        return createBuiltinFunc({
+          ...visibility, // seems odd the backend is asking for this?
+          ...createFuncRequest,
+        });
+      },
 
-            if (associations) {
-              this.openFuncs[saveFuncRequest.id].associations = associations;
-            }
-            this.openFuncs[saveFuncRequest.id].isRevertible = isRevertible;
-          },
-        );
-      },
-      UPDATE_FUNC(func: GetFuncResponse) {
-        this.openFuncs[func.id] = { ...func };
-        saveFuncToBackend$.next(func as SaveFuncRequest);
-      },
-      REMOVE_ATTR_PROTOTYPE(funcId: FuncId, prototypeId: number) {
-        const func = this.getFuncById(funcId);
+      removeFuncAttrPrototype(funcId: FuncId, prototypeId: number) {
+        const func = this.openFuncsById[funcId];
         if (func?.associations?.type !== "attribute") {
           return;
         }
@@ -200,10 +186,13 @@ export const useFuncStore = () => {
         func.associations.prototypes = func.associations.prototypes.filter(
           (proto) => proto.id !== prototypeId,
         );
-        this.UPDATE_FUNC({ ...func });
+        this.enqueueFuncSave(funcId);
       },
-      UPDATE_ATTR_PROTOTYPE(funcId: FuncId, prototype: AttributePrototypeView) {
-        const func = this.getFuncById(funcId);
+      updateFuncAttrPrototype(
+        funcId: FuncId,
+        prototype: AttributePrototypeView,
+      ) {
+        const func = this.openFuncsById[funcId];
         if (func?.associations?.type !== "attribute") {
           return;
         }
@@ -216,46 +205,60 @@ export const useFuncStore = () => {
           );
           func.associations.prototypes[currentPrototypeIdx] = prototype;
         }
-
-        this.UPDATE_FUNC({ ...func });
+        this.enqueueFuncSave(funcId);
       },
-      UPDATE_ATTR_FUNC_ARGS(funcId: FuncId, args: FuncArgument[]) {
-        const func = this.getFuncById(funcId);
+      updateFuncAttrArgs(funcId: FuncId, args: FuncArgument[]) {
+        const func = this.openFuncsById[funcId];
         if (func?.associations?.type !== "attribute") {
           return;
         }
+        func.associations.arguments = args;
+        this.enqueueFuncSave(funcId);
+      },
+      updateFuncAssociations(
+        funcId: FuncId,
+        associations: FuncAssociations | undefined,
+      ) {
+        this.openFuncsById[funcId].associations = associations;
+        this.enqueueFuncSave(funcId);
+      },
+      updateFuncCode(funcId: FuncId, code: string) {
+        this.openFuncsById[funcId].code = code;
+        this.enqueueFuncSave(funcId);
+      },
 
-        this.UPDATE_FUNC({
-          ...func,
-          associations: {
-            ...func.associations,
-            arguments: [...args],
+      enqueueFuncSave(funcId: FuncId) {
+        // Lots of ways to handle this... we may want to handle this debouncing in the component itself
+        // so the component has it's own "draft" state that it passes back to the store when it's ready to save
+        // however this should work for now, and lets the store handle this logic
+        if (!this.saveQueue[funcId]) {
+          this.saveQueue[funcId] = _.debounce(() => {
+            this.SAVE_UPDATED_FUNC(funcId);
+          }, 2000);
+        }
+        // call debounced function which will trigger sending the save to the backend
+        this.saveQueue[funcId]();
+      },
+      async SAVE_UPDATED_FUNC(funcId: FuncId) {
+        // saves the latest func state from the store, rather than passing in the new state
+        return saveFunc(
+          {
+            ...visibility,
+            ...this.openFuncsById[funcId],
           },
-        });
+          (response) => {
+            const { associations, isRevertible } = response;
+            if (associations) {
+              this.openFuncsById[funcId].associations = associations;
+            }
+            this.openFuncsById[funcId].isRevertible = isRevertible;
+          },
+        );
       },
     },
     onActivated() {
       this.FETCH_FUNC_LIST();
       this.FETCH_INPUT_SOURCE_LIST();
-
-      const isDevMode = import.meta.env.DEV;
-
-      const saveSub = saveFuncToBackend$
-        .pipe(bufferTime(2000))
-        .subscribe((saveRequests) =>
-          Object.values(
-            saveRequests.reduce(
-              (acc, saveReq) => ({ ...acc, [saveReq.id]: saveReq }),
-              {} as { [key: number]: SaveFuncRequest },
-            ),
-          ).forEach(async (saveReq) => {
-            if (isDevMode && saveReq.isBuiltin) {
-              DevService.saveBuiltinFunc(saveReq);
-            } else {
-              this.SAVE_FUNC(saveReq);
-            }
-          }),
-        );
 
       const realtimeStore = useRealtimeStore();
       realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
@@ -263,14 +266,12 @@ export const useFuncStore = () => {
           eventType: "ChangeSetWritten",
           callback: (writtenChangeSetId) => {
             if (writtenChangeSetId !== selectedChangeSetId) return;
-
             this.FETCH_FUNC_LIST();
           },
         },
       ]);
       return () => {
         realtimeStore.unsubscribe(this.$id);
-        saveSub.unsubscribe();
       };
     },
   });

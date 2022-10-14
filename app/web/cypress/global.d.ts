@@ -1,15 +1,8 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  import { SignupService } from "../src/service/signup";
-  import { SessionService } from "../src/service/session";
-  import { ChangeSetService } from "../src/service/change_set";
 
-  interface CustomWindow extends Window {
-    SignupService: typeof SignupService;
-    SessionService: typeof SessionService;
-    ChangeSetService: typeof ChangeSetService;
-  }
+  interface CustomWindow extends Window {}
 
   interface Chainable {
     /**

@@ -9,7 +9,6 @@ import { ComponentId, useComponentsStore } from "@/store/components.store";
 >>>>>>> e8bd300f (chore(web) app state cleanup)
 import promiseDelay from "@/utils/promise_delay";
 import { ApiRequest } from "@/utils/pinia_api_tools";
-import { LoginResponse } from "@/service/session";
 import hardcodedOutputs from "@/store/fixes/hardcoded_fix_outputs";
 import { User } from "@/api/sdf/dal/user";
 import { useAuthStore } from "@/store/auth.store";
@@ -103,7 +102,7 @@ export const useFixesStore = () => {
             await componentsStore.FETCH_COMPONENTS();
           }
 
-          return new ApiRequest<LoginResponse>({
+          return new ApiRequest({
             url: "/session/get_defaults",
             onSuccess: (response) => {
               this.populateMockFixes().then(() => {});
@@ -111,7 +110,7 @@ export const useFixesStore = () => {
           });
         },
         async EXECUTE_FIXES(fixes: Array<Fix>) {
-          return new ApiRequest<LoginResponse>({
+          return new ApiRequest({
             url: "/session/get_defaults",
             onSuccess: (response) => {
               this.executeMockFixes(fixes).then(() => {});

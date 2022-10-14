@@ -58,11 +58,10 @@ import {
   AddToMap,
   FuncWithPrototypeContext,
 } from "@/api/sdf/dal/property_editor";
-import Icon from "@/ui-lib/Icon.vue";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { useComponentsStore } from "@/store/components.store";
-import { useFuncStore } from "@/store/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
 import PropertyEditor from "./PropertyEditor.vue";
 
@@ -71,7 +70,6 @@ const routeToFunc = useRouteToFunc();
 
 const componentsStore = useComponentsStore();
 const selectedComponent = computed(() => componentsStore.selectedComponent);
-const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 
 const componentAttributesStore = useComponentAttributesStore();
 

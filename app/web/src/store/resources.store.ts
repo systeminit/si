@@ -65,11 +65,11 @@ export const useResourcesStore = () => {
   return addStoreHooks(
     defineStore(`w${workspaceId}/resources`, {
       state: () => ({
-        // resourcesById: {} as Record<ResourceId, MockResource>,
+        // resourcesByComponentId: {} as Record<ComponentId, MockResource>,
         selectedResourceId: null as ResourceId | null,
       }),
       getters: {
-        resourcesById(): Record<ResourceId, MockResource> {
+        resourcesByComponentId(): Record<ComponentId, MockResource> {
           const componentsStore = useComponentsStore();
           const fixesStore = useFixesStore();
 
@@ -107,10 +107,10 @@ export const useResourcesStore = () => {
               return resource;
             },
           );
-          return _.keyBy(resources, (r) => r.id);
+          return _.keyBy(resources, (r) => r.componentId);
         },
         allResources(): MockResource[] {
-          return _.values(this.resourcesById);
+          return _.values(this.resourcesByComponentId);
         },
       },
       actions: {
@@ -140,10 +140,8 @@ export const useResourcesStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
           {
-            eventType: "ChangeSetWritten",
-            callback: (writtenChangeSetId) => {
-              // TODO: remove this check when subscription topics work
-              if (writtenChangeSetId !== -1) return;
+            eventType: "ChangeSetApplied",
+            callback: () => {
               this.FETCH_RESOURCES_LIST();
             },
           },

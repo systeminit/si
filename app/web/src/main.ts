@@ -1,21 +1,14 @@
 import { createApp } from "vue";
 import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
-import { create } from "rxjs-spy";
 import { createHead } from "@vueuse/head";
 
 import "@/assets/style/main.css";
 import "@/assets/style/tailwind.css";
 
 import App from "@/App.vue";
-import { bottleSetup } from "./di";
 import router from "./router";
 import store from "./store";
-
-// @ts-ignore
-const _spy = create();
-
-bottleSetup();
 
 const app = createApp(App);
 

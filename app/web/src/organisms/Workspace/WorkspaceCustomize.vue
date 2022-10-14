@@ -36,11 +36,10 @@ import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
 import FuncEditorTabs from "@/organisms/FuncEditor/FuncEditorTabs.vue";
 import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
-import { ListedFuncView } from "@/service/func/list_funcs";
+import { ListedFuncView } from "@/store/func/requests/list_funcs";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
-import { DevService } from "@/service/dev";
-import { useFuncStore } from "@/store/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 
 const funcStore = useFuncStore();
 const funcReqStatus = funcStore.getRequestStatus("FETCH_FUNC");
@@ -83,12 +82,11 @@ const createFunc = async ({
   let func;
 
   if (isDevMode && isBuiltin && !_.isNil(name)) {
-    func = await DevService.createBuiltinFunc({ name, kind });
+    const res = await funcStore.CREATE_BUIILTIN_FUNC({ name, kind });
+    func = res.result.success && res.result.data;
   } else {
     const res = await funcStore.CREATE_FUNC({ kind });
-    if (res.result.success) {
-      func = res.result.data;
-    }
+    func = res.result.success && res.result.data;
   }
 
   if (func) {

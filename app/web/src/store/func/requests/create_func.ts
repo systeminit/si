@@ -38,3 +38,20 @@ export const createFunc = (
     params,
     onSuccess,
   });
+
+export interface CreateBuiltinFuncRequest {
+  name: string;
+  kind: FuncBackendKind;
+}
+
+// might want to combine with above (like we do with saveFunc)?
+export const createBuiltinFunc = (
+  params: CreateBuiltinFuncRequest,
+  onSuccess?: (response: CreateFuncResponse) => void,
+) =>
+  new ApiRequest<CreateFuncResponse, typeof params>({
+    method: "post",
+    url: "dev/create_func",
+    params,
+    onSuccess,
+  });
