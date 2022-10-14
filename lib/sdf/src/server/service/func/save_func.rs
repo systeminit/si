@@ -7,7 +7,9 @@ use axum::Json;
 use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
     func::argument::FuncArgument,
-    prototype_context::{associate_prototypes, HasPrototypeContext, PrototypeContextField},
+    prototype_context::{
+        associate_prototypes, HasPrototypeContext, PrototypeContextError, PrototypeContextField,
+    },
     AttributePrototype, AttributePrototypeArgument, CodeGenerationPrototype, ConfirmationPrototype,
     DalContext, Func, FuncBackendKind, FuncId, PrototypeListForFunc, QualificationPrototype,
     StandardModel, Visibility, WsEvent,
@@ -286,8 +288,12 @@ pub async fn save_func<'a>(
 
                 let create_prototype_closure =
                     move |ctx: DalContext, context_field: PrototypeContextField| async move {
+                        let func = Func::get_by_id(&ctx, &func_id_copy)
+                            .await?
+                            .ok_or(PrototypeContextError::FuncNotFound(func_id_copy))?;
                         ConfirmationPrototype::new(
                             &ctx,
+                            func.display_name().unwrap_or("unknown"),
                             func_id_copy,
                             ConfirmationPrototype::new_context_for_context_field(context_field),
                         )

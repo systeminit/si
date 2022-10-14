@@ -16,7 +16,7 @@ async fn new(ctx: &DalContext) {
         .pop()
         .expect("unable to find function");
     let context = ConfirmationPrototypeContext::default();
-    ConfirmationPrototype::new(ctx, *func.id(), context)
+    ConfirmationPrototype::new(ctx, "Do I even exist?", *func.id(), context)
         .await
         .expect("unable to create confirmation prototype");
 }
@@ -46,7 +46,7 @@ async fn find_for_component(ctx: &DalContext) {
         schema_variant_id: *schema_variant.id(),
         system_id: SystemId::NONE,
     };
-    let new_prototype = ConfirmationPrototype::new(ctx, *func.id(), context)
+    let new_prototype = ConfirmationPrototype::new(ctx, "A nice name", *func.id(), context)
         .await
         .expect("unable to create confirmation prototype");
 

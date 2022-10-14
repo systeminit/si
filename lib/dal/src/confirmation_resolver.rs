@@ -30,10 +30,10 @@ const FIND_FOR_PROTOTYPE: &str =
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ConfirmationResolverContext {
-    component_id: ComponentId,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
+    pub component_id: ComponentId,
+    pub schema_id: SchemaId,
+    pub schema_variant_id: SchemaVariantId,
+    pub system_id: SystemId,
 }
 
 // Hrm - is this a universal resolver context? -- Adam
@@ -213,6 +213,10 @@ impl ConfirmationResolver {
         returns: ActionPrototype,
         result: ConfirmationResolverResult,
     );
+
+    pub fn context(&self) -> ConfirmationResolverContext {
+        self.context.clone()
+    }
 }
 
 #[cfg(test)]

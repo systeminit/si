@@ -108,6 +108,7 @@ pk!(ConfirmationPrototypeId);
 pub struct ConfirmationPrototype {
     pk: ConfirmationPrototypePk,
     id: ConfirmationPrototypeId,
+    name: String,
     func_id: FuncId,
     component_id: ComponentId,
     schema_id: SchemaId,
@@ -151,6 +152,7 @@ impl ConfirmationPrototype {
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
+        name: &str,
         func_id: FuncId,
         context: ConfirmationPrototypeContext,
     ) -> ConfirmationPrototypeResult<Self> {
@@ -158,10 +160,11 @@ impl ConfirmationPrototype {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM confirmation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                "SELECT object FROM confirmation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
+                    &name,
                     &func_id,
                     &context.component_id(),
                     &context.schema_id(),
@@ -260,6 +263,7 @@ impl ConfirmationPrototype {
         }
     }
 
+    standard_model_accessor!(name, String, ConfirmationPrototypeResult);
     standard_model_accessor!(func_id, Pk(FuncId), ConfirmationPrototypeResult);
     standard_model_accessor!(schema_id, Pk(SchemaId), ConfirmationPrototypeResult);
     standard_model_accessor!(

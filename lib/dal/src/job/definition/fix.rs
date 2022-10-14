@@ -14,9 +14,9 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Fix {
-    workflow_prototype_id: WorkflowPrototypeId,
-    component_id: ComponentId,
-    confirmation_resolver_id: ConfirmationResolverId,
+    pub workflow_prototype_id: WorkflowPrototypeId,
+    pub component_id: ComponentId,
+    pub confirmation_resolver_id: ConfirmationResolverId,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
