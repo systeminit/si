@@ -396,6 +396,13 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .create_services_context(nats_subject_prefix)
         .await;
 
+    info!("testing database connection");
+    services_ctx
+        .pg_pool()
+        .test_connection()
+        .await
+        .wrap_err("failed to connect to database, is it running and available?")?;
+
     // Ensure the database is totally clean, then run all migrations
     info!("dropping and re-creating the database schema");
     services_ctx
