@@ -112,15 +112,32 @@ function fedora-bootstrap {
 }
 
 function pop-bootstrap {
-    # Run the Ubuntu bootstrap function first, and then do
-    # opinionated work.
-    ubuntu-bootstrap
+    local pkgs=(
+        awscli
+        build-essential
+        git
+        libprotobuf-dev
+        lld
+        make
+        protobuf-compiler
+        skopeo
+        wget
+    )
 
-    # NOTE(nick): the following installation blocks aren't "Pop!_OS-specific" and can be done for Ubuntu
-    # users as well. Since they are opinionated installation methods, I did not want to require them
-    # for all Ubuntu users.
+    sudo apt update
+    sudo apt upgrade -y
+    sudo apt autoremove -y
+    sudo apt install -y "${pkgs[@]}"
 
-    # Install docker with the compose plugin if not found on the system.
+    if [ ! $(command -v brew) ]; then
+        echo "Linuxbrew must be installed: https://brew.sh/"
+        exit 1
+    fi
+    brew update
+    brew upgrade
+    brew cleanup
+    brew install kubeval butane
+
     if [ "${SI_WSL2}" == "false" ] && [ ! $(command -v docker) ]; then
         sudo apt update
         sudo apt install -y ca-certificates curl gnupg lsb-release
@@ -135,7 +152,6 @@ function pop-bootstrap {
         sudo usermod -aG docker $SI_USER
     fi
 
-    # Install LTS node and npm if not found on the system.
     if [ ! $(command -v node) ] && [ ! $(command -v npm) ]; then
         curl -sL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
         sudo apt update
