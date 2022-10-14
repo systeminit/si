@@ -27,7 +27,6 @@ export const listInputSources = (
   onSuccess: (response: ListInputSourcesResponse) => void,
 ) =>
   new ApiRequest<ListInputSourcesResponse, Visibility>({
-    method: "get",
     url: "func/list_input_sources",
     params: { ...visibility },
     onSuccess,

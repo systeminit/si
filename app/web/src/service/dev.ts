@@ -1,56 +1,11 @@
-import {
-  combineLatest,
-  shareReplay,
-  map,
-  switchMap,
-  firstValueFrom,
-} from "rxjs";
-import { useObservable } from "@vueuse/rxjs";
+import { firstValueFrom } from "rxjs";
 import Bottle from "bottlejs";
 import { visibility$ } from "@/observable/visibility";
-import { ApiResponse, sdf, SDF } from "@/api/sdf";
+import { ApiResponse, SDF } from "@/api/sdf";
 import { GlobalErrorService } from "@/service/global_error";
-import { system$ } from "@/observable/system";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { CreateFuncResponse, nullFunc } from "@/service/func/create_func";
 import { SaveFuncRequest } from "@/service/func/save_func";
-
-/**
- * Gets the (shorthand) current Git sha of HEAD. This could be done in an npm script with an
- * exported variable, but this SDF call is also used to dogfood the "dev" endpoint.
- *
- * Returns "null" if not in "dev" mode.
- */
-function useCurrentGitSha() {
-  if (import.meta.env.DEV) {
-    interface GetCurrentGitShaResponse {
-      sha: string;
-    }
-
-    const currentGitSha$ = combineLatest([system$, visibility$]).pipe(
-      switchMap(([system, visibility]) => {
-        return sdf.get<ApiResponse<GetCurrentGitShaResponse>>(
-          "dev/get_current_git_sha",
-          {
-            ...(system?.id && { systemId: system.id }),
-            ...visibility,
-          },
-        );
-      }),
-      map((apiResponse) => {
-        if (apiResponse.error) {
-          GlobalErrorService.set(apiResponse);
-          return null;
-        }
-        return apiResponse;
-      }),
-      shareReplay({ bufferSize: 1, refCount: true }),
-    );
-
-    return useObservable(currentGitSha$);
-  }
-  return null;
-}
 
 export async function createBuiltinFunc(data: {
   name: string;
@@ -100,7 +55,6 @@ export const saveBuiltinFunc: (
 };
 
 export const DevService = {
-  useCurrentGitSha,
   createBuiltinFunc,
   saveBuiltinFunc,
 };

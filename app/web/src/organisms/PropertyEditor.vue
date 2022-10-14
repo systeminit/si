@@ -38,19 +38,19 @@ import {
   PropertyEditorSchema,
   PropertyEditorValues,
   PropertyEditorValue,
-  PropertyEditorValidations,
   UpdatedProperty,
   AddToArray,
   AddToMap,
   PropertyPath,
   FuncWithPrototypeContext,
+  PropertyEditorValidation,
 } from "@/api/sdf/dal/property_editor";
 import PropertyWidget from "./PropertyEditor/PropertyWidget.vue";
 
 export interface PropertyEditorContext {
   schema: PropertyEditorSchema;
   values: PropertyEditorValues;
-  validations: PropertyEditorValidations;
+  validations: PropertyEditorValidation[];
 }
 const props = defineProps<{
   editorContext: PropertyEditorContext;
@@ -80,7 +80,7 @@ const { editorContext } = toRefs(props);
 
 const schema = ref<PropertyEditorSchema>(props.editorContext.schema);
 const values = ref<PropertyEditorValues>(props.editorContext.values);
-const validations = ref<PropertyEditorValidations>(
+const validations = ref<PropertyEditorValidation[]>(
   props.editorContext.validations,
 );
 watch(editorContext, (newValue) => {
@@ -90,9 +90,7 @@ watch(editorContext, (newValue) => {
 });
 
 const validationForValueId = (valueId: number) => {
-  return validations.value.validations.find(
-    (validation) => validation.valueId === valueId,
-  );
+  return validations.value.find((validation) => validation.valueId === valueId);
 };
 
 const schemaForPropId = (propId: number) => {

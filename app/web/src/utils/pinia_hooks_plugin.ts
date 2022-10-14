@@ -7,6 +7,7 @@ import {
   reactive,
 } from "vue";
 import isPromise from "is-promise";
+import _ from "lodash";
 
 type MaybePromise<T> = T | Promise<T>;
 declare module "pinia" {
@@ -89,7 +90,11 @@ export const piniaHooksPlugin: PiniaPlugin = ({
         );
       }
       delete store._trackedStoreUsers[trackedComponentId];
-      if (store._trackedStoreUsersCount === 0 && store.onDeactivated) {
+      if (
+        store._trackedStoreUsersCount === 0 &&
+        store.onDeactivated &&
+        _.isFunction(store.onDeactivated)
+      ) {
         console.log(`${store.$id} - DEACTIVATE`);
         store.onDeactivated.call(store);
       }

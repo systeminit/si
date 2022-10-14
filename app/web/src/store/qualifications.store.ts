@@ -77,7 +77,6 @@ export const useQualificationsStore = () => {
               failed: number;
             }[];
           }>({
-            method: "get",
             url: "qualification/get_summary",
             params: {
               visibility_change_set_pk: changeSetId,
@@ -104,7 +103,6 @@ export const useQualificationsStore = () => {
         // TODO: check what `component/check_qualifications` endpoint is doing
         async FETCH_COMPONENT_QUALIFICATIONS(componentId: ComponentId) {
           return new ApiRequest<Qualification[]>({
-            method: "get",
             url: "component/list_qualifications",
             keyRequestStatusBy: componentId,
             params: {

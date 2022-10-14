@@ -53,7 +53,6 @@ export const useAuthStore = defineStore("auth", {
     // fetches user + billing account info - called on page refresh
     async RESTORE_AUTH() {
       return new ApiRequest<Omit<LoginResponse, "jwt">>({
-        method: "get",
         url: "/session/restore_authentication",
         onSuccess: (response) => {
           this.user = response.user;

@@ -43,7 +43,6 @@ export function useChangeSetsStore() {
       actions: {
         async FETCH_CHANGE_SETS() {
           return new ApiRequest<{ list: LabelList<number> }>({
-            method: "get",
             // TODO: probably want to fetch all change sets, not just open (or could have a filter)
             // this endpoint currently returns dropdown-y data, should just return the change set data itself
             url: "change_set/list_open_change_sets",

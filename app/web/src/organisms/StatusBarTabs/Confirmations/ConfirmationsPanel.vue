@@ -1,19 +1,19 @@
 <template>
   <div class="flex flex-row h-full w-full">
     <ConfirmationsResourceList
-      :resources="resourcesList"
+      :resources="resources"
       :selected="selectedResourceId"
-      @select="selectResource"
+      @select="onSelectResource"
     />
     <div
-      v-if="selectedResourceId === undefined"
+      v-if="!selectedResourceId"
       class="flex flex-row items-center text-center w-full h-full bg-shade-100"
     >
       <p class="w-full text-3xl text-neutral-500">No Resource Selected</p>
     </div>
     <ConfirmationViewerMultiple
       v-else-if="selectedResource"
-      :resource="selectedResource"
+      :selected-resource="selectedResource"
     />
     <div
       v-else
@@ -25,84 +25,22 @@
 </template>
 
 <script lang="ts" setup>
+import _ from "lodash";
 import { computed, ref } from "vue";
-import {
-  ResourceService,
-  MockResource,
-  Confirmation,
-} from "@/service/resource";
-import { useFixesStore } from "@/store/fixes/fixes.store";
-import { ResourceHealth, ResourceStatus } from "@/api/sdf/dal/resource";
-import ConfirmationsResourceList from "./ConfirmationsResourceList.vue";
+import { useResourcesStore } from "@/store/resources.store";
+
 import ConfirmationViewerMultiple from "./ConfirmationViewerMultiple.vue";
+import ConfirmationsResourceList from "./ConfirmationsResourceList.vue";
+
+const resourcesStore = useResourcesStore();
+const resources = computed(() => resourcesStore.allResources);
 
 const selectedResourceId = ref(undefined as undefined | number);
-
-const selectResource = (id: number) => {
+// we may want this to live in the store? depending on how it is used
+const selectedResource = computed(() =>
+  _.find(resources.value, (r) => r.id === selectedResourceId.value),
+);
+const onSelectResource = (id: number) => {
   selectedResourceId.value = id;
 };
-
-const resourceSummary = ResourceService.useResourceSummary();
-
-const resourcesList = computed((): MockResource[] => {
-  if (resourceSummary.value === undefined) {
-    const empty: MockResource[] = [];
-    return empty;
-  }
-  const list: MockResource[] = [];
-  for (const component of resourceSummary.value.components) {
-    const fix = fixes.value[component.id]; // TODO(wendy+victor) - currently every fix has the same id as it's component, this will likely change!
-    let created = false;
-    if (fix) {
-      const fixStatus = fix.status;
-      if (fixStatus === "success") created = true;
-    } else if (
-      [
-        "Region",
-        "Docker Image",
-        "Butane",
-        "Docker Hub Credential",
-        "AMI",
-      ].includes(component.schema)
-    ) {
-      created = true;
-    }
-    const confirmations: Confirmation[] = [
-      created
-        ? {
-            title: "Does The Resource Exist?",
-            health: "ok" as ResourceHealth,
-            description:
-              "Checks if the resource actually exists. This resource exists!",
-          }
-        : {
-            title: "Does The Resource Exist?",
-            health: "error" as ResourceHealth,
-            description:
-              "Checks if the resource actually exists. This resource has not been created yet. Please run the fix above to create it!",
-          },
-    ];
-    const resource: MockResource = {
-      id: component.id,
-      name: component.name,
-      kind: component.schema,
-      health: created ? ("ok" as ResourceHealth) : ("error" as ResourceHealth),
-      status: created
-        ? ("Created" as ResourceStatus)
-        : ("Pending" as ResourceStatus),
-      confirmations,
-    };
-    list.push(resource);
-  }
-  return list;
-});
-
-const selectedResource = computed(() => {
-  return resourcesList.value.find((r) => {
-    return r.id === selectedResourceId.value;
-  });
-});
-
-const fixesStore = useFixesStore();
-const fixes = computed(() => fixesStore.fixesById);
 </script>

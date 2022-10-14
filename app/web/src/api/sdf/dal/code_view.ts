@@ -1,5 +1,5 @@
 export interface CodeView {
-  language: string;
+  language: CodeLanguage;
   code?: string;
 }
 

@@ -156,6 +156,7 @@ export const useFuncStore = () => {
           this.openFuncs[response.id] = response;
         });
       },
+
       async REVERT_FUNC(funcId: number) {
         return revertFunc({ ...visibility, id: funcId }, (response) => {
           this.FETCH_FUNC(funcId);

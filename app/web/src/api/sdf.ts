@@ -4,6 +4,7 @@ import _ from "lodash";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { SessionService } from "@/service/session";
 import { API_HTTP_URL } from "@/utils/api";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 
 export class FetchError extends Error {
   response: Response;
@@ -62,12 +63,10 @@ export class SDF {
     if (this.token) {
       headers.set("Authorization", `Bearer ${this.token}`);
     }
-    const storedWorkspace = sessionStorage.getItem("workspace") ?? null;
-    if (storedWorkspace !== null) {
-      const workspace: Workspace = JSON.parse(storedWorkspace);
-      if (workspace) {
-        headers.set("WorkspaceId", `${workspace.id}`);
-      }
+    const workspaceStore = useWorkspacesStore();
+    const selectedWorkspaceId = workspaceStore.selectedWorkspaceId;
+    if (selectedWorkspaceId) {
+      headers.set("WorkspaceId", `${selectedWorkspaceId}`);
     }
     return headers;
   }

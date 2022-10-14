@@ -7,6 +7,7 @@ import svgLoaderPlugin from "vite-svg-loader";
 import IconsPlugin from "unplugin-icons/vite";
 import packageJson from "./package.json";
 import postcss from "./postcss.config.js";
+import ViteGitRevisionPlugin from "./build-src/vite_git_revision_plugin";
 
 const lessVars = readFileSync("./src/assets/style/less_vars.less", "utf-8");
 
@@ -31,6 +32,7 @@ export default (opts: { mode: string }) => {
           dev: { logLevel: ["error"] },
         },
       }),
+      ViteGitRevisionPlugin({}),
     ],
     css: {
       postcss,

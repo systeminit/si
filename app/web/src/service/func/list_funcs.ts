@@ -21,7 +21,6 @@ export const listFuncs = (
   onSuccess: (response: ListFuncsResponse) => void,
 ) =>
   new ApiRequest<ListFuncsResponse, Visibility>({
-    method: "get",
     url: "func/list_funcs",
     params: {
       ...visibility,

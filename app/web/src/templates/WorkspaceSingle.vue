@@ -77,8 +77,6 @@
         </div>
       </template>
     </template>
-
-    <SiToast />
   </AppLayout>
 </template>
 
@@ -88,7 +86,6 @@ import { useRoute, useRouter } from "vue-router";
 import _ from "lodash";
 import Navbar from "@/organisms/Navbar.vue";
 import StatusBar from "@/organisms/StatusBar.vue";
-import SiToast from "@/atoms/SiToast.vue";
 import { ChangeSetId, useChangeSetsStore } from "@/store/change_sets.store";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";

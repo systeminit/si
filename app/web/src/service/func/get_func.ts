@@ -18,7 +18,6 @@ export const getFunc = (
   onSuccess: (response: GetFuncResponse) => void,
 ) =>
   new ApiRequest<GetFuncResponse, typeof params>({
-    method: "get",
     url: "func/get_func",
     params,
     onSuccess,

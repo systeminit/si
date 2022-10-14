@@ -8,7 +8,6 @@ import { computed, onBeforeMount } from "vue";
 import "floating-vue/dist/style.css";
 
 import { useHead } from "@vueuse/head";
-import { restoreFromSession } from "@/observable/session_state";
 import { useCustomFontsLoadedProvider } from "./composables/useFontLoaded";
 import { tw } from "./utils/style_helpers";
 import { useAuthStore } from "./store/auth.store";
@@ -17,7 +16,6 @@ import { useRealtimeStore } from "./store/realtime/realtime.store";
 import RealtimeConnectionStatus from "./molecules/RealtimeConnectionStatus.vue";
 import { useThemeContainer } from "./ui-lib/theme_tools";
 
-onBeforeMount(restoreFromSession);
 useCustomFontsLoadedProvider();
 
 // provides the root theme value to all children, and returns that root theme to use below

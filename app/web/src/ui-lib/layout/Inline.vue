@@ -109,7 +109,7 @@ const Inline = (
   );
 };
 
-Inline.props = propsDefinition;
+// Inline.props = propsDefinition;
 
 export default Inline;
 </script>

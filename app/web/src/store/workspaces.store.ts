@@ -41,7 +41,6 @@ export const useWorkspacesStore = addStoreHooks(
           workspace: Workspace;
           organization: Organization;
         }>({
-          method: "get",
           // TODO: probably should fetch list of all workspaces here...
           // something like `/users/USER_ID/workspaces`, `/my/workspaces`, etc
           url: "/session/get_defaults",
