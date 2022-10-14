@@ -13,6 +13,22 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 ///
 /// # Examples
 ///
+/// ## Optional Support for Results
+///
+/// You can opt to return an `eyre_color::Result<()>` type, allowing for the question mark
+/// operator:
+///
+/// ```ignore
+/// use color_eyre::Result;
+/// use crate::dal::test;
+///
+/// #[test]
+/// async fn good_defaults() -> Result<()> {
+///     // ...
+///     Ok(())
+/// }
+/// ```
+///
 /// ## Reasonable Default
 ///
 /// Writing a test which begins with:
@@ -27,14 +43,44 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 /// use crate::dal::test;
 ///
 /// #[test]
-/// async fn good_defaults(ctx: &DalContext) {
+/// async fn good_defaults(ctx: DalContext) {
 ///     // ...
 /// }
 /// ```
 ///
 /// ## Mutating Default Context
 ///
-/// If the context needs to be mutated in place, it can also be mutably borrowed into the test:
+/// If the context needs to be mutated in place, it can also be mutably into the test:
+///
+/// ```ignore
+/// use dal::DalContext;
+/// use crate::dal::test;
+///
+/// #[test]
+/// async fn good_defaults(mut ctx: DalContext) {
+///     ctx.update_to_universal_head();
+///     // ...
+/// }
+/// ```
+///
+/// ## Borrowed Default Context
+///
+/// It might make sense to have an immutably borrowed context, which is also supported:
+///
+/// ```ignore
+/// use dal::DalContext;
+/// use crate::dal::test;
+///
+/// #[test]
+/// async fn good_defaults(ctx: &DalContext) {
+///     // ...
+/// }
+/// ```
+///
+/// ## Mutating Default Borrowed Context
+///
+/// Finallayy, if the borrowed context needs to be mutated in place, it can also be mutably
+/// borrowed into the test:
 ///
 /// ```ignore
 /// use dal::DalContext;
@@ -43,21 +89,6 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 /// #[test]
 /// async fn good_defaults(ctx: &mut DalContext) {
 ///     ctx.update_to_universal_head();
-///     // ...
-/// }
-/// ```
-///
-/// ## Owned Default Context
-///
-/// Finally, it might be easier to have full ownership of the context, in which case it can be
-/// moved into the test function with:
-///
-/// ```ignore
-/// use dal::DalContext;
-/// use crate::dal::test;
-///
-/// #[test]
-/// async fn good_defaults(ctx: DalContext) {
 ///     // ...
 /// }
 /// ```
