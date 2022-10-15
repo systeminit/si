@@ -1,23 +1,29 @@
 use std::sync::Arc;
 
-use cyclone_core::{
-    CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
-    ConfirmationRequest, ConfirmationResultSuccess, FunctionResult, OutputStream,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
-};
 use futures::{StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Serialize};
 use si_data::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-
-use self::subscription::{Subscription, SubscriptionError};
-use crate::{
+use veritech_core::{
     nats_code_generation_subject, nats_command_run_subject, nats_confirmation_subject,
     nats_qualification_check_subject, nats_resolver_function_subject, nats_subject,
     nats_workflow_resolve_subject, reply_mailbox_for_output, reply_mailbox_for_result,
+};
+
+mod subscription;
+use subscription::{Subscription, SubscriptionError};
+
+pub use cyclone_core::{
+    CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest,
+    CommandRunResultSuccess, ComponentKind, ComponentView, ConfirmationRequest,
+    ConfirmationResultSuccess, EncryptionKey, EncryptionKeyError, FunctionResult,
+    FunctionResultFailure, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
+    QualificationCheckResultSuccess, QualificationSubCheck, QualificationSubCheckStatus,
+    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ResourceView, SensitiveContainer, SystemView, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 
 #[derive(Error, Debug)]
@@ -309,128 +315,21 @@ async fn forward_output_task(
     }
 }
 
-mod subscription {
-    use std::{
-        marker::PhantomData,
-        pin::Pin,
-        task::{Context, Poll},
-    };
-
-    use futures::{Stream, StreamExt};
-    use futures_lite::FutureExt;
-    use pin_project_lite::pin_project;
-    use serde::de::DeserializeOwned;
-    use si_data::nats;
-    use telemetry::prelude::*;
-    use thiserror::Error;
-
-    use crate::FINAL_MESSAGE_HEADER_KEY;
-
-    #[derive(Error, Debug)]
-    pub enum SubscriptionError {
-        #[error("failed to deserialize json message")]
-        JSONDeserialize(#[source] serde_json::Error),
-        #[error("nats io error when reading from subscription")]
-        NatsIo(#[source] si_data::NatsError),
-        #[error("failed to unsubscribe from nats subscription")]
-        NatsUnsubscribe(#[source] si_data::NatsError),
-        #[error("the nats subscription closed before seeing a final message")]
-        UnexpectedNatsSubscriptionClosed,
-    }
-
-    pin_project! {
-        #[derive(Debug)]
-        pub struct Subscription<T> {
-            #[pin]
-            inner: nats::Subscription,
-            _phantom: PhantomData<T>,
-        }
-    }
-
-    impl<T> Subscription<T> {
-        pub fn new(inner: nats::Subscription) -> Self {
-            Subscription {
-                inner,
-                _phantom: PhantomData,
-            }
-        }
-
-        pub async fn unsubscribe(self) -> Result<(), SubscriptionError> {
-            self.inner
-                .unsubscribe()
-                .await
-                .map_err(SubscriptionError::NatsUnsubscribe)
-        }
-    }
-
-    impl<T> Stream for Subscription<T>
-    where
-        T: DeserializeOwned,
-    {
-        type Item = Result<T, SubscriptionError>;
-
-        fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-            let mut this = self.project();
-
-            match this.inner.next().poll(cx) {
-                // Convert this NATS message into the cyclone request type `T` and return any
-                // errors for the caller to decide how to proceed (i.e. does the caller fail on
-                // first error, ignore error items, etc.)
-                Poll::Ready(Some(Ok(nats_msg))) => {
-                    // If the NATS message has a final message header, then treat this as an
-                    // end-of-stream marker and close our stream.
-                    if let Some(headers) = nats_msg.headers() {
-                        if headers.keys().any(|key| key == FINAL_MESSAGE_HEADER_KEY) {
-                            trace!(
-                                "{} header detected in NATS message, closing stream",
-                                FINAL_MESSAGE_HEADER_KEY
-                            );
-                            return Poll::Ready(None);
-                        }
-                    }
-
-                    let data = nats_msg.into_data();
-                    match serde_json::from_slice::<T>(&data) {
-                        // Deserializing from JSON into the target type was successful
-                        Ok(msg) => Poll::Ready(Some(Ok(msg))),
-                        // Deserializing failed
-                        Err(err) => Poll::Ready(Some(Err(SubscriptionError::JSONDeserialize(err)))),
-                    }
-                }
-                // A NATS error occurred (async error or other i/o)
-                Poll::Ready(Some(Err(err))) => {
-                    Poll::Ready(Some(Err(SubscriptionError::NatsIo(err))))
-                }
-                // We see no more messages on the subject, but we haven't seen a "final message"
-                // yet, so this is an unexpected problem
-                Poll::Ready(None) => Poll::Ready(Some(Err(
-                    SubscriptionError::UnexpectedNatsSubscriptionClosed,
-                ))),
-                // Not ready, so...not ready!
-                Poll::Pending => Poll::Pending,
-            }
-        }
-    }
-}
-
 #[allow(clippy::panic)]
 #[cfg(test)]
 mod tests {
     use std::env;
 
-    use cyclone_core::{
-        CodeGenerated, ComponentView, QualificationCheckComponent, ResolverFunctionComponent,
-    };
-    use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
     use indoc::indoc;
     use si_data::NatsConfig;
-    use si_settings::StandardConfig;
     use test_log::test;
     use tokio::task::JoinHandle;
     use uuid::Uuid;
+    use veritech_server::{
+        Config, CycloneSpec, Instance, LocalUdsInstance, Server, ServerError, StandardConfig,
+    };
 
     use super::*;
-    use crate::{ComponentKind, Config, CycloneSpec, Server, ServerError};
 
     fn nats_config() -> NatsConfig {
         let mut config = NatsConfig::default();

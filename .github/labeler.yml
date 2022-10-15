@@ -41,7 +41,9 @@ A-sdf:
   - rustfmt.toml
 A-veritech:
   - bin/veritech/**/*
-  - lib/veritech/**/*
+  - lib/veritech-client/**/*
+  - lib/veritech-core/**/*
+  - lib/veritech-server/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain

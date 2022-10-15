@@ -5,7 +5,7 @@ use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use veritech::{OutputStream, ResolverFunctionComponent};
+use veritech_client::{OutputStream, ResolverFunctionComponent};
 
 use crate::func::backend::validation::FuncBackendValidation;
 use crate::func::backend::{
@@ -274,7 +274,7 @@ impl FuncBinding {
             FuncBackendKind::Json => {
                 let component = FuncBackendJsAttributeArgs {
                     component: ResolverFunctionComponent {
-                        data: veritech::ComponentView {
+                        data: veritech_client::ComponentView {
                             properties: self.args.clone(),
                             ..Default::default()
                         },

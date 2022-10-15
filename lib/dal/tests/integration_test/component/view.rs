@@ -1433,12 +1433,12 @@ async fn cyclone_crypto_e2e(ctx: &DalContext) {
     .expect("Secret serialization failed");
     let encoded = ctx.encryption_key().encrypt_and_encode(&secret);
     let code = format!("function testE2ECrypto(component) {{ return component.data.properties.secret.message.key === '{secret_value}'; }}");
-    let request = veritech::ResolverFunctionRequest {
+    let request = veritech_client::ResolverFunctionRequest {
         execution_id: "seujorge".to_owned(),
         handler: "testE2ECrypto".to_owned(),
-        component: veritech::ResolverFunctionComponent {
-            data: veritech::ComponentView {
-                kind: veritech::ComponentKind::Credential,
+        component: veritech_client::ResolverFunctionComponent {
+            data: veritech_client::ComponentView {
+                kind: veritech_client::ComponentKind::Credential,
                 system: None,
                 properties: serde_json::json!({
                     "secret": {
@@ -1463,9 +1463,9 @@ async fn cyclone_crypto_e2e(ctx: &DalContext) {
         .await
         .expect("Veritech run failed");
     match result {
-        veritech::FunctionResult::Success(result) => {
+        veritech_client::FunctionResult::Success(result) => {
             assert_eq!(result.data, serde_json::Value::Bool(true))
         }
-        veritech::FunctionResult::Failure(err) => panic!("Veritech run failed: {:?}", err),
+        veritech_client::FunctionResult::Failure(err) => panic!("Veritech run failed: {:?}", err),
     }
 }

@@ -56,7 +56,9 @@ COMPONENTS = \
 	lib/si-settings \
 	lib/si-test-macros \
 	lib/telemetry-rs \
-	lib/veritech
+	lib/veritech-client \
+	lib/veritech-core \
+	lib/veritech-server
 
 RELEASEABLE_COMPONENTS = \
 	app/web \
@@ -102,10 +104,9 @@ $(BUILDABLE): % : %//BUILDDEPS %//BUILD
 .PHONY: $(BUILDABLE)
 
 build//bin/cyclone//BUILDDEPS: build//bin/lang-js
-build//bin/pinga//BUILDDEPS: build//bin/cyclone
-build//bin/sdf//BUILDDEPS: build//bin/veritech
 build//bin/veritech//BUILDDEPS: build//bin/cyclone
 build//lib/cyclone-server//BUILDDEPS: build//bin/lang-js
+build//lib/veritech-server//BUILDDEPS: build//bin/cyclone
 
 #@ echo "*** No build dependencies remaining for $@ ***"
 %//BUILDDEPS: ;
@@ -200,24 +201,42 @@ test: $(TESTABLE)
 .PHONY: test
 
 test//app/web//TESTDEPS: build//app/web
+
 test//bin/cyclone//TESTDEPS: build//bin/lang-js
+test//bin/cyclone//RTESTDEPS: test//lib/veritech-server
+
 test//bin/lang-js//RTESTDEPS: test//lib/cyclone-server
+
 test//lib/bytes-lines-codec//RTESTDEPS: test//lib/cyclone-server
+
 test//lib/config-file//RTESTDEPS: test//lib/si-settings//TEST
-test//lib/cyclone-server//RTESTDEPS: test//bin/cyclone test//lib/veritech
+
 test//lib/cyclone-client//TESTDEPS: build//bin/lang-js
+test//lib/cyclone-client//RTESTDEPS: test//lib/deadpool-cyclone
+
 test//lib/cyclone-server//TESTDEPS: build//bin/lang-js
-test//lib/dal//RTESTDEPS: test//lib/sdf
+test//lib/cyclone-server//RTESTDEPS: test//bin/cyclone test//lib/cyclone-client
+
 test//lib/dal//TESTDEPS: build//bin/cyclone deploy//partial
-test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech
+test//lib/dal//RTESTDEPS: test//lib/sdf
+
 test//lib/deadpool-cyclone//TESTDEPS: build//bin/cyclone
-test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga
+test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech-server
+
 test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
-test//lib/si-data//RTESTDEPS: test//lib/veritech test//lib/dal test//lib/sdf
-test//lib/si-settings//RTESTDEPS: test//lib/veritech//TEST test//lib/cyclone-server//TEST test//lib/sdf//TEST
+test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga
+
+test//lib/si-data//RTESTDEPS: test//lib/veritech-client test//lib/veritech-server test//lib/dal test//lib/sdf
+
+test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cyclone-server//TEST test//lib/sdf//TEST
+
 test//lib/si-test-macros//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
-test//lib/veritech//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST test//bin/veritech
-test//lib/veritech//TESTDEPS: build//bin/cyclone
+
+test//lib/veritech-client//TESTDEPS: build//bin/cyclone
+test//lib/veritech-client//RTESTDEPS: test//lib/dal
+
+test//lib/veritech-server//TESTDEPS: build//bin/cyclone
+test//lib/veritech-server//RTESTDEPS: test//bin/veritech test//lib/veritech-client
 
 # @ echo "*** No test dependencies remaining for $@ ***"
 %//TESTDEPS: ;

@@ -5,7 +5,8 @@ use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
 use uuid::Uuid;
-use veritech::{EncryptionKey, Instance, StandardConfig};
+use veritech_client::EncryptionKey;
+use veritech_server::{Instance, StandardConfig};
 
 use crate::{
     billing_account::BillingAccountSignup,
@@ -68,7 +69,7 @@ pub struct TestContext {
     pub pg: PgPool,
     pub nats_conn: NatsClient,
     pub job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    pub veritech: veritech::Client,
+    pub veritech: veritech_client::Client,
     pub encryption_key: EncryptionKey,
     pub jwt_secret_key: JwtSecretKey,
     pub telemetry: telemetry::NoopClient,
@@ -97,7 +98,7 @@ impl TestContext {
                 .await;
         tokio::spawn(veritech_server.run());
         let veritech =
-            veritech::Client::with_subject_prefix(nats_conn.clone(), nats_subject_prefix);
+            veritech_client::Client::with_subject_prefix(nats_conn.clone(), nats_subject_prefix);
         let encryption_key = EncryptionKey::load(
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone-server/src/dev.encryption.key"),
         )
@@ -124,7 +125,7 @@ impl TestContext {
         &PgPool,
         &NatsClient,
         Box<dyn JobQueueProcessor + Send + Sync>,
-        veritech::Client,
+        veritech_client::Client,
         &EncryptionKey,
         &JwtSecretKey,
     ) {
@@ -147,10 +148,10 @@ impl TestContext {
 async fn veritech_server_for_uds_cyclone(
     nats_config: NatsConfig,
     subject_prefix: String,
-) -> veritech::Server {
+) -> veritech_server::Server {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let cyclone_spec = veritech::CycloneSpec::LocalUds(
-        veritech::LocalUdsInstance::spec()
+    let cyclone_spec = veritech_server::CycloneSpec::LocalUds(
+        veritech_server::LocalUdsInstance::spec()
             .try_cyclone_cmd_path(
                 dir.join("../../target/debug/cyclone")
                     .canonicalize()
@@ -178,13 +179,13 @@ async fn veritech_server_for_uds_cyclone(
             .build()
             .expect("failed to build cyclone spec"),
     );
-    let config = veritech::Config::builder()
+    let config = veritech_server::Config::builder()
         .nats(nats_config)
         .subject_prefix(subject_prefix)
         .cyclone_spec(cyclone_spec)
         .build()
         .expect("failed to build spec");
-    veritech::Server::for_cyclone_uds(config)
+    veritech_server::Server::for_cyclone_uds(config)
         .await
         .expect("failed to create server")
 }

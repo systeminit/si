@@ -4,11 +4,10 @@ use serde_json::Value as JsonValue;
 use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::OutputStream;
+use veritech_client::OutputStream;
 
-use crate::func::execution::FuncExecution;
-use crate::func::execution::{FuncExecutionError, FuncExecutionPk};
 use crate::{
+    func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk},
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     DalContext, Func, HistoryEventError, ReadTenancyError, StandardModel, StandardModelError,
     Timestamp, Visibility,

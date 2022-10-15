@@ -2,8 +2,7 @@ use deadpool_cyclone::{FunctionResult, OutputStream};
 use serde::Serialize;
 use si_data::NatsClient;
 use thiserror::Error;
-
-use crate::{reply_mailbox_for_output, reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY};
+use veritech_core::{reply_mailbox_for_output, reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY};
 
 #[derive(Error, Debug)]
 pub enum PublisherError {

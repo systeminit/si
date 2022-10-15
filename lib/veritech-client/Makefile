@@ -3,9 +3,8 @@ include ../../mk/rust.mk
 
 .DEFAULT_GOAL := build
 WATCH_PATHS := . \
-	../../lib/dal \
+	../../lib/cyclone-core \
 	../../lib/si-data \
-	../../lib/si-settings \
-	../../lib/si-test-macros \
 	../../lib/telemetry-rs \
-	../../lib/veritech-client
+	../../lib/veritech-core \
+	../../lib/veritech-server

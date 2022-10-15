@@ -1,9 +1,13 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use veritech::{CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult};
+use veritech_client::{
+    CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult,
+};
 
-use crate::func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext};
-use crate::ComponentView;
+use crate::{
+    func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext},
+    ComponentView,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsCodeGenerationArgs {

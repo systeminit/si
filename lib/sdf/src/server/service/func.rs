@@ -268,8 +268,8 @@ async fn update_attribute_value_by_func_for_context(
 
     // These are the wrong args but what we need right now before optimizations are merged in
     let args = FuncBackendJsAttributeArgs {
-        component: veritech::ResolverFunctionComponent {
-            data: veritech::ComponentView::default(),
+        component: veritech_client::ResolverFunctionComponent {
+            data: veritech_client::ComponentView::default(),
             parents: Vec::new(), // do we need to fill this in with parent data?
         },
     };

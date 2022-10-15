@@ -13,7 +13,7 @@ async fn create_account() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;
     let (pg, nats, faktory, _veritech, encr_key, jwt_secret_key) = ctx.entries();
-    let veritech = veritech::Client::new(nats.clone());
+    let veritech = veritech_client::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
     let (app, _, _) = sdf::build_service(
         telemetry,
@@ -60,7 +60,7 @@ async fn create_account_invalid_signup_secret() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;
     let (pg, nats, faktory, _veritech, encr_key, jwt_secret_key) = ctx.entries();
-    let veritech = veritech::Client::new(nats.clone());
+    let veritech = veritech_client::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
     let (app, _, _) = sdf::build_service(
         telemetry,

@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use telemetry::{start_tracing_level_signal_handler_task, tracing::debug, TelemetryClient};
-use veritech::{Config, CycloneSpec, Server};
+use veritech_server::{Config, CycloneSpec, Server};
 
 mod args;
 

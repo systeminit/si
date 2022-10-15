@@ -4,8 +4,8 @@ debug = true
 [workspace]
 members = [
     "bin/cyclone",
-    "bin/sdf",
     "bin/pinga",
+    "bin/sdf",
     "bin/veritech",
     "lib/bytes-lines-codec",
     "lib/config-file",
@@ -15,11 +15,13 @@ members = [
     "lib/dal",
     "lib/deadpool-cyclone",
     "lib/sdf",
-    "lib/veritech",
     "lib/si-data",
     "lib/si-settings",
     "lib/si-test-macros",
     "lib/telemetry-rs",
+    "lib/veritech-client",
+    "lib/veritech-core",
+    "lib/veritech-server",
 ]
 
 [patch.crates-io]

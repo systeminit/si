@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use chrono::Utc;
-use veritech::{
+use veritech_client::{
     FunctionResult, OutputStream, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 

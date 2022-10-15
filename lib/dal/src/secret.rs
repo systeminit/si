@@ -11,7 +11,7 @@ use sodiumoxide::crypto::{
 use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::SensitiveContainer;
+use veritech_client::SensitiveContainer;
 
 use crate::{
     impl_standard_model,

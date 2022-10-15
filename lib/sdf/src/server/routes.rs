@@ -11,6 +11,7 @@ use std::sync::Arc;
 use telemetry::TelemetryClient;
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
+use veritech_client::{Client as VeritechClient, EncryptionKey};
 
 use super::{
     handlers,
@@ -55,8 +56,8 @@ pub fn routes(
     pg_pool: pg::PgPool,
     nats_conn: nats::Client,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    veritech: veritech::Client,
-    encryption_key: veritech::EncryptionKey,
+    veritech: VeritechClient,
+    encryption_key: EncryptionKey,
     jwt_secret_key: JwtSecretKey,
     signup_secret: SensitiveString,
     shutdown_tx: mpsc::Sender<ShutdownSource>,

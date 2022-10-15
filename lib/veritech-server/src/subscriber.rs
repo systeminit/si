@@ -15,8 +15,7 @@ use serde::de::DeserializeOwned;
 use si_data::{nats, NatsClient};
 use telemetry::prelude::*;
 use thiserror::Error;
-
-use crate::{
+use veritech_core::{
     nats_code_generation_subject, nats_command_run_subject, nats_confirmation_subject,
     nats_qualification_check_subject, nats_resolver_function_subject,
     nats_workflow_resolve_subject,

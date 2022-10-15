@@ -18,7 +18,7 @@ thiserror = { version = "1.0" }
 futures = "0.3"
 
 si-data = { path = "../../lib/si-data" }
-veritech = { path = "../../lib/veritech", features = ["client", "server"] }
+veritech-client = { path = "../../lib/veritech-client" }
 dal = { path = "../../lib/dal" }
 faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }
 

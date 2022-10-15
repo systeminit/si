@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use telemetry::tracing::trace;
-use veritech::{CommandRunRequest, CommandRunResultSuccess, FunctionResult, OutputStream};
+use veritech_client::{CommandRunRequest, CommandRunResultSuccess, FunctionResult, OutputStream};
 
 use crate::func::backend::{
     ExtractPayload, FuncBackendError, FuncBackendResult, FuncDispatch, FuncDispatchContext,

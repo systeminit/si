@@ -25,7 +25,9 @@
 !lib/dal
 !lib/deadpool-cyclone
 !lib/sdf
-!lib/veritech
+!lib/veritech-client
+!lib/veritech-core
+!lib/veritech-server
 !lib/si-data
 !lib/si-settings
 !lib/si-test-macros

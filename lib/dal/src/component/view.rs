@@ -53,7 +53,7 @@ pub struct ComponentView {
     pub system: Option<System>,
     pub kind: ComponentKind,
     pub properties: serde_json::Value,
-    pub resource: Option<veritech::ResourceView>,
+    pub resource: Option<veritech_client::ResourceView>,
 }
 
 impl Default for ComponentView {
@@ -145,9 +145,9 @@ impl ComponentView {
 
     pub async fn reencrypt_secrets(
         ctx: &DalContext,
-        component: &mut veritech::ComponentView,
+        component: &mut veritech_client::ComponentView,
     ) -> Result<(), ComponentViewError> {
-        if component.kind != veritech::ComponentKind::Credential {
+        if component.kind != veritech_client::ComponentKind::Credential {
             return Ok(());
         }
 
@@ -194,7 +194,7 @@ impl ComponentView {
     }
 }
 
-impl From<ComponentKind> for veritech::ComponentKind {
+impl From<ComponentKind> for veritech_client::ComponentKind {
     fn from(view: ComponentKind) -> Self {
         match view {
             ComponentKind::Standard => Self::Standard,
@@ -203,11 +203,11 @@ impl From<ComponentKind> for veritech::ComponentKind {
     }
 }
 
-impl From<ComponentView> for veritech::ComponentView {
+impl From<ComponentView> for veritech_client::ComponentView {
     fn from(view: ComponentView) -> Self {
         Self {
             // Filters internal data out, leaving only what is useful
-            system: view.system.map(|system| veritech::SystemView {
+            system: view.system.map(|system| veritech_client::SystemView {
                 name: system.name().to_owned(),
             }),
             kind: view.kind.into(),

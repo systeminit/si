@@ -4,7 +4,9 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use veritech::{CommandRunResultSuccess, FunctionResult, OutputStream};
+use veritech_client::{
+    Client as VeritechClient, CommandRunResultSuccess, FunctionResult, OutputStream,
+};
 
 use crate::{label_list::ToLabelList, DalContext, Func, FuncId, PropKind, StandardModel};
 
@@ -40,7 +42,7 @@ pub enum FuncBackendError {
     #[error("invalid data - got unset when not expected")]
     UnexpectedUnset,
     #[error("veritech client error: {0}")]
-    VeritechClient(#[from] veritech::ClientError),
+    VeritechClient(#[from] veritech_client::ClientError),
     #[error("send error")]
     SendError,
     #[error("dispatch func missing code_base64 {0}")]
@@ -122,7 +124,7 @@ impl ToLabelList for FuncBackendKind {}
 
 #[derive(Debug, Clone)]
 pub struct FuncDispatchContext {
-    pub veritech: veritech::Client,
+    pub veritech: VeritechClient,
     pub output_tx: mpsc::Sender<OutputStream>,
 }
 
@@ -138,7 +140,7 @@ impl FuncDispatchContext {
         )
     }
 
-    pub fn into_inner(self) -> (veritech::Client, mpsc::Sender<OutputStream>) {
+    pub fn into_inner(self) -> (VeritechClient, mpsc::Sender<OutputStream>) {
         (self.veritech, self.output_tx)
     }
 }

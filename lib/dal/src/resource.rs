@@ -57,7 +57,7 @@ const GET_BY_COMPONENT_AND_SYSTEM: &str =
 pk!(ResourcePk);
 pk!(ResourceId);
 
-impl From<Resource> for veritech::ResourceView {
+impl From<Resource> for veritech_client::ResourceView {
     fn from(res: Resource) -> Self {
         Self { data: res.data }
     }

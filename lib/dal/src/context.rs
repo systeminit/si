@@ -8,7 +8,7 @@ use si_data::{
 };
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::EncryptionKey;
+use veritech_client::{Client as VeritechClient, EncryptionKey};
 
 use crate::{
     job::{
@@ -32,9 +32,9 @@ pub struct ServicesContext {
     /// A connected faktory client
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A Veritech client, connected via a NATS connection.
-    veritech: veritech::Client,
+    veritech: VeritechClient,
     /// A key for re-recrypting messages to the function execution system.
-    encryption_key: Arc<veritech::EncryptionKey>,
+    encryption_key: Arc<EncryptionKey>,
 }
 
 impl ServicesContext {
@@ -43,8 +43,8 @@ impl ServicesContext {
         pg_pool: PgPool,
         nats_conn: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        veritech: veritech::Client,
-        encryption_key: Arc<veritech::EncryptionKey>,
+        veritech: VeritechClient,
+        encryption_key: Arc<EncryptionKey>,
     ) -> Self {
         Self {
             pg_pool,
@@ -73,7 +73,7 @@ impl ServicesContext {
     }
 
     /// Gets a reference to the Veritech client.
-    pub fn veritech(&self) -> &veritech::Client {
+    pub fn veritech(&self) -> &VeritechClient {
         &self.veritech
     }
 
@@ -383,7 +383,7 @@ impl DalContext {
     }
 
     /// Gets a reference to the DAL context's Veritech client.
-    pub fn veritech(&self) -> &veritech::Client {
+    pub fn veritech(&self) -> &VeritechClient {
         &self.services_context.veritech
     }
 

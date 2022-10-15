@@ -1,8 +1,5 @@
 use clap::{ArgAction, Parser};
-use veritech::{
-    server::{Config, ConfigError},
-    ConfigFile, StandardConfigFile,
-};
+use veritech_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
 
 const NAME: &str = "veritech";
 
