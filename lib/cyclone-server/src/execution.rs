@@ -97,7 +97,7 @@ pub struct Execution<Request, LangServerSuccess, Success> {
 
 impl<Request, LangServerSuccess, Success> Execution<Request, LangServerSuccess, Success>
 where
-    Request: DecryptRequest + ListSecrets + Serialize + DeserializeOwned + Unpin,
+    Request: DecryptRequest + ListSecrets + Serialize + DeserializeOwned + Unpin + core::fmt::Debug,
     LangServerSuccess: DeserializeOwned,
     Success: Serialize,
 {
@@ -110,7 +110,6 @@ where
         // Now that the server said to start, I am going to read my message!
         let request = Self::read_request(ws).await?;
         let credentials: Vec<SensitiveString> = request.list_secrets(&self.key)?;
-
         let mut command = Command::new(&self.lang_server_path);
         command
             .arg(&self.command)

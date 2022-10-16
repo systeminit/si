@@ -33,7 +33,7 @@ pub enum ExecutionError<Success> {
     ClosingWithoutResult,
     #[error("finish message received before result message was received")]
     FinishBeforeResult,
-    #[error("failed to deserialize json message")]
+    #[error("execution error: failed to deserialize json message")]
     JSONDeserialize(#[source] serde_json::Error),
     #[error("failed to serialize json message")]
     JSONSerialize(#[source] serde_json::Error),

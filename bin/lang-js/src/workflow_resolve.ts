@@ -4,7 +4,7 @@ import { NodeVM } from "vm2";
 import {
   failureExecution,
   FunctionKind,
-  Request,
+  RequestWithCode,
   ResultFailure,
   ResultSuccess,
 } from "./function";
@@ -14,9 +14,7 @@ import { createNodeVm } from "./vm";
 
 const debug = Debug("langJs:workflowResolve");
 
-export interface WorkflowResolveRequest extends Request {
-  handler: string;
-  codeBase64: string;
+export interface WorkflowResolveRequest extends RequestWithCode {
   args: unknown
 }
 

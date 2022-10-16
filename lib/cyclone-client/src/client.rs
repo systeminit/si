@@ -14,7 +14,8 @@ use cyclone_core::{
     ConfirmationRequest, ConfirmationResultSuccess, LivenessStatus, LivenessStatusParseError,
     QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
     ReadinessStatusParseError, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 use http::{
     request::Builder,
@@ -41,7 +42,7 @@ pub enum ClientError {
     #[error("cannot create client uri")]
     ClientUri(#[source] http::Error),
     #[error("client is not healthy")]
-    Unhealty(#[source] Box<dyn std::error::Error + Send + Sync>),
+    Unhealthy(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("invalid liveness status")]
     InvalidLivenessStatus(#[from] LivenessStatusParseError),
     #[error("invalid readiness status")]
@@ -78,7 +79,7 @@ pub enum ClientError {
 
 impl ClientError {
     pub fn unhealthy(source: impl std::error::Error + Send + Sync + 'static) -> Self {
-        Self::Unhealty(Box::new(source))
+        Self::Unhealthy(Box::new(source))
     }
 }
 
@@ -168,6 +169,11 @@ where
         &mut self,
         request: CommandRunRequest,
     ) -> result::Result<Execution<Strm, CommandRunRequest, CommandRunResultSuccess>, ClientError>;
+
+    async fn execute_validation(
+        &mut self,
+        request: ValidationRequest,
+    ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>;
 }
 
 impl Client<(), (), ()> {
@@ -332,6 +338,17 @@ where
         let stream = self.websocket_stream("/execute/command").await?;
         Ok(execution::execute(stream, request))
     }
+
+    async fn execute_validation(
+        &mut self,
+        request: ValidationRequest,
+    ) -> result::Result<Execution<Strm, ValidationRequest, ValidationResultSuccess>, ClientError>
+    {
+        Ok(execution::execute(
+            self.websocket_stream("/execute/validation").await?,
+            request,
+        ))
+    }
 }
 
 impl<Conn, Strm, Sock> Client<Conn, Strm, Sock>
@@ -463,7 +480,7 @@ mod tests {
 
     use cyclone_core::{
         CodeGenerated, ComponentKind, ComponentView, FunctionResult, ProgressMessage,
-        QualificationCheckComponent, ResolverFunctionComponent,
+        QualificationCheckComponent, ResolverFunctionComponent, ValidationRequest,
     };
     use cyclone_server::{Config, ConfigBuilder, DecryptionKey, Server, UdsIncomingStream};
     use futures::StreamExt;
@@ -1151,7 +1168,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive 'my butt' output: err={:?}", err),
                 None => panic!("output stream ended early"),
             }
         }
@@ -1445,6 +1462,103 @@ mod tests {
                 panic!("result should be success; failure={:?}", failure)
             }
         }
+    }
+
+    async fn execute_validation<C, Strm>(mut client: C)
+    where
+        Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
+        C: CycloneClient<Strm>,
+    {
+        let req = ValidationRequest {
+            execution_id: "1337".to_string(),
+            handler: "validate".to_string(),
+            value: "a string is a sequence of bytes".into(),
+            code_base64: base64::encode(
+                r#"function validate(value) {
+                    console.log('i came here to chew bubblegum and validate prop values');
+                    console.log('and i\'m all out of gum');
+                    if (value === 'a string is a sequence of bytes') {
+                        return { valid: true };
+                    } else {
+                        return { valid: false, message: value + ' is not what i expected' };
+                    }
+                }"#,
+            ),
+        };
+        let mut progress = client
+            .execute_validation(req)
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(
+                        output.message,
+                        "i came here to chew bubblegum and validate prop values"
+                    );
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'bubblegum' output: err={:?}", err),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "and i'm all out of gum");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => {
+                    panic!("failed to receive 'all out of gum' output: err={:?}", err)
+                }
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+            };
+        }
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(success) => {
+                assert!(success.valid);
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={:?}", failure)
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn http_execute_validation() {
+        let (_, key) = gen_keys();
+        let mut builder = Config::builder();
+        let client = http_client_for_running_server(builder.enable_validation(true), key).await;
+
+        execute_validation(client).await
+    }
+
+    #[test(tokio::test)]
+    async fn uds_execute_validation() {
+        let (_, key) = gen_keys();
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let client =
+            uds_client_for_running_server(builder.enable_validation(true), &tmp_socket, key).await;
+
+        execute_validation(client).await
     }
 
     #[test(tokio::test)]

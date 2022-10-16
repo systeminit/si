@@ -4,7 +4,8 @@ export enum FunctionKind {
   ResolverFunction = "resolverfunction",
   WorkflowResolve = "workflowResolve",
   CommandRun = "commandRun",
-  Confirmation = "confirmation"
+  Confirmation = "confirmation",
+  Validation = "validation",
 }
 
 export function function_kinds(): Array<string> {
@@ -15,6 +16,7 @@ export function function_kinds(): Array<string> {
     FunctionKind.WorkflowResolve,
     FunctionKind.CommandRun,
     FunctionKind.Confirmation,
+    FunctionKind.Validation,
   ];
 }
 
@@ -22,6 +24,11 @@ export type Parameters = Record<string, unknown>;
 
 export interface Request {
   executionId: string;
+}
+
+export interface RequestWithCode extends Request {
+  handler: string;
+  codeBase64: string;
 }
 
 export interface Result {

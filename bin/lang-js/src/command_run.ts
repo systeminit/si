@@ -4,7 +4,7 @@ import { NodeVM } from "vm2";
 import {
   failureExecution,
   FunctionKind,
-  Request,
+  Request, RequestWithCode,
   ResultFailure,
   ResultSuccess,
 } from "./function";
@@ -13,9 +13,7 @@ import { createNodeVm } from "./vm";
 
 const debug = Debug("langJs:commandRun");
 
-export interface CommandRunRequest extends Request {
-  handler: string;
-  codeBase64: string;
+export interface CommandRunRequest extends RequestWithCode {
   args: unknown;
 }
 
