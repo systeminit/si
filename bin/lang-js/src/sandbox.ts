@@ -31,9 +31,13 @@ const resolverFunctionSandbox = {};
 
 const resourceSyncSandbox = {};
 
-const codeGenerationSandbox = {
-  // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
-  YAML: { stringify: yaml.dump },
+function codeGenerationSandbox(executionId: string) {
+  return {
+    // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
+    YAML: {stringify: yaml.dump},
+    // definitely a risk
+    siExec: makeExec(executionId),
+  };
 };
 
 const confirmationSandbox = {};
@@ -64,7 +68,7 @@ export function createSandbox(
     case FunctionKind.CodeGeneration:
       return {
         ...commonSandbox(executionId),
-        ...codeGenerationSandbox,
+        ...codeGenerationSandbox(executionId),
       };
     case FunctionKind.QualificationCheck:
       return {

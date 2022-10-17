@@ -1,6 +1,6 @@
 import Debug from "debug";
 import _ from "lodash";
-import { VM, VMScript } from "vm2";
+import { VM } from "vm2";
 import { base64Decode } from "./base64";
 import {
   failureExecution,
@@ -10,7 +10,7 @@ import {
   ResultSuccess,
 } from "./function";
 import { createSandbox } from "./sandbox";
-import { createVm } from "./vm";
+import { createNodeVm } from "./vm";
 import { Component } from "./component";
 
 const debug = Debug("langJs:codeGeneration");
@@ -26,42 +26,49 @@ export type CodeGenerationResult =
   | CodeGenerationResultFailure;
 
 export interface CodeGenerationResultSuccess extends ResultSuccess {
-  data?: string;
+  data: {
+    format: string;
+    code: string;
+  };
 }
 
 export interface CodeGenerationResultFailure extends ResultFailure {
   something?: never;
 }
 
-export function executeCodeGeneration(request: CodeGenerationRequest): void {
+export async function executeCodeGeneration(request: CodeGenerationRequest): Promise<void> {
   const code = base64Decode(request.codeBase64);
 
   debug({ code });
 
-  const compiledCode = new VMScript(
-    wrapCode(code, request.handler, request.component)
-  ).compile();
-  debug({ code: compiledCode.code });
+  const wrappedCode = wrapCode(code, request.handler);
+  debug({ code: wrappedCode });
   const sandbox = createSandbox(
     FunctionKind.CodeGeneration,
     request.executionId
   );
-  const vm = createVm(sandbox);
+  const vm = createNodeVm(sandbox);
 
-  const result = execute(vm, compiledCode, request.executionId);
-  debug({ result });
+  const result = await execute(vm, wrappedCode, request.component, request.executionId);
 
   console.log(JSON.stringify(result));
 }
 
-function execute(
+async function execute(
   vm: VM,
-  code: VMScript,
+  code: string,
+  component: Component,
   executionId: string
-): CodeGenerationResult {
-  let codeGenerationResult;
+): Promise<CodeGenerationResult> {
+  let codeGenerationResult: Record<string, unknown>;
   try {
-    codeGenerationResult = vm.run(code);
+    const codeGenRunner = vm.run(code);
+    codeGenerationResult = await new Promise((resolve) => {
+        codeGenRunner(
+          component,
+          (resolution: Record<string, unknown>) => resolve(resolution)
+        )
+    })
   } catch (err) {
     return failureExecution(err, executionId);
   }
@@ -107,12 +114,24 @@ function execute(
   const result: CodeGenerationResultSuccess = {
     protocol: "result",
     status: "success",
-    data: codeGenerationResult,
+    data: {
+      format: codeGenerationResult["format"],
+      code: codeGenerationResult["code"]
+    },
     executionId,
   };
   return result;
 }
 
-function wrapCode(code: string, handle: string, component: Component): string {
-  return code + `\n${handle}(${JSON.stringify(component)});\n`;
+function wrapCode(code: string, handle: string): string {
+  const wrapped = `module.exports = function(component, callback) {
+    ${code}
+    const returnValue = ${handle}(component);
+    if (returnValue instanceof Promise) {
+      returnValue.then((data) => callback(data))
+    } else {
+      callback(returnValue);
+    }
+  };`;
+  return wrapped;
 }
