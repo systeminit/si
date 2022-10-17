@@ -23,10 +23,13 @@
 import { computed, watch } from "vue";
 import QualificationViewerSingle from "@/organisms/StatusBarTabs/Qualification/QualificationViewerSingle.vue";
 import { useQualificationsStore } from "@/store/qualifications.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const props = defineProps<{
   componentId: number;
 }>();
+
+const changeSetsStore = useChangeSetsStore();
 
 const qualificationsStore = useQualificationsStore();
 const qualificationsReqStatus = qualificationsStore.getRequestStatus(
@@ -35,7 +38,7 @@ const qualificationsReqStatus = qualificationsStore.getRequestStatus(
 );
 
 watch(
-  () => props.componentId,
+  [() => props.componentId, changeSetsStore.selectedChangeSetWritten],
   () => {
     qualificationsStore.FETCH_COMPONENT_QUALIFICATIONS(props.componentId);
   },
