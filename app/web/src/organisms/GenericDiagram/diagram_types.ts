@@ -48,6 +48,8 @@ export type DiagramNodeDef = {
   typeIcon?: string | null;
   /** array of icons (slug and colors) to show statuses */
   statusIcons?: DiagramStatusIcon[];
+  /** if true, node shows the `loading` overlay */
+  isLoading: boolean;
 };
 
 export type DiagramSocketDef = {

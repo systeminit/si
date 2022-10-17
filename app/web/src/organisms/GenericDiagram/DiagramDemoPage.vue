@@ -128,6 +128,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     sockets: getSockets("n1"),
     color: colors.action[500],
     typeIcon: "docker",
+    isLoading: false,
   },
   {
     id: "n2",
@@ -138,13 +139,14 @@ const nodes = reactive<DiagramNodeDef[]>([
     sockets: getSockets("n2"),
     color: "#A752DE",
     typeIcon: "docker",
+    isLoading: false,
   },
   {
     id: "n3",
     title: "Node 3",
     subtitle: "si-n3",
     type: "regular",
-    position: { x: 250, y: 150 },
+    position: { x: 250, y: 200 },
     sockets: getSockets("n3"),
     color: "#C23E7F",
     typeIcon: "kubernetes",
@@ -155,6 +157,7 @@ const nodes = reactive<DiagramNodeDef[]>([
       { icon: "loading", tone: "info" },
       // { icon: "docker", tone: "neutral" },
     ],
+    isLoading: false,
   },
   {
     id: "n4",
@@ -165,6 +168,18 @@ const nodes = reactive<DiagramNodeDef[]>([
     sockets: getSockets("n4"),
     color: "#5AACAD",
     typeIcon: "kubernetes",
+    isLoading: false,
+  },
+  {
+    id: "n5",
+    title: "Node 5",
+    subtitle: "is being operated on!",
+    type: "regular",
+    position: { x: 500, y: 200 },
+    sockets: getSockets("n4"),
+    color: "#FF9900",
+    typeIcon: "kubernetes",
+    isLoading: true,
   },
 ]);
 
@@ -189,6 +204,7 @@ function onNodeMove(e: MoveElementEvent) {
   if (!movedNode) return;
   movedNode.position = e.position;
 }
+
 function onDrawEdge(e: DrawEdgeEvent) {
   edges.push({
     fromSocketId: e.fromSocketId,
@@ -196,6 +212,7 @@ function onDrawEdge(e: DrawEdgeEvent) {
     id: `${e.fromSocketId}/${_.uniqueId()}`,
   });
 }
+
 function onDelete(e: DeleteElementsEvent) {
   _.each(e.elements, (el) => {
     if (el.diagramElementType === "node") {
@@ -205,6 +222,7 @@ function onDelete(e: DeleteElementsEvent) {
     }
   });
 }
+
 function onInsert(e: InsertElementEvent) {
   if (e.diagramElementType === "node") {
     const newNodeId = +new Date();
@@ -218,6 +236,7 @@ function onInsert(e: InsertElementEvent) {
         position: e.position,
         sockets: getSockets(`n${newNodeId}`),
         typeIcon: "docker",
+        isLoading: false,
       });
 
       // parent needs to call this when insert is complete
