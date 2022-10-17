@@ -43,7 +43,7 @@
         >
           <div class="mr-2 whitespace-nowrap">Resources</div>
           <div
-            v-if="fixes.length > 0"
+            v-if="filteredFixes.length > 0"
             class="py-1 px-2 rounded whitespace-nowrap flex flex-row items-center text-destructive-500 bg-destructive-50 dark:text-destructive-100 dark:bg-destructive-500"
           >
             <Icon
@@ -51,21 +51,53 @@
               size="xs"
               class="text-destructive-500 dark:text-destructive-100"
             />
-            <span class="pl-1">{{ fixes.length }}</span>
+            <span class="pl-1">{{ filteredFixes.length }}</span>
           </div>
         </div>
-        <div class="w-full overflow-x-hidden overflow-y-auto">
-          <FixSprite
-            v-for="fix in fixes"
-            :key="fix.id"
-            :fix="fix"
-            :selected="fixSelection[fix.id]"
-            @toggle="
-              (c) => {
-                fixSelection[fix.id.toString()] = c;
-              }
-            "
-          />
+        <div class="relative w-full">
+          <TransitionGroup
+            tag="ul"
+            enter-active-class="duration-500 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="duration-300 ease-in"
+            leave-from-class="opacity-100 "
+            leave-to-class="opacity-0"
+          >
+            <li v-for="fix in filteredFixes" :key="fix.id">
+              <FixSprite
+                :fix="fix"
+                :selected="fixSelection[fix.id]"
+                @toggle="
+                  (c) => {
+                    fixSelection[fix.id] = c;
+                  }
+                "
+              />
+            </li>
+          </TransitionGroup>
+
+          <Transition
+            enter-active-class="delay-300 duration-200 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="duration-200 ease-in"
+            leave-from-class="opacity-100 "
+            leave-to-class="opacity-0"
+          >
+            <div v-if="filteredFixes.length === 0" class="absolute top-0">
+              <img
+                v-if="fixesStore.allFixes.length > 0"
+                src="../assets/images/gaby_sitting.jpg"
+                alt="Image of cat, looking at you"
+              />
+              <img
+                v-else
+                src="../assets/images/gaby_sleeping.jpg"
+                alt="Image of cat, sleeping"
+              />
+            </div>
+          </Transition>
         </div>
       </TabPanel>
     </template>
@@ -89,22 +121,22 @@ import { useFixesStore, Fix } from "@/store/fixes/fixes.store";
 import { themeClasses } from "@/ui-lib/theme_tools";
 
 const selectAll = (checked: boolean) => {
-  for (const fix of fixes.value) {
+  for (const fix of filteredFixes.value) {
     fixSelection[fix.id] = checked;
   }
 };
 
 const fixesStore = useFixesStore();
-const fixes = computed(() =>
+const filteredFixes = computed(() =>
   fixesStore.allFixes.filter(
     (fix: Fix) =>
       fix.finishedAt === undefined ||
-      fix.finishedAt > addSeconds(currentTime.value, -3),
+      fix.finishedAt > addSeconds(currentTime.value, -2),
   ),
 );
 const fixSelection: Record<string, boolean> = reactive({});
 const selectedFixes = computed(() => {
-  return fixes.value.filter((fix) => {
+  return filteredFixes.value.filter((fix) => {
     return fixSelection[fix.id] && fix.status === "unstarted";
   });
 });
