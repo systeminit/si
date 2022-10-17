@@ -161,7 +161,6 @@ export const useFixesStore = () => {
               componentId: component.id,
               name: `Create ${component.schemaName}`,
               componentName: component.displayName,
-              componentId: component.id,
               recommendation:
                 _.sample([
                   "this is what we recommend you do - just fix this thing and you will be all good",
