@@ -9,7 +9,7 @@ use crate::dal::test;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let func_name = "si:dockerImageResourceExistsConfirmation";
+    let func_name = "si:resourceExistsConfirmation";
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("unable to find function")
@@ -34,7 +34,7 @@ async fn find_for_component(ctx: &DalContext) {
         .expect("unable to find default schema variant");
     let component = create_component_for_schema(ctx, schema.id()).await;
 
-    let func_name = "si:dockerImageResourceExistsConfirmation";
+    let func_name = "si:resourceExistsConfirmation";
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("unable to find function")

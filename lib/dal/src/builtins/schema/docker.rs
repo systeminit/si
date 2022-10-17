@@ -284,7 +284,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     let workflow_prototype =
         WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
 
-    let func_name = "si:dockerImageResourceExistsConfirmation";
+    let func_name = "si:resourceExistsConfirmation";
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await?
         .pop()

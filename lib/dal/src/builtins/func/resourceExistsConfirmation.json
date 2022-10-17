@@ -1,6 +1,6 @@
 {
   "kind": "JsConfirmation",
   "response_type": "Confirmation",
-  "code_file": "dockerImageResourceExistsConfirmation.js",
+  "code_file": "resourceExistsConfirmation.js",
   "code_entrypoint": "exists"
 }

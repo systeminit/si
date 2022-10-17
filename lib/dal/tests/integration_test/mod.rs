@@ -9,6 +9,7 @@ mod code_generation_resolver;
 mod component;
 mod confirmation_prototype;
 mod confirmation_resolver;
+mod confirmation_resolver_tree;
 mod diagram;
 mod edge;
 mod func;

@@ -91,15 +91,6 @@ impl ConfirmationResolverTree {
         Ok(tree)
     }
 
-    // TODO: be more efficient here with allocations (inline into_vec)
-    pub fn flatten(trees: Vec<Self>) -> Vec<ConfirmationResolver> {
-        let mut resolvers = Vec::new();
-        for tree in trees {
-            resolvers.extend(tree.into_vec());
-        }
-        resolvers
-    }
-
     pub fn into_vec(self) -> Vec<ConfirmationResolver> {
         let mut sorted_resolver_ids = Vec::with_capacity(self.tree.len());
         let mut work_queue = VecDeque::new();
