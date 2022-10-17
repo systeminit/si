@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import _ from "lodash";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { useComponentsStore } from "@/store/components.store";
+import { useComponentsStore, ComponentId } from "@/store/components.store";
 import promiseDelay from "@/utils/promise_delay";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 import { LoginResponse } from "@/service/session";
@@ -17,6 +17,7 @@ export type Fix = {
   id: FixId;
   name: string;
   componentName: string;
+  componentId: ComponentId;
   recommendation: string;
   status: FixStatus;
   provider?: string;
@@ -119,7 +120,8 @@ export const useFixesStore = () => {
           const componentsStore = useComponentsStore();
 
           for (const component of componentsStore.allComponents) {
-            await promiseDelay(500);
+            componentsStore.increaseActivityCounterOnComponent(component.id);
+            await promiseDelay(1000);
             this.processedFixComponents += 1;
 
             if (
@@ -130,8 +132,10 @@ export const useFixesStore = () => {
                 "Docker Hub Credential",
                 "AMI",
               ].includes(component.schemaName)
-            )
+            ) {
+              componentsStore.decreaseActivityCounterOnComponent(component.id);
               continue;
+            }
 
             // TODO(wendy+victor) - This system will eventually be replaced with something cleaner!
             const providers: Record<string, string> = {
@@ -152,6 +156,7 @@ export const useFixesStore = () => {
               id: component.id, // TODO(wendy+victor) - Each fix should probably have a unique id eventually instead of just having the same id as it's component!
               name: `Create ${component.schemaName}`,
               componentName: component.displayName,
+              componentId: component.id,
               recommendation:
                 _.sample([
                   "this is what we recommend you do - just fix this thing and you will be all good",
@@ -164,11 +169,13 @@ export const useFixesStore = () => {
               provider,
               output: hardcodedOutputs[component.schemaName] ?? "{}",
             });
-            await promiseDelay(100); // Extra delay on items that will generate fixes
+            await promiseDelay(400); // Extra delay on items that will generate fixes
+            componentsStore.decreaseActivityCounterOnComponent(component.id);
           }
         },
         async executeMockFixes(fixes: Array<Fix>) {
           const authStore = useAuthStore();
+          const componentsStore = useComponentsStore();
 
           const fixBatch = <FixBatch>{
             id: _.random(100),
@@ -193,13 +200,16 @@ export const useFixesStore = () => {
               status: "running",
             });
 
-            await promiseDelay(1000);
+            componentsStore.increaseActivityCounterOnComponent(fix.componentId);
+
+            await promiseDelay(2000);
 
             this.updateFix({
               ...fix,
               finishedAt: new Date(),
               status: "success",
             });
+            componentsStore.decreaseActivityCounterOnComponent(fix.componentId);
           }
 
           this.runningFixBatch = undefined;

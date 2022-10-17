@@ -172,6 +172,39 @@
         }"
       />
     </v-group>
+
+    <!--  spinner overlay  -->
+    <v-group
+      ref="overlay"
+      :config="{
+        id: `node-${node.id}--overlay`,
+        x: -halfWidth,
+        y: nodeHeaderHeight,
+        opacity: 0,
+      }"
+    >
+      <!--  transparent overlay  -->
+      <v-rect
+        :config="{
+          width: nodeWidth,
+          height: nodeBodyHeight,
+          x: 0,
+          y: 0,
+          cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
+          fill: 'rgba(255,255,255,0.85)',
+        }"
+      />
+      <DiagramIcon
+        icon="loading"
+        :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
+        :config="{
+          x: halfWidth - overlayIconSize / 2,
+          y: nodeBodyHeight / 2 - overlayIconSize / 2,
+          width: overlayIconSize,
+          height: overlayIconSize,
+        }"
+      />
+    </v-group>
   </v-group>
 </template>
 
@@ -181,6 +214,7 @@ import _ from "lodash";
 import tinycolor from "tinycolor2";
 
 import { KonvaEventObject } from "konva/lib/Node";
+import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
 import {
@@ -242,6 +276,8 @@ const rightSockets = computed(() =>
 const nodeWidth = computed(() => 180);
 const halfWidth = computed(() => nodeWidth.value / 2);
 
+const overlayIconSize = computed(() => nodeWidth.value / 3);
+
 const headerTextHeight = ref(20);
 const subtitleTextHeight = ref(0);
 watch(
@@ -300,6 +336,20 @@ const colors = computed(() => {
     bodyBg: bodyBg.toRgbString(),
     bodyText,
   };
+});
+
+const overlay = ref();
+watch([() => props.node.isLoading, overlay], ([isLoading]) => {
+  if (_.isNil(overlay)) return;
+  const node = overlay.value.getNode();
+
+  const transition = new Tween({
+    node,
+    duration: 0.1,
+    opacity: isLoading ? 1 : 0,
+  });
+
+  transition.play();
 });
 
 function onMouseOver(_e: KonvaEventObject<MouseEvent>) {

@@ -86,6 +86,9 @@ export const useComponentsStore = () => {
         rawNodeAddMenu: [] as MenuItem[],
 
         selectedComponentId: null as ComponentId | null,
+
+        /** number of operations being executed on component. Basically a semaphore `loading` state  */
+        activityCounterByComponentId: {} as Record<ComponentId, number>,
       }),
       getters: {
         // transforming the diagram-y data back into more generic looking data
@@ -136,8 +139,15 @@ export const useComponentsStore = () => {
                 parseInt(node.id)
               ];
 
+            const activityCounter = _.get(
+              this.activityCounterByComponentId,
+              node.id,
+              0,
+            );
+
             return {
               ...node,
+              isLoading: activityCounter > 0,
               typeIcon,
               statusIcons: _.compact([
                 qualificationStatusToIconMap[qualificationStatus],
@@ -159,7 +169,7 @@ export const useComponentsStore = () => {
                 // TODO: add color + logo on categories?
                 schemas: _.compact(
                   _.map(category.items, (item) => {
-                    // ignoring "link" items - dont think these are relevant at the moment
+                    // ignoring "link" items - don't think these are relevant at the moment
                     if (item.kind !== "item") return;
 
                     // TODO: return hex code from backend...
@@ -323,7 +333,7 @@ export const useComponentsStore = () => {
               workspaceId,
             },
             onSuccess: (response) => {
-              // TODO: store componenet details rather than waiting for re-fetch
+              // TODO: store component details rather than waiting for re-fetch
             },
           });
         },
@@ -344,7 +354,7 @@ export const useComponentsStore = () => {
               workspaceId,
             },
             onSuccess: (response) => {
-              // TODO: store componenet details rather than waiting for re-fetch
+              // TODO: store component details rather than waiting for re-fetch
             },
           });
         },
@@ -360,6 +370,24 @@ export const useComponentsStore = () => {
             }
           }
         },
+
+        increaseActivityCounterOnComponent(id: ComponentId) {
+          const activityCounter = this.activityCounterByComponentId;
+
+          activityCounter[id] = activityCounter[id] || 0;
+          activityCounter[id] += 1;
+        },
+
+        decreaseActivityCounterOnComponent(id: ComponentId) {
+          const activityCounter = this.activityCounterByComponentId;
+
+          if (_.isNil(activityCounter[id]) || activityCounter[id] <= 0)
+            throw new Error(
+              `Trying to decrease activityCounter on component(id: ${id}) that didn't have any activities`,
+            );
+
+          activityCounter[id] -= 1;
+        },
       },
       onActivated() {
         this.FETCH_DIAGRAM_DATA();
@@ -374,12 +402,12 @@ export const useComponentsStore = () => {
           {
             eventType: "ChangeSetWritten",
             callback: (writtenChangeSetId) => {
-              // ideally we wouldnt have to check this - since the topic subscription
+              // ideally we wouldn't have to check this - since the topic subscription
               // would mean we only receive the event for this changeset already...
               // but this is fine for now
               if (writtenChangeSetId !== changeSetId) return;
 
-              // probably want to get pushed updates instead of blindly refetching, but this is the first step of getting things working
+              // probably want to get pushed updates instead of blindly re-fetching, but this is the first step of getting things working
               this.FETCH_DIAGRAM_DATA();
               this.FETCH_COMPONENTS();
               this.FETCH_CHANGE_STATS();
