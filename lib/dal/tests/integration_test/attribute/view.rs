@@ -5,7 +5,7 @@ use dal::{
     AttributeReadContext, AttributeValue, AttributeView, DalContext, PropKind, SchemaKind,
     SchemaVariant, StandardModel,
 };
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn schema_variant_specific(ctx: &DalContext) {
@@ -57,7 +57,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
     .await
     .expect("could not create attribute view");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "domain": {},
@@ -116,7 +116,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
     .await
     .expect("could not create attribute view");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "domain": {
@@ -139,7 +139,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
     )
     .await
     .expect("could not create attribute view");
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json!["toddhoward"], // expected
         view.value().clone(),            // actual
     );

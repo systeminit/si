@@ -13,4 +13,3 @@ WHERE organizations.id = $1
 ORDER BY organizations.id DESC,
          organizations.visibility_change_set_pk DESC
 LIMIT 1;
-

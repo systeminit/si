@@ -11,10 +11,7 @@ use crate::service::func::get_func::GetFuncResponse;
 use dal::func::argument::FuncArgument;
 use dal::{
     attribute::context::AttributeContextBuilder,
-    attribute::{
-        context::AttributeContextBuilderError,
-        value::dependent_update::collection::AttributeValueDependentCollectionHarness,
-    },
+    attribute::context::AttributeContextBuilderError,
     func::{
         argument::{FuncArgumentError, FuncArgumentId, FuncArgumentKind},
         backend::js_attribute::FuncBackendJsAttributeArgs,
@@ -337,15 +334,8 @@ async fn update_attribute_value_by_func_for_context(
     )
     .await?;
 
-    let dependent_attribute_values =
-        AttributeValueDependentCollectionHarness::collect(ctx, attribute_value.context).await?;
-    for dependent_attribute_value in dependent_attribute_values {
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx,
-            *dependent_attribute_value.id(),
-        ))
+    ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
         .await;
-    }
 
     Ok(())
 }

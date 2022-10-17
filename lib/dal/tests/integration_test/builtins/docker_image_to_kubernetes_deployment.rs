@@ -1,7 +1,7 @@
 use crate::dal::test;
 use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalContext) {
@@ -19,7 +19,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
         .await;
 
     // Ensure setup worked.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "tail"
@@ -32,7 +32,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
             .component_view_properties(ctx)
             .await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "apiVersion": "apps/v1",
@@ -76,7 +76,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     .expect("could not connect providers");
 
     // Ensure the view did not drift.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "tail"
@@ -89,7 +89,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
             .component_view_properties(ctx)
             .await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "apiVersion": "apps/v1",
@@ -112,7 +112,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
         .await;
 
     // Observe that it worked.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "ironsides"
@@ -126,7 +126,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
             .await // actual
     );
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "apiVersion": "apps/v1",

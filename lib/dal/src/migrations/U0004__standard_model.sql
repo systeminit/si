@@ -256,9 +256,14 @@ BEGIN
         -- If updated_at is still null, then there is a provided tenancy
         -- that is not suitable--this could be an application bug!
         IF updated_at IS NULL THEN
-            RAISE EXCEPTION 'update_by_id_v1: cannot update column % on table % (likely a tenancy issue)',
+            RAISE EXCEPTION 'update_by_id_v1: cannot update column % on table % of record % to value % (likely a tenancy issue). Tenancy(%), Visibility(%)',
                 this_column,
-                this_table;
+                this_table,
+                this_id,
+                this_value,
+                this_tenancy,
+                this_visibility;
+
         END IF;
     END IF;
 END ;

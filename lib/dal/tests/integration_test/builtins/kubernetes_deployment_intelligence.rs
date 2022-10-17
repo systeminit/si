@@ -1,7 +1,7 @@
 use crate::dal::test;
 use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::assert_eq;
 
 // Oh yeah, it's big brain time.
 #[ignore]
@@ -48,7 +48,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         .await;
 
     // Ensure setup worked.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "fedora"
@@ -59,7 +59,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         }], // expected
         tail_fedora_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "alpine"
@@ -70,7 +70,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         }], // expected
         tail_alpine_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "metadata": {
@@ -83,7 +83,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         }], // expected
         tail_namespace_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "apiVersion": "apps/v1",
@@ -97,7 +97,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "apiVersion": "apps/v1",
@@ -170,7 +170,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         .await;
 
     // Check that the update worked.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "fedora-updated"
@@ -181,7 +181,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         }], // expected
         tail_fedora_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "alpine"
@@ -192,7 +192,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         }], // expected
         tail_alpine_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "metadata": {
@@ -320,7 +320,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         .await;
 
     // Observed that it worked.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "fedora-updated-twice"
@@ -331,7 +331,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         }], // expected
         tail_fedora_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "alpine-updated"
@@ -342,7 +342,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
         }], // expected
         tail_alpine_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "metadata": {

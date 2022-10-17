@@ -193,6 +193,8 @@ impl InternalProvider {
             )
             .await?;
 
+        // The "base" AttributeContext of anything we create should be as un-specific as possible,
+        // and for an InternalProvider that is having only the InternalProviderId set.
         let context = AttributeContext::builder()
             .set_internal_provider_id(*internal_provider.id())
             .set_schema_id(schema_id)
@@ -255,6 +257,12 @@ impl InternalProvider {
 
         let mut explicit_internal_provider: InternalProvider =
             standard_model::finish_create_from_row(ctx, row).await?;
+
+        // The "base" AttributeContext of anything we create should be as un-specific as possible,
+        // and for an InternalProvider that is having only the InternalProviderId set.
+        let _base_attribute_context = AttributeContext::builder()
+            .set_internal_provider_id(explicit_internal_provider.id)
+            .to_context()?;
 
         let attribute_prototype = AttributePrototype::new(
             ctx,

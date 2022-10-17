@@ -3,7 +3,6 @@ use thiserror::Error;
 
 use si_data::NatsError;
 
-use crate::attribute::value::DependentValuesUpdated;
 use crate::code_generation_resolver::CodeGenerationId;
 use crate::qualification::QualificationCheckId;
 use crate::resource::ResourceRefreshId;
@@ -31,7 +30,6 @@ pub enum WsPayload {
     ResourceRefreshed(ResourceRefreshId),
     CodeGenerated(CodeGenerationId),
     CheckedQualifications(QualificationCheckId),
-    UpdatedDependentValue(DependentValuesUpdated),
     CommandOutput(CommandOutput),
     CommandReturn(CommandReturn),
     FixReturn(FixReturn),

@@ -12,7 +12,7 @@ use dal::{
     AttributePrototypeError, AttributeReadContext, AttributeValue, Component, ComponentView, Func,
     FuncBackendKind, FuncBackendResponseType, PropKind, Schema, SchemaKind, StandardModel,
 };
-use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new_attribute_prototype(ctx: &DalContext) {
@@ -400,7 +400,7 @@ async fn remove_component_specific(ctx: &DalContext) {
         .await
         .expect("cannot get component view");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
