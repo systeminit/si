@@ -3,49 +3,103 @@ use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
 };
+
 use pretty_assertions_sorted::assert_eq;
 
 // Oh yeah, it's big brain time.
 #[ignore]
 #[test]
-async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
+async fn kubernetes_deployment_intelligence(octx: DalContext) {
+    let ctx = &octx;
     let mut harness = SchemaBuiltinsTestHarness::new();
-    let tail_fedora_payload = harness
+    let fedora_docker_image_payload = harness
         .create_component(ctx, "fedora", Builtin::DockerImage)
         .await;
-    let tail_alpine_payload = harness
+    let alpine_docker_image_payload = harness
         .create_component(ctx, "alpine", Builtin::DockerImage)
         .await;
-    let tail_namespace_payload = harness
+    let namespace_payload = harness
         .create_component(ctx, "namespace", Builtin::KubernetesNamespace)
         .await;
-    let head_deployment_spongebob_payload = harness
+    let spongebob_deployment_payload = harness
         .create_component(ctx, "spongebob", Builtin::KubernetesDeployment)
         .await;
-    let head_deployment_squidward_payload = harness
-        .create_component(ctx, "squidward", Builtin::KubernetesDeployment)
+    let patrick_deployment_payload = harness
+        .create_component(ctx, "patrick", Builtin::KubernetesDeployment)
         .await;
 
-    // Initialize the tail component primary fields
-    tail_fedora_payload
+    // Cache schema variants to increase clarity in the test structure.
+    assert_eq!(
+        spongebob_deployment_payload.schema_variant_id,
+        patrick_deployment_payload.schema_variant_id
+    );
+    let kubernetes_namespace_schema_variant_id = spongebob_deployment_payload.schema_variant_id;
+    assert_eq!(
+        fedora_docker_image_payload.schema_variant_id,
+        alpine_docker_image_payload.schema_variant_id
+    );
+    let docker_image_schema_variant_id = fedora_docker_image_payload.schema_variant_id;
+
+    // First, collect all the external providers that we need
+    // (correspond to "output sockets" on the configuration diagram).
+    let docker_image_external_provider = ExternalProvider::find_for_schema_variant_and_name(
+        ctx,
+        docker_image_schema_variant_id,
+        "Container Image",
+    )
+    .await
+    .expect("cannot find external provider")
+    .expect("external provider not found");
+    let namespace_external_provider = ExternalProvider::find_for_schema_variant_and_name(
+        ctx,
+        namespace_payload.schema_variant_id,
+        "Kubernetes Namespace",
+    )
+    .await
+    .expect("cannot find external provider")
+    .expect("external provider not found");
+
+    // First, collect all the explicit internal providers that we need
+    // (correspond to "input sockets" on the configuration diagram).
+    let kubernetes_deployment_explicit_internal_provider_for_container_image =
+        InternalProvider::find_explicit_for_schema_variant_and_name(
+            ctx,
+            kubernetes_namespace_schema_variant_id,
+            "Container Image",
+        )
+        .await
+        .expect("cannot find explicit internal provider")
+        .expect("explicit internal provider not found");
+    let kubernetes_deployment_explicit_internal_provider_for_namespace =
+        InternalProvider::find_explicit_for_schema_variant_and_name(
+            ctx,
+            kubernetes_namespace_schema_variant_id,
+            "Kubernetes Namespace",
+        )
+        .await
+        .expect("cannot find explicit internal provider")
+        .expect("explicit internal provider not found");
+
+    // Initialize the tail component primary fields.
+    fedora_docker_image_payload
         .update_attribute_value_for_prop_name(
             ctx,
             "/root/si/name",
             Some(serde_json::json!["fedora"]),
         )
         .await;
-    tail_alpine_payload
+    alpine_docker_image_payload
         .update_attribute_value_for_prop_name(
             ctx,
             "/root/si/name",
             Some(serde_json::json!["alpine"]),
         )
         .await;
-    tail_namespace_payload
+    namespace_payload
         .update_attribute_value_for_prop_name(
             ctx,
             "/root/domain/metadata/name",
-            Some(serde_json::json!["rancher-system"]),
+            Some(serde_json::json!["squidward-system"]),
         )
         .await;
 
@@ -59,7 +113,9 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "name": "fedora"
             }
         }], // expected
-        tail_fedora_payload.component_view_properties(ctx).await // actual
+        fedora_docker_image_payload
+            .component_view_properties(ctx)
+            .await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -70,20 +126,22 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "name": "alpine"
             }
         }], // expected
-        tail_alpine_payload.component_view_properties(ctx).await // actual
+        alpine_docker_image_payload
+            .component_view_properties(ctx)
+            .await // actual
     );
     assert_eq!(
         serde_json::json![{
             "domain": {
                 "metadata": {
-                    "name": "rancher-system"
+                    "name": "squidward-system"
                 }
             },
             "si": {
                 "name": "namespace"
             }
         }], // expected
-        tail_namespace_payload.component_view_properties(ctx).await // actual
+        namespace_payload.component_view_properties(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -95,7 +153,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "name": "spongebob"
             }
         }], // expected
-        head_deployment_spongebob_payload
+        spongebob_deployment_payload
             .component_view_properties(ctx)
             .await // actual
     );
@@ -106,64 +164,27 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "kind": "Deployment",
             },
             "si": {
-                "name": "squidward"
+                "name": "patrick"
             }
         }], // expected
-        head_deployment_squidward_payload
+        patrick_deployment_payload
             .component_view_properties(ctx)
             .await // actual
     );
 
-    // Collect the explicit internal providers we want from the deployments.
-    let head_deployment_spongebob_docker_image_provider =
-        InternalProvider::find_explicit_for_schema_variant_and_name(
-            ctx,
-            head_deployment_spongebob_payload.schema_variant_id,
-            "Container Image",
-        )
-        .await
-        .expect("cannot find explicit internal provider")
-        .expect("explicit internal provider not found");
-    let head_deployment_kubernetes_namespace_provider =
-        InternalProvider::find_explicit_for_schema_variant_and_name(
-            ctx,
-            head_deployment_spongebob_payload.schema_variant_id,
-            "kubernetes_namespace",
-        )
-        .await
-        .expect("cannot find explicit internal provider")
-        .expect("explicit internal provider not found");
-    let head_deployment_squidward_docker_image_provider =
-        InternalProvider::find_explicit_for_schema_variant_and_name(
-            ctx,
-            head_deployment_squidward_payload.schema_variant_id,
-            "Container Image",
-        )
-        .await
-        .expect("cannot find explicit internal provider")
-        .expect("explicit internal provider not found");
-
-    // Connect fedora to the deployment.
-    let tail_fedora_provider = ExternalProvider::find_for_schema_variant_and_name(
-        ctx,
-        tail_fedora_payload.schema_variant_id,
-        "Container Image",
-    )
-    .await
-    .expect("cannot find external provider")
-    .expect("external provider not found");
+    // Connect the fedora docker image to the spongebob deployment.
     Edge::connect_providers_for_components(
         ctx,
-        *head_deployment_spongebob_docker_image_provider.id(),
-        head_deployment_spongebob_payload.component_id,
-        *tail_fedora_provider.id(),
-        tail_fedora_payload.component_id,
+        *kubernetes_deployment_explicit_internal_provider_for_container_image.id(),
+        spongebob_deployment_payload.component_id,
+        *docker_image_external_provider.id(),
+        fedora_docker_image_payload.component_id,
     )
     .await
     .expect("could not connect providers");
 
-    // Perform one update.
-    tail_fedora_payload
+    // Perform one update for the fedora docker image.
+    fedora_docker_image_payload
         .update_attribute_value_for_prop_name(
             ctx,
             "/root/si/name",
@@ -181,7 +202,9 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "name": "fedora-updated"
             }
         }], // expected
-        tail_fedora_payload.component_view_properties(ctx).await // actual
+        fedora_docker_image_payload
+            .component_view_properties(ctx)
+            .await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -192,20 +215,22 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "name": "alpine"
             }
         }], // expected
-        tail_alpine_payload.component_view_properties(ctx).await // actual
+        alpine_docker_image_payload
+            .component_view_properties(ctx)
+            .await // actual
     );
     assert_eq!(
         serde_json::json![{
             "domain": {
                 "metadata": {
-                    "name": "rancher-system"
+                    "name": "squidward-system"
                 }
             },
             "si": {
                 "name": "namespace"
             }
         }], // expected
-        tail_namespace_payload.component_view_properties(ctx).await // actual
+        namespace_payload.component_view_properties(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -230,7 +255,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "name": "spongebob"
             }
         }], // expected
-        head_deployment_spongebob_payload
+        spongebob_deployment_payload
             .component_view_properties(ctx)
             .await // actual
     );
@@ -241,79 +266,64 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "kind": "Deployment",
             },
             "si": {
-                "name": "squidward"
+                "name": "patrick"
             }
         }], // expected
-        head_deployment_squidward_payload
+        patrick_deployment_payload
             .component_view_properties(ctx)
             .await // actual
     );
 
     // After the first update, let's connect alpine to the spongebob deployment.
-    let tail_alpine_provider = ExternalProvider::find_for_schema_variant_and_name(
-        ctx,
-        tail_alpine_payload.schema_variant_id,
-        "Container Image",
-    )
-    .await
-    .expect("cannot find external provider")
-    .expect("external provider not found");
     Edge::connect_providers_for_components(
         ctx,
-        *head_deployment_spongebob_docker_image_provider.id(),
-        head_deployment_spongebob_payload.component_id,
-        *tail_alpine_provider.id(),
-        tail_alpine_payload.component_id,
+        *kubernetes_deployment_explicit_internal_provider_for_container_image.id(),
+        spongebob_deployment_payload.component_id,
+        *docker_image_external_provider.id(),
+        alpine_docker_image_payload.component_id,
     )
     .await
     .expect("could not connect providers");
 
-    // Then, connect namespace to the deployment.
-    let tail_namespace_provider = ExternalProvider::find_for_schema_variant_and_name(
-        ctx,
-        tail_namespace_payload.schema_variant_id,
-        "kubernetes_namespace",
-    )
-    .await
-    .expect("cannot find external provider")
-    .expect("external provider not found");
+    // Then, connect namespace to the spongebob deployment.
     Edge::connect_providers_for_components(
         ctx,
-        *head_deployment_kubernetes_namespace_provider.id(),
-        head_deployment_spongebob_payload.component_id,
-        *tail_namespace_provider.id(),
-        tail_namespace_payload.component_id,
+        *kubernetes_deployment_explicit_internal_provider_for_namespace.id(),
+        spongebob_deployment_payload.component_id,
+        *namespace_external_provider.id(),
+        namespace_payload.component_id,
     )
     .await
     .expect("could not connect providers");
 
-    // Finally, connect fedora to the squidward deployment.
+    // Finally, connect fedora and the namespace to the patrick deployment, but do not connect
+    // the namespace nor alpine to it.
     Edge::connect_providers_for_components(
         ctx,
-        *head_deployment_squidward_docker_image_provider.id(),
-        head_deployment_squidward_payload.component_id,
-        *tail_fedora_provider.id(),
-        tail_fedora_payload.component_id,
+        *kubernetes_deployment_explicit_internal_provider_for_container_image.id(),
+        patrick_deployment_payload.component_id,
+        *docker_image_external_provider.id(),
+        fedora_docker_image_payload.component_id,
     )
     .await
     .expect("could not connect providers");
 
-    // Perform three updates and assert afterwards.
-    tail_alpine_payload
+    // Perform updates before assertions.
+    alpine_docker_image_payload
         .update_attribute_value_for_prop_name(
             ctx,
             "/root/si/name",
             Some(serde_json::json!["alpine-updated"]),
         )
         .await;
-    tail_namespace_payload
+    namespace_payload
         .update_attribute_value_for_prop_name(
             ctx,
             "/root/domain/metadata/name",
-            Some(serde_json::json!["rancher-system-updated"]),
+            Some(serde_json::json!["squidward-system-updated"]),
         )
         .await;
-    tail_fedora_payload
+    fedora_docker_image_payload
         .update_attribute_value_for_prop_name(
             ctx,
             "/root/si/name",
@@ -331,7 +341,9 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "name": "fedora-updated-twice"
             }
         }], // expected
-        tail_fedora_payload.component_view_properties(ctx).await // actual
+        fedora_docker_image_payload
+            .component_view_properties(ctx)
+            .await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -342,35 +354,35 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "name": "alpine-updated"
             }
         }], // expected
-        tail_alpine_payload.component_view_properties(ctx).await // actual
+        alpine_docker_image_payload
+            .component_view_properties(ctx)
+            .await // actual
     );
     assert_eq!(
         serde_json::json![{
             "domain": {
                 "metadata": {
-                    "name": "rancher-system-updated"
+                    "name": "squidward-system-updated"
                 }
             },
             "si": {
                 "name": "namespace"
             }
         }], // expected
-        tail_namespace_payload.component_view_properties(ctx).await // actual
+        namespace_payload.component_view_properties(ctx).await // actual
     );
-    // We cannot use "assert_eq_sorted" here because the containers array order should be stable,
-    // but we should not assert a guaranteed order.
     assert_eq!(
         serde_json::json![{
             "domain": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",
                 "metadata": {
-                    "namespace": "rancher-system-updated"
+                    "namespace": "squidward-system-updated"
                 },
                 "spec": {
                     "template": {
                         "metadata": {
-                            "namespace": "rancher-system-updated"
+                            "namespace": "squidward-system-updated"
                         },
                         "spec": {
                             "containers": [
@@ -393,7 +405,7 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 "name": "spongebob"
             }
         }], // expected
-        head_deployment_spongebob_payload
+        spongebob_deployment_payload
             .component_view_properties(ctx)
             .await // actual
     );
@@ -402,14 +414,8 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
             "domain": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",
-                "metadata": {
-                    "namespace": "rancher-system-updated"
-                },
                 "spec": {
                     "template": {
-                        "metadata": {
-                            "namespace": "rancher-system-updated"
-                        },
                         "spec": {
                             "containers": [
                                 {
@@ -423,10 +429,10 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
                 },
             },
             "si": {
-                "name": "squidward"
+                "name": "patrick"
             }
         }], // expected
-        head_deployment_squidward_payload
+        patrick_deployment_payload
             .component_view_properties(ctx)
             .await // actual
     );

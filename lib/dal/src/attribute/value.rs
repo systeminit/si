@@ -920,7 +920,6 @@ impl AttributeValue {
             let attr_val_id: AttributeValueId = row.try_get("attribute_value_id")?;
             let dependencies: Vec<AttributeValueId> =
                 row.try_get("dependent_attribute_value_ids")?;
-
             result.insert(attr_val_id, dependencies);
         }
 
