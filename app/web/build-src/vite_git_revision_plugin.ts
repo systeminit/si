@@ -23,7 +23,7 @@ const defaultOptions: ViteGitRevisionPlugin = {
 export default (options: ViteGitRevisionPlugin): Plugin => {
   options = Object.assign(defaultOptions, options || {});
 
-  function runGitCommand(command: string) {
+  function runGitCommand(command: string, fallback?: string) {
     const cmd = [
       "git",
       ...(options.gitWorkTree
@@ -34,15 +34,23 @@ export default (options: ViteGitRevisionPlugin): Plugin => {
         : []),
       command,
     ].join(" ");
-    const result = execSync(cmd)
-      .toString()
-      .replace(/[\s\r\n]+$/, "");
-    return result;
+    try {
+      const result = execSync(cmd)
+        .toString()
+        .replace(/[\s\r\n]+$/, "");
+      return result;
+    } catch (err) {
+      if (fallback !== undefined) return fallback;
+      throw err;
+    }
   }
 
-  const gitBranch = runGitCommand("rev-parse --abbrev-ref HEAD");
+  // TODO: currently failing on docker builds because the copied files are no longer in a git repo
+  // we'll want to do something to make it available, like dump the info to a file...
+  const gitBranch = runGitCommand("rev-parse --abbrev-ref HEAD", "unknown");
   const gitSha = runGitCommand(
     `rev-parse ${options.shortSha ? "--short" : ""} HEAD`,
+    "unknown",
   );
 
   return {

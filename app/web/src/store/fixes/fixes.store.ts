@@ -2,11 +2,7 @@ import { defineStore } from "pinia";
 import _ from "lodash";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-<<<<<<< HEAD
-import { useComponentsStore, ComponentId } from "@/store/components.store";
-=======
 import { ComponentId, useComponentsStore } from "@/store/components.store";
->>>>>>> e8bd300f (chore(web) app state cleanup)
 import promiseDelay from "@/utils/promise_delay";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 import hardcodedOutputs from "@/store/fixes/hardcoded_fix_outputs";
