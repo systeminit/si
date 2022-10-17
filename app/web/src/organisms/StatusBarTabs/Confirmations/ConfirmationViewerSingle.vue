@@ -54,7 +54,7 @@ import { ref } from "vue";
 import _ from "lodash";
 import StatusMessageBox from "@/molecules/StatusMessageBox.vue";
 import Modal from "@/ui-lib/Modal.vue";
-import { Confirmation } from "@/service/resource";
+import { Confirmation } from "@/store/resources.store";
 
 defineProps<{
   confirmation: Confirmation;

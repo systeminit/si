@@ -4,11 +4,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeMount } from "vue";
+import { computed } from "vue";
 import "floating-vue/dist/style.css";
 
 import { useHead } from "@vueuse/head";
-import { restoreFromSession } from "@/observable/session_state";
 import { useCustomFontsLoadedProvider } from "./composables/useFontLoaded";
 import { tw } from "./utils/style_helpers";
 import { useAuthStore } from "./store/auth.store";
@@ -17,7 +16,6 @@ import { useRealtimeStore } from "./store/realtime/realtime.store";
 import RealtimeConnectionStatus from "./molecules/RealtimeConnectionStatus.vue";
 import { useThemeContainer } from "./ui-lib/theme_tools";
 
-onBeforeMount(restoreFromSession);
 useCustomFontsLoadedProvider();
 
 // provides the root theme value to all children, and returns that root theme to use below
@@ -45,7 +43,7 @@ authStore.initFromStorage();
 const workspacesStore = useWorkspacesStore();
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 
-// initialize the realtime store - it will dispatch messages to other stores and back to rxjs services
+// initialize the realtime store - which will watch for auth and open/close websocket
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const realtimeStore = useRealtimeStore();
 </script>

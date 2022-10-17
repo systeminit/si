@@ -31,9 +31,9 @@
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { Option } from "@/molecules/SelectMenu.vue";
-import { ConfirmationAssociations } from "@/service/func";
+import { ConfirmationAssociations } from "@/store/func/types";
 import { toOptionValues } from "@/organisms/FuncEditor/utils";
-import { useFuncStore } from "@/store/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import RunOnSelector from "./RunOnSelector.vue";
 
 const funcStore = useFuncStore();

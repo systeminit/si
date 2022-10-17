@@ -153,7 +153,7 @@ import NewFuncDropdown from "@/organisms/NewFuncDropdown.vue";
 import Modal from "@/ui-lib/Modal.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 
-import { useFuncStore } from "@/store/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 
 const routeToFunc = useRouteToFunc();

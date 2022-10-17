@@ -39,7 +39,7 @@
 import { PropType } from "vue";
 import clsx from "clsx";
 import HealthIcon from "@/molecules/HealthIcon.vue";
-import { MockResource } from "@/service/resource";
+import { MockResource } from "@/store/resources.store";
 
 defineProps({
   resources: {

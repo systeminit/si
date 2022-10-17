@@ -24,6 +24,7 @@
         <li
           v-for="(schema, schemaIndex) in category.schemas"
           :key="schemaIndex"
+          class="select-none"
         >
           <SiNodeSprite
             :class="selectedSchemaId === schema.id ? 'bg-action-500' : ''"

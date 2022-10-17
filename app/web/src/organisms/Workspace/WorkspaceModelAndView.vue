@@ -49,7 +49,7 @@
     :default-size="380"
     :min-size="300"
   >
-    <ComponentDetails v-if="selectedComponent" />
+    <ComponentDetails v-if="selectedComponent" :key="selectedComponent.id" />
     <div v-else class="p-4">
       <template v-if="isViewMode">
         Select a single component to see more details

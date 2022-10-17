@@ -5,7 +5,6 @@ import { ApiRequest } from "@/utils/pinia_api_tools";
 
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { Organization } from "@/api/sdf/dal/organization";
-import { workspace$ } from "@/observable/workspace";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useRouterStore } from "./router.store";
 import { useAuthStore } from "./auth.store";
@@ -41,7 +40,6 @@ export const useWorkspacesStore = addStoreHooks(
           workspace: Workspace;
           organization: Organization;
         }>({
-          method: "get",
           // TODO: probably should fetch list of all workspaces here...
           // something like `/users/USER_ID/workspaces`, `/my/workspaces`, etc
           url: "/session/get_defaults",
@@ -66,12 +64,6 @@ export const useWorkspacesStore = addStoreHooks(
         { immediate: true },
       );
 
-      watch(
-        () => this.selectedWorkspace,
-        () => {
-          workspace$.next(this.selectedWorkspace);
-        },
-      );
       // TODO: subscribe to realtime - changes to workspaces, or new workspaces available
 
       // NOTE - dont need to clean up here, since there is only one workspace store and it will always be loaded

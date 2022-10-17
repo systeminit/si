@@ -196,7 +196,8 @@
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
-            <FixHistoryPanel />
+            <GenericTabPanel :component-list="componentList" />
+            <!-- <FixHistoryPanel /> -->
           </TabPanel>
           <TabPanel
             :aria-hidden="!isViewMode"
@@ -229,13 +230,9 @@ import Icon from "@/ui-lib/Icon.vue";
 import { useQualificationsStore } from "@/store/qualifications.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useThemeContainer } from "@/ui-lib/theme_tools";
-import WorkflowHistoryTab from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryTab.vue";
-import WorkflowHistoryPanel, {
-  SortOption,
-} from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryPanel.vue";
 import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
 import FixHistoryTab from "./StatusBarTabs/Fix/FixHistoryTab.vue";
-import FixHistoryPanel from "./StatusBarTabs/Fix/FixHistoryPanel.vue";
+// import FixHistoryPanel from "./StatusBarTabs/Fix/FixHistoryPanel.vue";
 
 // override theme to be always dark within status bar
 const { themeContainerClasses } = useThemeContainer("dark");
@@ -283,15 +280,6 @@ const barClasses = computed(() => {
   }
   return result;
 });
-
-const defaultWorkflowSortOption = {
-  value: "r",
-  title: "Newest",
-};
-const selectedWorkflowSort = ref<SortOption>(defaultWorkflowSortOption);
-const changeWorkflowSort = (newSort: SortOption) => {
-  selectedWorkflowSort.value = newSort;
-};
 
 const qualificationsStore = useQualificationsStore();
 const qualificationComponentStats = computed(

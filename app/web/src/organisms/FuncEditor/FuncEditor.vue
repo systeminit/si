@@ -23,9 +23,9 @@ import { javascript } from "@codemirror/lang-javascript";
 import { linter, lintGutter } from "@codemirror/lint";
 import { storeToRefs } from "pinia";
 import { createLintSource } from "@/utils/typescriptLinter";
-import { EditingFunc } from "@/observable/func";
-import { useFuncStore, nullEditingFunc } from "@/store/funcs.store";
+import { useFuncStore, nullEditingFunc } from "@/store/func/funcs.store";
 import { useTheme } from "@/ui-lib/theme_tools";
+import { EditingFunc } from "@/store/func/types";
 
 const funcStore = useFuncStore();
 const { selectedFunc, getFuncById } = storeToRefs(funcStore);
@@ -90,11 +90,8 @@ watch(codeMirrorTheme, () => {
 const mountEditor = async () => {
   editingFunc.value = getFuncById.value(funcId.value) ?? nullEditingFunc;
   const updateListener = EditorView.updateListener.of((update) => {
-    if (!update.docChanged) {
-      return;
-    }
-    const newCode = update.view.state.doc.toString();
-    funcStore.UPDATE_FUNC({ ...editingFunc.value, code: newCode });
+    if (!update.docChanged) return;
+    funcStore.updateFuncCode(funcId.value, update.view.state.doc.toString());
   });
 
   const editorState = EditorState.create({

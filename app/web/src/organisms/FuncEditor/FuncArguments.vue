@@ -66,7 +66,7 @@ import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
 import VButton from "@/molecules/VButton.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
-import { useFuncStore } from "@/store/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 
 const funcStore = useFuncStore();
 
@@ -148,7 +148,7 @@ const addArgument = async () => {
 };
 
 const saveArguments = () => {
-  funcStore.UPDATE_ATTR_FUNC_ARGS(
+  funcStore.updateFuncAttrArgs(
     funcId.value,
     editingArgsToArgs(editingArgs.value),
   );

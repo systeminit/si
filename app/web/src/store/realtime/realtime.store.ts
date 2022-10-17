@@ -3,7 +3,7 @@ import _ from "lodash";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { computed, reactive, ref, watch } from "vue";
 import { API_WS_URL } from "@/utils/api";
-import { WsEventService } from "@/service/ws_event";
+import { HistoryActor } from "@/api/sdf/dal/history_actor";
 import { useAuthStore } from "../auth.store";
 import { WsEventPayloadMap } from "./realtime_events";
 
@@ -19,7 +19,10 @@ type SubscriptionTopic = string;
 type EventTypeAndCallback = {
   [K in keyof WsEventPayloadMap]: {
     eventType: K;
-    callback: (value: WsEventPayloadMap[K]) => unknown;
+    callback: (
+      payload: WsEventPayloadMap[K],
+      metadata: RealtimeEventMetadata,
+    ) => unknown;
   };
 }[keyof WsEventPayloadMap];
 
@@ -27,6 +30,13 @@ type TrackedSubscription = EventTypeAndCallback & {
   id: SubscriptionId;
   topic: SubscriptionTopic;
   subscriberId: SubscriberId;
+};
+
+// shape of the extra data that comes through the websocket along with the payload
+type RealtimeEventMetadata = {
+  version: number;
+  billing_account_ids: Array<number>;
+  history_actor: HistoryActor;
 };
 
 export const useRealtimeStore = defineStore("realtime", () => {
@@ -148,20 +158,23 @@ export const useRealtimeStore = defineStore("realtime", () => {
 
   socket.addEventListener("message", (messageEvent) => {
     const messageEventData = JSON.parse(messageEvent.data);
+    const eventKind = messageEventData.payload.kind;
+    const eventData = messageEventData.payload.data;
+    const eventMetadata = _.omit(
+      messageEventData,
+      "payload",
+    ) as RealtimeEventMetadata;
 
-    console.log("ws message!", messageEventData);
+    console.log("WS message", eventKind, eventData);
 
     _.each(subscriptions, (sub) => {
       // TODO: also filter by topic once we receive this info from the backend
-      if (sub.eventType === messageEventData.payload.kind) {
-        // we may also need the version and history actor, can pass through as second arg
-        sub.callback(messageEventData.payload.data);
+      if (sub.eventType === eventKind) {
+        // TODO: probably want to convert the raw metadata into something easier to use
+        // like a boolean that says whether this event came from the auth'd user
+        sub.callback(eventData, eventMetadata);
       }
     });
-
-    // dispatch events back to rxjs services
-    // TODO: will remove once everything moved over
-    WsEventService.dispatch(messageEventData);
   });
   socket.addEventListener("error", (errorEvent) => {
     console.log("ws error", errorEvent.error, errorEvent.message);

@@ -622,7 +622,7 @@ defineExpose({
   }
 
   &.--error {
-    // --text-color: @colors-destructive-600;
+    --text-color: @colors-destructive-600;
     --border-color: @colors-destructive-500;
   }
 
@@ -779,7 +779,6 @@ defineExpose({
 }
 
 .vorm-input__error-message {
-  color: var(--text-color-error);
 }
 
 .vorm-input__input-wrap {

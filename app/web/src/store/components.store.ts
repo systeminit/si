@@ -18,14 +18,19 @@ import {
 } from "@/api/sdf/dal/diagram";
 import { ComponentStats, ComponentStatus } from "@/api/sdf/dal/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import { ComponentIdentification } from "@/api/sdf/dal/component";
+import {
+  ComponentDiff,
+  ComponentIdentification,
+} from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
-import { useChangeSetsStore } from "./change_sets.store";
+import { CodeView } from "@/api/sdf/dal/code_view";
+import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
   QualificationStatus,
   useQualificationsStore,
 } from "./qualifications.store";
+import { useWorkspacesStore } from "./workspaces.store";
 
 export type ComponentId = number;
 type Component = {
@@ -63,10 +68,27 @@ const qualificationStatusToIconMap: Record<
   running: { icon: "loading", tone: "info" },
 };
 
-export const useComponentsStore = () => {
-  const changeSetsStore = useChangeSetsStore();
-  const changeSetId = changeSetsStore.selectedChangeSetId;
-  const workspaceId = changeSetsStore.selectedWorkspaceId;
+export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
+  const workspacesStore = useWorkspacesStore();
+  const workspaceId = workspacesStore.selectedWorkspaceId;
+
+  // this needs some work... but we'll probably want a way to force using HEAD
+  // so we can load HEAD data in some scenarios while also loading a change set?
+  let changeSetId: ChangeSetId | null;
+  if (forceChangeSetId) {
+    changeSetId = forceChangeSetId;
+  } else {
+    const changeSetsStore = useChangeSetsStore();
+    changeSetId = changeSetsStore.selectedChangeSetId;
+  }
+
+  // TODO: probably these should be passed in automatically
+  // and need to make sure it's done consistently (right now some endpoints vary slightly)
+  const visibilityParams = {
+    visibility_change_set_pk: changeSetId,
+    workspaceId,
+  };
+
   return addStoreHooks(
     defineStore(`cs${changeSetId}/components`, {
       state: () => ({
@@ -79,6 +101,9 @@ export const useComponentsStore = () => {
           ComponentIdentification
         >,
         componentChangeStatusById: {} as Record<ComponentId, ComponentStatus>,
+
+        componentCodeViewsById: {} as Record<ComponentId, CodeView[]>,
+        componentDiffsById: {} as Record<ComponentId, ComponentDiff>,
 
         rawDiagramNodes: [] as DiagramNodeDef[],
         diagramEdges: [] as DiagramEdgeDef[],
@@ -104,6 +129,7 @@ export const useComponentsStore = () => {
               schemaName: ci.schemaName,
               schemaVariantId: ci.schemaVariantId,
               schemaVariantName: ci.schemaVariantName,
+              // TODO: probably want to move this into its own store
               resource: ci.resource,
               color: diagramNode?.color,
               changeStatus: this.componentChangeStatusById[ci.componentId],
@@ -116,6 +142,12 @@ export const useComponentsStore = () => {
 
         selectedComponent(): Component {
           return this.componentsById[this.selectedComponentId || 0];
+        },
+        selectedComponentDiff(): ComponentDiff | undefined {
+          return this.componentDiffsById[this.selectedComponentId || 0];
+        },
+        selectedComponentCode(): CodeView[] | undefined {
+          return this.componentCodeViewsById[this.selectedComponentId || 0];
         },
 
         diagramNodes(): DiagramNodeDef[] {
@@ -206,22 +238,17 @@ export const useComponentsStore = () => {
             total: allChanged.length,
           };
         },
-
-        // other store getters - just more convenient to keep in getters for re-use throughout /////////////
-        selectedSystemId() {
-          return undefined;
-        },
       },
       actions: {
         // TODO: change these endpoints to return a more complete picture of component data in one call
+        // see also component/get_components_metadata endpoint which was not used anymore but has some more data we may want to include
 
         // actually fetches diagram-style data, but we have a computed getter to turn back into more generic component data above
         async FETCH_DIAGRAM_DATA() {
           return new ApiRequest<DiagramContent>({
-            method: "get",
             url: "diagram/get_diagram",
             params: {
-              visibility_change_set_pk: changeSetId,
+              ...visibilityParams,
             },
             onSuccess: (response) => {
               // for now just storing the diagram-y data
@@ -234,11 +261,9 @@ export const useComponentsStore = () => {
         // fetches a dropdown-style list of some component data, also including resources?
         async FETCH_COMPONENTS() {
           return new ApiRequest<{ list: LabelList<ComponentIdentification> }>({
-            method: "get",
             url: "component/list_components_identification",
             params: {
-              visibility_change_set_pk: changeSetId,
-              workspaceId,
+              ...visibilityParams,
             },
             onSuccess: (response) => {
               // endpoint returns dropdown-y data
@@ -254,12 +279,10 @@ export const useComponentsStore = () => {
         // used when adding new nodes
         async FETCH_AVAILABLE_SCHEMAS() {
           return new ApiRequest<DiagramSchemaVariants>({
-            method: "get",
             // TODO: probably switch to something like GET `/workspaces/:id/schemas`?
             url: "diagram/list_schema_variants",
             params: {
-              workspaceId,
-              visibility_change_set_pk: changeSetId,
+              ...visibilityParams,
             },
             onSuccess: (response) => {
               this.schemaVariantsById = _.keyBy(response, "id");
@@ -273,8 +296,7 @@ export const useComponentsStore = () => {
             // TODO: probably combine into single call with FETCH_AVAILABLE_SCHEMAS
             url: "diagram/get_node_add_menu",
             params: {
-              workspaceId,
-              visibility_change_set_pk: changeSetId,
+              ...visibilityParams,
             },
             onSuccess: (response) => {
               this.rawNodeAddMenu = response;
@@ -284,10 +306,9 @@ export const useComponentsStore = () => {
 
         async FETCH_CHANGE_STATS() {
           return new ApiRequest<{ componentStats: ComponentStats }>({
-            method: "get",
             url: "change_set/get_stats",
             params: {
-              visibility_change_set_pk: changeSetId,
+              ...visibilityParams,
             },
             onSuccess: (response) => {
               this.componentChangeStatusById = _.transform(
@@ -313,8 +334,7 @@ export const useComponentsStore = () => {
               x: position.x.toString(),
               y: position.y.toString(),
               diagramKind: "configuration",
-              systemId: this.selectedSystemId,
-              visibility_change_set_pk: changeSetId,
+              ...visibilityParams,
             },
             onSuccess: (response) => {
               // record position change rather than wait for re-fetch
@@ -329,8 +349,7 @@ export const useComponentsStore = () => {
               schemaId,
               x: position.x.toString(),
               y: position.y.toString(),
-              visibility_change_set_pk: changeSetId,
-              workspaceId,
+              ...visibilityParams,
             },
             onSuccess: (response) => {
               // TODO: store component details rather than waiting for re-fetch
@@ -349,12 +368,50 @@ export const useComponentsStore = () => {
               fromSocketId: from.socketId,
               toNodeId: to.componentId,
               toSocketId: to.socketId,
-
-              visibility_change_set_pk: changeSetId,
-              workspaceId,
+              ...visibilityParams,
             },
             onSuccess: (response) => {
               // TODO: store component details rather than waiting for re-fetch
+            },
+          });
+        },
+
+        async TRIGGER_COMPONENT_CODE_GEN(componentId: ComponentId) {
+          return new ApiRequest<{ success: true }>({
+            method: "post",
+            url: "component/generate_code",
+            keyRequestStatusBy: componentId,
+            params: {
+              componentId,
+              ...visibilityParams,
+            },
+            // no onSuccess here - we just wait for websocket
+          });
+        },
+        async FETCH_COMPONENT_CODE(componentId: ComponentId) {
+          return new ApiRequest<{ codeViews: CodeView[] }>({
+            url: "component/get_code",
+            keyRequestStatusBy: componentId,
+            params: {
+              componentId,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              this.componentCodeViewsById[componentId] = response.codeViews;
+            },
+          });
+        },
+
+        async FETCH_COMPONENT_DIFF(componentId: ComponentId) {
+          return new ApiRequest<{ componentDiff: ComponentDiff }>({
+            url: "func/get_diff",
+            keyRequestStatusBy: componentId,
+            params: {
+              componentId,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              this.componentDiffsById[componentId] = response.componentDiff;
             },
           });
         },
@@ -411,6 +468,17 @@ export const useComponentsStore = () => {
               this.FETCH_DIAGRAM_DATA();
               this.FETCH_COMPONENTS();
               this.FETCH_CHANGE_STATS();
+            },
+          },
+          {
+            eventType: "CodeGenerated",
+            callback: (codeGeneratedEvent) => {
+              // probably ideally just push the new code over the websocket
+              // but for now we'll re-fetch if the component is currently selected
+              // topic subscription would also help to know if we're talking about the component in the correct changeset
+              if (this.selectedComponentId === codeGeneratedEvent.componentId) {
+                this.FETCH_COMPONENT_CODE(this.selectedComponentId);
+              }
             },
           },
         ]);

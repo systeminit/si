@@ -137,11 +137,10 @@ import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import { EditingFunc } from "@/observable/func";
 import VButton from "@/molecules/VButton.vue";
-import { FuncAssociations } from "@/service/func";
+import { FuncAssociations, EditingFunc } from "@/store/func/types";
 import { FuncBackendKind, FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore, nullEditingFunc } from "@/store/funcs.store";
+import { useFuncStore, nullEditingFunc } from "@/store/func/funcs.store";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
@@ -182,10 +181,7 @@ watch(
 );
 
 const updateFunc = () => {
-  funcStore.UPDATE_FUNC({
-    ...editingFunc.value,
-    associations: associations.value,
-  });
+  funcStore.updateFuncAssociations(funcId.value, associations.value);
 };
 
 const revertFunc = async () => {

@@ -2,10 +2,9 @@ import { defineStore } from "pinia";
 import _ from "lodash";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { useComponentsStore, ComponentId } from "@/store/components.store";
+import { ComponentId, useComponentsStore } from "@/store/components.store";
 import promiseDelay from "@/utils/promise_delay";
 import { ApiRequest } from "@/utils/pinia_api_tools";
-import { LoginResponse } from "@/service/session";
 import hardcodedOutputs from "@/store/fixes/hardcoded_fix_outputs";
 import { User } from "@/api/sdf/dal/user";
 import { useAuthStore } from "@/store/auth.store";
@@ -49,6 +48,9 @@ export const useFixesStore = () => {
       getters: {
         allFixes(): Fix[] {
           return _.values(this.fixesById);
+        },
+        fixesByComponentId(): Record<ComponentId, Fix> {
+          return _.keyBy(this.allFixes, (f) => f.componentId);
         },
         allFixBatches(): FixBatch[] {
           return _.values(this.fixBatchesById);
@@ -96,8 +98,7 @@ export const useFixesStore = () => {
             await componentsStore.FETCH_COMPONENTS();
           }
 
-          return new ApiRequest<LoginResponse>({
-            method: "get",
+          return new ApiRequest({
             url: "/session/get_defaults",
             onSuccess: (response) => {
               this.populateMockFixes().then(() => {});
@@ -105,8 +106,7 @@ export const useFixesStore = () => {
           });
         },
         async EXECUTE_FIXES(fixes: Array<Fix>) {
-          return new ApiRequest<LoginResponse>({
-            method: "get",
+          return new ApiRequest({
             url: "/session/get_defaults",
             onSuccess: (response) => {
               this.executeMockFixes(fixes).then(() => {});
@@ -153,10 +153,10 @@ export const useFixesStore = () => {
             const provider = providers[component.schemaName];
 
             this.updateFix({
-              id: component.id, // TODO(wendy+victor) - Each fix should probably have a unique id eventually instead of just having the same id as it's component!
+              id: 1000 + component.id,
+              componentId: component.id,
               name: `Create ${component.schemaName}`,
               componentName: component.displayName,
-              componentId: component.id,
               recommendation:
                 _.sample([
                   "this is what we recommend you do - just fix this thing and you will be all good",

@@ -77,7 +77,10 @@ declare module "pinia" {
   }
 }
 
-export class ApiRequest<Response = any, QueryParams = Record<string, unknown>> {
+export class ApiRequest<
+  Response = any,
+  RequestParams = Record<string, unknown>,
+> {
   // these are used to attach the result which can be used directly by the caller
   // most data and request status info should be used via the store, but it is useful sometimes
   private rawResponseData: Response | undefined;
@@ -103,19 +106,21 @@ export class ApiRequest<Response = any, QueryParams = Record<string, unknown>> {
 
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor
   constructor(
-    public requestSpec: ApiRequestDescription<Response, QueryParams>,
-  ) {}
+    public requestSpec: ApiRequestDescription<Response, RequestParams>,
+  ) {
+    if (!this.requestSpec.method) this.requestSpec.method = "get";
+  }
 }
 
 // types to describe our api request definitions
 type ApiRequestDescriptionGenerator = (payload: any) => ApiRequestDescription;
 export type ApiRequestDescription<
   Response = any,
-  QueryParams = Record<string, unknown>,
+  RequestParams = Record<string, unknown>,
 > = {
-  method?: "get" | "patch" | "post" | "put" | "delete"; // defaults to get if empty,
+  method?: "get" | "patch" | "post" | "put" | "delete"; // defaults to "get" if empty
   url: string;
-  params?: QueryParams;
+  params?: RequestParams;
   keyRequestStatusBy?: RawRequestStatusKeyArg | RawRequestStatusKeyArg[];
   onSuccess?(response: Response): Promise<void> | void;
   onFail?(response: any): Promise<void> | void;

@@ -11,7 +11,6 @@
         :path="paths[pv.id]"
         :collapsed-paths="collapsed"
         :validation="validationForValueId(pv.id)"
-        :disabled="disabled"
         :array-index="arrayIndex[pv.id]"
         :array-length="arrayLength[pv.propId]"
         :is-first-prop="index === 0"
@@ -28,29 +27,25 @@
 <script setup lang="ts">
 import { ref, computed, toRefs, watch } from "vue";
 import _ from "lodash";
-import { refFrom } from "vuse-rx";
-import { switchMap, from } from "rxjs";
-import { ChangeSetService } from "@/service/change_set";
-import { GlobalErrorService } from "@/service/global_error";
 import {
   PropertyEditorPropKind,
   PropertyEditorPropWidgetKindText,
   PropertyEditorSchema,
   PropertyEditorValues,
   PropertyEditorValue,
-  PropertyEditorValidations,
   UpdatedProperty,
   AddToArray,
   AddToMap,
   PropertyPath,
   FuncWithPrototypeContext,
+  PropertyEditorValidation,
 } from "@/api/sdf/dal/property_editor";
 import PropertyWidget from "./PropertyEditor/PropertyWidget.vue";
 
 export interface PropertyEditorContext {
   schema: PropertyEditorSchema;
   values: PropertyEditorValues;
-  validations: PropertyEditorValidations;
+  validations: PropertyEditorValidation[];
 }
 const props = defineProps<{
   editorContext: PropertyEditorContext;
@@ -68,19 +63,11 @@ const emits = defineEmits<{
   ): void;
 }>();
 
-const disabled = refFrom<boolean>(
-  ChangeSetService.currentChangeSet().pipe(
-    switchMap((value) => {
-      return from([!value]);
-    }),
-  ),
-);
-
 const { editorContext } = toRefs(props);
 
 const schema = ref<PropertyEditorSchema>(props.editorContext.schema);
 const values = ref<PropertyEditorValues>(props.editorContext.values);
-const validations = ref<PropertyEditorValidations>(
+const validations = ref<PropertyEditorValidation[]>(
   props.editorContext.validations,
 );
 watch(editorContext, (newValue) => {
@@ -90,32 +77,22 @@ watch(editorContext, (newValue) => {
 });
 
 const validationForValueId = (valueId: number) => {
-  return validations.value.validations.find(
-    (validation) => validation.valueId === valueId,
-  );
+  return validations.value.find((validation) => validation.valueId === valueId);
 };
 
 const schemaForPropId = (propId: number) => {
   const schemaForProp = schema.value.props[propId];
-  if (schemaForProp) {
-    return schemaForProp;
-  } else {
-    GlobalErrorService.set({
-      error: {
-        code: 55,
-        message: `Schema not found for prop ${propId}; bug!`,
-        statusCode: 55,
-      },
-    });
-    return {
-      id: propId,
-      name: "error",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: {
-        kind: "text",
-      } as PropertyEditorPropWidgetKindText,
-    };
-  }
+  if (schemaForProp) return schemaForProp;
+
+  // TODO: this isn't really the right way to show the error, but it's fine.
+  return {
+    id: propId,
+    name: "error",
+    kind: PropertyEditorPropKind.String,
+    widgetKind: {
+      kind: "text",
+    } as PropertyEditorPropWidgetKindText,
+  };
 };
 
 const collapsed = ref<Array<Array<string>>>([]);

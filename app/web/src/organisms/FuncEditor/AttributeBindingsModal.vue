@@ -67,9 +67,9 @@ import { inject, watch, computed, toRef, ref, Ref } from "vue";
 import { storeToRefs } from "pinia";
 import Modal from "@/ui-lib/Modal.vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
-import { AttributePrototypeView } from "@/service/func";
+import { AttributePrototypeView } from "@/store/func/types";
 import { FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore } from "@/store/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
 
 const componentsStore = useComponentsStore();

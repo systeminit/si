@@ -13,24 +13,33 @@
       </TabPanel>
 
       <TabPanel class="w-full h-full overflow-hidden">
-        <CodeViewer :code="code" class="dark:text-neutral-50 text-neutral-900">
-          <template #title>
-            <span
-              class="text-lg ml-4 whitespace-nowrap overflow-hidden text-ellipsis"
-              >{{ selectedComponent.displayName }} Code</span
-            >
-          </template>
+        <template v-if="codeReqStatus.isPending"> Loading code... </template>
+        <template v-else-if="codeReqStatus.isError">
+          <ErrorMessage :request-status="codeReqStatus" />
+        </template>
+        <template v-else-if="codeReqStatus.isSuccess && selectedComponentCode">
+          <CodeViewer
+            :code="selectedComponentCode[0]?.code || '# No code generated yet'"
+            class="dark:text-neutral-50 text-neutral-900"
+          >
+            <template #title>
+              <span
+                class="text-lg ml-4 whitespace-nowrap overflow-hidden text-ellipsis"
+                >{{ selectedComponent.displayName }} Code</span
+              >
+            </template>
 
-          <template #actionButtons>
-            <SiButtonIcon
-              tooltip-text="Re-generate code"
-              ignore-text-color
-              class="mr-4"
-              :icon="currentSyncAnimate ? 'refresh-active' : 'refresh'"
-              @click="generateCode"
-            />
-          </template>
-        </CodeViewer>
+            <template #actionButtons>
+              <SiButtonIcon
+                tooltip-text="Re-generate code"
+                ignore-text-color
+                class="mr-4"
+                :icon="isCodeSyncing ? 'refresh-active' : 'refresh'"
+                @click="triggerCodeGen"
+              />
+            </template>
+          </CodeViewer>
+        </template>
       </TabPanel>
 
       <TabPanel class="w-full">
@@ -66,83 +75,50 @@
 
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
-import { combineLatest, from, ReplaySubject, switchMap } from "rxjs";
-import { fromRef, refFrom, untilUnmounted } from "vuse-rx/src";
-import { computed, ref } from "vue";
-import { tag } from "rxjs-spy/operators";
+import { computed, onBeforeMount, ref, watch } from "vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import HealthIcon from "@/molecules/HealthIcon.vue";
-import { ComponentService } from "@/service/component";
-import { GlobalErrorService } from "@/service/global_error";
-import { CodeView } from "@/api/sdf/dal/code_view";
-import { eventCodeGenerated$ } from "@/observable/code";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { useComponentsStore } from "@/store/components.store";
+import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const componentsStore = useComponentsStore();
+
 const selectedComponent = computed(() => componentsStore.selectedComponent);
+const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 
-const selectedComponent$ = fromRef(selectedComponent);
-
-const codeGenerated$ = new ReplaySubject<true>();
-codeGenerated$.next(true); // we must fetch on setup if code gen is enabled
-eventCodeGenerated$.pipe(untilUnmounted).subscribe(async (codeGenerationId) => {
-  if (
-    selectedComponent.value?.id === codeGenerationId?.payload.data?.componentId
-  ) {
-    codeGenerated$.next(true);
-  }
-});
-
-const codeViews = refFrom<CodeView[]>(
-  combineLatest([selectedComponent$, codeGenerated$]).pipe(
-    switchMap(([_componentIdentification]) => {
-      return ComponentService.getCode({
-        componentId: selectedComponent.value.id,
-      });
-    }),
-    switchMap((response) => {
-      if (response.error) {
-        GlobalErrorService.set(response);
-        return from([[]]);
-      } else {
-        return from([response.codeViews]);
-      }
-    }),
-    tag("codeViews"),
-  ),
+const selectedComponentCode = computed(
+  () => componentsStore.selectedComponentCode,
 );
 
-const code = computed((): string => {
-  if (codeViews.value && codeViews.value.length > 0) {
-    return codeViews.value[0].code ?? "# Generating code, wait a bit...";
+// this component has a :key so a new instance will be re-mounted when the selected component changes
+// so we can use mounted hooks to trigger fetching data
+onBeforeMount(() => {
+  if (selectedComponentId.value) {
+    componentsStore.FETCH_COMPONENT_CODE(selectedComponentId.value);
   }
-  return "# No code is better than no code! :)";
 });
 
-const currentSyncAnimate = ref<boolean>(false);
+const codeReqStatus = componentsStore.getRequestStatus(
+  "FETCH_COMPONENT_CODE",
+  selectedComponentId,
+);
 
-const generateCode = () => {
-  currentSyncAnimate.value = true;
-  ComponentService.generateCode({
-    componentId: selectedComponent.value.id,
-  }).subscribe((reply) => {
-    currentSyncAnimate.value = false;
-    if (reply.error) {
-      GlobalErrorService.set(reply);
-    } else if (!reply.success) {
-      GlobalErrorService.set({
-        error: {
-          statusCode: 42,
-          code: 42,
-          message: "Code generation failed silently",
-        },
-      });
-    }
-  });
-};
+// we track this here since the update flow is a little weird
+// we may wnat to change the trigger code gen endpoint to just return the new code directly
+const isCodeSyncing = ref(false);
+watch(codeReqStatus, () => {
+  // stop spinner when no longer pending...
+  if (!codeReqStatus.value.isPending) isCodeSyncing.value = false;
+});
+
+function triggerCodeGen() {
+  if (!selectedComponentId.value) return;
+  isCodeSyncing.value = true;
+  componentsStore.TRIGGER_COMPONENT_CODE_GEN(selectedComponentId.value);
+}
 </script>

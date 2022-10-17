@@ -1,9 +1,9 @@
 import { defineStore } from "pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import jwtDecode from "jwt-decode";
+import { useRouter } from "vue-router";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 
-import { LoginResponse, SessionService } from "@/service/session";
 import { User } from "@/api/sdf/dal/user";
 import { BillingAccount } from "@/api/sdf/dal/billing_account";
 
@@ -17,6 +17,12 @@ type TokenData = {
   billing_account_id: number;
   // isImpersonating?: boolean;
 };
+
+interface LoginResponse {
+  user: User;
+  billingAccount: BillingAccount;
+  jwt: string;
+}
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -53,7 +59,6 @@ export const useAuthStore = defineStore("auth", {
     // fetches user + billing account info - called on page refresh
     async RESTORE_AUTH() {
       return new ApiRequest<Omit<LoginResponse, "jwt">>({
-        method: "get",
         url: "/session/restore_authentication",
         onSuccess: (response) => {
           this.user = response.user;
@@ -157,12 +162,14 @@ export const useAuthStore = defineStore("auth", {
       });
 
       // this endpoint re-fetches the user and billing account
-      // it is needed for the existing rxjs setup, but can likely be changed later
+      // dont think it's 100% necessary at the moment and not quite the right shape, but can fix later
       const restoreAuthReq = await this.RESTORE_AUTH();
       if (!restoreAuthReq.result.success) {
         this.localLogout();
-      } else {
-        this.setServiceLayerAuth();
+
+        // not sure this is where we want to do this, but it's fine for now
+        const router = useRouter();
+        router.push({ name: "login" });
       }
     },
     localLogout() {
@@ -173,8 +180,6 @@ export const useAuthStore = defineStore("auth", {
         billingAccountId: null,
         adminIsImpersonatingUser: false,
       });
-      // logout rxjs
-      SessionService.logout();
     },
 
     // split out so we can reuse for different login methods (password, oauth, magic link, signup, etc)
@@ -191,26 +196,11 @@ export const useAuthStore = defineStore("auth", {
       // store the token in localstorage
       storage.setItem(AUTH_LOCAL_STORAGE_KEYS.USER, loginResponse.jwt);
 
-      // pass along auth info back to rxjs land...
-      this.setServiceLayerAuth();
-
       // pass along user/company data to those stores so we dont have to load again
       // const usersStore = useUsersStore();
       // const companyStore = useCompanyStore();
       // usersStore.setCurrentUser(loginResponse.user);
       // companyStore.setCurrentCompany(loginResponse.company);
-    },
-    setServiceLayerAuth() {
-      if (!this.token || !this.user || !this.billingAccount) {
-        throw new Error(
-          "Must be logged in to pass auth back to services layer",
-        );
-      }
-      SessionService.setAuth({
-        jwt: this.token,
-        user: this.user,
-        billingAccount: this.billingAccount,
-      });
     },
   },
 });

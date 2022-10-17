@@ -144,7 +144,7 @@ module.exports = {
   overrides: [
     // overrides for files at the root - which are all for config/build
     {
-      files: ["./*"],
+      files: ["./*", "./build-src/*"],
       env: { node: true },
       rules: {
         // these files often refer to dev dependencies
