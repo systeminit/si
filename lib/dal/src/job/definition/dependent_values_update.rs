@@ -8,7 +8,7 @@ use crate::{
     job::consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    DalContext, StandardModel, Visibility,
+    DalContext, StandardModel, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -172,6 +172,8 @@ impl JobConsumer for DependentValuesUpdate {
                 None => break,
             }
         }
+
+        WsEvent::change_set_written(ctx).publish(ctx).await?;
 
         let elapsed_time = now.elapsed();
         println!(
