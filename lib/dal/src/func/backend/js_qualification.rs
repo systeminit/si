@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use veritech::{
+use veritech_client::{
     FunctionResult, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
     QualificationCheckResultSuccess,
 };

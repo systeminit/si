@@ -17,7 +17,6 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   .cargo/**
   Cargo.*
   bin/sdf/**
-  bin/pinga/**
   lib/config-file/**
   lib/dal/**
   lib/sdf/**
@@ -25,6 +24,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   lib/si-settings/**
   lib/si-test-macros/**
   lib/telemetry-rs/**
+  lib/veritech-client/**
   rust-toolchain
   rustfmt.toml"
 VERITECH_PATHS=".github/workflows/promote-veritech.yml
@@ -38,7 +38,8 @@ VERITECH_PATHS=".github/workflows/promote-veritech.yml
   lib/si-settings/**
   lib/si-test-macros/**
   lib/telemetry-rs/**
-  lib/veritech/**
+  lib/veritech-core/**
+  lib/veritech-server/**
   rust-toolchain
   rustfmt.toml"
 WEB_PATHS=".github/workflows/promote-web.yml

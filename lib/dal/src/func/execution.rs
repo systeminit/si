@@ -4,7 +4,7 @@ use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc::Receiver;
-use veritech::{FunctionResultFailure, OutputStream};
+use veritech_client::{FunctionResultFailure, OutputStream};
 
 use crate::{
     pk, DalContext, Func, FuncBackendKind, FuncBackendResponseType, HistoryEventError,

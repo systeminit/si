@@ -8,4 +8,4 @@ IMG := systeminit/veritech
 WATCH_TASK := run
 WATCH_PATHS := . \
 	../../lib/telemetry-rs \
-	../../lib/veritech
+	../../lib/veritech-server

@@ -1,19 +1,19 @@
 use serde::{Deserialize, Serialize};
 use si_data::PgError;
 use thiserror::Error;
+use veritech_client::{QualificationSubCheck, QualificationSubCheckStatus};
 
-use veritech::QualificationSubCheck;
-
-use crate::attribute::context::UNSET_ID_VALUE;
-use crate::func::{
-    binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
-    FuncMetadataView,
-};
-use crate::validation::ValidationError;
-use crate::ws_event::{WsEvent, WsPayload};
 use crate::{
-    component, Component, ComponentId, DalContext, QualificationPrototype,
-    QualificationPrototypeId, StandardModel, SystemId,
+    attribute::context::UNSET_ID_VALUE,
+    component,
+    func::{
+        binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
+        FuncMetadataView,
+    },
+    validation::ValidationError,
+    ws_event::{WsEvent, WsPayload},
+    Component, ComponentId, DalContext, QualificationPrototype, QualificationPrototypeId,
+    StandardModel, SystemId,
 };
 
 const GET_SUMMARY: &str = include_str!("queries/qualifications_summary_for_tenancy.sql");
@@ -159,7 +159,7 @@ impl QualificationView {
             let description = format!("field validation failed: {}", validation_error.message);
             sub_checks.push(QualificationSubCheck {
                 description,
-                status: veritech::QualificationSubCheckStatus::Failure,
+                status: QualificationSubCheckStatus::Failure,
             });
             success = false;
         }

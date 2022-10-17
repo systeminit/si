@@ -16,7 +16,8 @@ use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig, ResultExt};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-use veritech::{EncryptionKey, Instance, StandardConfig};
+use veritech_client::EncryptionKey;
+use veritech_server::{Instance, StandardConfig};
 
 use crate::{
     job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
@@ -234,8 +235,10 @@ impl TestContext {
         &self,
         nats_subject_prefix: impl Into<String>,
     ) -> ServicesContext {
-        let veritech =
-            veritech::Client::with_subject_prefix(self.nats_conn.clone(), nats_subject_prefix);
+        let veritech = veritech_client::Client::with_subject_prefix(
+            self.nats_conn.clone(),
+            nats_subject_prefix,
+        );
 
         ServicesContext::new(
             self.pg_pool.clone(),
@@ -317,15 +320,15 @@ pub fn nats_subject_prefix() -> String {
     Uuid::new_v4().as_simple().to_string()
 }
 
-/// Configures and builds a [`veritech::Server`] suitable for running alongside DAL object-related
+/// Configures and builds a [`veritech_server::Server`] suitable for running alongside DAL object-related
 /// tests.
 pub async fn veritech_server_for_uds_cyclone(
     nats_config: NatsConfig,
     nats_subject_prefix: String,
-) -> Result<veritech::Server> {
+) -> Result<veritech_server::Server> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let cyclone_spec = veritech::CycloneSpec::LocalUds(
-        veritech::LocalUdsInstance::spec()
+    let cyclone_spec = veritech_server::CycloneSpec::LocalUds(
+        veritech_server::LocalUdsInstance::spec()
             .try_cyclone_cmd_path(
                 dir.join("../../target/debug/cyclone")
                     .canonicalize()
@@ -353,13 +356,13 @@ pub async fn veritech_server_for_uds_cyclone(
             .build()
             .wrap_err("failed to build cyclone spec")?,
     );
-    let config = veritech::Config::builder()
+    let config = veritech_server::Config::builder()
         .nats(nats_config)
         .subject_prefix(nats_subject_prefix)
         .cyclone_spec(cyclone_spec)
         .build()
         .wrap_err("failed to build spec")?;
-    let server = veritech::Server::for_cyclone_uds(config)
+    let server = veritech_server::Server::for_cyclone_uds(config)
         .await
         .wrap_err("failed to create Veritech server")?;
 

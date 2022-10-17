@@ -15,7 +15,7 @@ use tokio::{
     sync::{broadcast, mpsc},
 };
 
-use super::{
+use crate::{
     config::CycloneSpec, Config, Publisher, PublisherError, Request, Subscriber, SubscriberError,
 };
 
@@ -194,10 +194,10 @@ impl ShutdownHandle {
     }
 }
 
-// NOTE(fnichol): the resolver_function, qualification_check, code_generation, confirmation, workflow, command are parallel and extremely
-// similar, so there is a lurking "unifying" refactor here. It felt like waiting until the third
-// time adding one of these would do the trick, and as a result the first 2 impls are here and not
-// split apart into their own modules.
+// NOTE(fnichol): the resolver_function, qualification_check, code_generation, confirmation,
+// workflow, command are parallel and extremely similar, so there is a lurking "unifying" refactor
+// here. It felt like waiting until the third time adding one of these would do the trick, and as a
+// result the first 2 impls are here and not split apart into their own modules.
 
 async fn process_resolver_function_requests_task(
     nats: NatsClient,

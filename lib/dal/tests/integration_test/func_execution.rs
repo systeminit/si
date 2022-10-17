@@ -8,7 +8,7 @@ use dal::{
     func::backend::string::FuncBackendStringArgs,
     test_harness::{create_func, create_func_binding},
 };
-use veritech::OutputStream;
+use veritech_client::OutputStream;
 
 #[test]
 async fn new(ctx: &DalContext) {

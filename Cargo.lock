@@ -770,7 +770,8 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
- "veritech",
+ "veritech-client",
+ "veritech-server",
  "which",
 ]
 
@@ -2381,7 +2382,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "uuid",
- "veritech",
+ "veritech-client",
 ]
 
 [[package]]
@@ -2950,7 +2951,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
- "veritech",
+ "veritech-client",
 ]
 
 [[package]]
@@ -3978,32 +3979,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
-name = "veritech"
-version = "0.1.0"
-dependencies = [
- "base64",
- "cyclone-core",
- "deadpool-cyclone",
- "derive_builder",
- "futures",
- "futures-lite",
- "indoc",
- "pin-project-lite",
- "serde",
- "serde_json",
- "si-data",
- "si-settings",
- "telemetry",
- "test-log",
- "thiserror",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "veritech-cli"
 version = "0.1.0"
 dependencies = [
@@ -4011,7 +3986,54 @@ dependencies = [
  "color-eyre",
  "telemetry",
  "tokio",
- "veritech",
+ "veritech-server",
+]
+
+[[package]]
+name = "veritech-client"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "cyclone-core",
+ "futures",
+ "futures-lite",
+ "indoc",
+ "pin-project-lite",
+ "serde",
+ "serde_json",
+ "si-data",
+ "telemetry",
+ "test-log",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "veritech-core",
+ "veritech-server",
+]
+
+[[package]]
+name = "veritech-core"
+version = "0.1.0"
+
+[[package]]
+name = "veritech-server"
+version = "0.1.0"
+dependencies = [
+ "deadpool-cyclone",
+ "derive_builder",
+ "futures",
+ "futures-lite",
+ "pin-project-lite",
+ "serde",
+ "serde_json",
+ "si-data",
+ "si-settings",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "veritech-core",
 ]
 
 [[package]]

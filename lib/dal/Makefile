@@ -6,4 +6,4 @@ WATCH_PATHS := . \
 	../../lib/si-data \
 	../../lib/si-test-macros \
 	../../lib/telemetry-rs \
-	../../lib/veritech
+	../../lib/veritech-client

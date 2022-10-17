@@ -1,0 +1,21 @@
+[package]
+name = "veritech-server"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.56"
+publish = false
+
+[dependencies]
+deadpool-cyclone = { path = "../../lib/deadpool-cyclone" }
+derive_builder = { version = "0.11.2" }
+futures = { version = "0.3.17"}
+futures-lite = { version = "1.12.0" }
+pin-project-lite = { version = "0.2.7" }
+serde = "1.0.123"
+serde_json = { version = "1.0.64", features = ["preserve_order"] }
+si-data = { path = "../../lib/si-data", features = ["nats"] }
+si-settings = { path = "../../lib/si-settings" }
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = { version = "1.0" }
+tokio = { version = "1.2.0", features = ["full"] }
+veritech-core = { path = "../../lib/veritech-core" }

@@ -21,6 +21,7 @@ use tokio::{
     sync::{broadcast, mpsc, oneshot},
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use veritech_client::{Client as VeritechClient, EncryptionKey, EncryptionKeyError};
 
 use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
 
@@ -51,7 +52,7 @@ pub enum ServerError {
     #[error("cyclone public key already set")]
     CyclonePublicKeyAlreadySet,
     #[error("error when loading encryption key: {0}")]
-    EncryptionKey(#[from] veritech::EncryptionKeyError),
+    EncryptionKey(#[from] EncryptionKeyError),
     #[error(transparent)]
     DalInitialization(#[from] dal::InitializationError),
 }
@@ -73,8 +74,8 @@ impl Server<(), ()> {
         pg_pool: PgPool,
         nats: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        veritech: veritech::Client,
-        encryption_key: veritech::EncryptionKey,
+        veritech: VeritechClient,
+        encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
@@ -117,8 +118,8 @@ impl Server<(), ()> {
         pg_pool: PgPool,
         nats: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        veritech: veritech::Client,
-        encryption_key: veritech::EncryptionKey,
+        veritech: VeritechClient,
+        encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
@@ -180,8 +181,8 @@ impl Server<(), ()> {
     }
 
     #[instrument(name = "sdf.init.load_encryption_key", skip_all)]
-    pub async fn load_encryption_key(path: impl AsRef<Path>) -> Result<veritech::EncryptionKey> {
-        Ok(veritech::EncryptionKey::load(path).await?)
+    pub async fn load_encryption_key(path: impl AsRef<Path>) -> Result<EncryptionKey> {
+        Ok(EncryptionKey::load(path).await?)
     }
 
     #[instrument(name = "sdf.init.migrate_database", skip_all)]
@@ -190,8 +191,8 @@ impl Server<(), ()> {
         nats: &NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         jwt_secret_key: &JwtSecretKey,
-        veritech: veritech::Client,
-        encryption_key: &veritech::EncryptionKey,
+        veritech: VeritechClient,
+        encryption_key: &EncryptionKey,
     ) -> Result<()> {
         dal::migrate_all(pg, nats, job_processor, veritech, encryption_key).await?;
 
@@ -213,8 +214,8 @@ impl Server<(), ()> {
         pg: PgPool,
         nats: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-        veritech: veritech::Client,
-        encryption_key: veritech::EncryptionKey,
+        veritech: VeritechClient,
+        encryption_key: EncryptionKey,
         shutdown_broadcast_rx: broadcast::Receiver<()>,
     ) {
         let services_context =
@@ -236,8 +237,8 @@ impl Server<(), ()> {
         Ok(client)
     }
 
-    pub fn create_veritech_client(nats: NatsClient) -> veritech::Client {
-        veritech::Client::new(nats)
+    pub fn create_veritech_client(nats: NatsClient) -> VeritechClient {
+        VeritechClient::new(nats)
     }
 }
 
@@ -275,8 +276,8 @@ pub fn build_service(
     pg_pool: PgPool,
     nats: NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    veritech: veritech::Client,
-    encryption_key: veritech::EncryptionKey,
+    veritech: VeritechClient,
+    encryption_key: EncryptionKey,
     jwt_secret_key: JwtSecretKey,
     signup_secret: SensitiveString,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {

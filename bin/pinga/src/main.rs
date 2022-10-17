@@ -127,13 +127,13 @@ async fn run(
     let config = config::Config::try_from(args)?;
 
     let encryption_key =
-        veritech::EncryptionKey::load(config.cyclone_encryption_key_path()).await?;
+        veritech_client::EncryptionKey::load(config.cyclone_encryption_key_path()).await?;
 
     let nats = NatsClient::new(config.nats()).await?;
 
     let pg_pool = PgPool::new(config.pg_pool()).await?;
 
-    let veritech = veritech::Client::new(nats.clone());
+    let veritech = veritech_client::Client::new(nats.clone());
 
     let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
 
@@ -184,8 +184,8 @@ async fn start_job_executor(
     client: Client,
     pg: PgPool,
     nats: NatsClient,
-    veritech: veritech::Client,
-    encryption_key: veritech::EncryptionKey,
+    veritech: veritech_client::Client,
+    encryption_key: veritech_client::EncryptionKey,
     mut shutdown_request_rx: watch::Receiver<()>,
     alive_marker: mpsc::Sender<()>,
 ) {

@@ -29,7 +29,7 @@ tokio = { version = "1.12.0", features = ["full"] }
 tokio-tungstenite = "0.17.1"
 tower = { version = "0.4.10" }
 tower-http = { version = "0.3", features = ["trace"] }
-veritech = { path = "../../lib/veritech", features = ["client", "server"] }
+veritech-client = { path = "../../lib/veritech-client" }
 base64 = "0.13.0"
 faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }
 rand = "0.8"

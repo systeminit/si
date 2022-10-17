@@ -17,7 +17,8 @@ on:
       - lib/si-data/**
       - lib/si-settings/**
       - lib/telemetry-rs/**
-      - lib/veritech/**
+      - lib/veritech-core/**
+      - lib/veritech-server/**
       - rust-toolchain
       - rustfmt.toml
 

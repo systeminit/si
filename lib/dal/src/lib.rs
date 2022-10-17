@@ -188,7 +188,7 @@ pub use validation::prototype::{
 pub use validation::resolver::{
     ValidationResolver, ValidationResolverError, ValidationResolverId, ValidationStatus,
 };
-use veritech::EncryptionKey;
+use veritech_client::EncryptionKey;
 pub use visibility::{Visibility, VisibilityError};
 pub use workflow::{
     WorkflowError, WorkflowKind, WorkflowResult, WorkflowStep, WorkflowTree, WorkflowTreeStep,
@@ -296,7 +296,7 @@ pub async fn migrate_all(
     pg: &PgPool,
     nats: &NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    veritech: veritech::Client,
+    veritech: veritech_client::Client,
     encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {
     migrate(pg).await?;
@@ -314,7 +314,7 @@ pub async fn migrate_builtins(
     pg: &PgPool,
     nats: &NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    veritech: veritech::Client,
+    veritech: veritech_client::Client,
     encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(

@@ -1052,7 +1052,7 @@ impl Component {
             let json: serde_json::Value = row.try_get("object")?;
             let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
             if let Some(value) = func_binding_return_value.value() {
-                let code_generated = veritech::CodeGenerated::deserialize(value)?;
+                let code_generated = veritech_client::CodeGenerated::deserialize(value)?;
 
                 let lang = CodeLanguage::deserialize(serde_json::Value::String(
                     code_generated.format.clone(),
@@ -1208,7 +1208,7 @@ impl Component {
         &self,
         ctx: &DalContext,
         system_id: SystemId,
-    ) -> ComponentResult<veritech::QualificationCheckComponent> {
+    ) -> ComponentResult<veritech_client::QualificationCheckComponent> {
         let parent_ids = Edge::list_parents_for_component(ctx, *self.id()).await?;
 
         let mut parents = Vec::new();
@@ -1217,7 +1217,7 @@ impl Component {
             parents.push(view.into());
         }
 
-        let qualification_view = veritech::QualificationCheckComponent {
+        let qualification_view = veritech_client::QualificationCheckComponent {
             data: Self::view(ctx, self.id, system_id).await?.into(),
             codes: Self::list_code_generated_by_component_id(ctx, *self.id(), system_id)
                 .await?
@@ -1225,7 +1225,7 @@ impl Component {
                 .flat_map(|view| {
                     let format = view.language.to_string();
                     view.code
-                        .map(|code| veritech::CodeGenerated { format, code })
+                        .map(|code| veritech_client::CodeGenerated { format, code })
                 })
                 .collect(),
             parents,

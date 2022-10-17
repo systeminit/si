@@ -11,6 +11,7 @@ use dal::{
 };
 use hyper::StatusCode;
 use si_data::{nats, pg};
+use veritech_client::Client as VeritechClient;
 
 pub struct AccessBuilder(pub context::AccessBuilder);
 
@@ -168,7 +169,7 @@ impl NatsTxn {
     }
 }
 
-pub struct Veritech(pub veritech::Client);
+pub struct Veritech(pub VeritechClient);
 
 #[async_trait]
 impl<P> FromRequest<P> for Veritech
@@ -178,14 +179,14 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let Extension(veritech) = Extension::<veritech::Client>::from_request(req)
+        let Extension(veritech) = Extension::<VeritechClient>::from_request(req)
             .await
             .map_err(internal_error)?;
         Ok(Self(veritech))
     }
 }
 
-pub struct EncryptionKey(pub Arc<veritech::EncryptionKey>);
+pub struct EncryptionKey(pub Arc<veritech_client::EncryptionKey>);
 
 #[async_trait]
 impl<P> FromRequest<P> for EncryptionKey
@@ -196,7 +197,7 @@ where
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Extension(encryption_key) =
-            Extension::<Arc<veritech::EncryptionKey>>::from_request(req)
+            Extension::<Arc<veritech_client::EncryptionKey>>::from_request(req)
                 .await
                 .map_err(internal_error)?;
         Ok(Self(encryption_key))
