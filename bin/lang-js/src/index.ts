@@ -52,7 +52,7 @@ async function main() {
 
     switch (kind) {
       case FunctionKind.CodeGeneration:
-        executeCodeGeneration(request);
+        await executeCodeGeneration(request);
         break;
       case FunctionKind.QualificationCheck:
         await executeQualificationCheck(request);
