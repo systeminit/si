@@ -1,5 +1,5 @@
 <template>
-  <div v-show="isShown" class="flex content-center">
+  <div v-show="isShown" class="flex content-center w-full">
     <div class="flex grow">
       <div class="w-full">
         <SiSelectBox
