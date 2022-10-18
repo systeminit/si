@@ -1,6 +1,6 @@
 <template>
   <StatusBarTab :selected="selected">
-    <template #icon><Icon name="clock" size="lg" /></template>
+    <template #icon><Icon name="clock" /></template>
     <template #name>Fix History</template>
     <template #summary></template>
   </StatusBarTab>

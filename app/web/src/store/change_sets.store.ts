@@ -39,7 +39,7 @@ export function useChangeSetsStore() {
 
         selectedChangeSetWritten: (state) =>
           state.selectedChangeSetId
-            ? state.changeSetsById[state.selectedChangeSetId]
+            ? state.changeSetsWrittenAtById[state.selectedChangeSetId]
             : null,
 
         // expose here so other stores can get it without needing to call useWorkspaceStore directly

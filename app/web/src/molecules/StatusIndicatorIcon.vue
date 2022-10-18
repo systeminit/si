@@ -1,11 +1,13 @@
 <template>
-  <Icon :name="iconName" :class="colorClass" size="full" />
+  <Icon :name="iconName" :tone="iconTone" :size="size" />
 </template>
 
 <script lang="ts" setup>
 import { computed, PropType } from "vue";
-import Icon, { IconNames } from "@/ui-lib/Icon.vue";
+import Icon, { IconNames, IconSizes } from "@/ui-lib/Icon.vue";
+import { Tones } from "@/ui-lib/helpers/tones";
 
+// TODO: remove this after refactoring StatusMessageBox
 export type Status =
   | "success"
   | "failure"
@@ -14,29 +16,49 @@ export type Status =
   | "modified"
   | "deleted";
 
-const props = defineProps({
-  status: { type: String as PropType<Status>, required: true },
-});
-
-const ICON_NAME_MAP: Record<Status, IconNames> = {
-  success: "check-circle",
-  failure: "x-circle",
-  running: "loader",
-  added: "plus-circle",
-  modified: "edit",
-  deleted: "minus-circle",
+const CONFIG = {
+  change: {
+    added: { iconName: "plus-circle", tone: "success" },
+    deleted: { iconName: "minus-circle", tone: "destructive" },
+    modified: { iconName: "tilde-circle", tone: "warning" },
+  },
+  confirmation: {
+    success: { iconName: "check-circle", tone: "success" },
+    failure: { iconName: "x-circle", tone: "destructive" },
+    running: { iconName: "loader", tone: "action" },
+  },
+  qualification: {
+    success: { iconName: "check-square", tone: "success" },
+    failure: { iconName: "x-square", tone: "destructive" },
+    running: { iconName: "loader", tone: "action" },
+  },
 };
 
-const iconName = computed(() => ICON_NAME_MAP[props.status]);
-
-const colorClass = computed(() => {
-  return {
-    success: "text-success-500",
-    failure: "text-destructive-500",
-    running: "text-info-500",
-    added: "text-success-500",
-    modified: "text-warning-500",
-    deleted: "text-destructive-500",
-  }[props.status];
+// NOTE - would ideally pull in the real types here but generics are not yet supported
+// could also think about breaking this into multiple components, but it's nice to keep things consistent
+const props = defineProps({
+  type: { type: String as PropType<keyof typeof CONFIG>, required: true },
+  status: { type: String, required: true },
+  size: { type: String as PropType<IconSizes> },
 });
+
+// const CONFIG: Record<Status, IconNames> = {
+//   success: "check-circle",
+//   failure: "x-circle",
+//   running: "loader",
+//   added: "plus-circle",
+//   modified: "edit",
+//   deleted: "minus-circle",
+// };
+
+const iconName = computed<IconNames>(
+  () =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (CONFIG as any)[props.type]?.[props.status]?.iconName || "question-circle",
+);
+const iconTone = computed<Tones>(
+  () =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (CONFIG as any)[props.type]?.[props.status]?.tone || "warning",
+);
 </script>

@@ -31,6 +31,7 @@ import {
   useQualificationsStore,
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
+import { ConfirmationResult, useResourcesStore } from "./resources.store";
 
 export type ComponentId = number;
 type Component = {
@@ -63,8 +64,17 @@ const qualificationStatusToIconMap: Record<
   QualificationStatus,
   DiagramStatusIcon
 > = {
-  success: { icon: "check", tone: "success" },
-  failure: { icon: "alert", tone: "error" },
+  success: { icon: "check-square", tone: "success" },
+  failure: { icon: "error-square", tone: "error" },
+  running: { icon: "loading", tone: "info" },
+};
+
+const confirmationStatusToIconMap: Record<
+  ConfirmationResult,
+  DiagramStatusIcon
+> = {
+  success: { icon: "check-circle", tone: "success" },
+  failure: { icon: "error-circle", tone: "error" },
   running: { icon: "loading", tone: "info" },
 };
 
@@ -95,7 +105,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         // components within this changeset
         // componentsById: {} as Record<ComponentId, Component>,
         // connectionsById: {} as Record<ConnectionId, Connection>,
-        // added / deleted / modified
         componentIdentificationsById: {} as Record<
           ComponentId,
           ComponentIdentification
@@ -151,6 +160,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         diagramNodes(): DiagramNodeDef[] {
+          const qualificationsStore = useQualificationsStore();
+          const resourcesStore = useResourcesStore();
+
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
           return _.map(this.rawDiagramNodes, (node) => {
@@ -165,11 +177,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               typeIcon = node.category;
             }
 
-            const qualificationsStore = useQualificationsStore();
             const qualificationStatus =
               qualificationsStore.qualificationStatusByComponentId[
                 parseInt(node.id)
               ];
+
+            const confirmationStatus =
+              resourcesStore.confirmationResultByComponentId[parseInt(node.id)];
 
             const activityCounter = _.get(
               this.activityCounterByComponentId,
@@ -182,6 +196,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               isLoading: activityCounter > 0,
               typeIcon,
               statusIcons: _.compact([
+                confirmationStatusToIconMap[confirmationStatus],
                 qualificationStatusToIconMap[qualificationStatus],
               ]),
             };
@@ -404,7 +419,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         async FETCH_COMPONENT_DIFF(componentId: ComponentId) {
           return new ApiRequest<{ componentDiff: ComponentDiff }>({
-            url: "func/get_diff",
+            url: "component/get_diff",
             keyRequestStatusBy: componentId,
             params: {
               componentId,

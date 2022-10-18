@@ -2,11 +2,19 @@
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
     <StatusBarTabPanelComponentList
+      status-type="change"
       :component-list="componentsList"
       :selected-filter="selectedFilter"
       :filter-options="filterOptions"
       @filter="changeSelectedFilter"
-    />
+    >
+      <template #icon="{ component }">
+        <StatusIndicatorIcon
+          type="change"
+          :status="changeStatusByComponentId[component.id]"
+        />
+      </template>
+    </StatusBarTabPanelComponentList>
 
     <!-- Selected component view -->
 
@@ -79,6 +87,7 @@ import StatusBarTabPanelComponentList, {
 } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 import { useComponentsStore } from "@/store/components.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
+import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 
 const defaultFilterOption = {
   value: "all",
@@ -107,6 +116,9 @@ const changeSelectedFilter = (newFilter: FilterOption) => {
 
 const componentsStore = useComponentsStore();
 
+const changeStatusByComponentId = computed(
+  () => componentsStore.componentChangeStatusById,
+);
 // first filter down all components to only those changed
 const changedComponents = computed(() =>
   _.filter(componentsStore.allComponents, (c) => !!c.changeStatus),

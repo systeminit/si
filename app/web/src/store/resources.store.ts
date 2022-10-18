@@ -20,11 +20,15 @@ export type MockResource = {
   confirmations: Confirmation[];
 };
 
+// TODO: need to review this... clarify "resource health" vs "resource status"
+// and should probably align closer to "qualification status"
+export type ConfirmationResult = "success" | "failure" | "running";
 export enum ResourceHealth {
   Ok = "ok",
   Warning = "warning",
   Error = "error",
   Unknown = "unknown",
+  Running = "running",
 }
 
 export enum ResourceStatus {
@@ -37,6 +41,7 @@ export enum ResourceStatus {
 
 export interface Confirmation {
   title: string;
+  result: ConfirmationResult;
   health: ResourceHealth;
   link?: string;
   description?: string;
@@ -59,6 +64,8 @@ export interface ResourceSummaryForComponent {
   resource?: MockResource;
 }
 
+type ConfirmationStats = Record<ConfirmationResult | "total", number>;
+
 export const useResourcesStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspaceId;
@@ -80,6 +87,10 @@ export const useResourcesStore = () => {
               // no fix (in our mock setup) means the component never needs to be created
               const resourceExists = !fix || fix?.status === "success";
 
+              const confirmationResult: ConfirmationResult = resourceExists
+                ? "success"
+                : "failure";
+
               const health = resourceExists
                 ? ResourceHealth.Ok
                 : ResourceHealth.Error;
@@ -97,6 +108,7 @@ export const useResourcesStore = () => {
                 confirmations: [
                   {
                     title: "Does The Resource Exist?",
+                    result: confirmationResult,
                     health,
                     description: resourceExists
                       ? "Checks if the resource actually exists. This resource exists!"
@@ -111,6 +123,73 @@ export const useResourcesStore = () => {
         },
         allResources(): MockResource[] {
           return _.values(this.resourcesByComponentId);
+        },
+        selectedResource(): MockResource | null {
+          const componentsStore = useComponentsStore();
+          return componentsStore.selectedComponentId
+            ? this.resourcesByComponentId[componentsStore.selectedComponentId]
+            : null;
+        },
+
+        // confirmations living here for now... might move into their own store later?
+        confirmationsByComponentId(): Record<ComponentId, Confirmation[]> {
+          return _.mapValues(
+            this.resourcesByComponentId,
+            (c) => c.confirmations,
+          );
+        },
+        confirmationStatsByComponentId(): Record<
+          ComponentId,
+          ConfirmationStats
+        > {
+          return _.mapValues(
+            this.confirmationsByComponentId,
+            (confirmations, _componentId) => {
+              const grouped = _.groupBy(confirmations, (c) => {
+                if (c.health === ResourceHealth.Ok) return "success";
+                if (c.health === ResourceHealth.Error) return "failure";
+                // TODO: fix this when we align with qualificaitons
+                if (c.health === ResourceHealth.Warning) return "failure";
+                return "running";
+              });
+              return {
+                failure: grouped.failure?.length || 0,
+                success: grouped.success?.length || 0,
+                running: grouped.running?.length || 0,
+                total: confirmations.length || 0,
+              };
+            },
+          );
+        },
+
+        // single status per component
+        confirmationResultByComponentId(): Record<
+          ComponentId,
+          ConfirmationResult
+        > {
+          return _.mapValues(this.confirmationStatsByComponentId, (cs) => {
+            if (cs.running) return "running";
+            if (cs.failure > 0) return "failure";
+            return "success";
+          });
+        },
+
+        // stats/totals by component
+        componentsConfirmationStats(): ConfirmationStats {
+          const grouped = _.groupBy(this.confirmationResultByComponentId);
+          return {
+            failure: grouped.failure?.length || 0,
+            success: grouped.success?.length || 0,
+            running: grouped.running?.length || 0,
+            total: _.keys(this.confirmationResultByComponentId).length,
+          };
+        },
+
+        // roll up to single confirmations result for the workspace
+        workspaceConfirmationResult(): ConfirmationResult {
+          if (this.componentsConfirmationStats.running > 0) return "running";
+          if (this.componentsConfirmationStats.failure > 0) return "failure";
+          return "success";
         },
       },
       actions: {

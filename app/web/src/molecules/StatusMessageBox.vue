@@ -2,6 +2,7 @@
   <div :class="divClasses" class="flex p-2 border rounded items-start">
     <StatusIndicatorIcon
       v-if="status"
+      type="qualification"
       :status="status"
       class="w-8 mr-2 shrink-0"
     />

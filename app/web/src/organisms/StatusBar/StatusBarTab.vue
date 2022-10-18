@@ -1,9 +1,9 @@
 <template>
   <div
     :class="tabClasses"
-    class="flex w-72 border-black border-l h-full place-content-center pl-2 pr-2"
+    class="flex w-80 border-black border-l h-full place-content-center pl-2 pr-2"
   >
-    <div class="flex w-6 items-center">
+    <div class="flex items-center">
       <slot name="icon" />
     </div>
     <div class="flex text-sm place-content-center items-center pl-2">

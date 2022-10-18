@@ -1,12 +1,12 @@
 <template>
   <StatusBarTab :selected="selected">
     <template #icon>
-      <StatusIndicatorIcon type="qualification" :status="overallStatus" />
+      <StatusIndicatorIcon type="confirmation" :status="workspaceStatus" />
     </template>
     <template #name>
-      <template v-if="overallStatus === 'running'"> Running... </template>
-      <template v-else-if="componentStats.total > 0"> Qualifications </template>
-      <template v-else>No Qualifications Run...</template>
+      <template v-if="workspaceStatus === 'running'">Running...</template>
+      <template v-else-if="componentStats.total > 0">Confirmations</template>
+      <template v-else>No Confirmations Run...</template>
     </template>
     <template v-if="componentStats.total" #summary>
       <StatusBarTabPill v-if="componentStats.total" class="border-white">
@@ -17,8 +17,8 @@
         v-if="componentStats.success"
         class="bg-success-100 text-success-600 font-bold"
       >
-        <StatusIndicatorIcon type="qualification" status="success" size="xs" />
-        <div>
+        <StatusIndicatorIcon type="confirmation" status="success" size="xs" />
+        <div class="pl-px">
           {{ componentStats.success }}
         </div>
       </StatusBarTabPill>
@@ -27,8 +27,8 @@
         v-if="componentStats.failure"
         class="bg-destructive-100 text-destructive-600 font-bold"
       >
-        <StatusIndicatorIcon type="qualification" status="failure" size="xs" />
-        <div>
+        <StatusIndicatorIcon type="confirmation" status="failure" size="xs" />
+        <div class="pl-px">
           {{ componentStats.failure }}
         </div>
       </StatusBarTabPill>
@@ -41,11 +41,16 @@ import { computed } from "vue";
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
-import { useQualificationsStore } from "@/store/qualifications.store";
+import { useResourcesStore } from "@/store/resources.store";
 
 defineProps<{ selected: boolean }>();
 
-const qualificationStore = useQualificationsStore();
-const componentStats = computed(() => qualificationStore.componentStats);
-const overallStatus = computed(() => qualificationStore.overallStatus);
+const resourcesStore = useResourcesStore();
+const componentStats = computed(
+  () => resourcesStore.componentsConfirmationStats,
+);
+
+const workspaceStatus = computed(
+  () => resourcesStore.workspaceConfirmationResult,
+);
 </script>

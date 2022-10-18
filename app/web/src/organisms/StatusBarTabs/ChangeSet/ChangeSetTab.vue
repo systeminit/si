@@ -12,19 +12,22 @@
         v-if="stats.added > 0"
         class="bg-success-100 text-success-700 font-bold"
       >
-        + {{ stats.added }}
+        <StatusIndicatorIcon type="change" status="added" size="xs" />
+        <div>{{ stats.added }}</div>
       </StatusBarTabPill>
       <StatusBarTabPill
         v-if="stats.modified > 0"
         class="bg-warning-100 text-warning-700 font-bold"
       >
-        ~ {{ stats.modified }}
+        <StatusIndicatorIcon type="change" status="modified" size="xs" />
+        <div>{{ stats.modified }}</div>
       </StatusBarTabPill>
       <StatusBarTabPill
         v-if="stats.deleted > 0"
         class="bg-destructive-100 text-destructive-700 font-bold"
       >
-        - {{ stats.deleted }}
+        <StatusIndicatorIcon type="change" status="deleted" size="xs" />
+        <div>{{ stats.deleted }}</div>
       </StatusBarTabPill>
     </template>
   </StatusBarTab>
@@ -36,6 +39,7 @@ import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
 import Icon from "@/ui-lib/Icon.vue";
 import { useComponentsStore } from "@/store/components.store";
+import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 
 const props = defineProps<{
   selected: boolean;

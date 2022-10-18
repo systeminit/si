@@ -17,6 +17,7 @@
       clsx(
         'block pointer-events-none transition-transform duration-300',
         sizeClasses,
+        toneColorClass,
       )
     "
   >
@@ -38,10 +39,12 @@
 // browse available icons at https://icones.js.org/ (or https://iconify.design/icon-sets/)
 
 import Loader from "~icons/gg/spinner";
-import Check from "~icons/material-symbols/check";
-import CheckCircle from "~icons/material-symbols/check-circle";
-import AlertTriangle from "~icons/material-symbols/warning";
-import XCircle from "~icons/material-symbols/cancel";
+import Check from "~icons/mdi/check";
+import CheckCircle from "~icons/mdi/check-circle";
+import CheckSquare from "~icons/mdi/check-box";
+import AlertTriangle from "~icons/mdi/warning";
+import XCircle from "~icons/mdi/close-circle";
+import XSquare from "~icons/mdi/close-box";
 import QuestionMarkCircle from "~icons/heroicons-solid/question-mark-circle";
 import Play from "~icons/ion/play-sharp";
 
@@ -79,7 +82,6 @@ import Search from "~icons/heroicons-solid/search";
 import Selector from "~icons/heroicons-solid/selector";
 import Lock from "~icons/heroicons-solid/lock-closed";
 import LockOpen from "~icons/heroicons-solid/lock-open";
-
 import Diagram from "~icons/raphael/diagram";
 
 // octicons (from github) available as no suffix, -16, -24
@@ -87,9 +89,10 @@ import GitBranch from "~icons/octicon/git-branch-24";
 import GitCommit from "~icons/octicon/git-commit-24";
 import GitMerge from "~icons/octicon/git-merge-24";
 import Tools from "~icons/octicon/tools";
+import { getToneTextColorClass, Tones } from "./helpers/tones";
 
 // custom icons
-// import Icon from "@/assets/images/custom-icons/icon.svg?component";
+import TildeCircle from "@/assets/images/custom-icons/tilde-circle.svg?component";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -100,6 +103,7 @@ const ICON_NAME_MAP = Object.freeze({
   check: Check,
   "check-badge": CheckBadge,
   "check-circle": CheckCircle,
+  "check-square": CheckSquare,
   "clipboard-copy": ClipboardCopy,
   clock: Clock,
   component: Cube,
@@ -134,10 +138,12 @@ const ICON_NAME_MAP = Object.freeze({
   selector: Selector,
   show: Eye,
   sun: Sun,
+  "tilde-circle": TildeCircle,
   tools: Tools,
   trash: Trash,
   x: X,
   "x-circle": XCircle,
+  "x-square": XSquare,
 });
 /* eslint-disable sort-keys */
 
@@ -145,10 +151,7 @@ const ICON_NAME_MAP = Object.freeze({
   additional aliases which makes it easy to be more consistent with icon usage
   while still allowing us to change icons for specific cases later
 */
-const ICON_NAME_ALIASES = {
-  "qualification-passed": "check-circle",
-  "qualification-failed": "x-circle",
-};
+const ICON_NAME_ALIASES = {};
 
 // these icons are intended to be used with a specific direction, ex: "arrow--down"
 // make sure the base icon is pointing up!
@@ -183,6 +186,9 @@ const props = defineProps({
     type: String as PropType<IconSizes>,
     default: "md",
   },
+  tone: {
+    type: String as PropType<Tones>,
+  },
 });
 
 const iconComponent = computed(() => {
@@ -198,15 +204,16 @@ const iconComponent = computed(() => {
       nameWithoutModifiers as RegularIconNames
     ] as FunctionalComponent;
   }
-  if (ICON_NAME_ALIASES[nameWithoutModifiers as IconNameAliases]) {
-    return ICON_NAME_MAP[
-      ICON_NAME_ALIASES[
-        nameWithoutModifiers as IconNameAliases
-      ] as RegularIconNames
-    ] as FunctionalComponent;
-  }
+  // if (ICON_NAME_ALIASES[nameWithoutModifiers as IconNameAliases]) {
+  //   const alias = ICON_NAME_ALIASES[nameWithoutModifiers as IconNameAliases];
+  //   return ICON_NAME_MAP[alias.name as RegularIconNames] as FunctionalComponent;
+  // }
 
   return ICON_NAME_MAP["help-circle"] as FunctionalComponent;
+});
+
+const toneColorClass = computed(() => {
+  return props.tone ? getToneTextColorClass(props.tone) : undefined;
 });
 
 const svgRotateClass = computed(() => {

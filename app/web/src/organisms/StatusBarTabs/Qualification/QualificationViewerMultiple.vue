@@ -5,16 +5,13 @@
       <!-- QualificationViews while using flex-basis to keep stuff responsive. We should revisit this and tune -->
       <!-- the breakpoints after the content and design of the View is solidified -->
 
-      <div v-if="qualificationsReqStatus.isPending">Loading...</div>
-      <template v-else>
-        <div
-          v-for="(qualification, index) in componentQualifications"
-          :key="index"
-          class="basis-full lg:basis-1/2 xl:basis-1/3 overflow-hidden pb-4 px-2"
-        >
-          <QualificationViewerSingle :qualification="qualification" />
-        </div>
-      </template>
+      <div
+        v-for="(qualification, index) in componentQualifications"
+        :key="index"
+        class="basis-full lg:basis-1/2 xl:basis-1/3 overflow-hidden pb-4 px-2"
+      >
+        <QualificationViewerSingle :qualification="qualification" />
+      </div>
     </div>
   </div>
 </template>
@@ -30,15 +27,14 @@ const props = defineProps<{
 }>();
 
 const changeSetsStore = useChangeSetsStore();
-
 const qualificationsStore = useQualificationsStore();
-const qualificationsReqStatus = qualificationsStore.getRequestStatus(
-  "FETCH_COMPONENT_QUALIFICATIONS",
-  computed(() => props.componentId),
-);
 
 watch(
-  [() => props.componentId, changeSetsStore.selectedChangeSetWritten],
+  [
+    () => props.componentId,
+    () => changeSetsStore.selectedChangeSetWritten,
+    () => qualificationsStore.checkedQualificationsAt,
+  ],
   () => {
     qualificationsStore.FETCH_COMPONENT_QUALIFICATIONS(props.componentId);
   },
