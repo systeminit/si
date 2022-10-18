@@ -11,7 +11,7 @@
       read-only
     />
   </div>
-  <SiPanel remember-size-key="workflow-right" side="right">
+  <SiPanel remember-size-key="workflow-right" side="right" :min-size="280">
     <FixHistory />
   </SiPanel>
 </template>

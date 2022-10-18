@@ -31,7 +31,7 @@
           :hover-effect="false"
           :navbar="false"
           :padding-x="2"
-          dropdown-classes="right-0 overflow-hidden max-w-xs text-left text-ellipsis"
+          dropdown-classes="right-0 overflow-x-hidden max-w-xs text-left text-ellipsis max-h-96 overflow-y-auto"
           dropdown-item-classes="text-left text-ellipsis"
         >
           <Icon name="dots-vertical" />
