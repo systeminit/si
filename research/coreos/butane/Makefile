@@ -8,6 +8,14 @@ json-stdin:
 		--strict \
 		| bat -l json
 
+base64:
+	@cd $(MAKEPATH); cat $(MAKEPATH)/whiskers.yaml \
+		| yq -o json \
+		| butane \
+		--pretty \
+		--strict \
+		| base64
+
 yaml-file:
 	@bat $(MAKEPATH)/whiskers.yaml
 	@cd $(MAKEPATH); butane \

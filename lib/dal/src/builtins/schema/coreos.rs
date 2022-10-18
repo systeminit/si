@@ -150,6 +150,39 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Sockets
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
+        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+
+    let (_ec2_user_data_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+        ctx,
+        *schema.id(),
+        *schema_variant.id(),
+        "User Data",
+        None,
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        SocketArity::Many,
+        DiagramKind::Configuration,
+    )
+    .await?;
+    output_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    let (docker_image_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "Container Image",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
     let system_socket = Socket::new(
         ctx,
         "system",
@@ -198,22 +231,6 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         schema_variant_id: Some(*schema_variant.id()),
         ..AttributeReadContext::default()
     };
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
-    let (docker_image_explicit_internal_provider, mut input_socket) =
-        InternalProvider::new_explicit_with_socket(
-            ctx,
-            *schema.id(),
-            *schema_variant.id(),
-            "Container Image",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
-            SocketArity::Many,
-            DiagramKind::Configuration,
-        )
-        .await?;
-    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     // Enable connections from the "Container Image" explicit internal provider to the
     // "/root/domain/systemd/units/" field. We need to use the appropriate function with and name
@@ -255,22 +272,6 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         *docker_image_explicit_internal_provider.id(),
     )
     .await?;
-
-    // TODO(nick): add ability to export ignition as ec2 user data.
-    let (_ec2_user_data_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
-        ctx,
-        *schema.id(),
-        *schema_variant.id(),
-        "User Data",
-        None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        SocketArity::Many,
-        DiagramKind::Configuration,
-    )
-    .await?;
-    output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     Ok(())
 }
