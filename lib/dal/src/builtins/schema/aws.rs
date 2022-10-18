@@ -56,6 +56,7 @@ pub struct AwsRegion {
     pub(crate) name: String,
     pub(crate) code: String,
 }
+
 impl From<&AwsRegion> for SelectWidgetOption {
     fn from(region: &AwsRegion) -> Self {
         Self {
@@ -399,9 +400,9 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Prop: /root/domain/UserData
-    let _user_data_prop = BuiltinSchemaHelpers::create_prop(
+    let user_data_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
-        "UserData",
+        "User Data",
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),
@@ -465,28 +466,12 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
-    // TODO(nick): add the ability to use butane and ami as an inputs.
     let (
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         identity_func_identity_arg_id,
     ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
-
-    let (_butane_explicit_internal_provider, mut input_socket) =
-        InternalProvider::new_explicit_with_socket(
-            ctx,
-            *schema.id(),
-            *schema_variant.id(),
-            "user_data",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
-            SocketArity::Many,
-            DiagramKind::Configuration,
-        )
-        .await?;
-    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     let (image_id_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
@@ -548,6 +533,21 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?; // TODO(wendy) - Can an EC2 instance have multiple regions? Idk!
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
+    let (user_data_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "User Data",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
     // Qualifications
     let qual_func_name = "si:qualificationEc2CanRun".to_string();
 
@@ -607,8 +607,6 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    // Connect props to providers.
-
     // Note(victor): The code below connects si/name to a tag in the tags list.
     // It's commented out because it breaks some tests
 
@@ -648,6 +646,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    // Connect props to providers.
     let region_attribute_value_read_context = AttributeReadContext {
         prop_id: Some(*region_prop.id()),
         ..base_attribute_read_context
@@ -746,6 +745,31 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         *security_group_id_attribute_prototype.id(),
         identity_func_identity_arg_id,
         *security_group_ids_explicit_internal_provider.id(),
+    )
+    .await?;
+
+    let user_data_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*user_data_prop.id()),
+        ..base_attribute_read_context
+    };
+    let user_data_attribute_value =
+        AttributeValue::find_for_context(ctx, user_data_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                user_data_attribute_value_read_context,
+            ))?;
+    let mut user_data_attribute_prototype = user_data_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    user_data_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *user_data_attribute_prototype.id(),
+        identity_func_identity_arg_id,
+        *user_data_explicit_internal_provider.id(),
     )
     .await?;
 
