@@ -22,11 +22,12 @@
             type="checkbox"
             label="Select All"
             no-label
+            :model-value="allSelected"
             @update:model-value="selectAll"
             >Select All
           </VormInput>
           <VButton2
-            :disabled="selectedFixes.length < 1"
+            :disabled="selectedFixes.length < 1 || fixesStore.populatingFixes"
             icon="tools"
             tone="action"
             @click="runFixes"
@@ -126,6 +127,13 @@ const selectAll = (checked: boolean) => {
   }
 };
 
+const allSelected = computed(() => {
+  if (filteredFixes.value.length === 0) return false;
+  else if (selectedFixes.value.length === filteredFixes.value.length)
+    return true;
+  return false;
+});
+
 const fixesStore = useFixesStore();
 const filteredFixes = computed(() =>
   fixesStore.allFixes.filter(
@@ -142,7 +150,6 @@ const selectedFixes = computed(() => {
 });
 
 const runFixes = () => {
-  // TODO(wendy) - uncheck the Select All checkbox here
   fixesStore.EXECUTE_FIXES(selectedFixes.value);
 };
 

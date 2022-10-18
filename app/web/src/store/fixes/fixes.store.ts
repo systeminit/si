@@ -64,6 +64,7 @@ export const useFixesStore = () => {
         fixBatchesById: {} as Record<FixBatchId, FixBatch>,
         processedFixComponents: 0,
         runningFixBatch: undefined as FixBatchId | undefined,
+        populatingFixes: false,
       }),
       getters: {
         allFixes(): Fix[] {
@@ -145,6 +146,9 @@ export const useFixesStore = () => {
           this.fixesById[fix.id] = fix;
         },
         async populateMockFixes() {
+          if (this.populatingFixes) return;
+          this.populatingFixes = true;
+
           const componentsStore = useComponentsStore();
 
           for (const component of componentsStore.allComponents) {
@@ -180,6 +184,7 @@ export const useFixesStore = () => {
             await promiseDelay(400); // Extra delay on items that will generate fixes
             componentsStore.decreaseActivityCounterOnComponent(component.id);
           }
+          this.populatingFixes = false;
         },
         async executeMockFixes(fixes: Array<Fix>) {
           const authStore = useAuthStore();
