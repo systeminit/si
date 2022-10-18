@@ -29,7 +29,7 @@
             :disabled="selectedFixes.length < 1"
             icon="tools"
             tone="action"
-            @click="fixesStore.EXECUTE_FIXES(selectedFixes)"
+            @click="runFixes"
             >Fix Resources
           </VButton2>
         </div>
@@ -140,6 +140,11 @@ const selectedFixes = computed(() => {
     return fixSelection[fix.id] && fix.status === "unstarted";
   });
 });
+
+const runFixes = () => {
+  // TODO(wendy) - uncheck the Select All checkbox here
+  fixesStore.EXECUTE_FIXES(selectedFixes.value);
+};
 
 const currentTime = ref(new Date());
 let dateIntervalId: Timeout;

@@ -36,7 +36,7 @@
     </SiBarButton>
 
     <SiBarButton
-      tooltip-text="Act"
+      tooltip-text="Fix"
       :selected="route.name === 'workspace-fix'"
       :router-link-to="{ name: 'workspace-fix' }"
     >
