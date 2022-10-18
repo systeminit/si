@@ -9,6 +9,7 @@ import { ComponentId } from "./components.store";
 
 export type QualificationStatus = "success" | "failure" | "running";
 
+// TODO: align these key names with the status (ex: succeeded -> success)
 type QualificationStats = {
   total: number;
   succeeded: number;
@@ -31,6 +32,8 @@ export const useQualificationsStore = () => {
         >,
 
         qualificationsByComponentId: {} as Record<ComponentId, Qualification[]>,
+
+        checkedQualificationsAt: null as Date | null,
       }),
       getters: {
         // single status per component
@@ -123,7 +126,10 @@ export const useQualificationsStore = () => {
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
             eventType: "CheckedQualifications",
-            callback: this.FETCH_QUALIFICATIONS_SUMMARY,
+            callback: () => {
+              this.checkedQualificationsAt = new Date();
+              this.FETCH_QUALIFICATIONS_SUMMARY();
+            },
           },
         ]);
 

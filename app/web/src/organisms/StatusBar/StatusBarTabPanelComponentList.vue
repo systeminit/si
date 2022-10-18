@@ -48,18 +48,7 @@
         <span class="shrink h-full min-w-0 truncate mr-3">
           {{ component.name }}
         </span>
-        <StatusIndicatorIcon
-          v-if="component.status"
-          :status="component.status"
-          class="w-6 shrink-0"
-        />
-        <HealthIcon
-          v-if="component.health"
-          :health="component.health"
-          hide-text
-          remove-right-padding
-          size="md"
-        />
+        <slot name="icon" v-bind="{ component }"></slot>
       </div>
     </div>
   </div>
@@ -67,14 +56,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import StatusIndicatorIcon, {
-  Status,
-} from "@/molecules/StatusIndicatorIcon.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import HealthIcon from "@/molecules/HealthIcon.vue";
-import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { MockResource } from "@/store/resources.store";
 import { useComponentsStore } from "@/store/components.store";
 
@@ -82,8 +66,6 @@ export interface ComponentListItem {
   id: number;
   name: string;
   schema?: string;
-  status?: Status;
-  health?: ResourceHealth;
   resource?: MockResource;
 }
 

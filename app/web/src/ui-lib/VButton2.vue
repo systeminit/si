@@ -38,25 +38,19 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onBeforeUnmount, watch } from "vue";
+import { ref, computed, onBeforeUnmount, watch, PropType } from "vue";
 import { RouterLink } from "vue-router";
 import _ from "lodash";
 
 import Icon, { IconNames } from "@/ui-lib/Icon.vue";
-import type { ApiRequestStatus } from "@/utils/pinia_api_tools";
-import type { PropType } from "vue";
+import { ApiRequestStatus } from "@/utils/pinia_api_tools";
+import { Tones } from "./helpers/tones";
 
 const SHOW_SUCCESS_DELAY = 2000;
 
 type ButtonSizes = "xs" | "sm" | "md" | "lg" | "xl";
 type ButtonVariants = "solid" | "ghost" | "soft" | "transparent";
-type ButtonTones =
-  | "action"
-  | "destructive"
-  | "success"
-  | "warning"
-  | "neutral"
-  | "shade";
+type ButtonTones = Tones;
 
 const props = defineProps({
   size: { type: String as PropType<ButtonSizes>, default: "md" },

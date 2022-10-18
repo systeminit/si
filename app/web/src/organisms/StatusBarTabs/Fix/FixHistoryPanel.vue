@@ -25,7 +25,7 @@
             v-for="option of sortOptions"
             :key="option.value"
             :checked="selectedSort.value === option.value"
-            @select="emit('sort', option)"
+            @select="selectedSort = option"
           >
             {{ option.title }}
           </SiDropdownItem>
@@ -108,27 +108,15 @@ export interface SortOption {
   title: string;
 }
 
-const props = defineProps<{
-  sortOptions?: SortOption[];
-  selectedSort?: SortOption;
-}>();
+const sortOptions: SortOption[] = [
+  { value: "r", title: "Newest" },
+  { value: "o", title: "Oldest" },
+];
+const selectedSort = ref<SortOption>(sortOptions[0]);
 
 const selectedFixBatchId = ref<number | null>(null);
 
 const selectedFixId = ref<number | null>(null);
-
-const emit = defineEmits<{
-  (e: "sort", sortOption: SortOption): void;
-}>();
-
-const defaultSortOption = {
-  value: "r",
-  title: "Newest",
-};
-
-const selectedSort = computed(() => {
-  return props.selectedSort ?? defaultSortOption;
-});
 
 const selectFixBatch = (id: number) => {
   selectedFixBatchId.value = id;

@@ -16,19 +16,21 @@
         :class="
           clsx(
             'py-xs pl-sm pr-xs cursor-pointer flex justify-between items-center leading-tight',
-            resource.id === selected ? 'bg-action-500' : 'hover:bg-black',
+            resource.componentId === selectedComponentId
+              ? 'bg-action-500'
+              : 'hover:bg-black',
           )
         "
-        @click="emit('select', resource.id)"
+        @click="onSelectResource(resource.componentId)"
       >
         <span class="shrink min-w-0 truncate mr-3">
           {{ resource.name }}
         </span>
-        <HealthIcon
-          :health="resource.health"
-          hide-text
-          remove-right-padding
-          size="md"
+        <StatusIndicatorIcon
+          type="confirmation"
+          :status="
+            resourcesStore.confirmationResultByComponentId[resource.componentId]
+          "
         />
       </div>
     </div>
@@ -36,20 +38,18 @@
 </template>
 
 <script setup lang="ts">
-import { PropType } from "vue";
+import { computed } from "vue";
 import clsx from "clsx";
-import HealthIcon from "@/molecules/HealthIcon.vue";
-import { MockResource } from "@/store/resources.store";
+import { useResourcesStore } from "@/store/resources.store";
+import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
+import { ComponentId, useComponentsStore } from "@/store/components.store";
 
-defineProps({
-  resources: {
-    type: Array as PropType<MockResource[]>,
-    default: () => [],
-  },
-  selected: { type: Number },
-});
+const resourcesStore = useResourcesStore();
+const componentsStore = useComponentsStore();
+const resources = computed(() => resourcesStore.allResources);
+const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 
-const emit = defineEmits<{
-  (e: "select", id: number): void;
-}>();
+function onSelectResource(id: ComponentId) {
+  componentsStore.setSelectedComponentId(id);
+}
 </script>

@@ -50,7 +50,7 @@ const SCHEMA_MOCK_METADATA: Record<
   "Docker Hub Credential": { provider: "Docker", fixDelay: 0, order: 0 },
 };
 
-let batchIdCounter = 0;
+let batchIdCounter = 1;
 
 export const useFixesStore = () => {
   const workspacesStore = useWorkspacesStore();
@@ -74,7 +74,7 @@ export const useFixesStore = () => {
           const componentsStore = useComponentsStore();
           const sortedFixes = _.sortBy(fixes, (fix) => {
             const component = componentsStore.componentsById[fix.componentId];
-            return SCHEMA_MOCK_METADATA[component.schemaName]?.fixDelay || 100;
+            return SCHEMA_MOCK_METADATA[component.schemaName]?.order || 100;
           });
           return sortedFixes;
         },

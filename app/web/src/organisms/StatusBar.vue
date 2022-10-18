@@ -102,19 +102,7 @@
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
         >
-          <StatusBarTab :selected="selected">
-            <template #icon><Icon name="check-badge" /></template>
-            <template #name>Confirmations</template>
-            <template #summary>
-              <StatusBarTabPill
-                v-if="qualificationComponentStats.total"
-                class="border-white"
-              >
-                Total:
-                <b class="ml-1">{{ qualificationComponentStats.total }}</b>
-              </StatusBarTabPill>
-            </template>
-          </StatusBarTab>
+          <ConfirmationsTab :selected="selected" />
         </Tab>
 
         <!-- Tab minimization button -->
@@ -180,14 +168,7 @@
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
-            <FixHistoryPanel
-              :sort-options="[
-                { value: 'r', title: 'Newest' },
-                { value: 'o', title: 'Oldest' },
-              ]"
-              :selected-sort="selectedFixSort"
-              @sort="changeFixSort"
-            />
+            <FixHistoryPanel />
           </TabPanel>
           <TabPanel
             :aria-hidden="!isViewMode"
@@ -217,12 +198,12 @@ import QualificationTabPanel from "@/organisms/StatusBarTabs/Qualification/Quali
 import QualificationTab from "@/organisms/StatusBarTabs/Qualification/QualificationTab.vue";
 import GenericTabPanel from "@/organisms/StatusBarTabs/GenericTabPanel.vue";
 import Icon from "@/ui-lib/Icon.vue";
-import { useQualificationsStore } from "@/store/qualifications.store";
 import { useComponentsStore } from "@/store/components.store";
 import { useThemeContainer } from "@/ui-lib/theme_tools";
 import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
 import FixHistoryTab from "./StatusBarTabs/Fix/FixHistoryTab.vue";
 import FixHistoryPanel from "./StatusBarTabs/Fix/FixHistoryPanel.vue";
+import ConfirmationsTab from "./StatusBarTabs/Confirmations/ConfirmationsTab.vue";
 
 // override theme to be always dark within status bar
 const { themeContainerClasses } = useThemeContainer("dark");
@@ -270,25 +251,6 @@ const barClasses = computed(() => {
   }
   return result;
 });
-
-type SortOption = {
-  value: string;
-  title: string;
-};
-
-const defaultWorkflowSortOption = {
-  value: "r",
-  title: "Newest",
-};
-const selectedFixSort = ref<SortOption>(defaultWorkflowSortOption);
-const changeFixSort = (newSort: SortOption) => {
-  selectedFixSort.value = newSort;
-};
-
-const qualificationsStore = useQualificationsStore();
-const qualificationComponentStats = computed(
-  () => qualificationsStore.componentStats,
-);
 
 const componentsStore = useComponentsStore();
 

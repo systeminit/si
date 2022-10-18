@@ -6,7 +6,14 @@
       :selected-filter="selectedFilter"
       :filter-options="filterOptions"
       @filter="changeSelectedFilter"
-    />
+    >
+      <template #icon="{ component }">
+        <StatusIndicatorIcon
+          type="qualification"
+          :status="qualificationStatusByComponentId[component.id]"
+        />
+      </template>
+    </StatusBarTabPanelComponentList>
 
     <!-- Selected component view -->
     <QualificationViewerMultiple
@@ -31,10 +38,15 @@ import StatusBarTabPanelComponentList, {
 } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useQualificationsStore } from "@/store/qualifications.store";
+import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 
 const qualificationsStore = useQualificationsStore();
 const componentsStore = useComponentsStore();
 const selectedComponent = computed(() => componentsStore.selectedComponent);
+
+const qualificationStatusByComponentId = computed(
+  () => qualificationsStore.qualificationStatusByComponentId,
+);
 
 const defaultFilterOption = {
   value: "all",
