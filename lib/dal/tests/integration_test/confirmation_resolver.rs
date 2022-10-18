@@ -76,6 +76,7 @@ async fn find_for_prototype(ctx: &DalContext) {
         .expect("unable to find for context");
 
     let mut context = ConfirmationResolverContext::new();
+    context.set_component_id(*component.id());
     context.set_schema_id(prototype.schema_id());
     context.set_schema_variant_id(prototype.schema_variant_id());
     assert_eq!(

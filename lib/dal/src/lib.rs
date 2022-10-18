@@ -24,6 +24,7 @@ pub mod code_view;
 pub mod component;
 pub mod confirmation_prototype;
 pub mod confirmation_resolver;
+pub mod confirmation_resolver_tree;
 pub mod context;
 pub mod cyclone_key_pair;
 pub mod diagram;
@@ -119,6 +120,7 @@ pub use confirmation_resolver::{
     ConfirmationResolver, ConfirmationResolverContext, ConfirmationResolverError,
     ConfirmationResolverId,
 };
+pub use confirmation_resolver_tree::ConfirmationResolverTree;
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
     Transactions, TransactionsError,
@@ -151,6 +153,7 @@ pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
 pub use prop::{Prop, PropError, PropId, PropKind, PropPk, PropResult};
+pub use prototype_context::HasPrototypeContext;
 pub use prototype_list_for_func::{
     PrototypeListForFunc, PrototypeListForFuncError, PrototypeListForFuncResult,
 };

@@ -24,6 +24,7 @@ mod schema;
 mod workflow;
 
 // Expose the "persist" function for creating and editing builtin funcs while in dev mode.
+pub use self::schema::BuiltinSchemaHelpers;
 use crate::func::argument::FuncArgumentError;
 pub use func::persist as func_persist;
 
