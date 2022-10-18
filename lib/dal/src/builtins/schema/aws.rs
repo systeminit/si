@@ -9,6 +9,7 @@ use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::validation::Validation;
+use crate::AttributeValueError;
 use crate::{
     schema::{SchemaUiMenu, SchemaVariant},
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
@@ -863,11 +864,24 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Prop: /root/domain/KeyType
+
     let _key_type_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "KeyType",
         PropKind::String,
-        None,
+        Some((
+            WidgetKind::Select,
+            serde_json::json!([
+                {
+                    "label": "rsa",
+                    "value": "rsa",
+                },
+                {
+                    "label": "ed25519",
+                    "value": "ed25519",
+                },
+            ]),
+        )),
         Some(root_prop.domain_prop_id),
         Some(KEY_PAIR_DOCS_URL.to_string()),
     )
@@ -1051,6 +1065,38 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         *region_attribute_prototype.id(),
         identity_func_identity_arg_id,
         *region_explicit_internal_provider.id(),
+    )
+    .await?;
+
+    // Connect the "/root/si/name" field to the "/root/domain/KeyName" field.
+    let key_name_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*key_name_prop.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await?
+    .ok_or(AttributeValueError::Missing)?;
+    let mut key_name_attribute_prototype = key_name_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(AttributeValueError::MissingAttributePrototype)?;
+    key_name_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    let si_name_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
+    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+        })?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *key_name_attribute_prototype.id(),
+        identity_func_identity_arg_id,
+        *si_name_internal_provider.id(),
     )
     .await?;
 
