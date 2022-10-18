@@ -73,10 +73,9 @@
         </div>
       </div>
       <div v-if="selectedFixInfo" class="bg-shade-100 grow p-4">
-        <CodeViewer
-          :code="selectedFixInfo.output"
-          :title="selectedFixInfo.name"
-        />
+        <CodeViewer :code="selectedFixInfo.output">
+          <template #title>{{ selectedFixInfo.name }}</template>
+        </CodeViewer>
       </div>
       <div
         v-else
