@@ -175,7 +175,7 @@ async function onCreateChangeSet() {
 // Saves the current edit session and then applies the current change set
 const applyChangeSet = async () => {
   const applyReq = await changeSetsStore.APPLY_CHANGE_SET();
-  if (applyReq.result.success) await navigateToViewMode();
+  if (applyReq.result.success) await navigateToFixMode();
 };
 
 watch(openChangeSets, () => {
@@ -186,12 +186,12 @@ watch(openChangeSets, () => {
   }
 });
 
-// Navigates to the workspace view page
-const navigateToViewMode = async () => {
+// Navigates to the workspace fix page
+const navigateToFixMode = async () => {
   if (selectedWorkspaceId.value) {
     await router.push({
-      name: "workspace-view",
-      path: "/w/:workspaceId/v",
+      name: "workspace-fix",
+      path: "/w/:workspaceId/r",
       params: { workspaceId: selectedWorkspaceId.value },
     });
   } else {
@@ -203,10 +203,10 @@ const navigateToViewMode = async () => {
 
 function onCloseCreateDialog() {
   showDialog.value = false;
-  if (!selectedChangeSetId.value) navigateToViewMode();
+  if (!selectedChangeSetId.value) navigateToFixMode();
 }
 function onCloseSelectDialog() {
   showDialog.value = false;
-  if (!selectedChangeSetId.value) navigateToViewMode();
+  if (!selectedChangeSetId.value) navigateToFixMode();
 }
 </script>

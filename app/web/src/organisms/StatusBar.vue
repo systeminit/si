@@ -175,29 +175,19 @@
             <!-- TOOD(nick): replace with a Costs tab panel -->
             <GenericTabPanel :component-list="componentList" />
           </TabPanel>
-          <!-- TODO(wendy) - remove this panel eventually, old Workflow History panel
           <TabPanel
             :aria-hidden="!isViewMode"
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
-            <WorkflowHistoryPanel
+            <FixHistoryPanel
               :sort-options="[
                 { value: 'r', title: 'Newest' },
                 { value: 'o', title: 'Oldest' },
               ]"
-              :selected-sort="selectedWorkflowSort"
-              @sort="changeWorkflowSort"
+              :selected-sort="selectedFixSort"
+              @sort="changeFixSort"
             />
-          </TabPanel>
-          -->
-          <TabPanel
-            :aria-hidden="!isViewMode"
-            :class="[isViewMode ? '' : 'hidden']"
-            class="h-full"
-          >
-            <GenericTabPanel :component-list="componentList" />
-            <!-- <FixHistoryPanel /> -->
           </TabPanel>
           <TabPanel
             :aria-hidden="!isViewMode"
@@ -232,7 +222,7 @@ import { useComponentsStore } from "@/store/components.store";
 import { useThemeContainer } from "@/ui-lib/theme_tools";
 import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
 import FixHistoryTab from "./StatusBarTabs/Fix/FixHistoryTab.vue";
-// import FixHistoryPanel from "./StatusBarTabs/Fix/FixHistoryPanel.vue";
+import FixHistoryPanel from "./StatusBarTabs/Fix/FixHistoryPanel.vue";
 
 // override theme to be always dark within status bar
 const { themeContainerClasses } = useThemeContainer("dark");
@@ -280,6 +270,20 @@ const barClasses = computed(() => {
   }
   return result;
 });
+
+type SortOption = {
+  value: string;
+  title: string;
+};
+
+const defaultWorkflowSortOption = {
+  value: "r",
+  title: "Newest",
+};
+const selectedFixSort = ref<SortOption>(defaultWorkflowSortOption);
+const changeFixSort = (newSort: SortOption) => {
+  selectedFixSort.value = newSort;
+};
 
 const qualificationsStore = useQualificationsStore();
 const qualificationComponentStats = computed(

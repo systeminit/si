@@ -8,7 +8,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import TimeAgo from "javascript-time-ago";
 import en from "javascript-time-ago/locale/en";
 
-export type TimestampSize = "mini" | "normal" | "extended";
+export type TimestampSize = "mini" | "normal" | "long" | "extended";
 
 const props = defineProps({
   date: { type: Date, default: new Date() },
@@ -34,6 +34,11 @@ const dateStr = computed(() => {
       return `${formatDistanceToNow(d)} ago`;
     }
     return `${format(d, "eeee MMMM do, y")} at ${format(d, "h:mm:ss a")}`;
+  } else if (props.size === "long") {
+    if (props.relative) {
+      return `${formatDistanceToNow(d)} ago`;
+    }
+    return `${format(d, "M/d/y")} at ${format(d, "h:mm:ss a")}`;
   }
   if (props.relative) {
     return timeAgo.format(d);
