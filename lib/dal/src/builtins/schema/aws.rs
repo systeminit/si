@@ -402,7 +402,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     // Prop: /root/domain/UserData
     let user_data_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
-        "User Data",
+        "UserData",
         PropKind::String,
         None,
         Some(root_prop.domain_prop_id),

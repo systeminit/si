@@ -404,7 +404,7 @@ async fn butane_to_ec2_user_data_omega_hack(
         .await
         .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?
     {
-        if prop.name() == "User Data" {
+        if prop.name() == "UserData" {
             maybe_user_data_prop = Some(prop);
             break;
         }
