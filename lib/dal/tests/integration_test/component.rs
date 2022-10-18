@@ -4,7 +4,8 @@ use dal::{
         create_component_and_schema, create_component_for_schema_variant, create_schema,
         create_schema_variant, create_schema_variant_with_root,
     },
-    Component, DalContext, Prop, PropKind, Schema, SchemaKind, StandardModel,
+    AttributeReadContext, Component, DalContext, Prop, PropKind, Schema, SchemaKind, StandardModel,
+    SystemId,
 };
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
@@ -137,6 +138,33 @@ async fn list_qualifications_by_component_id(ctx: &DalContext) {
             .await
             .expect("cannot list qualifications");
     assert_eq!(qualifications.len(), 2);
+}
+
+#[test]
+async fn name_from_context(ctx: &DalContext) {
+    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
+
+    let (component, _) =
+        Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
+            .await
+            .expect("cannot create component");
+    let _ = Component::new_for_schema_variant_with_node(ctx, "wooly mammoth", schema_variant.id())
+        .await
+        .expect("cannot create second component");
+
+    let component_name = Component::name_from_context(
+        ctx,
+        AttributeReadContext {
+            component_id: Some(*component.id()),
+            system_id: Some(SystemId::NONE),
+            ..AttributeReadContext::any()
+        },
+    )
+    .await
+    .expect("Unable to retrieve component name");
+
+    assert_eq!(component_name, "mastodon");
 }
 
 // FIXME(nick,adam): fix output stream test or figure out another way how to do this. This is

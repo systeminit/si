@@ -2435,14 +2435,14 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_context_build_from_parts(this_prop_id              bigint,
-                                                              this_internal_provider_id bigint,
-                                                              this_external_provider_id bigint,
-                                                              this_schema_id            bigint,
-                                                              this_schema_variant_id    bigint,
-                                                              this_component_id         bigint,
-                                                              this_system_id            bigint,
-                                                              OUT new_attribute_context jsonb
+CREATE OR REPLACE FUNCTION attribute_context_build_from_parts_v1(this_prop_id              bigint,
+                                                                 this_internal_provider_id bigint,
+                                                                 this_external_provider_id bigint,
+                                                                 this_schema_id            bigint,
+                                                                 this_schema_variant_id    bigint,
+                                                                 this_component_id         bigint,
+                                                                 this_system_id            bigint,
+                                                                 OUT new_attribute_context jsonb
 )
 AS
 $$
