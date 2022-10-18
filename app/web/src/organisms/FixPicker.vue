@@ -54,7 +54,7 @@
             <span class="pl-1">{{ filteredFixes.length }}</span>
           </div>
         </div>
-        <div class="relative w-full">
+        <div class="relative w-full overflow-y-auto">
           <TransitionGroup
             tag="ul"
             enter-active-class="duration-500 ease-out"
