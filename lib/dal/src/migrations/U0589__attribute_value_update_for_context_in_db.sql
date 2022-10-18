@@ -1981,6 +1981,8 @@ BEGIN
         WHEN func_binding.backend_kind = 'Identity' THEN
             result_value := func_binding.args -> 'identity';
             result_value_processed := result_value;
+        WHEN func_binding.backend_kind = 'Integer' THEN
+            result_value_processed := result_value;
         WHEN func_binding.backend_kind = 'Map' THEN
             result_value_processed := '{}'::json;
         WHEN func_binding.backend_kind = 'PropObject' THEN
