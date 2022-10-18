@@ -1,10 +1,10 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{Component, ComponentId, StandardModel, SystemId, Visibility};
+use dal::{AttributeReadContext, Component, ComponentId, StandardModel, SystemId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use crate::service::resource::{ResourceError, ResourceResult};
+use crate::service::resource::ResourceResult;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -136,10 +136,15 @@ pub async fn list_resources_by_component(
 
     for component in Component::list(&ctx).await? {
         let component_id = *component.id();
-        let component_name = component
-            .find_value_by_json_pointer::<String>(&ctx, "/root/si/name")
-            .await?
-            .ok_or(ResourceError::ComponentNameNotFound(component_id))?;
+        let component_name = Component::name_from_context(
+            &ctx,
+            AttributeReadContext {
+                component_id: Some(component_id),
+                system_id: Some(SystemId::NONE),
+                ..AttributeReadContext::any()
+            },
+        )
+        .await?;
         let component_schema = component.schema(&ctx).await?;
 
         let value = match component_schema {
