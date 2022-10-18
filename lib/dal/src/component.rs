@@ -185,6 +185,7 @@ const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("./queries/component_list_for_schema_variant.sql");
 const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
     include_str!("queries/component_list_sockets_for_socket_edge_kind.sql");
+const NAME_FROM_CONTEXT: &str = include_str!("./queries/component/name_from_context.sql");
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -1438,5 +1439,37 @@ impl Component {
             .transpose()?;
 
         Ok(value)
+    }
+
+    /// Return the name of the [`Component`][Self] that corresponds to the provided [`AttributeReadContext`][AttributeReadContext].
+    ///
+    /// While this takes a full [`AttributeReadContext`][AttributeReadContext], it is only concerned with the [`ComponentId`][ComponentId],
+    /// and anything more specific than that.
+    #[instrument(skip_all)]
+    pub async fn name_from_context(
+        ctx: &DalContext,
+        attribute_read_context: AttributeReadContext,
+    ) -> ComponentResult<String> {
+        let component_id = attribute_read_context.component_id().ok_or_else(|| {
+            ComponentError::BadAttributeReadContext(
+                "Must specify ComponentId to retrieve the name of a Component".to_string(),
+            )
+        })?;
+        let row = ctx
+            .pg_txn()
+            .query_one(
+                NAME_FROM_CONTEXT,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &component_id,
+                    &attribute_read_context.system_id(),
+                ],
+            )
+            .await?;
+        let value: serde_json::Value = row.try_get("component_name")?;
+        let component_name: String = serde_json::from_value(value)?;
+
+        Ok(component_name)
     }
 }
