@@ -9,9 +9,9 @@ use crate::validation::Validation;
 use crate::{
     schema::{SchemaUiMenu, SchemaVariant},
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
-    ExternalProvider, Func, InternalProvider, PropKind, SchemaError, SchemaKind, Socket,
-    StandardModel,
+    AttributeValueError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext,
+    DiagramKind, ExternalProvider, Func, InternalProvider, PropKind, SchemaError, SchemaKind,
+    Socket, StandardModel,
 };
 
 const INGRESS_EGRESS_DOCS_URL: &str =
@@ -731,7 +731,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    BuiltinSchemaHelpers::create_prop(
+    let group_name_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "GroupName",
         PropKind::String,
@@ -741,7 +741,7 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    let vpc_id_prop = BuiltinSchemaHelpers::create_prop(
+    let _vpc_id_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "VpcId",
         PropKind::String,
@@ -809,21 +809,6 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
-
-    let (vpc_id_explicit_internal_provider, mut input_socket) =
-        InternalProvider::new_explicit_with_socket(
-            ctx,
-            *schema.id(),
-            *schema_variant.id(),
-            "vpc_id",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
-            SocketArity::One,
-            DiagramKind::Configuration,
-        )
-        .await?;
-    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     let (region_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
@@ -948,29 +933,35 @@ async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    // vpc_id from input socket
-    let vpc_id_attribute_value_read_context = AttributeReadContext {
-        prop_id: Some(*vpc_id_prop.id()),
-        ..base_attribute_read_context
-    };
-    let vpc_id_attribute_value =
-        AttributeValue::find_for_context(ctx, vpc_id_attribute_value_read_context)
-            .await?
-            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                vpc_id_attribute_value_read_context,
-            ))?;
-    let mut vpc_id_attribute_prototype = vpc_id_attribute_value
+    // Make GroupName take the value of /root/si/name
+    let group_name_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*group_name_prop.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await?
+    .ok_or(AttributeValueError::Missing)?;
+    let mut group_name_attribute_proto = group_name_attribute_value
         .attribute_prototype(ctx)
         .await?
-        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-    vpc_id_attribute_prototype
+        .ok_or(AttributeValueError::MissingAttributePrototype)?;
+    group_name_attribute_proto
         .set_func_id(ctx, identity_func_id)
         .await?;
+    let si_name_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
+    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+        })?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
-        *vpc_id_attribute_prototype.id(),
+        *group_name_attribute_proto.id(),
         identity_func_identity_arg_id,
-        *vpc_id_explicit_internal_provider.id(),
+        *si_name_internal_provider.id(),
     )
     .await?;
 
