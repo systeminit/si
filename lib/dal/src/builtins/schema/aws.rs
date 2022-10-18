@@ -365,7 +365,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     // Prop: /root/domain/SecurityGroupIds/SecurityGroupId
     let _security_group_id_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
-        "SecurityGroupId",
+        "Security Group ID",
         PropKind::String,
         None,
         Some(*security_groups_prop.id()),
@@ -492,6 +492,21 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Image ID",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    let (security_group_ids_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "Security Group ID",
             identity_func_id,
             identity_func_binding_id,
             identity_func_binding_return_value_id,
@@ -696,6 +711,31 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         *keyname_attribute_prototype.id(),
         identity_func_identity_arg_id,
         *keyname_explicit_internal_provider.id(),
+    )
+    .await?;
+
+    let security_group_id_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*security_groups_prop.id()),
+        ..base_attribute_read_context
+    };
+    let security_group_id_attribute_value =
+        AttributeValue::find_for_context(ctx, security_group_id_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                security_group_id_attribute_value_read_context,
+            ))?;
+    let mut security_group_id_attribute_prototype = security_group_id_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    security_group_id_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *security_group_id_attribute_prototype.id(),
+        identity_func_identity_arg_id,
+        *security_group_ids_explicit_internal_provider.id(),
     )
     .await?;
 
