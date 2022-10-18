@@ -32,6 +32,26 @@ export type FixBatch = {
   timestamp: Date;
 };
 
+const SCHEMA_MOCK_METADATA: Record<
+  string,
+  { provider: string; fixDelay: number; order: number }
+> = {
+  AMI: { provider: "AWS", fixDelay: 0, order: 0 },
+  "EC2 Instance": { provider: "AWS", fixDelay: 15000, order: 40 },
+  Egress: { provider: "AWS", fixDelay: 3000, order: 31 },
+  Ingress: { provider: "AWS", fixDelay: 3000, order: 30 },
+  "Key Pair": { provider: "AWS", fixDelay: 5000, order: 10 },
+  Region: { provider: "AWS", fixDelay: 0, order: 0 },
+  "Security Group": { provider: "AWS", fixDelay: 5000, order: 20 },
+  Butane: { provider: "CoreOS", fixDelay: 0, order: 0 },
+  "Kubernetes Deployment": { provider: "Kubernetes", fixDelay: 1000, order: 0 },
+  "Kubernetes Namespace": { provider: "Kubernetes", fixDelay: 500, order: 0 },
+  "Docker Image": { provider: "Docker", fixDelay: 0, order: 0 },
+  "Docker Hub Credential": { provider: "Docker", fixDelay: 0, order: 0 },
+};
+
+let batchIdCounter = 0;
+
 export const useFixesStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspaceId;
@@ -47,7 +67,15 @@ export const useFixesStore = () => {
       }),
       getters: {
         allFixes(): Fix[] {
-          return _.values(this.fixesById);
+          const fixes = _.values(this.fixesById);
+          // temporary. the backend will return the fixes in the "right" order
+          // so we'll need to think about how we want to deal with that
+          const componentsStore = useComponentsStore();
+          const sortedFixes = _.sortBy(fixes, (fix) => {
+            const component = componentsStore.componentsById[fix.componentId];
+            return SCHEMA_MOCK_METADATA[component.schemaName]?.fixDelay || 100;
+          });
+          return sortedFixes;
         },
         fixesByComponentId(): Record<ComponentId, Fix> {
           return _.keyBy(this.allFixes, (f) => f.componentId);
@@ -124,33 +152,13 @@ export const useFixesStore = () => {
             await promiseDelay(1000);
             this.processedFixComponents += 1;
 
-            if (
-              [
-                "Region",
-                "Docker Image",
-                "Butane",
-                "Docker Hub Credential",
-                "AMI",
-              ].includes(component.schemaName)
-            ) {
+            if (SCHEMA_MOCK_METADATA[component.schemaName]?.fixDelay === 0) {
               componentsStore.decreaseActivityCounterOnComponent(component.id);
               continue;
             }
 
-            // TODO(wendy+victor) - This system will eventually be replaced with something cleaner!
-            const providers: Record<string, string> = {
-              AMI: "AWS",
-              "EC2 Instance": "AWS",
-              Egress: "AWS",
-              Ingress: "AWS",
-              "Key Pair": "AWS",
-              Region: "AWS",
-              "Security Group": "AWS",
-              Butane: "CoreOS",
-              "Kubernetes Deployment": "Kubernetes",
-              "Kubernetes Namespace": "Kubernetes",
-            };
-            const provider = providers[component.schemaName];
+            const provider =
+              SCHEMA_MOCK_METADATA[component.schemaName]?.provider;
 
             this.updateFix({
               id: 1000 + component.id,
@@ -178,7 +186,7 @@ export const useFixesStore = () => {
           const componentsStore = useComponentsStore();
 
           const fixBatch = <FixBatch>{
-            id: _.random(100),
+            id: batchIdCounter++,
             author: authStore.user,
             timestamp: new Date(),
           };
@@ -202,7 +210,11 @@ export const useFixesStore = () => {
 
             componentsStore.increaseActivityCounterOnComponent(fix.componentId);
 
-            await promiseDelay(2000);
+            const component = componentsStore.componentsById[fix.componentId];
+
+            await promiseDelay(
+              SCHEMA_MOCK_METADATA[component.schemaName]?.fixDelay || 2000,
+            );
 
             this.updateFix({
               ...fix,

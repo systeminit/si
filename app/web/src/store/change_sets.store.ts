@@ -22,6 +22,7 @@ export function useChangeSetsStore() {
       state: () => ({
         changeSetsById: {} as Record<ChangeSetId, ChangeSet>,
         selectedChangeSetId: null as ChangeSetId | null,
+        changeSetsWrittenAtById: {} as Record<ChangeSetId, Date>,
       }),
       getters: {
         allChangeSets: (state) => _.values(state.changeSetsById),
@@ -34,6 +35,11 @@ export function useChangeSetsStore() {
         selectedChangeSet: (state) =>
           state.selectedChangeSetId
             ? state.changeSetsById[state.selectedChangeSetId] || null
+            : null,
+
+        selectedChangeSetWritten: (state) =>
+          state.selectedChangeSetId
+            ? state.changeSetsById[state.selectedChangeSetId]
             : null,
 
         // expose here so other stores can get it without needing to call useWorkspaceStore directly
@@ -154,8 +160,12 @@ export function useChangeSetsStore() {
           },
           {
             eventType: "ChangeSetWritten",
-            callback: () => {
-              // could refetch the change sets here, but not useful right now...
+            callback: (cs) => {
+              // we'll update a timestamp here so individual components can watch this to trigger something if necessary
+              // hopefully with more targeted realtime updates we won't need this, but could be useful for now
+              this.changeSetsWrittenAtById[cs] = new Date();
+
+              // could refetch the change sets here, but not useful right now since no interesting metadata exists on the changeset itself
             },
           },
         ]);
