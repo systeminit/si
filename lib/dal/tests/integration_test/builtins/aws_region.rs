@@ -44,6 +44,9 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "domain": {
                 "awsResourceType": "instance",
+                "tags": {
+                    "Name": "server",
+                },
             },
             "si": {
                 "name": "server"
@@ -98,6 +101,9 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "domain": {
                 "awsResourceType": "instance",
+                "tags": {
+                    "Name": "server",
+                },
             },
             "si": {
                 "name": "server"
@@ -131,7 +137,10 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
         serde_json::json![{
             "domain": {
                 "awsResourceType": "instance",
-                "region": "us-west-2"
+                "region": "us-west-2",
+                "tags": {
+                    "Name": "server",
+                },
             },
             "si": {
                 "name": "server"

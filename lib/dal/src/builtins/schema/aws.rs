@@ -11,6 +11,8 @@ use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::validation::Validation;
 use crate::AttributeValueError;
 use crate::{
+    attribute::context::AttributeContextBuilder,
+    func::argument::FuncArgument,
     schema::{SchemaUiMenu, SchemaVariant},
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
@@ -386,7 +388,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
 
     // TODO(victor): Make one item of the list have key `Name` and value equal to /root/si/name
     // Prop: /root/domain/tags/tag
-    let _tags_map_item_prop = BuiltinSchemaHelpers::create_prop(
+    let tags_map_item_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "tag",
         PropKind::String,
@@ -582,61 +584,69 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     // Create a default item in the map. We will need this to connect
     // "/root/si/name" to the item's value.
 
-    // let tags_map_attribute_read_context = AttributeReadContext {
-    //     prop_id: Some(*tags_map_prop.id()),
-    //     ..base_attribute_read_context
-    // };
-    // let tags_map_attribute_value =
-    //     AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
-    //         .await?
-    //         .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-    //             tags_map_attribute_read_context,
-    //         ))?;
-    // let tags_map_item_attribute_context =
-    //     AttributeContextBuilder::from(base_attribute_read_context)
-    //         .set_prop_id(*tags_map_item_prop.id())
-    //         .to_context()?;
-    // let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
-    //     ctx,
-    //     tags_map_item_attribute_context,
-    //     *tags_map_attribute_value.id(),
-    //     None,
-    //     Some("Name".to_string()),
-    // )
-    // .await?;
+    let tags_map_attribute_read_context = AttributeReadContext {
+        prop_id: Some(*tags_map_prop.id()),
+        ..base_attribute_read_context
+    };
+    let tags_map_attribute_value =
+        AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                tags_map_attribute_read_context,
+            ))?;
+    let tags_map_item_attribute_context =
+        AttributeContextBuilder::from(base_attribute_read_context)
+            .set_prop_id(*tags_map_item_prop.id())
+            .to_context()?;
+    let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
+        ctx,
+        tags_map_item_attribute_context,
+        *tags_map_attribute_value.id(),
+        None,
+        Some("Name".to_string()),
+    )
+    .await?;
 
     // Connect props to providers.
 
     // Note(victor): The code below connects si/name to a tag in the tags list.
     // It's commented out because it breaks some tests
 
-    // let si_name_prop =
-    //     BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
-    // let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
-    //     .await?
-    //     .ok_or_else(|| {
-    //         BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
-    //     })?;
-    // let name_tags_item_attribute_value =
-    //     AttributeValue::get_by_id(ctx, &name_tags_item_attribute_value_id)
-    //         .await?
-    //         .ok_or(BuiltinsError::AttributeValueNotFound(
-    //             name_tags_item_attribute_value_id,
-    //         ))?;
-    // let mut name_tags_item_attribute_prototype = name_tags_item_attribute_value
-    //     .attribute_prototype(ctx)
-    //     .await?
-    //     .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-    // name_tags_item_attribute_prototype
-    //     .set_func_id(ctx, identity_func_id)
-    //     .await?;
-    // AttributePrototypeArgument::new_for_intra_component(
-    //     ctx,
-    //     *name_tags_item_attribute_prototype.id(),
-    //     "identity",
-    //     *si_name_internal_provider.id(),
-    // )
-    // .await?;
+    let si_name_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
+    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+        })?;
+    let name_tags_item_attribute_value =
+        AttributeValue::get_by_id(ctx, &name_tags_item_attribute_value_id)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFound(
+                name_tags_item_attribute_value_id,
+            ))?;
+    let mut name_tags_item_attribute_prototype = name_tags_item_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    name_tags_item_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    let identity_arg = FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_id)
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                "identity".to_string(),
+                "identity".to_string(),
+            )
+        })?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *name_tags_item_attribute_prototype.id(),
+        *identity_arg.id(),
+        *si_name_internal_provider.id(),
+    )
+    .await?;
 
     let region_attribute_value_read_context = AttributeReadContext {
         prop_id: Some(*region_prop.id()),
@@ -939,7 +949,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Prop: /root/domain/tags/tag
-    let _tags_map_item_prop = BuiltinSchemaHelpers::create_prop(
+    let tags_map_item_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "tag",
         PropKind::String,
@@ -1074,6 +1084,73 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         *external_provider_attribute_prototype_id,
         identity_func_identity_arg_id,
         *key_name_internal_provider.id(),
+    )
+    .await?;
+
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
+    let tags_map_attribute_read_context = AttributeReadContext {
+        prop_id: Some(*tags_map_prop.id()),
+        ..base_attribute_read_context
+    };
+    let tags_map_attribute_value =
+        AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                tags_map_attribute_read_context,
+            ))?;
+    let tags_map_item_attribute_context =
+        AttributeContextBuilder::from(base_attribute_read_context)
+            .set_prop_id(*tags_map_item_prop.id())
+            .to_context()?;
+    let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
+        ctx,
+        tags_map_item_attribute_context,
+        *tags_map_attribute_value.id(),
+        None,
+        Some("Name".to_string()),
+    )
+    .await?;
+
+    // Connect props to providers.
+
+    let si_name_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
+    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+        })?;
+    let name_tags_item_attribute_value =
+        AttributeValue::get_by_id(ctx, &name_tags_item_attribute_value_id)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFound(
+                name_tags_item_attribute_value_id,
+            ))?;
+    let mut name_tags_item_attribute_prototype = name_tags_item_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    name_tags_item_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    let identity_arg = FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_id)
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                "identity".to_string(),
+                "identity".to_string(),
+            )
+        })?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *name_tags_item_attribute_prototype.id(),
+        *identity_arg.id(),
+        *si_name_internal_provider.id(),
     )
     .await?;
 
