@@ -2,7 +2,7 @@
 //pub enum PropertyEditorError {
 //}
 
-use std::collections::HashMap;
+use std::{cmp::Ordering, collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -274,6 +274,18 @@ impl PropertyEditorValues {
             } else {
                 root_value_id = Some(i64::from(*work.attribute_value.id()).into());
             }
+        }
+
+        // Note: hackish ordering to ensure consistency in the frontend
+        for value in child_values.values_mut() {
+            value.sort_by(|a, b| {
+                let a = &values[a];
+                let b = &values[b];
+                match a.prop_id.cmp(&b.prop_id) {
+                    Ordering::Equal => a.id.cmp(&b.id),
+                    ordering => ordering,
+                }
+            });
         }
 
         if let Some(root_value_id) = root_value_id {

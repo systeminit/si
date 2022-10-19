@@ -5,6 +5,8 @@ macro_rules! pk {
             Debug,
             Eq,
             PartialEq,
+            PartialOrd,
+            Ord,
             Copy,
             Clone,
             Hash,
