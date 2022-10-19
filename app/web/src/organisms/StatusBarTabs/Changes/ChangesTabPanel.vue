@@ -2,7 +2,6 @@
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
     <StatusBarTabPanelComponentList
-      status-type="change"
       :component-list="componentsList"
       :selected-filter="selectedFilter"
       :filter-options="filterOptions"
@@ -157,8 +156,12 @@ const diffReqStatus = componentsStore.getRequestStatus(
   selectedComponentId,
 );
 
-watch(selectedComponentId, () => {
-  if (!selectedComponentId.value) return;
-  componentsStore.FETCH_COMPONENT_DIFF(selectedComponentId.value);
-});
+watch(
+  selectedComponentId,
+  () => {
+    if (!selectedComponentId.value) return;
+    componentsStore.FETCH_COMPONENT_DIFF(selectedComponentId.value);
+  },
+  { immediate: true },
+);
 </script>

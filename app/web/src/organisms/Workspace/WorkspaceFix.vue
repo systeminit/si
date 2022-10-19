@@ -6,6 +6,7 @@
     <FixProgressOverlay />
     <GenericDiagram
       v-if="diagramNodes"
+      :custom-config="diagramCustomConfig"
       :nodes="diagramNodes"
       :edges="diagramEdges"
       read-only
@@ -24,8 +25,13 @@ import FixProgressOverlay from "@/organisms/FixProgressOverlay.vue";
 import FixPicker from "../FixPicker.vue";
 import FixHistory from "../FixHistory.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
+import { DiagramIcons } from "./diagram_icons";
 
 const componentsStore = useComponentsStore();
 const diagramNodes = computed(() => componentsStore.diagramNodes);
 const diagramEdges = computed(() => componentsStore.diagramEdges);
+
+const diagramCustomConfig = {
+  icons: DiagramIcons,
+};
 </script>

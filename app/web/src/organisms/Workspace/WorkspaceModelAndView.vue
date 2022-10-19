@@ -80,7 +80,7 @@ import {
   DeleteElementsEvent,
 } from "../GenericDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline.vue";
-import { LogoIcons } from "./logo_icons";
+import { DiagramIcons } from "./diagram_icons";
 
 const currentRoute = useRoute();
 
@@ -98,7 +98,7 @@ const diagramNodes = computed(() => componentsStore.diagramNodes);
 const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 
 const diagramCustomConfig = {
-  icons: LogoIcons,
+  icons: DiagramIcons,
 };
 
 const selectedComponent = computed(() => componentsStore.selectedComponent);

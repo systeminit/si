@@ -23,13 +23,13 @@ const CONFIG = {
     modified: { iconName: "tilde-circle", tone: "warning" },
   },
   confirmation: {
-    success: { iconName: "check-circle", tone: "success" },
-    failure: { iconName: "x-circle", tone: "destructive" },
+    success: { iconName: "check-square", tone: "success" },
+    failure: { iconName: "x-square", tone: "destructive" },
     running: { iconName: "loader", tone: "action" },
   },
   qualification: {
-    success: { iconName: "check-square", tone: "success" },
-    failure: { iconName: "x-square", tone: "destructive" },
+    success: { iconName: "check-circle", tone: "success" },
+    failure: { iconName: "x-circle", tone: "destructive" },
     running: { iconName: "loader", tone: "action" },
   },
 };
@@ -38,7 +38,7 @@ const CONFIG = {
 // could also think about breaking this into multiple components, but it's nice to keep things consistent
 const props = defineProps({
   type: { type: String as PropType<keyof typeof CONFIG>, required: true },
-  status: { type: String, required: true },
+  status: { type: String },
   size: { type: String as PropType<IconSizes> },
 });
 
@@ -54,11 +54,12 @@ const props = defineProps({
 const iconName = computed<IconNames>(
   () =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (CONFIG as any)[props.type]?.[props.status]?.iconName || "question-circle",
+    (CONFIG as any)[props.type]?.[props.status || ""]?.iconName ||
+    "question-circle",
 );
 const iconTone = computed<Tones>(
   () =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (CONFIG as any)[props.type]?.[props.status]?.tone || "warning",
+    (CONFIG as any)[props.type]?.[props.status || ""]?.tone || "warning",
 );
 </script>

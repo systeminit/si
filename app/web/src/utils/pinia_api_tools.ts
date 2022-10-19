@@ -73,7 +73,6 @@ declare module "pinia" {
   // augments the store's state
   export interface PiniaCustomStateProperties<S> {
     apiRequestStatuses: RawRequestStatusesByKey;
-    trackStoreUsedByComponent(component: ComponentInternalInstance): void;
   }
 }
 

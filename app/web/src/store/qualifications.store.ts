@@ -131,6 +131,13 @@ export const useQualificationsStore = () => {
               this.FETCH_QUALIFICATIONS_SUMMARY();
             },
           },
+          {
+            // don't think this should be needed, but not getting other event when new component is added
+            eventType: "ChangeSetWritten",
+            callback: () => {
+              this.FETCH_QUALIFICATIONS_SUMMARY();
+            },
+          },
         ]);
 
         return () => {

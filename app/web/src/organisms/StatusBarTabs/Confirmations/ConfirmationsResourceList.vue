@@ -29,7 +29,7 @@
         <StatusIndicatorIcon
           type="confirmation"
           :status="
-            resourcesStore.confirmationResultByComponentId[resource.componentId]
+            resourcesStore.confirmationStatusByComponentId[resource.componentId]
           "
         />
       </div>

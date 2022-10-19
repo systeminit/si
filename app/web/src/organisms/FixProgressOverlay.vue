@@ -36,7 +36,7 @@
             size="xs"
             class="inline-block align-middle"
           />
-          Synced
+          {{ fixState.mode === "syncing" ? "Synced" : "Fixed" }}
         </span>
       </div>
     </Transition>
@@ -49,10 +49,14 @@ import { computed } from "vue";
 import ProgressBar from "@/atoms/ProgressBar.vue";
 import { useFixesStore } from "@/store/fixes/fixes.store";
 import Icon from "@/ui-lib/Icon.vue";
+import { useResourcesStore } from "@/store/resources.store";
 
+const resourcesStore = useResourcesStore();
 const fixesStore = useFixesStore();
 const loadFixesReqStatus = fixesStore.getRequestStatus("LOAD_FIXES");
 const execFixesReqStatus = fixesStore.getRequestStatus("EXECUTE_FIXES");
+
+const totalResources = computed(() => resourcesStore.allResources.length);
 
 const fixState = computed(() => {
   if (fixesStore.runningFixBatch) {
@@ -64,6 +68,7 @@ const fixState = computed(() => {
     }
 
     return {
+      mode: "fixing",
       rate,
       executed,
       total,
@@ -73,9 +78,8 @@ const fixState = computed(() => {
   } else {
     let rate = 0;
     if (loadFixesReqStatus.value.isSuccess) {
-      if (fixesStore.totalFixComponents > 0) {
-        rate =
-          fixesStore.processedFixComponents / fixesStore.totalFixComponents;
+      if (totalResources.value > 0) {
+        rate = fixesStore.processedFixComponents / totalResources.value;
       } else {
         rate = 1;
       }
@@ -92,9 +96,10 @@ const fixState = computed(() => {
     }
 
     return {
+      mode: "syncing",
       rate,
       executed: fixesStore.processedFixComponents,
-      total: fixesStore.totalFixComponents,
+      total: totalResources.value,
       summary,
       highlightedSummary,
     };
