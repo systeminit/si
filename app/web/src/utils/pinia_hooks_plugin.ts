@@ -11,11 +11,13 @@ import _ from "lodash";
 
 type MaybePromise<T> = T | Promise<T>;
 declare module "pinia" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   export interface DefineStoreOptionsBase<S, Store> {
     // adds our new custom option for activation/deactivation hook
     onActivated?: (this: Store) => MaybePromise<void | (() => void)>;
-    trackStoreUsedByComponent?: (component: ComponentInternalInstance) => void;
+  }
+  export interface PiniaCustomStateProperties<S> {
+    trackStoreUsedByComponent(component: ComponentInternalInstance): void;
   }
 }
 

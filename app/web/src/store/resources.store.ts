@@ -3,10 +3,11 @@ import _ from "lodash";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
+import { ResourceHealth, ResourceStatus } from "@/api/sdf/dal/resource";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId, useComponentsStore } from "./components.store";
 import { useWorkspacesStore } from "./workspaces.store";
-import { useFixesStore } from "./fixes/fixes.store";
+import { SCHEMA_MOCK_METADATA } from "./fixes/fixes.store";
 
 export type ResourceId = number;
 
@@ -17,32 +18,16 @@ export type MockResource = {
   kind: string;
   health: ResourceHealth;
   status: ResourceStatus;
-  confirmations: Confirmation[];
 };
 
 // TODO: need to review this... clarify "resource health" vs "resource status"
 // and should probably align closer to "qualification status"
-export type ConfirmationResult = "success" | "failure" | "running";
-export enum ResourceHealth {
-  Ok = "ok",
-  Warning = "warning",
-  Error = "error",
-  Unknown = "unknown",
-  Running = "running",
-}
-
-export enum ResourceStatus {
-  Pending = "pending",
-  InProgress = "inProgress",
-  Created = "created",
-  Failed = "failed",
-  Deleted = "deleted",
-}
+export type ConfirmationStatus = "success" | "failure" | "running";
 
 export interface Confirmation {
   title: string;
-  result: ConfirmationResult;
-  health: ResourceHealth;
+  status: ConfirmationStatus;
+  health: ResourceHealth; // not sure about this
   link?: string;
   description?: string;
   output?: string[];
@@ -64,7 +49,7 @@ export interface ResourceSummaryForComponent {
   resource?: MockResource;
 }
 
-type ConfirmationStats = Record<ConfirmationResult | "total", number>;
+type ConfirmationStats = Record<ConfirmationStatus | "total", number>;
 
 export const useResourcesStore = () => {
   const workspacesStore = useWorkspacesStore();
@@ -72,55 +57,56 @@ export const useResourcesStore = () => {
   return addStoreHooks(
     defineStore(`w${workspaceId}/resources`, {
       state: () => ({
-        // resourcesByComponentId: {} as Record<ComponentId, MockResource>,
-        selectedResourceId: null as ResourceId | null,
+        resourcesByComponentId: {} as Record<ComponentId, MockResource>,
+        confirmationsByComponentId: {} as Record<ComponentId, Confirmation[]>,
       }),
       getters: {
-        resourcesByComponentId(): Record<ComponentId, MockResource> {
-          const componentsStore = useComponentsStore();
-          const fixesStore = useFixesStore();
+        // resourcesByComponentId(): Record<ComponentId, MockResource> {
+        //   // note this is always referring to HEAD's component store
+        //   const componentsStore = useComponentsStore(-1);
+        //   const fixesStore = useFixesStore();
 
-          const resources = _.map(
-            componentsStore.allComponents,
-            (component) => {
-              const fix = fixesStore.fixesByComponentId[component.id];
-              // no fix (in our mock setup) means the component never needs to be created
-              const resourceExists = !fix || fix?.status === "success";
+        //   const resources = _.map(
+        //     componentsStore.allComponents,
+        //     (component) => {
+        //       const fix = fixesStore.fixesByComponentId[component.id];
+        //       // no fix (in our mock setup) means the component never needs to be created
+        //       const resourceExists = !fix || fix?.status === "success";
 
-              const confirmationResult: ConfirmationResult = resourceExists
-                ? "success"
-                : "failure";
+        //       const confirmationResult: ConfirmationResult = resourceExists
+        //         ? "success"
+        //         : "failure";
 
-              const health = resourceExists
-                ? ResourceHealth.Ok
-                : ResourceHealth.Error;
-              const status = resourceExists
-                ? ResourceStatus.Created
-                : ResourceStatus.Pending;
+        //       const health = resourceExists
+        //         ? ResourceHealth.Ok
+        //         : ResourceHealth.Error;
+        //       const status = resourceExists
+        //         ? ResourceStatus.Created
+        //         : ResourceStatus.Pending;
 
-              const resource: MockResource = {
-                id: 5000 + component.id,
-                componentId: component.id,
-                name: component.displayName,
-                kind: component.schemaName,
-                health,
-                status,
-                confirmations: [
-                  {
-                    title: "Does The Resource Exist?",
-                    result: confirmationResult,
-                    health,
-                    description: resourceExists
-                      ? "Checks if the resource actually exists. This resource exists!"
-                      : "Checks if the resource actually exists. This resource has not been created yet. Please run the fix above to create it!",
-                  },
-                ],
-              };
-              return resource;
-            },
-          );
-          return _.keyBy(resources, (r) => r.componentId);
-        },
+        //       const resource: MockResource = {
+        //         id: 5000 + component.id,
+        //         componentId: component.id,
+        //         name: component.displayName,
+        //         kind: component.schemaName,
+        //         health,
+        //         status,
+        //         confirmations: [
+        //           {
+        //             title: "Does The Resource Exist?",
+        //             result: confirmationResult,
+        //             health,
+        //             description: resourceExists
+        //               ? "Checks if the resource actually exists. This resource exists!"
+        //               : "Checks if the resource actually exists. This resource has not been created yet. Please run the fix above to create it!",
+        //           },
+        //         ],
+        //       };
+        //       return resource;
+        //     },
+        //   );
+        //   return _.keyBy(resources, (r) => r.componentId);
+        // },
         allResources(): MockResource[] {
           return _.values(this.resourcesByComponentId);
         },
@@ -131,13 +117,13 @@ export const useResourcesStore = () => {
             : null;
         },
 
-        // confirmations living here for now... might move into their own store later?
-        confirmationsByComponentId(): Record<ComponentId, Confirmation[]> {
-          return _.mapValues(
-            this.resourcesByComponentId,
-            (c) => c.confirmations,
-          );
-        },
+        // // confirmations living here for now... might move into their own store later?
+        // confirmationsByComponentId(): Record<ComponentId, Confirmation[]> {
+        //   return _.mapValues(
+        //     this.resourcesByComponentId,
+        //     (c) => c.confirmations,
+        //   );
+        // },
         confirmationStatsByComponentId(): Record<
           ComponentId,
           ConfirmationStats
@@ -145,13 +131,7 @@ export const useResourcesStore = () => {
           return _.mapValues(
             this.confirmationsByComponentId,
             (confirmations, _componentId) => {
-              const grouped = _.groupBy(confirmations, (c) => {
-                if (c.health === ResourceHealth.Ok) return "success";
-                if (c.health === ResourceHealth.Error) return "failure";
-                // TODO: fix this when we align with qualificaitons
-                if (c.health === ResourceHealth.Warning) return "failure";
-                return "running";
-              });
+              const grouped = _.groupBy(confirmations, (c) => c.status);
               return {
                 failure: grouped.failure?.length || 0,
                 success: grouped.success?.length || 0,
@@ -163,9 +143,9 @@ export const useResourcesStore = () => {
         },
 
         // single status per component
-        confirmationResultByComponentId(): Record<
+        confirmationStatusByComponentId(): Record<
           ComponentId,
-          ConfirmationResult
+          ConfirmationStatus
         > {
           return _.mapValues(this.confirmationStatsByComponentId, (cs) => {
             if (cs.running) return "running";
@@ -176,23 +156,63 @@ export const useResourcesStore = () => {
 
         // stats/totals by component
         componentsConfirmationStats(): ConfirmationStats {
-          const grouped = _.groupBy(this.confirmationResultByComponentId);
+          const grouped = _.groupBy(this.confirmationStatusByComponentId);
           return {
             failure: grouped.failure?.length || 0,
             success: grouped.success?.length || 0,
             running: grouped.running?.length || 0,
-            total: _.keys(this.confirmationResultByComponentId).length,
+            total: _.keys(this.confirmationStatusByComponentId).length,
           };
         },
 
         // roll up to single confirmations result for the workspace
-        workspaceConfirmationResult(): ConfirmationResult {
+        workspaceConfirmationResult(): ConfirmationStatus {
           if (this.componentsConfirmationStats.running > 0) return "running";
           if (this.componentsConfirmationStats.failure > 0) return "failure";
           return "success";
         },
       },
       actions: {
+        async generateMockResources() {
+          // we'll make sure we load head's components, and then use that to know if the resource exists or not yet
+          const componentsStore = useComponentsStore(-1);
+          if (
+            !componentsStore.getRequestStatus("FETCH_COMPONENTS").value
+              .isRequested
+          ) {
+            await componentsStore.FETCH_COMPONENTS();
+          }
+          const headComponents = componentsStore.allComponents;
+
+          _.each(headComponents, (component) => {
+            if (this.resourcesByComponentId[component.id]) return;
+            this.resourcesByComponentId[component.id] = {
+              id: 5000 + component.id,
+              componentId: component.id,
+              name: component.displayName,
+              kind: component.schemaName,
+              health: ResourceHealth.Unknown,
+              status: ResourceStatus.Pending,
+            };
+
+            const resourceStartsCreated =
+              SCHEMA_MOCK_METADATA[component.schemaName].fixDelay === 0;
+
+            this.confirmationsByComponentId[component.id] = [
+              {
+                title: "Does The Resource Exist?",
+                status: resourceStartsCreated ? "success" : "failure",
+                health: resourceStartsCreated
+                  ? ResourceHealth.Ok
+                  : ResourceHealth.Unknown,
+                description: resourceStartsCreated
+                  ? "This resource exists!"
+                  : "This resource has not been created yet. Please run the fix above to create it!",
+              },
+            ];
+          });
+        },
+
         // actually fetches diagram-style data, but we have a computed getter to turn back into more generic component data above
         async FETCH_RESOURCES_LIST() {
           return new ApiRequest<{ components: ResourceSummaryForComponent[] }>({
@@ -207,11 +227,6 @@ export const useResourcesStore = () => {
             },
           });
         },
-
-        // for now we'll populate the resources using data in the fixes store (which is mocked)
-        // but it may turn out the fixes store and resources store are combined?
-        // more needs to be worked out about what the shape of the data and backend will look like...
-        populateMockResources() {},
       },
       onActivated() {
         this.FETCH_RESOURCES_LIST();

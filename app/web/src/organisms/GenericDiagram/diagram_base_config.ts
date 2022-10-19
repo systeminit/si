@@ -13,6 +13,8 @@ import ErrorSquareIcon from "~icons/mdi/close-box?raw";
 
 import LoadingIcon from "~icons/gg/spinner?raw";
 
+import MinusIcon from "~icons/mdi/minus?raw";
+
 import { DiagramConfig } from "./diagram_types";
 import { colors } from "../../utils/design_token_values";
 
@@ -29,6 +31,8 @@ export const baseConfig: DiagramConfig = {
     error: ErrorIcon as any,
     "error-circle": ErrorCircleIcon as any,
     "error-square": ErrorSquareIcon as any,
+
+    minus: MinusIcon as any,
 
     loading: LoadingIcon as any,
   },

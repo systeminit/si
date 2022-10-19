@@ -8,6 +8,8 @@ import { ApiRequest } from "@/utils/pinia_api_tools";
 import hardcodedOutputs from "@/store/fixes/hardcoded_fix_outputs";
 import { User } from "@/api/sdf/dal/user";
 import { useAuthStore } from "@/store/auth.store";
+import { ResourceStatus } from "@/api/sdf/dal/resource";
+import { useResourcesStore } from "../resources.store";
 
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 
@@ -32,7 +34,7 @@ export type FixBatch = {
   timestamp: Date;
 };
 
-const SCHEMA_MOCK_METADATA: Record<
+export const SCHEMA_MOCK_METADATA: Record<
   string,
   { provider: string; fixDelay: number; order: number }
 > = {
@@ -84,10 +86,6 @@ export const useFixesStore = () => {
         allFixBatches(): FixBatch[] {
           return _.values(this.fixBatchesById);
         },
-        totalFixComponents() {
-          const componentsStore = useComponentsStore();
-          return componentsStore.allComponents.length;
-        },
         fixesOnBatch() {
           return (fixBatchId: FixBatchId) => {
             const fixes = [];
@@ -118,7 +116,7 @@ export const useFixesStore = () => {
       },
       actions: {
         async LOAD_FIXES() {
-          const componentsStore = useComponentsStore();
+          const componentsStore = useComponentsStore(-1);
 
           if (
             !componentsStore.getRequestStatus("FETCH_COMPONENTS").value
@@ -149,9 +147,15 @@ export const useFixesStore = () => {
           if (this.populatingFixes) return;
           this.populatingFixes = true;
 
-          const componentsStore = useComponentsStore();
+          const componentsStore = useComponentsStore(-1);
+          const resourcesStore = useResourcesStore();
+          await resourcesStore.generateMockResources();
 
-          for (const component of componentsStore.allComponents) {
+          this.processedFixComponents = 0;
+
+          for (const resource of resourcesStore.allResources) {
+            const component =
+              componentsStore.componentsById[resource.componentId];
             componentsStore.increaseActivityCounterOnComponent(component.id);
             await promiseDelay(1000);
             this.processedFixComponents += 1;
@@ -164,23 +168,24 @@ export const useFixesStore = () => {
             const provider =
               SCHEMA_MOCK_METADATA[component.schemaName]?.provider;
 
-            this.updateFix({
-              id: 1000 + component.id,
-              componentId: component.id,
-              name: `Create ${component.schemaName}`,
-              componentName: component.displayName,
-              recommendation:
-                _.sample([
-                  "this is what we recommend you do - just fix this thing and you will be all good",
-                  "honestly idk, you figure it out",
-                  "this one should be pretty simple",
-                  "run this fix and you will be golden",
-                  "don't just sit there, run the fix!",
-                ]) ?? "",
-              status: "unstarted",
-              provider,
-              output: hardcodedOutputs[component.schemaName] ?? "{}",
-            });
+            if (resource.status === ResourceStatus.Pending)
+              this.updateFix({
+                id: 1000 + component.id,
+                componentId: component.id,
+                name: `Create ${component.schemaName}`,
+                componentName: component.displayName,
+                recommendation:
+                  _.sample([
+                    "this is what we recommend you do - just fix this thing and you will be all good",
+                    "honestly idk, you figure it out",
+                    "this one should be pretty simple",
+                    "run this fix and you will be golden",
+                    "don't just sit there, run the fix!",
+                  ]) ?? "",
+                status: "unstarted",
+                provider,
+                output: hardcodedOutputs[component.schemaName] ?? "{}",
+              });
             await promiseDelay(400); // Extra delay on items that will generate fixes
             componentsStore.decreaseActivityCounterOnComponent(component.id);
           }
@@ -188,7 +193,8 @@ export const useFixesStore = () => {
         },
         async executeMockFixes(fixes: Array<Fix>) {
           const authStore = useAuthStore();
-          const componentsStore = useComponentsStore();
+          const componentsStore = useComponentsStore(-1);
+          const resourcesStore = useResourcesStore();
 
           const fixBatch = <FixBatch>{
             id: batchIdCounter++,
@@ -213,6 +219,10 @@ export const useFixesStore = () => {
               status: "running",
             });
 
+            // not shown anywhere at the moment
+            resourcesStore.resourcesByComponentId[fix.componentId].status =
+              ResourceStatus.InProgress;
+
             componentsStore.increaseActivityCounterOnComponent(fix.componentId);
 
             const component = componentsStore.componentsById[fix.componentId];
@@ -227,12 +237,21 @@ export const useFixesStore = () => {
               status: "success",
             });
             componentsStore.decreaseActivityCounterOnComponent(fix.componentId);
+
+            const confirmation =
+              resourcesStore.confirmationsByComponentId[fix.componentId][0];
+            confirmation.status = "running";
+            await promiseDelay(1000);
+            confirmation.status = "success";
+            confirmation.description = "This resource exists!";
           }
           await promiseDelay(1600); // delay time for UI to update
           this.runningFixBatch = undefined;
         },
       },
       async onActivated() {
+        const resourcesStore = useResourcesStore();
+        await resourcesStore.generateMockResources();
         await this.LOAD_FIXES();
       },
     }),

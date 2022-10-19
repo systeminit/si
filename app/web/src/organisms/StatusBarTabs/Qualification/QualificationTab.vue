@@ -4,9 +4,10 @@
       <StatusIndicatorIcon type="qualification" :status="overallStatus" />
     </template>
     <template #name>
-      <template v-if="overallStatus === 'running'"> Running... </template>
+      Qualifications
+      <!-- <template v-if="overallStatus === 'running'"> Running... </template>
       <template v-else-if="componentStats.total > 0"> Qualifications </template>
-      <template v-else>No Qualifications Run...</template>
+      <template v-else>No Qualifications Run...</template> -->
     </template>
     <template v-if="componentStats.total" #summary>
       <StatusBarTabPill v-if="componentStats.total" class="border-white">

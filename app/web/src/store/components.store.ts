@@ -31,7 +31,7 @@ import {
   useQualificationsStore,
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
-import { ConfirmationResult, useResourcesStore } from "./resources.store";
+import { ConfirmationStatus, useResourcesStore } from "./resources.store";
 
 export type ComponentId = number;
 type Component = {
@@ -64,18 +64,24 @@ const qualificationStatusToIconMap: Record<
   QualificationStatus,
   DiagramStatusIcon
 > = {
+  success: { icon: "check-circle", tone: "success" },
+  failure: { icon: "error-circle", tone: "error" },
+  running: { icon: "loading", tone: "info" },
+};
+
+const confirmationStatusToIconMap: Record<
+  ConfirmationStatus,
+  DiagramStatusIcon
+> = {
   success: { icon: "check-square", tone: "success" },
   failure: { icon: "error-square", tone: "error" },
   running: { icon: "loading", tone: "info" },
 };
 
-const confirmationStatusToIconMap: Record<
-  ConfirmationResult,
-  DiagramStatusIcon
-> = {
-  success: { icon: "check-circle", tone: "success" },
-  failure: { icon: "error-circle", tone: "error" },
-  running: { icon: "loading", tone: "info" },
+const changeStatusToIconMap: Record<ComponentStatus, DiagramStatusIcon> = {
+  added: { icon: "change-added", tone: "success" },
+  deleted: { icon: "change-deleted", tone: "error" },
+  modified: { icon: "change-modified", tone: "warning" },
 };
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
@@ -177,13 +183,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               typeIcon = node.category;
             }
 
-            const qualificationStatus =
-              qualificationsStore.qualificationStatusByComponentId[
-                parseInt(node.id)
-              ];
+            const componentId = parseInt(node.id);
 
+            const qualificationStatus =
+              qualificationsStore.qualificationStatusByComponentId[componentId];
             const confirmationStatus =
-              resourcesStore.confirmationResultByComponentId[parseInt(node.id)];
+              resourcesStore.confirmationStatusByComponentId[componentId];
+            const changeStatus = this.componentChangeStatusById[componentId];
 
             const activityCounter = _.get(
               this.activityCounterByComponentId,
@@ -196,8 +202,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               isLoading: activityCounter > 0,
               typeIcon,
               statusIcons: _.compact([
-                confirmationStatusToIconMap[confirmationStatus],
+                changeStatusToIconMap[changeStatus],
                 qualificationStatusToIconMap[qualificationStatus],
+                confirmationStatusToIconMap[confirmationStatus] || {
+                  icon: "minus",
+                  tone: "neutral",
+                },
               ]),
             };
           });
@@ -270,6 +280,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // but I think ideally we fetch more generic component data and then transform into diagram format as necessary
               this.rawDiagramNodes = response.nodes;
               this.diagramEdges = response.edges;
+
+              const resourcesStore = useResourcesStore();
+              resourcesStore.generateMockResources().then();
             },
           });
         },

@@ -151,7 +151,7 @@
     <v-group
       v-if="node.statusIcons?.length"
       :config="{
-        x: halfWidth - node.statusIcons.length * 25,
+        x: halfWidth - node.statusIcons.length * 22 - 2,
         y:
           nodeHeaderHeight +
           subtitleTextHeight +
@@ -165,7 +165,7 @@
         :icon="statusIcon.icon"
         :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
         :config="{
-          x: i * 25,
+          x: i * 22,
           y: 0,
           width: 20,
           height: 20,

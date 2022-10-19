@@ -4,9 +4,10 @@
       <StatusIndicatorIcon type="confirmation" :status="workspaceStatus" />
     </template>
     <template #name>
-      <template v-if="workspaceStatus === 'running'">Running...</template>
+      Confirmations
+      <!-- <template v-if="workspaceStatus === 'running'">Running...</template>
       <template v-else-if="componentStats.total > 0">Confirmations</template>
-      <template v-else>No Confirmations Run...</template>
+      <template v-else>No Confirmations Run...</template> -->
     </template>
     <template v-if="componentStats.total" #summary>
       <StatusBarTabPill v-if="componentStats.total" class="border-white">

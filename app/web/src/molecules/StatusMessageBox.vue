@@ -19,7 +19,7 @@ import { computed, PropType } from "vue";
 import StatusIndicatorIcon, {
   Status,
 } from "@/molecules/StatusIndicatorIcon.vue";
-import { ResourceHealth } from "@/store/resources.store";
+import { ResourceHealth } from "@/api/sdf/dal/resource";
 import HealthIcon from "./HealthIcon.vue";
 
 const props = defineProps({
