@@ -59,7 +59,7 @@
             <span class="pl-1">{{ filteredFixes.length }}</span>
           </div>
         </div>
-        <div class="relative w-full overflow-y-auto">
+        <div class="relative w-full h-full overflow-y-auto">
           <TransitionGroup
             tag="ul"
             enter-active-class="duration-500 ease-out"
@@ -90,16 +90,16 @@
             leave-from-class="opacity-100 "
             leave-to-class="opacity-0"
           >
-            <div v-if="filteredFixes.length === 0" class="absolute top-0">
+            <div v-if="filteredFixes.length === 0" class="absolute top-0 p-4">
               <img
                 v-if="fixesStore.allFixes.length > 0"
-                src="../assets/images/gaby_sitting.jpg"
-                alt="Image of cat, looking at you"
+                src="../assets/images/WhiskersTriumphV1.png"
+                alt="Whiskers the cat, relaxing"
               />
               <img
                 v-else
-                src="../assets/images/gaby_sleeping.jpg"
-                alt="Image of cat, sleeping"
+                src="../assets/images/WhiskersPensiveV1.png"
+                alt="Whiskers the cat, looking at you"
               />
             </div>
           </Transition>
