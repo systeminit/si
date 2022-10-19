@@ -67,7 +67,7 @@ const fixState = computed(() => {
       rate,
       executed,
       total,
-      summary: "Applying fixes...",
+      summary: total === executed ? "Fixes applied!" : "Applying fixes...",
       highlightedSummary: "",
     };
   } else {
