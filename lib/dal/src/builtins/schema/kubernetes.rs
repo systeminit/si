@@ -1,18 +1,16 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
+use crate::component::ComponentKind;
 use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
-    code_generation_prototype::CodeGenerationPrototypeContext,
-    func::argument::FuncArgument,
-    func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs,
-    schema::{SchemaUiMenu, SchemaVariant},
-    socket::SocketArity,
-    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage,
-    DalContext, DiagramKind, ExternalProvider, Func, FuncError, InternalProvider, PropKind,
-    QualificationPrototype, SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    code_generation_prototype::CodeGenerationPrototypeContext, func::argument::FuncArgument,
+    func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs, schema::SchemaUiMenu,
+    socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult, CodeGenerationPrototype,
+    CodeLanguage, DalContext, DiagramKind, ExternalProvider, Func, FuncError, InternalProvider,
+    PropKind, QualificationPrototype, SchemaError, SchemaKind, Socket, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 mod kubernetes_deployment_spec;
@@ -44,21 +42,17 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "Kubernetes Namespace".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
+    let (schema, mut schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Kubernetes Namespace",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(KUBERNETES_NODE_COLOR),
+    )
+    .await?;
 
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant
-        .set_color(ctx, Some(KUBERNETES_NODE_COLOR))
-        .await?;
     schema_variant.set_link(ctx, Some("https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/".to_owned())).await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
+
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
         .set_schema_id(*schema.id())
@@ -205,17 +199,15 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "Kubernetes Deployment".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
+    let (schema, mut schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Kubernetes Deployment",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(KUBERNETES_NODE_COLOR),
+    )
+    .await?;
 
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant
-        .set_color(ctx, Some(KUBERNETES_NODE_COLOR))
-        .await?;
     schema_variant
         .set_link(
             ctx,
@@ -223,10 +215,6 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
                 "reference/kubernetes-api/workload-resources/deployment-v1/",
             )),
         )
-        .await?;
-
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;
 
     let api_version_prop = BuiltinSchemaHelpers::create_prop(

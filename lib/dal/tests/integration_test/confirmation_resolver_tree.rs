@@ -1,23 +1,23 @@
-use crate::dal::test;
+use dal::component::ComponentKind;
 use dal::{
     builtins::BuiltinSchemaHelpers, edge::EdgeKind, edge::VertexObjectKind, socket::SocketArity,
     test::helpers::create_component_and_node_for_schema, ActionPrototype, ActionPrototypeContext,
     BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext, ConfirmationResolverTree,
     DalContext, DiagramKind, Edge, ExternalProvider, Func, HasPrototypeContext, InternalProvider,
-    Schema, SchemaError, SchemaKind, SchemaVariant, Socket, StandardModel, SystemId,
-    WorkflowPrototypeId,
+    Schema, SchemaError, SchemaKind, Socket, StandardModel, SystemId, WorkflowPrototypeId,
 };
 
-async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket, Socket)> {
-    let name = "Dummy Schema".to_string();
-    let mut schema = BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration)
-        .await?
-        .expect("schema already exists");
+use crate::dal::test;
 
-    let (schema_variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
+async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket, Socket)> {
+    let (schema, schema_variant, _) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Dummy Schema",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        None,
+    )
+    .await?;
 
     let (
         identity_func_id,

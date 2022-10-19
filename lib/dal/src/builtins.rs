@@ -3,6 +3,7 @@
 //! [migrate()](crate::builtins::migrate()) function. However, they may have some functionality
 //! exposed for "dev mode" use cases.
 
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::func::binding::FuncBindingError;
@@ -112,8 +113,11 @@ pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
 /// 1. [`WorkflowPrototypes`](crate::workflow_prototype::WorkflowPrototype)
 /// 1. [`Schemas`](crate::Schema)
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
+    info!("migrating functions");
     func::migrate(ctx).await?;
+    info!("migrating workflows");
     workflow::migrate(ctx).await?;
+    info!("migrating schemas");
     schema::migrate(ctx).await?;
     Ok(())
 }

@@ -3,17 +3,13 @@ use std::collections::HashMap;
 use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
-    component::ComponentKind,
-    edit_field::widget::*,
-    prototype_context::PrototypeContext,
-    qualification_prototype::QualificationPrototypeContext,
-    schema::{SchemaUiMenu, SchemaVariant},
-    socket::SocketArity,
-    ActionPrototype, ActionPrototypeContext, AttributeContext, AttributePrototypeArgument,
-    AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult,
-    ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider,
-    Func, InternalProvider, Prop, PropKind, QualificationPrototype, SchemaError, SchemaKind,
-    Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    component::ComponentKind, edit_field::widget::*, prototype_context::PrototypeContext,
+    qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu,
+    socket::SocketArity, ActionPrototype, ActionPrototypeContext, AttributeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
+    BuiltinsError, BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext, DalContext,
+    DiagramKind, ExternalProvider, Func, InternalProvider, Prop, PropKind, QualificationPrototype,
+    SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 // Reference: https://www.docker.com/company/newsroom/media-resources/
@@ -26,24 +22,14 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "Docker Hub Credential".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
-    schema
-        .set_component_kind(ctx, ComponentKind::Credential)
-        .await?;
-
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant
-        .set_color(ctx, Some(DOCKER_NODE_COLOR))
-        .await?;
-
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
+    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Docker Hub Credential",
+        SchemaKind::Configuration,
+        ComponentKind::Credential,
+        Some(DOCKER_NODE_COLOR),
+    )
+    .await?;
 
     let mut secret_prop = Prop::new(ctx, "secret", PropKind::Integer, None).await?;
     secret_prop
@@ -106,20 +92,15 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "Docker Image".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
+    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Docker Image",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(DOCKER_NODE_COLOR),
+    )
+    .await?;
 
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant
-        .set_color(ctx, Some(DOCKER_NODE_COLOR))
-        .await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
         .set_schema_id(*schema.id())
@@ -178,6 +159,21 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
         *schema.id(),
         *schema_variant.id(),
         "Container Image",
+        None,
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        SocketArity::Many,
+        DiagramKind::Configuration,
+    )
+    .await?;
+    output_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    let (exposed_ports_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+        ctx,
+        *schema.id(),
+        *schema_variant.id(),
+        "Exposed Ports",
         None,
         identity_func_id,
         identity_func_binding_id,
@@ -267,6 +263,27 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
             })?,
         identity_func_identity_arg_id,
         *root_implicit_internal_provider.id(),
+    )
+    .await?;
+
+    // Connect "/root/domain/ExposedPorts" to the external provider.
+    let exposed_props_implicit_internal_provider =
+        InternalProvider::get_for_prop(ctx, *exposed_ports_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*exposed_ports_prop.id())
+            })?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *exposed_ports_external_provider
+            .attribute_prototype_id()
+            .ok_or_else(|| {
+                BuiltinsError::MissingAttributePrototypeForExternalProvider(
+                    *exposed_ports_external_provider.id(),
+                )
+            })?,
+        identity_func_identity_arg_id,
+        *exposed_props_implicit_internal_provider.id(),
     )
     .await?;
 

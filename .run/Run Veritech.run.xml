@@ -1,7 +1,9 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run Veritech" type="MAKEFILE_TARGET_RUN_CONFIGURATION" factoryName="Makefile">
     <makefile filename="$PROJECT_DIR$/Makefile" target="run//bin/veritech" workingDirectory="$PROJECT_DIR$" arguments="">
-      <envs />
+      <envs>
+        <env name="DEBUG" value="*" />
+      </envs>
     </makefile>
     <method v="2" />
   </configuration>
