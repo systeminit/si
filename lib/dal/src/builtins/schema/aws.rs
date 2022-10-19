@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::builtins::schema::{BuiltinSchemaHelpers, SelectWidgetOption};
 use crate::builtins::BuiltinsError;
 use crate::code_generation_prototype::CodeGenerationPrototypeContext;
+use crate::component::ComponentKind;
 use crate::edit_field::widget::WidgetKind;
 use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use crate::prototype_context::PrototypeContext;
@@ -11,11 +12,9 @@ use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::validation::Validation;
 use crate::AttributeValueError;
 use crate::{
-    attribute::context::AttributeContextBuilder,
-    func::argument::FuncArgument,
-    schema::{SchemaUiMenu, SchemaVariant},
-    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
+    attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
+    schema::SchemaUiMenu, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
     ExternalProvider, Func, InternalProvider, PropKind, QualificationPrototype, SchemaError,
     SchemaKind, Socket, StandardModel,
 };
@@ -68,19 +67,15 @@ impl From<&AwsRegion> for SelectWidgetOption {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS AMI`](https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html).
 async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "AMI".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
+    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "AMI",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(AWS_NODE_COLOR),
+    )
+    .await?;
 
-    // Variant setup
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
         .set_schema_id(*schema.id())
@@ -270,19 +265,15 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS EC2`](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html).
 async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "EC2 Instance".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
+    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "EC2 Instance",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(AWS_NODE_COLOR),
+    )
+    .await?;
 
-    // Variant setup.
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
         .set_schema_id(*schema.id())
@@ -787,19 +778,15 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Region`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html).
 async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "Region".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
+    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Region",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(AWS_NODE_COLOR),
+    )
+    .await?;
 
-    // Variant setup.
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
         .set_schema_id(*schema.id())
@@ -831,7 +818,6 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Validation Creation
-
     let expected = regions_json
         .iter()
         .map(|r| r.code.clone())
@@ -910,19 +896,15 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Key Pair`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html).
 async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "Key Pair".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
+    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Key Pair",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(AWS_NODE_COLOR),
+    )
+    .await?;
 
-    // Variant setup.
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
         .set_schema_id(*schema.id())
@@ -947,7 +929,6 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Prop: /root/domain/KeyType
-
     let _key_type_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "KeyType",

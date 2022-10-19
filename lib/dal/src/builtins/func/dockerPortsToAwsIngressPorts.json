@@ -1,0 +1,10 @@
+{
+  "kind": "Json",
+  "response_type": "Array",
+  "code_file": "dockerPortsToAwsIngressPorts.js",
+  "code_entrypoint": "dockerPortsToAwsIngressPorts",
+  "arguments": [{
+    "name": "ExposedPorts",
+    "kind": "Array"
+  }]
+}

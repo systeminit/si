@@ -1,5 +1,14 @@
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use telemetry::prelude::*;
+
 use crate::attribute::context::AttributeContextBuilder;
 use crate::edit_field::widget::WidgetKind;
+use crate::func::argument::{FuncArgument, FuncArgumentId};
+use crate::func::backend::validation::FuncBackendValidationArgs;
+use crate::schema::RootProp;
+use crate::validation::Validation;
 use crate::{
     component::ComponentKind,
     func::{
@@ -8,14 +17,8 @@ use crate::{
     },
     AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext, Func,
     FuncError, FuncId, Prop, PropError, PropId, PropKind, Schema, SchemaId, SchemaKind,
-    SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
+    SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
 };
-
-use crate::func::argument::{FuncArgument, FuncArgumentId};
-use crate::func::backend::validation::FuncBackendValidationArgs;
-use crate::validation::Validation;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 mod aws;
 mod coreos;
@@ -45,30 +48,39 @@ pub struct SelectWidgetOption {
 pub struct BuiltinSchemaHelpers;
 
 impl BuiltinSchemaHelpers {
-    pub async fn create_schema(
+    /// Create a [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant). In addition, set the node
+    /// color for the given [`SchemaKind`](crate::SchemaKind) (which may correspond to a
+    /// [`DiagramKind`](crate::DiagramKind)).
+    pub async fn create_schema_and_variant(
         ctx: &DalContext,
-        schema_name: &str,
-        schema_kind: &SchemaKind,
-    ) -> BuiltinsResult<Option<Schema>> {
-        // TODO(nick): there's one issue here. If the schema kind has changed, then this check will be
+        name: impl AsRef<str>,
+        kind: SchemaKind,
+        component_kind: ComponentKind,
+        node_color: Option<i64>,
+    ) -> BuiltinsResult<(Schema, SchemaVariant, RootProp)> {
+        let name = name.as_ref();
+        info!("migrating {name} schema");
+
+        // TODO(nick): Check if the default schema already exists.
+        // There's one issue here. If the schema kind has changed, then this check will be
         // inaccurate. As a result, we will be unable to re-create the schema without manual intervention.
         // This should be fine since this code should likely only last as long as default schemas need to
         // be created... which is hopefully not long.... hopefully...
-        let default_schema_exists = !Schema::find_by_attr(ctx, "name", &schema_name.to_string())
-            .await?
-            .is_empty();
 
-        // TODO(nick): this should probably return an "AlreadyExists" error instead of "None", but
-        // since the calling function would have to deal with the result similarly, this should suffice
-        // for now.
-        match default_schema_exists {
-            true => Ok(None),
-            false => {
-                let schema =
-                    Schema::new(ctx, schema_name, schema_kind, &ComponentKind::Standard).await?;
-                Ok(Some(schema))
-            }
+        // let default_schema_exists = !Schema::find_by_attr(ctx, "name", &name.to_string())
+        //     .await?
+        //     .is_empty();
+
+        let mut schema = Schema::new(ctx, name, &kind, &component_kind).await?;
+        let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+        if node_color.is_some() {
+            schema_variant.set_color(ctx, node_color).await?;
         }
+        schema
+            .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+            .await?;
+
+        Ok((schema, schema_variant, root_prop))
     }
 
     /// Creates a [`Prop`](crate::Prop) with some common settings.

@@ -1,14 +1,14 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
+use crate::component::ComponentKind;
 use crate::func::argument::FuncArgument;
 use crate::prototype_context::PrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::{
     code_generation_prototype::CodeGenerationPrototypeContext,
     func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs,
-    qualification_prototype::QualificationPrototypeContext,
-    schema::{SchemaUiMenu, SchemaVariant},
-    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
+    qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu, AttributeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
+    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
     ExternalProvider, Func, FuncError, InternalProvider, PropKind, QualificationPrototype,
     SchemaError, SchemaKind, Socket, StandardModel,
 };
@@ -24,21 +24,15 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).
 async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "Butane".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
+    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Butane",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(COREOS_NODE_COLOR),
+    )
+    .await?;
 
-    // Variant setup. The variant color was taken from the coreos logo.
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant
-        .set_color(ctx, Some(COREOS_NODE_COLOR))
-        .await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
         .set_schema_id(*schema.id())

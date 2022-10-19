@@ -2,18 +2,17 @@ use crate::builtins::schema::aws::{AWS_NODE_COLOR, EC2_DOCS_URL, EC2_TAG_DOCS_UR
 use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::builtins::BuiltinsError;
 use crate::code_generation_prototype::CodeGenerationPrototypeContext;
+use crate::component::ComponentKind;
 use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use crate::prototype_context::PrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::validation::Validation;
 use crate::{
-    attribute::context::AttributeContextBuilder,
-    func::argument::FuncArgument,
-    schema::{SchemaUiMenu, SchemaVariant},
-    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext,
-    DiagramKind, ExternalProvider, Func, InternalProvider, PropKind, SchemaError, SchemaKind,
-    Socket, StandardModel,
+    attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
+    schema::SchemaUiMenu, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, AttributeValueError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage,
+    DalContext, DiagramKind, ExternalProvider, Func, FuncError, InternalProvider, PropKind,
+    SchemaError, SchemaKind, Socket, StandardModel,
 };
 
 const INGRESS_EGRESS_DOCS_URL: &str =
@@ -34,19 +33,15 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Ingress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
 async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "Ingress".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
+    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Ingress",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(AWS_NODE_COLOR),
+    )
+    .await?;
 
-    // Variant setup.
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
         .set_schema_id(*schema.id())
@@ -70,98 +65,122 @@ async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    let protocol_prop = BuiltinSchemaHelpers::create_prop(
+    let ip_permissions_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "IpPermissions",
+        PropKind::Array,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let ip_permission_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "IpPermission",
+        PropKind::Object,
+        None,
+        Some(*ip_permissions_prop.id()),
+        Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    let _protocol_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "IpProtocol",
         PropKind::String,
         None,
-        Some(root_prop.domain_prop_id),
+        Some(*ip_permission_prop.id()),
         Some(INGRESS_EGRESS_DOCS_URL.to_string()),
     )
     .await?;
 
-    let expected = INGRESS_EGRESS_PROTOCOLS
-        .iter()
-        .map(|p| p.to_string())
-        .collect::<Vec<String>>();
-    BuiltinSchemaHelpers::create_validation(
-        ctx,
-        Validation::StringInStringArray {
-            value: None,
-            expected,
-            display_expected: true,
-        },
-        *protocol_prop.id(),
-        *schema.id(),
-        *schema_variant.id(),
-    )
-    .await?;
+    // TODO(victor): Re add validations when they start working for objects inside arrays
+    // let expected = INGRESS_EGRESS_PROTOCOLS
+    //     .iter()
+    //     .map(|p| p.to_string())
+    //     .collect::<Vec<String>>();
+    // BuiltinSchemaHelpers::create_validation(
+    //     ctx,
+    //     Validation::StringInStringArray {
+    //         value: None,
+    //         expected,
+    //         display_expected: true,
+    //     },
+    //     *protocol_prop.id(),
+    //     *schema.id(),
+    //     *schema_variant.id(),
+    // )
+    // .await?;
 
-    let to_port_prop = BuiltinSchemaHelpers::create_prop(
+    let _to_port_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "ToPort",
         PropKind::Integer,
         None,
-        Some(root_prop.domain_prop_id),
+        Some(*ip_permission_prop.id()),
         Some(INGRESS_EGRESS_DOCS_URL.to_string()),
     )
     .await?;
 
-    BuiltinSchemaHelpers::create_validation(
-        ctx,
-        Validation::IntegerIsBetweenTwoIntegers {
-            value: None,
-            lower_bound: -1,
-            upper_bound: 65537,
-        },
-        *to_port_prop.id(),
-        *schema.id(),
-        *schema_variant.id(),
-    )
-    .await?;
-
-    let from_port_prop = BuiltinSchemaHelpers::create_prop(
+    // TODO(victor): Re add validations when they start working for objects inside arrays
+    // BuiltinSchemaHelpers::create_validation(
+    //     ctx,
+    //     Validation::IntegerIsBetweenTwoIntegers {
+    //         value: None,
+    //         lower_bound: -1,
+    //         upper_bound: 65537,
+    //     },
+    //     *to_port_prop.id(),
+    //     *schema.id(),
+    //     *schema_variant.id(),
+    // )
+    // .await?;
+    //
+    let _from_port_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "FromPort",
         PropKind::Integer,
         None,
-        Some(root_prop.domain_prop_id),
+        Some(*ip_permission_prop.id()),
         Some(INGRESS_EGRESS_DOCS_URL.to_string()),
     )
     .await?;
 
-    BuiltinSchemaHelpers::create_validation(
-        ctx,
-        Validation::IntegerIsBetweenTwoIntegers {
-            value: None,
-            lower_bound: -1,
-            upper_bound: 65537,
-        },
-        *from_port_prop.id(),
-        *schema.id(),
-        *schema_variant.id(),
-    )
-    .await?;
-
-    let cidr_prop = BuiltinSchemaHelpers::create_prop(
+    // TODO(victor): Re add validations when they start working for objects inside arrays
+    // BuiltinSchemaHelpers::create_validation(
+    //     ctx,
+    //     Validation::IntegerIsBetweenTwoIntegers {
+    //         value: None,
+    //         lower_bound: -1,
+    //         upper_bound: 65537,
+    //     },
+    //     *from_port_prop.id(),
+    //     *schema.id(),
+    //     *schema_variant.id(),
+    // )
+    // .await?;
+    //
+    let _cidr_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "CidrIp",
         PropKind::String,
         None,
-        Some(root_prop.domain_prop_id),
+        Some(*ip_permission_prop.id()),
         Some(INGRESS_EGRESS_DOCS_URL.to_string()),
     )
     .await?;
 
-    BuiltinSchemaHelpers::create_validation(
-        ctx,
-        Validation::StringIsValidIpAddr { value: None },
-        *cidr_prop.id(),
-        *schema.id(),
-        *schema_variant.id(),
-    )
-    .await?;
-
+    // TODO(victor): Re add validations when they start working for objects inside arrays
+    // BuiltinSchemaHelpers::create_validation(
+    //     ctx,
+    //     Validation::StringIsValidIpAddr { value: None },
+    //     *cidr_prop.id(),
+    //     *schema.id(),
+    //     *schema_variant.id(),
+    // )
+    // .await?;
+    //
     let region_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "region",
@@ -237,6 +256,22 @@ async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?;
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
+    // Input Socket
+    let (exposed_ports_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "Exposed Ports",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
     let (region_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
@@ -286,14 +321,35 @@ async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
         serde_json::json!["security-group-rule"],
     )
     .await?;
-    BuiltinSchemaHelpers::set_default_value_for_prop(
-        ctx,
-        *protocol_prop.id(),
-        *schema.id(),
-        *schema_variant.id(),
-        serde_json::json!["tcp"],
-    )
-    .await?;
+
+    // TODO(victor): Re add defaults values when they start working for objects inside arrays
+    // BuiltinSchemaHelpers::set_default_value_for_prop(
+    //     ctx,
+    //     *ip_permissions_prop.id(),
+    //     *schema.id(),
+    //     *schema_variant.id(),
+    //     serde_json::json![[]],
+    // )
+    // .await?;
+    // BuiltinSchemaHelpers::set_default_value_for_prop(
+    //     ctx,
+    //     *ip_permission_prop.id(),
+    //     *schema.id(),
+    //     *schema_variant.id(),
+    //     serde_json::json![{}],
+    // )
+    // .await?;
+
+    // info!("pre");
+    // BuiltinSchemaHelpers::set_default_value_for_prop(
+    //     ctx,
+    //     *protocol_prop.id(),
+    //     *schema.id(),
+    //     *schema_variant.id(),
+    //     serde_json::json!["tcp"],
+    // )
+    // .await?;
+    // info!("post");
 
     // Bind sockets to providers
     let base_attribute_read_context = AttributeReadContext {
@@ -397,49 +453,88 @@ async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // security group id from input socket
-    let group_id_attribute_value_read_context = AttributeReadContext {
-        prop_id: Some(*group_id_prop.id()),
-        ..base_attribute_read_context
-    };
-    let group_id_attribute_value =
-        AttributeValue::find_for_context(ctx, group_id_attribute_value_read_context)
+    {
+        let read_ctx = AttributeReadContext {
+            prop_id: Some(*group_id_prop.id()),
+            ..base_attribute_read_context
+        };
+        let attribute_value = AttributeValue::find_for_context(ctx, read_ctx)
             .await?
-            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                group_id_attribute_value_read_context,
-            ))?;
-    let mut group_id_attribute_prototype = group_id_attribute_value
-        .attribute_prototype(ctx)
-        .await?
-        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-    group_id_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(read_ctx))?;
+        let mut attribute_prototype = attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+        attribute_prototype
+            .set_func_id(ctx, identity_func_id)
+            .await?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *attribute_prototype.id(),
+            identity_func_identity_arg_id,
+            *group_id_internal_provider.id(),
+        )
         .await?;
-    AttributePrototypeArgument::new_for_intra_component(
-        ctx,
-        *group_id_attribute_prototype.id(),
-        identity_func_identity_arg_id,
-        *group_id_internal_provider.id(),
-    )
-    .await?;
+    }
+
+    // Exposed Ports from input socket
+    {
+        let transformation_func_name = "si:dockerPortsToAwsIngressPorts".to_string();
+        let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| FuncError::NotFoundByName(transformation_func_name.clone()))?;
+        let arg_name = "ExposedPorts";
+        let arg = FuncArgument::find_by_name_for_func(ctx, arg_name, *transformation_func.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    transformation_func_name.clone(),
+                    arg_name.to_string(),
+                )
+            })?;
+
+        let read_ctx = AttributeReadContext {
+            prop_id: Some(*ip_permissions_prop.id()),
+            ..base_attribute_read_context
+        };
+
+        let attribute_value = AttributeValue::find_for_context(ctx, read_ctx)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(read_ctx))?;
+
+        let mut attribute_prototype = attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+
+        attribute_prototype
+            .set_func_id(ctx, *transformation_func.id())
+            .await?;
+
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *attribute_prototype.id(),
+            *arg.id(),
+            *exposed_ports_internal_provider.id(),
+        )
+        .await?;
+    }
 
     Ok(())
 }
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Egress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
 async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "Egress".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
+    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Egress",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(AWS_NODE_COLOR),
+    )
+    .await?;
 
-    // Variant setup.
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
         .set_schema_id(*schema.id())
@@ -820,19 +915,14 @@ async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Security Group`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
 async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
-    let name = "Security Group".to_string();
-    let mut schema =
-        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-            Some(schema) => schema,
-            None => return Ok(()),
-        };
-
-    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema_variant.set_color(ctx, Some(AWS_NODE_COLOR)).await?;
-
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await?;
+    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Security Group",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(AWS_NODE_COLOR),
+    )
+    .await?;
 
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
