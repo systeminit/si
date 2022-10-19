@@ -318,23 +318,32 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
+    let expected_instance_types: Vec<String> = serde_json::from_str(INSTANCE_TYPES_JSON_STR)?;
+    let instance_types_option_list: Vec<SelectWidgetOption> = expected_instance_types
+        .iter()
+        .map(|instance_type| SelectWidgetOption {
+            label: instance_type.to_string(),
+            value: instance_type.to_string(),
+        })
+        .collect();
+    let instance_types_option_list_json = serde_json::to_value(instance_types_option_list)?;
+
     // Prop: /root/domain/InstanceType
     let instance_type_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "InstanceType",
         PropKind::String,
-        None,
+        Some((WidgetKind::Select, instance_types_option_list_json)),
         Some(root_prop.domain_prop_id),
         Some(EC2_INSTANCE_TYPES_URL.to_string()),
     )
     .await?;
 
-    let expected: Vec<String> = serde_json::from_str(INSTANCE_TYPES_JSON_STR)?;
     BuiltinSchemaHelpers::create_validation(
         ctx,
         Validation::StringInStringArray {
             value: None,
-            expected,
+            expected: expected_instance_types,
             display_expected: false,
         },
         *instance_type_prop.id(),
