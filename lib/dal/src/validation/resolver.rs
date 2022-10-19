@@ -100,9 +100,10 @@ impl ValidationResolver {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM validation_resolver_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM validation_resolver_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.write_tenancy(),
+                    ctx.read_tenancy(),
                     ctx.visibility(),
                     &validation_prototype_id,
                     &attribute_value_id,
