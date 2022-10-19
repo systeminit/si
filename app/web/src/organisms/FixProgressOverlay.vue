@@ -8,11 +8,32 @@
       )
     "
   >
-    <div>
-      {{ fixState.summary
-      }}<span v-if="fixState.highlightedSummary" class="text-destructive-500">{{
-        fixState.highlightedSummary
-      }}</span>
+    <div class="flex justify-between items-center">
+      <span>
+        {{ fixState.summary }}
+        <span v-if="fixState.highlightedSummary" class="text-destructive-500">
+          {{ fixState.highlightedSummary }}
+        </span>
+      </span>
+
+      <Transition
+        enter-active-class="duration-300 ease-out"
+        enter-from-class="transform opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="delay-1000 duration-200 ease-in"
+        leave-from-class="opacity-100 "
+        leave-to-class="transform opacity-0"
+      >
+        <a
+          v-if="diagramLink"
+          :href="diagramLink"
+          target="_blank"
+          class="text-action-400 flex items-center gap-1.5"
+        >
+          Open Address
+          <Icon name="external-link" class="inline-block" />
+        </a>
+      </Transition>
     </div>
 
     <Transition
@@ -57,6 +78,15 @@ const loadFixesReqStatus = fixesStore.getRequestStatus("LOAD_FIXES");
 const execFixesReqStatus = fixesStore.getRequestStatus("EXECUTE_FIXES");
 
 const totalResources = computed(() => resourcesStore.allResources.length);
+
+const diagramLink = computed(() => {
+  for (const resource of resourcesStore.allResources) {
+    if (resource.link) {
+      return resource.link;
+    }
+  }
+  return undefined;
+});
 
 const fixState = computed(() => {
   if (fixesStore.runningFixBatch) {

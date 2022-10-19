@@ -17,6 +17,7 @@ export type MockResource = {
   name: string;
   kind: string;
   health: ResourceHealth;
+  link?: string;
   status: ResourceStatus;
 };
 
