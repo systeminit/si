@@ -10,7 +10,13 @@
       v-show="isShown && !isCollapsed && !props.disabled"
       class="flex pl-8 pt-4 w-full"
     >
-      <VButton icon="plus-square" label="Add to array" @click="addToArray()" />
+      <VButton2
+        icon="plus"
+        size="xs"
+        label="Add to array"
+        tone="neutral"
+        @click="addToArray()"
+      />
     </div>
   </div>
 </template>
@@ -19,7 +25,7 @@
 import { toRefs } from "vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import { AddToArray, PropertyPath } from "@/api/sdf/dal/property_editor";
-import VButton from "@/molecules/VButton.vue";
+import VButton2 from "@/ui-lib/VButton2.vue";
 import WidgetHeader from "./WidgetHeader.vue";
 
 const props = defineProps<{

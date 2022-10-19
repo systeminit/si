@@ -1,5 +1,6 @@
 <template>
-  <div class="flex flex-row items-center pr-4 pb-2" @keyup.stop @keydown.stop>
+  <div class="" @keyup.stop @keydown.stop>
+    <!-- <div class="flex flex-row items-center w-full" @keyup.stop @keydown.stop> -->
     <WidgetHeader
       v-if="showArrayElementHeader"
       :name="props.schemaProp.name"
@@ -54,7 +55,7 @@
       :validation="props.validation"
       :disabled="disabled"
       :func="props.propValue.func"
-      class="py-4 px-8"
+      :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
     <WidgetCheckBox
@@ -68,7 +69,7 @@
       :doc-link="props.schemaProp.docLink"
       :validation="props.validation"
       :disabled="disabled"
-      class="py-4 px-8"
+      :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
     <WidgetSelectBox
@@ -86,17 +87,20 @@
       :doc-link="props.schemaProp.docLink"
       :validation="props.validation"
       :disabled="disabled"
-      class="py-4 px-8"
+      :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
 
     <!-- restricting to text props for now -->
-    <WidgetFuncButton
+
+    <!-- hiding fn button for now until we clean up this UI -->
+    <!-- <WidgetFuncButton
       v-if="!props.isFirstProp"
       :func="props.propValue.func"
       :value-id="props.propValue.id"
       @create-attribute-func="onCreateAttributeFunc"
-    />
+    /> -->
+
     <!--<div v-else>
       <div class="flex">
         {{ props.path }}
@@ -126,13 +130,16 @@ import {
   FuncWithPrototypeContext,
 } from "@/api/sdf/dal/property_editor";
 import { isCustomizableFuncKind } from "@/api/sdf/dal/func";
+import { tw } from "@/utils/style_helpers";
 import WidgetHeader from "./WidgetHeader.vue";
 import WidgetTextBox from "./WidgetTextBox.vue";
 import WidgetCheckBox from "./WidgetCheckBox.vue";
 import WidgetSelectBox from "./WidgetSelectBox.vue";
 import WidgetArray from "./WidgetArray.vue";
 import WidgetMap from "./WidgetMap.vue";
-import WidgetFuncButton from "./WidgetFuncButton.vue";
+// import WidgetFuncButton from "./WidgetFuncButton.vue";
+
+const INPUT_CLASSES = tw`pl-lg pr-sm pt-sm`;
 
 const props = defineProps<{
   schemaProp: PropertyEditorProp;
@@ -182,10 +189,10 @@ const addToMap = (event: AddToMap) => {
   emits("addToMap", event);
 };
 
-const onCreateAttributeFunc = (
-  currentFunc: FuncWithPrototypeContext,
-  valueId: number,
-) => emits("createAttributeFunc", currentFunc, valueId);
+// const onCreateAttributeFunc = (
+//   currentFunc: FuncWithPrototypeContext,
+//   valueId: number,
+// ) => emits("createAttributeFunc", currentFunc, valueId);
 
 const showArrayElementHeader = computed(() => {
   if (_.isUndefined(arrayIndex?.value) && _.isNull(props.propValue.key)) {

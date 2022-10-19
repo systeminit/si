@@ -17,14 +17,7 @@ NOTES / TODOS / IDEAS
 
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
 import { AxiosInstance } from "axios";
-import {
-  computed,
-  ComputedRef,
-  reactive,
-  unref,
-  Ref,
-  ComponentInternalInstance,
-} from "vue";
+import { computed, ComputedRef, reactive, unref, Ref } from "vue";
 import _ from "lodash";
 import promiseDelay from "@/utils/promise_delay";
 import defer, { DeferredPromise } from "./defer_promise";

@@ -15,13 +15,12 @@
         />
       </div>
     </div>
-    <div v-if="canUnset" class="flex w-16 h-20 items-center justify-center">
-      <UnsetButton
-        v-if="!disabled"
-        :disabled="disableUnset"
-        @click="unsetField"
-      />
-    </div>
+
+    <UnsetButton
+      v-if="canUnset && !disabled"
+      :disabled="disableUnset"
+      @click="unsetField"
+    />
   </div>
 </template>
 
