@@ -112,11 +112,13 @@ import CodeViewer from "./CodeViewer.vue";
 const fixesStore = useFixesStore();
 
 const fixBatchesWithFixes = computed(() =>
-  fixesStore.allFixBatches.map((batch) => ({
-    ...batch,
-    fixes: fixesStore
-      .fixesOnBatch(batch.id)
-      .filter((fix) => fix.status === "success"),
-  })),
+  fixesStore.allFixBatches
+    .map((batch) => ({
+      ...batch,
+      fixes: fixesStore
+        .fixesOnBatch(batch.id)
+        .filter((fix) => fix.status === "success"),
+    }))
+    .reverse(),
 );
 </script>
