@@ -1,6 +1,9 @@
 <template>
   <div class="w-full h-full flex flex-row">
-    <div class="w-72 shrink-0 border-shade-100 h-full flex flex-col">
+    <div
+      v-if="fixListDisplay.length > 0"
+      class="w-72 shrink-0 border-shade-100 h-full flex flex-col"
+    >
       <span
         class="h-11 border-b border-shade-100 text-lg px-4 flex items-center flex-none"
       >
@@ -88,7 +91,11 @@
       v-else
       class="grow flex flex-row overflow-hidden bg-shade-100 items-center text-center"
     >
-      <p class="w-full text-3xl text-neutral-500">No Fix Run Selected</p>
+      <p class="w-full text-3xl text-neutral-500">
+        {{
+          fixListDisplay.length > 0 ? "No Fix Run Selected" : "No Fixes Run Yet"
+        }}
+      </p>
     </div>
   </div>
 </template>

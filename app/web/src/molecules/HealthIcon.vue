@@ -52,7 +52,6 @@ import Icon, { IconSizes } from "@/ui-lib/Icon.vue";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 
 export type WorkflowStatus = "running" | "success" | "failure";
-
 defineProps({
   health: {
     type: String as PropType<ResourceHealth>,

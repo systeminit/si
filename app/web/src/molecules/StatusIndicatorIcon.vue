@@ -16,6 +16,8 @@ export type Status =
   | "modified"
   | "deleted";
 
+export type IconType = "change" | "confirmation" | "qualification";
+
 const CONFIG = {
   change: {
     added: { iconName: "plus-circle", tone: "success" },
@@ -37,7 +39,7 @@ const CONFIG = {
 // NOTE - would ideally pull in the real types here but generics are not yet supported
 // could also think about breaking this into multiple components, but it's nice to keep things consistent
 const props = defineProps({
-  type: { type: String as PropType<keyof typeof CONFIG>, required: true },
+  type: { type: String as PropType<IconType>, required: true },
   status: { type: String },
   size: { type: String as PropType<IconSizes> },
 });
