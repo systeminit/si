@@ -87,6 +87,7 @@ import StatusBarTabPanelComponentList, {
 import { useComponentsStore } from "@/store/components.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const defaultFilterOption = {
   value: "all",
@@ -114,6 +115,7 @@ const changeSelectedFilter = (newFilter: FilterOption) => {
 };
 
 const componentsStore = useComponentsStore();
+const changeSetsStore = useChangeSetsStore();
 
 const changeStatusByComponentId = computed(
   () => componentsStore.componentChangeStatusById,
@@ -157,7 +159,7 @@ const diffReqStatus = componentsStore.getRequestStatus(
 );
 
 watch(
-  selectedComponentId,
+  [selectedComponentId, () => changeSetsStore.selectedChangeSetWritten],
   () => {
     if (!selectedComponentId.value) return;
     componentsStore.FETCH_COMPONENT_DIFF(selectedComponentId.value);
