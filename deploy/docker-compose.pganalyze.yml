@@ -1,0 +1,10 @@
+---
+version: "3"
+
+services:
+  pg:
+    environment:
+      - PGANALYZE=true
+      - PGA_API_KEY=5GY4FNPNS4ZZVOG7
+      - PGA_DB_HOST=127.0.0.1
+      - PGA_DB_PASSWORD=tSYwfHHdBBlfWlxa

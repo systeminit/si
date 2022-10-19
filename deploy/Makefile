@@ -17,6 +17,14 @@ partial: init
 			-f $(MAKEPATH)/docker-compose.env.yml \
 		up -d nats pg otel faktory
 
+partial-pganalyze: init
+	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
+		docker compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			-f $(MAKEPATH)/docker-compose.env.yml \
+			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
+		up -d nats pg otel faktory
+
 # Run interactively and compose down beforehand. This target is meant to be run iteratively for
 # local development and testing.
 dev: down init
@@ -33,6 +41,8 @@ prod: init
 		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
+			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
+			-f $(MAKEPATH)/docker-compose.prod.yml \
 		up -d
 
 web: init

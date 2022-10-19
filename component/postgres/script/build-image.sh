@@ -194,7 +194,7 @@ build() {
     --tag "$img:$build_version"
   )
   if [[ -n "${BASE_VERSION-}" ]]; then
-    args+=(--build-arg BASE_VERSION)
+    args+=(--build-arg "BASE_VERSION=$BASE_VERSION")
   fi
 
   if [[ "$push" != "true" || "$latest" == "true" ]]; then
