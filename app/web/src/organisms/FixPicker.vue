@@ -27,7 +27,11 @@
             >Select All
           </VormInput>
           <VButton2
-            :disabled="selectedFixes.length < 1 || fixesStore.populatingFixes"
+            :disabled="
+              selectedFixes.length < 1 ||
+              fixesStore.populatingFixes ||
+              fixesStore.runningFixBatch !== undefined
+            "
             icon="tools"
             tone="action"
             @click="runFixes"

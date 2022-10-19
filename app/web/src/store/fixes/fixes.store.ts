@@ -228,7 +228,7 @@ export const useFixesStore = () => {
             });
             componentsStore.decreaseActivityCounterOnComponent(fix.componentId);
           }
-
+          await promiseDelay(1600); // delay time for UI to update
           this.runningFixBatch = undefined;
         },
       },
