@@ -4,19 +4,22 @@
     :class="
       clsx(
         'si-panel',
-        'z-20 dark:text-white border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 pointer-events-auto relative',
+        'z-20 dark:text-white pointer-events-auto relative',
+        isTopOrBottom
+          ? 'border-shade-100 bg-white dark:bg-neutral-900'
+          : 'dark:border-neutral-600 border-neutral-300 bg-white dark:bg-neutral-800',
         {
-          left: 'border-r-2',
+          left: 'border-r-2 ',
           right: 'border-l-2',
-          top: 'border-b-2',
-          bottom: 'border-t-2',
+          top: 'border-b shadow-[0_4px_4px_0_rgba(0,0,0,0.15)]',
+          bottom: 'border-t shadow-[0_-4px_4px_0_rgba(0,0,0,0.15)]',
         }[side],
         `${side}-0`,
       )
     "
     :style="{
       ...(resizeable && {
-        [isVertical ? 'height' : 'width']: `${currentSize}px`,
+        [isTopOrBottom ? 'height' : 'width']: `${currentSize}px`,
       }),
     }"
   >
@@ -47,11 +50,6 @@ const props = defineProps({
     required: true,
   },
   hidden: { type: Boolean },
-  classes: {
-    type: String,
-    default:
-      "z-20 dark:text-white border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 pointer-events-auto relative",
-  },
   sizeClasses: { type: String, default: "" },
   resizeable: { type: Boolean, default: true },
   minSizeRatio: { type: Number, default: 0.1 },
@@ -61,7 +59,7 @@ const props = defineProps({
   defaultSize: { type: Number, default: 320 },
 });
 
-const isVertical = computed(
+const isTopOrBottom = computed(
   () => props.side === "top" || props.side === "bottom",
 );
 
@@ -78,7 +76,7 @@ const setSize = (newSize: number) => {
   }
   if (props.minSizeRatio) {
     const limit =
-      (isVertical.value ? window.innerHeight : window.innerWidth) *
+      (isTopOrBottom.value ? window.innerHeight : window.innerWidth) *
       props.minSizeRatio;
     if (finalSize < limit) finalSize = limit;
   }
@@ -88,7 +86,7 @@ const setSize = (newSize: number) => {
   }
   if (props.maxSizeRatio) {
     const limit =
-      (isVertical.value ? window.innerHeight : window.innerWidth) *
+      (isTopOrBottom.value ? window.innerHeight : window.innerWidth) *
       props.maxSizeRatio;
 
     if (finalSize > limit) finalSize = limit;

@@ -11,7 +11,7 @@
     :min-size="280"
   >
     <TabGroup
-      class="flex flex-col w-full h-full bg-neutral-900 text-white border-black border-t"
+      class="flex flex-col w-full h-full bg-neutral-900 text-white"
       as="div"
       :selected-index="selectedTab"
       @change="changeTab"

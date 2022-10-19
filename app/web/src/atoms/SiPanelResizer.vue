@@ -5,8 +5,8 @@
         'si-panel-resizer',
         'z-30 absolute',
         panelIsVertical
-          ? ['h-full cursor-col-resize', isHandleVisible ? 'w-1' : 'w-0.5']
-          : ['w-full cursor-row-resize', isHandleVisible ? 'h-1' : 'h-0.5'],
+          ? ['h-full cursor-col-resize', isHandleVisible ? 'w-1' : 'w-0']
+          : ['w-full cursor-row-resize', isHandleVisible ? 'h-1' : 'h-0'],
         isHandleVisible
           ? 'bg-neutral-400 dark:bg-neutral-500'
           : 'bg-neutral-300 dark:bg-neutral-600',
@@ -47,7 +47,7 @@
       ref="handleRef"
       :class="
         clsx(
-          'absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%]',
+          'absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] shadow-md',
           'w-3 h-16 rounded-full',
           'bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-900',
           !panelIsVertical && 'rotate-90',
