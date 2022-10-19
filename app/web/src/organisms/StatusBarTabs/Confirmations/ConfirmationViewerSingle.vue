@@ -5,7 +5,7 @@
     </div>
 
     <div class="w-full flex flex-col px-3 py-3 gap-2 text-sm">
-      <StatusMessageBox :status="confirmation.status"
+      <StatusMessageBox :status="confirmation.status" type="confirmation"
         >Status: {{ confirmation.status }}</StatusMessageBox
       >
 

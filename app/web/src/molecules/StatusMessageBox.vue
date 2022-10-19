@@ -2,7 +2,7 @@
   <div :class="divClasses" class="flex p-2 border rounded items-start">
     <StatusIndicatorIcon
       v-if="status"
-      type="confirmation"
+      :type="type"
       :status="status"
       class="w-8 mr-2 shrink-0"
     />
@@ -16,11 +16,13 @@
 <script lang="ts" setup>
 import { computed, PropType } from "vue";
 import StatusIndicatorIcon, {
+  IconType,
   Status,
 } from "@/molecules/StatusIndicatorIcon.vue";
 
 const props = defineProps({
   status: { type: String as PropType<Status> },
+  type: { type: String as PropType<IconType>, default: "qualification" },
 });
 
 const divClasses = computed(() => {
