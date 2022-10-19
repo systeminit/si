@@ -78,11 +78,6 @@ services:
 
   pg:
     image: "index.docker.io/systeminit/postgres:stable"
-    command: "-c log_error_verbosity=VERBOSE \
-      -c log_statement=all \
-      -c shared_buffers=4GB \
-      -c wal_buffers=64MB \
-      -c effective_cache_size=32GB"
     environment:
       - "POSTGRES_PASSWORD=bugbear"
       - "PGPASSWORD=bugbear"

@@ -1,0 +1,12 @@
+# Lines starting with # are comments
+
+[pganalyze]
+api_key = @@API_KEY@@
+
+[server1]
+db_host = @@DB_HOST@@
+db_name = si
+db_username = pganalyze
+db_password = @@DB_PASSWORD@@
+db_log_location = /var/log/postgresql
+api_system_id = @@SYSTEM_ID@@
