@@ -14,9 +14,11 @@
         <SiTextBox :id="newKeyId" v-model="newKey" title="key" />
       </div>
       <div class="flex pt-4 pr-16">
-        <VButton
+        <VButton2
           :disabled="submitDisabled"
-          icon="plus-square"
+          icon="plus"
+          size="xs"
+          tone="neutral"
           label="Add to map"
           @click="addToMap()"
         />
@@ -30,7 +32,7 @@ import { computed, ref, toRefs } from "vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import { AddToMap, PropertyPath } from "@/api/sdf/dal/property_editor";
-import VButton from "@/molecules/VButton.vue";
+import VButton2 from "@/ui-lib/VButton2.vue";
 import WidgetHeader from "./WidgetHeader.vue";
 
 const props = defineProps<{

@@ -6,7 +6,8 @@
       class="flex flex-col w-full"
     >
       <PropertyWidget
-        :schema-prop="schemaForPropId(pv.propId)"
+        v-if="schemaForPropId(pv.propId)"
+        :schema-prop="schemaForPropId(pv.propId)!"
         :prop-value="pv"
         :path="paths[pv.id]"
         :collapsed-paths="collapsed"
@@ -28,8 +29,8 @@
 import { ref, computed, toRefs, watch } from "vue";
 import _ from "lodash";
 import {
-  PropertyEditorPropKind,
-  PropertyEditorPropWidgetKindText,
+  // PropertyEditorPropKind,
+  // PropertyEditorPropWidgetKindText,
   PropertyEditorSchema,
   PropertyEditorValues,
   PropertyEditorValue,
@@ -84,15 +85,16 @@ const schemaForPropId = (propId: number) => {
   const schemaForProp = schema.value.props[propId];
   if (schemaForProp) return schemaForProp;
 
-  // TODO: this isn't really the right way to show the error, but it's fine.
-  return {
-    id: propId,
-    name: "error",
-    kind: PropertyEditorPropKind.String,
-    widgetKind: {
-      kind: "text",
-    } as PropertyEditorPropWidgetKindText,
-  };
+  // // TODO: this isn't really the right way to show the error, but it's fine.
+  // return {
+  //   id: propId,
+  //   name: "error",
+  //   kind: PropertyEditorPropKind.String,
+  //   widgetKind: {
+  //     kind: "text",
+  //   } as PropertyEditorPropWidgetKindText,
+  // };
+  return null;
 };
 
 const collapsed = ref<Array<Array<string>>>([]);

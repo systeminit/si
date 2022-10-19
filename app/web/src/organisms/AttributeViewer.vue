@@ -1,8 +1,6 @@
 <template>
   <div class="flex flex-col w-full">
-    <div
-      class="flex flex-row items-center h-10 px-6 py-2 text-base align-middle"
-    >
+    <div class="flex flex-row items-center h-10 p-sm text-base align-middle">
       <div class="text-lg whitespace-nowrap overflow-hidden text-ellipsis">
         {{ selectedComponent.schemaName }}
       </div>

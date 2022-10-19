@@ -23,7 +23,7 @@
         :placeholder="placeholder"
         :value="modelValue"
         :data-test="id"
-        class="appearance-none block w-full px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
+        class="appearance-none block w-full py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
         :class="textBoxClasses"
         @input="valueChanged"
       />
@@ -39,7 +39,7 @@
         :aria-invalid="inError"
         :disabled="props.disabled"
         required
-        class="appearance-none block w-full px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
+        class="appearance-none block w-full py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
         :class="textBoxClasses"
         v-bind="$attrs"
         :passwordrules="
@@ -54,7 +54,7 @@
 
       <div
         v-if="inError"
-        class="absolute inset-y-0 right-0 pr-3 flex items-center text-destructive-400"
+        class="absolute inset-y-0 right-0 pr-2 flex items-center text-destructive-400"
       >
         <Icon name="exclamation-circle" />
       </div>
