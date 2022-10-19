@@ -89,7 +89,7 @@ import GitBranch from "~icons/octicon/git-branch-24";
 import GitCommit from "~icons/octicon/git-commit-24";
 import GitMerge from "~icons/octicon/git-merge-24";
 import Tools from "~icons/octicon/tools";
-import { getToneTextColorClass, Tones } from "./helpers/tones";
+import ExternalLink from "~icons/octicon/link-external";
 
 // custom icons
 import TildeCircle from "@/assets/images/custom-icons/tilde-circle.svg?component";
@@ -113,6 +113,7 @@ const ICON_NAME_MAP = Object.freeze({
   "dots-vertical": DotsVertical,
   edit: Pencil,
   "exclamation-circle": ExclamationCircle,
+  "external-link": ExternalLink,
   eye: Eye,
   "git-branch": GitBranch,
   "git-commit": GitCommit,
@@ -176,6 +177,7 @@ export type IconNames = RegularIconNames | IconNameAliases | SpinnableIconNames;
 <script lang="ts" setup>
 import { computed, FunctionalComponent, PropType } from "vue";
 import clsx from "clsx";
+import { getToneTextColorClass, Tones } from "@/ui-lib/helpers/tones";
 
 export type IconSizes = "xs" | "sm" | "md" | "lg" | "xl" | "full";
 

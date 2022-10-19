@@ -244,6 +244,13 @@ export const useFixesStore = () => {
             await promiseDelay(1000);
             confirmation.status = "success";
             confirmation.description = "This resource exists!";
+
+            resourcesStore.resourcesByComponentId[fix.componentId].status =
+              ResourceStatus.Created;
+
+            if (["EC2 Instance"].includes(component.schemaName))
+              resourcesStore.resourcesByComponentId[fix.componentId].link =
+                "https://www.youtube.com/watch?v=fzcSJ1setd0"; // TODO Replace with actual whiskers r we link/
           }
           await promiseDelay(1600); // delay time for UI to update
           this.runningFixBatch = undefined;
