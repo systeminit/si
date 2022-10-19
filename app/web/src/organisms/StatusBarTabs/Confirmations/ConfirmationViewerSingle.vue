@@ -5,7 +5,9 @@
     </div>
 
     <div class="w-full flex flex-col px-3 py-3 gap-2 text-sm">
-      <StatusMessageBox :health="confirmation.health" />
+      <StatusMessageBox :status="confirmation.status"
+        >Status: {{ confirmation.status }}</StatusMessageBox
+      >
 
       <div v-if="confirmation.description">
         <b>Description: </b>
@@ -23,7 +25,7 @@
       <template #title>{{ confirmation.title }}</template>
       <template #content>
         <div class="my-2">
-          <StatusMessageBox :health="confirmation.health" />
+          <StatusMessageBox :status="confirmation.status" />
         </div>
 
         <div v-if="confirmation.description" class="my-2">
