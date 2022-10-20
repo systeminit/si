@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
     Component, ComponentId, ConfirmationPrototype, ConfirmationResolver, ConfirmationResolverId,
-    StandardModel, Visibility,
+    ConfirmationResolverTree, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -37,9 +37,13 @@ pub async fn list(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let resolvers = ConfirmationResolver::list(&ctx).await?;
-    let mut views = Vec::with_capacity(resolvers.len());
 
-    // TODO: properly order fixes
+    // Sorted resolvers
+    let resolvers = ConfirmationResolverTree::build(&ctx, resolvers)
+        .await?
+        .into_vec();
+
+    let mut views = Vec::with_capacity(resolvers.len());
     for resolver in resolvers {
         let prototype =
             ConfirmationPrototype::get_by_id(&ctx, &resolver.confirmation_prototype_id())

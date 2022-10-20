@@ -7,7 +7,8 @@ use axum::{
 
 use dal::{
     ActionPrototypeError, ComponentError, ComponentId, ConfirmationPrototypeError,
-    ConfirmationPrototypeId, ConfirmationResolverError, StandardModelError, TransactionsError,
+    ConfirmationPrototypeId, ConfirmationResolverError, ConfirmationResolverTreeError,
+    StandardModelError, TransactionsError,
 };
 
 use thiserror::Error;
@@ -25,6 +26,8 @@ pub enum FixError {
     Component(#[from] ComponentError),
     #[error(transparent)]
     ConfirmationResolver(#[from] ConfirmationResolverError),
+    #[error(transparent)]
+    ConfirmationResolverTree(#[from] ConfirmationResolverTreeError),
     #[error(transparent)]
     ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error(transparent)]
