@@ -181,6 +181,7 @@
         x: -halfWidth,
         y: nodeHeaderHeight,
         opacity: 0,
+        listening: false,
       }"
     >
       <!--  transparent overlay  -->
