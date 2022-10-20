@@ -1,9 +1,52 @@
 ARG BASE_VERSION
 
-FROM postgres:${BASE_VERSION}
+FROM postgres:${BASE_VERSION} as build_common
 ARG BASE_VERSION
 
-# RUN apk add --no-cache rsyslog
+RUN set -eux; \
+    grep -E '^deb\s' /etc/apt/sources.list.d/pgdg.list \
+        | sed 's,^deb \(.*\)$,deb-src \1,' >> /etc/apt/sources.list.d/pgdg.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+    ; \
+    apt-get build-dep -y "postgresql-$PG_MAJOR=$PG_VERSION"; \
+    apt-get install -y --no-install-recommends "postgresql-server-dev-$PG_MAJOR"
+
+
+FROM build_common as build_pldebugger
+ARG BASE_VERSION
+
+ARG PLDEBUGGER_VERSION=1.5
+
+RUN set -eux; \
+    cd /usr/src; \
+    curl -LO "https://github.com/EnterpriseDB/pldebugger/archive/refs/tags/v$PLDEBUGGER_VERSION.tar.gz"; \
+    tar xf "v$PLDEBUGGER_VERSION.tar.gz"; \
+    cd "pldebugger-$PLDEBUGGER_VERSION"; \
+    make USE_PGXS=1; \
+    make install USE_PGXS=1 DESTDIR=/tmp/tmproot; \
+    tar cpf /pldebugger.tar -C /tmp/tmproot .
+
+FROM build_common as build_plprofiler
+ARG BASE_VERSION
+
+ARG PLPROFILER_VERSION=REL4_2
+
+RUN set -eux; \
+    cd /usr/src; \
+    curl -LO "https://github.com/bigsql/plprofiler/archive/refs/tags/$PLPROFILER_VERSION.tar.gz"; \
+    tar xf "$PLPROFILER_VERSION.tar.gz"; \
+    cd "plprofiler-$PLPROFILER_VERSION"; \
+    make install USE_PGXS=1 DESTDIR=/tmp/tmproot; \
+    tar cpf /plprofiler.tar -C /tmp/tmproot .
+
+FROM postgres:${BASE_VERSION} as final
+ARG BASE_VERSION
+
+COPY --from=build_pldebugger /pldebugger.tar /pldebugger.tar
+COPY --from=build_plprofiler /plprofiler.tar /plprofiler.tar
 
 RUN set -eux; \
     apt-get update; \
@@ -13,7 +56,10 @@ RUN set -eux; \
         busybox \
         procps \
     ; \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*; \
+    tar xpf /pldebugger.tar -C /; \
+    tar xpf /plprofiler.tar -C /; \
+    rm -f /pldebugger.tar /plprofiler.tar
 
 ARG TARGETPLATFORM
 RUN set -eux; \
