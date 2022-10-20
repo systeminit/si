@@ -24,7 +24,7 @@
             <template v-if="selectedLabel">
               {{ selectedLabel }}
             </template>
-            <template v-else> &nbsp; </template>
+            <template v-else />
           </span>
 
           <span
@@ -49,7 +49,7 @@
         >
           <ListboxOptions
             :class="dropdownClasses"
-            class="absolute z-10 mt-1 w-full shadow-lg max-h-60 rounded-sm py-1 text-neutral-100 ring-1 ring-neutral-600 ring-opacity-1 overflow-auto focus:outline-none sm:text-xs"
+            class="absolute z-10 mt-1 w-full shadow-lg max-h-60 rounded-sm py-1 dark:text-neutral-100 ring-1 ring-neutral-600 ring-opacity-1 overflow-auto focus:outline-none sm:text-xs"
           >
             <ListboxOption
               v-for="(option, index) of options"
@@ -61,7 +61,9 @@
               <li
                 v-if="props.navbarMode"
                 :class="[
-                  active ? 'text-white bg-action-500' : 'text-neutral-100',
+                  active
+                    ? 'dark:text-white bg-action-500'
+                    : 'dark:text-neutral-100',
                   'cursor-default select-none relative py-2 pl-3 pr-9',
                 ]"
               >
@@ -88,7 +90,7 @@
               <li
                 v-else
                 :class="[
-                  active ? 'text-white bg-action-600' : 'text-neutral-100',
+                  active ? 'text-white bg-action-600' : 'dark:text-neutral-100',
                   'cursor-default select-none relative py-2 pl-3 pr-9',
                 ]"
               >
@@ -187,7 +189,7 @@ const selectedLabelClasses = computed((): Record<string, boolean> => {
     };
   }
   return {
-    "text-neutral-100": true,
+    "dark:text-neutral-100 px-2": true,
   };
 });
 
