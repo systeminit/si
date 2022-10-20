@@ -80,7 +80,7 @@ impl JobConsumer for Confirmations {
         // TODO: spawn a new job for each confirmation run so they can be parallelized
         for component in components {
             let prototypes =
-                ConfirmationPrototype::find_for_component(ctx, *component.id(), SystemId::NONE)
+                ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
                     .await?;
             for prototype in prototypes {
                 prototype.run(ctx, *component.id(), SystemId::NONE).await?;

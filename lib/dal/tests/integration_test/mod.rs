@@ -12,6 +12,7 @@ mod confirmation_resolver;
 mod confirmation_resolver_tree;
 mod diagram;
 mod edge;
+mod fix;
 mod func;
 mod func_execution;
 mod group;

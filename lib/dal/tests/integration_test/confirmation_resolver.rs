@@ -16,7 +16,7 @@ async fn new(ctx: &DalContext) {
         .expect("unable to find schema");
     let component = create_component_for_schema(ctx, schema.id()).await;
 
-    let prototype = ConfirmationPrototype::find_for_component(ctx, *component.id(), SystemId::NONE)
+    let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
         .await
         .expect("could not find for context")
         .pop()
@@ -69,7 +69,7 @@ async fn find_for_prototype(ctx: &DalContext) {
         .expect("unable to find schema");
     let component = create_component_for_schema(ctx, schema.id()).await;
 
-    let prototype = ConfirmationPrototype::find_for_component(ctx, *component.id(), SystemId::NONE)
+    let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
         .await
         .expect("could not find for context")
         .pop()
