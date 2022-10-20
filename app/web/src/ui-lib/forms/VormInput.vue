@@ -93,7 +93,7 @@ you can pass in options as props too */
           <textarea
             :id="formInputId"
             ref="inputRef"
-            v-model="modelValueForTextArea"
+            :value="modelValueForTextArea"
             class="vorm-input__input"
             :placeholder="computedPlaceholder"
             :disabled="disabledBySelfOrParent"
@@ -108,7 +108,7 @@ you can pass in options as props too */
           <input
             :id="formInputId"
             ref="inputRef"
-            v-model="modelValue"
+            :value="modelValue"
             class="vorm-input__input"
             :autocomplete="autocomplete"
             :name="name"
@@ -295,6 +295,7 @@ const validationRules = computed(() => {
 
   return rules;
 });
+
 const { validationState, validationMethods } = useValidatedInput(
   currentValue!,
   validationRules,
@@ -302,12 +303,13 @@ const { validationState, validationMethods } = useValidatedInput(
 
 // textarea typescript wont bind to null, so we have this annoying workaround
 // TODO: ideally we can just override the TS type for v-model on a textarea somehow...
-const modelValueForTextArea = ref(props.modelValue?.toString() || "");
+const modelValueForTextArea = ref("");
 watch(
   () => props.modelValue,
   () => {
     modelValueForTextArea.value = props.modelValue?.toString() || "";
   },
+  { immediate: true },
 );
 
 const { theme } = useTheme();

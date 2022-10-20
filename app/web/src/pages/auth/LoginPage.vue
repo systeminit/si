@@ -18,7 +18,7 @@
               required
               placeholder="ex: initech"
               to-lower-case
-              :regex="/^[a-z0-9._-]+$/i"
+              :regex="VALID_USERNAME_REGEX"
               regex-message="Invalid billing account name"
             />
             <VormInput
@@ -72,6 +72,7 @@ import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
 import { useAuthStore } from "@/store/auth.store";
+import { VALID_USERNAME_REGEX } from "@/utils/input_validations";
 import AuthPageHeader from "./AuthPageHeader.vue";
 
 const router = useRouter();

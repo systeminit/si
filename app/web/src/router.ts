@@ -154,7 +154,7 @@ router.beforeEach((to, _from) => {
     if (!authStore.userIsLoggedIn) {
       return {
         name: "login",
-        query: { redirect: to.fullPath },
+        ...(to.fullPath !== "/" && { query: { redirect: to.fullPath } }),
       };
     }
   }
