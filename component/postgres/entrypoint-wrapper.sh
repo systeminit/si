@@ -9,6 +9,8 @@ trap 'kill -TERM $(jobs -p); wait' SIGINT SIGTERM
 # up via `docker logs`.
 /bin/busybox syslogd -n -L -O - &
 
+/usr/sbin/cron -f &
+
 /usr/local/bin/docker-entrypoint.sh \
   "$@" \
   -c config_file=/etc/postgresql/postgresql.conf &
