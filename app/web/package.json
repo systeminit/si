@@ -18,7 +18,7 @@
     "check": "npm run fmt:check && npm run build:check",
     "dev": "npm run start",
     "start": "vite",
-    "serve": "vite preview --port 8080",
+    "serve": "vite preview --port 8081",
     "test": "echo 'Sorry, no tests yet!'",
     "vite:clean": "./script/clean-vite-cache.sh",
     "cypress:run": "cypress run",
