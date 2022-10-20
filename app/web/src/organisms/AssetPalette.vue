@@ -71,24 +71,37 @@ const addMenuReqStatus = componentsStore.getRequestStatus(
 
 const addMenuData = computed(() => componentsStore.nodeAddMenu);
 const selectedSchemaId = ref<number>();
+const selecting = ref(false);
 
 function onSelect(schemaId: number) {
   selectedSchemaId.value = schemaId;
   emit("select", { schemaId });
+  selecting.value = true;
+}
+
+function onDeselect() {
+  selectedSchemaId.value = undefined;
+  emit("deselect");
 }
 
 const onKeyDown = (e: KeyboardEvent) => {
-  if (e.key === "Escape") {
-    selectedSchemaId.value = undefined;
-    emit("deselect");
+  if (e.key === "Escape" || e.key === "Backspace") {
+    onDeselect();
   }
+};
+
+const onMouseDown = () => {
+  if (selecting.value) selecting.value = false;
+  else onDeselect();
 };
 
 onMounted(() => {
   window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("mousedown", onMouseDown);
 });
 
 onUnmounted(() => {
   window.removeEventListener("keydown", onKeyDown);
+  window.removeEventListener("mousedown", onMouseDown);
 });
 </script>
