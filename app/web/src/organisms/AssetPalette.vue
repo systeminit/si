@@ -20,6 +20,7 @@
         as="li"
         content-as="ul"
         default-open
+        class="select-none"
       >
         <li
           v-for="(schema, schemaIndex) in category.schemas"
@@ -41,7 +42,7 @@
 
 <script lang="ts" setup>
 import _ from "lodash";
-import { computed, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 
@@ -53,6 +54,7 @@ export type SelectAssetEvent = {
 
 const emit = defineEmits<{
   (e: "select", selectAssetEvent: SelectAssetEvent): void;
+  (e: "deselect"): void;
 }>();
 
 const componentsStore = useComponentsStore();
@@ -74,4 +76,19 @@ function onSelect(schemaId: number) {
   selectedSchemaId.value = schemaId;
   emit("select", { schemaId });
 }
+
+const onKeyDown = (e: KeyboardEvent) => {
+  if (e.key === "Escape") {
+    selectedSchemaId.value = undefined;
+    emit("deselect");
+  }
+};
+
+onMounted(() => {
+  window.addEventListener("keydown", onKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", onKeyDown);
+});
 </script>

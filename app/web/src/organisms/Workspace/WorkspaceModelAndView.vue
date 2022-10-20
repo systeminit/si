@@ -14,7 +14,10 @@
 
         <template #panels>
           <TabPanel v-if="!isViewMode">
-            <AssetPalette @select="onSelectAssetToInsert" />
+            <AssetPalette
+              @select="onSelectAssetToInsert"
+              @deselect="onDeselectAssetToInsert"
+            />
           </TabPanel>
           <TabPanel>
             <DiagramOutline
@@ -109,6 +112,10 @@ function onSelectAssetToInsert(e: SelectAssetEvent) {
   // keep track of what was selected to insert
   lastInsertSelection.value = { schemaId: e.schemaId };
   diagramRef.value?.beginInsertElement("node");
+}
+function onDeselectAssetToInsert() {
+  lastInsertSelection.value = undefined;
+  diagramRef.value?.endInsertElement();
 }
 watch([diagramNodes, diagramEdges], () => {
   // TODO: this should be firing off the callback only when we find the matching new node, but we dont have the new ID yet

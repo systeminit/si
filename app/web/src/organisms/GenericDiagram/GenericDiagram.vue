@@ -1181,6 +1181,7 @@ defineExpose({
   setSelection,
   clearSelection,
   beginInsertElement,
+  endInsertElement,
 });
 
 // Help Modal
