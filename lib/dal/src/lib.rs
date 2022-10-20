@@ -120,7 +120,7 @@ pub use confirmation_resolver::{
     ConfirmationResolver, ConfirmationResolverContext, ConfirmationResolverError,
     ConfirmationResolverId,
 };
-pub use confirmation_resolver_tree::ConfirmationResolverTree;
+pub use confirmation_resolver_tree::{ConfirmationResolverTree, ConfirmationResolverTreeError};
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
     Transactions, TransactionsError,
