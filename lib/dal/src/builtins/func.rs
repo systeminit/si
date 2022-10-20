@@ -1,10 +1,10 @@
-use std::fs;
-use std::fs::{read_dir, File};
-use std::io::{BufReader, Write};
+use std::fs::File;
+use std::io::Write;
 use std::path::PathBuf;
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 
 use crate::BuiltinsError::SerdeJson;
 use crate::{
@@ -82,50 +82,63 @@ impl FunctionMetadata {
     }
 }
 
-/// A private constant representing "/si/lib/dal".
-const CARGO_MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
+/// We want the src/builtins/func/** files to be available at run time inside of the Docker container
+/// that we build, but it would be nice to not have to include arbitrary bits of the source tree when
+/// building it. This allows us to compile the builtins into the binary, so they're already available
+/// in memory.
+///
+/// The instances of this end up in a magic `ASSETS` array const.
+#[iftree::include_file_tree("paths = '/src/builtins/func/**'")]
+pub struct FuncBuiltin {
+    relative_path: &'static str,
+    contents_str: &'static str,
+}
+
+static FUNC_BUILTIN_BY_PATH: once_cell::sync::Lazy<std::collections::HashMap<&str, &FuncBuiltin>> =
+    once_cell::sync::Lazy::new(|| {
+        ASSETS
+            .iter()
+            .map(|func_builtin| (func_builtin.relative_path, func_builtin))
+            .collect()
+    });
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
-    let extension_regex = Regex::new(r#"(?P<name>.*)\.(?P<extension>.*)"#)?;
-    let mut path = PathBuf::from(CARGO_MANIFEST_DIR);
-    path.push("src/builtins/func");
-    let func_dir = read_dir(path.as_path())?;
-
-    // JS functions
-    for entry_result in func_dir {
-        let entry = entry_result?;
-
-        let file_name = match entry.file_name().into_string() {
-            Ok(file_name) => file_name,
-            Err(file_name_error) => {
-                panic!(
-                    "Could not convert {} to String",
-                    file_name_error.to_str().unwrap()
-                );
+    for builtin_func_file in ASSETS.iter() {
+        let builtin_path = std::path::Path::new(builtin_func_file.relative_path);
+        match builtin_path.extension() {
+            Some(extension) => {
+                if extension != std::ffi::OsStr::new("json") {
+                    debug!("Skipping {:?}: Not a json file", builtin_path);
+                    continue;
+                }
+            }
+            None => {
+                warn!("Skipping {:?}: No file extension", builtin_path);
+                continue;
             }
         };
 
-        let captures = extension_regex.captures(file_name.as_str()).unwrap();
+        let func_metadata: FunctionMetadata = serde_json::from_str(builtin_func_file.contents_str)?;
 
-        let func_file_name = captures.name("name").unwrap().as_str();
-        let func_file_extension = captures.name("extension").unwrap().as_str();
-
-        if func_file_extension != "json" {
-            continue;
-        }
-        let func_metadata: FunctionMetadata = {
-            let file = File::open(entry.path())?;
-            serde_json::from_reader(BufReader::new(file))
-                .map_err(|e| BuiltinsError::SerdeJsonErrorForFunc(func_file_name.to_string(), e))?
-        };
-
-        let func_name = format!("si:{}", func_file_name);
+        let func_name = format!(
+            "si:{}",
+            builtin_path
+                .file_stem()
+                .ok_or_else(|| {
+                    BuiltinsError::FuncMetadata(format!(
+                        "Unable to determine base file name for {:?}",
+                        builtin_path
+                    ))
+                })?
+                .to_string_lossy()
+        );
 
         let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
-
         if !existing_func.is_empty() {
+            warn!("Skipping {:?}: Function already exists", func_metadata.name);
             continue;
         }
+
         let mut new_func = Func::new(
             ctx,
             &func_name,
@@ -140,13 +153,25 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
                 panic!("cannot create function with code_file but no code_entrypoint")
             }
 
-            let mut func_path = path.clone();
-            func_path.push(&code_file);
+            let metadata_base_path = builtin_path.parent().ok_or_else(|| {
+                BuiltinsError::FuncMetadata(format!(
+                    "Cannot determine parent path of {:?}",
+                    builtin_path
+                ))
+            })?;
+            let func_path = metadata_base_path.join(std::path::Path::new(&code_file));
 
-            let code = base64::encode(
-                fs::read(func_path)
-                    .unwrap_or_else(|err| panic!("Could not open '{}': {}", code_file, err)),
-            );
+            let code = FUNC_BUILTIN_BY_PATH
+                .get(func_path.as_os_str().to_str().ok_or_else(|| {
+                    BuiltinsError::FuncMetadata(format!(
+                        "Unable to convert {:?} to &str",
+                        func_path
+                    ))
+                })?)
+                .ok_or_else(|| {
+                    BuiltinsError::FuncMetadata(format!("Code file not found: {:?}", code_file))
+                })?;
+            let code = base64::encode(code.contents_str);
             new_func
                 .set_code_base64(ctx, Some(code))
                 .await
@@ -180,6 +205,9 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
     Ok(())
 }
+
+/// A private constant representing "/si/lib/dal".
+const CARGO_MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
 pub async fn persist(ctx: &DalContext, func: &Func) -> BuiltinsResult<()> {
     let new_metadata: FunctionMetadata = FunctionMetadata::from_func(ctx, func).await;
