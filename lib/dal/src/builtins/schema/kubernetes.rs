@@ -1,4 +1,4 @@
-use crate::builtins::schema::BuiltinSchemaHelpers;
+use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::component::ComponentKind;
 use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
@@ -35,13 +35,13 @@ pub fn doc_url(path: impl AsRef<str>) -> String {
     )
 }
 
-pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
-    kubernetes_namespace(ctx).await?;
-    kubernetes_deployment(ctx).await?;
+pub async fn migrate(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
+    kubernetes_namespace(ctx, driver).await?;
+    kubernetes_deployment(ctx, driver).await?;
     Ok(())
 }
 
-async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
+async fn kubernetes_namespace(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (schema, mut schema_variant, root_prop) =
         match BuiltinSchemaHelpers::create_schema_and_variant(
             ctx,
@@ -73,12 +73,9 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
         kubernetes_metadata::create_metadata_prop(ctx, true, root_prop.domain_prop_id).await?;
 
     // Code Generation Prototype
-    let code_generation_func_name = "si:generateYAML".to_owned();
-    let mut code_generation_funcs =
-        Func::find_by_attr(ctx, "name", &code_generation_func_name).await?;
-    let code_generation_func = code_generation_funcs
-        .pop()
-        .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
+    let code_generation_func_id = driver.get_func_id("si:generateYAML").ok_or(
+        BuiltinsError::FuncNotFoundInMigrationCache("si:generateYAML"),
+    )?;
     let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
     let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
     let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
@@ -86,7 +83,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
 
     let _prototype = CodeGenerationPrototype::new(
         ctx,
-        *code_generation_func.id(),
+        code_generation_func_id,
         code_generation_args_json,
         CodeLanguage::Yaml,
         code_generation_prototype_context,
@@ -94,12 +91,9 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Create sockets
-    let (
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        identity_func_identity_arg_id,
-    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
     let (external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -107,9 +101,9 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
         *schema_variant.id(),
         "Kubernetes Namespace",
         None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
+        identity_func_item.func_id,
+        identity_func_item.func_binding_id,
+        identity_func_item.func_binding_return_value_id,
         SocketArity::Many,
         DiagramKind::Configuration,
     )
@@ -151,7 +145,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(AttributeValueError::MissingAttributePrototype)?;
     metadata_name_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
@@ -163,7 +157,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *metadata_name_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *si_name_internal_provider.id(),
     )
     .await?;
@@ -184,7 +178,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *metadata_name_implicit_internal_provider.id(),
     )
     .await?;
@@ -203,7 +197,7 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
     Ok(())
 }
 
-async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
+async fn kubernetes_deployment(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (schema, mut schema_variant, root_prop) =
         match BuiltinSchemaHelpers::create_schema_and_variant(
             ctx,
@@ -278,12 +272,9 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Code Generation Prototype
-    let code_generation_func_name = "si:generateYAML".to_owned();
-    let mut code_generation_funcs =
-        Func::find_by_attr(ctx, "name", &code_generation_func_name).await?;
-    let code_generation_func = code_generation_funcs
-        .pop()
-        .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
+    let code_generation_func_id = driver.get_func_id("si:generateYAML").ok_or(
+        BuiltinsError::FuncNotFoundInMigrationCache("si:generateYAML"),
+    )?;
     let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
     let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
     let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
@@ -291,19 +282,16 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
 
     let _prototype = CodeGenerationPrototype::new(
         ctx,
-        *code_generation_func.id(),
+        code_generation_func_id,
         code_generation_args_json,
         CodeLanguage::Yaml,
         code_generation_prototype_context,
     )
     .await?;
 
-    let (
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        identity_func_identity_arg_id,
-    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
     let (docker_image_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
@@ -311,9 +299,9 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Container Image",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -326,9 +314,9 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Kubernetes Namespace",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -397,12 +385,12 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     domain_namespace_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *domain_namespace_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *kubernetes_namespace_explicit_internal_provider.id(),
     )
     .await?;
@@ -433,12 +421,12 @@ async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     template_namespace_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *template_namespace_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *kubernetes_namespace_explicit_internal_provider.id(),
     )
     .await?;

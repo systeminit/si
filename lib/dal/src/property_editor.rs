@@ -2,11 +2,10 @@
 //pub enum PropertyEditorError {
 //}
 
-use std::{cmp::Ordering, collections::HashMap};
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data::PgError;
+use std::{cmp::Ordering, collections::HashMap};
 use thiserror::Error;
 
 use crate::attribute::value::FuncWithPrototypeContext;
@@ -350,4 +349,12 @@ impl PropertyEditorValidations {
         }
         Ok(Self { validations })
     }
+}
+
+// TODO(nick): once shape is finalized and we stop serializing this within builtins, please
+// convert to a more formal type.
+#[derive(Deserialize, Serialize, Debug)]
+pub struct SelectWidgetOption {
+    pub(crate) label: String,
+    pub(crate) value: String,
 }
