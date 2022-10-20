@@ -295,6 +295,7 @@ const validationRules = computed(() => {
 
   return rules;
 });
+
 const { validationState, validationMethods } = useValidatedInput(
   currentValue!,
   validationRules,
