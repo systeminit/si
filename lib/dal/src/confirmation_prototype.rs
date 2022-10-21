@@ -239,9 +239,7 @@ impl ConfirmationPrototype {
         context.set_schema_variant_id(self.schema_variant_id);
         context.set_system_id(system_id);
         if let Some(mut resolver) =
-            ConfirmationResolver::find_for_prototype(ctx, self.id(), context.clone())
-                .await?
-                .pop()
+            ConfirmationResolver::find_for_prototype(ctx, self.id(), context.clone()).await?
         {
             resolver.set_success(ctx, success).await?;
             resolver.set_message(ctx, message).await?;
