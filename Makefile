@@ -32,6 +32,7 @@ CI_FROM_REF := main
 CI_TO_REF := HEAD
 FORCE := false
 SHELL := /bin/bash
+LOCAL_PG := false
 
 .DEFAULT_GOAL := help
 
@@ -283,7 +284,11 @@ ifeq ($(CI),true)
 	@echo "::group::make $@"
 endif
 	$(call header,$@)
-ifeq ($(shell [[ $(CI) == "true" || $(FORCE) == "true" ]] && echo "true"),true)
+ifeq ($(shell [[ $(FORCE) == "true" && $(LOCAL_PG) == "true" ]] && echo "true"),true)
+	cd $(MAKEPATH)/deploy; $(MAKE) partial-local-pg
+	@echo "  - Sleeping to not race LOCAL postgres or the queue to being alive; you're welcome."
+	@sleep 10
+else ifeq ($(shell [[ $(CI) == "true" || $(FORCE) == "true" ]] && echo "true"),true)
 	cd $(MAKEPATH)/deploy; $(MAKE) partial
 	@echo "  - Sleeping to not race postgres or the queue to being alive; you're welcome."
 	@sleep 10
