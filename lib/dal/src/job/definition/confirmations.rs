@@ -3,6 +3,9 @@ use std::{collections::HashMap, convert::TryFrom};
 use async_trait::async_trait;
 use serde::Serialize;
 
+use crate::confirmation_status::ConfirmationStatus;
+use crate::job::definition::confirmation::Confirmation;
+
 use crate::{
     job::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
@@ -75,21 +78,27 @@ impl JobConsumer for Confirmations {
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
-        let components = Component::list(ctx).await?;
-
-        // TODO: spawn a new job for each confirmation run so they can be parallelized
-        for component in components {
+        for component in Component::list(ctx).await? {
             let prototypes =
                 ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
                     .await?;
             for prototype in prototypes {
-                prototype.run(ctx, *component.id(), SystemId::NONE).await?;
+                WsEvent::confirmation_status_update(
+                    ctx,
+                    *prototype.id(),
+                    ConfirmationStatus::Running,
+                )
+                .publish(ctx)
+                .await?;
+                ctx.enqueue_job(Confirmation::new(
+                    ctx,
+                    *component.id(),
+                    SystemId::NONE,
+                    *prototype.id(),
+                ))
+                .await;
             }
         }
-
-        // Shouldn't this be automatic?
-        WsEvent::change_set_written(ctx).publish(ctx).await?;
-
         Ok(())
     }
 }

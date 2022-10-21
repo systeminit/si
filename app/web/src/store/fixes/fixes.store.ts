@@ -226,9 +226,9 @@ export const useFixesStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `workspace/${workspaceId}/head`, [
           {
-            eventType: "ChangeSetWritten",
-            callback: (writtenChangeSetId) => {
-              if (writtenChangeSetId === -1) this.LOAD_FIXES();
+            eventType: "ConfirmationStatusUpdate",
+            callback: (update) => {
+              if (update.status === "success" || update.status === "failure") this.LOAD_FIXES();
             },
           },
         ]);
