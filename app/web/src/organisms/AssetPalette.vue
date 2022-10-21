@@ -44,7 +44,10 @@
   </template>
   <template v-if="selectedSchema">
     <Teleport to="body">
-      <div ref="mouseNode" class="fixed top-0 pointer-events-none z-100">
+      <div
+        ref="mouseNode"
+        class="fixed top-0 pointer-events-none translate-x-[-50%] translate-y-[-50%] z-100"
+      >
         <NodeSkeleton :color="selectedSchema.color" />
       </div>
     </Teleport>
@@ -88,6 +91,15 @@ const selectedSchema = computed(() => {
 const selecting = ref(false);
 const mouseNode = ref();
 
+const updateMouseNode = (e: MouseEvent) => {
+  if (mouseNode.value) {
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    mouseNode.value.style.left = `${mouseX}px`;
+    mouseNode.value.style.top = `${mouseY}px`;
+  }
+};
+
 function onSelect(schemaId: number) {
   componentsStore.selectedInsertSchemaId = schemaId;
   selecting.value = true;
@@ -103,18 +115,14 @@ const onKeyDown = (e: KeyboardEvent) => {
   }
 };
 
-const onMouseDown = () => {
+const onMouseDown = (e: MouseEvent) => {
+  updateMouseNode(e);
   if (selecting.value) selecting.value = false;
   else onDeselect();
 };
 
 const onMouseMove = (e: MouseEvent) => {
-  if (mouseNode.value) {
-    const mouseX = e.clientX;
-    const mouseY = e.clientY;
-    mouseNode.value.style.left = `${mouseX}px`;
-    mouseNode.value.style.top = `${mouseY}px`;
-  }
+  updateMouseNode(e);
 };
 
 onMounted(() => {
