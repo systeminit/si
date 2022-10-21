@@ -38,7 +38,7 @@
             <template v-else-if="qualificationStatus === 'success'">
               Passed!
             </template>
-            <template v-else> Qualification running, standby... </template>
+            <template v-else> Qualification running, standby...</template>
           </StatusMessageBox>
         </div>
 
@@ -55,7 +55,7 @@
           <p
             v-for="(output, index) in qualification.output"
             :key="index"
-            class="text-sm"
+            class="text-sm break-all"
           >
             {{ output.line }}
           </p>

@@ -18,7 +18,7 @@
     >
       <TabList
         as="div"
-        class="flex flex-row w-full justify-end h-11 flex-shrink-0"
+        class="flex flex-row w-full justify-end h-12 flex-shrink-0 hover:children:bg-neutral-800 focus-visible:children:outline-none"
         :class="barClasses"
       >
         <!-- Prefix tab -->
@@ -72,7 +72,9 @@
           :class="[isViewMode ? '' : 'hidden']"
         >
           <StatusBarTab :selected="selected">
-            <template #icon><Icon name="credit-card" /></template>
+            <template #icon>
+              <Icon name="credit-card" />
+            </template>
             <template #name>Costs</template>
             <template #summary>
               <StatusBarTabPill>

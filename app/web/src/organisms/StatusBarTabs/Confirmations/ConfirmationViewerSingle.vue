@@ -6,8 +6,8 @@
 
     <div class="w-full flex flex-col px-3 py-3 gap-2 text-sm">
       <StatusMessageBox :status="confirmation.status" type="confirmation"
-        >Status: {{ confirmation.status }}</StatusMessageBox
-      >
+        >Status: {{ confirmation.status }}
+      </StatusMessageBox>
 
       <div v-if="confirmation.description">
         <b>Description: </b>
@@ -41,7 +41,7 @@
           <p
             v-for="(output, index) in confirmation.output"
             :key="index"
-            class="text-sm"
+            class="text-sm break-allbgv"
           >
             {{ output }}
           </p>
@@ -53,7 +53,6 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
-import _ from "lodash";
 import StatusMessageBox from "@/molecules/StatusMessageBox.vue";
 import Modal from "@/ui-lib/Modal.vue";
 import { Confirmation } from "@/store/resources.store";
