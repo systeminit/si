@@ -1472,4 +1472,13 @@ impl Component {
 
         Ok(component_name)
     }
+
+    pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
+        let context = AttributeReadContext {
+            component_id: Some(*self.id()),
+            system_id: Some(SystemId::NONE),
+            ..AttributeReadContext::any()
+        };
+        Self::name_from_context(ctx, context).await
+    }
 }
