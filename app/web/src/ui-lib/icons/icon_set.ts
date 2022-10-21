@@ -64,6 +64,13 @@ import GitMerge from "~icons/octicon/git-merge-24";
 import Tools from "~icons/octicon/tools";
 import ExternalLink from "~icons/octicon/link-external";
 
+// 3p logos
+import AwsLogo from "~icons/cib/amazon-aws";
+import CoreOsLogo from "~icons/ri/coreos-fill";
+import SiLogo from "@/assets/images/si-logo-wts.svg?raw";
+import DockerLogo from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
+import KubernetesLogo from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
+
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
 export const ICONS = Object.freeze({
@@ -128,6 +135,17 @@ export const SPINNABLE_ICONS = Object.freeze({
   chevron: Chevron,
 });
 
+// 3rd party logos (used in categories / providers on component schemas)
+// probably will need to do something else at some point if we are loading these dynamically...
+// but for now we'll just keep them in here, but in a separate set
+export const LOGO_ICONS = Object.freeze({
+  "logo-aws": AwsLogo,
+  "logo-coreos": CoreOsLogo,
+  "logo-docker": DockerLogo,
+  "logo-k8s": KubernetesLogo,
+  "logo-si": SiLogo,
+});
+
 /*
   additional aliases which makes it easy to be more consistent with icon usage
   while still allowing us to change icons for specific cases later
@@ -135,6 +153,7 @@ export const SPINNABLE_ICONS = Object.freeze({
 const ICON_NAME_ALIASES = {};
 
 type RegularIconNames = keyof typeof ICONS;
+type LogoIconNames = keyof typeof LOGO_ICONS;
 type IconNameAliases = keyof typeof ICON_NAME_ALIASES;
 type SpinnableRawIconNames = keyof typeof SPINNABLE_ICONS;
 type SpinnableIconNames = `${SpinnableRawIconNames}--${
@@ -143,7 +162,11 @@ type SpinnableIconNames = `${SpinnableRawIconNames}--${
   | "up"
   | "down"}`;
 
-export type IconNames = RegularIconNames | IconNameAliases | SpinnableIconNames;
+export type IconNames =
+  | RegularIconNames
+  | LogoIconNames
+  | IconNameAliases
+  | SpinnableIconNames;
 
 export function getIconByName(name: string) {
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -153,6 +176,7 @@ export function getIconByName(name: string) {
   const icon =
     (SPINNABLE_ICONS as any)[nameWithoutModifiers] ||
     (ICONS as any)[nameWithoutModifiers] ||
+    (LOGO_ICONS as any)[nameWithoutModifiers] ||
     (ICONS as any)[(ICON_NAME_ALIASES as any)[nameWithoutModifiers]] ||
     ICONS["help-circle"];
   return icon as string;
