@@ -4,6 +4,7 @@ use thiserror::Error;
 use si_data::NatsError;
 
 use crate::code_generation_resolver::CodeGenerationId;
+use crate::confirmation_status::ConfirmationStatusUpdate;
 use crate::qualification::QualificationCheckId;
 use crate::resource::ResourceRefreshId;
 use crate::workflow::{CommandOutput, CommandReturn, FixReturn};
@@ -33,6 +34,7 @@ pub enum WsPayload {
     CommandOutput(CommandOutput),
     CommandReturn(CommandReturn),
     FixReturn(FixReturn),
+    ConfirmationStatusUpdate(ConfirmationStatusUpdate),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
