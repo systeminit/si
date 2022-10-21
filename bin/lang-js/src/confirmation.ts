@@ -5,7 +5,7 @@ import { NodeVM } from "vm2";
 import {
   failureExecution,
   FunctionKind,
-  Request,
+  RequestWithCode,
   ResultFailure,
   ResultSuccess,
 } from "./function";
@@ -15,10 +15,8 @@ import { Component } from "./component";
 
 const debug = Debug("langJs:confirmation");
 
-export interface ConfirmationRequest extends Request {
-  handler: string;
+export interface ConfirmationRequest extends RequestWithCode {
   component: Component;
-  codeBase64: string;
 }
 
 export interface Code {

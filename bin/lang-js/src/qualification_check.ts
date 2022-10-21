@@ -5,7 +5,7 @@ import { NodeVM } from "vm2";
 import {
   failureExecution,
   FunctionKind,
-  Request,
+  RequestWithCode,
   ResultFailure,
   ResultSuccess,
 } from "./function";
@@ -15,10 +15,8 @@ import { Component } from "./component";
 
 const debug = Debug("langJs:qualificationCheck");
 
-export interface QualificationCheckRequest extends Request {
-  handler: string;
+export interface QualificationCheckRequest extends RequestWithCode {
   component: QualificationComponent;
-  codeBase64: string;
 }
 
 export interface Code {

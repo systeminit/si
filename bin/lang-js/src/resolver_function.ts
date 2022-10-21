@@ -5,7 +5,7 @@ import { base64Decode } from "./base64";
 import {
   failureExecution,
   FunctionKind,
-  Request,
+  RequestWithCode,
   ResultFailure,
   ResultSuccess,
 } from "./function";
@@ -20,11 +20,9 @@ export interface ResolverComponent {
   parents: Array<Component>;
 }
 
-export interface ResolverFunctionRequest extends Request {
-  handler: string;
+export interface ResolverFunctionRequest extends RequestWithCode {
   // Should this be optional?
   component: ResolverComponent;
-  codeBase64: string;
 }
 
 export type ResolverFunctionResult =

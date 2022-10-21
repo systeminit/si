@@ -6,9 +6,9 @@ import fetch from "node-fetch";
 import _ from "lodash";
 import yaml from "js-yaml";
 
-import { FunctionKind } from "./function";
-import { makeConsole } from "./sandbox/console";
-import { makeExec } from "./sandbox/exec";
+import {FunctionKind} from "./function";
+import {makeConsole} from "./sandbox/console";
+import {makeExec} from "./sandbox/exec";
 
 export type Sandbox = Record<string, unknown>;
 
@@ -43,6 +43,8 @@ function codeGenerationSandbox(executionId: string) {
 const confirmationSandbox = {};
 
 const workflowResolveSandbox = {};
+
+const validationSandbox = {};
 
 function commandRunSandbox(executionId: string): Sandbox {
   return {
@@ -95,6 +97,11 @@ export function createSandbox(
         ...commonSandbox(executionId),
         ...commandRunSandbox(executionId),
       };
+    case FunctionKind.Validation:
+      return {
+        ...commonSandbox(executionId),
+        ...validationSandbox,
+      }
     default:
       throw new UnknownSandboxKind(kind);
   }

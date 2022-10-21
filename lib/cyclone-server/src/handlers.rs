@@ -16,8 +16,8 @@ use cyclone_core::{
     CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
     ConfirmationRequest, ConfirmationResultSuccess, LivenessStatus, Message,
     QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
+    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use hyper::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
@@ -27,6 +27,7 @@ use super::{
     extract::LimitRequestGuard,
     routes::{LangServerPath, WatchKeepalive},
 };
+use crate::result::LangServerValidationResultSuccess;
 use crate::{
     execution::{self, Execution},
     request::{DecryptRequest, ListSecrets},
@@ -186,6 +187,33 @@ pub async fn ws_execute_confirmation(
             key,
             limit_request_guard,
             "confirmation".to_owned(),
+            request,
+            lang_server_success,
+            success,
+        )
+    })
+}
+
+#[allow(clippy::unused_async)]
+pub async fn ws_execute_validation(
+    wsu: WebSocketUpgrade,
+    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
+    Extension(key): Extension<Arc<DecryptionKey>>,
+    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
+    limit_request_guard: LimitRequestGuard,
+) -> impl IntoResponse {
+    let lang_server_path = lang_server_path.as_path().to_path_buf();
+    wsu.on_upgrade(move |socket| {
+        let request: PhantomData<ValidationRequest> = PhantomData;
+        let lang_server_success: PhantomData<LangServerValidationResultSuccess> = PhantomData;
+        let success: PhantomData<ValidationResultSuccess> = PhantomData;
+        handle_socket(
+            socket,
+            lang_server_path,
+            telemetry_level.is_debug_or_lower(),
+            key,
+            limit_request_guard,
+            "validation".to_owned(),
             request,
             lang_server_success,
             success,

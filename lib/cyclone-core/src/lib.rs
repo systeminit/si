@@ -24,6 +24,7 @@ mod qualification_check;
 mod readiness;
 mod resolver_function;
 mod sensitive_container;
+mod validation;
 mod workflow_resolve;
 
 pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
@@ -46,4 +47,5 @@ pub use resolver_function::{
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
 };
 pub use sensitive_container::{SensitiveContainer, SensitiveString};
+pub use validation::{ValidationRequest, ValidationResultSuccess};
 pub use workflow_resolve::{WorkflowResolveRequest, WorkflowResolveResultSuccess};

@@ -5,7 +5,7 @@ import { base64Decode } from "./base64";
 import {
   failureExecution,
   FunctionKind,
-  Request,
+  RequestWithCode,
   ResultFailure,
   ResultSuccess,
 } from "./function";
@@ -15,10 +15,8 @@ import { Component } from "./component";
 
 const debug = Debug("langJs:codeGeneration");
 
-export interface CodeGenerationRequest extends Request {
-  handler: string;
+export interface CodeGenerationRequest extends RequestWithCode {
   component: Component;
-  codeBase64: string;
 }
 
 export type CodeGenerationResult =

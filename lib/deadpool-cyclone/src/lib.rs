@@ -28,8 +28,8 @@ pub use cyclone_core::{
     CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
     ComponentView, ConfirmationRequest, ConfirmationResultSuccess, FunctionResult, OutputStream,
     ProgressMessage, QualificationCheckRequest, QualificationCheckResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, SystemView, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, SystemView, ValidationRequest,
+    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 
 /// [`Instance`] implementations.
