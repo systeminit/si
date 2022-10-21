@@ -2,8 +2,8 @@ use super::{WorkflowError, WorkflowResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
-    AttributeReadContext, Component, ComponentId, Schema, SchemaVariant, StandardModel, SystemId,
-    Visibility, WorkflowPrototype, WorkflowPrototypeId,
+    Component, ComponentId, Schema, SchemaVariant, StandardModel, Visibility, WorkflowPrototype,
+    WorkflowPrototypeId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -51,15 +51,7 @@ pub async fn list(
                 .ok_or_else(|| WorkflowError::ComponentNotFound(proto.context().component_id))?;
             vec![ListedWorkflowComponentView {
                 id: *component.id(),
-                name: Component::name_from_context(
-                    &ctx,
-                    AttributeReadContext {
-                        component_id: Some(*component.id()),
-                        system_id: Some(SystemId::NONE),
-                        ..AttributeReadContext::any()
-                    },
-                )
-                .await?,
+                name: component.name(&ctx).await?,
             }]
         } else {
             let mut components = Vec::new();
@@ -70,15 +62,7 @@ pub async fn list(
                 {
                     components.push(ListedWorkflowComponentView {
                         id: *component.id(),
-                        name: Component::name_from_context(
-                            &ctx,
-                            AttributeReadContext {
-                                component_id: Some(*component.id()),
-                                system_id: Some(SystemId::NONE),
-                                ..AttributeReadContext::any()
-                            },
-                        )
-                        .await?,
+                        name: component.name(&ctx).await?,
                     });
                 }
             }
