@@ -11,7 +11,7 @@
         <div
           class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
         >
-          <Menu>
+          <!-- <Menu>
             <div class="block w-fit">
               <MenuButton>
                 <VButton
@@ -40,11 +40,17 @@
                 </MenuItem>
               </MenuItems>
             </div>
-          </Menu>
+          </Menu> -->
+          <NewFuncDropdown
+            label="Function"
+            :menu-items="funcCreateTypes"
+            @selected-func-kind="createFunc"
+          />
 
           <NewFuncDropdown
             v-if="isDevMode"
             label="Builtin"
+            :menu-items="devFuncCreateTypes"
             @selected-func-kind="openFuncNameModal"
           />
         </div>
@@ -131,13 +137,7 @@
 
 <script lang="ts" setup>
 import { computed, ref, Ref } from "vue";
-import {
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-  TabPanel,
-} from "@headlessui/vue";
+import { TabPanel } from "@headlessui/vue";
 import validator from "validator";
 import { storeToRefs } from "pinia";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
@@ -146,7 +146,6 @@ import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
-import VButton from "@/molecules/VButton.vue";
 import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import NewFuncDropdown from "@/organisms/NewFuncDropdown.vue";
@@ -184,6 +183,10 @@ const funcCreateTypes = {
   [FuncBackendKind.JsCommand]: "Command",
 };
 
+const devFuncCreateTypes = {
+  [FuncBackendKind.JsQualification]: "Qualification",
+};
+
 const filteredList = computed(() =>
   searchString.value.length > 0
     ? funcList.value.filter((f) =>
@@ -200,6 +203,7 @@ const emits = defineEmits<{
 }>();
 
 const createFunc = (kind: FuncBackendKind) => {
+  console.log(kind);
   emits("createFunc", { kind, isBuiltin: false });
 };
 
