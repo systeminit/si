@@ -11,14 +11,18 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn system(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (mut schema, schema_variant, _) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (mut schema, schema_variant, _) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "system",
         SchemaKind::System,
         ComponentKind::Standard,
         None,
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     schema.set_ui_hidden(ctx, true).await?;
     schema_variant.finalize(ctx).await?;
