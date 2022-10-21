@@ -23,6 +23,7 @@ pub mod component;
 pub mod confirmation_prototype;
 pub mod confirmation_resolver;
 pub mod confirmation_resolver_tree;
+pub mod confirmation_status;
 pub mod context;
 pub mod cyclone_key_pair;
 pub mod diagram;

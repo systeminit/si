@@ -134,19 +134,19 @@ impl ConfirmationResolver {
         context: ConfirmationResolverContext,
     ) -> ConfirmationResolverResult<Self> {
         let row = ctx.txns().pg().query_one(
-                "SELECT object FROM confirmation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
-                &[ctx.write_tenancy(), ctx.visibility(),
-                    &confirmation_prototype_id,
-                    &success,
-                    &message,
-                    &func_id,
-                    &func_binding_id,
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.system_id(),
-                ],
-            )
+            "SELECT object FROM confirmation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+            &[ctx.write_tenancy(), ctx.visibility(),
+                &confirmation_prototype_id,
+                &success,
+                &message,
+                &func_id,
+                &func_binding_id,
+                &context.component_id(),
+                &context.schema_id(),
+                &context.schema_variant_id(),
+                &context.system_id(),
+            ],
+        )
             .await?;
 
         let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
