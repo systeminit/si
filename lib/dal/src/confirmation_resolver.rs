@@ -164,11 +164,11 @@ impl ConfirmationResolver {
         ctx: &DalContext,
         workflow_prototype_id: &ConfirmationPrototypeId,
         context: ConfirmationResolverContext,
-    ) -> ConfirmationResolverResult<Vec<Self>> {
-        let rows = ctx
+    ) -> ConfirmationResolverResult<Option<Self>> {
+        let row = ctx
             .txns()
             .pg()
-            .query(
+            .query_one(
                 FIND_FOR_PROTOTYPE,
                 &[
                     ctx.read_tenancy(),
@@ -181,7 +181,7 @@ impl ConfirmationResolver {
                 ],
             )
             .await?;
-        let object = standard_model::objects_from_rows(rows)?;
+        let object = standard_model::object_from_row(row)?;
         Ok(object)
     }
 

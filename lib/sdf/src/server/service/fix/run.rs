@@ -5,8 +5,8 @@ use super::{FixError, FixResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::{
     job::definition::{fix::Fix, Fixes},
-    ActionPrototype, Component, ComponentId, ConfirmationResolverId, StandardModel, SystemId,
-    Visibility,
+    ActionPrototype, Component, ComponentId, ConfirmationResolverId, StandardModel,
+    SystemId, Visibility,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -68,6 +68,7 @@ pub async fn run(
             workflow_prototype_id: action.workflow_prototype_id(),
         });
     }
+
     ctx.enqueue_job(Fixes::new(&ctx, fixes)).await;
 
     ctx.commit().await?;
