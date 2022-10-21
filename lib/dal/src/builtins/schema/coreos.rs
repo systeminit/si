@@ -24,14 +24,18 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).
 async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Butane",
         SchemaKind::Configuration,
         ComponentKind::Standard,
         Some(COREOS_NODE_COLOR),
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder

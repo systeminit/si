@@ -17,7 +17,8 @@ async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket
         ComponentKind::Standard,
         None,
     )
-    .await?;
+    .await?
+    .expect("could not create schema");
 
     let (
         identity_func_id,
@@ -211,7 +212,7 @@ async fn new(ctx: &DalContext) {
             *second.id(),
             *second2.id(),
             *third.id(),
-            *third2.id()
+            *third2.id(),
         ]
     );
 }

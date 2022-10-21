@@ -67,14 +67,18 @@ impl From<&AwsRegion> for SelectWidgetOption {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS AMI`](https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html).
 async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "AMI",
         SchemaKind::Configuration,
         ComponentKind::Standard,
         Some(AWS_NODE_COLOR),
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
@@ -265,14 +269,18 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS EC2`](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html).
 async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "EC2 Instance",
         SchemaKind::Configuration,
         ComponentKind::Standard,
         Some(AWS_NODE_COLOR),
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
@@ -778,14 +786,18 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Region`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html).
 async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Region",
         SchemaKind::Configuration,
         ComponentKind::Standard,
         Some(AWS_NODE_COLOR),
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
@@ -896,14 +908,18 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Key Pair`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html).
 async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Key Pair",
         SchemaKind::Configuration,
         ComponentKind::Standard,
         Some(AWS_NODE_COLOR),
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder

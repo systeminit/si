@@ -42,14 +42,19 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, mut schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
-        ctx,
-        "Kubernetes Namespace",
-        SchemaKind::Configuration,
-        ComponentKind::Standard,
-        Some(KUBERNETES_NODE_COLOR),
-    )
-    .await?;
+    let (schema, mut schema_variant, root_prop) =
+        match BuiltinSchemaHelpers::create_schema_and_variant(
+            ctx,
+            "Kubernetes Namespace",
+            SchemaKind::Configuration,
+            ComponentKind::Standard,
+            Some(KUBERNETES_NODE_COLOR),
+        )
+        .await?
+        {
+            Some(tuple) => tuple,
+            None => return Ok(()),
+        };
 
     schema_variant.set_link(ctx, Some("https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/".to_owned())).await?;
 
@@ -199,14 +204,19 @@ async fn kubernetes_namespace(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, mut schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
-        ctx,
-        "Kubernetes Deployment",
-        SchemaKind::Configuration,
-        ComponentKind::Standard,
-        Some(KUBERNETES_NODE_COLOR),
-    )
-    .await?;
+    let (schema, mut schema_variant, root_prop) =
+        match BuiltinSchemaHelpers::create_schema_and_variant(
+            ctx,
+            "Kubernetes Deployment",
+            SchemaKind::Configuration,
+            ComponentKind::Standard,
+            Some(KUBERNETES_NODE_COLOR),
+        )
+        .await?
+        {
+            Some(tuple) => tuple,
+            None => return Ok(()),
+        };
 
     schema_variant
         .set_link(

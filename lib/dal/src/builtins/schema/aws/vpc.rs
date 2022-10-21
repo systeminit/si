@@ -33,14 +33,18 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Ingress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
 async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Ingress",
         SchemaKind::Configuration,
         ComponentKind::Standard,
         Some(AWS_NODE_COLOR),
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
@@ -526,14 +530,18 @@ async fn ingress(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Egress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
 async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Egress",
         SchemaKind::Configuration,
         ComponentKind::Standard,
         Some(AWS_NODE_COLOR),
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
@@ -915,14 +923,18 @@ async fn egress(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Security Group`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
 async fn security_group(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Security Group",
         SchemaKind::Configuration,
         ComponentKind::Standard,
         Some(AWS_NODE_COLOR),
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
