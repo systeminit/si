@@ -37,7 +37,7 @@
 import { computed } from "vue";
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 import { useComponentsStore } from "@/store/components.store";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 

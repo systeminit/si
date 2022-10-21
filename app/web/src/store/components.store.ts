@@ -67,8 +67,8 @@ const qualificationStatusToIconMap: Record<
   DiagramStatusIcon
 > = {
   success: { icon: "check-circle", tone: "success" },
-  failure: { icon: "error-circle", tone: "error" },
-  running: { icon: "loading", tone: "info" },
+  failure: { icon: "x-circle", tone: "error" },
+  running: { icon: "loader", tone: "info" },
 };
 
 const confirmationStatusToIconMap: Record<
@@ -76,14 +76,14 @@ const confirmationStatusToIconMap: Record<
   DiagramStatusIcon
 > = {
   success: { icon: "check-square", tone: "success" },
-  failure: { icon: "error-square", tone: "error" },
-  running: { icon: "loading", tone: "info" },
+  failure: { icon: "x-square", tone: "error" },
+  running: { icon: "loader", tone: "info" },
 };
 
 const changeStatusToIconMap: Record<ComponentStatus, DiagramStatusIcon> = {
-  added: { icon: "change-added", tone: "success" },
-  deleted: { icon: "change-deleted", tone: "error" },
-  modified: { icon: "change-modified", tone: "warning" },
+  added: { icon: "plus-circle", tone: "success" },
+  deleted: { icon: "minus-circle", tone: "error" },
+  modified: { icon: "tilde-circle", tone: "warning" },
 };
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {

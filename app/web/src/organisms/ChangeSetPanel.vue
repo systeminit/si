@@ -126,7 +126,7 @@ import VormInputOption from "@/ui-lib/forms/VormInputOption.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import Divider from "@/ui-lib/layout/Divider.vue";
 import ChangeSetPanelDialog from "./ChangeSetPanelDialog.vue";
-import Stack from "../ui-lib/layout/Stack.vue";
+import Stack from "@/ui-lib/layout/Stack.vue";
 
 const workspacesStore = useWorkspacesStore();
 const selectedWorkspaceId = computed(() => workspacesStore.selectedWorkspaceId);

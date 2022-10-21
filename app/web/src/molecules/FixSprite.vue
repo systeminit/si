@@ -86,7 +86,8 @@
 <script setup lang="ts">
 import { Ref, computed, PropType } from "vue";
 import clsx from "clsx";
-import Icon, { IconNames } from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
+import { IconNames } from "@/ui-lib/icons/icon_set";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { Fix } from "@/store/fixes/fixes.store";

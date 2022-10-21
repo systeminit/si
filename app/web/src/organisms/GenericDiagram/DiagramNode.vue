@@ -196,7 +196,7 @@
         }"
       />
       <DiagramIcon
-        icon="loading"
+        icon="loader"
         :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
         :config="{
           x: halfWidth - overlayIconSize / 2,

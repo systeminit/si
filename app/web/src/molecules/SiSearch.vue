@@ -21,7 +21,7 @@
 <script lang="ts" setup>
 import _ from "lodash";
 import { ref, watch } from "vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 // TODO: we may want to swap this over to vmodel instead, but we'll see
 const searchString = ref("");

@@ -6,16 +6,19 @@ it from the diagram config's registry of icons */
     :raw-svg="rawSvg"
     :color="color"
     :config="config"
-    :spin="icon === 'loading' || spin"
+    :spin="icon === 'loader' || spin"
   />
 </template>
 
 <script lang="ts" setup>
 import { computed } from "vue";
+import { getIconByName } from "@/ui-lib/icons/icon_set";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 import KonvaSvgImage from "./KonvaSvgImage.vue";
 
 const props = defineProps({
+  // ideally we'd add the IconNames type
+  // but we allow extra icons to be registered for the diagram so we can't
   icon: { type: String },
   spin: { type: Boolean },
   color: { type: String },
@@ -25,6 +28,9 @@ const props = defineProps({
 const diagramConfig = useDiagramConfig();
 const rawSvg = computed(() => {
   if (!props.icon) return;
-  return diagramConfig?.value.icons?.[props.icon];
+  const iconFromDiagramConfig = diagramConfig?.value.icons?.[props.icon];
+  // diagram config specific icons take precedence
+  // but then we look in our full icon set
+  return iconFromDiagramConfig || getIconByName(props.icon);
 });
 </script>

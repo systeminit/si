@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
+import { watch } from "vue";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
@@ -10,6 +11,7 @@ import { User } from "@/api/sdf/dal/user";
 import { useAuthStore } from "@/store/auth.store";
 import { ResourceStatus } from "@/api/sdf/dal/resource";
 import { useResourcesStore } from "../resources.store";
+import { useRealtimeStore } from "../realtime/realtime.store";
 
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 

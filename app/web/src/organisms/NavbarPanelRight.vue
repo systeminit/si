@@ -40,7 +40,7 @@ import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import SiThemeSwitcher from "@/organisms/SiThemeSwitcher.vue";
 import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const router = useRouter();
 

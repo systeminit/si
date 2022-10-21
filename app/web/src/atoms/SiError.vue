@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 defineProps({
   message: { type: String, default: "" },

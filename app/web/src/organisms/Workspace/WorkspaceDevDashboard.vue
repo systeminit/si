@@ -66,7 +66,7 @@ import { computed, onBeforeMount } from "vue";
 import { useSystemStatusStore } from "@/store/system_status.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import Inline from "@/ui-lib/layout/Inline.vue";
-import Stack from "../../ui-lib/layout/Stack.vue";
+import Stack from "@/ui-lib/layout/Stack.vue";
 
 const systemStatusStore = useSystemStatusStore();
 

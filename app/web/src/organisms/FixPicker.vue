@@ -118,7 +118,7 @@ import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import FixSprite from "@/molecules/FixSprite.vue";

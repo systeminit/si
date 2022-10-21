@@ -55,7 +55,7 @@ import SiValidation, {
 } from "@/atoms/SiValidation.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps<{
   modelValue: string | number | null;

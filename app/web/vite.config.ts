@@ -22,7 +22,8 @@ export default (opts: { mode: string }) => {
     plugins: [
       vue(),
       svgLoaderPlugin(),
-      IconsPlugin({ compiler: "vue3" }),
+      // IconsPlugin({ compiler: "vue3" }),
+      IconsPlugin({ compiler: "raw" }),
       checkerPlugin({
         vueTsc: true,
         eslint: {
