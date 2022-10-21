@@ -192,7 +192,7 @@
           x: 0,
           y: 0,
           cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
-          fill: 'rgba(255,255,255,0.85)',
+          fill: 'rgba(255,255,255,0.70)',
         }"
       />
       <DiagramIcon

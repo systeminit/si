@@ -4,6 +4,7 @@ const capsizePlugin = require("tailwindcss-capsize");
 const lineClampPlugin = require("@tailwindcss/line-clamp");
 const themeValues = require("./src/assets/style/tailwind_customization/tailwind_theme_values.js");
 const typographyPlugin = require("./src/assets/style/tailwind_customization/typography_plugin.js");
+const childrenVariantPlugin = require("./src/assets/style/tailwind_customization/children_variant_plugin");
 
 module.exports = {
   darkMode: "class",
@@ -55,5 +56,11 @@ module.exports = {
       opacity: ["disabled"],
     },
   },
-  plugins: [capsizePlugin, formsPlugin, typographyPlugin, lineClampPlugin],
+  plugins: [
+    capsizePlugin,
+    formsPlugin,
+    typographyPlugin,
+    lineClampPlugin,
+    childrenVariantPlugin,
+  ],
 };

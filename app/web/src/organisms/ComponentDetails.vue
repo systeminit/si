@@ -13,7 +13,7 @@
       </TabPanel>
 
       <TabPanel class="w-full h-full overflow-hidden">
-        <template v-if="codeReqStatus.isPending"> Loading code... </template>
+        <template v-if="codeReqStatus.isPending"> Loading code...</template>
         <template v-else-if="codeReqStatus.isError">
           <ErrorMessage :request-status="codeReqStatus" />
         </template>
@@ -61,9 +61,9 @@
                 :code="JSON.stringify(selectedComponent.resource.data)"
                 border
               >
-                <template #title
-                  ><HealthIcon :health="selectedComponent.resource.health"
-                /></template>
+                <template #title>
+                  <HealthIcon :health="selectedComponent.resource.health" />
+                </template>
               </CodeViewer>
             </div>
           </div>
