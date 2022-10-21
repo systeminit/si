@@ -34,6 +34,9 @@ pub enum ConfirmationPrototypeError {
     ConfirmationResolver(#[from] ConfirmationResolverError),
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
+
+    #[error("not found by id: {0}")]
+    NotFound(ConfirmationPrototypeId),
 }
 
 pub type ConfirmationPrototypeResult<T> = Result<T, ConfirmationPrototypeError>;
