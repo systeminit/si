@@ -2,7 +2,7 @@
   <!-- selectedToFront ? (selected ? 'order-1' : 'order-2') : '' -->
   <Tab
     v-slot="{ selected }"
-    class="focus:outline-none whitespace-nowrap group"
+    class="focus:outline-none whitespace-nowrap"
     :style="maxWidthStyle"
     as="template"
   >
@@ -16,22 +16,24 @@
       "
     >
       <span
-        class="w-full"
+        class="w-full flex items-center"
         :class="
-          classesF + ' ' + (selected ? selectedClassesF : defaultClassesF)
+          clsx([
+            classesF,
+            selected ? selectedClassesF : defaultClassesF,
+            selected
+              ? ''
+              : themeClasses(
+                  'hover:text-neutral-400',
+                  'hover:text-neutral-300',
+                ),
+          ])
         "
       >
-        <span
-          :class="
-            clsx(
-              'overflow-hidden text-ellipsis',
-              'group-hover:text-shade-100 dark:group-hover:text-shade-0',
-            )
-          "
-        >
+        <span class="overflow-hidden text-ellipsis">
           <slot />
         </span>
-        <span>
+        <span class="flex">
           <slot name="icon" />
         </span>
       </span>
@@ -48,6 +50,7 @@
 import { Tab } from "@headlessui/vue";
 import { computed, inject } from "vue";
 import clsx from "clsx";
+import { themeClasses } from "@/ui-lib/theme_tools";
 
 const props = defineProps<{
   classes?: string;

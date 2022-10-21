@@ -41,7 +41,7 @@
           <p
             v-for="(output, index) in confirmation.output"
             :key="index"
-            class="text-sm break-allbgv"
+            class="text-sm break-all"
           >
             {{ output }}
           </p>

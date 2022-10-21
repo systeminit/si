@@ -2,19 +2,19 @@
   <component
     :is="routerLinkTo ? RouterLink : 'button'"
     v-if="!$slots.dropdownContent || routerLinkTo"
-    v-tooltip.bottom="tooltipText"
+    v-tooltip="{ content: tooltipText, delay: { show: 50, hide: 100 } }"
     :to="routerLinkTo"
     class="relative h-full flex items-center"
     :class="buttonClasses(false)"
-    :aria-label="props.tooltipText"
+    :aria-label="tooltipText"
     @click="emit('click')"
   >
     <slot />
   </component>
   <Menu v-else v-slot="{ open }" as="div" class="relative block h-full">
     <MenuButton
-      v-tooltip.bottom="tooltipText"
-      :aria-label="props.tooltipText"
+      v-tooltip="{ content: tooltipText, delay: { show: 50, hide: 200 } }"
+      :aria-label="tooltipText"
       :class="buttonClasses(open)"
       :disabled="disabled"
       class="relative"

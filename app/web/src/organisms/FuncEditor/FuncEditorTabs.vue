@@ -13,10 +13,18 @@
         {{ func.name }}
         <template #icon>
           <button
-            class="inline-block rounded-sm w-5 ml-1"
+            class="inline-block rounded-sm rounded-3xl text-neutral-400 ml-1"
+            :class="
+              clsx(
+                themeClasses(
+                  'hover:text-white hover:bg-neutral-400',
+                  'hover:text-neutral-800 hover:bg-neutral-400',
+                ),
+              )
+            "
             @click="closeFunc(func.id)"
           >
-            <Icon name="x" />
+            <Icon name="x" size="xs" />
           </button>
         </template>
       </SiTabHeader>
@@ -46,6 +54,7 @@
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
 import { storeToRefs } from "pinia";
+import clsx from "clsx";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
@@ -53,6 +62,7 @@ import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
 import Icon from "@/ui-lib/Icon.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
+import { themeClasses } from "@/ui-lib/theme_tools";
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
