@@ -25,6 +25,10 @@ CREATE UNIQUE INDEX unique_external_providers
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL;
 
+CREATE INDEX ON external_providers (schema_id);
+CREATE INDEX ON external_providers (schema_variant_id);
+CREATE INDEX ON external_providers (attribute_prototype_id);
+
 SELECT standard_model_table_constraints_v1('external_providers');
 SELECT belongs_to_table_create_v1('socket_belongs_to_external_provider', 'sockets', 'external_providers');
 
