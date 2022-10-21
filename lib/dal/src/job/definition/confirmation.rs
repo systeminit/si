@@ -6,7 +6,6 @@ use serde::Serialize;
 
 use crate::confirmation_status::ConfirmationStatus;
 
-
 use crate::{
     job::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
@@ -109,7 +108,7 @@ impl JobConsumer for Confirmation {
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
         let prototype = ConfirmationPrototype::get_by_id(ctx, &self.confirmation_prototype_id)
             .await?
-            .ok_or_else(|| ConfirmationPrototypeError::NotFound(self.confirmation_prototype_id))?;
+            .ok_or(ConfirmationPrototypeError::NotFound(self.confirmation_prototype_id))?;
         let resolver = prototype
             .run(ctx, self.component_id, self.system_id)
             .await?;

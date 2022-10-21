@@ -1,8 +1,4 @@
-
-
-use crate::{
-    ConfirmationPrototypeId, DalContext, WsEvent, WsPayload,
-};
+use crate::{ConfirmationPrototypeId, DalContext, WsEvent, WsPayload};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
