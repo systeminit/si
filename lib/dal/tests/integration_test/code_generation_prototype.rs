@@ -1,12 +1,11 @@
-use dal::{BillingAccountSignup, DalContext};
-
-use crate::dal::test;
-use dal::code_generation_prototype::CodeGenerationPrototypeContext;
-use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
-    code_generation_prototype::UNSET_ID_VALUE, prototype_context::PrototypeContext,
-    CodeGenerationPrototype, CodeLanguage, Component, Func, Schema, StandardModel,
+    code_generation_prototype::{CodeGenerationPrototypeContext, UNSET_ID_VALUE},
+    func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs,
+    prototype_context::PrototypeContext,
+    BillingAccountSignup, CodeGenerationPrototype, CodeLanguage, Component, DalContext, Func,
+    Schema, StandardModel,
 };
+use dal_test::test;
 
 #[test]
 async fn new(ctx: &DalContext) {

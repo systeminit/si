@@ -1,8 +1,10 @@
-use crate::dal::test;
-use dal::DalContext;
 use dal::{
+    DalContext, HistoryActor, QualificationCheck, SchemaKind, StandardModel, Visibility,
+    WriteTenancy,
+};
+use dal_test::{
+    test,
     test_harness::{create_qualification_check, create_schema, create_schema_variant},
-    HistoryActor, QualificationCheck, SchemaKind, StandardModel, Visibility, WriteTenancy,
 };
 
 #[test]

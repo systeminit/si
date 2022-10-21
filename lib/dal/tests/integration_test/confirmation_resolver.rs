@@ -1,11 +1,8 @@
-use dal::DalContext;
 use dal::{
-    confirmation_resolver::ConfirmationResolverContext, test_harness::create_component_for_schema,
-    ActionPrototype, ConfirmationPrototype, ConfirmationResolver, FuncBindingId, FuncId, Schema,
-    StandardModel, SystemId,
+    confirmation_resolver::ConfirmationResolverContext, ActionPrototype, ConfirmationPrototype,
+    ConfirmationResolver, DalContext, FuncBindingId, FuncId, Schema, StandardModel, SystemId,
 };
-
-use crate::dal::test;
+use dal_test::{test, test_harness::create_component_for_schema};
 
 #[test]
 async fn new(ctx: &DalContext) {

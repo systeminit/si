@@ -1,3 +1,3 @@
 disallowed-methods = [
-    { path = "dal::test::helpers::commit_and_continue", reason = "should not be left in tests as this could infect other tests" }
+    { path = "dal_test::helpers::commit_and_continue", reason = "should not be left in tests as this could infect other tests" }
 ]

@@ -61,8 +61,6 @@ pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
 pub mod system;
-pub mod test;
-pub mod test_harness;
 pub mod timestamp;
 pub mod user;
 pub mod validation;

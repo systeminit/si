@@ -1,10 +1,8 @@
-use dal::DalContext;
 use dal::{
-    func::binding::FuncBinding, workflow_resolver::WorkflowResolverContext, Func, StandardModel,
-    WorkflowPrototypeId, WorkflowResolver,
+    func::binding::FuncBinding, workflow_resolver::WorkflowResolverContext, DalContext, Func,
+    StandardModel, WorkflowPrototypeId, WorkflowResolver,
 };
-
-use crate::dal::test;
+use dal_test::test;
 
 #[test]
 async fn new(ctx: &DalContext) {

@@ -1,10 +1,11 @@
-use crate::dal::test;
 use dal::{
-    test_harness::{create_secret, generate_fake_name},
-    EncryptedSecret, Secret, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion,
-    StandardModel,
+    BillingAccountSignup, DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretKind,
+    SecretObjectType, SecretVersion, StandardModel,
 };
-use dal::{BillingAccountSignup, DalContext};
+use dal_test::{
+    test,
+    test_harness::{create_secret, generate_fake_name},
+};
 
 #[test]
 async fn new_encrypted_secret(ctx: &DalContext, nba: &BillingAccountSignup) {

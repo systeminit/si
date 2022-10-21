@@ -2,8 +2,7 @@ use dal::{
     BillingAccountId, BillingAccountSignup, DalContext, JwtSecretKey, ReadTenancy, StandardModel,
     User,
 };
-
-use crate::dal::test;
+use dal_test::test;
 
 #[test]
 async fn new(ctx: &mut DalContext, bid: BillingAccountId) {

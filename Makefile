@@ -51,6 +51,7 @@ COMPONENTS = \
 	lib/cyclone-core \
 	lib/cyclone-server \
 	lib/dal \
+	lib/dal-test \
 	lib/deadpool-cyclone \
 	lib/sdf \
 	lib/si-data \
@@ -220,6 +221,8 @@ test//lib/cyclone-server//RTESTDEPS: test//bin/cyclone test//lib/cyclone-client
 
 test//lib/dal//TESTDEPS: build//bin/cyclone deploy//partial
 test//lib/dal//RTESTDEPS: test//lib/sdf
+
+test//lib/dal-test//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
 
 test//lib/deadpool-cyclone//TESTDEPS: build//bin/cyclone
 test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech-server

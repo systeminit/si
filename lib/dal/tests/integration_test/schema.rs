@@ -1,9 +1,12 @@
-use dal::{BillingAccountSignup, DalContext, DiagramKind, JwtSecretKey};
-
-use crate::dal::test;
-use dal::schema::{SchemaKind, SchemaUiMenu};
-use dal::test_harness::{billing_account_signup, create_schema};
-use dal::{component::ComponentKind, Schema, StandardModel};
+use dal::{
+    component::ComponentKind,
+    schema::{SchemaKind, SchemaUiMenu},
+    BillingAccountSignup, DalContext, DiagramKind, JwtSecretKey, Schema, StandardModel,
+};
+use dal_test::{
+    test,
+    test_harness::{billing_account_signup, create_schema},
+};
 
 pub mod ui_menu;
 pub mod variant;

@@ -1,11 +1,11 @@
 use axum::Json;
 use dal::{
-    billing_account::BillingAccountSignup, test_harness::generate_fake_name, BillingAccount,
-    HistoryActor, RequestContext, StandardModel,
+    billing_account::BillingAccountSignup, BillingAccount, HistoryActor, RequestContext,
+    StandardModel,
 };
 use serde::{Deserialize, Serialize};
 
-use super::TestResult;
+use super::{generate_fake_name, TestResult};
 use crate::server::extract::{HandlerContext, JwtSecretKey};
 
 #[derive(Debug, Serialize, Deserialize)]

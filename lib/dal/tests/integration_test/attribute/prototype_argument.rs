@@ -1,15 +1,20 @@
-use crate::dal::test;
 use dal::{
-    attribute::context::AttributeContext,
-    attribute::prototype::AttributePrototype,
-    func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
-    test_harness::{create_schema, create_schema_variant_with_root},
-    Func, FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind, StandardModel,
+    attribute::{context::AttributeContext, prototype::AttributePrototype},
+    func::{
+        argument::{FuncArgument, FuncArgumentKind},
+        backend::string::FuncBackendStringArgs,
+        binding::FuncBinding,
+    },
+    AttributePrototypeArgument, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
+    InternalProvider, PropKind, SchemaKind, StandardModel,
 };
-use dal::{AttributePrototypeArgument, DalContext, InternalProvider};
-
-use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::test_harness::create_prop_of_kind_and_set_parent_with_name;
+use dal_test::{
+    test,
+    test_harness::{
+        create_prop_of_kind_and_set_parent_with_name, create_schema,
+        create_schema_variant_with_root,
+    },
+};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]

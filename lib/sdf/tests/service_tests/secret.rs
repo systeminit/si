@@ -1,8 +1,8 @@
-use crate::dal::test;
 use dal::{
-    test_harness::encrypt_message, EncryptedSecret, SecretAlgorithm, SecretKind, SecretObjectType,
-    SecretVersion, StandardModel, Visibility,
+    EncryptedSecret, SecretAlgorithm, SecretKind, SecretObjectType, SecretVersion, StandardModel,
+    Visibility,
 };
+use dal_test::{test, test_harness::encrypt_message};
 use hyper::Method;
 use sdf::service::secret::create_secret::{CreateSecretRequest, CreateSecretResponse};
 

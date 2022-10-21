@@ -1,8 +1,8 @@
-use dal::node_menu::GenerateMenuItem;
-use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
-use dal::{DalContext, DiagramKind};
-
-use crate::dal::test;
+use dal::{node_menu::GenerateMenuItem, DalContext, DiagramKind};
+use dal_test::{
+    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
+    test,
+};
 
 #[test]
 async fn get_node_menu(ctx: &DalContext) {

@@ -1,14 +1,7 @@
 use std::{env, path::Path, sync::Arc};
 
 use color_eyre::Result;
-use lazy_static::lazy_static;
-use names::{Generator, Name};
-use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
-use uuid::Uuid;
-use veritech_client::EncryptionKey;
-use veritech_server::{Instance, StandardConfig};
-
-use crate::{
+use dal::{
     billing_account::BillingAccountSignup,
     component::ComponentKind,
     func::{binding::FuncBinding, FuncId},
@@ -18,13 +11,20 @@ use crate::{
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    test::CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE,
     BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, DiagramKind,
     EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
     Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
     SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, System, User, Visibility,
     Workspace, WriteTenancy, NO_CHANGE_SET_PK,
 };
+use lazy_static::lazy_static;
+use names::{Generator, Name};
+use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
+use uuid::Uuid;
+use veritech_client::EncryptionKey;
+use veritech_server::{Instance, StandardConfig};
+
+use super::CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE;
 
 #[derive(Debug)]
 pub struct TestConfig {
@@ -195,7 +195,7 @@ fn nats_prefix() -> String {
 }
 
 pub async fn one_time_setup() -> Result<()> {
-    crate::test::TestContext::global().await.map(|_| ())
+    crate::TestContext::global().await.map(|_| ())
 }
 
 pub fn generate_fake_name() -> String {

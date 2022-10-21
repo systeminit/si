@@ -1,6 +1,5 @@
-use crate::dal::test;
-use dal::DalContext;
-use dal::{schema::SchemaVariant, test_harness::create_schema, SchemaKind, StandardModel};
+use dal::{schema::SchemaVariant, DalContext, SchemaKind, StandardModel};
+use dal_test::{test, test_harness::create_schema};
 
 #[test]
 async fn new(ctx: &DalContext) {

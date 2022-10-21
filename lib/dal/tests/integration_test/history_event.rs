@@ -1,7 +1,5 @@
-use crate::dal::test;
-use dal::DalContext;
-
-use dal::{HistoryActor, HistoryEvent};
+use dal::{DalContext, HistoryActor, HistoryEvent};
+use dal_test::test;
 
 #[test]
 async fn new(ctx: &DalContext) {

@@ -76,6 +76,12 @@ A-dal:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
+A-dal-test:
+  - lib/dal-test/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 A-deadpool-cyclone:
   - lib/deadpool-cyclone/**/*
   - .cargo/**/*

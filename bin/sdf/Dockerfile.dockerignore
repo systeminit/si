@@ -23,6 +23,7 @@
 !lib/cyclone-core
 !lib/cyclone-server
 !lib/dal
+!lib/dal-test
 !lib/deadpool-cyclone
 !lib/sdf
 !lib/veritech-client

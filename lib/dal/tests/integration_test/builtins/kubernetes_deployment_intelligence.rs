@@ -1,6 +1,8 @@
-use crate::dal::test;
-use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
+use dal_test::{
+    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 
 // Oh yeah, it's big brain time.

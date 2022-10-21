@@ -220,10 +220,10 @@ macro_rules! test_setup {
         $faktory:ident $(,)?
     ,
     ) => {
-        dal::test_harness::one_time_setup()
+        ::dal_test::test_harness::one_time_setup()
             .await
             .expect("one time setup failed");
-        let $ctx = dal::test_harness::TestContext::init().await;
+        let $ctx = ::dal_test::test_harness::TestContext::init().await;
         let ($pg, $nats_conn, $faktory, $veritech, $encr_key, $jwt_secret_key) = $ctx.entries();
         let telemetry = $ctx.telemetry();
         let $nats = $nats_conn.transaction();
@@ -240,10 +240,10 @@ macro_rules! test_setup {
             "myunusedsignupsecret".into(),
         )
         .expect("cannot build new server");
-        let $app: axum::Router = $app.into();
+        let $app: ::axum::Router = $app.into();
 
         let ($nba, $auth_token) = {
-            let services_context = dal::ServicesContext::new(
+            let services_context = ::dal::ServicesContext::new(
                 $pg.clone(),
                 $nats_conn.clone(),
                 $faktory.clone(),
@@ -259,7 +259,7 @@ macro_rules! test_setup {
                 .expect("cannot start transactions");
 
             let ($nba, $auth_token) =
-                dal::test_harness::billing_account_signup(&ctx, &$jwt_secret_key).await;
+                ::dal_test::test_harness::billing_account_signup(&ctx, &$jwt_secret_key).await;
 
             ctx.commit().await.expect("cannot finish setup");
 
@@ -284,10 +284,10 @@ macro_rules! test_setup {
                 .await
                 .expect("cannot start transactions");
 
-            let visibility = dal::Visibility::new_head(false);
+            let visibility = ::dal::Visibility::new_head(false);
 
             ctx.update_read_tenancy(
-                dal::ReadTenancy::new_workspace(
+                ::dal::ReadTenancy::new_workspace(
                     ctx.pg_txn(),
                     vec![*$nba.workspace.id()],
                     &visibility,
@@ -295,9 +295,9 @@ macro_rules! test_setup {
                 .await
                 .expect("cannot construct read tenancy"),
             );
-            ctx.update_write_tenancy(dal::WriteTenancy::new_workspace(*$nba.workspace.id()));
+            ctx.update_write_tenancy(::dal::WriteTenancy::new_workspace(*$nba.workspace.id()));
             ctx.update_visibility(visibility);
-            ctx.update_history_actor(dal::HistoryActor::SystemInit);
+            ctx.update_history_actor(::dal::HistoryActor::SystemInit);
             ctx
         };
     };

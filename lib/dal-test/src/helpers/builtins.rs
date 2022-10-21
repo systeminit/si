@@ -1,19 +1,19 @@
-//! This module provides a harness for use in integration tests related to
-//! providers and builtin [`Schemas`](crate::Schema) leveraging them. It will
-//! cache relevant information to reduce the total number of queries to the
-//! database during a test.
+//! This module provides a harness for use in integration tests related to providers and builtin
+//! [`Schema`s](dal::Schema) leveraging them. It will cache relevant information to reduce the
+//! total number of queries to the database during a test.
 
 use std::collections::HashMap;
 
-use crate::test::helpers::{
-    find_prop_and_parent_by_name, find_schema_and_default_variant_by_name, ComponentPayload,
-};
-use crate::{
+use dal::{
     AttributeReadContext, Component, DalContext, PropId, SchemaId, SchemaVariantId, StandardModel,
 };
 
-/// A list of builtin [`Schemas`](crate::Schema) that can be used to create
-/// [`Components`](crate::Component) for integration tests.
+use super::{
+    find_prop_and_parent_by_name, find_schema_and_default_variant_by_name, ComponentPayload,
+};
+
+/// A list of builtin schemas that can be used to create [`Component`](Component) for integration
+/// tests.
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Builtin {
     AwsEc2,
@@ -26,7 +26,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    /// Converts a [`Builtin`](Self) to its [`Schema`](crate::Schema) name.
+    /// Returns its schema name.
     pub fn as_str(&self) -> &'static str {
         match &self {
             Builtin::AwsEc2 => "EC2 Instance",
@@ -40,7 +40,7 @@ impl Builtin {
     }
 }
 
-/// A private struct to provide helpful metadata for a given [`Builtin`](Builtin).
+/// A private struct to provide helpful metadata for a given [`Builtin`].
 #[derive(Clone)]
 struct BuiltinMetadata {
     schema_id: SchemaId,
@@ -48,13 +48,12 @@ struct BuiltinMetadata {
     prop_map: PropMap,
 }
 
-/// A hash map of [`PropIds`](crate::Prop) where the key is the JSON pointer to the
-/// [`Prop`](crate::Prop) on the [`SchemaVariant`](crate::SchemaVariant).
+/// A hash map of [`PropId`s](PropId) where the key is the JSON pointer to the [`Prop`] on the
+/// [`SchemaVariant`].
 type PropMap = HashMap<&'static str, PropId>;
 
-/// This harness provides methods to create [`Components`](crate::Component) from builtin
-/// [`Schemas`](crate::Schema). All fields are private since they are purely used to reduce the
-/// number of total database queries.
+/// This harness provides methods to create [`Component`s](Component) from builtin schemas. All
+/// fields are private since they are purely used to reduce the number of total database queries.
 #[derive(Default)]
 pub struct SchemaBuiltinsTestHarness {
     builtins: HashMap<Builtin, BuiltinMetadata>,
@@ -65,9 +64,8 @@ impl SchemaBuiltinsTestHarness {
         Self::default()
     }
 
-    /// Create a [`ComponentPayload`](crate::test::helpers::ComponentPayload) (a
-    /// [`Component`](crate::Component) with contextual metadata) for a given
-    /// [`Builtin`](Builtin).
+    /// Create a [`ComponentPayload`] (a [`Component`] with contextual metadata) for a given
+    /// [`Builtin`].
     pub async fn create_component(
         &mut self,
         ctx: &DalContext,
@@ -110,8 +108,7 @@ impl SchemaBuiltinsTestHarness {
         }
     }
 
-    /// Private method to create a [`Component`](crate::Component) and assemble a
-    /// [`ComponentPayload`](crate::test::helpers::ComponentPayload).
+    /// Private method to create a [`Component`] and assemble a [`ComponentPayload`].
     async fn perform_component_creation_and_payload_assembly(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -139,8 +136,8 @@ impl SchemaBuiltinsTestHarness {
         }
     }
 
-    /// Private function to build a [`PropMap`](PropMap) for a given [`Builtin`](Builtin). This
-    /// function will populate the map differently depending on the [`Builtin`](Builtin) provided.
+    /// Private function to build a [`PropMap`] for a given [`Builtin`]. This function will
+    /// populate the map differently depending on the `Builtin` provided.
     async fn build_prop_map(
         ctx: &DalContext,
         builtin: Builtin,

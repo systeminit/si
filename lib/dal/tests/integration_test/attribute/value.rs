@@ -1,13 +1,13 @@
 use dal::{
-    attribute::context::AttributeContextBuilder,
-    component::view::ComponentView,
+    attribute::context::AttributeContextBuilder, component::view::ComponentView, AttributeContext,
+    AttributeReadContext, AttributeValue, Component, DalContext, PropKind, SchemaKind,
+    StandardModel, SystemId,
+};
+use dal_test::{
+    test,
     test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
-    AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
-    SchemaKind, StandardModel, SystemId,
 };
 use pretty_assertions_sorted::assert_eq;
-
-use crate::dal::test;
 
 #[test]
 async fn update_for_context_simple(ctx: &DalContext) {

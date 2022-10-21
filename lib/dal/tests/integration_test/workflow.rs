@@ -1,5 +1,5 @@
-use crate::dal::test;
 use dal::{DalContext, Func, FuncBinding, StandardModel, WorkflowView};
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 

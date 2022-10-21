@@ -1,13 +1,12 @@
-use pretty_assertions_sorted::assert_eq;
-
-use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
-use dal::validation::ValidationErrorKind;
 use dal::{
-    DalContext, Edge, ExternalProvider, InternalProvider, StandardModel, SystemId,
-    ValidationResolver,
+    validation::ValidationErrorKind, DalContext, Edge, ExternalProvider, InternalProvider,
+    StandardModel, SystemId, ValidationResolver,
 };
-
-use crate::dal::test;
+use dal_test::{
+    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
+    test,
+};
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {

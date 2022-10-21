@@ -1,9 +1,11 @@
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-use axum::routing::post;
-use axum::Json;
-use axum::Router;
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::post,
+    Json, Router,
+};
 use dal::{BillingAccountError, TransactionsError, UserError};
+use names::{Generator, Name};
 use thiserror::Error;
 
 mod signup;
@@ -39,6 +41,12 @@ impl IntoResponse for TestError {
 
         (status, body).into_response()
     }
+}
+
+pub(crate) fn generate_fake_name() -> String {
+    Generator::with_naming(Name::Numbered)
+        .next()
+        .expect("ran out of random names")
 }
 
 pub fn routes() -> Router {

@@ -1,12 +1,12 @@
-use crate::dal::test;
-
-use dal::socket::{SocketArity, SocketKind};
-use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::{
-    socket::SocketEdgeKind, Connection, DalContext, Diagram, DiagramKind, NodePosition, Schema,
-    StandardModel,
+    socket::{SocketArity, SocketEdgeKind, SocketKind},
+    Connection, DalContext, Diagram, DiagramEdgeView, DiagramKind, NodePosition, Schema,
+    SchemaVariant, StandardModel,
 };
-use dal::{DiagramEdgeView, SchemaVariant};
+use dal_test::{
+    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
+    test,
+};
 
 #[test]
 async fn get_diagram_and_create_connection(ctx: &DalContext) {

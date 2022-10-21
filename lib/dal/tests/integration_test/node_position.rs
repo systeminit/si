@@ -1,6 +1,5 @@
-use crate::dal::test;
-use dal::DalContext;
-use dal::{node::NodeKind, test_harness::create_node, DiagramKind, NodePosition, StandardModel};
+use dal::{node::NodeKind, DalContext, DiagramKind, NodePosition, StandardModel};
+use dal_test::{test, test_harness::create_node};
 
 #[test]
 async fn new(ctx: &DalContext) {

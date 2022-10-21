@@ -59,14 +59,14 @@ macro_rules! test_setup {
         $veritech:ident,
         $encryption_key:ident $(,)?
     ) => {
-        let test_context = ::dal::test::TestContext::global().await;
-        let nats_subject_prefix = ::dal::test::nats_subject_prefix();
+        let test_context = ::dal_test::TestContext::global().await;
+        let nats_subject_prefix = ::dal_test::nats_subject_prefix();
         let services_context = test_context
             .create_services_context(nats_subject_prefix.clone())
             .await;
 
         // Run a Veritech server instance for each test
-        let veritech_server = ::dal::test::veritech_server_for_uds_cyclone(
+        let veritech_server = ::dal_test::veritech_server_for_uds_cyclone(
             test_context.nats_config().clone(),
             nats_subject_prefix,
         )

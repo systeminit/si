@@ -7,9 +7,11 @@ use std::{
     sync::{Arc, Once},
 };
 
-use color_eyre::{
-    eyre::{eyre, WrapErr},
-    Result,
+#[cfg(debug_assertions)]
+use dal::check_runtime_dependencies;
+use dal::{
+    job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
+    DalContext, JwtSecretKey, ServicesContext,
 };
 use lazy_static::lazy_static;
 use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig, ResultExt};
@@ -19,15 +21,16 @@ use uuid::Uuid;
 use veritech_client::EncryptionKey;
 use veritech_server::{Instance, StandardConfig};
 
-use crate::{
-    job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
-    DalContext, JwtSecretKey, ServicesContext,
+pub use color_eyre::{
+    self,
+    eyre::{eyre, Result, WrapErr},
 };
-
-#[cfg(debug_assertions)]
-use crate::check_runtime_dependencies;
+pub use si_test_macros::dal_test as test;
+pub use telemetry;
+pub use tracing_subscriber;
 
 pub mod helpers;
+pub mod test_harness;
 
 #[cfg(debug_assertions)]
 pub const CANONICALIZE_CYCLONE_BIN_PATH_ERROR_MESSAGE: &str =
@@ -414,7 +417,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         .await
         .wrap_err("failed to drop and create the database")?;
     info!("running database migrations");
-    crate::migrate(services_ctx.pg_pool())
+    dal::migrate(services_ctx.pg_pool())
         .await
         .wrap_err("failed to migrate database")?;
 
@@ -430,7 +433,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
             .transaction()
             .await
             .wrap_err("failed to start pg transaction")?;
-        crate::create_jwt_key_if_missing(
+        dal::create_jwt_key_if_missing(
             &pg_txn,
             JWT_PUBLIC_FILENAME,
             JWT_PRIVATE_FILENAME,
@@ -445,7 +448,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     }
 
     info!("creating builtins");
-    crate::migrate_builtins(
+    dal::migrate_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
         services_ctx.job_processor(),

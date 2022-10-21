@@ -1,8 +1,8 @@
-use crate::dal::test;
 use dal::{
     property_editor::{PropertyEditorSchema, PropertyEditorValues},
     AttributeReadContext, DalContext, Schema, StandardModel,
 };
+use dal_test::test;
 
 #[test]
 async fn property_editor_schema(ctx: &DalContext) {
