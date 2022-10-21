@@ -1,8 +1,6 @@
 //! The Data Access Layer (DAL) for System Initiative.
 
-use std::collections::VecDeque;
 use std::io;
-use std::process::{Command, Stdio};
 use std::sync::Arc;
 
 use rand::Rng;
@@ -239,6 +237,9 @@ pub fn init() -> InitializationResult<()> {
 /// [`init()`](init()).
 #[cfg(debug_assertions)]
 pub fn check_runtime_dependencies() -> InitializationResult<()> {
+    use std::collections::VecDeque;
+    use std::process::{Command, Stdio};
+
     let mut missing_binaries = Vec::new();
     let mut failed_commands = Vec::new();
 
