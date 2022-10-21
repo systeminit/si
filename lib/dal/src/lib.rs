@@ -31,6 +31,7 @@ pub mod cyclone_key_pair;
 pub mod diagram;
 pub mod edge;
 pub mod edit_field;
+pub mod fix_resolver;
 pub mod func;
 pub mod group;
 pub mod history_event;
@@ -131,6 +132,7 @@ pub use diagram::{
     connection::Connection, connection::DiagramEdgeView, Diagram, DiagramError, DiagramKind,
 };
 pub use edge::{Edge, EdgeError, EdgeResult};
+pub use fix_resolver::{FixResolver, FixResolverContext, FixResolverError, FixResolverId};
 pub use func::binding_return_value::FuncBindingReturnValue;
 pub use func::{
     backend::{FuncBackendError, FuncBackendKind, FuncBackendResponseType},

@@ -12,7 +12,8 @@ use crate::{
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, ComponentId, ConfirmationPrototype, ConfirmationPrototypeError,
-    ConfirmationPrototypeId, DalContext, StandardModel, SystemId, Visibility, WsEvent,
+    ConfirmationPrototypeId, DalContext, FixResolver, FixResolverContext, StandardModel, SystemId,
+    Visibility, WorkflowPrototypeId, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -111,14 +112,28 @@ impl JobConsumer for Confirmation {
             .ok_or(ConfirmationPrototypeError::NotFound(
                 self.confirmation_prototype_id,
             ))?;
-        let (status, error_message) =
-            match prototype.run(ctx, self.component_id, self.system_id).await {
-                Ok(resolver) => match resolver.success() {
+        let (status, error_message) = match prototype
+            .run(ctx, self.component_id, self.system_id)
+            .await
+        {
+            Ok(resolver) => {
+                // Creates empty fix result slot
+                let context = FixResolverContext {
+                    component_id: resolver.context().component_id,
+                    schema_id: resolver.context().schema_id,
+                    schema_variant_id: resolver.context().schema_variant_id,
+                    system_id: SystemId::NONE,
+                };
+                let _fix_resolver =
+                    FixResolver::upsert(ctx, WorkflowPrototypeId::NONE, *resolver.id(), context)
+                        .await?;
+                match resolver.success() {
                     true => (ConfirmationStatus::Success, None),
                     false => (ConfirmationStatus::Failure, None),
-                },
-                Err(e) => (ConfirmationStatus::Error, Some(format!("{e}"))),
-            };
+                }
+            }
+            Err(e) => (ConfirmationStatus::Error, Some(format!("{e}"))),
+        };
         WsEvent::confirmation_status_update(
             ctx,
             self.component_id,
