@@ -25,6 +25,16 @@ partial-pganalyze: init
 			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
 		up -d nats pg otel faktory
 
+partial-local-pg: init
+	SI_ROOT="${MAKEPATH}/.." sh ${MAKEPATH}/scripts/push-pg-local.sh 
+	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
+		docker compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			-f $(MAKEPATH)/docker-compose.env.yml \
+			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
+			-f $(MAKEPATH)/docker-compose.local-postgres.yml \
+		up -d nats pg otel faktory
+
 # Run interactively and compose down beforehand. This target is meant to be run iteratively for
 # local development and testing.
 dev: down init

@@ -15,9 +15,18 @@ RUN set -eux; \
     ; \
     rm -rf /var/lib/apt/lists/*
 
+ARG TARGETPLATFORM
 RUN set -eux; \
-    curl https://packages.pganalyze.com/collector-install.sh \
-        | env PGA_INSTALL_NONINTERACTIVE=1 bash
+    case "$TARGETPLATFORM" in \
+        linux/arm64) export PGA_BINARY="pganalyze-collector-linux-arm64" ;; \
+        linux/amd64) export PGA_BINARY="pganalyze-collector-linux-amd64" ;; \
+    esac; \
+    \
+    curl -L -o /usr/bin/pganalyze-collector https://github.com/pganalyze/collector/releases/latest/download/${PGA_BINARY} \
+    && chmod +x /usr/bin/pganalyze-collector
+
+RUN addgroup pganalyze \
+    && adduser --gecos "" --disabled-password pganalyze --ingroup pganalyze
 
 COPY component/postgres/multiple-database-support.sh /docker-entrypoint-initdb.d/
 COPY component/postgres/entrypoint-wrapper.sh /usr/local/bin/entrypoint-wrapper.sh
