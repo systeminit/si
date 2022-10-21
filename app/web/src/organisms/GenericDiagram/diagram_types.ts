@@ -1,4 +1,5 @@
 import { Vector2d } from "konva/lib/types";
+import { IconNames } from "@/ui-lib/icons/icon_set";
 
 export type DiagramConfig = {
   // canNodesConnectToThemselves: boolean;
@@ -18,7 +19,7 @@ export type DiagramElementIdentifier = {
 
 export type DiagramStatusIcon = {
   /* name/id of icon (registered in diagram config) */
-  icon: string;
+  icon: IconNames;
   /* tone of icon - gets mapped to some preset colors */
   tone?: "success" | "error" | "warning" | "info" | "neutral";
   /* set to override specific hex color */

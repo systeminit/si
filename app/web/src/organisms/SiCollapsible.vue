@@ -43,7 +43,7 @@
 import { computed, useSlots, PropType } from "vue";
 import { Disclosure, DisclosurePanel, DisclosureButton } from "@headlessui/vue";
 import clsx from "clsx";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 import { themeClasses } from "@/ui-lib/theme_tools";
 
 defineProps({

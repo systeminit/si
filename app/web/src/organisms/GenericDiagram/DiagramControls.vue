@@ -58,7 +58,7 @@ import { Menu, MenuButton, MenuItems } from "@headlessui/vue";
 import clsx from "clsx";
 import SiDropdown from "@/molecules/SiDropdown.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 import { tw } from "@/utils/style_helpers";
 import { MAX_ZOOM, MIN_ZOOM } from "./diagram_constants";
 

@@ -53,7 +53,7 @@ import { onBeforeUnmount, onMounted, onUpdated, provide, ref } from "vue";
 import _ from "lodash";
 import clsx from "clsx";
 import SiBarButton from "@/molecules/SiBarButton.vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = withDefaults(
   defineProps<{

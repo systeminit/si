@@ -28,7 +28,7 @@
 
 <script lang="ts" setup>
 import { PropType } from "vue";
-import Icon, { IconSizes } from "@/ui-lib/Icon.vue";
+import Icon, { IconSizes } from "@/ui-lib/icons/Icon.vue";
 import { FixStatus } from "@/store/fixes/fixes.store";
 
 defineProps({

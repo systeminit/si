@@ -25,13 +25,10 @@ import FixProgressOverlay from "@/organisms/FixProgressOverlay.vue";
 import FixPicker from "../FixPicker.vue";
 import FixHistory from "../FixHistory.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
-import { DiagramIcons } from "./diagram_icons";
 
 const componentsStore = useComponentsStore();
 const diagramNodes = computed(() => componentsStore.diagramNodes);
 const diagramEdges = computed(() => componentsStore.diagramEdges);
 
-const diagramCustomConfig = {
-  icons: DiagramIcons,
-};
+const diagramCustomConfig = {};
 </script>

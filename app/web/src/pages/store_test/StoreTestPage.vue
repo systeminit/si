@@ -35,8 +35,8 @@ import { computed, reactive, ref } from "vue";
 import _ from "lodash";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import { useCounterStore, useCounterStore2 } from "@/store/counter.store";
-import Stack from "../../ui-lib/layout/Stack.vue";
-import Inline from "../../ui-lib/layout/Inline.vue";
+import Stack from "@/ui-lib/layout/Stack.vue";
+import Inline from "@/ui-lib/layout/Inline.vue";
 import CounterWidget from "./CounterWidget.vue";
 
 const widgets = reactive({} as Record<number, true>);

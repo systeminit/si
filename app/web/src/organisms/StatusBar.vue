@@ -197,7 +197,7 @@ import SiPanel from "@/atoms/SiPanel.vue";
 import QualificationTabPanel from "@/organisms/StatusBarTabs/Qualification/QualificationTabPanel.vue";
 import QualificationTab from "@/organisms/StatusBarTabs/Qualification/QualificationTab.vue";
 import GenericTabPanel from "@/organisms/StatusBarTabs/GenericTabPanel.vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useThemeContainer } from "@/ui-lib/theme_tools";
 import ChangeSetTabPanel from "@/organisms/StatusBarTabs/Changes/ChangesTabPanel.vue";

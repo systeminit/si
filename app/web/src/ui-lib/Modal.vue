@@ -72,7 +72,7 @@
                     :disabled="disableSave"
                     button-rank="primary"
                     button-type="success"
-                    icon="plus-square"
+                    icon="check"
                     label="Create"
                     size="xs"
                     @click="emit('save')"

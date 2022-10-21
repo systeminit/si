@@ -64,7 +64,7 @@ import SiValidation, {
   ValidatorArray,
   ErrorsArray,
 } from "@/atoms/SiValidation.vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps<{
   modelValue?: boolean;

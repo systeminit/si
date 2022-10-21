@@ -23,7 +23,7 @@
       ]
     },
     "types": [
-      "unplugin-icons/types/vue"
+      "unplugin-icons/types/raw"
     ],
     "pretty": true,
     "noEmit": true,

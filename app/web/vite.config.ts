@@ -22,7 +22,11 @@ export default (opts: { mode: string }) => {
     plugins: [
       vue(),
       svgLoaderPlugin(),
-      IconsPlugin({ compiler: "vue3" }),
+
+      // using "raw" as icon compiler (rather than `vue3`) because we need raw svgs for use in konva
+      // our Icon component knows how to deal with raw SVGs
+      IconsPlugin({ compiler: "raw" }),
+
       checkerPlugin({
         vueTsc: true,
         eslint: {

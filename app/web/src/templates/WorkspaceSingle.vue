@@ -92,7 +92,7 @@ import VButton2 from "@/ui-lib/VButton2.vue";
 import Divider from "@/ui-lib/layout/Divider.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
-import Stack from "../ui-lib/layout/Stack.vue";
+import Stack from "@/ui-lib/layout/Stack.vue";
 import AppLayout from "./AppLayout.vue";
 
 const props = defineProps({

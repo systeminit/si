@@ -8,7 +8,7 @@
 
 <script lang="ts" setup>
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
-import Icon from "../../../ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 defineProps({
   selected: { type: Boolean, required: true },

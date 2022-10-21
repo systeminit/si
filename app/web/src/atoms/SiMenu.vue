@@ -41,7 +41,7 @@
 import { defineAsyncComponent } from "vue";
 import { Menu as VMenu } from "floating-vue";
 import { SiMenuTree } from "@/utils/menu";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 // Eliminate the circular dependency of this recursive atom
 // by using `defineAsyncComponent` in a careful way to preserve the ability for

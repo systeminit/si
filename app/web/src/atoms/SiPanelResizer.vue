@@ -66,7 +66,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, PropType, ref } from "vue";
 import clsx from "clsx";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps({
   panelSide: {

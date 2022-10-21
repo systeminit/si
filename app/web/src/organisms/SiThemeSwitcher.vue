@@ -32,7 +32,7 @@
 <script setup lang="ts">
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 import { userOverrideTheme, useTheme } from "@/ui-lib/theme_tools";
 
 const { theme: currentTheme } = useTheme();

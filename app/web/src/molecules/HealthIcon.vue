@@ -48,7 +48,7 @@
 
 <script lang="ts" setup>
 import { PropType } from "vue";
-import Icon, { IconSizes } from "@/ui-lib/Icon.vue";
+import Icon, { IconSizes } from "@/ui-lib/icons/Icon.vue";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 
 export type WorkflowStatus = "running" | "success" | "failure";

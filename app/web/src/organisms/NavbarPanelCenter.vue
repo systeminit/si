@@ -48,7 +48,7 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
 import SiBarButton from "@/molecules/SiBarButton.vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const route = useRoute();
 </script>

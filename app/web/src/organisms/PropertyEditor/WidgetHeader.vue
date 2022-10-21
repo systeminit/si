@@ -62,7 +62,7 @@ import clsx from "clsx";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import { PropertyPath } from "@/api/sdf/dal/property_editor";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps<{
   name: string;

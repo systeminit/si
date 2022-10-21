@@ -15,7 +15,8 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import Icon, { IconNames } from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
+import { IconNames } from "@/ui-lib/icons/icon_set";
 
 export type ButtonType =
   | "neutral"

@@ -132,7 +132,7 @@ import {
 import _ from "lodash";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import SiArrow from "@/atoms/SiArrow.vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 export interface SelectPropsOption {
   value: string | number;

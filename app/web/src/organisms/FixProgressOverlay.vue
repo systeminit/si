@@ -50,7 +50,7 @@ import clsx from "clsx";
 import { computed } from "vue";
 import ProgressBar from "@/atoms/ProgressBar.vue";
 import { useFixesStore } from "@/store/fixes/fixes.store";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 import { useResourcesStore } from "@/store/resources.store";
 
 const resourcesStore = useResourcesStore();

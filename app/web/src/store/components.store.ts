@@ -67,8 +67,8 @@ const qualificationStatusToIconMap: Record<
   DiagramStatusIcon
 > = {
   success: { icon: "check-circle", tone: "success" },
-  failure: { icon: "error-circle", tone: "error" },
-  running: { icon: "loading", tone: "info" },
+  failure: { icon: "x-circle", tone: "error" },
+  running: { icon: "loader", tone: "info" },
 };
 
 const confirmationStatusToIconMap: Record<
@@ -76,14 +76,14 @@ const confirmationStatusToIconMap: Record<
   DiagramStatusIcon
 > = {
   success: { icon: "check-square", tone: "success" },
-  failure: { icon: "error-square", tone: "error" },
-  running: { icon: "loading", tone: "info" },
+  failure: { icon: "x-square", tone: "error" },
+  running: { icon: "loader", tone: "info" },
 };
 
 const changeStatusToIconMap: Record<ComponentStatus, DiagramStatusIcon> = {
-  added: { icon: "change-added", tone: "success" },
-  deleted: { icon: "change-deleted", tone: "error" },
-  modified: { icon: "change-modified", tone: "warning" },
+  added: { icon: "plus-circle", tone: "success" },
+  deleted: { icon: "minus-circle", tone: "error" },
+  modified: { icon: "tilde-circle", tone: "warning" },
 };
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
@@ -177,17 +177,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
           return _.map(this.rawDiagramNodes, (node) => {
-            // Default to "si" if we do not have a logo.
-            let typeIcon = "si";
-            if (
-              node.category === "AWS" ||
-              node.category === "CoreOS" ||
-              node.category === "Docker" ||
-              node.category === "Kubernetes"
-            ) {
-              typeIcon = node.category;
-            }
-
             const componentId = parseInt(node.id);
 
             const qualificationStatus =
@@ -201,6 +190,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               node.id,
               0,
             );
+
+            // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
+            // and eventually can just assume the icon is `logo-${name}`
+            const typeIcon =
+              {
+                AWS: "logo-aws",
+                CoreOS: "logo-coreos",
+                Docker: "logo-docker",
+                Kubernetes: "logo-k8s",
+              }[node.category || ""] || "logo-si"; // fallback to SI logo
 
             return {
               ...node,

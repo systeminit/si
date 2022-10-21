@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { MenuItem } from "@headlessui/vue";
 import { inject } from "vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const emit = defineEmits(["select"]);
 
