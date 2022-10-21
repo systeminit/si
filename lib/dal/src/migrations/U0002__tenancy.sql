@@ -23,42 +23,65 @@ BEGIN
 END ;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION in_tenancy_v1(read_tenancy jsonb,
-                                         row_tenancy_universal bool,
-                                         row_tenancy_billing_account_ids bigint[],
-                                         row_tenancy_organization_ids bigint[],
-                                         row_tenancy_workspace_ids bigint[],
-                                         OUT result bool
+CREATE OR REPLACE FUNCTION in_tenancy_v1(
+    read_tenancy                    jsonb,
+    row_tenancy_universal           bool,
+    row_tenancy_billing_account_ids bigint[],
+    row_tenancy_organization_ids    bigint[],
+    row_tenancy_workspace_ids       bigint[]
 )
-AS
-$$
-DECLARE
-    read_tenancy_record   tenancy_record_v1;
-    universal_check       bool;
-    billing_account_check bool;
-    organization_check    bool;
-    workspace_check       bool;
-BEGIN
-    read_tenancy_record := tenancy_json_to_columns_v1(read_tenancy);
-    RAISE DEBUG 'in_tenancy: % vs: u:% b:% o:% w:%', read_tenancy, row_tenancy_universal, row_tenancy_billing_account_ids, row_tenancy_organization_ids, row_tenancy_workspace_ids;
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+SELECT
+    (row_tenancy_universal AND row_tenancy_universal = (read_tenancy -> 'tenancy_universal')::bool)
+    -- Unfortunately jsonb only has an easy way to say "are any elements of text[] in the jsonb array", but not doing
+    -- the same for a bigint[], so we translate the jsonb array into a PG array, and use ARRAY && ARRAY for the check.
+    OR (translate(read_tenancy ->> 'tenancy_billing_account_ids', '[]', '{}')::bigint[] && row_tenancy_billing_account_ids)
+    OR (translate(read_tenancy ->> 'tenancy_organization_ids', '[]', '{}')::bigint[] && row_tenancy_organization_ids)
+    OR (translate(read_tenancy ->> 'tenancy_workspace_ids', '[]', '{}')::bigint[] && row_tenancy_workspace_ids)
+$$;
 
-    universal_check := row_tenancy_universal AND row_tenancy_universal = read_tenancy_record.tenancy_universal;
-    RAISE DEBUG 'universal_check: %', universal_check;
+-- CREATE OR REPLACE FUNCTION in_tenancy_v1(read_tenancy jsonb,
+--                                          row_tenancy_universal bool,
+--                                          row_tenancy_billing_account_ids bigint[],
+--                                          row_tenancy_organization_ids bigint[],
+--                                          row_tenancy_workspace_ids bigint[],
+--                                          OUT result bool
+-- )
+-- AS
+-- $$
+-- DECLARE
+--     read_tenancy_record   tenancy_record_v1;
+--     universal_check       bool;
+--     billing_account_check bool;
+--     organization_check    bool;
+--     workspace_check       bool;
+-- BEGIN
+--     read_tenancy_record := tenancy_json_to_columns_v1(read_tenancy);
+--     RAISE DEBUG 'in_tenancy: % vs: u:% b:% o:% w:%', read_tenancy, row_tenancy_universal, row_tenancy_billing_account_ids, row_tenancy_organization_ids, row_tenancy_workspace_ids;
 
-    billing_account_check := read_tenancy_record.tenancy_billing_account_ids && row_tenancy_billing_account_ids;
-    RAISE DEBUG 'billing_account_check: %', billing_account_check;
+--     universal_check := row_tenancy_universal AND row_tenancy_universal = read_tenancy_record.tenancy_universal;
+--     RAISE DEBUG 'universal_check: %', universal_check;
 
-    organization_check := read_tenancy_record.tenancy_organization_ids && row_tenancy_organization_ids;
-    RAISE DEBUG 'organization_check: %', organization_check;
+--     billing_account_check := read_tenancy_record.tenancy_billing_account_ids && row_tenancy_billing_account_ids;
+--     RAISE DEBUG 'billing_account_check: %', billing_account_check;
 
-    workspace_check := read_tenancy_record.tenancy_workspace_ids && row_tenancy_workspace_ids;
-    RAISE DEBUG 'workspace_check: %', workspace_check;
+--     organization_check := read_tenancy_record.tenancy_organization_ids && row_tenancy_organization_ids;
+--     RAISE DEBUG 'organization_check: %', organization_check;
 
-    result := (universal_check OR billing_account_check OR organization_check OR workspace_check);
-    RAISE DEBUG 'tenancy check result: %', result;
-END ;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+--     workspace_check := read_tenancy_record.tenancy_workspace_ids && row_tenancy_workspace_ids;
+--     RAISE DEBUG 'workspace_check: %', workspace_check;
 
+--     result := (universal_check OR billing_account_check OR organization_check OR workspace_check);
+--     RAISE DEBUG 'tenancy check result: %', result;
+-- END ;
+-- $$ LANGUAGE PLPGSQL IMMUTABLE;
+
+
+-- Can't have arguments of type 'record' in SQL functions. Will need to get rid of this overload.
 CREATE OR REPLACE FUNCTION in_tenancy_v1(read_tenancy jsonb,
                                          reference record,
                                          OUT result bool

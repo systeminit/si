@@ -98,7 +98,7 @@ impl WriteTenancy {
     pub async fn check(&self, txn: &PgTxn, read_tenancy: &ReadTenancy) -> WriteTenancyResult<bool> {
         let row = txn
             .query_one(
-                "SELECT result FROM in_tenancy_v1($1, $2, $3, $4, $5)",
+                "SELECT in_tenancy_v1($1, $2, $3, $4, $5) AS result",
                 &[
                     read_tenancy,
                     &self.universal,
