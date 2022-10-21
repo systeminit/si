@@ -23,8 +23,11 @@ export type WsEventPayloadMap = {
   };
 
   ConfirmationStatusUpdate: {
+    componentId: number;
+    systemId: number;
     confirmationPrototypeId: number;
-    status: "success" | "running" | "pending" | "failure"
+    status: "success" | "running" | "pending" | "failure" | "error"
+    errorMessage?: string;
   };
 
   // NOT CURRENTLY USED - but leaving here so we remember these events exist

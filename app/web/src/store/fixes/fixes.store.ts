@@ -228,7 +228,7 @@ export const useFixesStore = () => {
           {
             eventType: "ConfirmationStatusUpdate",
             callback: (update) => {
-              if (update.status === "success" || update.status === "failure") this.LOAD_FIXES();
+              if (update.status === "success" || update.status === "failure" || update.status === "error") this.LOAD_FIXES();
             },
           },
         ]);
