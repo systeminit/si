@@ -85,8 +85,11 @@ impl JobConsumer for Confirmations {
             for prototype in prototypes {
                 WsEvent::confirmation_status_update(
                     ctx,
+                    *component.id(),
+                    SystemId::NONE,
                     *prototype.id(),
                     ConfirmationStatus::Running,
+                    None,
                 )
                 .publish(ctx)
                 .await?;

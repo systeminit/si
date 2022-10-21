@@ -108,17 +108,27 @@ impl JobConsumer for Confirmation {
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
         let prototype = ConfirmationPrototype::get_by_id(ctx, &self.confirmation_prototype_id)
             .await?
-            .ok_or(ConfirmationPrototypeError::NotFound(self.confirmation_prototype_id))?;
-        let resolver = prototype
-            .run(ctx, self.component_id, self.system_id)
-            .await?;
-        let status = match resolver.success() {
-            true => ConfirmationStatus::Success,
-            false => ConfirmationStatus::Failure,
-        };
-        WsEvent::confirmation_status_update(ctx, *prototype.id(), status)
-            .publish(ctx)
-            .await?;
+            .ok_or(ConfirmationPrototypeError::NotFound(
+                self.confirmation_prototype_id,
+            ))?;
+        let (status, error_message) =
+            match prototype.run(ctx, self.component_id, self.system_id).await {
+                Ok(resolver) => match resolver.success() {
+                    true => (ConfirmationStatus::Success, None),
+                    false => (ConfirmationStatus::Failure, None),
+                },
+                Err(e) => (ConfirmationStatus::Error, Some(format!("{e}"))),
+            };
+        WsEvent::confirmation_status_update(
+            ctx,
+            self.component_id,
+            self.system_id,
+            *prototype.id(),
+            status,
+            error_message,
+        )
+        .publish(ctx)
+        .await?;
         Ok(())
     }
 }
