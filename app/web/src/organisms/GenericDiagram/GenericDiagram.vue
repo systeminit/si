@@ -71,18 +71,33 @@ overflow hidden */
           @hover:end="onEdgeHoverEnd(edge.id)"
         />
         <!-- placeholders for new inserted elements still processing -->
-        <v-rect
+        <template
           v-for="(pendingInsert, pendingInsertId) in pendingInsertedElements"
           :key="pendingInsertId"
-          :config="{
-            width: 100,
-            height: 50,
+        >
+          <v-rect
+            :config="{
+            width: 160,
+            height: 80,
             cornerRadius: CORNER_RADIUS,
-            x: pendingInsert.position!.x - 50,
-            y: pendingInsert.position!.y,
-            fill: 'rgba(0,0,0,.4)'
+            x: pendingInsert.position!.x - 80,
+            y: pendingInsert.position!.y - 40,
+            fill: 'rgba(0,0,0,.4)',
+            strokeWidth: 1,
+            stroke: SELECTION_COLOR,
           }"
-        />
+          />
+          <DiagramIcon
+            icon="loading"
+            :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
+            :config="{
+              x: pendingInsert.position!.x - 30,
+              y: pendingInsert.position!.y - 30,
+              width: 60,
+              height: 60,
+            }"
+          />
+        </template>
         <!-- drag to select selection box -->
         <v-rect
           v-if="dragSelectActive && dragSelectStartPos && dragSelectEndPos"
@@ -165,6 +180,7 @@ import { convertArrowKeyToDirection } from "./utils/keyboard";
 import DiagramControls from "./DiagramControls.vue";
 import DiagramHelpModal from "./DiagramHelpModal.vue";
 import { baseConfig } from "./diagram_base_config";
+import DiagramIcon from "./DiagramIcon.vue";
 
 // zoom config - zoom value of 1 is 100% zoom level
 const ZOOM_SCROLL_FACTOR = 0.001; // scroll delta multiplied by this while zooming
@@ -1181,6 +1197,7 @@ defineExpose({
   setSelection,
   clearSelection,
   beginInsertElement,
+  endInsertElement,
 });
 
 // Help Modal

@@ -20,40 +20,47 @@
         as="li"
         content-as="ul"
         default-open
+        class="select-none"
       >
         <li
           v-for="(schema, schemaIndex) in category.schemas"
           :key="schemaIndex"
-          class="select-none"
+          class="select-none border-b-2 dark:border-neutral-600"
         >
           <SiNodeSprite
-            :class="selectedSchemaId === schema.id ? 'bg-action-500' : ''"
+            :class="
+              componentsStore.selectedInsertSchemaId === schema.id
+                ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
+                : ''
+            "
             :color="schema.color"
             :name="schema.displayName"
-            class="border-b-2 dark:border-neutral-600 hover:bg-action-500 dark:text-white hover:text-white hover:cursor-pointer"
+            class="border border-transparent hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-white hover:cursor-pointer"
             @mousedown="onSelect(schema.id)"
           />
         </li>
       </SiCollapsible>
     </ul>
   </template>
+  <template v-if="selectedSchema">
+    <Teleport to="body">
+      <div
+        ref="mouseNode"
+        class="fixed top-0 pointer-events-none translate-x-[-50%] translate-y-[-50%] z-100"
+      >
+        <NodeSkeleton :color="selectedSchema.color" />
+      </div>
+    </Teleport>
+  </template>
 </template>
 
 <script lang="ts" setup>
 import _ from "lodash";
-import { computed, ref } from "vue";
+import { computed, onMounted, onBeforeUnmount, ref } from "vue";
 import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-
-import { useComponentsStore } from "@/store/components.store";
-
-export type SelectAssetEvent = {
-  schemaId: number;
-};
-
-const emit = defineEmits<{
-  (e: "select", selectAssetEvent: SelectAssetEvent): void;
-}>();
+import { useComponentsStore, MenuSchema } from "@/store/components.store";
+import NodeSkeleton from "@/atoms/NodeSkeleton.vue";
 
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used
@@ -68,10 +75,65 @@ const addMenuReqStatus = componentsStore.getRequestStatus(
 );
 
 const addMenuData = computed(() => componentsStore.nodeAddMenu);
-const selectedSchemaId = ref<number>();
+const schemasById = computed(() => {
+  return addMenuData.value.reduce((p, c) => {
+    c.schemas.forEach((schema) => {
+      p[schema.id] = schema;
+    });
+    return p;
+  }, {} as Record<number, MenuSchema>);
+});
+const selectedSchema = computed(() => {
+  if (componentsStore.selectedInsertSchemaId)
+    return schemasById.value[componentsStore.selectedInsertSchemaId];
+  return undefined;
+});
+const selecting = ref(false);
+const mouseNode = ref();
+
+const updateMouseNode = (e: MouseEvent) => {
+  if (mouseNode.value) {
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    mouseNode.value.style.left = `${mouseX}px`;
+    mouseNode.value.style.top = `${mouseY}px`;
+  }
+};
 
 function onSelect(schemaId: number) {
-  selectedSchemaId.value = schemaId;
-  emit("select", { schemaId });
+  componentsStore.selectedInsertSchemaId = schemaId;
+  selecting.value = true;
 }
+
+function onDeselect() {
+  componentsStore.selectedInsertSchemaId = null;
+}
+
+const onKeyDown = (e: KeyboardEvent) => {
+  if (e.key === "Escape" || e.key === "Backspace") {
+    onDeselect();
+  }
+};
+
+const onMouseDown = (e: MouseEvent) => {
+  updateMouseNode(e);
+  if (selecting.value) selecting.value = false;
+  else onDeselect();
+};
+
+const onMouseMove = (e: MouseEvent) => {
+  updateMouseNode(e);
+};
+
+onMounted(() => {
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("mousedown", onMouseDown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("mousemove", onMouseMove);
+  window.removeEventListener("keydown", onKeyDown);
+  window.removeEventListener("mousedown", onMouseDown);
+});
 </script>

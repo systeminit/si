@@ -14,7 +14,7 @@
 
         <template #panels>
           <TabPanel v-if="!isViewMode">
-            <AssetPalette @select="onSelectAssetToInsert" />
+            <AssetPalette />
           </TabPanel>
           <TabPanel>
             <DiagramOutline
@@ -71,7 +71,7 @@ import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { useComponentsStore } from "@/store/components.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
-import AssetPalette, { SelectAssetEvent } from "../AssetPalette.vue";
+import AssetPalette from "../AssetPalette.vue";
 import {
   InsertElementEvent,
   MoveElementEvent,
@@ -103,13 +103,19 @@ const diagramCustomConfig = {
 
 const selectedComponent = computed(() => componentsStore.selectedComponent);
 
-const lastInsertSelection = ref<{ schemaId: number }>();
 const insertCallbacks: Record<string, () => void> = {};
-function onSelectAssetToInsert(e: SelectAssetEvent) {
-  // keep track of what was selected to insert
-  lastInsertSelection.value = { schemaId: e.schemaId };
-  diagramRef.value?.beginInsertElement("node");
-}
+
+watch(
+  () => componentsStore.selectedInsertSchemaId,
+  () => {
+    if (componentsStore.selectedInsertSchemaId) {
+      diagramRef.value?.beginInsertElement("node");
+    } else {
+      diagramRef.value?.endInsertElement();
+    }
+  },
+);
+
 watch([diagramNodes, diagramEdges], () => {
   // TODO: this should be firing off the callback only when we find the matching new node, but we dont have the new ID yet
   _.each(insertCallbacks, (insertCallback, newNodeId) => {
@@ -129,13 +135,12 @@ async function onDrawEdge(e: DrawEdgeEvent) {
 }
 
 async function onDiagramInsertElement(e: InsertElementEvent) {
-  if (!lastInsertSelection.value)
+  if (!componentsStore.selectedInsertSchemaId)
     throw new Error("missing insert selection metadata");
 
-  await componentsStore.CREATE_COMPONENT(
-    lastInsertSelection.value.schemaId,
-    e.position,
-  );
+  const schemaId = componentsStore.selectedInsertSchemaId;
+  componentsStore.selectedInsertSchemaId = null;
+  await componentsStore.CREATE_COMPONENT(schemaId, e.position);
 
   // TODO: we actually want the new node ID so we can watch for it in the updated data
   // but the API currently doesn't have it right away :(

@@ -2,7 +2,7 @@
   <!-- selectedToFront ? (selected ? 'order-1' : 'order-2') : '' -->
   <Tab
     v-slot="{ selected }"
-    class="focus:outline-none whitespace-nowrap"
+    class="focus:outline-none whitespace-nowrap group"
     :style="maxWidthStyle"
     as="template"
   >
@@ -21,7 +21,14 @@
           classesF + ' ' + (selected ? selectedClassesF : defaultClassesF)
         "
       >
-        <span class="overflow-hidden text-ellipsis">
+        <span
+          :class="
+            clsx(
+              'overflow-hidden text-ellipsis',
+              'group-hover:text-shade-100 dark:group-hover:text-shade-0',
+            )
+          "
+        >
           <slot />
         </span>
         <span>
@@ -40,6 +47,7 @@
 <script setup lang="ts">
 import { Tab } from "@headlessui/vue";
 import { computed, inject } from "vue";
+import clsx from "clsx";
 
 const props = defineProps<{
   classes?: string;
