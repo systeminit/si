@@ -22,14 +22,18 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Docker Hub Credential",
         SchemaKind::Configuration,
         ComponentKind::Credential,
         Some(DOCKER_NODE_COLOR),
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     let mut secret_prop = Prop::new(ctx, "secret", PropKind::Integer, None).await?;
     secret_prop
@@ -92,14 +96,18 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
-    let (schema, schema_variant, root_prop) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Docker Image",
         SchemaKind::Configuration,
         ComponentKind::Standard,
         Some(DOCKER_NODE_COLOR),
     )
-    .await?;
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
 
     let mut attribute_context_builder = AttributeContext::builder();
     attribute_context_builder
