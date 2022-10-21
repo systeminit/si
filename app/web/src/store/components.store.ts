@@ -51,13 +51,15 @@ type SocketId = number;
 
 type SchemaId = number;
 
+export type MenuSchema = {
+  id: SchemaId;
+  displayName: string;
+  color: string;
+};
+
 type NodeAddMenu = {
   displayName: string;
-  schemas: {
-    id: SchemaId;
-    displayName: string;
-    color: string;
-  }[];
+  schemas: MenuSchema[];
 }[];
 
 const qualificationStatusToIconMap: Record<
@@ -129,6 +131,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         /** number of operations being executed on component. Basically a semaphore `loading` state  */
         activityCounterByComponentId: {} as Record<ComponentId, number>,
+
+        // used by the diagram to track which schema is selected for insertion
+        selectedInsertSchemaId: null as SchemaId | null,
       }),
       getters: {
         // transforming the diagram-y data back into more generic looking data

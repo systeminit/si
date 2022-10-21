@@ -75,7 +75,7 @@ const props = withDefaults(
     tabListClasses:
       "h-11 flex shrink-0 w-full bg-white dark:bg-neutral-800 sticky top-0 z-5 overflow-hidden",
     tabClasses:
-      "border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center rounded-t",
+      "border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center rounded-t group-hover:border-shade-100 dark:group-hover:border-shade-0",
     defaultTabClasses:
       "text-neutral-400 border-b border-neutral-300 dark:border-neutral-600 font-medium",
     selectedTabClasses:
