@@ -4,8 +4,7 @@ use dal::{
         create_component_and_schema, create_component_for_schema_variant, create_schema,
         create_schema_variant, create_schema_variant_with_root,
     },
-    AttributeReadContext, Component, DalContext, Prop, PropKind, Schema, SchemaKind, StandardModel,
-    SystemId,
+    Component, DalContext, Prop, PropKind, Schema, SchemaKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
@@ -153,16 +152,10 @@ async fn name_from_context(ctx: &DalContext) {
         .await
         .expect("cannot create second component");
 
-    let component_name = Component::name_from_context(
-        ctx,
-        AttributeReadContext {
-            component_id: Some(*component.id()),
-            system_id: Some(SystemId::NONE),
-            ..AttributeReadContext::any()
-        },
-    )
-    .await
-    .expect("Unable to retrieve component name");
+    let component_name = component
+        .name(ctx)
+        .await
+        .expect("Unable to retrieve component name");
 
     assert_eq!(component_name, "mastodon");
 }

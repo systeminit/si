@@ -9,7 +9,7 @@ use crate::{
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, Component, ConfirmationPrototype, DalContext, StandardModel, SystemId,
-    Visibility,
+    Visibility, WsEvent,
 };
 
 #[derive(Clone, Debug, Serialize)]
@@ -86,6 +86,9 @@ impl JobConsumer for Confirmations {
                 prototype.run(ctx, *component.id(), SystemId::NONE).await?;
             }
         }
+
+        // Shouldn't this be automatic?
+        WsEvent::change_set_written(ctx).publish(ctx).await?;
 
         Ok(())
     }
