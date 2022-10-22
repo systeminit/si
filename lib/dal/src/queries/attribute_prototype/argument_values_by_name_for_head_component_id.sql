@@ -47,7 +47,7 @@ FROM (
     -- Get the values for InternalProviders
     LEFT JOIN LATERAL (
         SELECT DISTINCT ON (attribute_context_internal_provider_id)
-            attribute_values.id,
+            av.id,
             attribute_context_internal_provider_id AS internal_provider_id,
             fbrv.value,
             attribute_context_prop_id,
@@ -57,7 +57,7 @@ FROM (
             attribute_context_schema_variant_id,
             attribute_context_component_id,
             attribute_context_system_id
-        FROM attribute_values
+        FROM attribute_values_v1($1, $2) AS av
         INNER JOIN (
             SELECT DISTINCT ON (id)
                 id,
@@ -68,9 +68,8 @@ FROM (
                 id,
                 visibility_change_set_pk DESC,
                 visibility_deleted_at DESC NULLS FIRST
-        ) AS fbrv ON attribute_values.func_binding_return_value_id = fbrv.id
+        ) AS fbrv ON av.func_binding_return_value_id = fbrv.id
         WHERE
-            in_tenancy_and_visible_v1($1, $2, attribute_values)
             -- We want to override the Prop/ExternalProvider/InternalProvider information on the AttributeContext
             -- that we're provided to make sure that we're looking for AttributeValues for the particular
             -- InternalProvider that we're interested in at this point. `jsonb || jsonb` is the union of the two,
@@ -81,18 +80,16 @@ FROM (
             -- ----------------------------------
             --  {"a": "foo", "c": "d", "e": "f"}
             -- (1 row)
-            AND in_attribute_context_v1(
+            in_attribute_context_v1(
                 $5 || jsonb_build_object(
                     'attribute_context_prop_id',              -1,
                     'attribute_context_external_provider_id', -1,
                     'attribute_context_internal_provider_id', prototype_argument_data.internal_provider_id
                 ),
-                attribute_values
+                av
             )
         ORDER BY
             attribute_context_internal_provider_id,
-            visibility_change_set_pk DESC,
-            visibility_deleted_at DESC NULLS FIRST,
             attribute_context_schema_id DESC,
             attribute_context_schema_variant_id DESC,
             attribute_context_component_id DESC,
@@ -100,7 +97,7 @@ FROM (
     ) AS internal_provider_data ON prototype_argument_data.internal_provider_id = internal_provider_data.internal_provider_id
     LEFT JOIN LATERAL (
         SELECT DISTINCT ON (attribute_context_external_provider_id)
-            attribute_values.id,
+            av.id,
             attribute_context_external_provider_id AS external_provider_id,
             value,
             attribute_context_prop_id,
@@ -110,7 +107,7 @@ FROM (
             attribute_context_schema_variant_id,
             attribute_context_component_id,
             attribute_context_system_id
-        FROM attribute_values
+        FROM attribute_values_v1($1, $2) AS av
         INNER JOIN (
             SELECT DISTINCT ON (func_binding_return_values.id)
                 id,
@@ -121,27 +118,24 @@ FROM (
                 id,
                 visibility_change_set_pk DESC,
                 visibility_deleted_at DESC NULLS FIRST
-        ) AS fbrv ON attribute_values.func_binding_return_value_id = fbrv.id
+        ) AS fbrv ON av.func_binding_return_value_id = fbrv.id
         WHERE
-            in_tenancy_and_visible_v1($1, $2, attribute_values)
-        -- We're also overriding the AttributeContext's ComponentId, SchemaId, and SchemaVariantId here,
-        -- because the source data is coming from a different Component (and potentially
-        -- Schema & SchemaVaiant) from where we're trying to set the final value.
-        AND in_attribute_context_v1(
-            $5 || jsonb_build_object(
-                'attribute_context_prop_id',              -1,
-                'attribute_context_external_provider_id', prototype_argument_data.external_provider_id,
-                'attribute_context_internal_provider_id', -1,
-                'attribute_context_component_id',         prototype_argument_data.tail_component_id,
-                'attribute_context_schema_id', NULL,
-                'attribute_context_schema_variant_id', NULL
-            ),
-            attribute_values
-        )
+            -- We're also overriding the AttributeContext's ComponentId, SchemaId, and SchemaVariantId here,
+            -- because the source data is coming from a different Component (and potentially
+            -- Schema & SchemaVaiant) from where we're trying to set the final value.
+            in_attribute_context_v1(
+                $5 || jsonb_build_object(
+                    'attribute_context_prop_id',              -1,
+                    'attribute_context_external_provider_id', prototype_argument_data.external_provider_id,
+                    'attribute_context_internal_provider_id', -1,
+                    'attribute_context_component_id',         prototype_argument_data.tail_component_id,
+                    'attribute_context_schema_id', NULL,
+                    'attribute_context_schema_variant_id', NULL
+                ),
+                av
+            )
         ORDER BY
             attribute_context_external_provider_id,
-            visibility_change_set_pk DESC,
-            visibility_deleted_at DESC NULLS FIRST,
             attribute_context_schema_id DESC,
             attribute_context_schema_variant_id DESC,
             attribute_context_component_id DESC,

@@ -17,8 +17,8 @@ BEGIN
 
     <<attribute_value_is_appropriate_check>>
     FOR attribute_value IN
-        SELECT DISTINCT ON (id) *
-        FROM attribute_values
+        SELECT *
+        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
         INNER JOIN (
             SELECT DISTINCT ON (object_id) object_id AS attribute_value_id
             FROM attribute_value_belongs_to_attribute_prototype
@@ -33,14 +33,9 @@ BEGIN
                 object_id,
                 visibility_change_set_pk DESC,
                 visibility_deleted_at DESC NULLS FIRST
-        ) AS avbtap ON avbtap.attribute_value_id = attribute_values.id
-        WHERE
-            in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-            AND in_attribute_context_v1(this_attribute_context, attribute_values)
-        ORDER BY
-            id,
-            visibility_change_set_pk DESC,
-            visibility_deleted_at DESC NULLS FIRST
+        ) AS avbtap ON avbtap.attribute_value_id = av.id
+        WHERE in_attribute_context_v1(this_attribute_context, av)
+        ORDER BY id
     LOOP
         -- Check if the AttributeValue is of the _exact_ AttributeContext that we're looking for.
         IF exact_attribute_context_v1(this_attribute_context, attribute_value) THEN
@@ -55,38 +50,22 @@ BEGIN
         -- appropriate AttributeContext then there's nothing to do here, as the AttributeValue
         -- we'd like to create already exists.
         FOR tmp_attribute_value IN
-            SELECT DISTINCT ON (id) *
-            FROM attribute_values
-            WHERE
-                in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-                AND id IN (
-                    WITH RECURSIVE recursive_attribute_values
-                    AS (
-                        SELECT attribute_value.id AS attribute_value_id
-                        UNION ALL
-                        SELECT av.id AS attribute_value_id
-                        FROM (
-                            SELECT DISTINCT ON (id)
-                                id,
-                                proxy_for_attribute_value_id
-                            FROM attribute_values
-                            WHERE
-                                in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-                                AND in_attribute_context_v1(this_attribute_context, attribute_values)
-                            ORDER BY
-                                id,
-                                visibility_change_set_pk DESC,
-                                visibility_deleted_at DESC NULLS FIRST
-                        ) AS av
-                        JOIN recursive_attribute_values ON av.proxy_for_attribute_value_id = recursive_attribute_values.attribute_value_id
-                    )
-                    SELECT attribute_value_id
-                    FROM recursive_attribute_values
+            SELECT *
+            FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+            WHERE id IN (
+                WITH RECURSIVE recursive_attribute_values
+                AS (
+                    SELECT attribute_value.id AS attribute_value_id
+                    UNION ALL
+                    SELECT av.id AS attribute_value_id
+                    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+                    JOIN recursive_attribute_values ON av.proxy_for_attribute_value_id = recursive_attribute_values.attribute_value_id
+                    WHERE in_attribute_context_v1(this_attribute_context, av)
                 )
-            ORDER BY
-                id,
-                visibility_change_set_pk DESC,
-                visibility_deleted_at DESC NULLS FIRST
+                SELECT attribute_value_id
+                FROM recursive_attribute_values
+            )
+            ORDER BY id
         LOOP
             IF exact_attribute_context_v1(this_attribute_context, attribute_context_from_record_v1(tmp_attribute_value)) THEN
                 -- One of the proxies for the AttributeValue we're looking at is of the correct
@@ -353,13 +332,8 @@ BEGIN
                     -- Grab the most specific AttributeValue that we already have for this InternalProvider
                     SELECT DISTINCT ON (attribute_context_internal_provider_id) av.*
                     INTO STRICT tmp_attribute_value
-                    FROM (
-                        SELECT DISTINCT ON (id) *
-                        FROM attribute_values
-                        WHERE
-                            in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-                            AND in_attribute_context_v1(tmp_attribute_context, attribute_values)
-                    ) AS av
+                    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+                    WHERE in_attribute_context_v1(tmp_attribute_context, av)
                     ORDER BY
                         attribute_context_internal_provider_id DESC,
                         attribute_context_prop_id DESC,
@@ -460,8 +434,8 @@ BEGIN
                         -- attribute_value_update_for_context_raw_v1(...)).
                         <<attribute_values_for_prototype>>
                         FOR tmp_attribute_value IN
-                            SELECT DISTINCT ON (id) attribute_values.*
-                            FROM attribute_values
+                            SELECT av.*
+                            FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
                             INNER JOIN (
                                 SELECT DISTINCT ON (object_id) object_id AS av_id
                                 FROM attribute_value_belongs_to_attribute_prototype
@@ -472,14 +446,9 @@ BEGIN
                                     object_id,
                                     visibility_change_set_pk DESC,
                                     visibility_deleted_at DESC NULLS FIRST
-                            ) AS avbtap ON avbtap.av_id = attribute_values.id
-                            WHERE
-                                in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-                                AND in_attribute_context_v1(desired_attribute_context, attribute_values)
-                            ORDER BY
-                                id,
-                                visibility_change_set_pk DESC,
-                                visibility_deleted_at DESC NULLS FIRST
+                            ) AS avbtap ON avbtap.av_id = av.id
+                            WHERE in_attribute_context_v1(desired_attribute_context, av)
+                            ORDER BY av.id
                         LOOP
                             RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Checking if AttributeValue(%) is of desired AttributeContext(%)',
                                 tmp_attribute_value,
@@ -498,28 +467,13 @@ BEGIN
                             -- AttributePrototype, and not create a new AttributeValue in the specific AttributeContext.
                             FOR proxy_attribute_value IN
                                 WITH RECURSIVE proxy_attribute_values AS (
-                                    SELECT * FROM (
-                                        SELECT DISTINCT ON (id) av.*
-                                        FROM attribute_values AS av
-                                        WHERE
-                                            in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, av)
-                                            AND av.proxy_for_attribute_value_id = tmp_attribute_value.id
-                                        ORDER BY
-                                            id,
-                                            visibility_change_set_pk DESC,
-                                            visibility_deleted_at DESC NULLS FIRST
-                                    ) AS x
+                                    SELECT *
+                                    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+                                    WHERE av.proxy_for_attribute_value_id = tmp_attribute_value.id
                                     UNION ALL
-                                    SELECT * FROM (
-                                        SELECT DISTINCT ON (av.id) av.*
-                                        FROM attribute_values AS av
-                                        JOIN proxy_attribute_values ON av.proxy_for_attribute_value_id = proxy_attribute_values.id
-                                        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, av)
-                                        ORDER BY
-                                            av.id,
-                                            av.visibility_change_set_pk DESC,
-                                            av.visibility_deleted_at DESC NULLS FIRST
-                                    ) AS y
+                                    SELECT av.*
+                                    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+                                    JOIN proxy_attribute_values ON av.proxy_for_attribute_value_id = proxy_attribute_values.id
                                 )
                                 SELECT * FROM proxy_attribute_values
                             LOOP

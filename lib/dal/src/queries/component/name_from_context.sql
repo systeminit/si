@@ -11,7 +11,7 @@ INNER JOIN (
         attribute_context_schema_variant_id,
         attribute_context_component_id,
         attribute_context_system_id
-    FROM attribute_values AS av
+    FROM attribute_values_v1($1, $2) AS av
     INNER JOIN (
         -- Having the "si" PropId lets us get the "name" PropId.
         SELECT DISTINCT ON (object_id) object_id AS name_prop_id
@@ -76,8 +76,7 @@ INNER JOIN (
             visibility_deleted_at DESC
     ) AS name_prop_info ON name_prop_info.name_prop_id = av.attribute_context_prop_id
     WHERE
-        in_tenancy_and_visible_v1($1, $2, av)
-        AND in_attribute_context_v1(
+        in_attribute_context_v1(
             -- We're only interested in the AttributeValue that's directly for the "/root/si/name" Prop
             -- for a given ComponentId & SystemId. We're not bothering to filter on the Schema &
             -- SchemaVariant, as a Component can only belong to one SchemaVariant, and a SchemaVariant
@@ -95,8 +94,6 @@ INNER JOIN (
         )
     ORDER BY
         attribute_context_prop_id,
-        visibility_change_set_pk DESC,
-        visibility_deleted_at DESC NULLS FIRST,
         attribute_context_schema_id DESC,
         attribute_context_schema_variant_id DESC,
         attribute_context_component_id DESC,
