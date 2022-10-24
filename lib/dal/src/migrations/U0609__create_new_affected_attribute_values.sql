@@ -492,56 +492,20 @@ BEGIN
                     internal_provider_id,
                     attribute_prototype_id
                 IN
-                    SELECT DISTINCT ON (id)
-                        cbts.head_schema_id,
-                        cbtsv.head_schema_variant_id,
+                    SELECT
+                        cbts.belongs_to_id AS head_schema_id,
+                        cbtsv.belongs_to_id AS head_schema_variant_id,
                         apa.head_component_id,
                         attribute_context_internal_provider_id AS internal_provider_id,
-                        attribute_prototypes.id AS attribute_prototype_id
-                    FROM attribute_prototypes
-                    INNER JOIN (
-                        SELECT DISTINCT ON (id)
-                            attribute_prototype_arguments.attribute_prototype_id,
-                            attribute_prototype_arguments.head_component_id
-                        FROM attribute_prototype_arguments
-                        WHERE
-                            in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototype_arguments)
+                        ap.id AS attribute_prototype_id
+                    FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
+                    INNER JOIN attribute_prototype_arguments_v1(this_read_tenancy, this_visibility) AS apa
+                        ON apa.attribute_prototype_id = ap.id
                             AND external_provider_id = source_attribute_value.attribute_context_external_provider_id
                             AND tail_component_id = source_attribute_value.attribute_context_component_id
-                        ORDER BY
-                            id,
-                            visibility_change_set_pk DESC,
-                            visibility_deleted_at DESC NULLS FIRST
-                    ) AS apa ON apa.attribute_prototype_id = attribute_prototypes.id
-                    INNER JOIN (
-                        SELECT DISTINCT ON (object_id)
-                            object_id AS component_id,
-                            belongs_to_id AS head_schema_id
-                        FROM component_belongs_to_schema
-                        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, component_belongs_to_schema)
-                        ORDER BY
-                            object_id,
-                            visibility_change_set_pk DESC,
-                            visibility_deleted_at DESC NULLS FIRST
-                    ) AS cbts ON cbts.component_id = apa.head_component_id
-                    INNER JOIN (
-                        SELECT DISTINCT ON (object_id)
-                            object_id AS component_id,
-                            belongs_to_id AS head_schema_variant_id
-                        FROM component_belongs_to_schema_variant
-                        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, component_belongs_to_schema_variant)
-                        ORDER BY
-                            object_id,
-                            visibility_change_set_pk DESC,
-                            visibility_deleted_at DESC NULLS FIRST
-                    ) AS cbtsv ON cbtsv.component_id = apa.head_component_id
-                    WHERE
-                        in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototypes)
-                        AND in_attribute_context_v1(tmp_attribute_context, attribute_prototypes)
-                    ORDER BY
-                        id,
-                        visibility_change_set_pk DESC,
-                        visibility_deleted_at DESC NULLS FIRST
+                    INNER JOIN component_belongs_to_schema_v1(this_read_tenancy, this_visibility) AS cbts ON cbts.object_id = apa.head_component_id
+                    INNER JOIN component_belongs_to_schema_variant_v1(this_read_tenancy, this_visibility) cbtsv ON cbtsv.object_id = apa.head_component_id
+                    WHERE in_attribute_context_v1(tmp_attribute_context, ap)
                 LOOP
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: AttributePrototype(%) uses ExternalProvider(%)', attribute_prototype, source_attribute_value.attribute_context_external_provider_id;
                     -- The AttributeContext that we want to ensure an AttributeValue exists for will be identical to the
