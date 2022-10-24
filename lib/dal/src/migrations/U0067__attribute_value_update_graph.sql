@@ -40,14 +40,10 @@ BEGIN
         FOREACH attribute_value_id IN ARRAY current_attribute_value_ids LOOP
             RAISE DEBUG 'attribute_value_affected_graph_v1: Looking at AttributeValue(%)', attribute_value_id;
 
-            SELECT DISTINCT ON (id) *
+            SELECT *
             INTO STRICT attribute_value
-            FROM attribute_values
-            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
-                  AND id = attribute_value_id
-            ORDER BY id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC NULLS FIRST;
+            FROM attribute_values_v1(this_tenancy, this_visibility)
+            WHERE id = attribute_value_id;
 
             -- If the attribute_context_prop_id != -1 then that means that this AttributeValue
             -- represents a value that is "directly" part of a Component's schema, either
@@ -55,14 +51,10 @@ BEGIN
             -- InternalProvider that is the "summary" of the schema from that Prop down to the
             -- leaf nodes.
             IF attribute_value.attribute_context_prop_id != -1 THEN
-                SELECT DISTINCT ON (id) *
+                SELECT *
                 INTO STRICT tmp_prop
-                FROM props
-                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
-                      AND id = attribute_value.attribute_context_prop_id
-                ORDER BY id,
-                         visibility_change_set_pk DESC,
-                         visibility_deleted_at DESC NULLS FIRST;
+                FROM props_v1(this_tenancy, this_visibility)
+                WHERE id = attribute_value.attribute_context_prop_id;
                 RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) is for Prop(%)', attribute_value.id, tmp_prop;
 
                 current_prop_id := attribute_value.attribute_context_prop_id;
