@@ -335,33 +335,11 @@ BEGIN
                     this_read_tenancy,
                     this_visibility;
                 FOR attribute_prototype IN
-                    SELECT DISTINCT ON (id) attribute_prototypes.*
-                    FROM attribute_prototypes
-                    INNER JOIN (
-                        SELECT DISTINCT ON (id) attribute_prototype_arguments.attribute_prototype_id
-                        FROM attribute_prototype_arguments
-                        WHERE
-                            in_tenancy_and_visible_v1(
-                                this_read_tenancy,
-                                this_visibility,
-                                attribute_prototype_arguments
-                            )
-                            AND attribute_prototype_arguments.internal_provider_id = current_internal_provider_id
-                        ORDER BY
-                            id,
-                            visibility_change_set_pk DESC,
-                            visibility_deleted_at DESC NULLS FIRST
-                    ) AS provider_usage ON attribute_prototypes.id = provider_usage.attribute_prototype_id
-                    WHERE
-                        in_tenancy_and_visible_v1(
-                            this_read_tenancy,
-                            this_visibility,
-                            attribute_prototypes
-                        )
-                    ORDER BY
-                        id,
-                        visibility_change_set_pk DESC,
-                        visibility_deleted_at DESC NULLS FIRST
+                    SELECT ap.*
+                    FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
+                    INNER JOIN attribute_prototype_arguments_v1(this_read_tenancy, this_visibility) AS apa
+                        ON ap.id = apa.attribute_prototype_id
+                            AND apa.internal_provider_id = current_internal_provider_id
                 LOOP
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Found AttributePrototype(%)', attribute_prototype;
                     IF NOT in_attribute_context_v1(tmp_attribute_context, attribute_prototype) THEN
@@ -384,17 +362,9 @@ BEGIN
                         FOR tmp_attribute_value IN
                             SELECT av.*
                             FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
-                            INNER JOIN (
-                                SELECT DISTINCT ON (object_id) object_id AS av_id
-                                FROM attribute_value_belongs_to_attribute_prototype
-                                WHERE
-                                    in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
-                                    AND belongs_to_id = attribute_prototype.id
-                                ORDER BY
-                                    object_id,
-                                    visibility_change_set_pk DESC,
-                                    visibility_deleted_at DESC NULLS FIRST
-                            ) AS avbtap ON avbtap.av_id = av.id
+                            INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility) AS avbtap
+                                ON avbtap.object_id = av.id
+                                    AND avbtap.belongs_to_id = attribute_prototype.id
                             WHERE in_attribute_context_v1(desired_attribute_context, av)
                             ORDER BY av.id
                         LOOP
