@@ -11,26 +11,32 @@ ARG NODE_VERSION
 WORKDIR /usr/src
 COPY . .
 
-WORKDIR app/web
-RUN npm ci
+WORKDIR /usr/src/app/web
+RUN set -eux; \
+    npm ci;
 
 ###########################################################################
 # Builder Stage
 ###########################################################################
+# hadolint ignore=DL3006
 FROM $BUILDER_IMAGE as builder
 
 WORKDIR /usr/src
 COPY . .
 
-WORKDIR app/web
-RUN env && npm run build
+WORKDIR /usr/src/app/web
+RUN set -eux; \
+    env; \
+    npm run build;
 
 ###########################################################################
 # Final Stage
 ###########################################################################
 FROM nginx:$NGINX_VERSION-alpine as final
 
-RUN rm -rf /etc/nginx/conf.d/default.conf /usr/share/nginx/html/*
+RUN set -eux; \
+    rm -rf /etc/nginx/conf.d/default.conf /usr/share/nginx/html/*;
+
 COPY --from=builder /usr/src/app/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /usr/src/app/web/nginx/* /etc/ssl/certs/
 COPY --from=builder /usr/src/app/web/dist /usr/share/nginx/html
