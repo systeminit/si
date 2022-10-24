@@ -31,7 +31,6 @@ partial-local-pg: init
 		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
-			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
 			-f $(MAKEPATH)/docker-compose.local-postgres.yml \
 		up -d nats pg otel faktory
 
