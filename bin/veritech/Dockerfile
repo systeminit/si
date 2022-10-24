@@ -111,14 +111,20 @@ RUN set -eux; \
     ; \
     rm -rf /var/lib/apt/lists/*
 
+# https://github.com/instrumenta/kubeval/releases
+ARG KUBEVAL_VERSION=0.16.1
+
+# https://github.com/coreos/butane/releases
+ARG BUTANE_VERSION=0.16.0
+
 # hadolint ignore=DL3047
 RUN set -eux; \
     wget -O /tmp/kubeval.tar.gz \
-        https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz; \
+        "https://github.com/instrumenta/kubeval/releases/download/v$KUBEVAL_VERSION/kubeval-linux-amd64.tar.gz"; \
     tar xvf /tmp/kubeval.tar.gz -C /usr/local/bin kubeval; \
     rm -v /tmp/kubeval.tar.gz; \
     wget -O /usr/local/bin/butane \
-        https://github.com/coreos/butane/releases/latest/download/butane-x86_64-unknown-linux-gnu; \
+        "https://github.com/coreos/butane/releases/download/v$BUTANE_VERSION/butane-ppc64le-unknown-linux-gnu"; \
     chmod +x /usr/local/bin/butane;
 
 WORKDIR /run/$BIN
