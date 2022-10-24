@@ -270,13 +270,7 @@ BEGIN
                                 'attribute_context_internal_provider_id', ip.id,
                                 'attribute_context_external_provider_id', -1
                             ) AS tmp_attribute_context
-                    FROM (
-                        SELECT
-                            id,
-                            ips.attribute_prototype_id,
-                            prop_id
-                        FROM internal_providers_v1(this_read_tenancy, this_visibility) AS ips
-                    ) AS ip
+                    FROM internal_providers_v1(this_read_tenancy, this_visibility) AS ip
                     INNER JOIN parent_prop_tree ON parent_prop_tree.prop_id = ip.prop_id
                 LOOP
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: current_attribute_context(%)', current_attribute_context;
