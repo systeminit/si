@@ -271,16 +271,11 @@ BEGIN
                                 'attribute_context_external_provider_id', -1
                             ) AS tmp_attribute_context
                     FROM (
-                        SELECT DISTINCT ON (id)
+                        SELECT
                             id,
-                            internal_providers.attribute_prototype_id,
+                            ips.attribute_prototype_id,
                             prop_id
-                        FROM internal_providers
-                        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, internal_providers)
-                        ORDER BY
-                            id,
-                            visibility_change_set_pk DESC,
-                            visibility_deleted_at DESC NULLS FIRST
+                        FROM internal_providers_v1(this_read_tenancy, this_visibility) AS ips
                     ) AS ip
                     INNER JOIN parent_prop_tree ON parent_prop_tree.prop_id = ip.prop_id
                 LOOP
