@@ -71,9 +71,11 @@ BEGIN
                     RAISE DEBUG 'attribute_value_affected_graph_v1: Found unsealed proxies: %', tmp_record_ids;
                     RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) depend on AttributeValue(%)', tmp_record_ids, attribute_value.id;
 
-                    RETURN QUERY SELECT target_id AS attribute_value_id,
-                                        attribute_value_id AS dependent_attribute_value_id
-                                 FROM unnest(tmp_record_ids) AS target_id;
+                    RETURN QUERY
+                        SELECT
+                            target_id AS attribute_value_id,
+                            attribute_value_id AS dependent_attribute_value_id
+                        FROM unnest(tmp_record_ids) AS target_id;
                     -- Add these new AttributeValues to the ones we'll use in the next loop iteration.
                     next_attribute_value_ids := array_cat(next_attribute_value_ids, tmp_record_ids);
                 END IF;
@@ -96,15 +98,11 @@ BEGIN
                                                             'attribute_context_component_id',         attribute_value.attribute_context_component_id,
                                                             'attribute_context_system_id',            attribute_value.attribute_context_system_id);
 
-                SELECT DISTINCT ON (id) id
+                SELECT id
                 INTO tmp_record_id
-                FROM attribute_values
-                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
-                      AND exact_attribute_context_v1(tmp_attribute_context, attribute_values)
-                      AND attribute_context_internal_provider_id = internal_provider_id
-                ORDER BY id,
-                         visibility_change_set_pk DESC,
-                         visibility_deleted_at DESC NULLS FIRST;
+                FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+                WHERE exact_attribute_context_v1(tmp_attribute_context, av)
+                      AND attribute_context_internal_provider_id = internal_provider_id;
                 IF NOT FOUND THEN
                     RAISE 'attribute_value_affected_graph_v1: Unable to find AttributeValue for InternalProvider(%) at AttributeContext(%)',
                         internal_provider_id,
