@@ -1,6 +1,28 @@
-SELECT DISTINCT ON (id) value AS component_name
-FROM func_binding_return_values AS fbrv
+SELECT fbrv.value AS component_name
+FROM component_belongs_to_schema_variant_v1($1, $2) AS cbtsv
+-- TODO: We could do this as a normal join if we fixed prop_many_to_many_schema_variants to be prop_belongs_to_schema_variant (which matches our current rules/logic)
+--
+-- Having the SchemaVariant lets us get the PropId for the "root" Prop.
 INNER JOIN (
+    SELECT DISTINCT ON (right_object_id)
+        left_object_id AS prop_id,
+        right_object_id AS schema_variant_id
+    FROM prop_many_to_many_schema_variants_v1($1, $2)
+) AS root_pbtsv
+    ON root_pbtsv.schema_variant_id = cbtsv.belongs_to_id
+-- Having the "root" PropId lets us get the "si" PropId.
+INNER JOIN prop_belongs_to_prop_v1($1, $2) AS si_pbtp
+    ON si_pbtp.belongs_to_id = root_pbtsv.prop_id
+INNER JOIN props_v1($1, $2) AS si_prop
+    ON si_prop.id = si_pbtp.object_id
+        AND si_prop.name = 'si'
+-- Having the "si" PropId lets us get the "name" PropId.
+INNER JOIN prop_belongs_to_prop_v1($1, $2) AS name_pbtp
+    ON name_pbtp.belongs_to_id = si_prop.id
+INNER JOIN props_v1($1, $2) AS name_prop
+    ON name_prop.id = name_pbtp.object_id
+        AND name_prop.name = 'name'
+INNER JOIN LATERAL (
     SELECT DISTINCT ON (attribute_context_prop_id)
         id AS attribute_value_id,
         func_binding_return_value_id,
@@ -12,69 +34,6 @@ INNER JOIN (
         attribute_context_component_id,
         attribute_context_system_id
     FROM attribute_values_v1($1, $2) AS av
-    INNER JOIN (
-        -- Having the "si" PropId lets us get the "name" PropId.
-        SELECT DISTINCT ON (object_id) object_id AS name_prop_id
-        FROM prop_belongs_to_prop AS pbtp
-        INNER JOIN (
-            -- Having the "root" PropId lets us get the "si" PropId.
-            SELECT DISTINCT ON (object_id) object_id AS si_prop_id
-            FROM prop_belongs_to_prop AS pbtp
-            INNER JOIN (
-                SELECT DISTINCT ON (id) id AS prop_id
-                FROM props
-                WHERE
-                    in_tenancy_and_visible_v1($1, $2, props)
-                    AND name = 'si'
-                ORDER BY
-                    id,
-                    visibility_change_set_pk DESC,
-                    visibility_deleted_at DESC NULLS FIRST
-            ) AS si_prop_info ON si_prop_info.prop_id = pbtp.object_id
-            INNER JOIN (
-                -- Having the SchemaVariant lets us get the PropId for the "root" Prop.
-                SELECT DISTINCT ON (right_object_id) left_object_id AS root_prop_id
-                FROM prop_many_to_many_schema_variants AS pmtmsv
-                INNER JOIN (
-                    -- Need to grab the SchemaVariant the Component belongs to so we can get at the root PropId.
-                    SELECT DISTINCT ON (object_id) belongs_to_id AS schema_variant_id
-                    FROM component_belongs_to_schema_variant AS cbtsv
-                    WHERE
-                        in_tenancy_and_visible_v1($1, $2, cbtsv)
-                        AND object_id = $3
-                    ORDER BY
-                        object_id,
-                        visibility_change_set_pk DESC,
-                        visibility_deleted_at DESC NULLS FIRST
-                ) AS sv_info ON sv_info.schema_variant_id = pmtmsv.right_object_id
-                WHERE in_tenancy_and_visible_v1($1, $2, pmtmsv)
-                ORDER BY
-                    right_object_id,
-                    visibility_change_set_pk DESC,
-                    visibility_deleted_at DESC NULLS FIRST
-            ) AS root_prop_info ON root_prop_info.root_prop_id = pbtp.belongs_to_id
-            WHERE in_tenancy_and_visible_v1($1, $2, pbtp)
-            ORDER BY
-                object_id,
-                visibility_change_set_pk DESC,
-                visibility_deleted_at DESC NULLS FIRST
-        ) AS si_prop_info ON si_prop_info.si_prop_id = pbtp.belongs_to_id
-        INNER JOIN (
-            SELECT DISTINCT ON (id) id AS prop_id
-            FROM props
-            WHERE
-                in_tenancy_and_visible_v1($1, $2, props)
-                AND name = 'name'
-            ORDER BY
-                id,
-                visibility_change_set_pk DESC,
-                visibility_deleted_at DESC NULLS FIRST
-        ) AS name_prop ON name_prop.prop_id = pbtp.object_id
-        ORDER BY
-            object_id,
-            visibility_change_set_pk DESC,
-            visibility_deleted_at DESC
-    ) AS name_prop_info ON name_prop_info.name_prop_id = av.attribute_context_prop_id
     WHERE
         in_attribute_context_v1(
             -- We're only interested in the AttributeValue that's directly for the "/root/si/name" Prop
@@ -82,7 +41,7 @@ INNER JOIN (
             -- SchemaVariant, as a Component can only belong to one SchemaVariant, and a SchemaVariant
             -- can only belong to one Schema.
             attribute_context_build_from_parts_v1(
-                name_prop_info.name_prop_id, -- PropId
+                name_prop.id, -- PropId
                 -1, -- InternalProviderId
                 -1, -- ExternalProviderId
                 NULL, -- SchemaId (handled by ComponentId)
@@ -98,9 +57,8 @@ INNER JOIN (
         attribute_context_schema_variant_id DESC,
         attribute_context_component_id DESC,
         attribute_context_system_id DESC
-) AS av_info ON av_info.func_binding_return_value_id = fbrv.id
-WHERE in_tenancy_and_visible_v1($1, $2, fbrv)
-ORDER BY
-    id,
-    visibility_change_set_pk DESC,
-    visibility_deleted_at DESC NULLS FIRST;
+) AS name_av
+    ON name_av.attribute_context_prop_id = name_prop.id
+INNER JOIN func_binding_return_values_v1($1, $2) AS fbrv
+    ON fbrv.id = name_av.func_binding_return_value_id
+WHERE cbtsv.object_id = $3

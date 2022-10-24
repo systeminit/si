@@ -794,10 +794,10 @@ BEGIN
                            'LANGUAGE sql '
                            'PARALLEL SAFE CALLED ON NULL INPUT '
                            'AS $table_view_fn$ '
-                           '    SELECT DISTINCT ON (left_object_id) %1$I.* '
+                           '    SELECT DISTINCT ON (id) %1$I.* '
                            '    FROM %1$I '
                            '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
-                           '    ORDER BY left_object_id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                           '    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
                            '$table_view_fn$;',
                            this_table_name,
                            this_left_object_table,
