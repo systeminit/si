@@ -1,12 +1,9 @@
-use pretty_assertions_sorted::assert_eq;
-
 use dal::{
-    confirmation_prototype::ConfirmationPrototypeContext,
-    test_harness::create_component_for_schema, ConfirmationPrototype, DalContext, Func, Schema,
-    StandardModel, SystemId,
+    confirmation_prototype::ConfirmationPrototypeContext, ConfirmationPrototype, DalContext, Func,
+    Schema, StandardModel, SystemId,
 };
-
-use crate::dal::test;
+use dal_test::{test, test_harness::create_component_for_schema};
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new(ctx: &DalContext) {

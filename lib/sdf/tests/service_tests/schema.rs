@@ -1,16 +1,18 @@
 use std::collections::HashSet;
 
 use axum::http::Method;
-
-use crate::dal::test;
-use dal::test_harness::create_schema as dal_create_schema;
 use dal::{SchemaKind, StandardModel, Visibility};
-use sdf::service::schema::create_schema::{CreateSchemaRequest, CreateSchemaResponse};
-use sdf::service::schema::get_schema::{GetSchemaRequest, GetSchemaResponse};
-use sdf::service::schema::list_schemas::{ListSchemaRequest, ListSchemaResponse};
+use dal_test::{test, test_harness::create_schema as dal_create_schema};
+use sdf::service::schema::{
+    create_schema::{CreateSchemaRequest, CreateSchemaResponse},
+    get_schema::{GetSchemaRequest, GetSchemaResponse},
+    list_schemas::{ListSchemaRequest, ListSchemaResponse},
+};
 
-use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
-use crate::test_setup;
+use crate::{
+    service_tests::{api_request_auth_json_body, api_request_auth_query},
+    test_setup,
+};
 
 #[test]
 async fn create_schema() {

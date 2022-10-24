@@ -1,7 +1,6 @@
 use dal::{ActionPrototype, ActionPrototypeContext, DalContext, WorkflowPrototypeId};
+use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
-
-use crate::dal::test;
 
 #[test]
 async fn new(ctx: &DalContext) {

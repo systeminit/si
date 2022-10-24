@@ -1,26 +1,27 @@
 use std::collections::HashMap;
 
 use color_eyre::Result;
-use names::{Generator, Name};
-use serde_json::Value;
-
-use crate::attribute::context::AttributeContextBuilder;
-use crate::func::argument::{FuncArgument, FuncArgumentId};
-use crate::func::binding::FuncBindingId;
-use crate::func::binding_return_value::FuncBindingReturnValueId;
-use crate::node::NodeId;
-use crate::{
+use dal::{
+    attribute::context::AttributeContextBuilder,
+    func::{
+        argument::{FuncArgument, FuncArgumentId},
+        binding::FuncBindingId,
+        binding_return_value::FuncBindingReturnValueId,
+    },
+    node::NodeId,
     AttributeContext, AttributeReadContext, AttributeValue, AttributeValueId, BillingAccount,
     BillingAccountId, BillingAccountSignup, ChangeSet, Component, ComponentId, ComponentView,
     DalContext, DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor, JwtSecretKey,
     Node, Prop, PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId,
     StandardModel, System, User, Visibility, WorkspaceId,
 };
+use names::{Generator, Name};
+use serde_json::Value;
 
 pub mod builtins;
 
 /// Commits the transactions in the given [`DalContext`] and returns a new context which reuses the
-/// underlying [`crate::Connections`] and with identical state.
+/// underlying [`dal::Connections`] and with identical state.
 pub async fn commit_and_continue(ctx: DalContext) -> DalContext {
     let (builder, conns, request_ctx) = ctx
         .commit_into_parts()
@@ -208,7 +209,7 @@ pub async fn find_schema_and_default_variant_by_name(
     (schema, default_variant)
 }
 
-/// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
+/// Get the "si:identity" [`Func`] and execute (if necessary).
 pub async fn setup_identity_func(
     ctx: &DalContext,
 ) -> (
@@ -245,10 +246,9 @@ pub async fn setup_identity_func(
     )
 }
 
-/// Find a [`PropId`](crate::Prop) and its parent [`PropId`](crate::Prop) by name. This only works
-/// if a parent [`Prop`](crate::Prop) exists. If a [`Prop`](crate::Prop) and its parent share the
-/// same name and further precision is desired, you can specify an optional "grandparent"
-/// [`Prop`](crate::Prop) name.
+/// Find a [`PropId`] and its parent `PropId` by name. This only works if a parent [`Prop`] exists.
+/// If a `Prop` and its parent share the same name and further precision is desired, you can
+/// specify an optional "grandparent" `Prop` name.
 ///
 /// _Use with caution!_
 pub async fn find_prop_and_parent_by_name(
@@ -309,22 +309,21 @@ pub async fn find_prop_and_parent_by_name(
     None
 }
 
-/// Payload used for bundling a [`Component`](crate::Component) with all metadata needed for a test.
+/// Payload used for bundling a [`Component`] with all metadata needed for a test.
 pub struct ComponentPayload {
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
     pub component_id: ComponentId,
     pub node_id: NodeId,
-    /// A map that uses [`Prop`](crate::Prop) "json pointer names" as keys and their ids as values.
+    /// A map that uses [`Prop`] "json pointer names" as keys and their ids as values.
     pub prop_map: HashMap<&'static str, PropId>,
-    /// An [`AttributeReadContext`](crate::AttributeReadContext) that can be used for generating
-    /// a [`ComponentView`](crate::ComponentView).
+    /// An [`AttributeReadContext`] that can be used for generating a [`ComponentView`].
     pub base_attribute_read_context: AttributeReadContext,
 }
 
 impl ComponentPayload {
-    /// Get the [`PropId`](crate::Prop) (value) corresponding to the "json pointer name" (key)
-    /// in the "prop_map" (e.g. "/root/si/name" passed in as the name).
+    /// Get the [`PropId`] (value) corresponding to the "json pointer name" (key) in the "prop_map"
+    /// (e.g. "/root/si/name" passed in as the name).
     pub fn get_prop_id(&self, prop_name: &str) -> PropId {
         *self
             .prop_map
@@ -332,8 +331,7 @@ impl ComponentPayload {
             .expect("could not find PropId for key")
     }
 
-    /// Merge the base [`AttributeReadContext`](crate::AttributeReadContext) with the
-    /// [`PropId`](crate::Prop) found.
+    /// Merge the base [`AttributeReadContext`] with the [`PropId`] found.
     pub fn attribute_read_context_with_prop_id(&self, prop_name: &str) -> AttributeReadContext {
         AttributeReadContext {
             prop_id: Some(self.get_prop_id(prop_name)),
@@ -341,9 +339,8 @@ impl ComponentPayload {
         }
     }
 
-    /// Merge the base [`AttributeReadContext`](crate::AttributeReadContext) with the
-    /// [`PropId`](crate::Prop) found and convert into an
-    /// [`AttributeContext`](crate::AttributeContext).
+    /// Merge the base [`AttributeReadContext`] with the [`PropId`] found and convert into an
+    /// [`AttributeContext`].
     pub fn attribute_context_with_prop_id(&self, prop_name: &str) -> AttributeContext {
         AttributeContextBuilder::from(self.base_attribute_read_context)
             .set_prop_id(self.get_prop_id(prop_name))
@@ -351,7 +348,7 @@ impl ComponentPayload {
             .expect("could not convert builder to attribute context")
     }
 
-    /// Generates a new [`ComponentView`](crate::ComponentView) and returns the "properites" field.
+    /// Generates a new [`ComponentView`] and returns the "properites" field.
     pub async fn component_view_properties(&self, ctx: &DalContext) -> serde_json::Value {
         ComponentView::for_context(ctx, self.base_attribute_read_context)
             .await
@@ -359,8 +356,8 @@ impl ComponentPayload {
             .properties
     }
 
-    /// Update a [`AttributeValue`](crate::AttributeValue). This only works if the parent
-    /// [`AttributeValue`] for the same context corresponds to an _"object"_ [`Prop`](crate::Prop).
+    /// Update a [`AttributeValue`]. This only works if the parent `AttributeValue` for the same
+    /// context corresponds to an _"object"_ [`Prop`].
     pub async fn update_attribute_value_for_prop_name(
         &self,
         ctx: &DalContext,
@@ -420,8 +417,8 @@ impl ComponentPayload {
         updated_attribute_value_id
     }
 
-    /// Inserts an [`AttributeValue`](crate::AttributeValue) corresponding to a _primitive_
-    /// [`Prop`](crate::Prop) (string, boolean or integer) in an _array_ [`Prop`](crate::Prop).
+    /// Inserts an [`AttributeValue`] corresponding to a _primitive_ [`Prop`] (string, boolean or
+    /// integer) in an _array_ `Prop`.
     pub async fn insert_array_primitive_element(
         &self,
         ctx: &DalContext,
@@ -461,8 +458,8 @@ impl ComponentPayload {
         .expect("could not insert object into array")
     }
 
-    /// Inserts an [`AttributeValue`](crate::AttributeValue) corresponding to an "empty" _object_
-    /// [`Prop`](crate::Prop) in an _array_ [`Prop`](crate::Prop).
+    /// Inserts an [`AttributeValue`] corresponding to an "empty" _object_ [`Prop`] in an _array_
+    /// `Prop`.
     pub async fn insert_array_object_element(
         &self,
         ctx: &DalContext,
@@ -501,9 +498,8 @@ impl ComponentPayload {
         .expect("could not insert object into array")
     }
 
-    /// Using the element [`AttributeValueId`](AttributeValueId) from
-    /// [`Self::insert_array_object_element()`], update an [`AttributeValue`](crate::AttributeValue)
-    /// corresponding to a "field" within the _object_ element.
+    /// Using the element [`AttributeValueId`] from [`Self::insert_array_object_element()`], update
+    /// an [`AttributeValue`] corresponding to a "field" within the _object_ element.
     pub async fn update_attribute_value_for_prop_name_and_parent_element_attribute_value_id(
         &self,
         ctx: &DalContext,

@@ -1,13 +1,9 @@
-use dal::DalContext;
-
-use crate::dal::test;
-use dal::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use dal::{
-    func::binding::FuncBinding,
+    func::{backend::js_qualification::FuncBackendJsQualificationArgs, binding::FuncBinding},
     qualification_resolver::{QualificationResolverContext, UNSET_ID_VALUE},
-    test_harness::create_component_for_schema_variant,
-    Func, QualificationResolver, Schema, StandardModel,
+    DalContext, Func, QualificationResolver, Schema, StandardModel,
 };
+use dal_test::{test, test_harness::create_component_for_schema_variant};
 
 #[test]
 async fn new(ctx: &DalContext) {

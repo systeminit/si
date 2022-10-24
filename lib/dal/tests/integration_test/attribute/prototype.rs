@@ -1,16 +1,17 @@
-use dal::{DalContext, SchemaVariant};
-
-use crate::dal::test;
 use dal::{
     attribute::context::{AttributeContext, AttributeContextBuilder},
     attribute::prototype::AttributePrototype,
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
+    AttributePrototypeError, AttributeReadContext, AttributeValue, Component, ComponentView,
+    DalContext, Func, FuncBackendKind, FuncBackendResponseType, PropKind, Schema, SchemaKind,
+    SchemaVariant, StandardModel,
+};
+use dal_test::{
+    test,
     test_harness::{
         create_component_for_schema, create_prop_of_kind_with_name, create_schema,
         create_schema_variant_with_root,
     },
-    AttributePrototypeError, AttributeReadContext, AttributeValue, Component, ComponentView, Func,
-    FuncBackendKind, FuncBackendResponseType, PropKind, Schema, SchemaKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq;
 

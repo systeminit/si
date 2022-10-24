@@ -1,11 +1,13 @@
-use dal::DalContext;
-
-use crate::dal::test;
-use dal::node::{NodeKind, NodeTemplate};
-use dal::test_harness::{
-    create_component_and_schema, create_node, create_schema, create_schema_variant,
+use dal::{
+    node::{NodeKind, NodeTemplate},
+    DalContext, HistoryActor, Node, SchemaKind, StandardModel, Visibility, WriteTenancy,
 };
-use dal::{HistoryActor, Node, SchemaKind, StandardModel, Visibility, WriteTenancy};
+use dal_test::{
+    test,
+    test_harness::{
+        create_component_and_schema, create_node, create_schema, create_schema_variant,
+    },
+};
 
 #[test]
 async fn new(ctx: &DalContext) {

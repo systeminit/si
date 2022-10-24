@@ -60,19 +60,19 @@ pub(crate) fn expand(item: ItemFn, _args: AttributeArgs) -> TokenStream {
     quote! {
         #test_attr
         #(#attrs)*
-        fn #test_name() -> ::color_eyre::Result<()> {
-            use ::color_eyre::eyre::WrapErr;
+        fn #test_name() -> ::dal_test::Result<()> {
+            use ::dal_test::WrapErr;
 
             async fn test_fn(#params) #output #body
 
             #[inline]
-            async fn spawned_task() -> ::color_eyre::Result<()> {
+            async fn spawned_task() -> ::dal_test::Result<()> {
                 #fn_setups
                 #fn_call
                 Ok(())
             }
 
-            ::dal::test::COLOR_EYRE_INIT.call_once(|| {
+            ::dal_test::COLOR_EYRE_INIT.call_once(|| {
                 #color_eyre_init
                 #tracing_init
             });
@@ -353,7 +353,7 @@ impl FnSetupExpander {
 
         let var = Ident::new("test_context", Span::call_site());
         self.code.extend(quote! {
-            let test_context = ::dal::test::TestContext::global().await?;
+            let test_context = ::dal_test::TestContext::global().await?;
         });
         self.test_context = Some(Arc::new(var));
 
@@ -384,7 +384,7 @@ impl FnSetupExpander {
 
         let var = Ident::new("nats_subject_prefix", Span::call_site());
         self.code.extend(quote! {
-            let #var = ::dal::test::nats_subject_prefix();
+            let #var = ::dal_test::nats_subject_prefix();
         });
         self.nats_subject_prefix = Some(Arc::new(var));
 
@@ -403,7 +403,7 @@ impl FnSetupExpander {
 
         let var = Ident::new("veritech_server", Span::call_site());
         self.code.extend(quote! {
-            let #var = ::dal::test::veritech_server_for_uds_cyclone(
+            let #var = ::dal_test::veritech_server_for_uds_cyclone(
                 #test_context.nats_config().clone(),
                 #nats_subject_prefix.clone(),
             ).await?;
@@ -557,7 +557,7 @@ impl FnSetupExpander {
         self.code.extend(quote! {
             let (#var_nba, #var_auth_token) = {
                 let ctx = #dal_context_builder.build_default_with_txns(#transactions);
-                let r = ::dal::test::helpers::billing_account_signup(
+                let r = ::dal_test::helpers::billing_account_signup(
                     &ctx,
                     #test_context.jwt_secret_key(),
                 ).await?;
@@ -637,7 +637,7 @@ impl FnSetupExpander {
         self.code.extend(quote! {
             let #var = {
                 let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
-                ::dal::test::helpers::create_change_set_and_update_ctx(
+                ::dal_test::helpers::create_change_set_and_update_ctx(
                     &mut ctx,
                     &#nba,
                 ).await;
@@ -665,7 +665,7 @@ impl FnSetupExpander {
         self.code.extend(quote! {
             let mut #var = {
                 let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
-                ::dal::test::helpers::create_change_set_and_update_ctx(
+                ::dal_test::helpers::create_change_set_and_update_ctx(
                     &mut ctx,
                     &#nba,
                 ).await;
@@ -695,7 +695,7 @@ impl FnSetupExpander {
                         ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
                         #transactions.clone(),
                     );
-                ::dal::test::DalContextUniversalHead(ctx)
+                ::dal_test::DalContextUniversalHead(ctx)
             };
         });
         self.dal_context_universal_head = Some(Arc::new(var));
@@ -723,7 +723,7 @@ impl FnSetupExpander {
                     );
                 ctx
             };
-            let #var = ::dal::test::DalContextUniversalHeadRef(&_dcuhr);
+            let #var = ::dal_test::DalContextUniversalHeadRef(&_dcuhr);
         });
         self.dal_context_universal_head_ref = Some(Arc::new(var));
 
@@ -753,7 +753,7 @@ impl FnSetupExpander {
                     );
                 ctx
             };
-            let #var = ::dal::test::DalContextUniversalHeadMutRef(&mut _dcuhmr);
+            let #var = ::dal_test::DalContextUniversalHeadMutRef(&mut _dcuhmr);
         });
         self.dal_context_universal_head_mut_ref = Some(Arc::new(var));
 
@@ -788,7 +788,7 @@ impl FnSetupExpander {
                     .await
                     .wrap_err("failed to update dal context to workspace tenancies")?;
 
-                ::dal::test::DalContextHead(ctx)
+                ::dal_test::DalContextHead(ctx)
             };
         });
         self.dal_context_head = Some(Arc::new(var));
@@ -822,7 +822,7 @@ impl FnSetupExpander {
                     .wrap_err("failed to update dal context to workspace tenancies")?;
                 ctx
             };
-            let #var = ::dal::test::DalContextHeadRef(&_dchr);
+            let #var = ::dal_test::DalContextHeadRef(&_dchr);
         });
         self.dal_context_head_ref = Some(Arc::new(var));
 
@@ -855,7 +855,7 @@ impl FnSetupExpander {
                     .wrap_err("failed to update dal context to workspace tenancies")?;
                 ctx
             };
-            let #var = ::dal::test::DalContextHeadMutRef(&mut _dchmr);
+            let #var = ::dal_test::DalContextHeadMutRef(&mut _dchmr);
         });
         self.dal_context_head_mut_ref = Some(Arc::new(var));
 
@@ -903,7 +903,7 @@ fn path_as_string(path: &Path) -> String {
 
 fn expand_color_eyre_init() -> TokenStream {
     quote! {
-        ::color_eyre::config::HookBuilder::default()
+        ::dal_test::color_eyre::config::HookBuilder::default()
             .add_frame_filter(Box::new(|frames| {
                 let mut displayed = ::std::collections::HashSet::new();
                 let filters = &[
@@ -953,7 +953,7 @@ fn expand_tracing_init() -> TokenStream {
 
     quote! {
         let event_filter = {
-            use ::tracing_subscriber::fmt::format::FmtSpan;
+            use ::dal_test::tracing_subscriber::fmt::format::FmtSpan;
 
             match ::std::env::var(#span_events_env_var) {
                 Ok(value) => {
@@ -989,13 +989,13 @@ fn expand_tracing_init() -> TokenStream {
             }
         };
 
-        let subscriber = ::tracing_subscriber::FmtSubscriber::builder()
-            .with_env_filter(::tracing_subscriber::EnvFilter::from_env(#log_env_var))
+        let subscriber = ::dal_test::tracing_subscriber::FmtSubscriber::builder()
+            .with_env_filter(::dal_test::tracing_subscriber::EnvFilter::from_env(#log_env_var))
             .with_span_events(event_filter)
             .with_test_writer()
             .pretty()
             .finish();
-        let _ = ::tracing::subscriber::set_global_default(subscriber);
+        let _ = ::dal_test::telemetry::tracing::subscriber::set_global_default(subscriber);
     }
 }
 

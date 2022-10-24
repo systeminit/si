@@ -1,14 +1,15 @@
-mod inter_component;
-mod intra_component;
-
-use dal::test::helpers::setup_identity_func;
-use dal::test_harness::{create_schema, create_schema_variant_with_root};
 use dal::{
     socket::SocketArity, DalContext, DiagramKind, ExternalProvider, InternalProvider, SchemaKind,
     StandardModel,
 };
+use dal_test::{
+    helpers::setup_identity_func,
+    test,
+    test_harness::{create_schema, create_schema_variant_with_root},
+};
 
-use crate::dal::test;
+mod inter_component;
+mod intra_component;
 
 #[test]
 async fn new_external(ctx: &DalContext) {

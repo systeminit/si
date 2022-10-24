@@ -1,17 +1,19 @@
-use dal::test::helpers::{setup_identity_func, ComponentPayload};
-use dal::test_harness::{
-    create_prop_of_kind_and_set_parent_with_name, create_prop_of_kind_with_name, create_schema,
-    create_schema_variant_with_root,
-};
+use std::collections::HashMap;
+
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, Component, ComponentView, DalContext, DiagramKind, Edge, ExternalProvider,
     InternalProvider, PropKind, SchemaKind, StandardModel,
 };
+use dal_test::{
+    helpers::{setup_identity_func, ComponentPayload},
+    test,
+    test_harness::{
+        create_prop_of_kind_and_set_parent_with_name, create_prop_of_kind_with_name, create_schema,
+        create_schema_variant_with_root,
+    },
+};
 use pretty_assertions_sorted::assert_eq;
-use std::collections::HashMap;
-
-use crate::dal::test;
 
 #[test]
 async fn inter_component_identity_update(ctx: &DalContext) {

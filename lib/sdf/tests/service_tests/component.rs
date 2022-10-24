@@ -1,18 +1,18 @@
 use std::collections::HashSet;
 
-use crate::dal::test;
-use crate::service_tests::api_request_auth_query;
-use crate::test_setup;
-use dal::test_harness::{
-    create_component_for_schema_variant, create_schema, create_schema_variant,
-};
 use dal::{Component, SchemaKind, StandardModel, Visibility};
-use sdf::service::component::get_components_metadata::{
-    GetComponentsMetadataRequest, GetComponentsMetadataResponse,
+use dal_test::{
+    test,
+    test_harness::{create_component_for_schema_variant, create_schema, create_schema_variant},
 };
-use sdf::service::component::list_components_identification::{
-    ListComponentsIdentificationRequest, ListComponentsIdentificationResponse,
+use sdf::service::component::{
+    get_components_metadata::{GetComponentsMetadataRequest, GetComponentsMetadataResponse},
+    list_components_identification::{
+        ListComponentsIdentificationRequest, ListComponentsIdentificationResponse,
+    },
 };
+
+use crate::{service_tests::api_request_auth_query, test_setup};
 
 #[test]
 async fn list_components_identification() {

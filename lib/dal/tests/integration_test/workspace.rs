@@ -1,8 +1,5 @@
-use dal::DalContext;
-
-use crate::dal::test;
-
-use dal::Workspace;
+use dal::{DalContext, Workspace};
+use dal_test::test;
 
 #[test]
 async fn new(ctx: &DalContext) {

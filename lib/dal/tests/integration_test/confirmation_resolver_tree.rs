@@ -1,13 +1,14 @@
-use dal::component::ComponentKind;
 use dal::{
-    builtins::BuiltinSchemaHelpers, edge::EdgeKind, edge::VertexObjectKind, socket::SocketArity,
-    test::helpers::create_component_and_node_for_schema, ActionPrototype, ActionPrototypeContext,
-    BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext, ConfirmationResolverTree,
-    DalContext, DiagramKind, Edge, ExternalProvider, Func, HasPrototypeContext, InternalProvider,
-    Schema, SchemaError, SchemaKind, Socket, StandardModel, SystemId, WorkflowPrototypeId,
+    builtins::BuiltinSchemaHelpers,
+    component::ComponentKind,
+    edge::{EdgeKind, VertexObjectKind},
+    socket::SocketArity,
+    ActionPrototype, ActionPrototypeContext, BuiltinsResult, ConfirmationPrototype,
+    ConfirmationPrototypeContext, ConfirmationResolverTree, DalContext, DiagramKind, Edge,
+    ExternalProvider, Func, HasPrototypeContext, InternalProvider, Schema, SchemaError, SchemaKind,
+    Socket, StandardModel, SystemId, WorkflowPrototypeId,
 };
-
-use crate::dal::test;
+use dal_test::{helpers::create_component_and_node_for_schema, test};
 
 async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket, Socket)> {
     let (schema, schema_variant, _) = BuiltinSchemaHelpers::create_schema_and_variant(

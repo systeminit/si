@@ -1,9 +1,10 @@
-use crate::dal::test;
 use dal::{
-    attribute::context::AttributeContextBuilder,
+    attribute::context::AttributeContextBuilder, AttributeReadContext, AttributeValue,
+    AttributeView, DalContext, PropKind, SchemaKind, SchemaVariant, StandardModel,
+};
+use dal_test::{
+    test,
     test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
-    AttributeReadContext, AttributeValue, AttributeView, DalContext, PropKind, SchemaKind,
-    SchemaVariant, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq;
 

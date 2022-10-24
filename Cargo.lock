@@ -745,7 +745,7 @@ dependencies = [
  "async-trait",
  "base64",
  "chrono",
- "color-eyre",
+ "dal-test",
  "derive_more",
  "diff",
  "dyn-clone",
@@ -755,7 +755,6 @@ dependencies = [
  "itertools",
  "jwt-simple",
  "lazy_static",
- "names",
  "once_cell",
  "paste",
  "postgres-types",
@@ -768,7 +767,6 @@ dependencies = [
  "serde_json",
  "serde_with",
  "si-data",
- "si-test-macros",
  "sodiumoxide",
  "strum",
  "strum_macros",
@@ -777,13 +775,32 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
- "tracing",
- "tracing-subscriber",
  "url",
  "uuid",
  "veritech-client",
- "veritech-server",
  "which",
+]
+
+[[package]]
+name = "dal-test"
+version = "0.1.0"
+dependencies = [
+ "color-eyre",
+ "dal",
+ "lazy_static",
+ "names",
+ "serde",
+ "serde_json",
+ "si-data",
+ "si-test-macros",
+ "sodiumoxide",
+ "telemetry",
+ "tempfile",
+ "tokio",
+ "tracing-subscriber",
+ "uuid",
+ "veritech-client",
+ "veritech-server",
 ]
 
 [[package]]
@@ -2981,12 +2998,13 @@ dependencies = [
  "axum-macros",
  "base64",
  "chrono",
- "color-eyre",
  "dal",
+ "dal-test",
  "derive_builder",
  "faktory-async",
  "futures",
  "hyper",
+ "names",
  "nix",
  "pathdiff",
  "rand",
@@ -2996,7 +3014,6 @@ dependencies = [
  "serde_with",
  "si-data",
  "si-settings",
- "si-test-macros",
  "sodiumoxide",
  "strum",
  "strum_macros",
@@ -3006,8 +3023,6 @@ dependencies = [
  "tokio-tungstenite",
  "tower",
  "tower-http",
- "tracing",
- "tracing-subscriber",
  "veritech-client",
 ]
 

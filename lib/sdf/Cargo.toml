@@ -8,13 +8,17 @@ publish = false
 [dependencies]
 axum = { version = "0.5.4", features = ["ws"] }
 axum-macros = { version = "0.2.3", optional = true } # enable: cargo build --features axum-macro
+base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
 dal = { path = "../dal" }
 derive_builder = { version = "0.11.2" }
+faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }
 futures = { version = "0.3.17" }
 hyper = { version = "0.14", features = ["http1", "runtime", "server"] }
+names = { version = "0.14.0", default-features = false }
 nix = { version = "0.25.0" }
 pathdiff = "0.2.1"
+rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 serde_with = "2.0.0"
@@ -30,16 +34,10 @@ tokio-tungstenite = "0.17.1"
 tower = { version = "0.4.10" }
 tower-http = { version = "0.3", features = ["trace"] }
 veritech-client = { path = "../../lib/veritech-client" }
-base64 = "0.13.0"
-faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }
-rand = "0.8"
 
 [build-dependencies]
 thiserror = { version = "1.0" }
 
 [dev-dependencies]
-color-eyre = { version = "0.6.1" }
+dal-test = { path = "../../lib/dal-test" }
 serde_url_params = "0.2.1"
-si-test-macros = { path = "../../lib/si-test-macros" }
-tracing = { version = "0.1" }
-tracing-subscriber = { version = "0.3.11", default-features = false, features = ["ansi", "env-filter", "fmt"] }

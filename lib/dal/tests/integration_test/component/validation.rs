@@ -1,20 +1,17 @@
-use pretty_assertions_sorted::assert_eq;
-
-use dal::attribute::context::AttributeContextBuilder;
-use dal::func::backend::validation::FuncBackendValidationArgs;
-use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
-use dal::test_harness::{
-    create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
-};
-use dal::validation::{Validation, ValidationErrorKind};
-use dal::ValidationPrototypeContext;
-use dal::ValidationStatus;
 use dal::{
+    attribute::context::AttributeContextBuilder,
+    func::backend::validation::FuncBackendValidationArgs,
+    validation::{Validation, ValidationErrorKind},
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentView, DalContext,
-    Func, PropKind, SchemaKind, StandardModel, SystemId, ValidationPrototype, ValidationResolver,
+    Func, PropKind, SchemaKind, StandardModel, SystemId, ValidationPrototype,
+    ValidationPrototypeContext, ValidationResolver, ValidationStatus,
 };
-
-use crate::dal::test;
+use dal_test::{
+    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
+    test,
+    test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
+};
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn check_validations_for_component(ctx: &DalContext) {

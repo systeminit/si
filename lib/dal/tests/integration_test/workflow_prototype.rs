@@ -1,14 +1,11 @@
-use serde_json::json;
-
 use dal::{
-    func::binding::FuncBinding, test_harness::create_component_for_schema,
-    workflow_prototype::WorkflowPrototypeContext, AttributeReadContext, ComponentId, ComponentView,
-    DalContext, Func, Schema, SchemaId, SchemaVariantId, StandardModel, SystemId,
-    WorkflowPrototype,
+    func::binding::FuncBinding, workflow_prototype::WorkflowPrototypeContext, AttributeReadContext,
+    ComponentId, ComponentView, DalContext, Func, Schema, SchemaId, SchemaVariantId, StandardModel,
+    SystemId, WorkflowPrototype,
 };
+use dal_test::{test, test_harness::create_component_for_schema};
 use pretty_assertions_sorted::assert_eq;
-
-use crate::dal::test;
+use serde_json::json;
 
 #[test]
 async fn new(ctx: &DalContext) {

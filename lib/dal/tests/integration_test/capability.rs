@@ -1,6 +1,5 @@
 use dal::{BillingAccountId, Capability, DalContext, StandardModel};
-
-use crate::dal::test;
+use dal_test::test;
 
 #[test]
 async fn new(ctx: &mut DalContext, bid: BillingAccountId) {

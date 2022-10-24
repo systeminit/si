@@ -1,9 +1,8 @@
-use dal::DalContext;
-
-use crate::dal::test;
-use dal::schema::SchemaKind;
-use dal::test_harness::create_schema;
-use dal::{schema::SchemaUiMenu, DiagramKind, StandardModel};
+use dal::{
+    schema::{SchemaKind, SchemaUiMenu},
+    DalContext, DiagramKind, StandardModel,
+};
+use dal_test::{test, test_harness::create_schema};
 
 #[test]
 async fn new_and_set_schema(ctx: &DalContext) {

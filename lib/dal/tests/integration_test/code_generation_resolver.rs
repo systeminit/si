@@ -1,13 +1,9 @@
-use dal::DalContext;
-
-use crate::dal::test;
-use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
     code_generation_resolver::{CodeGenerationResolverContext, UNSET_ID_VALUE},
-    func::binding::FuncBinding,
-    test_harness::create_component_for_schema_variant,
-    CodeGenerationResolver, Func, Schema, StandardModel,
+    func::{backend::js_code_generation::FuncBackendJsCodeGenerationArgs, binding::FuncBinding},
+    CodeGenerationResolver, DalContext, Func, Schema, StandardModel,
 };
+use dal_test::{test, test_harness::create_component_for_schema_variant};
 
 #[test]
 async fn new(ctx: &DalContext) {

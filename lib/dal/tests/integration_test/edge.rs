@@ -1,13 +1,15 @@
-use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
-use dal::test::helpers::{create_system_with_node, find_schema_by_name};
-use dal::test::DalContextHeadRef;
 use dal::{
     edge::{EdgeKind, VertexObjectKind},
     socket::SocketEdgeKind,
     Component, DalContext, Edge, SchemaVariant, StandardModel, Visibility, WorkspaceId,
 };
-
-use crate::dal::test;
+use dal_test::{
+    helpers::{
+        builtins::{Builtin, SchemaBuiltinsTestHarness},
+        create_system_with_node, find_schema_by_name,
+    },
+    test, DalContextHeadRef,
+};
 
 #[test]
 async fn new(ctx: &DalContext) {

@@ -1,7 +1,5 @@
-use crate::dal::test;
-use dal::DalContext;
-
-use dal::Visibility;
+use dal::{DalContext, Visibility};
+use dal_test::test;
 
 #[test]
 async fn head_is_visibile_to_head(ctx: &DalContext) {

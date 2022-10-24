@@ -1,11 +1,12 @@
-use dal::DalContext;
-
-use dal::func::execution::FuncExecutionState;
-use dal::{func::execution::FuncExecution, StandardModel};
-
-use crate::dal::test;
 use dal::{
-    func::backend::string::FuncBackendStringArgs,
+    func::{
+        backend::string::FuncBackendStringArgs,
+        execution::{FuncExecution, FuncExecutionState},
+    },
+    DalContext, StandardModel,
+};
+use dal_test::{
+    test,
     test_harness::{create_func, create_func_binding},
 };
 use veritech_client::OutputStream;

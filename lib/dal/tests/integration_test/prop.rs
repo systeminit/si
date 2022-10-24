@@ -1,11 +1,11 @@
 use dal::{
-    test_harness::{create_prop, create_prop_of_kind, create_schema, create_schema_variant},
     DalContext, HistoryActor, Prop, PropKind, SchemaKind, StandardModel, Visibility, WriteTenancy,
 };
+use dal_test::{
+    test,
+    test_harness::{create_prop, create_prop_of_kind, create_schema, create_schema_variant},
+};
 use pretty_assertions_sorted::assert_eq;
-use std::option::Option::None;
-
-use crate::dal::test;
 
 #[test]
 async fn new(ctx: &DalContext) {

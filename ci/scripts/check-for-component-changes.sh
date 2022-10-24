@@ -19,6 +19,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   bin/sdf/**
   lib/config-file/**
   lib/dal/**
+  lib/dal-test/**
   lib/sdf/**
   lib/si-data/**
   lib/si-settings/**

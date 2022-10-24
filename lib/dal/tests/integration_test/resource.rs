@@ -1,6 +1,5 @@
-use crate::dal::test;
-use dal::test_harness::create_component_and_schema;
 use dal::{DalContext, Resource, StandardModel, SystemId};
+use dal_test::{test, test_harness::create_component_and_schema};
 
 #[test]
 async fn new(ctx: &DalContext) {

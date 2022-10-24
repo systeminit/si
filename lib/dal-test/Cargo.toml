@@ -1,0 +1,24 @@
+[package]
+name = "dal-test"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.56"
+publish = false
+
+[dependencies]
+color-eyre = { version = "0.6.1" }
+dal = { path = "../../lib/dal" }
+lazy_static = "1.4.0"
+names = { version = "0.14.0", default-features = false }
+serde = { version = "1.0.123", features = ["rc", "derive"] }
+serde_json = { version = "1.0.64", features = ["preserve_order"] }
+si-data = { path = "../../lib/si-data", features = ["nats", "pg"] }
+si-test-macros = { path = "../../lib/si-test-macros" }
+sodiumoxide = "0.2.6"
+tempfile = "3.2.0"
+tokio = { version = "1.2.0", features = ["full", "tracing"] }
+telemetry = { path = "../../lib/telemetry-rs" }
+tracing-subscriber = { version = "0.3.11", default-features = false, features = ["ansi", "env-filter", "fmt"] }
+uuid = { version = "1.0.0", features = ["v4"] }
+veritech-client = { path = "../../lib/veritech-client" }
+veritech-server = { path = "../../lib/veritech-server" }

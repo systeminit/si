@@ -1,10 +1,8 @@
 use dal::{
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    test::helpers::generate_fake_name,
     DalContext, DiagramKind,
 };
-
-use crate::dal::test;
+use dal_test::{helpers::generate_fake_name, test};
 
 #[test]
 async fn new(ctx: &DalContext) {

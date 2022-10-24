@@ -1,11 +1,16 @@
-use crate::dal::test;
-use crate::service_tests::{api_request, api_request_auth_empty, api_request_raw};
-use crate::test_setup;
 use axum::http::{Method, StatusCode};
 use dal::StandardModel;
-use sdf::service::session::get_defaults::GetDefaultsResponse;
-use sdf::service::session::login::{LoginRequest, LoginResponse};
-use sdf::service::session::restore_authentication::RestoreAuthenticationResponse;
+use dal_test::test;
+use sdf::service::session::{
+    get_defaults::GetDefaultsResponse,
+    login::{LoginRequest, LoginResponse},
+    restore_authentication::RestoreAuthenticationResponse,
+};
+
+use crate::{
+    service_tests::{api_request, api_request_auth_empty, api_request_raw},
+    test_setup,
+};
 
 #[test]
 async fn login() {
