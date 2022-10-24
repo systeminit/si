@@ -254,15 +254,10 @@ BEGIN
                         UNION ALL
                         SELECT p.parent_prop_id AS prop_id
                         FROM (
-                            SELECT DISTINCT ON (object_id)
+                            SELECT
                                 object_id AS child_prop_id,
                                 belongs_to_id AS parent_prop_id
-                            FROM prop_belongs_to_prop
-                            WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, prop_belongs_to_prop)
-                            ORDER BY
-                                object_id,
-                                visibility_change_set_pk DESC,
-                                visibility_deleted_at DESC NULLS FIRST
+                            FROM prop_belongs_to_prop_v1(this_read_tenancy, this_visibility)
                         ) AS p
                         JOIN parent_prop_tree ON p.child_prop_id = parent_prop_tree.prop_id
                     )
