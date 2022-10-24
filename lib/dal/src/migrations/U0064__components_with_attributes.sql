@@ -1,3 +1,4 @@
+-- TODO: Convert this to a SQL function that takes tenancy & visibility so it can use the table functions
 CREATE OR REPLACE VIEW components_with_attributes AS
 SELECT components.id                                     AS component_id,
        component_belongs_to_schema.belongs_to_id         AS schema_id,

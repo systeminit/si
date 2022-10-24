@@ -20,19 +20,9 @@ BEGIN
         SELECT *
         FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
         INNER JOIN (
-            SELECT DISTINCT ON (object_id) object_id AS attribute_value_id
-            FROM attribute_value_belongs_to_attribute_prototype
-            WHERE
-                in_tenancy_and_visible_v1(
-                    this_read_tenancy,
-                    this_visibility,
-                    attribute_value_belongs_to_attribute_prototype
-                )
-                AND belongs_to_id = this_attribute_prototype_id
-            ORDER BY
-                object_id,
-                visibility_change_set_pk DESC,
-                visibility_deleted_at DESC NULLS FIRST
+            SELECT object_id AS attribute_value_id
+            FROM attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility)
+            WHERE belongs_to_id = this_attribute_prototype_id
         ) AS avbtap ON avbtap.attribute_value_id = av.id
         WHERE in_attribute_context_v1(this_attribute_context, av)
         ORDER BY id

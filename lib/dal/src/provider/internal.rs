@@ -409,12 +409,14 @@ impl InternalProvider {
             prop_id: None,
             ..AttributeReadContext::from(consume_attribute_context)
         };
+        // XXX Log start
         let found_attribute_view = AttributeView::new(
             ctx,
             found_attribute_view_context,
             Some(*found_attribute_value.id()),
         )
         .await?;
+        // XXX Log end
         let (func_binding, func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
             ctx,
             serde_json::to_value(FuncBackendIdentityArgs {
