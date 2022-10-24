@@ -105,6 +105,7 @@ RUN set -eux; \
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
+        awscli \
         ca-certificates \
         skopeo \
         wget \
