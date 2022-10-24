@@ -12,7 +12,7 @@ use dal::{
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FixRunRequest {
-    pub confirmation_resolver_id: ConfirmationResolverId,
+    pub id: ConfirmationResolverId,
     pub component_id: ComponentId,
     pub action_name: String,
 }
@@ -63,7 +63,7 @@ pub async fn run(
         .ok_or_else(|| FixError::ActionNotFound(fix.action_name.clone(), fix.component_id))?;
 
         fixes.push(Fix {
-            confirmation_resolver_id: fix.confirmation_resolver_id,
+            confirmation_resolver_id: fix.id,
             component_id: fix.component_id,
             workflow_prototype_id: action.workflow_prototype_id(),
         });
