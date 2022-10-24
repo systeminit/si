@@ -10,29 +10,29 @@ boostrap:
 
 # Run this target alongside local developer builds of web, sdf, etc.
 # This target does not compose down beforehand.
-partial: init
+partial: init-partial
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
-		up -d nats pg otel faktory
+			up --detach
 
-partial-pganalyze: init
+partial-pganalyze: init-partial
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
 			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
-		up -d nats pg otel faktory
+			up --detach
 
-partial-local-pg: init
+partial-local-pg: init-partial
 	SI_ROOT="${MAKEPATH}/.." bash ${MAKEPATH}/scripts/push-pg-local.sh 
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
 			-f $(MAKEPATH)/docker-compose.local-postgres.yml \
-		up -d nats pg otel faktory
+			up --detach
 
 # Run interactively and compose down beforehand. This target is meant to be run iteratively for
 # local development and testing.
@@ -41,18 +41,21 @@ dev: down init
 		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
-		up
+			-f $(MAKEPATH)/docker-compose.ci.yml \
+			--profile si \
+			up
 
 # Run in a detached state and do not compose down beforehand.
 # This is the target to run in production.
-prod: init
+prod:
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
 			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
 			-f $(MAKEPATH)/docker-compose.prod.yml \
-		up -d
+			--profile si \
+			up --detach
 
 web: init
 	# REPOPATH=$(REPOPATH) $(MAKEPATH)/scripts/check-for-artifacts-before-mounting.sh
@@ -62,7 +65,7 @@ web: init
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
 			-f $(MAKEPATH)/docker-compose.ci.yml \
-		up -d
+			up --detach
 
 ci: init
 	REPOPATH=$(REPOPATH) $(MAKEPATH)/scripts/check-for-artifacts-before-mounting.sh
@@ -71,14 +74,27 @@ ci: init
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
 			-f $(MAKEPATH)/docker-compose.ci.yml \
-		up -d
+			up --detach
 
 down:
-	-docker compose -f $(MAKEPATH)/docker-compose.yml \
+	-docker compose \
+		-f $(MAKEPATH)/docker-compose.yml \
+		--profile si \
 		down
+
+init-partial:
+	if [ ! -f $(MAKEPATH)/docker-compose.env.yml ]; then \
+		echo "version: \"3\"" > $(MAKEPATH)/docker-compose.env.yml; \
+	fi
+	docker compose \
+		-f $(MAKEPATH)/docker-compose.yml \
+		pull
 
 init:
 	if [ ! -f $(MAKEPATH)/docker-compose.env.yml ]; then \
 		echo "version: \"3\"" > $(MAKEPATH)/docker-compose.env.yml; \
 	fi
-	docker compose -f $(MAKEPATH)/docker-compose.yml pull
+	docker compose \
+		-f $(MAKEPATH)/docker-compose.yml \
+		--profile si \
+		pull

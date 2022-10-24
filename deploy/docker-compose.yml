@@ -1,21 +1,27 @@
 version: "3"
 
-# NOTE(nick): "depends_on" will start parent containers when using `docker compose` run, so we should
-# try to only use it when necessary.
+# NOTE(nick): "depends_on" will start parent containers when using `docker
+# compose` run, so we should try to only use it when necessary.
 
 services:
   web:
     image: "index.docker.io/systeminit/web:stable"
+    profiles:
+      - si
+      - si-watchtower
+      - web
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "443:443"
-    depends_on:
-      - watchtower
     restart: "unless-stopped"
 
   sdf:
     image: "index.docker.io/systeminit/sdf:stable"
+    profiles:
+      - si
+      - si-watchtower
+      - sdf
     ports:
       - "5156:5156"
     environment:
@@ -31,7 +37,6 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
-      - watchtower
       - pg
       - faktory
       - otel
@@ -40,6 +45,10 @@ services:
 
   veritech:
     image: "index.docker.io/systeminit/veritech:stable"
+    profiles:
+      - si
+      - si-watchtower
+      - veritech
     environment:
       - "SI_VERITECH__NATS__URL=nats"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
@@ -49,13 +58,16 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
-      - watchtower
       - otel
       - nats
     restart: "unless-stopped"
 
   pinga:
     image: "index.docker.io/systeminit/pinga:stable"
+    profiles:
+      - si
+      - si-watchtower
+      - pinga
     environment:
       - "SI_PINGA__PG__HOSTNAME=postgres"
       - "SI_PINGA__NATS__URL=nats"
@@ -69,7 +81,6 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
-      - watchtower
       - pg
       - faktory
       - otel
@@ -88,8 +99,6 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "5432:5432"
-    depends_on:
-      - watchtower
 
   faktory:
     image: "index.docker.io/contribsys/faktory:latest"
@@ -103,8 +112,6 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "4222:4222"
-    depends_on:
-      - watchtower
 
   otel:
     image: "index.docker.io/systeminit/otelcol:stable"
@@ -113,12 +120,14 @@ services:
     ports:
       - "4317:4317"
       - "55679:55679"
-    depends_on:
-      - watchtower
 
-  # NOTE(nick): watchtower requires full image names for private registries, which include prefixes like "index.docker.io".
+  # NOTE(nick): watchtower requires full image names for private registries,
+  # which include prefixes like "index.docker.io".
   watchtower:
     image: "containrrr/watchtower"
+    profiles:
+      - watchtower
+      - si-watchtower
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "${DOCKER_CONFIG:-~/.docker/config}:/config.json:ro"
