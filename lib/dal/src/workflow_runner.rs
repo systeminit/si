@@ -191,7 +191,7 @@ impl WorkflowRunner {
 
         if !created_resources.is_empty() || !updated_resources.is_empty() {
             WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
-                .await
+                .await?
                 .publish(ctx)
                 .await?;
         }

@@ -51,14 +51,10 @@ import { computed } from "vue";
 import ProgressBar from "@/atoms/ProgressBar.vue";
 import { useFixesStore } from "@/store/fixes/fixes.store";
 import Icon from "@/ui-lib/Icon.vue";
-import { useResourcesStore } from "@/store/resources.store";
 
-const resourcesStore = useResourcesStore();
 const fixesStore = useFixesStore();
-const loadFixesReqStatus = fixesStore.getRequestStatus("LOAD_FIXES");
+const loadConfirmationsReqStatus = fixesStore.getRequestStatus("LOAD_CONFIRMATIONS");
 const execFixesReqStatus = fixesStore.getRequestStatus("EXECUTE_FIXES");
-
-const totalResources = computed(() => resourcesStore.allResources.length);
 
 const fixState = computed(() => {
   if (fixesStore.runningFixBatch) {
@@ -79,9 +75,11 @@ const fixState = computed(() => {
     };
   } else {
     let rate = 0;
-    if (loadFixesReqStatus.value.isSuccess) {
-      if (totalResources.value > 0) {
-        rate = fixesStore.processedFixComponents / totalResources.value;
+    const finishedConfirmations = fixesStore.confirmations.filter((c) => c.status !== "running").length;
+    const numberOfConfirmations = fixesStore.confirmations.length;
+    if (loadConfirmationsReqStatus.value.isSuccess) {
+      if (fixesStore.confirmations.length > 0) {
+        rate = finishedConfirmations / numberOfConfirmations;
       } else {
         rate = 1;
       }
@@ -100,8 +98,8 @@ const fixState = computed(() => {
     return {
       mode: "syncing",
       rate,
-      executed: fixesStore.processedFixComponents,
-      total: totalResources.value,
+      executed: finishedConfirmations,
+      total: numberOfConfirmations,
       summary,
       highlightedSummary,
     };

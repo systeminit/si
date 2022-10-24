@@ -5,8 +5,8 @@ use super::{FixError, FixResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::{
     job::definition::{fix::Fix, Fixes},
-    ActionPrototype, Component, ComponentId, ConfirmationResolverId, StandardModel,
-    SystemId, Visibility,
+    ActionPrototype, Component, ComponentId, ConfirmationResolverId, StandardModel, SystemId,
+    Visibility,
 };
 
 #[derive(Deserialize, Serialize, Debug)]

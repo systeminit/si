@@ -97,7 +97,7 @@ pub struct ConfirmationResolver {
     pk: ConfirmationResolverPk,
     id: ConfirmationResolverId,
     confirmation_prototype_id: ConfirmationPrototypeId,
-    success: bool,
+    success: Option<bool>,
     message: Option<String>,
     func_id: FuncId,
     func_binding_id: FuncBindingId,
@@ -126,7 +126,7 @@ impl ConfirmationResolver {
     pub async fn new(
         ctx: &DalContext,
         confirmation_prototype_id: ConfirmationPrototypeId,
-        success: bool,
+        success: Option<bool>,
         message: Option<&str>,
         recommended_actions: Vec<ActionPrototype>,
         func_id: FuncId,
@@ -197,7 +197,7 @@ impl ConfirmationResolver {
         ConfirmationResolverResult
     );
 
-    standard_model_accessor!(success, bool, ConfirmationResolverResult);
+    standard_model_accessor!(success, Option<bool>, ConfirmationResolverResult);
     standard_model_accessor!(message, Option<String>, ConfirmationResolverResult);
     standard_model_many_to_many!(
         lookup_fn: recommended_actions,

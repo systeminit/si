@@ -11,7 +11,7 @@ CREATE TABLE confirmation_resolvers
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     confirmation_prototype_id   bigint                   NOT NULL,
-    success                     bool                     NOT NULL,
+    success                     bool,
     message                     text,
     func_id                     bigint                   NOT NULL,
     func_binding_id             bigint                   NOT NULL,

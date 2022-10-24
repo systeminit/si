@@ -79,7 +79,7 @@ async fn run(ctx: &DalContext) {
         .run(ctx, *component.id(), SystemId::NONE)
         .await
         .expect("failed to run prototype");
-    assert!(resolver.success());
+    assert_eq!(resolver.success(), Some(true));
     assert_eq!(resolver.message(), None);
 
     let mut recommended_actions = resolver

@@ -78,15 +78,18 @@ impl JobConsumer for Confirmations {
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
+        let system_id = SystemId::NONE;
+
         for component in Component::list(ctx).await? {
             let prototypes =
-                ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
-                    .await?;
+                ConfirmationPrototype::list_for_component(ctx, *component.id(), system_id).await?;
             for prototype in prototypes {
+                prototype.prepare(ctx, *component.id(), system_id).await?;
+
                 WsEvent::confirmation_status_update(
                     ctx,
                     *component.id(),
-                    SystemId::NONE,
+                    system_id,
                     *prototype.id(),
                     ConfirmationStatus::Running,
                     None,
@@ -96,7 +99,7 @@ impl JobConsumer for Confirmations {
                 ctx.enqueue_job(Confirmation::new(
                     ctx,
                     *component.id(),
-                    SystemId::NONE,
+                    system_id,
                     *prototype.id(),
                 ))
                 .await;

@@ -49,7 +49,7 @@ async fn new(ctx: &DalContext) {
     )
     .await
     .expect("unable to create confirmation resolver");
-    assert!(resolver.success());
+    assert_eq!(resolver.success(), Some(true));
     assert_eq!(resolver.message(), None);
     assert_eq!(
         resolver
