@@ -8,9 +8,9 @@ use crate::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, Component, ComponentId, ConfirmationResolverId, DalContext, FixResolver,
-    FixResolverContext, StandardModel, SystemId, Visibility, WorkflowPrototypeId, WorkflowRunner,
-    WsEvent,
+    AccessBuilder, ChangeSetPk, Component, ComponentId, ConfirmationResolverId, DalContext,
+    FixResolver, FixResolverContext, StandardModel, SystemId, Visibility, WorkflowPrototypeId,
+    WorkflowRunner, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -174,6 +174,12 @@ impl JobConsumer for Fixes {
                 self.fixes.iter().skip(1).cloned().collect(),
             ))
             .await;
+        } else {
+            // Re-trigger confirmations and informs the frontend to re-fetch everything on head
+            WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
+                .await
+                .publish(ctx)
+                .await?;
         }
 
         Ok(())
