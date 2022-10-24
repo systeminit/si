@@ -52,6 +52,11 @@ pub async fn list(
 
     let mut views = Vec::with_capacity(resolvers.len());
     for resolver in resolvers {
+        // Resolver is being executed
+        if resolver.success().is_none() {
+            continue;
+        }
+
         let component_id = resolver.context().component_id;
         if component_id.is_none() {
             continue;

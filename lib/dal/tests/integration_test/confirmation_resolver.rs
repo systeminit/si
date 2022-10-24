@@ -37,7 +37,7 @@ async fn new(ctx: &DalContext) {
     let resolver = ConfirmationResolver::new(
         ctx,
         *prototype.id(),
-        true,
+        Some(true),
         None,
         vec![action.clone()],
         FuncId::NONE,
@@ -46,7 +46,7 @@ async fn new(ctx: &DalContext) {
     )
     .await
     .expect("unable to create confirmation resolver");
-    assert!(resolver.success());
+    assert_eq!(resolver.success(), Some(&true));
     assert_eq!(resolver.message(), None);
     assert_eq!(
         resolver
@@ -80,7 +80,7 @@ async fn find_for_prototype(ctx: &DalContext) {
         ConfirmationResolver::find_for_prototype(ctx, prototype.id(), context.clone())
             .await
             .expect("unable to find for prototype"),
-        Vec::new()
+        None,
     );
 
     let resolver = prototype
@@ -88,7 +88,7 @@ async fn find_for_prototype(ctx: &DalContext) {
         .await
         .expect("failed to run prototype");
     assert_eq!(
-        vec![resolver],
+        Some(resolver),
         ConfirmationResolver::find_for_prototype(ctx, prototype.id(), context)
             .await
             .expect("unable to find for prototype")

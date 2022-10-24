@@ -12,11 +12,14 @@ import { useAuthStore } from "@/store/auth.store";
 import { ResourceStatus } from "@/api/sdf/dal/resource";
 import { useResourcesStore } from "../resources.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
-import { useChangeSetsStore } from "../change_sets.store";
 
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 
 export type FixId = number;
+export type Confirmation = {
+  id: FixId;
+  status: "running" | "finished";
+}
 export type Fix = {
   id: FixId;
   name: string;
@@ -64,6 +67,7 @@ export const useFixesStore = () => {
   return addStoreHooks(
     defineStore(`w${workspaceId || "NONE"}/fixes`, {
       state: () => ({
+        confirmations: [] as Array<Confirmation>,
         fixes: [] as Array<Fix>,
         fixBatchIdsByFixId: {} as Record<FixId, FixBatchId>,
         fixBatchesById: {} as Record<FixBatchId, FixBatch>,
@@ -111,26 +115,30 @@ export const useFixesStore = () => {
         },
       },
       actions: {
+        async LOAD_CONFIRMATIONS() {
+          this.populatingFixes = true;
+
+          return new ApiRequest<Array<Confirmation>>({
+            url: "/fix/confirmations",
+            params: { visibility_change_set_pk: -1 },
+            onSuccess: (response) => {
+              this.confirmations = response;
+              this.populatingFixes = response.length === 0 || response.some((c) => c.status === "running");
+            },
+          });
+        },
         async LOAD_FIXES() {
-          const changeSetStore = useChangeSetsStore();
-          const selectedChangeSetId = changeSetStore.selectedChangeSetId;
-          const visibility: Visibility = {
-            visibility_change_set_pk: selectedChangeSetId ?? -1,
-          };
+          this.runningFixBatch = undefined; // TODO: backend should tell us that
           return new ApiRequest<Array<Fix>>({
             url: "/fix/list",
-            params: { ...visibility },
+            params: { visibility_change_set_pk: -1 },
             onSuccess: (response) => {
               this.fixes = response;
             },
           });
         },
         async EXECUTE_FIXES(fixes: Array<Fix>) {
-          const changeSetStore = useChangeSetsStore();
-          const selectedChangeSetId = changeSetStore.selectedChangeSetId;
-          const visibility: Visibility = {
-            visibility_change_set_pk: selectedChangeSetId ?? -1,
-          };
+          this.runningFixBatch = -1; // TODO: have an actual FixBatch related to this run in the backend
 
           return new ApiRequest({
             method: "post",
@@ -140,7 +148,7 @@ export const useFixesStore = () => {
                 componentId: fix.componentId,
                 actionName: fix.recommendation,
               })),
-              ...visibility,
+              visibility_change_set_pk: -1,
             },
             url: "/fix/run",
             onSuccess: (response) => {},
@@ -222,13 +230,15 @@ export const useFixesStore = () => {
       async onActivated() {
         const resourcesStore = useResourcesStore();
         await resourcesStore.generateMockResources();
-        await this.LOAD_FIXES();
+        this.LOAD_FIXES();
+        this.LOAD_CONFIRMATIONS();
 
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `workspace/${workspaceId}/head`, [
           {
             eventType: "ConfirmationStatusUpdate",
             callback: (update) => {
+              this.LOAD_CONFIRMATIONS(); // we could be smarter with this
               if (update.status === "success" || update.status === "failure" || update.status === "error") this.LOAD_FIXES();
             },
           },

@@ -151,7 +151,7 @@ impl FixResolver {
         let row = ctx
             .txns()
             .pg()
-            .query_one(
+            .query_opt(
                 FIND_FOR_CONFIRMATION,
                 &[
                     ctx.read_tenancy(),
@@ -164,7 +164,7 @@ impl FixResolver {
                 ],
             )
             .await?;
-        let object = standard_model::object_from_row(row)?;
+        let object = standard_model::option_object_from_row(row)?;
         Ok(object)
     }
 

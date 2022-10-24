@@ -1,6 +1,6 @@
 use dal::{
-    qualification_resolver::UNSET_ID_VALUE, AttributeReadContext, Component, DalContext, Prop,
-    PropKind, Schema, SchemaKind, StandardModel, SystemId,
+    qualification_resolver::UNSET_ID_VALUE, Component, DalContext, Prop, PropKind, Schema,
+    SchemaKind, StandardModel,
 };
 use dal_test::{
     test,
@@ -8,7 +8,6 @@ use dal_test::{
         create_component_and_schema, create_component_for_schema_variant, create_schema,
         create_schema_variant, create_schema_variant_with_root,
     },
-    Component, DalContext, Prop, PropKind, Schema, SchemaKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;

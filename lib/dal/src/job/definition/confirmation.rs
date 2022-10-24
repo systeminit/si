@@ -112,6 +112,7 @@ impl JobConsumer for Confirmation {
             .ok_or(ConfirmationPrototypeError::NotFound(
                 self.confirmation_prototype_id,
             ))?;
+
         let (status, error_message) = match prototype
             .run(ctx, self.component_id, self.system_id)
             .await
@@ -124,16 +125,19 @@ impl JobConsumer for Confirmation {
                     schema_variant_id: resolver.context().schema_variant_id,
                     system_id: SystemId::NONE,
                 };
-                let _fix_resolver =
+                let _fix_resolver = dbg!(
                     FixResolver::upsert(ctx, WorkflowPrototypeId::NONE, *resolver.id(), context)
-                        .await?;
+                        .await
+                )?;
                 match resolver.success() {
-                    true => (ConfirmationStatus::Success, None),
-                    false => (ConfirmationStatus::Failure, None),
+                    Some(true) => (ConfirmationStatus::Success, None),
+                    Some(false) => (ConfirmationStatus::Failure, None),
+                    None => unreachable!(),
                 }
             }
             Err(e) => (ConfirmationStatus::Error, Some(format!("{e}"))),
         };
+
         WsEvent::confirmation_status_update(
             ctx,
             self.component_id,

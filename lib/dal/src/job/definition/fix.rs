@@ -177,7 +177,7 @@ impl JobConsumer for Fixes {
         } else {
             // Re-trigger confirmations and informs the frontend to re-fetch everything on head
             WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
-                .await
+                .await?
                 .publish(ctx)
                 .await?;
         }
