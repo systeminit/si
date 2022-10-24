@@ -8,28 +8,41 @@ FROM rust:$RUST_VERSION as cache
 ARG RUST_VERSION
 ARG BIN=pinga
 
-RUN apt-get update && apt-get install -y lld protobuf-compiler
+# hadolint ignore=DL3008
+RUN set -eux; \
+    apt-get update; \
+    apt-get install --yes --no-install-recommends \
+        lld \
+        protobuf-compiler \
+    ;
 WORKDIR /usr/src
 COPY . .
 
-RUN cargo build --release --bin $BIN
-RUN find . -maxdepth 1 ! -path './target' -and ! -path '.' -exec rm -rf {} \;
+RUN set -eux; \
+    cargo build --release --bin $BIN;
+
+RUN set -eux; \
+    find . -maxdepth 1 ! -path './target' -and ! -path '.' -exec rm -rf {} \;;
 
 ###########################################################################
 # Builder Stage
 ###########################################################################
+# hadolint ignore=DL3006
 FROM $BUILDER_IMAGE as builder
 ARG BIN=pinga
 
 WORKDIR /usr/src
 COPY . .
 
-RUN cargo build --release --bin $BIN
+RUN set -eux; \
+    cargo build --release --bin $BIN;
 # Create a 2-part executable which occupies less space in RAM but still links
 # to debugging information for in-production debugging
-RUN objcopy --only-keep-debug target/release/$BIN target/release/$BIN.dbg \
-  && objcopy --strip-debug target/release/$BIN \
-  && (cd target/release && objcopy --add-gnu-debuglink=$BIN.dbg $BIN)
+# hadolint ignore=DL3003
+RUN set -eux; \
+    objcopy --only-keep-debug target/release/$BIN target/release/$BIN.dbg; \
+    objcopy --strip-debug target/release/$BIN; \
+    (cd target/release && objcopy --add-gnu-debuglink=$BIN.dbg $BIN);
 
 ###########################################################################
 # Final Stage
@@ -37,9 +50,12 @@ RUN objcopy --only-keep-debug target/release/$BIN target/release/$BIN.dbg \
 FROM debian:stable-slim as final
 ARG BIN=pinga
 
-RUN useradd -ms /bin/bash app \
-  && mkdir -p {/run,/etc,/usr/local/etc,/home/app/.confg}/$BIN \
-  && mkdir -p /run/pinga
+RUN set -eux; \
+    useradd -ms /bin/bash app; \
+    for dir in /run /etc /usr/local/etc /home/app/.confg; do \
+        mkdir -pv "$dir/$BIN"; \
+    done;
+
 WORKDIR /run/$BIN
 COPY --from=builder /usr/src/target/release/$BIN /usr/local/bin/
 COPY --from=builder /usr/src/target/release/$BIN.dbg /usr/local/bin/.debug/

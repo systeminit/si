@@ -7,36 +7,53 @@ ARG NODE_VERSION=16.13.1
 ###########################################################################
 # Cache Stage
 ###########################################################################
+# https://hub.docker.com/_/rust
 FROM rust:$RUST_VERSION as cache
 ARG RUST_VERSION
 ARG BIN=veritech
 
-RUN apt-get update && apt-get install -y lld protobuf-compiler
+# hadolint ignore=DL3008
+RUN set -eux; \
+    apt-get update; \
+    apt-get install --yes --no-install-recommends \
+        lld \
+        protobuf-compiler \
+    ;
 WORKDIR /usr/src
 COPY . .
 
-RUN cargo build --release --bin $BIN --bin cyclone
-RUN find . -maxdepth 1 ! -path './target' -and ! -path '.' -exec rm -rf {} \;
+RUN set -eux; \
+    cargo build --release --bin $BIN --bin cyclone;
+
+RUN set -eux; \
+    find . -maxdepth 1 ! -path './target' -and ! -path '.' -exec rm -rf {} \;;
 
 ###########################################################################
 # Builder Stage
 ###########################################################################
+# hadolint ignore=DL3006
 FROM $BUILDER_IMAGE as builder
 ARG BIN=veritech
 
 WORKDIR /usr/src
 COPY . .
 
-RUN cargo build --release --bin $BIN --bin cyclone
+RUN set -eux; \
+    cargo build --release --bin $BIN --bin cyclone;
+
 # Create a 2-part executable which occupies less space in RAM but still links
 # to debugging information for in-production debugging
-RUN objcopy --only-keep-debug target/release/$BIN target/release/$BIN.dbg \
-  && objcopy --strip-debug target/release/$BIN \
-  && (cd target/release && objcopy --add-gnu-debuglink=$BIN.dbg $BIN)
+# hadolint ignore=DL3003
+RUN set -eux; \
+    objcopy --only-keep-debug target/release/$BIN target/release/$BIN.dbg; \
+    objcopy --strip-debug target/release/$BIN; \
+    (cd target/release && objcopy --add-gnu-debuglink=$BIN.dbg $BIN);
 
-RUN objcopy --only-keep-debug target/release/cyclone target/release/cyclone.dbg \
-  && objcopy --strip-debug target/release/cyclone \
-  && (cd target/release && objcopy --add-gnu-debuglink=cyclone.dbg cyclone)
+# hadolint ignore=DL3003
+RUN set -eux; \
+    objcopy --only-keep-debug target/release/cyclone target/release/cyclone.dbg; \
+    objcopy --strip-debug target/release/cyclone; \
+    (cd target/release && objcopy --add-gnu-debuglink=cyclone.dbg cyclone);
 
 ###########################################################################
 # lang-js Cache Stage
@@ -45,20 +62,32 @@ FROM node:$NODE_VERSION as cache_lang_js
 ARG NODE_VERSION
 
 WORKDIR /usr/src
-COPY bin/lang-js/package.json bin/lang-js/package-lock.json .
+COPY bin/lang-js/package.json bin/lang-js/package-lock.json ./
 
-RUN npm ci
-RUN find . -maxdepth 1 ! -path './node_modules' -and ! -path '.' -exec rm -rf {} \;
+RUN set -eux; \
+    npm ci;
+
+RUN set -eux; \
+    find . \
+        -maxdepth 1 \
+        ! -path './node_modules' \
+        -and \
+        ! -path '.' \
+        -exec rm -rf {} \;;
 
 ###########################################################################
 # lang-js Builder Stage
 ###########################################################################
+# hadolint ignore=DL3006
 FROM $BUILDER_LANG_JS_IMAGE as builder_lang_js
 
 WORKDIR /usr/src
 COPY bin/lang-js .
 
-RUN env && npm run package && ls -la target
+RUN set -eux; \
+    env; \
+    npm run package; \
+    ls -la target;
 
 ###########################################################################
 # Final Stage
@@ -66,17 +95,31 @@ RUN env && npm run package && ls -la target
 FROM debian:stable-slim as final
 ARG BIN=veritech
 
-RUN useradd -ms /bin/bash app \
-  && mkdir -p {/run,/etc,/usr/local/etc,/home/app/.confg}/$BIN
-RUN apt-get update && apt-get -y install skopeo wget
-WORKDIR /tmp
+RUN set -eux; \
+    useradd -ms /bin/bash app; \
+    for dir in /run /etc /usr/local/etc /home/app/.confg; do \
+        mkdir -pv "$dir/$BIN"; \
+    done;
 
-RUN wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz \
- && tar xf kubeval-linux-amd64.tar.gz \
- && mv kubeval /usr/local/bin \
- && wget https://github.com/coreos/butane/releases/latest/download/butane-x86_64-unknown-linux-gnu -O butane \
- && chmod +x butane \
- && mv butane /usr/local/bin
+# hadolint ignore=DL3008
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        skopeo \
+        wget \
+    ; \
+    rm -rf /var/lib/apt/lists/*
+
+# hadolint ignore=DL3047
+RUN set -eux; \
+    wget -O /tmp/kubeval.tar.gz \
+        https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz; \
+    tar xvf /tmp/kubeval.tar.gz -C /usr/local/bin kubeval; \
+    rm -v /tmp/kubeval.tar.gz; \
+    wget -O /usr/local/bin/butane \
+        https://github.com/coreos/butane/releases/latest/download/butane-x86_64-unknown-linux-gnu; \
+    chmod +x /usr/local/bin/butane;
 
 WORKDIR /run/$BIN
 COPY --from=builder /usr/src/target/release/$BIN /usr/local/bin/
