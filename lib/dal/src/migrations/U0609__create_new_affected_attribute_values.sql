@@ -204,15 +204,13 @@ BEGIN
         'attribute_context_system_id',          attribute_context_system_id
     )
     FROM (
-        SELECT DISTINCT ON (id) *
-        FROM attribute_values
-        WHERE
-            in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-            AND id = this_attribute_value_id
-        ORDER BY
-            id,
-            visibility_change_set_pk DESC,
-            visibility_deleted_at DESC NULLS FIRST
+        SELECT
+            attribute_context_schema_id,
+            attribute_context_schema_variant_id,
+            attribute_context_component_id,
+            attribute_context_system_id
+        FROM attribute_values_v1(this_read_tenancy, this_visibility)
+        WHERE id = this_attribute_value_id
     ) AS av;
     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: base_attribute_context: %', base_attribute_context;
 
