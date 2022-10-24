@@ -26,7 +26,7 @@ partial-pganalyze: init
 		up -d nats pg otel faktory
 
 partial-local-pg: init
-	SI_ROOT="${MAKEPATH}/.." sh ${MAKEPATH}/scripts/push-pg-local.sh 
+	SI_ROOT="${MAKEPATH}/.." bash ${MAKEPATH}/scripts/push-pg-local.sh 
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker compose \
 			-f $(MAKEPATH)/docker-compose.yml \
