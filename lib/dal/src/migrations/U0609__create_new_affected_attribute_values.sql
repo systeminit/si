@@ -276,24 +276,6 @@ BEGIN
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: current_attribute_context(%)', current_attribute_context;
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: tmp_attribute_context(%)', tmp_attribute_context;
 
-                    SELECT DISTINCT ON (id) *
-                    INTO internal_provider
-                    FROM internal_providers
-                    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, internal_providers)
-                    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST;
-                    RAISE DEBUG 'attribute_value_create_new_affected_values_v1: InternalProvider(%)', internal_provider;
-
-                    -- FOR tmp_attribute_value IN
-                    --     SELECT DISTINCT ON (id) *
-                    --     FROM attribute_values
-                    --     WHERE
-                    --         in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-                    --         AND attribute_context_internal_provider_id = current_internal_provider_id
-                    --     ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST
-                    -- LOOP
-                    --     RAISE WARNING 'attribute_value_create_new_affected_values_v1: AttributeValue(%)', tmp_attribute_value;
-                    -- END LOOP;
-
                     -- TODO Looks like we've got a mismatch between some Prop setup, and some InternalProvider setup, where we're setting some things specific to Prop only, and the InternalProvider value only existing starting at the SchemaVariant level is causing an issue.
                     -- Grab the most specific AttributeValue that we already have for this InternalProvider
                     SELECT DISTINCT ON (attribute_context_internal_provider_id) av.*
