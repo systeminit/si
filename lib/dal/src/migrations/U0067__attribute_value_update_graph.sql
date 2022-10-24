@@ -63,16 +63,9 @@ BEGIN
                 -- need to consider them as needing an update.
                 SELECT array_agg(id)
                 INTO tmp_record_ids
-                FROM (
-                    SELECT DISTINCT ON (id) id
-                    FROM attribute_values
-                    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
-                          AND sealed_proxy = FALSE
-                          AND proxy_for_attribute_value_id = attribute_value.id
-                    ORDER BY id,
-                             visibility_change_set_pk DESC,
-                             visibility_deleted_at DESC NULLS FIRST
-                ) AS proxy_ids;
+                FROM attribute_values_v1(this_tenancy, this_visibility)
+                WHERE sealed_proxy = FALSE
+                    AND proxy_for_attribute_value_id = attribute_value.id;
 
                 IF FOUND THEN
                     RAISE DEBUG 'attribute_value_affected_graph_v1: Found unsealed proxies: %', tmp_record_ids;
