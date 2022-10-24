@@ -221,16 +221,10 @@ BEGIN
         seen_attribute_value_ids := array_cat(seen_attribute_value_ids, current_attribute_value_ids);
 
         FOREACH current_attribute_value_id IN ARRAY current_attribute_value_ids LOOP
-            SELECT DISTINCT ON (id) *
+            SELECT *
             INTO STRICT source_attribute_value
-            FROM attribute_values
-            WHERE
-                in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-                AND id = current_attribute_value_id
-            ORDER BY
-                id,
-                visibility_change_set_pk DESC,
-                visibility_deleted_at DESC NULLS FIRST;
+            FROM attribute_values_v1(this_read_tenancy, this_visibility)
+            WHERE id = current_attribute_value_id;
             RAISE DEBUG 'attribute_value_create_new_affected_values_v1: source_attribute_value: %', source_attribute_value;
 
             -- The base_attribute_context should take precedence for everything in the AttributeContext
