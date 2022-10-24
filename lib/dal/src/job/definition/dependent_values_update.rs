@@ -2,6 +2,7 @@ use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 use tokio::task::JoinSet;
 
 use crate::{
@@ -105,6 +106,10 @@ impl JobConsumer for DependentValuesUpdate {
         for (_, val) in dependency_graph.iter_mut() {
             val.retain(|&id| id != self.attribute_value_id);
         }
+        info!(
+            "DependentValuesUpdate for {:?}: dependency_graph {:?}",
+            self.attribute_value_id, &dependency_graph
+        );
 
         let mut update_tasks = JoinSet::new();
 
@@ -176,8 +181,8 @@ impl JobConsumer for DependentValuesUpdate {
         WsEvent::change_set_written(ctx).publish(ctx).await?;
 
         let elapsed_time = now.elapsed();
-        println!(
-            "DependentValuesUpdate for AttributeValue({}) took {:?}",
+        info!(
+            "DependentValuesUpdate for {:?} took {:?}",
             &self.attribute_value_id, elapsed_time
         );
 
@@ -191,7 +196,14 @@ async fn update_value(
     ctx: DalContext,
     mut attribute_value: AttributeValue,
 ) -> AttributeValueResult<AttributeValueId> {
+    info!("DependentValueUpdate {:?}: START", attribute_value.id());
+    let start = std::time::Instant::now();
     attribute_value.update_from_prototype_function(&ctx).await?;
+    info!(
+        "DependentValueUpdate {:?}: DONE {:?}",
+        attribute_value.id(),
+        start.elapsed()
+    );
 
     Ok(*attribute_value.id())
 }

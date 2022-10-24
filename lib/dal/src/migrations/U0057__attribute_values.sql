@@ -126,23 +126,3 @@ AS $$
         record_to_check.attribute_context_system_id
     )
 $$;
-
-CREATE OR REPLACE FUNCTION attribute_values_v1(
-    this_read_tenancy jsonb,
-    this_visibility   jsonb
-)
-RETURNS SETOF attribute_values
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-CALLED ON NULL INPUT
-AS $$
-    SELECT DISTINCT ON (id)
-        attribute_values.*
-    FROM attribute_values
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-    ORDER BY
-        id,
-        visibility_change_set_pk DESC,
-        visibility_deleted_at DESC NULLS FIRST
-$$;

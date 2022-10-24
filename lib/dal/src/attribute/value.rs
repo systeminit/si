@@ -879,7 +879,7 @@ impl AttributeValue {
         &mut self,
         ctx: &DalContext,
     ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
-        println!("AttributeValue.dependent_value_graph(): {:?}", &self);
+        info!("AttributeValue.dependent_value_graph(): {:?}", &self);
         let total_start = std::time::Instant::now();
 
         let _rows = ctx
@@ -894,7 +894,7 @@ impl AttributeValue {
                 ],
             )
             .await?;
-        println!(
+        info!(
             "AttributeValue.dependent_value_graph(): Create new affected took {:?}",
             total_start.elapsed()
         );
@@ -908,7 +908,7 @@ impl AttributeValue {
                 &[&ctx.read_tenancy(), ctx.visibility(), &self.id],
             )
             .await?;
-        println!(
+        info!(
             "AttributeValue.dependent_value_graph(): Graph query took {:?} (total elapsed {:?}",
             section_start.elapsed(),
             total_start.elapsed(),
@@ -923,7 +923,7 @@ impl AttributeValue {
             result.insert(attr_val_id, dependencies);
         }
 
-        println!(
+        info!(
             "AttributeValue.dependent_value_graph(): Total elapsed {:?}",
             total_start.elapsed()
         );
@@ -974,6 +974,12 @@ impl AttributeValue {
                     .await
                     .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
 
+                info!(
+                        "update_from_prototype_function({:?}) took {:?} InternalProvider is internal consumer",
+                        self.id,
+                        update_start_time.elapsed()
+                    );
+
                 return Ok(());
             }
         }
@@ -1017,11 +1023,18 @@ impl AttributeValue {
                 }
             };
         }
+        info!("update_from_prototype_function({:?}) AttributePrototype.argument_values({:?}) took {:?}", self.id, self.context, update_start_time.elapsed());
         // If we haven't gathered up any arguments, then that means that this attribute value does not depend on any external input,
         // and should not change if re-evaluated.
         //
         // TODO: Make sure that not re-evaulating functions with no input is the right product decision. For now this is to handle things like `si:setString`, as there's not really anything to re-evaluate.
         if func_binding_args.is_empty() {
+            info!(
+                "update_from_prototype_function({:?}) took {:?} func_binding has no args",
+                self.id,
+                update_start_time.elapsed()
+            );
+
             return Ok(());
         }
 
@@ -1033,7 +1046,7 @@ impl AttributeValue {
                 attribute_prototype.func_id(),
             )
             .await?;
-        println!(
+        info!(
             "update_from_prototype_function({:?}): Func execution took {:?}",
             self.id,
             execution_start.elapsed()
@@ -1096,7 +1109,7 @@ impl AttributeValue {
             .await;
         }
 
-        println!(
+        info!(
             "update_from_prototype_function({:?}) took {:?}",
             self.id,
             update_start_time.elapsed()
