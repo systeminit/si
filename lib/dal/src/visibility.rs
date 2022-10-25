@@ -87,7 +87,7 @@ impl Visibility {
             .txns()
             .pg()
             .query_one(
-                "SELECT result FROM is_visible_v1($1, $2, $3)",
+                "SELECT is_visible_v1($1, $2, $3) AS result",
                 &[&check_visibility, &self.change_set_pk, &self.deleted_at],
             )
             .await?;

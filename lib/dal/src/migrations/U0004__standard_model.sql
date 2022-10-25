@@ -37,23 +37,23 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id)' ||
-                                '   %1$I.id,' ||
-                                '   %1$I.visibility_change_set_pk,' ||
-                                '   %1$I.visibility_deleted_at,' ||
-                                '   row_to_json(%1$I.*) AS object' ||
-                                ' FROM %1$I' ||
-                                ' WHERE %1$I.id = %2$L' ||
-                                '  AND in_tenancy_v1(%3$L, ' ||
-                                '                    %1$I.tenancy_universal, ' ||
-                                '                    %1$I.tenancy_billing_account_ids,' ||
-                                '                    %1$I.tenancy_organization_ids,' ||
-                                '                    %1$I.tenancy_workspace_ids)' ||
-                                '  AND is_visible_v1(%4$L,' ||
-                                '                    %1$I.visibility_change_set_pk,' ||
-                                '                    %1$I.visibility_deleted_at)' ||
-                                ' ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST' ||
-                                ' LIMIT 1'
+    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id) '
+                                '   %1$I.id, '
+                                '   %1$I.visibility_change_set_pk, '
+                                '   %1$I.visibility_deleted_at, '
+                                '   row_to_json(%1$I.*) AS object '
+                                ' FROM %1$I '
+                                ' WHERE %1$I.id = %2$L '
+                                '  AND in_tenancy_v1(%3$L, '
+                                '                    %1$I.tenancy_universal, '
+                                '                    %1$I.tenancy_billing_account_ids, '
+                                '                    %1$I.tenancy_organization_ids, '
+                                '                    %1$I.tenancy_workspace_ids) '
+                                '  AND is_visible_v1(%4$L, '
+                                '                    %1$I.visibility_change_set_pk, '
+                                '                    %1$I.visibility_deleted_at) '
+                                ' ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                                ' LIMIT 1 '
         , this_table, this_id, this_tenancy, this_visibility);
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
@@ -72,21 +72,21 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id)' ||
-                                '   %1$I.id,' ||
-                                '   %1$I.visibility_change_set_pk,' ||
-                                '   row_to_json(%1$I.*) AS object' ||
-                                ' FROM %1$I' ||
-                                ' WHERE %1$I.%4$I = %5$L' ||
-                                '  AND in_tenancy_v1(%2$L, ' ||
-                                '                    %1$I.tenancy_universal, ' ||
-                                '                    %1$I.tenancy_billing_account_ids,' ||
-                                '                    %1$I.tenancy_organization_ids,' ||
-                                '                    %1$I.tenancy_workspace_ids)' ||
-                                '  AND is_visible_v1(%3$L,' ||
-                                '                    %1$I.visibility_change_set_pk,' ||
-                                '                    %1$I.visibility_deleted_at)' ||
-                                ' ORDER BY id, visibility_change_set_pk DESC'
+    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id) '
+                                '   %1$I.id, '
+                                '   %1$I.visibility_change_set_pk, '
+                                '   row_to_json(%1$I.*) AS object '
+                                ' FROM %1$I '
+                                ' WHERE %1$I.%4$I = %5$L '
+                                '  AND in_tenancy_v1(%2$L, '
+                                '                    %1$I.tenancy_universal, '
+                                '                    %1$I.tenancy_billing_account_ids, '
+                                '                    %1$I.tenancy_organization_ids, '
+                                '                    %1$I.tenancy_workspace_ids) '
+                                '  AND is_visible_v1(%3$L, '
+                                '                    %1$I.visibility_change_set_pk, '
+                                '                    %1$I.visibility_deleted_at) '
+                                ' ORDER BY id, visibility_change_set_pk DESC '
         , this_table, this_tenancy, this_visibility, this_attr_name, this_value);
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
@@ -105,21 +105,21 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id)' ||
-                                '   %1$I.id,' ||
-                                '   %1$I.visibility_change_set_pk,' ||
-                                '   row_to_json(%1$I.*) AS object' ||
-                                ' FROM %1$I' ||
-                                ' WHERE %1$I.%4$I = ANY (%5$L)' ||
-                                '  AND in_tenancy_v1(%2$L, ' ||
-                                '                    %1$I.tenancy_universal, ' ||
-                                '                    %1$I.tenancy_billing_account_ids,' ||
-                                '                    %1$I.tenancy_organization_ids,' ||
-                                '                    %1$I.tenancy_workspace_ids)' ||
-                                '  AND is_visible_v1(%3$L,' ||
-                                '                    %1$I.visibility_change_set_pk,' ||
-                                '                    %1$I.visibility_deleted_at)' ||
-                                ' ORDER BY id, visibility_change_set_pk DESC'
+    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id) '
+                                '   %1$I.id, '
+                                '   %1$I.visibility_change_set_pk, '
+                                '   row_to_json(%1$I.*) AS object '
+                                ' FROM %1$I '
+                                ' WHERE %1$I.%4$I = ANY (%5$L) '
+                                '  AND in_tenancy_v1(%2$L, '
+                                '                    %1$I.tenancy_universal, '
+                                '                    %1$I.tenancy_billing_account_ids, '
+                                '                    %1$I.tenancy_organization_ids, '
+                                '                    %1$I.tenancy_workspace_ids) '
+                                '  AND is_visible_v1(%3$L, '
+                                '                    %1$I.visibility_change_set_pk, '
+                                '                    %1$I.visibility_deleted_at) '
+                                ' ORDER BY id, visibility_change_set_pk DESC '
         , this_table, this_tenancy, this_visibility, this_attr_name, this_value);
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
@@ -139,21 +139,21 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id)' ||
-                                '   %1$I.id,' ||
-                                '   %1$I.visibility_change_set_pk,' ||
-                                '   row_to_json(%1$I.*) AS object' ||
-                                ' FROM %1$I' ||
-                                ' WHERE NOT %1$I.%4$I = ANY (%5$L)' ||
-                                '  AND in_tenancy_v1(%2$L, ' ||
-                                '                    %1$I.tenancy_universal, ' ||
-                                '                    %1$I.tenancy_billing_account_ids,' ||
-                                '                    %1$I.tenancy_organization_ids,' ||
-                                '                    %1$I.tenancy_workspace_ids)' ||
-                                '  AND is_visible_v1(%3$L,' ||
-                                '                    %1$I.visibility_change_set_pk,' ||
-                                '                    %1$I.visibility_deleted_at)' ||
-                                ' ORDER BY id, visibility_change_set_pk DESC'
+    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id) '
+                                '   %1$I.id, '
+                                '   %1$I.visibility_change_set_pk, '
+                                '   row_to_json(%1$I.*) AS object '
+                                ' FROM %1$I '
+                                ' WHERE NOT %1$I.%4$I = ANY (%5$L) '
+                                '  AND in_tenancy_v1(%2$L, '
+                                '                    %1$I.tenancy_universal, '
+                                '                    %1$I.tenancy_billing_account_ids, '
+                                '                    %1$I.tenancy_organization_ids, '
+                                '                    %1$I.tenancy_workspace_ids) '
+                                '  AND is_visible_v1(%3$L, '
+                                '                    %1$I.visibility_change_set_pk, '
+                                '                    %1$I.visibility_deleted_at) '
+                                ' ORDER BY id, visibility_change_set_pk DESC '
         , this_table, this_tenancy, this_visibility, this_attr_name, this_value);
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
@@ -181,14 +181,14 @@ BEGIN
     END IF;
 
     /* First, try the update - if it works, we're all set. */
-    EXECUTE format('UPDATE %1$I SET %2$I = %6$L, updated_at = now() WHERE id = %5$L ' ||
-                   '  AND in_tenancy_v1(%3$L, ' ||
-                   '                    %1$I.tenancy_universal, ' ||
-                   '                    %1$I.tenancy_billing_account_ids,' ||
-                   '                    %1$I.tenancy_organization_ids,' ||
-                   '                    %1$I.tenancy_workspace_ids)' ||
-                   '  AND %1$I.visibility_change_set_pk = %4$L ' ||
-                   '  AND %1$I.visibility_deleted_at IS NULL ' ||
+    EXECUTE format('UPDATE %1$I SET %2$I = %6$L, updated_at = now() WHERE id = %5$L '
+                   '  AND in_tenancy_v1(%3$L, '
+                   '                    %1$I.tenancy_universal, '
+                   '                    %1$I.tenancy_billing_account_ids, '
+                   '                    %1$I.tenancy_organization_ids, '
+                   '                    %1$I.tenancy_workspace_ids) '
+                   '  AND %1$I.visibility_change_set_pk = %4$L '
+                   '  AND %1$I.visibility_deleted_at IS NULL '
                    ' RETURNING updated_at',
                    this_table,
                    this_column,
@@ -214,16 +214,16 @@ BEGIN
               AND information_schema.columns.column_name NOT IN
                   (this_column, 'visibility_change_set_pk', 'pk', 'created_at', 'updated_at')
             INTO copy_change_set_column_names;
-            EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, %3$s) ' ||
-                           ' SELECT %4$L, %5$L, %3$s FROM %1$I WHERE ' ||
-                           ' %1$I.id = %6$L' ||
-                           ' AND in_tenancy_v1(%7$L, ' ||
-                           '                   %1$I.tenancy_universal, ' ||
-                           '                   %1$I.tenancy_billing_account_ids,' ||
-                           '                   %1$I.tenancy_organization_ids,' ||
-                           '                   %1$I.tenancy_workspace_ids)' ||
-                           ' AND %1$I.visibility_change_set_pk = -1 ' ||
-                           ' AND %1$I.visibility_deleted_at IS NULL ' ||
+            EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, %3$s) '
+                           ' SELECT %4$L, %5$L, %3$s FROM %1$I WHERE '
+                           ' %1$I.id = %6$L '
+                           ' AND in_tenancy_v1(%7$L, '
+                           '                   %1$I.tenancy_universal, '
+                           '                   %1$I.tenancy_billing_account_ids, '
+                           '                   %1$I.tenancy_organization_ids, '
+                           '                   %1$I.tenancy_workspace_ids) '
+                           ' AND %1$I.visibility_change_set_pk = -1 '
+                           ' AND %1$I.visibility_deleted_at IS NULL '
                            ' RETURNING updated_at',
                            this_table,
                            this_column,
@@ -233,16 +233,16 @@ BEGIN
                            this_id,
                            this_tenancy) INTO updated_at;
         ELSE
-            EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, %3$s) ' ||
-                           ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE ' ||
-                           ' %1$I.id = %6$L' ||
-                           ' AND in_tenancy_v1(%7$L, ' ||
-                           '                   %1$I.tenancy_universal, ' ||
-                           '                   %1$I.tenancy_billing_account_ids,' ||
-                           '                   %1$I.tenancy_organization_ids,' ||
-                           '                   %1$I.tenancy_workspace_ids)' ||
-                           ' AND %1$I.visibility_change_set_pk = -1 ' ||
-                           ' AND %1$I.visibility_deleted_at IS NULL ' ||
+            EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, %3$s) '
+                           ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE '
+                           ' %1$I.id = %6$L '
+                           ' AND in_tenancy_v1(%7$L, '
+                           '                   %1$I.tenancy_universal, '
+                           '                   %1$I.tenancy_billing_account_ids, '
+                           '                   %1$I.tenancy_organization_ids, '
+                           '                   %1$I.tenancy_workspace_ids) '
+                           ' AND %1$I.visibility_change_set_pk = -1 '
+                           ' AND %1$I.visibility_deleted_at IS NULL '
                            ' RETURNING updated_at',
                            this_table,
                            this_column,
@@ -360,13 +360,13 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    EXECUTE format('UPDATE %1$I SET visibility_deleted_at = now(), updated_at = now() ' ||
-                   'WHERE pk = %3$L ' ||
-                   '  AND in_tenancy_v1(%2$L, ' ||
-                   '                    %1$I.tenancy_universal, ' ||
-                   '                    %1$I.tenancy_billing_account_ids,' ||
-                   '                    %1$I.tenancy_organization_ids,' ||
-                   '                    %1$I.tenancy_workspace_ids)' ||
+    EXECUTE format('UPDATE %1$I SET visibility_deleted_at = now(), updated_at = now() '
+                   'WHERE pk = %3$L '
+                   '  AND in_tenancy_v1(%2$L, '
+                   '                    %1$I.tenancy_universal, '
+                   '                    %1$I.tenancy_billing_account_ids, '
+                   '                    %1$I.tenancy_organization_ids, '
+                   '                    %1$I.tenancy_workspace_ids) '
                    ' RETURNING updated_at',
                    this_table, this_tenancy, this_pk) INTO updated_at;
 END;
@@ -382,13 +382,13 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    EXECUTE format('UPDATE %1$I SET visibility_deleted_at = NULL, updated_at = now() ' ||
-                   'WHERE pk = %3$L ' ||
-                   '  AND in_tenancy_v1(%2$L, ' ||
-                   '                    %1$I.tenancy_universal, ' ||
-                   '                    %1$I.tenancy_billing_account_ids,' ||
-                   '                    %1$I.tenancy_organization_ids,' ||
-                   '                    %1$I.tenancy_workspace_ids)' ||
+    EXECUTE format('UPDATE %1$I SET visibility_deleted_at = NULL, updated_at = now() '
+                   'WHERE pk = %3$L '
+                   '  AND in_tenancy_v1(%2$L, '
+                   '                    %1$I.tenancy_universal, '
+                   '                    %1$I.tenancy_billing_account_ids, '
+                   '                    %1$I.tenancy_organization_ids, '
+                   '                    %1$I.tenancy_workspace_ids) '
                    ' RETURNING updated_at',
                    this_table, this_tenancy, this_pk) INTO updated_at;
 END;
@@ -429,24 +429,24 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id)' ||
-                                '   %1$I.id,' ||
-                                '   %1$I.visibility_change_set_pk,' ||
-                                '   %1$I.visibility_deleted_at,' ||
-                                '   row_to_json(%1$I.*) AS object' ||
-                                ' FROM %1$I ' ||
-                                'WHERE ' ||
-                                '  in_tenancy_v1(%2$L, ' ||
-                                '                    %1$I.tenancy_universal, ' ||
-                                '                    %1$I.tenancy_billing_account_ids,' ||
-                                '                    %1$I.tenancy_organization_ids,' ||
-                                '                    %1$I.tenancy_workspace_ids)' ||
-                                '  AND is_visible_v1(%3$L,' ||
-                                '                    %1$I.visibility_change_set_pk,' ||
-                                '                    %1$I.visibility_deleted_at)' ||
-                                ' ORDER BY id,' ||
-                                '          visibility_change_set_pk DESC,' ||
-                                '          visibility_deleted_at DESC NULLS FIRST'
+    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id) '
+                                '   %1$I.id, '
+                                '   %1$I.visibility_change_set_pk, '
+                                '   %1$I.visibility_deleted_at, '
+                                '   row_to_json(%1$I.*) AS object '
+                                ' FROM %1$I '
+                                'WHERE '
+                                '  in_tenancy_v1(%2$L, '
+                                '                    %1$I.tenancy_universal, '
+                                '                    %1$I.tenancy_billing_account_ids, '
+                                '                    %1$I.tenancy_organization_ids, '
+                                '                    %1$I.tenancy_workspace_ids) '
+                                '  AND is_visible_v1(%3$L, '
+                                '                    %1$I.visibility_change_set_pk, '
+                                '                    %1$I.visibility_deleted_at) '
+                                ' ORDER BY id, '
+                                '          visibility_change_set_pk DESC, '
+                                '          visibility_deleted_at DESC NULLS FIRST '
         , this_table, this_tenancy, this_visibility);
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
@@ -469,34 +469,34 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%5$I.id)' ||
-                                '   %5$I.id,' ||
-                                '   %5$I.visibility_change_set_pk,' ||
-                                '   %5$I.visibility_deleted_at,' ||
-                                '   row_to_json(%5$I.*) AS object' ||
-                                ' FROM %1$I' ||
-                                ' INNER JOIN %5$I ON %5$I.id = %1$I.belongs_to_id ' ||
-                                '  AND in_tenancy_v1(%2$L, ' ||
-                                '                    %5$I.tenancy_universal, ' ||
-                                '                    %5$I.tenancy_billing_account_ids,' ||
-                                '                    %5$I.tenancy_organization_ids,' ||
-                                '                    %5$I.tenancy_workspace_ids)' ||
-                                '  AND is_visible_v1(%3$L,' ||
-                                '                    %5$I.visibility_change_set_pk,' ||
-                                '                    %5$I.visibility_deleted_at)' ||
-                                ' WHERE %1$I.object_id = %4$L' ||
-                                '  AND in_tenancy_v1(%2$L, ' ||
-                                '                    %1$I.tenancy_universal, ' ||
-                                '                    %1$I.tenancy_billing_account_ids,' ||
-                                '                    %1$I.tenancy_organization_ids,' ||
-                                '                    %1$I.tenancy_workspace_ids)' ||
-                                '  AND is_visible_v1(%3$L,' ||
-                                '                    %1$I.visibility_change_set_pk,' ||
-                                '                    %1$I.visibility_deleted_at)' ||
-                                ' ORDER BY %5$I.id,' ||
-                                '          %5$I.visibility_change_set_pk DESC,' ||
-                                '          %5$I.visibility_deleted_at DESC NULLS FIRST' ||
-                                ' LIMIT 1'
+    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%5$I.id) '
+                                '   %5$I.id, '
+                                '   %5$I.visibility_change_set_pk, '
+                                '   %5$I.visibility_deleted_at, '
+                                '   row_to_json(%5$I.*) AS object '
+                                ' FROM %1$I '
+                                ' INNER JOIN %5$I ON %5$I.id = %1$I.belongs_to_id '
+                                '  AND in_tenancy_v1(%2$L, '
+                                '                    %5$I.tenancy_universal, '
+                                '                    %5$I.tenancy_billing_account_ids, '
+                                '                    %5$I.tenancy_organization_ids, '
+                                '                    %5$I.tenancy_workspace_ids) '
+                                '  AND is_visible_v1(%3$L, '
+                                '                    %5$I.visibility_change_set_pk, '
+                                '                    %5$I.visibility_deleted_at) '
+                                ' WHERE %1$I.object_id = %4$L '
+                                '  AND in_tenancy_v1(%2$L, '
+                                '                    %1$I.tenancy_universal, '
+                                '                    %1$I.tenancy_billing_account_ids, '
+                                '                    %1$I.tenancy_organization_ids, '
+                                '                    %1$I.tenancy_workspace_ids) '
+                                '  AND is_visible_v1(%3$L, '
+                                '                    %1$I.visibility_change_set_pk, '
+                                '                    %1$I.visibility_deleted_at) '
+                                ' ORDER BY %5$I.id, '
+                                '          %5$I.visibility_change_set_pk DESC, '
+                                '          %5$I.visibility_deleted_at DESC NULLS FIRST '
+                                ' LIMIT 1 '
         , this_table, this_tenancy, this_visibility, this_object_id, this_retrieve_table);
 END;
 $$ LANGUAGE PLPGSQL STABLE;
@@ -520,33 +520,33 @@ DECLARE
     query      text;
 BEGIN
     this_table := this_table_text::regclass;
-    query := format('SELECT DISTINCT ON (%1$I.id)' ||
-                    '   %1$I.id,' ||
-                    '   %1$I.visibility_change_set_pk,' ||
-                    '   %1$I.visibility_deleted_at,' ||
-                    '   row_to_json(%5$I.*) AS object' ||
-                    ' FROM %1$I' ||
-                    ' INNER JOIN %5$I ON %5$I.id = %1$I.object_id ' ||
-                    '  AND in_tenancy_v1(%2$L, ' ||
-                    '                    %5$I.tenancy_universal, ' ||
-                    '                    %5$I.tenancy_billing_account_ids,' ||
-                    '                    %5$I.tenancy_organization_ids,' ||
-                    '                    %5$I.tenancy_workspace_ids)' ||
-                    '  AND is_visible_v1(%3$L,' ||
-                    '                    %5$I.visibility_change_set_pk,' ||
-                    '                    %5$I.visibility_deleted_at)' ||
-                    ' WHERE %1$I.belongs_to_id = %4$L' ||
-                    '  AND in_tenancy_v1(%2$L, ' ||
-                    '                    %1$I.tenancy_universal, ' ||
-                    '                    %1$I.tenancy_billing_account_ids,' ||
-                    '                    %1$I.tenancy_organization_ids,' ||
-                    '                    %1$I.tenancy_workspace_ids)' ||
-                    '  AND is_visible_v1(%3$L,' ||
-                    '                    %1$I.visibility_change_set_pk,' ||
-                    '                    %1$I.visibility_deleted_at)' ||
-                    ' ORDER BY id,' ||
-                    '          visibility_change_set_pk DESC,' ||
-                    '          visibility_deleted_at DESC NULLS FIRST'
+    query := format('SELECT DISTINCT ON (%1$I.id) '
+                    '   %1$I.id, '
+                    '   %1$I.visibility_change_set_pk, '
+                    '   %1$I.visibility_deleted_at, '
+                    '   row_to_json(%5$I.*) AS object '
+                    ' FROM %1$I '
+                    ' INNER JOIN %5$I ON %5$I.id = %1$I.object_id '
+                    '  AND in_tenancy_v1(%2$L, '
+                    '                    %5$I.tenancy_universal, '
+                    '                    %5$I.tenancy_billing_account_ids, '
+                    '                    %5$I.tenancy_organization_ids, '
+                    '                    %5$I.tenancy_workspace_ids) '
+                    '  AND is_visible_v1(%3$L, '
+                    '                    %5$I.visibility_change_set_pk, '
+                    '                    %5$I.visibility_deleted_at) '
+                    ' WHERE %1$I.belongs_to_id = %4$L '
+                    '  AND in_tenancy_v1(%2$L, '
+                    '                    %1$I.tenancy_universal, '
+                    '                    %1$I.tenancy_billing_account_ids, '
+                    '                    %1$I.tenancy_organization_ids, '
+                    '                    %1$I.tenancy_workspace_ids) '
+                    '  AND is_visible_v1(%3$L, '
+                    '                    %1$I.visibility_change_set_pk, '
+                    '                    %1$I.visibility_deleted_at) '
+                    ' ORDER BY id, '
+                    '          visibility_change_set_pk DESC, '
+                    '          visibility_deleted_at DESC NULLS FIRST '
         , this_table, this_tenancy, this_visibility, this_belongs_to_id, this_retrieve_table);
 
     RAISE DEBUG 'has_many query: %', query;
@@ -594,28 +594,28 @@ BEGIN
     END IF;
 
     this_table := this_table_text::regclass;
-    query := format('SELECT DISTINCT ON (%1$I.id)' ||
-                    '   %1$I.id,' ||
-                    '   %1$I.visibility_change_set_pk,' ||
-                    '   %1$I.visibility_deleted_at,' ||
-                    '   row_to_json(%5$I.*) AS object' ||
-                    ' FROM %1$I' ||
-                    ' INNER JOIN %5$I ON %5$I.id = %1$I.%6$I ' ||
-                    '  AND is_visible_v1(%3$L,' ||
-                    '                    %5$I.visibility_change_set_pk,' ||
-                    '                    %5$I.visibility_deleted_at)' ||
-                    ' WHERE %1$I.%7$I = %4$L' ||
-                    '  AND in_tenancy_v1(%2$L, ' ||
-                    '                    %1$I.tenancy_universal, ' ||
-                    '                    %1$I.tenancy_billing_account_ids,' ||
-                    '                    %1$I.tenancy_organization_ids,' ||
-                    '                    %1$I.tenancy_workspace_ids)' ||
-                    '  AND is_visible_v1(%3$L,' ||
-                    '                    %1$I.visibility_change_set_pk,' ||
-                    '                    %1$I.visibility_deleted_at)' ||
-                    ' ORDER BY id,' ||
-                    '          visibility_change_set_pk DESC,' ||
-                    '          visibility_deleted_at DESC NULLS FIRST'
+    query := format('SELECT DISTINCT ON (%1$I.id) '
+                    '   %1$I.id, '
+                    '   %1$I.visibility_change_set_pk, '
+                    '   %1$I.visibility_deleted_at, '
+                    '   row_to_json(%5$I.*) AS object '
+                    ' FROM %1$I '
+                    ' INNER JOIN %5$I ON %5$I.id = %1$I.%6$I '
+                    '  AND is_visible_v1(%3$L, '
+                    '                    %5$I.visibility_change_set_pk, '
+                    '                    %5$I.visibility_deleted_at) '
+                    ' WHERE %1$I.%7$I = %4$L '
+                    '  AND in_tenancy_v1(%2$L, '
+                    '                    %1$I.tenancy_universal, '
+                    '                    %1$I.tenancy_billing_account_ids, '
+                    '                    %1$I.tenancy_organization_ids, '
+                    '                    %1$I.tenancy_workspace_ids) '
+                    '  AND is_visible_v1(%3$L, '
+                    '                    %1$I.visibility_change_set_pk, '
+                    '                    %1$I.visibility_deleted_at) '
+                    ' ORDER BY id, '
+                    '          visibility_change_set_pk DESC, '
+                    '          visibility_deleted_at DESC NULLS FIRST '
         , this_table, this_tenancy, this_visibility, this_query_object_id, this_return_table, this_join_column,
                     this_query_column);
 
@@ -648,42 +648,110 @@ $$
 DECLARE
     create_table text;
 BEGIN
-    create_table := format('CREATE TABLE %1$I (' ||
-                           ' pk                          bigserial PRIMARY KEY, ' ||
-                           ' id                          bigserial                NOT NULL, ' ||
-                           ' object_id                   bigint                   NOT NULL, ' ||
-                           ' belongs_to_id               bigint                   NOT NULL, ' ||
-                           ' tenancy_universal           bool                     NOT NULL, ' ||
-                           ' tenancy_billing_account_ids bigint[], ' ||
-                           ' tenancy_organization_ids    bigint[], ' ||
-                           ' tenancy_workspace_ids       bigint[], ' ||
-                           ' visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1, ' ||
-                           ' visibility_deleted_at       timestamp with time zone, ' ||
-                           ' created_at                  timestamp with time zone NOT NULL DEFAULT NOW(), ' ||
-                           ' updated_at                  timestamp with time zone NOT NULL DEFAULT NOW() ' ||
-                           '); ' ||
-                           'ALTER TABLE %1$I ' ||
-                           '     ADD CONSTRAINT %1$s_visibility UNIQUE (id, visibility_change_set_pk,visibility_deleted_at);'
-                               ' ALTER TABLE %1$I '
-                               '     ADD CONSTRAINT %1$s_valid_combinations CHECK (' ||
-                           '             (visibility_change_set_pk = -1) ' ||
-                           '             OR ' ||
-                           '             (visibility_change_set_pk > 0) ' ||
-                           '         ); ' ||
-                           ' ALTER TABLE %1$I ' ||
-                           '     ADD CONSTRAINT %1$s_object_id_is_valid ' ||
-                           '         CHECK (check_id_in_table_v1(%2$L, object_id)); ' ||
-                           ' ALTER TABLE %1$I ' ||
-                           '     ADD CONSTRAINT %1$s_belongs_to_id_is_valid ' ||
-                           '         CHECK (check_id_in_table_v1(%3$L, belongs_to_id));' ||
-                           ' CREATE UNIQUE INDEX %1$s_only_one_live ON %1$I (id, ' ||
-                           '                                         visibility_change_set_pk, ' ||
-                           '                                         (visibility_deleted_at IS NULL)) ' ||
-                           '                     WHERE visibility_deleted_at IS NULL;' ||
-                           ' CREATE UNIQUE INDEX %1$s_single_association ON %1$I (object_id, ' ||
-                           '                                         visibility_change_set_pk, ' ||
-                           '                                         (visibility_deleted_at IS NULL)) ' ||
-                           '                     WHERE visibility_deleted_at IS NULL',
+    create_table := format('CREATE TABLE %1$I ( '
+                           ' pk                          bigserial PRIMARY KEY, '
+                           ' id                          bigserial                NOT NULL, '
+                           ' object_id                   bigint                   NOT NULL, '
+                           ' belongs_to_id               bigint                   NOT NULL, '
+                           ' tenancy_universal           bool                     NOT NULL, '
+                           ' tenancy_billing_account_ids bigint[], '
+                           ' tenancy_organization_ids    bigint[], '
+                           ' tenancy_workspace_ids       bigint[], '
+                           ' visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1, '
+                           ' visibility_deleted_at       timestamp with time zone, '
+                           ' created_at                  timestamp with time zone NOT NULL DEFAULT NOW(), '
+                           ' updated_at                  timestamp with time zone NOT NULL DEFAULT NOW() '
+                           '); '
+                           'ALTER TABLE %1$I '
+                           '    ADD CONSTRAINT %1$s_visibility UNIQUE (id, visibility_change_set_pk,visibility_deleted_at); '
+                           'ALTER TABLE %1$I '
+                           '    ADD CONSTRAINT %1$s_valid_combinations CHECK ( '
+                           '        (visibility_change_set_pk = -1) '
+                           '        OR '
+                           '        (visibility_change_set_pk > 0) '
+                           '    ); '
+                           'ALTER TABLE %1$I '
+                           '    ADD CONSTRAINT %1$s_object_id_is_valid '
+                           '        CHECK (check_id_in_table_v1(%2$L, object_id)); '
+                           'ALTER TABLE %1$I '
+                           '    ADD CONSTRAINT %1$s_belongs_to_id_is_valid '
+                           '        CHECK (check_id_in_table_v1(%3$L, belongs_to_id)); '
+                           'CREATE UNIQUE INDEX %1$s_only_one_live ON %1$I (id, '
+                           '                                        visibility_change_set_pk, '
+                           '                                        (visibility_deleted_at IS NULL)) '
+                           '                    WHERE visibility_deleted_at IS NULL; '
+                           'CREATE UNIQUE INDEX %1$s_single_association ON %1$I (object_id, '
+                           '                                        visibility_change_set_pk, '
+                           '                                        (visibility_deleted_at IS NULL)) '
+                           '                    WHERE visibility_deleted_at IS NULL; '
+                           'CREATE INDEX ON %1$I (object_id); '
+                           'CREATE INDEX ON %1$I (belongs_to_id); '
+                           'CREATE FUNCTION is_visible_v1( '
+                           '    check_visibility jsonb, '
+                           '    reference %1$I '
+                           ') '
+                           'RETURNS bool '
+                           'LANGUAGE sql '
+                           'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                           'AS $is_visible_fn$ '
+                           '    SELECT is_visible_v1( '
+                           '        check_visibility, '
+                           '        reference.visibility_change_set_pk, '
+                           '        reference.visibility_deleted_at '
+                           '    ) '
+                           '$is_visible_fn$; '
+                           'CREATE FUNCTION in_tenancy_v1( '
+                           '    read_tenancy jsonb, '
+                           '    record_to_check %1$I '
+                           ') '
+                           'RETURNS bool '
+                           'LANGUAGE sql '
+                           'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                           'AS $in_tenancy_fn$ '
+                           '    SELECT in_tenancy_v1( '
+                           '        read_tenancy, '
+                           '        record_to_check.tenancy_universal, '
+                           '        record_to_check.tenancy_billing_account_ids, '
+                           '        record_to_check.tenancy_organization_ids, '
+                           '        record_to_check.tenancy_workspace_ids '
+                           '    ) '
+                           '$in_tenancy_fn$; '
+                           'CREATE FUNCTION in_tenancy_and_visible_v1( '
+                           '    read_tenancy jsonb, '
+                           '    check_visibility jsonb, '
+                           '    record_to_check %1$I '
+                           ') '
+                           'RETURNS bool '
+                           'LANGUAGE sql '
+                           'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                           'AS $in_tenancy_and_visible_fn$ '
+                           '    SELECT '
+                           '        in_tenancy_v1( '
+                           '            read_tenancy, '
+                           '            record_to_check.tenancy_universal, '
+                           '            record_to_check.tenancy_billing_account_ids, '
+                           '            record_to_check.tenancy_organization_ids, '
+                           '            record_to_check.tenancy_workspace_ids '
+                           '        ) '
+                           '        AND is_visible_v1( '
+                           '            check_visibility, '
+                           '            record_to_check.visibility_change_set_pk, '
+                           '            record_to_check.visibility_deleted_at '
+                           '        ) '
+                           '$in_tenancy_and_visible_fn$; '
+                           'CREATE FUNCTION %1$I_v1 ( '
+                           '    this_read_tenancy jsonb, '
+                           '    this_visibility jsonb '
+                           ') '
+                           'RETURNS SETOF %1$I '
+                           'LANGUAGE sql '
+                           'STABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                           'AS $table_view_fn$ '
+                           '    SELECT DISTINCT ON (object_id) %1$I.* '
+                           '    FROM %1$I '
+                           '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
+                           '    ORDER BY object_id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                           '$table_view_fn$; ',
                            this_table_name,
                            this_object_table,
                            this_belongs_to_table);
@@ -698,18 +766,85 @@ $$
 DECLARE
     alter_query text;
 BEGIN
-    alter_query := format('ALTER TABLE %1$I ' ||
-                          '        ADD CONSTRAINT %1$s_visibility UNIQUE (id, visibility_change_set_pk, visibility_deleted_at); ' ||
-                          'ALTER TABLE %1$I ' ||
-                          '    ADD CONSTRAINT %1$s_visibility_valid_combinations CHECK ( ' ||
-                          '            (visibility_change_set_pk = -1) ' ||
-                          '            OR ' ||
-                          '            (visibility_change_set_pk > 0) ' ||
-                          '        ); ' ||
-                          ' CREATE UNIQUE INDEX %1$s_only_one_live ON %1$I (id, ' ||
-                          '                                         visibility_change_set_pk, ' ||
-                          '                                         (visibility_deleted_at IS NULL)) ' ||
-                          '                     WHERE visibility_deleted_at IS NULL',
+    alter_query := format('ALTER TABLE %1$I '
+                          '        ADD CONSTRAINT %1$s_visibility UNIQUE (id, visibility_change_set_pk, visibility_deleted_at); '
+                          'ALTER TABLE %1$I '
+                          '   ADD CONSTRAINT %1$s_visibility_valid_combinations CHECK ( '
+                          '           (visibility_change_set_pk = -1) '
+                          '           OR '
+                          '           (visibility_change_set_pk > 0) '
+                          '       ); '
+                          'CREATE UNIQUE INDEX %1$s_only_one_live ON %1$I (id, '
+                          '                                        visibility_change_set_pk, '
+                          '                                        (visibility_deleted_at IS NULL)) '
+                          '                    WHERE visibility_deleted_at IS NULL; '
+                          'CREATE INDEX ON %1$I (id); '
+                          'CREATE FUNCTION is_visible_v1( '
+                          '    check_visibility jsonb, '
+                          '    reference %1$I '
+                          ') '
+                          'RETURNS bool '
+                          'LANGUAGE sql '
+                          'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                          'AS $is_visible_fn$ '
+                          '    SELECT is_visible_v1( '
+                          '        check_visibility, '
+                          '        reference.visibility_change_set_pk, '
+                          '        reference.visibility_deleted_at '
+                          '    ) '
+                          '$is_visible_fn$; '
+                          'CREATE FUNCTION in_tenancy_v1( '
+                          '    read_tenancy jsonb, '
+                          '    record_to_check %1$I '
+                          ') '
+                          'RETURNS bool '
+                          'LANGUAGE sql '
+                          'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                          'AS $in_tenancy_fn$ '
+                          '    SELECT in_tenancy_v1( '
+                          '        read_tenancy, '
+                          '        record_to_check.tenancy_universal, '
+                          '        record_to_check.tenancy_billing_account_ids, '
+                          '        record_to_check.tenancy_organization_ids, '
+                          '        record_to_check.tenancy_workspace_ids '
+                          '    ) '
+                          '$in_tenancy_fn$; '
+                          'CREATE FUNCTION in_tenancy_and_visible_v1( '
+                          '    read_tenancy jsonb, '
+                          '    check_visibility jsonb, '
+                          '    record_to_check %1$I '
+                          ') '
+                          'RETURNS bool '
+                          'LANGUAGE sql '
+                          'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                          'AS $in_tenancy_and_visible_fn$ '
+                          '    SELECT '
+                          '        in_tenancy_v1( '
+                          '            read_tenancy, '
+                          '            record_to_check.tenancy_universal, '
+                          '            record_to_check.tenancy_billing_account_ids, '
+                          '            record_to_check.tenancy_organization_ids, '
+                          '            record_to_check.tenancy_workspace_ids '
+                          '        ) '
+                          '        AND is_visible_v1( '
+                          '            check_visibility, '
+                          '            record_to_check.visibility_change_set_pk, '
+                          '            record_to_check.visibility_deleted_at '
+                          '        ) '
+                          '$in_tenancy_and_visible_fn$; '
+                          'CREATE FUNCTION %1$I_v1 ( '
+                          '    this_read_tenancy jsonb, '
+                          '    this_visibility jsonb '
+                          ') '
+                          'RETURNS SETOF %1$I '
+                          'LANGUAGE sql '
+                          'STABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                          'AS $table_view_fn$ '
+                          '    SELECT DISTINCT ON (id) %1$I.* '
+                          '    FROM %1$I '
+                          '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
+                          '    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                          '$table_view_fn$; ',
                           this_table_name
         );
     RAISE DEBUG 'alter table query: %', alter_query;
@@ -726,40 +861,108 @@ $$
 DECLARE
     create_table text;
 BEGIN
-    create_table := format('CREATE TABLE %1$I (' ||
-                           ' pk                          bigserial PRIMARY KEY, ' ||
-                           ' id                          bigserial                NOT NULL, ' ||
-                           ' left_object_id              bigint                   NOT NULL, ' ||
-                           ' right_object_id             bigint                   NOT NULL, ' ||
-                           ' tenancy_universal           bool                     NOT NULL, ' ||
-                           ' tenancy_billing_account_ids bigint[], ' ||
-                           ' tenancy_organization_ids    bigint[], ' ||
-                           ' tenancy_workspace_ids       bigint[], ' ||
-                           ' visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1, ' ||
-                           ' visibility_deleted_at       timestamp with time zone, ' ||
-                           ' created_at                  timestamp with time zone NOT NULL DEFAULT NOW(), ' ||
-                           ' updated_at                  timestamp with time zone NOT NULL DEFAULT NOW() ' ||
-                           '); ' ||
-                           'ALTER TABLE %1$I ' ||
-                           '     ADD CONSTRAINT %1$s_visibility UNIQUE (id, visibility_change_set_pk, visibility_deleted_at);'
-                               ' ALTER TABLE %1$I '
-                               '     ADD CONSTRAINT %1$s_valid_combinations CHECK (' ||
-                           '             (visibility_change_set_pk = -1) ' ||
-                           '             OR ' ||
-                           '             (visibility_change_set_pk > 0) ' ||
-                           '         ); ' ||
-                           ' ALTER TABLE %1$I ' ||
-                           '     ADD CONSTRAINT %1$s_left_object_id_is_valid ' ||
-                           '         CHECK (check_id_in_table_v1(%2$L, left_object_id)); ' ||
-                           ' ALTER TABLE %1$I ' ||
-                           '     ADD CONSTRAINT %1$s_right_object_id_is_valid ' ||
-                           '         CHECK (check_id_in_table_v1(%3$L, right_object_id));' ||
-                           ' CREATE UNIQUE INDEX %1$s_no_duplicate_associations ON %1$I ' ||
-                           '     (left_object_id, right_object_id, visibility_change_set_pk, (visibility_deleted_at IS NULL)) WHERE visibility_deleted_at IS NULL; ' ||
-                           ' CREATE UNIQUE INDEX %1$s_only_one_live ON %1$I (id, ' ||
-                           '                                         visibility_change_set_pk, ' ||
-                           '                                         (visibility_deleted_at IS NULL)) ' ||
-                           '                     WHERE visibility_deleted_at IS NULL',
+    create_table := format('CREATE TABLE %1$I ( '
+                           ' pk                          bigserial PRIMARY KEY, '
+                           ' id                          bigserial                NOT NULL, '
+                           ' left_object_id              bigint                   NOT NULL, '
+                           ' right_object_id             bigint                   NOT NULL, '
+                           ' tenancy_universal           bool                     NOT NULL, '
+                           ' tenancy_billing_account_ids bigint[], '
+                           ' tenancy_organization_ids    bigint[], '
+                           ' tenancy_workspace_ids       bigint[], '
+                           ' visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1, '
+                           ' visibility_deleted_at       timestamp with time zone, '
+                           ' created_at                  timestamp with time zone NOT NULL DEFAULT NOW(), '
+                           ' updated_at                  timestamp with time zone NOT NULL DEFAULT NOW() '
+                           '); '
+                           'ALTER TABLE %1$I '
+                           '    ADD CONSTRAINT %1$s_visibility UNIQUE (id, visibility_change_set_pk, visibility_deleted_at); '
+                           'ALTER TABLE %1$I '
+                           '    ADD CONSTRAINT %1$s_valid_combinations CHECK ( '
+                           '            (visibility_change_set_pk = -1) '
+                           '            OR '
+                           '            (visibility_change_set_pk > 0) '
+                           '        ); '
+                           'ALTER TABLE %1$I '
+                           '    ADD CONSTRAINT %1$s_left_object_id_is_valid '
+                           '        CHECK (check_id_in_table_v1(%2$L, left_object_id)); '
+                           'ALTER TABLE %1$I '
+                           '    ADD CONSTRAINT %1$s_right_object_id_is_valid '
+                           '        CHECK (check_id_in_table_v1(%3$L, right_object_id)); '
+                           'CREATE UNIQUE INDEX %1$s_no_duplicate_associations ON %1$I '
+                           '    (left_object_id, right_object_id, visibility_change_set_pk, (visibility_deleted_at IS NULL)) WHERE visibility_deleted_at IS NULL; '
+                           'CREATE UNIQUE INDEX %1$s_only_one_live ON %1$I (id, '
+                           '                                        visibility_change_set_pk, '
+                           '                                        (visibility_deleted_at IS NULL)) '
+                           '                    WHERE visibility_deleted_at IS NULL; '
+                           'CREATE INDEX ON %1$I (left_object_id); '
+                           'CREATE INDEX ON %1$I (right_object_id); '
+                           'CREATE FUNCTION is_visible_v1( '
+                           '    check_visibility jsonb, '
+                           '    reference %1$I '
+                           ') '
+                           'RETURNS bool '
+                           'LANGUAGE sql '
+                           'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                           'AS $is_visible_fn$ '
+                           '    SELECT is_visible_v1( '
+                           '        check_visibility, '
+                           '        reference.visibility_change_set_pk, '
+                           '        reference.visibility_deleted_at '
+                           '    ) '
+                           '$is_visible_fn$; '
+                           'CREATE FUNCTION in_tenancy_v1( '
+                           '    read_tenancy jsonb, '
+                           '    record_to_check %1$I '
+                           ') '
+                           'RETURNS bool '
+                           'LANGUAGE sql '
+                           'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                           'AS $in_tenancy_fn$ '
+                           '    SELECT in_tenancy_v1( '
+                           '        read_tenancy, '
+                           '        record_to_check.tenancy_universal, '
+                           '        record_to_check.tenancy_billing_account_ids, '
+                           '        record_to_check.tenancy_organization_ids, '
+                           '        record_to_check.tenancy_workspace_ids '
+                           '    ) '
+                           '$in_tenancy_fn$; '
+                           'CREATE FUNCTION in_tenancy_and_visible_v1( '
+                           '    read_tenancy jsonb, '
+                           '    check_visibility jsonb, '
+                           '    record_to_check %1$I '
+                           ') '
+                           'RETURNS bool '
+                           'LANGUAGE sql '
+                           'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                           'AS $in_tenancy_and_visible_fn$ '
+                           '    SELECT '
+                           '        in_tenancy_v1( '
+                           '            read_tenancy, '
+                           '            record_to_check.tenancy_universal, '
+                           '            record_to_check.tenancy_billing_account_ids, '
+                           '            record_to_check.tenancy_organization_ids, '
+                           '            record_to_check.tenancy_workspace_ids '
+                           '        ) '
+                           '        AND is_visible_v1( '
+                           '            check_visibility, '
+                           '            record_to_check.visibility_change_set_pk, '
+                           '            record_to_check.visibility_deleted_at '
+                           '        ) '
+                           '$in_tenancy_and_visible_fn$; '
+                           'CREATE FUNCTION %1$I_v1 ( '
+                           '    this_read_tenancy jsonb, '
+                           '    this_visibility jsonb '
+                           ') '
+                           'RETURNS SETOF %1$I '
+                           'LANGUAGE sql '
+                           'STABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                           'AS $table_view_fn$ '
+                           '    SELECT DISTINCT ON (id) %1$I.* '
+                           '    FROM %1$I '
+                           '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
+                           '    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                           '$table_view_fn$;',
                            this_table_name,
                            this_left_object_table,
                            this_right_object_table);
@@ -785,17 +988,17 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     insert_query :=
-            format(' INSERT INTO %1$I (left_object_id, right_object_id, tenancy_universal, ' ||
-                   '                  tenancy_billing_account_ids, tenancy_organization_ids, ' ||
-                   '                  tenancy_workspace_ids, visibility_change_set_pk, ' ||
-                   '                  visibility_deleted_at) ' ||
-                   ' VALUES (%2$L, ' ||
-                   '         %3$L, ' ||
-                   '         %4$L, ' ||
-                   '         %5$L, ' ||
-                   '         %6$L, ' ||
-                   '         %7$L, ' ||
-                   '         %8$L, ' ||
+            format(' INSERT INTO %1$I (left_object_id, right_object_id, tenancy_universal, '
+                   '                  tenancy_billing_account_ids, tenancy_organization_ids, '
+                   '                  tenancy_workspace_ids, visibility_change_set_pk, '
+                   '                  visibility_deleted_at) '
+                   ' VALUES (%2$L, '
+                   '         %3$L, '
+                   '         %4$L, '
+                   '         %5$L, '
+                   '         %6$L, '
+                   '         %7$L, '
+                   '         %8$L, '
                    '         %9$L)',
                    this_table_name,
                    this_left_object_id,
@@ -824,16 +1027,16 @@ DECLARE
 BEGIN
 
     update_query :=
-            format('UPDATE %1$I SET visibility_deleted_at = now() ' ||
-                   '  WHERE left_object_id = %2$L ' ||
-                   '    AND right_object_id = %3$L ' ||
-                   '    AND in_tenancy_v1(%4$L, ' ||
-                   '                    %1$I.tenancy_universal, ' ||
-                   '                    %1$I.tenancy_billing_account_ids,' ||
-                   '                    %1$I.tenancy_organization_ids,' ||
-                   '                    %1$I.tenancy_workspace_ids)' ||
-                   '    AND is_visible_v1(%5$L,' ||
-                   '                    %1$I.visibility_change_set_pk,' ||
+            format('UPDATE %1$I SET visibility_deleted_at = now() '
+                   '  WHERE left_object_id = %2$L '
+                   '    AND right_object_id = %3$L '
+                   '    AND in_tenancy_v1(%4$L, '
+                   '                    %1$I.tenancy_universal, '
+                   '                    %1$I.tenancy_billing_account_ids, '
+                   '                    %1$I.tenancy_organization_ids, '
+                   '                    %1$I.tenancy_workspace_ids) '
+                   '    AND is_visible_v1(%5$L, '
+                   '                    %1$I.visibility_change_set_pk, '
                    '                    %1$I.visibility_deleted_at)',
                    this_table_name,
                    this_left_object_id,
@@ -857,15 +1060,15 @@ DECLARE
 BEGIN
 
     update_query :=
-            format('UPDATE %1$I SET visibility_deleted_at = now() ' ||
-                   '  WHERE left_object_id = %2$L ' ||
-                   '    AND in_tenancy_v1(%3$L, ' ||
-                   '                    %1$I.tenancy_universal, ' ||
-                   '                    %1$I.tenancy_billing_account_ids,' ||
-                   '                    %1$I.tenancy_organization_ids,' ||
-                   '                    %1$I.tenancy_workspace_ids)' ||
-                   '    AND is_visible_v1(%4$L,' ||
-                   '                    %1$I.visibility_change_set_pk,' ||
+            format('UPDATE %1$I SET visibility_deleted_at = now() '
+                   '  WHERE left_object_id = %2$L '
+                   '    AND in_tenancy_v1(%3$L, '
+                   '                    %1$I.tenancy_universal, '
+                   '                    %1$I.tenancy_billing_account_ids, '
+                   '                    %1$I.tenancy_organization_ids, '
+                   '                    %1$I.tenancy_workspace_ids) '
+                   '    AND is_visible_v1(%4$L, '
+                   '                    %1$I.visibility_change_set_pk, '
                    '                    %1$I.visibility_deleted_at)',
                    this_table_name,
                    this_left_object_id,
@@ -893,17 +1096,17 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     insert_query :=
-            format(' INSERT INTO %1$I (object_id, belongs_to_id, tenancy_universal, ' ||
-                   '                  tenancy_billing_account_ids, tenancy_organization_ids, ' ||
-                   '                  tenancy_workspace_ids, visibility_change_set_pk, ' ||
-                   '                  visibility_deleted_at) ' ||
-                   ' VALUES (%2$L, ' ||
-                   '         %3$L, ' ||
-                   '         %4$L, ' ||
-                   '         %5$L, ' ||
-                   '         %6$L, ' ||
-                   '         %7$L, ' ||
-                   '         %8$L, ' ||
+            format(' INSERT INTO %1$I (object_id, belongs_to_id, tenancy_universal, '
+                   '                  tenancy_billing_account_ids, tenancy_organization_ids, '
+                   '                  tenancy_workspace_ids, visibility_change_set_pk, '
+                   '                  visibility_deleted_at) '
+                   ' VALUES (%2$L, '
+                   '         %3$L, '
+                   '         %4$L, '
+                   '         %5$L, '
+                   '         %6$L, '
+                   '         %7$L, '
+                   '         %8$L, '
                    '         %9$L)',
                    this_table_name,
                    this_object_id,
@@ -931,15 +1134,15 @@ DECLARE
 BEGIN
 
     update_query :=
-            format('UPDATE %1$I SET visibility_deleted_at = now() ' ||
-                   '  WHERE object_id = %2$L ' ||
-                   '    AND in_tenancy_v1(%3$L, ' ||
-                   '                    %1$I.tenancy_universal, ' ||
-                   '                    %1$I.tenancy_billing_account_ids,' ||
-                   '                    %1$I.tenancy_organization_ids,' ||
-                   '                    %1$I.tenancy_workspace_ids)' ||
-                   '    AND is_visible_v1(%4$L,' ||
-                   '                    %1$I.visibility_change_set_pk,' ||
+            format('UPDATE %1$I SET visibility_deleted_at = now() '
+                   '  WHERE object_id = %2$L '
+                   '    AND in_tenancy_v1(%3$L, '
+                   '                    %1$I.tenancy_universal, '
+                   '                    %1$I.tenancy_billing_account_ids, '
+                   '                    %1$I.tenancy_organization_ids, '
+                   '                    %1$I.tenancy_workspace_ids) '
+                   '    AND is_visible_v1(%4$L, '
+                   '                    %1$I.visibility_change_set_pk, '
                    '                    %1$I.visibility_deleted_at)',
                    this_table_name,
                    this_object_id,
