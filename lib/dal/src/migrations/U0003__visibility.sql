@@ -39,6 +39,6 @@ SELECT
     END
     AND (
         this_visibility_change_set_pk = -1
-        OR this_visibility_change_set_pk::text = check_visibility ->> 'visibility_change_set_pk'
+        OR this_visibility_change_set_pk = (check_visibility ->> 'visibility_change_set_pk')::bigint
     )
 $$;
