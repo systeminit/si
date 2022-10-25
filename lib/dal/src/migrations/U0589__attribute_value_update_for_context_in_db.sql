@@ -1026,33 +1026,22 @@ DECLARE
 BEGIN
     maybe_parent_attribute_value_id := this_maybe_parent_attribute_value_id;
 
-    SELECT DISTINCT ON (id) *
+    SELECT *
     INTO given_attribute_value
     FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
-    WHERE id = this_attribute_value_id
-    ORDER BY id;
+    WHERE id = this_attribute_value_id;
     IF NOT FOUND THEN
         RAISE 'Unable to find AttributeValue(%) in Tenancy(%), Visibility(%)', this_attribute_value_id,
                                                                                this_read_tenancy,
                                                                                this_visibility;
     END IF;
 
-    SELECT DISTINCT ON (id) attribute_prototypes.*
+    SELECT ap.*
     INTO original_attribute_prototype
-    FROM attribute_prototypes
-    INNER JOIN (
-        SELECT DISTINCT ON (object_id) belongs_to_id AS attribute_prototype_id
-        FROM attribute_value_belongs_to_attribute_prototype
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
-              AND object_id = given_attribute_value.id
-        ORDER BY object_id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS avbtap ON avbtap.attribute_prototype_id = attribute_prototypes.id
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototypes)
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
+    INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility) AS avbtap
+        ON avbtap.belongs_to_id = ap.id
+            AND avbtap.object_id = given_attribute_value.id;
     IF NOT FOUND THEN
         RAISE 'Unable to find AttributePrototype for AttributeValue(%), Tenancy(%), Visibility(%)', attribute_value.id,
                                                                                                     this_read_tenancy,
