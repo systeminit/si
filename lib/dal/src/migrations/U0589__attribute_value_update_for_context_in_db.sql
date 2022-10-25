@@ -1423,38 +1423,24 @@ BEGIN
     FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
     WHERE id = this_parent_attribute_value_id;
 
-    SELECT DISTINCT ON (id) *
+    SELECT *
     INTO STRICT parent_prop
-    FROM props
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-          AND id = parent_attribute_value.attribute_context_prop_id
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
-
+    FROM props_v1(this_read_tenancy, this_visibility)
+    WHERE id = parent_attribute_value.attribute_context_prop_id;
 
     update_read_attribute_context := this_update_attribute_context || jsonb_build_object('attribute_context_prop_id', NULL);
     FOR child_value_id IN
-        SELECT DISTINCT ON (parent_attribute_value_id, attribute_context_prop_id, COALESCE(key, '')) id
+        SELECT DISTINCT ON (
+            avbtav.belongs_to_id,
+            attribute_context_prop_id,
+            COALESCE(key, '')
+        )
+            av.id
         FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
-        INNER JOIN (
-            SELECT DISTINCT ON (object_id) object_id AS child_attribute_value_id,
-                                           belongs_to_id AS parent_attribute_value_id
-            FROM attribute_value_belongs_to_attribute_value
-            WHERE in_tenancy_and_visible_v1(this_read_tenancy,
-                                            this_visibility,
-                                            attribute_value_belongs_to_attribute_value)
-                  AND belongs_to_id = this_parent_attribute_value_id
-            ORDER BY object_id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC NULLS FIRST
-        ) AS avbtav ON avbtav.child_attribute_value_id = av.id
+        INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+            ON avbtav.object_id = av.id
+                AND avbtav.belongs_to_id = this_parent_attribute_value_id
         WHERE exact_attribute_context_v1(update_read_attribute_context, av)
-        ORDER BY parent_attribute_value_id,
-                 attribute_context_prop_id,
-                 COALESCE(key, ''),
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
     LOOP
         PERFORM attribute_value_remove_value_and_children_v1(this_write_tenancy,
                                                              this_read_tenancy,
