@@ -10,8 +10,7 @@ use crate::{
     },
     AccessBuilder, ChangeSetPk, Component, ComponentId, ConfirmationResolverId, DalContext,
     FixExecution, FixExecutionBatch, FixExecutionBatchId, FixResolver, FixResolverContext,
-    StandardModel, SystemId, Visibility, WorkflowPrototypeId, WorkflowRunner, WorkflowRunnerStatus,
-    WsEvent,
+    StandardModel, SystemId, Visibility, WorkflowPrototypeId, WorkflowRunnerStatus, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,13 +122,15 @@ impl JobConsumer for Fixes {
             .await?
             .ok_or(JobConsumerError::NoSchemaFound(fix.component_id))?;
 
-        let (
-            _runner,
-            runner_state,
-            func_binding_return_values,
-            _created_resources,
-            _updated_resources,
-        ) = WorkflowRunner::run(ctx, run_id, fix.workflow_prototype_id, fix.component_id).await?;
+        let (fix_execution, runner_state) = FixExecution::new_and_perform_fix(
+            ctx,
+            self.batch_id,
+            fix.confirmation_resolver_id,
+            run_id,
+            fix.workflow_prototype_id,
+            fix.component_id,
+        )
+        .await?;
 
         let context = FixResolverContext {
             component_id: fix.component_id,
@@ -147,16 +148,6 @@ impl JobConsumer for Fixes {
                 _ => None,
             },
             context,
-        )
-        .await?;
-
-        let (fix_execution, runner_state) = FixExecution::new_and_perform_fix(
-            ctx,
-            self.batch_id,
-            fix.confirmation_resolver_id,
-            run_id,
-            fix.workflow_prototype_id,
-            fix.component_id,
         )
         .await?;
 
