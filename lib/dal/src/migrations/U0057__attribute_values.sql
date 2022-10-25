@@ -59,6 +59,15 @@ VALUES (
         'Attribute Prototype <> Attribute Value'
     );
 CREATE INDEX ON public.attribute_values USING btree (func_binding_return_value_id);
+CREATE INDEX ON attribute_values (attribute_context_prop_id);
+CREATE INDEX ON attribute_values (attribute_context_internal_provider_id);
+CREATE INDEX ON attribute_values (attribute_context_external_provider_id);
+CREATE INDEX ON attribute_values (attribute_context_schema_id);
+CREATE INDEX ON attribute_values (attribute_context_schema_variant_id);
+CREATE INDEX ON attribute_values (attribute_context_component_id);
+CREATE INDEX ON attribute_values (attribute_context_system_id);
+CREATE INDEX ON attribute_values (proxy_for_attribute_value_id);
+
 CREATE OR REPLACE FUNCTION attribute_value_create_v1(
         this_tenancy jsonb,
         this_visibility jsonb,
