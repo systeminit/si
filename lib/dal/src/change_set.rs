@@ -9,10 +9,11 @@ use telemetry::prelude::*;
 
 use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
-use crate::ws_event::{WsEvent, WsPayload};
+use crate::ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 use crate::{
-    job::definition::Confirmations, pk, HistoryEvent, HistoryEventError, LabelListError,
-    StandardModelError, Timestamp, WriteTenancy, WsEventError,
+    job::definition::Confirmations, pk, Component, ConfirmationPrototype, HistoryEvent,
+    HistoryEventError, LabelListError, StandardModel, StandardModelError, SystemId, Timestamp,
+    WriteTenancy,
 };
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
@@ -20,19 +21,19 @@ const CHANGE_SET_GET_BY_PK: &str = include_str!("./queries/change_set_get_by_pk.
 
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
-    #[error("error serializing/deserializing json: {0}")]
+    #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
+    #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]
     Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
+    #[error(transparent)]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("label list error: {0}")]
+    #[error(transparent)]
     LabelList(#[from] LabelListError),
-    #[error("standard model error: {0}")]
+    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    #[error("ws event error: {0}")]
+    #[error(transparent)]
     WsEvent(#[from] WsEventError),
 }
 
@@ -119,7 +120,7 @@ impl ChangeSet {
         )
         .await?;
         WsEvent::change_set_applied(ctx, self.pk)
-            .await
+            .await?
             .publish(ctx)
             .await?;
 
@@ -157,10 +158,31 @@ impl WsEvent {
         WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_pk))
     }
 
-    pub async fn change_set_applied(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {
+    pub async fn change_set_applied(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+    ) -> WsEventResult<Self> {
+        let system_id = SystemId::NONE;
+
+        for component in Component::list(ctx).await? {
+            let prototypes =
+                ConfirmationPrototype::list_for_component(ctx, *component.id(), system_id)
+                    .await
+                    .map_err(Box::new)?;
+            for prototype in prototypes {
+                prototype
+                    .prepare(ctx, *component.id(), system_id)
+                    .await
+                    .map_err(Box::new)?;
+            }
+        }
+
         ctx.enqueue_job(Confirmations::new(ctx)).await;
 
-        WsEvent::new(ctx, WsPayload::ChangeSetApplied(change_set_pk))
+        Ok(WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetApplied(change_set_pk),
+        ))
     }
 
     pub fn change_set_canceled(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {

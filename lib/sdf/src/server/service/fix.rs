@@ -13,6 +13,7 @@ use dal::{
 
 use thiserror::Error;
 
+mod confirmations;
 mod list;
 mod run;
 
@@ -60,6 +61,7 @@ impl IntoResponse for FixError {
 
 pub fn routes() -> Router {
     Router::new()
+        .route("/confirmations", get(confirmations::confirmations))
         .route("/list", get(list::list))
         .route("/run", post(run::run))
 }

@@ -5,8 +5,7 @@ use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
-    AttributeReadContext, Component, DalContext, DiagramError, Node, NodePosition, SchemaError,
-    SchemaVariant, StandardModel, SystemId,
+    DalContext, DiagramError, Node, NodePosition, SchemaError, SchemaVariant, StandardModel,
 };
 
 #[derive(
@@ -165,17 +164,7 @@ impl DiagramNodeView {
             ty: None,
             title: schema.name().to_owned(),
             category,
-            subtitle: Some(
-                Component::name_from_context(
-                    ctx,
-                    AttributeReadContext {
-                        component_id: Some(*component.id()),
-                        system_id: Some(SystemId::NONE),
-                        ..AttributeReadContext::any()
-                    },
-                )
-                .await?,
-            ),
+            subtitle: Some(component.name(ctx).await?),
             content: None,
             sockets: Some(SocketView::list(ctx, node, schema_variant).await?),
             position: GridPoint {

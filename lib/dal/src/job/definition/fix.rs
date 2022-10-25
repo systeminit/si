@@ -8,8 +8,9 @@ use crate::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, ComponentId, ConfirmationResolverId, DalContext, Visibility,
-    WorkflowPrototypeId, WorkflowRunner, WsEvent,
+    AccessBuilder, ChangeSetPk, Component, ComponentId, ConfirmationResolverId, DalContext,
+    FixResolver, FixResolverContext, StandardModel, SystemId, Visibility, WorkflowPrototypeId,
+    WorkflowRunner, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,6 +104,32 @@ impl JobConsumer for Fixes {
 
         let fix = &self.fixes[0];
 
+        let component = Component::get_by_id(ctx, &fix.component_id)
+            .await?
+            .ok_or(JobConsumerError::ComponentNotFound(fix.component_id))?;
+        let schema_variant = component
+            .schema_variant(ctx)
+            .await?
+            .ok_or(JobConsumerError::NoSchemaVariantFound(fix.component_id))?;
+        let schema = component
+            .schema(ctx)
+            .await?
+            .ok_or(JobConsumerError::NoSchemaFound(fix.component_id))?;
+
+        let context = FixResolverContext {
+            component_id: fix.component_id,
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            system_id: SystemId::NONE,
+        };
+        let _fix_resolver = FixResolver::upsert(
+            ctx,
+            fix.workflow_prototype_id,
+            fix.confirmation_resolver_id,
+            context,
+        )
+        .await?;
+
         let (
             _runner,
             runner_state,
@@ -147,6 +174,12 @@ impl JobConsumer for Fixes {
                 self.fixes.iter().skip(1).cloned().collect(),
             ))
             .await;
+        } else {
+            // Re-trigger confirmations and informs the frontend to re-fetch everything on head
+            WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
+                .await?
+                .publish(ctx)
+                .await?;
         }
 
         Ok(())

@@ -4,10 +4,14 @@ use thiserror::Error;
 use si_data::NatsError;
 
 use crate::code_generation_resolver::CodeGenerationId;
+use crate::confirmation_status::ConfirmationStatusUpdate;
 use crate::qualification::QualificationCheckId;
 use crate::resource::ResourceRefreshId;
 use crate::workflow::{CommandOutput, CommandReturn, FixReturn};
-use crate::{BillingAccountId, ChangeSetPk, DalContext, HistoryActor, ReadTenancy, SchemaPk};
+use crate::{
+    BillingAccountId, ChangeSetPk, ConfirmationPrototypeError, DalContext, HistoryActor,
+    ReadTenancy, SchemaPk, StandardModelError,
+};
 
 #[derive(Error, Debug)]
 pub enum WsEventError {
@@ -15,6 +19,10 @@ pub enum WsEventError {
     SerdeJson(#[from] serde_json::Error),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
+    #[error(transparent)]
+    ConfirmationPrototype(#[from] Box<ConfirmationPrototypeError>),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
 }
 
 pub type WsEventResult<T> = Result<T, WsEventError>;
@@ -33,6 +41,7 @@ pub enum WsPayload {
     CommandOutput(CommandOutput),
     CommandReturn(CommandReturn),
     FixReturn(FixReturn),
+    ConfirmationStatusUpdate(ConfirmationStatusUpdate),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]

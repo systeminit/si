@@ -1,9 +1,8 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    node::Node, resource::ResourceView, AttributeReadContext, Component, ComponentId, DiagramKind,
-    LabelEntry, LabelList, Resource, SchemaId, SchemaVariantId, StandardModel, SystemId,
-    Visibility, WorkspaceId,
+    node::Node, resource::ResourceView, ComponentId, DiagramKind, LabelEntry, LabelList, Resource,
+    SchemaId, SchemaVariantId, StandardModel, SystemId, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -78,15 +77,7 @@ pub async fn list_components_identification(
             resource,
         };
         label_entries.push(LabelEntry {
-            label: Component::name_from_context(
-                &ctx,
-                AttributeReadContext {
-                    component_id: Some(*component.id()),
-                    system_id: Some(SystemId::NONE),
-                    ..AttributeReadContext::any()
-                },
-            )
-            .await?,
+            label: component.name(&ctx).await?,
             value,
         });
     }

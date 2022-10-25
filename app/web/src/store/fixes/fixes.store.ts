@@ -6,8 +6,8 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import promiseDelay from "@/utils/promise_delay";
 import { ApiRequest } from "@/utils/pinia_api_tools";
-import hardcodedOutputs from "@/store/fixes/hardcoded_fix_outputs";
 import { User } from "@/api/sdf/dal/user";
+import { Visibility } from "@/api/sdf/dal/visibility";
 import { useAuthStore } from "@/store/auth.store";
 import { ResourceStatus } from "@/api/sdf/dal/resource";
 import { useResourcesStore } from "../resources.store";
@@ -16,6 +16,10 @@ import { useRealtimeStore } from "../realtime/realtime.store";
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 
 export type FixId = number;
+export type Confirmation = {
+  id: FixId;
+  status: "running" | "finished";
+}
 export type Fix = {
   id: FixId;
   name: string;
@@ -63,7 +67,8 @@ export const useFixesStore = () => {
   return addStoreHooks(
     defineStore(`w${workspaceId || "NONE"}/fixes`, {
       state: () => ({
-        fixesById: {} as Record<FixId, Fix>,
+        confirmations: [] as Array<Confirmation>,
+        fixes: [] as Array<Fix>,
         fixBatchIdsByFixId: {} as Record<FixId, FixBatchId>,
         fixBatchesById: {} as Record<FixBatchId, FixBatch>,
         processedFixComponents: 0,
@@ -72,15 +77,7 @@ export const useFixesStore = () => {
       }),
       getters: {
         allFixes(): Fix[] {
-          const fixes = _.values(this.fixesById);
-          // temporary. the backend will return the fixes in the "right" order
-          // so we'll need to think about how we want to deal with that
-          const componentsStore = useComponentsStore();
-          const sortedFixes = _.sortBy(fixes, (fix) => {
-            const component = componentsStore.componentsById[fix.componentId];
-            return SCHEMA_MOCK_METADATA[component.schemaName]?.order || 100;
-          });
-          return sortedFixes;
+          return this.fixes;
         },
         fixesByComponentId(): Record<ComponentId, Fix> {
           return _.keyBy(this.allFixes, (f) => f.componentId);
@@ -94,7 +91,8 @@ export const useFixesStore = () => {
 
             for (const fixId in this.fixBatchIdsByFixId) {
               if (this.fixBatchIdsByFixId[fixId] === fixBatchId) {
-                fixes.push(this.fixesById[fixId]);
+                const fix = this.fixes.find((fix) => String(fix.id) === fixId);
+                if (fix) fixes.push(fix);
               }
             }
 
@@ -117,81 +115,52 @@ export const useFixesStore = () => {
         },
       },
       actions: {
-        async LOAD_FIXES() {
-          const componentsStore = useComponentsStore(-1);
+        async LOAD_CONFIRMATIONS() {
+          this.populatingFixes = true;
 
-          if (
-            !componentsStore.getRequestStatus("FETCH_COMPONENTS").value
-              .isSuccess
-          ) {
-            await componentsStore.FETCH_COMPONENTS();
-          }
-
-          return new ApiRequest({
-            url: "/session/get_defaults",
+          return new ApiRequest<Array<Confirmation>>({
+            url: "/fix/confirmations",
+            params: { visibility_change_set_pk: -1 },
             onSuccess: (response) => {
-              this.populateMockFixes().then(() => {});
+              this.confirmations = response;
+              this.populatingFixes = response.length === 0 || response.some((c) => c.status === "running");
+            },
+          });
+        },
+        async LOAD_FIXES() {
+          this.runningFixBatch = undefined; // TODO: backend should tell us that
+          return new ApiRequest<Array<Fix>>({
+            url: "/fix/list",
+            params: { visibility_change_set_pk: -1 },
+            onSuccess: (response) => {
+              this.fixes = response;
             },
           });
         },
         async EXECUTE_FIXES(fixes: Array<Fix>) {
+          this.runningFixBatch = -1; // TODO: have an actual FixBatch related to this run in the backend
+
           return new ApiRequest({
-            url: "/session/get_defaults",
-            onSuccess: (response) => {
-              this.executeMockFixes(fixes).then(() => {});
+            method: "post",
+            params: {
+              list: fixes.map((fix) => ({
+                id: fix.id,
+                componentId: fix.componentId,
+                actionName: fix.recommendation,
+              })),
+              visibility_change_set_pk: -1,
             },
+            url: "/fix/run",
+            onSuccess: (response) => {},
           });
         },
         updateFix(fix: Fix) {
-          this.fixesById[fix.id] = fix;
-        },
-        async populateMockFixes() {
-          if (this.populatingFixes) return;
-          this.populatingFixes = true;
-
-          const componentsStore = useComponentsStore(-1);
-          const resourcesStore = useResourcesStore();
-          await resourcesStore.generateMockResources();
-
-          this.processedFixComponents = 0;
-
-          for (const resource of resourcesStore.allResources) {
-            const component =
-              componentsStore.componentsById[resource.componentId];
-            componentsStore.increaseActivityCounterOnComponent(component.id);
-            await promiseDelay(1000);
-            this.processedFixComponents += 1;
-
-            if (SCHEMA_MOCK_METADATA[component.schemaName]?.fixDelay === 0) {
-              componentsStore.decreaseActivityCounterOnComponent(component.id);
-              continue;
-            }
-
-            const provider =
-              SCHEMA_MOCK_METADATA[component.schemaName]?.provider;
-
-            if (resource.status === ResourceStatus.Pending)
-              this.updateFix({
-                id: 1000 + component.id,
-                componentId: component.id,
-                name: `Create ${component.schemaName}`,
-                componentName: component.displayName,
-                recommendation:
-                  _.sample([
-                    "this is what we recommend you do - just fix this thing and you will be all good",
-                    "honestly idk, you figure it out",
-                    "this one should be pretty simple",
-                    "run this fix and you will be golden",
-                    "don't just sit there, run the fix!",
-                  ]) ?? "",
-                status: "unstarted",
-                provider,
-                output: hardcodedOutputs[component.schemaName] ?? "{}",
-              });
-            await promiseDelay(400); // Extra delay on items that will generate fixes
-            componentsStore.decreaseActivityCounterOnComponent(component.id);
+          const index = this.fixes.findIndex((f) => f.id === fix.id);
+          if (index === -1) {
+            this.fixes.push(fix);
+          } else {
+            this.fixes[index] = fix;
           }
-          this.populatingFixes = false;
         },
         async executeMockFixes(fixes: Array<Fix>) {
           const authStore = useAuthStore();
@@ -261,7 +230,23 @@ export const useFixesStore = () => {
       async onActivated() {
         const resourcesStore = useResourcesStore();
         await resourcesStore.generateMockResources();
-        await this.LOAD_FIXES();
+        this.LOAD_FIXES();
+        this.LOAD_CONFIRMATIONS();
+
+        const realtimeStore = useRealtimeStore();
+        realtimeStore.subscribe(this.$id, `workspace/${workspaceId}/head`, [
+          {
+            eventType: "ConfirmationStatusUpdate",
+            callback: (update) => {
+              this.LOAD_CONFIRMATIONS(); // we could be smarter with this
+              if (update.status === "success" || update.status === "failure" || update.status === "error") this.LOAD_FIXES();
+            },
+          },
+        ]);
+
+        return () => {
+          realtimeStore.unsubscribe(this.$id);
+        };
       },
     }),
   )();

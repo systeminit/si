@@ -11,9 +11,9 @@ use crate::{
     prototype_context::{HasPrototypeContext, PrototypeContext},
     standard_model, standard_model_accessor, ActionPrototype, ActionPrototypeError, Component,
     ComponentError, ComponentId, ConfirmationResolver, ConfirmationResolverContext,
-    ConfirmationResolverError, DalContext, FuncBinding, FuncBindingError, HistoryEventError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WriteTenancy,
+    ConfirmationResolverError, DalContext, FuncBinding, FuncBindingError, FuncBindingId,
+    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -34,6 +34,9 @@ pub enum ConfirmationPrototypeError {
     ConfirmationResolver(#[from] ConfirmationResolverError),
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
+
+    #[error("not found by id: {0}")]
+    NotFound(ConfirmationPrototypeId),
 }
 
 pub type ConfirmationPrototypeResult<T> = Result<T, ConfirmationPrototypeError>;
@@ -179,6 +182,42 @@ impl ConfirmationPrototype {
         Ok(object)
     }
 
+    pub async fn prepare(
+        &self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> ConfirmationPrototypeResult<ConfirmationResolver> {
+        let mut context = ConfirmationResolverContext::new();
+        context.set_component_id(component_id);
+        context.set_schema_id(self.schema_id);
+        context.set_schema_variant_id(self.schema_variant_id);
+        context.set_system_id(system_id);
+        if let Some(mut resolver) =
+            ConfirmationResolver::find_for_prototype(ctx, self.id(), context.clone()).await?
+        {
+            resolver
+                .set_func_binding_id(ctx, FuncBindingId::NONE)
+                .await?;
+            resolver.set_success(ctx, None::<bool>).await?;
+            resolver.set_message(ctx, None::<&str>).await?;
+            resolver.remove_all_recommended_actions(ctx).await?;
+            Ok(resolver)
+        } else {
+            Ok(ConfirmationResolver::new(
+                ctx,
+                *self.id(),
+                None,
+                None,
+                Vec::new(),
+                self.func_id(),
+                FuncBindingId::NONE,
+                context,
+            )
+            .await?)
+        }
+    }
+
     pub async fn run(
         &self,
         ctx: &DalContext,
@@ -236,11 +275,9 @@ impl ConfirmationPrototype {
         context.set_schema_variant_id(self.schema_variant_id);
         context.set_system_id(system_id);
         if let Some(mut resolver) =
-            ConfirmationResolver::find_for_prototype(ctx, self.id(), context.clone())
-                .await?
-                .pop()
+            ConfirmationResolver::find_for_prototype(ctx, self.id(), context.clone()).await?
         {
-            resolver.set_success(ctx, success).await?;
+            resolver.set_success(ctx, Some(success)).await?;
             resolver.set_message(ctx, message).await?;
             resolver.remove_all_recommended_actions(ctx).await?;
 
@@ -254,7 +291,7 @@ impl ConfirmationPrototype {
             Ok(ConfirmationResolver::new(
                 ctx,
                 *self.id(),
-                success,
+                Some(success),
                 message.as_deref(),
                 recommended_actions,
                 self.func_id(),

@@ -3,13 +3,16 @@ use std::{collections::HashMap, convert::TryFrom};
 use async_trait::async_trait;
 use serde::Serialize;
 
+use crate::confirmation_status::ConfirmationStatus;
+use crate::job::definition::confirmation::Confirmation;
+
 use crate::{
     job::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, Component, ConfirmationPrototype, DalContext, StandardModel, SystemId,
-    Visibility,
+    Visibility, WsEvent,
 };
 
 #[derive(Clone, Debug, Serialize)]
@@ -75,18 +78,33 @@ impl JobConsumer for Confirmations {
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
-        let components = Component::list(ctx).await?;
+        let system_id = SystemId::NONE;
 
-        // TODO: spawn a new job for each confirmation run so they can be parallelized
-        for component in components {
+        for component in Component::list(ctx).await? {
             let prototypes =
-                ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
-                    .await?;
+                ConfirmationPrototype::list_for_component(ctx, *component.id(), system_id).await?;
             for prototype in prototypes {
-                prototype.run(ctx, *component.id(), SystemId::NONE).await?;
+                prototype.prepare(ctx, *component.id(), system_id).await?;
+
+                WsEvent::confirmation_status_update(
+                    ctx,
+                    *component.id(),
+                    system_id,
+                    *prototype.id(),
+                    ConfirmationStatus::Running,
+                    None,
+                )
+                .publish(ctx)
+                .await?;
+                ctx.enqueue_job(Confirmation::new(
+                    ctx,
+                    *component.id(),
+                    system_id,
+                    *prototype.id(),
+                ))
+                .await;
             }
         }
-
         Ok(())
     }
 }

@@ -97,7 +97,7 @@ pub struct ConfirmationResolver {
     pk: ConfirmationResolverPk,
     id: ConfirmationResolverId,
     confirmation_prototype_id: ConfirmationPrototypeId,
-    success: bool,
+    success: Option<bool>,
     message: Option<String>,
     func_id: FuncId,
     func_binding_id: FuncBindingId,
@@ -126,7 +126,7 @@ impl ConfirmationResolver {
     pub async fn new(
         ctx: &DalContext,
         confirmation_prototype_id: ConfirmationPrototypeId,
-        success: bool,
+        success: Option<bool>,
         message: Option<&str>,
         recommended_actions: Vec<ActionPrototype>,
         func_id: FuncId,
@@ -134,19 +134,19 @@ impl ConfirmationResolver {
         context: ConfirmationResolverContext,
     ) -> ConfirmationResolverResult<Self> {
         let row = ctx.txns().pg().query_one(
-                "SELECT object FROM confirmation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
-                &[ctx.write_tenancy(), ctx.visibility(),
-                    &confirmation_prototype_id,
-                    &success,
-                    &message,
-                    &func_id,
-                    &func_binding_id,
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.system_id(),
-                ],
-            )
+            "SELECT object FROM confirmation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+            &[ctx.write_tenancy(), ctx.visibility(),
+                &confirmation_prototype_id,
+                &success,
+                &message,
+                &func_id,
+                &func_binding_id,
+                &context.component_id(),
+                &context.schema_id(),
+                &context.schema_variant_id(),
+                &context.system_id(),
+            ],
+        )
             .await?;
 
         let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
@@ -164,11 +164,11 @@ impl ConfirmationResolver {
         ctx: &DalContext,
         workflow_prototype_id: &ConfirmationPrototypeId,
         context: ConfirmationResolverContext,
-    ) -> ConfirmationResolverResult<Vec<Self>> {
-        let rows = ctx
+    ) -> ConfirmationResolverResult<Option<Self>> {
+        let row = ctx
             .txns()
             .pg()
-            .query(
+            .query_opt(
                 FIND_FOR_PROTOTYPE,
                 &[
                     ctx.read_tenancy(),
@@ -181,7 +181,7 @@ impl ConfirmationResolver {
                 ],
             )
             .await?;
-        let object = standard_model::objects_from_rows(rows)?;
+        let object = standard_model::option_object_from_row(row)?;
         Ok(object)
     }
 
@@ -197,7 +197,7 @@ impl ConfirmationResolver {
         ConfirmationResolverResult
     );
 
-    standard_model_accessor!(success, bool, ConfirmationResolverResult);
+    standard_model_accessor!(success, Option<bool>, ConfirmationResolverResult);
     standard_model_accessor!(message, Option<String>, ConfirmationResolverResult);
     standard_model_many_to_many!(
         lookup_fn: recommended_actions,

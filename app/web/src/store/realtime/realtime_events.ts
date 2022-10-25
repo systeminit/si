@@ -22,6 +22,14 @@ export type WsEventPayloadMap = {
     systemId: number;
   };
 
+  ConfirmationStatusUpdate: {
+    componentId: number;
+    systemId: number;
+    confirmationPrototypeId: number;
+    status: "success" | "running" | "pending" | "failure" | "error"
+    errorMessage?: string;
+  };
+
   // NOT CURRENTLY USED - but leaving here so we remember these events exist
   // SecretCreated: number;
   // ResourceRefreshed: {

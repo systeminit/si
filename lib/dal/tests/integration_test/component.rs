@@ -1,6 +1,6 @@
 use dal::{
-    qualification_resolver::UNSET_ID_VALUE, AttributeReadContext, Component, DalContext, Prop,
-    PropKind, Schema, SchemaKind, StandardModel, SystemId,
+    qualification_resolver::UNSET_ID_VALUE, Component, DalContext, Prop, PropKind, Schema,
+    SchemaKind, StandardModel,
 };
 use dal_test::{
     test,
@@ -152,16 +152,10 @@ async fn name_from_context(ctx: &DalContext) {
         .await
         .expect("cannot create second component");
 
-    let component_name = Component::name_from_context(
-        ctx,
-        AttributeReadContext {
-            component_id: Some(*component.id()),
-            system_id: Some(SystemId::NONE),
-            ..AttributeReadContext::any()
-        },
-    )
-    .await
-    .expect("Unable to retrieve component name");
+    let component_name = component
+        .name(ctx)
+        .await
+        .expect("Unable to retrieve component name");
 
     assert_eq!(component_name, "mastodon");
 }
