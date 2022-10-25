@@ -93,6 +93,7 @@ pub struct FixResolver {
     id: FixResolverId,
     workflow_prototype_id: WorkflowPrototypeId,
     confirmation_resolver_id: ConfirmationResolverId,
+    success: Option<bool>,
     #[serde(flatten)]
     context: FixResolverContext,
     #[serde(flatten)]
@@ -119,18 +120,20 @@ impl FixResolver {
         ctx: &DalContext,
         workflow_prototype_id: WorkflowPrototypeId,
         confirmation_resolver_id: ConfirmationResolverId,
+        success: Option<bool>,
         context: FixResolverContext,
     ) -> FixResolverResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM fix_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM fix_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &workflow_prototype_id,
                     &confirmation_resolver_id,
+                    &success,
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
@@ -172,6 +175,7 @@ impl FixResolver {
         ctx: &DalContext,
         workflow_prototype_id: WorkflowPrototypeId,
         confirmation_resolver_id: ConfirmationResolverId,
+        success: Option<bool>,
         context: FixResolverContext,
     ) -> FixResolverResult<Self> {
         if let Some(mut resolver) =
@@ -180,12 +184,14 @@ impl FixResolver {
             resolver
                 .set_workflow_prototype_id(ctx, workflow_prototype_id)
                 .await?;
+            resolver.set_success(ctx, success).await?;
             Ok(resolver)
         } else {
             Ok(Self::new(
                 ctx,
                 workflow_prototype_id,
                 confirmation_resolver_id,
+                success,
                 context,
             )
             .await?)
@@ -202,6 +208,7 @@ impl FixResolver {
         Pk(ConfirmationResolverId),
         FixResolverResult
     );
+    standard_model_accessor!(success, Option<bool>, FixResolverResult);
 
     pub fn context(&self) -> FixResolverContext {
         self.context.clone()
