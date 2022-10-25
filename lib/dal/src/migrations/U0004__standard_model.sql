@@ -738,7 +738,20 @@ BEGIN
                            '            record_to_check.visibility_change_set_pk, '
                            '            record_to_check.visibility_deleted_at '
                            '        ) '
-                           '$in_tenancy_and_visible_fn$; ',
+                           '$in_tenancy_and_visible_fn$; '
+                           'CREATE FUNCTION %1$I_v1 ( '
+                           '    this_read_tenancy jsonb, '
+                           '    this_visibility jsonb '
+                           ') '
+                           'RETURNS SETOF %1$I '
+                           'LANGUAGE sql '
+                           'STABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                           'AS $table_view_fn$ '
+                           '    SELECT DISTINCT ON (object_id) %1$I.* '
+                           '    FROM %1$I '
+                           '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
+                           '    ORDER BY object_id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                           '$table_view_fn$; ',
                            this_table_name,
                            this_object_table,
                            this_belongs_to_table);
@@ -818,7 +831,20 @@ BEGIN
                           '            record_to_check.visibility_change_set_pk, '
                           '            record_to_check.visibility_deleted_at '
                           '        ) '
-                          '$in_tenancy_and_visible_fn$; ',
+                          '$in_tenancy_and_visible_fn$; '
+                          'CREATE FUNCTION %1$I_v1 ( '
+                          '    this_read_tenancy jsonb, '
+                          '    this_visibility jsonb '
+                          ') '
+                          'RETURNS SETOF %1$I '
+                          'LANGUAGE sql '
+                          'STABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                          'AS $table_view_fn$ '
+                          '    SELECT DISTINCT ON (id) %1$I.* '
+                          '    FROM %1$I '
+                          '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
+                          '    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                          '$table_view_fn$; ',
                           this_table_name
         );
     RAISE DEBUG 'alter table query: %', alter_query;
@@ -923,7 +949,20 @@ BEGIN
                            '            record_to_check.visibility_change_set_pk, '
                            '            record_to_check.visibility_deleted_at '
                            '        ) '
-                           '$in_tenancy_and_visible_fn$; ',
+                           '$in_tenancy_and_visible_fn$; '
+                           'CREATE FUNCTION %1$I_v1 ( '
+                           '    this_read_tenancy jsonb, '
+                           '    this_visibility jsonb '
+                           ') '
+                           'RETURNS SETOF %1$I '
+                           'LANGUAGE sql '
+                           'STABLE PARALLEL SAFE CALLED ON NULL INPUT '
+                           'AS $table_view_fn$ '
+                           '    SELECT DISTINCT ON (id) %1$I.* '
+                           '    FROM %1$I '
+                           '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
+                           '    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                           '$table_view_fn$;',
                            this_table_name,
                            this_left_object_table,
                            this_right_object_table);
