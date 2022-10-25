@@ -1012,6 +1012,7 @@ DECLARE
     func_binding                    func_bindings%ROWTYPE;
     func_binding_created            bool;
     func_binding_id                 bigint;
+    func_binding_return_value       func_binding_return_values;
     func_binding_return_value_id    bigint;
     func_name                       text;
     given_attribute_value           attribute_values%ROWTYPE;
@@ -1022,7 +1023,6 @@ DECLARE
     parent_attribute_value          attribute_values%ROWTYPE;
     prop                            props%ROWTYPE;
     typeof_value                    text;
-    unprocessed_value               jsonb;
 BEGIN
     maybe_parent_attribute_value_id := this_maybe_parent_attribute_value_id;
 
@@ -1282,25 +1282,19 @@ BEGIN
     -- Do we need to process the unprocessed value and populate nested values?  If the unprocessed value
     -- doesn't equal the value then we have a populated "container" (i.e. object, map, array) that contains
     -- values which need to be made into AttributeValues of their own.
-    IF fbrv.unprocessed_value IS NOT NULL
-        AND fbrv.unprocessed_value != fbrv.value
-        FROM func_binding_return_values_v1(this_read_tenancy, this_visibility) AS fbrv
-        WHERE id = func_binding_return_value_id
+    SELECT *
+    INTO func_binding_return_value
+    FROM func_binding_return_values_v1(this_read_tenancy, this_visibility)
+    WHERE id = func_binding_return_value_id;
+    IF func_binding_return_value.unprocessed_value IS NOT NULL
+        AND func_binding_return_value.unprocessed_value != func_binding_return_value.value
     THEN
-        SELECT DISTINCT ON (id) func_binding_return_values.unprocessed_value
-        INTO unprocessed_value
-        FROM func_binding_return_values
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, func_binding_return_values)
-              AND id = func_binding_return_value_id
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST;
         PERFORM attribute_value_populate_nested_values_v1(this_write_tenancy,
                                                           this_read_tenancy,
                                                           this_visibility,
                                                           attribute_value_id,
                                                           this_attribute_context,
-                                                          unprocessed_value);
+                                                          func_binding_return_value.unprocessed_value);
     END IF;
 
     new_attribute_value_id := attribute_value_id;
