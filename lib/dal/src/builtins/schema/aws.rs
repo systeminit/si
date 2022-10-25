@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-use crate::builtins::schema::{BuiltinSchemaHelpers, SelectWidgetOption};
+use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::builtins::BuiltinsError;
 use crate::code_generation_prototype::CodeGenerationPrototypeContext;
 use crate::component::ComponentKind;
 use crate::edit_field::widget::WidgetKind;
 use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
+use crate::property_editor::SelectWidgetOption;
 use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
@@ -41,19 +42,19 @@ const KEY_PAIR_DOCS_URL: &str =
 const REGIONS_JSON_STR: &str = include_str!("data/aws_regions.json");
 const INSTANCE_TYPES_JSON_STR: &str = include_str!("data/aws_instance_types.json");
 
-pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
-    ami(ctx).await?;
-    ec2(ctx).await?;
-    region(ctx).await?;
-    keypair(ctx).await?;
-    vpc::migrate(ctx).await?;
+pub async fn migrate(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
+    ami(ctx, driver).await?;
+    ec2(ctx, driver).await?;
+    region(ctx, driver).await?;
+    keypair(ctx, driver).await?;
+    vpc::migrate(ctx, driver).await?;
     Ok(())
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct AwsRegion {
-    pub(crate) name: String,
-    pub(crate) code: String,
+struct AwsRegion {
+    name: String,
+    code: String,
 }
 
 impl From<&AwsRegion> for SelectWidgetOption {
@@ -66,7 +67,7 @@ impl From<&AwsRegion> for SelectWidgetOption {
 }
 
 /// A [`Schema`](crate::Schema) migration for [`AWS AMI`](https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html).
-async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
+async fn ami(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "AMI",
@@ -103,17 +104,18 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    BuiltinSchemaHelpers::create_validation(
-        ctx,
-        Validation::StringHasPrefix {
-            value: None,
-            expected: "ami-".to_string(),
-        },
-        *image_id_prop.id(),
-        *schema.id(),
-        *schema_variant.id(),
-    )
-    .await?;
+    driver
+        .create_validation(
+            ctx,
+            Validation::StringHasPrefix {
+                value: None,
+                expected: "ami-".to_string(),
+            },
+            *image_id_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
 
     let region_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
@@ -126,13 +128,9 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Code Generation
-    let code_generation_func_name = "si:generateAwsJSON".to_owned();
-    let code_generation_func =
-        Func::find_by_attr(ctx, "name", &code_generation_func_name.to_owned())
-            .await?
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
-
+    let code_generation_func_id = driver.get_func_id("si:generateAwsJSON").ok_or(
+        BuiltinsError::FuncNotFoundInMigrationCache("si:generateAwsJSON"),
+    )?;
     let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
     let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
     let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
@@ -140,7 +138,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
 
     let _prototype = CodeGenerationPrototype::new(
         ctx,
-        *code_generation_func.id(),
+        code_generation_func_id,
         code_generation_args_json,
         CodeLanguage::Json,
         code_generation_prototype_context,
@@ -159,12 +157,9 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
-    let (
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        identity_func_identity_arg_id,
-    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
     let (image_id_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -172,9 +167,9 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
         *schema_variant.id(),
         "Image ID",
         None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
+        identity_func_item.func_id,
+        identity_func_item.func_binding_id,
+        identity_func_item.func_binding_return_value_id,
         SocketArity::Many,
         DiagramKind::Configuration,
     )
@@ -187,9 +182,9 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Region",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -229,7 +224,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *image_id_implicit_internal_provider.id(),
     )
     .await?;
@@ -254,12 +249,12 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     region_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *region_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *region_explicit_internal_provider.id(),
     )
     .await?;
@@ -268,7 +263,7 @@ async fn ami(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 /// A [`Schema`](crate::Schema) migration for [`AWS EC2`](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html).
-async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
+async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "EC2 Instance",
@@ -305,17 +300,18 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    BuiltinSchemaHelpers::create_validation(
-        ctx,
-        Validation::StringHasPrefix {
-            value: None,
-            expected: "ami-".to_string(),
-        },
-        *image_id_prop.id(),
-        *schema.id(),
-        *schema_variant.id(),
-    )
-    .await?;
+    driver
+        .create_validation(
+            ctx,
+            Validation::StringHasPrefix {
+                value: None,
+                expected: "ami-".to_string(),
+            },
+            *image_id_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
 
     let expected_instance_types: Vec<String> = serde_json::from_str(INSTANCE_TYPES_JSON_STR)?;
     let instance_types_option_list: Vec<SelectWidgetOption> = expected_instance_types
@@ -338,18 +334,19 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     )
     .await?;
 
-    BuiltinSchemaHelpers::create_validation(
-        ctx,
-        Validation::StringInStringArray {
-            value: None,
-            expected: expected_instance_types,
-            display_expected: false,
-        },
-        *instance_type_prop.id(),
-        *schema.id(),
-        *schema_variant.id(),
-    )
-    .await?;
+    driver
+        .create_validation(
+            ctx,
+            Validation::StringInStringArray {
+                value: None,
+                expected: expected_instance_types,
+                display_expected: false,
+            },
+            *instance_type_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
 
     // Prop: /root/domain/KeyName
     let key_name_prop = BuiltinSchemaHelpers::create_prop(
@@ -441,13 +438,9 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Code Generation Prototype
-    let code_generation_func_name = "si:generateAwsJSON".to_owned();
-    let code_generation_func =
-        Func::find_by_attr(ctx, "name", &code_generation_func_name.to_owned())
-            .await?
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
-
+    let code_generation_func_id = driver.get_func_id("si:generateAwsJSON").ok_or(
+        BuiltinsError::FuncNotFoundInMigrationCache("si:generateAwsJSON"),
+    )?;
     let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
     let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
     let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
@@ -455,7 +448,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
 
     let _prototype = CodeGenerationPrototype::new(
         ctx,
-        *code_generation_func.id(),
+        code_generation_func_id,
         code_generation_args_json,
         CodeLanguage::Json,
         code_generation_prototype_context,
@@ -474,12 +467,9 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
-    let (
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        identity_func_identity_arg_id,
-    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
     let (image_id_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
@@ -487,9 +477,9 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Image ID",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -502,9 +492,9 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Security Group ID",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -517,9 +507,9 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Key Name",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -532,9 +522,9 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Region",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -547,9 +537,9 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "User Data",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -636,16 +626,17 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     name_tags_item_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
-    let identity_arg = FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_id)
-        .await?
-        .ok_or_else(|| {
-            BuiltinsError::BuiltinMissingFuncArgument(
-                "identity".to_string(),
-                "identity".to_string(),
-            )
-        })?;
+    let identity_arg =
+        FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_item.func_id)
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    "identity".to_string(),
+                    "identity".to_string(),
+                )
+            })?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *name_tags_item_attribute_prototype.id(),
@@ -670,12 +661,12 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     region_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *region_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *region_explicit_internal_provider.id(),
     )
     .await?;
@@ -695,12 +686,12 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     image_id_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *image_id_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *image_id_explicit_internal_provider.id(),
     )
     .await?;
@@ -721,12 +712,12 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
             .await?
             .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     keyname_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *keyname_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *keyname_explicit_internal_provider.id(),
     )
     .await?;
@@ -746,12 +737,12 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     security_group_id_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *security_group_id_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *security_group_ids_explicit_internal_provider.id(),
     )
     .await?;
@@ -771,12 +762,12 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     user_data_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *user_data_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *user_data_explicit_internal_provider.id(),
     )
     .await?;
@@ -785,7 +776,7 @@ async fn ec2(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Region`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html).
-async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
+async fn region(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Region",
@@ -834,18 +825,19 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
         .iter()
         .map(|r| r.code.clone())
         .collect::<Vec<String>>();
-    BuiltinSchemaHelpers::create_validation(
-        ctx,
-        Validation::StringInStringArray {
-            value: None,
-            expected,
-            display_expected: true,
-        },
-        *region_prop.id(),
-        *schema.id(),
-        *schema_variant.id(),
-    )
-    .await?;
+    driver
+        .create_validation(
+            ctx,
+            Validation::StringInStringArray {
+                value: None,
+                expected,
+                display_expected: true,
+            },
+            *region_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
 
     // System Socket
     let system_socket = Socket::new(
@@ -860,21 +852,18 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     // Output Socket
-    let (
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        identity_func_identity_arg_id,
-    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
     let (region_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
         *schema_variant.id(),
         "Region",
         None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
+        identity_func_item.func_id,
+        identity_func_item.func_binding_id,
+        identity_func_item.func_binding_return_value_id,
         SocketArity::Many,
         DiagramKind::Configuration,
     )
@@ -898,7 +887,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *region_implicit_internal_provider.id(),
     )
     .await?;
@@ -907,7 +896,7 @@ async fn region(ctx: &DalContext) -> BuiltinsResult<()> {
 }
 
 /// A [`Schema`](crate::Schema) migration for [`AWS Key Pair`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html).
-async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
+async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Key Pair",
@@ -1012,13 +1001,9 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Code Generation Prototype
-    let code_generation_func_name = "si:generateAwsJSON".to_owned();
-    let code_generation_func =
-        Func::find_by_attr(ctx, "name", &code_generation_func_name.to_owned())
-            .await?
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
-
+    let code_generation_func_id = driver.get_func_id("si:generateAwsJSON").ok_or(
+        BuiltinsError::FuncNotFoundInMigrationCache("si:generateAwsJSON"),
+    )?;
     let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
     let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
     let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
@@ -1026,7 +1011,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
 
     let _prototype = CodeGenerationPrototype::new(
         ctx,
-        *code_generation_func.id(),
+        code_generation_func_id,
         code_generation_args_json,
         CodeLanguage::Json,
         code_generation_prototype_context,
@@ -1046,21 +1031,18 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     // Output Socket
-    let (
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        identity_func_identity_arg_id,
-    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
     let (key_name_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
         *schema_variant.id(),
         "Key Name",
         None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
+        identity_func_item.func_id,
+        identity_func_item.func_binding_id,
+        identity_func_item.func_binding_return_value_id,
         SocketArity::Many,
         DiagramKind::Configuration,
     )
@@ -1074,9 +1056,9 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Region",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -1112,7 +1094,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *key_name_internal_provider.id(),
     )
     .await?;
@@ -1166,16 +1148,17 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     name_tags_item_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
-    let identity_arg = FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_id)
-        .await?
-        .ok_or_else(|| {
-            BuiltinsError::BuiltinMissingFuncArgument(
-                "identity".to_string(),
-                "identity".to_string(),
-            )
-        })?;
+    let identity_arg =
+        FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_item.func_id)
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    "identity".to_string(),
+                    "identity".to_string(),
+                )
+            })?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *name_tags_item_attribute_prototype.id(),
@@ -1205,12 +1188,12 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
     region_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *region_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *region_explicit_internal_provider.id(),
     )
     .await?;
@@ -1230,7 +1213,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(AttributeValueError::MissingAttributePrototype)?;
     key_name_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
@@ -1242,7 +1225,7 @@ async fn keypair(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *key_name_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *si_name_internal_provider.id(),
     )
     .await?;

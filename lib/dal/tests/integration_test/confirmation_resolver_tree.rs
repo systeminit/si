@@ -1,32 +1,33 @@
+use dal::component::ComponentKind;
 use dal::{
-    builtins::BuiltinSchemaHelpers,
-    component::ComponentKind,
-    edge::{EdgeKind, VertexObjectKind},
-    socket::SocketArity,
-    ActionPrototype, ActionPrototypeContext, BuiltinsResult, ConfirmationPrototype,
-    ConfirmationPrototypeContext, ConfirmationResolverTree, DalContext, DiagramKind, Edge,
-    ExternalProvider, Func, HasPrototypeContext, InternalProvider, Schema, SchemaError, SchemaKind,
-    Socket, StandardModel, SystemId, WorkflowPrototypeId,
+    edge::EdgeKind, edge::VertexObjectKind, socket::SocketArity, ActionPrototype,
+    ActionPrototypeContext, BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext,
+    ConfirmationResolverTree, DalContext, DiagramKind, Edge, ExternalProvider, Func,
+    HasPrototypeContext, InternalProvider, Schema, SchemaError, SchemaKind, SchemaVariant, Socket,
+    StandardModel, SystemId, WorkflowPrototypeId,
 };
+use dal_test::helpers::setup_identity_func;
 use dal_test::{helpers::create_component_and_node_for_schema, test};
 
 async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket, Socket)> {
-    let (schema, schema_variant, _) = BuiltinSchemaHelpers::create_schema_and_variant(
+    let mut schema = Schema::new(
         ctx,
         "Dummy Schema",
-        SchemaKind::Configuration,
-        ComponentKind::Standard,
-        None,
+        &SchemaKind::Configuration,
+        &ComponentKind::Standard,
     )
-    .await?
-    .expect("could not create schema");
+    .await?;
+    let (schema_variant, _root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+        .await?;
 
     let (
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         _identity_func_identity_arg_id,
-    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    ) = setup_identity_func(ctx).await;
 
     let (_schema_explicit_internal_provider, input_socket) =
         InternalProvider::new_explicit_with_socket(

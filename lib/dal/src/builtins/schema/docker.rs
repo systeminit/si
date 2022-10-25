@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::builtins::schema::BuiltinSchemaHelpers;
+use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
     component::ComponentKind, edit_field::widget::*, prototype_context::PrototypeContext,
@@ -15,13 +15,13 @@ use crate::{
 // Reference: https://www.docker.com/company/newsroom/media-resources/
 const DOCKER_NODE_COLOR: i64 = 0x4695E7;
 
-pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
-    docker_hub_credential(ctx).await?;
-    docker_image(ctx).await?;
+pub async fn migrate(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
+    docker_hub_credential(ctx, driver).await?;
+    docker_image(ctx, driver).await?;
     Ok(())
 }
 
-async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
+async fn docker_hub_credential(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Docker Hub Credential",
@@ -54,8 +54,9 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
 
     let _ = QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
     let system_socket = Socket::new(
         ctx,
@@ -74,9 +75,9 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
         *schema_variant.id(),
         "Docker Hub Credential",
         None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
+        identity_func_item.func_id,
+        identity_func_item.func_binding_id,
+        identity_func_item.func_binding_return_value_id,
         SocketArity::Many,
         DiagramKind::Configuration,
     )
@@ -95,7 +96,7 @@ async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
     Ok(())
 }
 
-async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
+async fn docker_image(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Docker Image",
@@ -140,12 +141,9 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     let mut properties = HashMap::new();
     properties.insert("image".to_owned(), serde_json::json!(""));
 
-    let (
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        identity_func_identity_arg_id,
-    ) = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
     let (_docker_hub_credential_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
@@ -153,9 +151,9 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Docker Hub Credential",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -168,9 +166,9 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
         *schema_variant.id(),
         "Container Image",
         None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
+        identity_func_item.func_id,
+        identity_func_item.func_binding_id,
+        identity_func_item.func_binding_return_value_id,
         SocketArity::Many,
         DiagramKind::Configuration,
     )
@@ -183,9 +181,9 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
         *schema_variant.id(),
         "Exposed Ports",
         None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
+        identity_func_item.func_id,
+        identity_func_item.func_binding_id,
+        identity_func_item.func_binding_return_value_id,
         SocketArity::Many,
         DiagramKind::Configuration,
     )
@@ -237,7 +235,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
         .await?
         .ok_or(AttributeValueError::MissingAttributePrototype)?;
     image_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
+        .set_func_id(ctx, identity_func_item.func_id)
         .await?;
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
@@ -249,7 +247,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *image_attribute_prototype.id(),
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *si_name_internal_provider.id(),
     )
     .await?;
@@ -269,7 +267,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
                     *docker_image_external_provider.id(),
                 )
             })?,
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *root_implicit_internal_provider.id(),
     )
     .await?;
@@ -290,7 +288,7 @@ async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
                     *exposed_ports_external_provider.id(),
                 )
             })?,
-        identity_func_identity_arg_id,
+        identity_func_item.func_argument_id,
         *exposed_props_implicit_internal_provider.id(),
     )
     .await?;

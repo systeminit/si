@@ -1,4 +1,4 @@
-use crate::builtins::schema::BuiltinSchemaHelpers;
+use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::component::ComponentKind;
 use crate::func::argument::FuncArgument;
 use crate::prototype_context::PrototypeContext;
@@ -17,13 +17,13 @@ use crate::{
 const COREOS_NODE_COLOR: i64 = 0xE26B70;
 const BUTANE_DOCS_FCOS_1_4_URL: &str = "https://coreos.github.io/butane/config-fcos-v1_4/";
 
-pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
-    butane(ctx).await?;
+pub async fn migrate(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
+    butane(ctx, driver).await?;
     Ok(())
 }
 
 /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).
-async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
+async fn butane(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
         ctx,
         "Butane",
@@ -148,8 +148,9 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
     .await?;
 
     // Sockets
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
-        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
     let (_ec2_user_data_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -157,9 +158,9 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
         *schema_variant.id(),
         "User Data",
         None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
+        identity_func_item.func_id,
+        identity_func_item.func_binding_id,
+        identity_func_item.func_binding_return_value_id,
         SocketArity::Many,
         DiagramKind::Configuration,
     )
@@ -172,9 +173,9 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
             *schema.id(),
             *schema_variant.id(),
             "Container Image",
-            identity_func_id,
-            identity_func_binding_id,
-            identity_func_binding_return_value_id,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
             DiagramKind::Configuration,
         )

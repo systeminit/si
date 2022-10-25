@@ -6,6 +6,7 @@
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::func::argument::FuncArgumentError;
 use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::external::ExternalProviderError;
@@ -20,13 +21,12 @@ use crate::{
     StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
 };
 
+// Private builtins modules.
 mod func;
 mod schema;
 mod workflow;
 
 // Expose the "persist" function for creating and editing builtin funcs while in dev mode.
-pub use self::schema::BuiltinSchemaHelpers;
-use crate::func::argument::FuncArgumentError;
 pub use func::persist as func_persist;
 
 #[derive(Error, Debug)]
@@ -55,6 +55,8 @@ pub enum BuiltinsError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("func not found in migration cache {0}")]
+    FuncNotFoundInMigrationCache(&'static str),
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] ExternalProviderError),
     #[error("implicit internal provider not found for prop: {0}")]
@@ -119,5 +121,6 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     workflow::migrate(ctx).await?;
     info!("migrating schemas");
     schema::migrate(ctx).await?;
+    info!("completed migrating functions, workflows and schemas");
     Ok(())
 }
