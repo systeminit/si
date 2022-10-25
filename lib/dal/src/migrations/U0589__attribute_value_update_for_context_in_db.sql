@@ -145,6 +145,7 @@ END;
 -- always return the same result.
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
+-- TODO: Create ROWTYPE specific versions of this
 CREATE OR REPLACE FUNCTION attribute_context_from_record_v1(source_record         RECORD,
                                                             OUT attribute_context jsonb
 )
@@ -607,34 +608,39 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_context_least_specific_is_provider_v1(this_attribute_context jsonb,
-                                                                           OUT is_for_provider    bool
+CREATE OR REPLACE FUNCTION attribute_context_least_specific_is_provider_v1(
+  this_attribute_context jsonb
 )
-AS
-$$
-BEGIN
-    is_for_provider :=    this_attribute_context ->> 'attribute_context_internal_provider_id' != '-1'
-                       OR this_attribute_context ->> 'attribtue_context_external_provider_id' != '-1';
-END;
-$$ LANGUAGE PLPGSQL PARALLEL SAFE;
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+    SELECT this_attribute_context ->> 'attribute_context_internal_provider_id' != '-1'
+        OR this_attribute_context ->> 'attribtue_context_external_provider_id' != '-1'
+$$;
 
-CREATE OR REPLACE FUNCTION exact_attribute_context_v1(check_context     jsonb,
-                                                      reference_context jsonb,
-                                                      OUT result        bool
+CREATE OR REPLACE FUNCTION exact_attribute_context_v1(
+    check_context     jsonb,
+    reference_context jsonb
 )
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
 AS
 $$
-BEGIN
-    result := exact_attribute_context_v1(check_context,
-                                         (reference_context ->> 'attribute_context_prop_id')::bigint,
-                                         (reference_context ->> 'attribute_context_internal_provider_id')::bigint,
-                                         (reference_context ->> 'attribute_context_external_provider_id')::bigint,
-                                         (reference_context ->> 'attribute_context_schema_id')::bigint,
-                                         (reference_context ->> 'attribute_context_schema_variant_id')::bigint,
-                                         (reference_context ->> 'attribute_context_component_id')::bigint,
-                                         (reference_context ->> 'attribute_context_system_id')::bigint);
-END;
-$$ LANGUAGE PLPGSQL PARALLEL SAFE;
+    SELECT exact_attribute_context_v1(
+        check_context,
+        (reference_context ->> 'attribute_context_prop_id')::bigint,
+        (reference_context ->> 'attribute_context_internal_provider_id')::bigint,
+        (reference_context ->> 'attribute_context_external_provider_id')::bigint,
+        (reference_context ->> 'attribute_context_schema_id')::bigint,
+        (reference_context ->> 'attribute_context_schema_variant_id')::bigint,
+        (reference_context ->> 'attribute_context_component_id')::bigint,
+        (reference_context ->> 'attribute_context_system_id')::bigint
+    )
+$$;
 
 CREATE OR REPLACE FUNCTION attribute_value_find_with_key_in_context_v1(this_read_tenancy      jsonb,
                                                                        this_visibility        jsonb,
