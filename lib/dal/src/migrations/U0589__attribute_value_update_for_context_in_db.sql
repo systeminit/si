@@ -1104,7 +1104,7 @@ BEGIN
                                            given_attribute_value.func_binding_id,
                                            given_attribute_value.func_binding_return_value_id,
                                            given_attribute_value.key) AS av;
-            IF attribute_value_id IS NULL THEN
+            IF NOT FOUND THEN
                 RAISE 'Unable to create AttributeValue: attribute_value_create_v1(%, %, %, %, %, %)',
                       this_write_tenancy,
                       this_visibility,
@@ -1170,16 +1170,10 @@ BEGIN
                     typeof_value;
         END CASE;
     ELSE
-        SELECT DISTINCT ON (id) *
+        SELECT *
         INTO STRICT prop
-        FROM props
-        WHERE
-            in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-            AND props.id = (this_attribute_context ->> 'attribute_context_prop_id')::bigint
-        ORDER BY
-            id,
-            visibility_change_set_pk DESC,
-            visibility_deleted_at DESC NULLS FIRST;
+        FROM props_v1(this_read_tenancy, this_visibility)
+        WHERE id = (this_attribute_context ->> 'attribute_context_prop_id')::bigint;
 
         IF this_new_value IS NULL THEN
             func_name := 'si:unset';
@@ -1205,14 +1199,10 @@ BEGIN
         func_args := jsonb_build_object('value', this_new_value);
     END IF;
 
-    SELECT DISTINCT ON (id) *
+    SELECT *
     INTO STRICT func
-    FROM funcs
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, funcs)
-          AND funcs.name = func_name
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM funcs_v1(this_read_tenancy, this_visibility)
+    WHERE name = func_name;
 
     SELECT new_func_binding_id, new_func_binding_return_value_id
     INTO func_binding_id, func_binding_return_value_id

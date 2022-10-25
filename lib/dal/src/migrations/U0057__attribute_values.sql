@@ -44,6 +44,7 @@ CREATE INDEX ON attribute_values (attribute_context_schema_id);
 CREATE INDEX ON attribute_values (attribute_context_schema_variant_id);
 CREATE INDEX ON attribute_values (attribute_context_component_id);
 CREATE INDEX ON attribute_values (attribute_context_system_id);
+CREATE INDEX ON attribute_values (proxy_for_attribute_value_id);
 
 CREATE OR REPLACE FUNCTION attribute_value_create_v1(
     this_tenancy jsonb,
