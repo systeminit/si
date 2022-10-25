@@ -1,4 +1,4 @@
-use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
+use dal::{ChangeSet, DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
@@ -153,4 +153,10 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
         }], // expected
         head_deployment_payload.component_view_properties(ctx).await // actual
     );
+
+    let mut cs = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
+        .await
+        .expect("unable to find changeset")
+        .expect("no changeset found");
+    cs.apply(ctx).await.expect("unable to apply changeset");
 }

@@ -48,9 +48,9 @@ export type WsEventPayloadMap = {
   //   output: string[];
   //   runnerState: WorkflowRunnerState;
   // };
-  // FixReturn: {
-  //   confirmation_resolver_id: number;
-  //   output: string[];
-  //   runnerState: WorkflowRunnerState;
-  // }
+  FixReturn: {
+    confirmationResolverId: number;
+    output: string[];
+    runnerState: { status: "failure" | "success" | "running" | "created" },
+  }
 };

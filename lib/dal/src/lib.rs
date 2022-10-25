@@ -200,6 +200,9 @@ pub use workflow_prototype::{
     WorkflowPrototype, WorkflowPrototypeContext, WorkflowPrototypeError, WorkflowPrototypeId,
 };
 pub use workflow_resolver::{WorkflowResolver, WorkflowResolverError, WorkflowResolverId};
+pub use workflow_runner::workflow_runner_state::{
+    WorkflowRunnerState, WorkflowRunnerStateId, WorkflowRunnerStatus,
+};
 pub use workflow_runner::{WorkflowRunner, WorkflowRunnerError, WorkflowRunnerId};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
 pub use write_tenancy::{WriteTenancy, WriteTenancyError};

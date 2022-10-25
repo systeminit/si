@@ -58,8 +58,6 @@ export const SCHEMA_MOCK_METADATA: Record<
   "Docker Hub Credential": { provider: "Docker", fixDelay: 0, order: 0 },
 };
 
-let batchIdCounter = 1;
-
 export const useFixesStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspaceId;
@@ -71,11 +69,13 @@ export const useFixesStore = () => {
         fixes: [] as Array<Fix>,
         fixBatchIdsByFixId: {} as Record<FixId, FixBatchId>,
         fixBatchesById: {} as Record<FixBatchId, FixBatch>,
-        processedFixComponents: 0,
         runningFixBatch: undefined as FixBatchId | undefined,
         populatingFixes: false,
       }),
       getters: {
+        finishedConfirmations(): Confirmation[] {
+          return this.confirmations.filter((c) => c.status !== "running");
+        },
         allFixes(): Fix[] {
           return this.fixes;
         },
@@ -107,7 +107,7 @@ export const useFixesStore = () => {
         completedFixesOnRunningBatch(): Fix[] {
           return _.filter(
             this.fixesOnRunningBatch,
-            (fix) => fix.status === "success",
+            (fix) => fix.status !== "unstarted",
           );
         },
         unstartedFixes(): Fix[] {
@@ -138,7 +138,12 @@ export const useFixesStore = () => {
           });
         },
         async EXECUTE_FIXES(fixes: Array<Fix>) {
-          this.runningFixBatch = -1; // TODO: have an actual FixBatch related to this run in the backend
+          // TODO: have an actual FixBatch related to this run in the backend
+          this.runningFixBatch = -1;
+          this.fixBatchIdsByFixId = {};
+          for (const fix of fixes) {
+            this.fixBatchIdsByFixId[fix.id] = -1;
+          }
 
           return new ApiRequest({
             method: "post",
@@ -162,73 +167,10 @@ export const useFixesStore = () => {
             this.fixes[index] = fix;
           }
         },
-        async executeMockFixes(fixes: Array<Fix>) {
-          const authStore = useAuthStore();
-          const componentsStore = useComponentsStore(-1);
-          const resourcesStore = useResourcesStore();
-
-          const fixBatch = <FixBatch>{
-            id: batchIdCounter++,
-            author: authStore.user,
-            timestamp: new Date(),
-          };
-
-          this.fixBatchesById[fixBatch.id] = fixBatch;
-
-          this.runningFixBatch = fixBatch.id;
-
-          for (const fix of fixes) {
-            this.fixBatchIdsByFixId[fix.id] = fixBatch.id;
-          }
-
-          for (const fix of fixes) {
-            await promiseDelay(200);
-
-            this.updateFix({
-              ...fix,
-              startedAt: new Date(),
-              status: "running",
-            });
-
-            // not shown anywhere at the moment
-            resourcesStore.resourcesByComponentId[fix.componentId].status =
-              ResourceStatus.InProgress;
-
-            componentsStore.increaseActivityCounterOnComponent(fix.componentId);
-
-            const component = componentsStore.componentsById[fix.componentId];
-
-            await promiseDelay(
-              SCHEMA_MOCK_METADATA[component.schemaName]?.fixDelay || 2000,
-            );
-
-            this.updateFix({
-              ...fix,
-              finishedAt: new Date(),
-              status: "success",
-            });
-            componentsStore.decreaseActivityCounterOnComponent(fix.componentId);
-
-            const confirmation =
-              resourcesStore.confirmationsByComponentId[fix.componentId][0];
-            confirmation.status = "running";
-            await promiseDelay(1000);
-            confirmation.status = "success";
-            confirmation.description = "This resource exists!";
-
-            resourcesStore.resourcesByComponentId[fix.componentId].status =
-              ResourceStatus.Created;
-
-            if (["EC2 Instance"].includes(component.schemaName))
-              resourcesStore.resourcesByComponentId[fix.componentId].link =
-                "https://www.youtube.com/watch?v=fzcSJ1setd0"; // TODO Replace with actual whiskers r we link/
-          }
-          await promiseDelay(1600); // delay time for UI to update
-          this.runningFixBatch = undefined;
-        },
       },
       async onActivated() {
         const resourcesStore = useResourcesStore();
+        // What purpose does this serve?
         await resourcesStore.generateMockResources();
         this.LOAD_FIXES();
         this.LOAD_CONFIRMATIONS();
@@ -238,8 +180,47 @@ export const useFixesStore = () => {
           {
             eventType: "ConfirmationStatusUpdate",
             callback: (update) => {
-              this.LOAD_CONFIRMATIONS(); // we could be smarter with this
-              if (update.status === "success" || update.status === "failure" || update.status === "error") this.LOAD_FIXES();
+              // we could be smarter with this
+              this.LOAD_CONFIRMATIONS();
+              this.LOAD_FIXES();
+            },
+          },
+          {
+            eventType: "FixReturn",
+            callback: (update) => {
+              const fix = this.fixes.find((f) => f.id === update.confirmationResolverId);
+              if (!fix) {
+                this.LOAD_FIXES();
+                return;
+              }
+              switch (update.runnerState.status) {
+                case "success":
+                  this.updateFix({
+                    ...fix,
+                    status: "success",
+                  });
+                  break;
+                case "failure":
+                  this.updateFix({
+                    ...fix,
+                    status: "failure",
+                  });
+                  break;
+                case "running":
+                  this.updateFix({
+                    ...fix,
+                    status: "running",
+                  });
+                  break;
+                case "created":
+                  this.updateFix({
+                    ...fix,
+                    status: "unstarted",
+                  });
+                  break;
+                default:
+                  break;
+              }
             },
           },
         ]);

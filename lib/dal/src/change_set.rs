@@ -9,11 +9,10 @@ use telemetry::prelude::*;
 
 use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
-use crate::ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
+use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
-    job::definition::Confirmations, pk, Component, ConfirmationPrototype, HistoryEvent,
-    HistoryEventError, LabelListError, StandardModel, StandardModelError, SystemId, Timestamp,
-    WriteTenancy,
+    job::definition::Confirmations, pk, HistoryEvent, HistoryEventError, LabelListError,
+    StandardModelError, Timestamp, WriteTenancy,
 };
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
@@ -120,7 +119,7 @@ impl ChangeSet {
         )
         .await?;
         WsEvent::change_set_applied(ctx, self.pk)
-            .await?
+            .await
             .publish(ctx)
             .await?;
 
@@ -158,31 +157,10 @@ impl WsEvent {
         WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_pk))
     }
 
-    pub async fn change_set_applied(
-        ctx: &DalContext,
-        change_set_pk: ChangeSetPk,
-    ) -> WsEventResult<Self> {
-        let system_id = SystemId::NONE;
-
-        for component in Component::list(ctx).await? {
-            let prototypes =
-                ConfirmationPrototype::list_for_component(ctx, *component.id(), system_id)
-                    .await
-                    .map_err(Box::new)?;
-            for prototype in prototypes {
-                prototype
-                    .prepare(ctx, *component.id(), system_id)
-                    .await
-                    .map_err(Box::new)?;
-            }
-        }
-
+    pub async fn change_set_applied(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {
         ctx.enqueue_job(Confirmations::new(ctx)).await;
 
-        Ok(WsEvent::new(
-            ctx,
-            WsPayload::ChangeSetApplied(change_set_pk),
-        ))
+        WsEvent::new(ctx, WsPayload::ChangeSetApplied(change_set_pk))
     }
 
     pub fn change_set_canceled(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {

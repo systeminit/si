@@ -10,7 +10,7 @@ use crate::{
     },
     AccessBuilder, ChangeSetPk, Component, ComponentId, ConfirmationResolverId, DalContext,
     FixResolver, FixResolverContext, StandardModel, SystemId, Visibility, WorkflowPrototypeId,
-    WorkflowRunner, WsEvent,
+    WorkflowRunner, WorkflowRunnerStatus, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,6 +116,14 @@ impl JobConsumer for Fixes {
             .await?
             .ok_or(JobConsumerError::NoSchemaFound(fix.component_id))?;
 
+        let (
+            _runner,
+            runner_state,
+            func_binding_return_values,
+            _created_resources,
+            _updated_resources,
+        ) = WorkflowRunner::run(ctx, run_id, fix.workflow_prototype_id, fix.component_id).await?;
+
         let context = FixResolverContext {
             component_id: fix.component_id,
             schema_id: *schema.id(),
@@ -126,17 +134,14 @@ impl JobConsumer for Fixes {
             ctx,
             fix.workflow_prototype_id,
             fix.confirmation_resolver_id,
+            match runner_state.status() {
+                WorkflowRunnerStatus::Success => Some(true),
+                WorkflowRunnerStatus::Failure => Some(false),
+                _ => None,
+            },
             context,
         )
         .await?;
-
-        let (
-            _runner,
-            runner_state,
-            func_binding_return_values,
-            _created_resources,
-            _updated_resources,
-        ) = WorkflowRunner::run(ctx, run_id, fix.workflow_prototype_id, fix.component_id).await?;
 
         // NOTE(nick,wendy): this looks similar to code insider WorkflowRunner::run(). Do we need to run
         // it twice?
@@ -177,7 +182,7 @@ impl JobConsumer for Fixes {
         } else {
             // Re-trigger confirmations and informs the frontend to re-fetch everything on head
             WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
-                .await?
+                .await
                 .publish(ctx)
                 .await?;
         }

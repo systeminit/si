@@ -3,7 +3,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
     AttributeReadContext, Component, ComponentId, ConfirmationPrototype, ConfirmationResolver,
-    ConfirmationResolverId, ConfirmationResolverTree, StandardModel, SystemId, Visibility,
+    ConfirmationResolverId, ConfirmationResolverTree, FixResolver, FixResolverContext,
+    StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -52,7 +53,6 @@ pub async fn list(
 
     let mut views = Vec::with_capacity(resolvers.len());
     for resolver in resolvers {
-        // Resolver is being executed
         if resolver.success().is_none() {
             continue;
         }
@@ -61,6 +61,26 @@ pub async fn list(
         if component_id.is_none() {
             continue;
         }
+
+        let component = Component::get_by_id(&ctx, &component_id)
+            .await?
+            .ok_or(FixError::ComponentNotFound(component_id))?;
+        let schema = component
+            .schema(&ctx)
+            .await?
+            .ok_or(FixError::NoSchemaForComponent(component_id))?;
+        let schema_variant = component
+            .schema_variant(&ctx)
+            .await?
+            .ok_or(FixError::NoSchemaVariantForComponent(component_id))?;
+
+        let context = FixResolverContext {
+            component_id,
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            system_id: SystemId::NONE,
+        };
+        let fix = FixResolver::find_for_confirmation(&ctx, *resolver.id(), context).await?;
 
         let recommendations = resolver
             .recommended_actions(&ctx)
@@ -92,8 +112,12 @@ pub async fn list(
                 .await?,
                 component_id,
                 recommendation,
-                status: FixStatusView::Unstarted,
-            });
+                status: match fix.as_ref().and_then(FixResolver::success) {
+                    Some(true) => FixStatusView::Success,
+                    Some(false) => FixStatusView::Failure,
+                    None => FixStatusView::Unstarted,
+                },
+            })
         }
     }
 

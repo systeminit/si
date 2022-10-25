@@ -191,7 +191,7 @@ impl WorkflowRunner {
 
         if !created_resources.is_empty() || !updated_resources.is_empty() {
             WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
-                .await?
+                .await
                 .publish(ctx)
                 .await?;
         }
@@ -307,12 +307,14 @@ impl WorkflowRunner {
             .pop()
             .ok_or_else(|| WorkflowRunnerError::MissingWorkflow("si:identity".to_owned()))?;
 
-        let (func_binding, mut func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
+        let (func_binding, _) = FuncBinding::find_or_create(
             ctx,
             serde_json::json!({ "identity": serde_json::to_value(func_binding_return_values)? }),
             *identity.id(),
+            *identity.backend_kind(),
         )
-            .await?;
+        .await?;
+        let mut func_binding_return_value = func_binding.execute(ctx).await?;
 
         let mut created_resources = Vec::new();
         let mut updated_resources = Vec::new();

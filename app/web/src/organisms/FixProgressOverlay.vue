@@ -60,10 +60,9 @@ const fixState = computed(() => {
   if (fixesStore.runningFixBatch) {
     const total = fixesStore.fixesOnRunningBatch.length;
     const executed = fixesStore.completedFixesOnRunningBatch.length;
-    let rate = 0;
-    if (execFixesReqStatus.value.isSuccess && total > 0) {
-      rate = executed / total;
-    }
+    console.log(total);
+    console.log(executed);
+    let rate = executed / total;
 
     return {
       mode: "fixing",
@@ -75,7 +74,7 @@ const fixState = computed(() => {
     };
   } else {
     let rate = 0;
-    const finishedConfirmations = fixesStore.confirmations.filter((c) => c.status !== "running").length;
+    const finishedConfirmations = fixesStore.finishedConfirmations.length;
     const numberOfConfirmations = fixesStore.confirmations.length;
     if (loadConfirmationsReqStatus.value.isSuccess) {
       if (fixesStore.confirmations.length > 0) {

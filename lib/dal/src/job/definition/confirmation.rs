@@ -113,30 +113,34 @@ impl JobConsumer for Confirmation {
                 self.confirmation_prototype_id,
             ))?;
 
-        let (status, error_message) = match prototype
-            .run(ctx, self.component_id, self.system_id)
-            .await
-        {
-            Ok(resolver) => {
-                // Creates empty fix result slot
-                let context = FixResolverContext {
-                    component_id: resolver.context().component_id,
-                    schema_id: resolver.context().schema_id,
-                    schema_variant_id: resolver.context().schema_variant_id,
-                    system_id: SystemId::NONE,
-                };
-                let _fix_resolver = dbg!(
-                    FixResolver::upsert(ctx, WorkflowPrototypeId::NONE, *resolver.id(), context)
+        let (status, error_message) =
+            match prototype.run(ctx, self.component_id, self.system_id).await {
+                Ok(resolver) => {
+                    // Creates empty fix result slot
+                    let context = FixResolverContext {
+                        component_id: resolver.context().component_id,
+                        schema_id: resolver.context().schema_id,
+                        schema_variant_id: resolver.context().schema_variant_id,
+                        system_id: SystemId::NONE,
+                    };
+                    let _fix_resolver = dbg!(
+                        FixResolver::upsert(
+                            ctx,
+                            WorkflowPrototypeId::NONE,
+                            *resolver.id(),
+                            None,
+                            context
+                        )
                         .await
-                )?;
-                match resolver.success() {
-                    Some(true) => (ConfirmationStatus::Success, None),
-                    Some(false) => (ConfirmationStatus::Failure, None),
-                    None => unreachable!(),
+                    )?;
+                    match resolver.success() {
+                        Some(true) => (ConfirmationStatus::Success, None),
+                        Some(false) => (ConfirmationStatus::Failure, None),
+                        None => unreachable!(),
+                    }
                 }
-            }
-            Err(e) => (ConfirmationStatus::Error, Some(format!("{e}"))),
-        };
+                Err(e) => (ConfirmationStatus::Error, Some(format!("{e}"))),
+            };
 
         WsEvent::confirmation_status_update(
             ctx,
