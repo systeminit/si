@@ -1,3 +1,7 @@
+-- All standard model tables should automatically have versions of this where
+-- the type of `reference` is that table's `ROWTYPE`. This only exists as a
+-- fallback, in case a table wasn't set up through the "normal" standard
+-- model means.
 CREATE OR REPLACE FUNCTION in_tenancy_and_visible_v1(read_tenancy jsonb,
                                                      check_visibility jsonb,
                                                      reference record,
