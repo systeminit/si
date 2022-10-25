@@ -105,6 +105,13 @@ you can pass in options as props too */
         </template>
 
         <template v-else>
+          <Icon
+            v-if="type === 'password' && allowShowPassword"
+            class="vorm-input__pass-show-hide-toggle"
+            :name="isPasswordMasked ? 'show' : 'hide'"
+            allow-pointer-events
+            @click="isPasswordMasked = !isPasswordMasked"
+          />
           <input
             :id="formInputId"
             ref="inputRef"
@@ -116,17 +123,17 @@ you can pass in options as props too */
             :placeholder="computedPlaceholder"
             :disabled="disabledBySelfOrParent"
             :step.prop="nativeInputNumberStepProp"
+            :minlength="minLength"
             :maxlength="maxLength"
+            :passwordrules="
+              type === 'password'
+                ? `minlength: ${minLength}; maxlength: ${maxLength}; required: lower; required: upper; required: digit; required: special;`
+                : undefined
+            "
             @keydown="onKeyboardEvent"
             @focus="onFocus"
             @blur="onBlur"
             @input="onChange"
-          />
-          <Icon
-            v-if='type === "password" &amp;&amp; allowShowPassword'
-            class="vorm-input__pass-show-hide-toggle"
-            :name="isPasswordMasked ? 'show' : 'hide'"
-            @click="isPasswordMasked = !isPasswordMasked"
           />
         </template>
       </div>
@@ -219,6 +226,7 @@ const props = defineProps({
   requiredMessage: { type: String, default: "This field is required" },
   min: [Date, Number],
   max: [Date, Number],
+  minLength: Number,
   maxLength: Number,
   toUpperCase: Boolean,
   toLowerCase: Boolean,
@@ -268,6 +276,8 @@ const disabledBySelfOrParent = useDisabledBySelfOrParent(disabled);
 
 const isPasswordMasked = ref(true); // only relevant for password
 
+// TODO - add html attributes which are dynamically generated for password attrs
+
 const validationRules = computed(() => {
   const rules = [];
   if (props.required || props.requiredWarning) {
@@ -291,7 +301,24 @@ const validationRules = computed(() => {
       message: props.regexMessage,
     });
   }
+  if (props.minLength) {
+    rules.push({
+      fn: validators.minLength(props.minLength),
+      message: `Your ${
+        props.type === "password" ? "password" : "input"
+      } must be at least ${props.minLength} characters long.`,
+    });
+  }
+  if (props.maxLength) {
+    rules.push({
+      fn: validators.maxLength(props.maxLength),
+      message: `Your ${
+        props.type === "password" ? "password" : "input"
+      } cannot be more than ${props.maxLength} characters long.`,
+    });
+  }
   // TODO: add more rule checks
+  // add rules for password strength validation
 
   return rules;
 });
@@ -717,7 +744,7 @@ defineExpose({
   }
 
   &::placeholder {
-    color: white;
+    color: var(--text-color-muted);
     font-style: italic;
   }
 
@@ -731,6 +758,9 @@ defineExpose({
   // }
 }
 
+.vorm-input__pass-show-hide-toggle + .vorm-input__input {
+  padding-right: 35px;
+}
 .vorm-input__label {
   @apply capsize text-sm;
   padding-bottom: @vertical-gap;
@@ -794,10 +824,12 @@ defineExpose({
   font-size: 12px;
   line-height: 40px;
   position: absolute;
+  top: 0;
   right: 0;
   margin-right: 8px;
   margin-top: 8px;
   opacity: 0.6;
+  z-index: 100;
 
   &:hover {
     opacity: 1;
