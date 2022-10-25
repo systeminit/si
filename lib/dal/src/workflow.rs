@@ -117,9 +117,14 @@ impl WorkflowView {
         args: FuncBackendJsWorkflowArgs,
     ) -> WorkflowResult<Self> {
         assert_eq!(func.backend_kind(), &FuncBackendKind::JsWorkflow);
-        let (func_binding, func_binding_return_value, _) =
-            FuncBinding::find_or_create_and_execute(ctx, serde_json::to_value(args)?, *func.id())
-                .await?;
+        let (func_binding, _) = FuncBinding::find_or_create(
+            ctx,
+            serde_json::to_value(args)?,
+            *func.id(),
+            *func.backend_kind(),
+        )
+        .await?;
+        let func_binding_return_value = func_binding.execute(ctx).await?;
         Ok(Self::deserialize(
             func_binding_return_value
                 .value()
@@ -525,6 +530,7 @@ pub struct CommandReturn {
 #[serde(rename_all = "camelCase")]
 pub struct FixReturn {
     confirmation_resolver_id: ConfirmationResolverId,
+    action: String,
     runner_state: WorkflowRunnerState,
     output: Vec<String>,
 }
@@ -560,6 +566,7 @@ impl WsEvent {
     pub fn fix_return(
         ctx: &DalContext,
         confirmation_resolver_id: ConfirmationResolverId,
+        action: String,
         runner_state: WorkflowRunnerState,
         output: Vec<String>,
     ) -> Self {
@@ -567,6 +574,7 @@ impl WsEvent {
             ctx,
             WsPayload::FixReturn(FixReturn {
                 confirmation_resolver_id,
+                action,
                 runner_state,
                 output,
             }),

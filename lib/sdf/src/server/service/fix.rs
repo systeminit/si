@@ -8,9 +8,9 @@ use thiserror::Error;
 
 use dal::fix::execution::FixExecutionError;
 use dal::{
-    ActionPrototypeError, ComponentError, ComponentId, ConfirmationPrototypeError,
-    ConfirmationPrototypeId, ConfirmationResolverError, ConfirmationResolverTreeError,
-    FixResolverError, StandardModelError, TransactionsError,
+    ComponentError, ComponentId, ConfirmationPrototypeError, ConfirmationPrototypeId,
+    ConfirmationResolverError, ConfirmationResolverTreeError, FixResolverError, StandardModelError,
+    TransactionsError,
 };
 
 mod confirmations;
@@ -35,12 +35,8 @@ pub enum FixError {
     FixResolver(#[from] FixResolverError),
     #[error(transparent)]
     FixExecution(#[from] FixExecutionError),
-    #[error(transparent)]
-    ActionPrototype(#[from] ActionPrototypeError),
     #[error("confirmation prototype {0} not found")]
     ConfirmationPrototypeNotFound(ConfirmationPrototypeId),
-    #[error("action named {0} not found for component {1}")]
-    ActionNotFound(String, ComponentId),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
     #[error("no schema found for component {0}")]

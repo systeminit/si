@@ -188,35 +188,23 @@ export const useFixesStore = () => {
           {
             eventType: "FixReturn",
             callback: (update) => {
-              const fix = this.fixes.find((f) => f.id === update.confirmationResolverId);
+              const fix = this.fixes.find((f) => f.id === update.confirmationResolverId && f.recommendation === update.action);
               if (!fix) {
                 this.LOAD_FIXES();
                 return;
               }
               switch (update.runnerState.status) {
                 case "success":
-                  this.updateFix({
-                    ...fix,
-                    status: "success",
-                  });
+                  fix.status = "success";
                   break;
                 case "failure":
-                  this.updateFix({
-                    ...fix,
-                    status: "failure",
-                  });
+                  fix.status = "failure";
                   break;
                 case "running":
-                  this.updateFix({
-                    ...fix,
-                    status: "running",
-                  });
+                  fix.status = "running";
                   break;
                 case "created":
-                  this.updateFix({
-                    ...fix,
-                    status: "unstarted",
-                  });
+                  fix.status = "unstarted";
                   break;
                 default:
                   break;

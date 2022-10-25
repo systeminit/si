@@ -8,14 +8,14 @@ use crate::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, ChangeSetPk, Component, ComponentId, ConfirmationResolverId, DalContext,
-    FixExecution, FixExecutionBatch, FixExecutionBatchId, FixResolver, FixResolverContext,
-    StandardModel, SystemId, Visibility, WorkflowPrototypeId, WorkflowRunnerStatus, WsEvent,
+    AccessBuilder, ActionPrototype, ChangeSetPk, Component, ComponentId, ConfirmationResolverId,
+    DalContext, FixExecution, FixExecutionBatch, FixExecutionBatchId, FixResolver,
+    FixResolverContext, StandardModel, SystemId, Visibility, WorkflowRunnerStatus, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Fix {
-    pub workflow_prototype_id: WorkflowPrototypeId,
+    pub action: String,
     pub component_id: ComponentId,
     pub confirmation_resolver_id: ConfirmationResolverId,
 }
@@ -122,12 +122,23 @@ impl JobConsumer for Fixes {
             .await?
             .ok_or(JobConsumerError::NoSchemaFound(fix.component_id))?;
 
+        let action = ActionPrototype::find_by_name(
+            ctx,
+            &fix.action,
+            *schema.id(),
+            *schema_variant.id(),
+            SystemId::NONE,
+        )
+        .await?
+        .ok_or_else(|| JobConsumerError::ActionNotFound(fix.action.clone(), fix.component_id))?;
+        let workflow_prototype_id = action.workflow_prototype_id();
+
         let (fix_execution, runner_state) = FixExecution::new_and_perform_fix(
             ctx,
             self.batch_id,
             fix.confirmation_resolver_id,
             run_id,
-            fix.workflow_prototype_id,
+            workflow_prototype_id,
             fix.component_id,
         )
         .await?;
@@ -140,7 +151,7 @@ impl JobConsumer for Fixes {
         };
         let _fix_resolver = FixResolver::upsert(
             ctx,
-            fix.workflow_prototype_id,
+            workflow_prototype_id,
             fix.confirmation_resolver_id,
             match runner_state.status() {
                 WorkflowRunnerStatus::Success => Some(true),
@@ -154,6 +165,7 @@ impl JobConsumer for Fixes {
         WsEvent::fix_return(
             ctx,
             fix.confirmation_resolver_id,
+            fix.action.clone(),
             runner_state,
             fix_execution.logs(),
         )

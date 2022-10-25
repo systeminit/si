@@ -307,14 +307,12 @@ impl WorkflowRunner {
             .pop()
             .ok_or_else(|| WorkflowRunnerError::MissingWorkflow("si:identity".to_owned()))?;
 
-        let (func_binding, _) = FuncBinding::find_or_create(
+        let (func_binding, mut func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
             ctx,
             serde_json::json!({ "identity": serde_json::to_value(func_binding_return_values)? }),
             *identity.id(),
-            *identity.backend_kind(),
         )
         .await?;
-        let mut func_binding_return_value = func_binding.execute(ctx).await?;
 
         let mut created_resources = Vec::new();
         let mut updated_resources = Vec::new();

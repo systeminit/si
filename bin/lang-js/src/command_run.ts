@@ -22,8 +22,7 @@ export type CommandRunResult =
   | CommandRunResultFailure;
 
 export interface CommandRunResultSuccess extends ResultSuccess {
-  created?: Record<string, unknown>;
-  updated?: Record<string, unknown>;
+  value: unknown;
 }
 export type CommandRunResultFailure = ResultFailure;
 
@@ -67,8 +66,7 @@ async function execute(
       status: "success",
       executionId,
       error: commandRunResult?.error as string,
-      updated: commandRunResult?.updated as Record<string, unknown> | undefined,
-      created: commandRunResult?.created as Record<string, unknown> | undefined,
+      value: commandRunResult?.value,
     };
     return result;
   } catch (err) {
