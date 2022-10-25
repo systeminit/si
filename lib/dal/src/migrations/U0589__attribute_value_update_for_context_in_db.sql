@@ -1362,29 +1362,14 @@ DECLARE
     parent_prop_id            bigint;
     parent_index_map          jsonb;
 BEGIN
-    SELECT id, index_map, prop_kind
+    SELECT av.id, index_map, p.kind
     INTO parent_attribute_value_id, parent_index_map, parent_prop_kind
     FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
-    INNER JOIN (
-        SELECT DISTINCT ON (object_id) belongs_to_id AS parent_attribute_value_id
-        FROM attribute_value_belongs_to_attribute_value
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
-              AND object_id = this_attribute_value_id
-        ORDER BY object_id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS avbtav ON avbtav.parent_attribute_value_id = av.id
-    INNER JOIN LATERAL (
-        SELECT DISTINCT ON (id) id AS prop_id,
-                                kind AS prop_kind
-        FROM props
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-              -- XXX: May not need to have this additional constraint (which makes it a lateral join).
-              AND id = av.attribute_context_prop_id
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS p ON p.prop_id = av.attribute_context_prop_id;
+    INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+        ON avbtav.belongs_to_id = av.id
+            AND avbtav.object_id = this_attribute_value_id
+    INNER JOIN props_v1(this_read_tenancy, this_visibility) AS p
+        ON p.id = av.attribute_context_prop_id;
 
     IF parent_attribute_value_id IS NULL
        OR (parent_prop_kind != 'array' AND parent_prop_kind != 'map') THEN
