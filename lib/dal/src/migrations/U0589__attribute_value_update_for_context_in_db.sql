@@ -1461,28 +1461,18 @@ BEGIN
         SELECT array_agg(obj.key)
         INTO invalid_object_keys
         FROM jsonb_object_keys(unprocessed_value) AS obj(key)
-        LEFT JOIN (
-            SELECT DISTINCT ON (id) name
-            FROM props
-            INNER JOIN (
-                SELECT DISTINCT ON (object_id) object_id AS child_prop_id
-                FROM prop_belongs_to_prop
-                WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, prop_belongs_to_prop)
-                      AND belongs_to_id = parent_prop.id
-                ORDER BY object_id,
-                         visibility_change_set_pk DESC,
-                         visibility_deleted_at DESC NULLS FIRST
-            ) AS pbtp ON pbtp.child_prop_id = props.id
-            WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-            ORDER BY id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC NULLS FIRST
-        ) AS prop ON prop.name = obj.key
-        WHERE prop.name IS NULL;
+        LEFT JOIN props_v1(this_read_tenancy, this_visibility) AS p
+            ON p.name = obj.key
+        LEFT JOIN prop_belongs_to_prop_v1(this_read_tenancy, this_visibility) AS pbtp
+            ON pbtp.object_id = p.id
+                AND pbtp.belongs_to_id = parent_prop.id
+        WHERE p.name IS NULL;
+        -- Can't use `IF NOT FOUND` because `array_agg` will always be `FOUND`, even if it is still
+        -- `NULL` because it didn't aggregate anything.
         IF invalid_object_keys IS NOT NULL THEN
             RAISE 'attribute_value_populate_nested_values_v1: Invalid object value fields(%) for Prop(%), Tenancy(%), Visibility(%)',
                   invalid_object_keys,
-                  parent_prop_id,
+                  parent_prop.id,
                   this_read_tenancy,
                   this_visibility;
         END IF;
