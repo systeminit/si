@@ -53,7 +53,7 @@ ARG BIN=sdf
 
 RUN set -eux; \
     useradd -ms /bin/bash app; \
-    for dir in /run /etc /usr/local/etc /home/app/.confg; do \
+    for dir in /run /etc /usr/local/etc /home/app/.config; do \
         mkdir -pv "$dir/$BIN"; \
     done;
 
