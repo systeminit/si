@@ -950,22 +950,12 @@ BEGIN
                                                                             original_child_value.func_binding_return_value_id,
                                                                             write_attribute_context,
                                                                             original_child_value.key));
-            SELECT DISTINCT ON (id) attribute_prototypes.*
+            SELECT ap.*
             INTO STRICT child_attribute_value_prototype
-            FROM attribute_prototypes
-            INNER JOIN (
-                SELECT DISTINCT ON (object_id) belongs_to_id AS attribute_prototype_id
-                FROM attribute_value_belongs_to_attribute_prototype
-                WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
-                      AND object_id = original_child_value.id
-                ORDER BY object_id,
-                         visibility_change_set_pk DESC,
-                         visibility_deleted_at DESC NULLS FIRST
-            ) AS avbtap ON avbtap.attribute_prototype_id = attribute_prototypes.id
-            WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototypes)
-            ORDER BY id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC NULLS FIRST;
+            FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
+            INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility) AS avbtap
+                ON avbtap.belongs_to_id = ap.id
+                    AND avbtap.object_id = original_child_value.id;
 
             PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
                                         this_write_tenancy,
