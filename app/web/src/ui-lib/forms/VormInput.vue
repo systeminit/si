@@ -717,7 +717,7 @@ defineExpose({
   }
 
   &::placeholder {
-    color: white;
+    color: var(--text-color-muted);
     font-style: italic;
   }
 

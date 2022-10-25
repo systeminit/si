@@ -14,7 +14,7 @@
         <p>{{ confirmation.description }}</p>
       </div>
 
-      <div class="text-right">
+      <div v-if="confirmation.output" class="text-right">
         <button class="underline text-action-400" @click="openModal">
           View Details
         </button>
@@ -25,7 +25,9 @@
       <template #title>{{ confirmation.title }}</template>
       <template #content>
         <div class="my-2">
-          <StatusMessageBox :status="confirmation.status" />
+          <StatusMessageBox :status="confirmation.status" type="confirmation"
+            >Status: {{ confirmation.status }}
+          </StatusMessageBox>
         </div>
 
         <div v-if="confirmation.description" class="my-2">
