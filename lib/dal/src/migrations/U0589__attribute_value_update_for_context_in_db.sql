@@ -1054,12 +1054,11 @@ BEGIN
     -- and not Objects/Arrays/Maps themselves (unless the Object/Array/Map itself is the element of an
     -- Array/Map).
     IF maybe_parent_attribute_value_id IS NOT NULL THEN
-        SELECT DISTINCT ON (id) *
+        SELECT *
         INTO parent_attribute_value
         FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
-        WHERE id = maybe_parent_attribute_value_id
-        ORDER BY id;
-        IF parent_attribute_value IS NULL THEN
+        WHERE id = maybe_parent_attribute_value_id;
+        IF NOT FOUND THEN
             RAISE 'Unable to find parent AttributeValue(%) in Tenancy(%), Visibility(%)',
                   maybe_parent_attribute_value_id,
                   this_read_tenancy,
