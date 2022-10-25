@@ -1283,17 +1283,9 @@ BEGIN
     -- doesn't equal the value then we have a populated "container" (i.e. object, map, array) that contains
     -- values which need to be made into AttributeValues of their own.
     IF fbrv.unprocessed_value IS NOT NULL
-       AND fbrv.unprocessed_value != fbrv.value
-       FROM (
-           SELECT DISTINCT ON (id) func_binding_return_values.unprocessed_value,
-                                   func_binding_return_values.value
-           FROM func_binding_return_values
-           WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, func_binding_return_values)
-                 AND id = func_binding_return_value_id
-           ORDER BY id,
-                    visibility_change_set_pk DESC,
-                    visibility_deleted_at DESC NULLS FIRST
-       ) AS fbrv
+        AND fbrv.unprocessed_value != fbrv.value
+        FROM func_binding_return_values_v1(this_read_tenancy, this_visibility) AS fbrv
+        WHERE id = func_binding_return_value_id
     THEN
         SELECT DISTINCT ON (id) func_binding_return_values.unprocessed_value
         INTO unprocessed_value
