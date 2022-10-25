@@ -123,16 +123,14 @@ impl JobConsumer for Confirmation {
                         schema_variant_id: resolver.context().schema_variant_id,
                         system_id: SystemId::NONE,
                     };
-                    let _fix_resolver = dbg!(
-                        FixResolver::upsert(
-                            ctx,
-                            WorkflowPrototypeId::NONE,
-                            *resolver.id(),
-                            None,
-                            context
-                        )
-                        .await
-                    )?;
+                    let _fix_resolver = FixResolver::upsert(
+                        ctx,
+                        WorkflowPrototypeId::NONE,
+                        *resolver.id(),
+                        None,
+                        context,
+                    )
+                    .await?;
                     match resolver.success() {
                         Some(true) => (ConfirmationStatus::Success, None),
                         Some(false) => (ConfirmationStatus::Failure, None),

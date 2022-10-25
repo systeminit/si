@@ -50,6 +50,7 @@ export type WsEventPayloadMap = {
   // };
   FixReturn: {
     confirmationResolverId: number;
+    action: string;
     output: string[];
     runnerState: { status: "failure" | "success" | "running" | "created" },
   }

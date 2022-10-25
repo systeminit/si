@@ -11,13 +11,15 @@ use tokio::task::JoinError;
 use crate::fix::execution::FixExecutionError;
 use crate::{
     func::binding_return_value::FuncBindingReturnValueError, workflow_runner::WorkflowRunnerError,
-    AccessBuilder, AttributeValueError, ComponentError, ComponentId, ConfirmationPrototypeError,
-    DalContext, DalContextBuilder, FixExecutionBatchId, FixResolverError, StandardModelError,
-    TransactionsError, Visibility, WsEventError,
+    AccessBuilder, ActionPrototypeError, AttributeValueError, ComponentError, ComponentId,
+    ConfirmationPrototypeError, DalContext, DalContextBuilder, FixExecutionBatchId,
+    FixResolverError, StandardModelError, TransactionsError, Visibility, WsEventError,
 };
 
 #[derive(Error, Debug)]
 pub enum JobConsumerError {
+    #[error(transparent)]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error(transparent)]
     AttributeValue(#[from] AttributeValueError),
     #[error(transparent)]
@@ -56,6 +58,8 @@ pub enum JobConsumerError {
     NoSchemaFound(ComponentId),
     #[error("no schema variant found for component {0}")]
     NoSchemaVariantFound(ComponentId),
+    #[error("action named {0} not found for component {1}")]
+    ActionNotFound(String, ComponentId),
 }
 
 impl From<JobConsumerError> for std::io::Error {
