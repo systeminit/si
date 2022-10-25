@@ -9,8 +9,9 @@ use crate::{
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, ChangeSetPk, Component, ComponentId, ConfirmationResolverId, DalContext,
-    FixResolver, FixResolverContext, StandardModel, SystemId, Visibility, WorkflowPrototypeId,
-    WorkflowRunner, WorkflowRunnerStatus, WsEvent,
+    FixExecution, FixExecutionBatch, FixExecutionBatchId, FixResolver, FixResolverContext,
+    StandardModel, SystemId, Visibility, WorkflowPrototypeId, WorkflowRunner, WorkflowRunnerStatus,
+    WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,29 +24,35 @@ pub struct Fix {
 #[derive(Debug, Deserialize, Serialize)]
 struct FixesArgs {
     fixes: Vec<Fix>,
+    batch_id: FixExecutionBatchId,
 }
 
 impl From<Fixes> for FixesArgs {
     fn from(value: Fixes) -> Self {
-        Self { fixes: value.fixes }
+        Self {
+            fixes: value.fixes,
+            batch_id: value.batch_id,
+        }
     }
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Fixes {
     fixes: Vec<Fix>,
+    batch_id: FixExecutionBatchId,
     access_builder: AccessBuilder,
     visibility: Visibility,
     faktory_job: Option<FaktoryJobInfo>,
 }
 
 impl Fixes {
-    pub fn new(ctx: &DalContext, fixes: Vec<Fix>) -> Box<Self> {
+    pub fn new(ctx: &DalContext, fixes: Vec<Fix>, batch_id: FixExecutionBatchId) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
         let visibility = *ctx.visibility();
 
         Box::new(Self {
             fixes,
+            batch_id,
             access_builder,
             visibility,
             faktory_job: None,
@@ -143,43 +150,39 @@ impl JobConsumer for Fixes {
         )
         .await?;
 
-        // NOTE(nick,wendy): this looks similar to code insider WorkflowRunner::run(). Do we need to run
-        // it twice?
-        // reference: https://github.com/systeminit/si/blob/87c5cce99d6b972f441358295bbabe27f1d787da/lib/dal/src/workflow_runner.rs#L209-L227
-        let mut logs = Vec::new();
-        for func_binding_return_value in func_binding_return_values {
-            for stream in func_binding_return_value
-                .get_output_stream(ctx)
-                .await?
-                .unwrap_or_default()
-            {
-                match stream.data {
-                    Some(data) => logs.push((
-                        stream.timestamp,
-                        format!(
-                            "{} {}",
-                            stream.message,
-                            serde_json::to_string_pretty(&data)?
-                        ),
-                    )),
-                    None => logs.push((stream.timestamp, stream.message)),
-                }
-            }
-        }
-        logs.sort_by_key(|(timestamp, _)| *timestamp);
-        let logs = logs.into_iter().map(|(_, log)| log).collect();
+        let (fix_execution, runner_state) = FixExecution::new_and_perform_fix(
+            ctx,
+            self.batch_id,
+            fix.confirmation_resolver_id,
+            run_id,
+            fix.workflow_prototype_id,
+            fix.component_id,
+        )
+        .await?;
 
-        WsEvent::fix_return(ctx, fix.confirmation_resolver_id, runner_state, logs)
-            .publish(ctx)
-            .await?;
+        WsEvent::fix_return(
+            ctx,
+            fix.confirmation_resolver_id,
+            runner_state,
+            fix_execution.logs(),
+        )
+        .publish(ctx)
+        .await?;
 
         if self.fixes.len() > 1 {
             ctx.enqueue_job(Fixes::new(
                 ctx,
                 self.fixes.iter().skip(1).cloned().collect(),
+                self.batch_id,
             ))
             .await;
         } else {
+            // Mark the batch as completed.
+            let mut batch = FixExecutionBatch::get_by_id(ctx, &self.batch_id)
+                .await?
+                .ok_or(JobConsumerError::MissingFixExecutionBatch(self.batch_id))?;
+            batch.set_completed(ctx, true).await?;
+
             // Re-trigger confirmations and informs the frontend to re-fetch everything on head
             WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
                 .await
@@ -197,7 +200,8 @@ impl TryFrom<faktory_async::Job> for Fixes {
     fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
-                r#"[{ "fixes": [Fixes] }, <AccessBuilder>, <Visibility>]"#.to_string(),
+                r#"[{ "fixes": [Fixes], "batch_id": [BatchId] }, <AccessBuilder>, <Visibility>]"#
+                    .to_string(),
                 job.args().to_vec(),
             ));
         }
@@ -209,6 +213,7 @@ impl TryFrom<faktory_async::Job> for Fixes {
 
         Ok(Self {
             fixes: args.fixes,
+            batch_id: args.batch_id,
             access_builder,
             visibility,
             faktory_job: Some(faktory_job_info),

@@ -5,8 +5,8 @@ use super::{FixError, FixResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::{
     job::definition::{fix::Fix, Fixes},
-    ActionPrototype, Component, ComponentId, ConfirmationResolverId, StandardModel, SystemId,
-    Visibility,
+    ActionPrototype, Component, ComponentId, ConfirmationResolverId, FixExecutionBatch,
+    StandardModel, SystemId, Visibility,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -69,7 +69,9 @@ pub async fn run(
         });
     }
 
-    ctx.enqueue_job(Fixes::new(&ctx, fixes)).await;
+    let batch = FixExecutionBatch::new(&ctx).await?;
+
+    ctx.enqueue_job(Fixes::new(&ctx, fixes, *batch.id())).await;
 
     ctx.commit().await?;
 
