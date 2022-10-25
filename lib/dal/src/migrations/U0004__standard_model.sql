@@ -683,7 +683,9 @@ BEGIN
                            'CREATE UNIQUE INDEX %1$s_single_association ON %1$I (object_id, '
                            '                                        visibility_change_set_pk, '
                            '                                        (visibility_deleted_at IS NULL)) '
-                           '                    WHERE visibility_deleted_at IS NULL; ',
+                           '                    WHERE visibility_deleted_at IS NULL; '
+                           'CREATE INDEX ON %1$I (object_id); '
+                           'CREATE INDEX ON %1$I (belongs_to_id); ',
                            this_table_name,
                            this_object_table,
                            this_belongs_to_table);
@@ -709,7 +711,8 @@ BEGIN
                           'CREATE UNIQUE INDEX %1$s_only_one_live ON %1$I (id, '
                           '                                        visibility_change_set_pk, '
                           '                                        (visibility_deleted_at IS NULL)) '
-                          '                    WHERE visibility_deleted_at IS NULL; ',
+                          '                    WHERE visibility_deleted_at IS NULL; '
+                          'CREATE INDEX ON %1$I (id); ',
                           this_table_name
         );
     RAISE DEBUG 'alter table query: %', alter_query;
@@ -759,7 +762,9 @@ BEGIN
                            'CREATE UNIQUE INDEX %1$s_only_one_live ON %1$I (id, '
                            '                                        visibility_change_set_pk, '
                            '                                        (visibility_deleted_at IS NULL)) '
-                           '                    WHERE visibility_deleted_at IS NULL; ',
+                           '                    WHERE visibility_deleted_at IS NULL; '
+                           'CREATE INDEX ON %1$I (left_object_id); '
+                           'CREATE INDEX ON %1$I (right_object_id); ',
                            this_table_name,
                            this_left_object_table,
                            this_right_object_table);
