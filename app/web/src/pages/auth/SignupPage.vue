@@ -20,7 +20,7 @@
               instructions="An org-level username - you will need this when you sign in"
               to-lower-case
               :regex="VALID_USERNAME_REGEX"
-              regex-message="only letters, digits, and ._-"
+              regex-message="Please use only lowercase letters, digits, and _-."
             />
             <VormInput
               v-model="signupPayload.userName"
@@ -43,11 +43,12 @@
               type="password"
               label="Password"
               required
+              allow-show-password
               placeholder="Select a new password"
               autocomplete="new-password"
               instructions="8-64 characters, must include lowercase, uppercase, number, and symbol"
-              :min-password-length="8"
-              :max-password-length="64"
+              :min-length="8"
+              :max-length="64"
             />
 
             <VormInput

@@ -257,4 +257,14 @@ export const validators = {
     const regex = _.isString(regexRaw) ? new RegExp(regexRaw) : regexRaw;
     return (value: any) => !req(value) || regex.test(value);
   },
+  minLength: (minLength: number) => {
+    return (value: any) =>
+      req(typeof value === "string" ? value.trim() : value) &&
+      value.length >= minLength;
+  },
+  maxLength: (maxLength: number) => {
+    return (value: any) =>
+      req(typeof value === "string" ? value.trim() : value) &&
+      value.length <= maxLength;
+  },
 };
