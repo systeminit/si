@@ -86,15 +86,24 @@ init-partial:
 	if [ ! -f $(MAKEPATH)/docker-compose.env.yml ]; then \
 		echo "version: \"3\"" > $(MAKEPATH)/docker-compose.env.yml; \
 	fi
-	docker compose \
-		-f $(MAKEPATH)/docker-compose.yml \
-		pull
+	if [ -n "$(SI_SKIP_PULL)" ]; then \
+		echo "--- SI_SKIP_PULL set, skipping docker compose pull"; \
+	else \
+		docker compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			pull; \
+	fi
 
 init:
 	if [ ! -f $(MAKEPATH)/docker-compose.env.yml ]; then \
 		echo "version: \"3\"" > $(MAKEPATH)/docker-compose.env.yml; \
 	fi
-	docker compose \
-		-f $(MAKEPATH)/docker-compose.yml \
-		--profile si \
-		pull
+	if [ -n "$(SI_SKIP_PULL)" ]; then \
+		echo "--- SI_SKIP_PULL set, skipping docker compose pull"; \
+	else \
+		docker compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			--profile si \
+			pull; \
+	fi
+

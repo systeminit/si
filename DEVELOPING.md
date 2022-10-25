@@ -126,6 +126,12 @@ In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs
 make prepare
 ```
 
+If you would like to skip pulling potentially newers Docker images before running the supporting services, then set `SI_SKIP_PULL` to a non-empty value, for example:
+
+```bash
+make prepare SI_SKIP_PULL=true
+```
+
 > #### Running Postgres on macOS `aarch64` (i.e. `arm64` or "Apple Silicon")
 >
 > As of October 2022, Docker Desktop runs Linux `x86_64` (i.e. `amd64`) images in a `qemu`, Linux `x86_64` VM.
