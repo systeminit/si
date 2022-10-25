@@ -81,6 +81,7 @@ down:
 		-f $(MAKEPATH)/docker-compose.yml \
 		--profile si \
 		down
+	-docker stop registry
 
 init-partial:
 	if [ ! -f $(MAKEPATH)/docker-compose.env.yml ]; then \

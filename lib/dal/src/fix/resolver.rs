@@ -24,7 +24,7 @@ pub enum FixResolverError {
 pub type FixResolverResult<T> = Result<T, FixResolverError>;
 
 const FIND_FOR_CONFIRMATION: &str =
-    include_str!("./queries/fix_resolver_find_for_confirmation.sql");
+    include_str!("../queries/fix_resolver_find_for_confirmation.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FixResolverContext {

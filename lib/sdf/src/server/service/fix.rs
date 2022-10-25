@@ -4,14 +4,14 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use thiserror::Error;
 
+use dal::fix::execution::FixExecutionError;
 use dal::{
     ActionPrototypeError, ComponentError, ComponentId, ConfirmationPrototypeError,
     ConfirmationPrototypeId, ConfirmationResolverError, ConfirmationResolverTreeError,
     FixResolverError, StandardModelError, TransactionsError,
 };
-
-use thiserror::Error;
 
 mod confirmations;
 mod list;
@@ -33,6 +33,8 @@ pub enum FixError {
     ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error(transparent)]
     FixResolver(#[from] FixResolverError),
+    #[error(transparent)]
+    FixExecution(#[from] FixExecutionError),
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("confirmation prototype {0} not found")]

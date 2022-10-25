@@ -6,7 +6,7 @@ use dal::{
     InternalProvider, PropKind, SchemaKind, StandardModel,
 };
 use dal_test::{
-    helpers::{setup_identity_func, ComponentPayload},
+    helpers::{component_payload::ComponentPayload, setup_identity_func},
     test,
     test_harness::{
         create_prop_of_kind_and_set_parent_with_name, create_prop_of_kind_with_name, create_schema,

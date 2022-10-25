@@ -9,7 +9,8 @@ use dal::{
 };
 
 use super::{
-    find_prop_and_parent_by_name, find_schema_and_default_variant_by_name, ComponentPayload,
+    component_payload::ComponentPayload, find_prop_and_parent_by_name,
+    find_schema_and_default_variant_by_name,
 };
 
 /// A list of builtin schemas that can be used to create [`Component`](Component) for integration

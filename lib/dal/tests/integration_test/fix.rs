@@ -1,8 +1,9 @@
 use dal::{
     workflow_runner::workflow_runner_state::WorkflowRunnerStatus, ActionPrototype,
-    ConfirmationPrototype, ConfirmationResolver, DalContext, StandardModel, SystemId,
-    WorkflowRunner,
+    ConfirmationPrototype, ConfirmationResolver, ConfirmationResolverId, DalContext, FixExecution,
+    FixExecutionBatch, StandardModel, SystemId, WorkflowPrototypeId, WorkflowRunner,
 };
+use dal_test::helpers::component_payload::ComponentPayload;
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
@@ -19,6 +20,90 @@ struct SkopeoOutput {
 
 #[test]
 async fn confirmation_to_action(ctx: &DalContext) {
+    let (payload, _confirmation_resolver_id, action_workflow_prototype_id) =
+        setup_confirmation_resolver_and_get_action_prototype(ctx).await;
+
+    let run_id = rand::random();
+    let (_runner, runner_state, func_binding_return_values, _created_resources, _updated_resources) =
+        WorkflowRunner::run(
+            ctx,
+            run_id,
+            action_workflow_prototype_id,
+            payload.component_id,
+        )
+        .await
+        .expect("could not perform workflow runner run");
+    assert_eq!(runner_state.status(), WorkflowRunnerStatus::Success);
+
+    let mut maybe_skopeo_output_name: Option<String> = None;
+    for func_binding_return_value in &func_binding_return_values {
+        for stream in func_binding_return_value
+            .get_output_stream(ctx)
+            .await
+            .expect("could not get output stream from func binding return value")
+            .unwrap_or_default()
+        {
+            let maybe_skopeo_output: serde_json::Result<SkopeoOutput> =
+                serde_json::from_str(&stream.message);
+            if let Ok(skopeo_output) = maybe_skopeo_output {
+                if maybe_skopeo_output_name.is_some() {
+                    panic!(
+                        "already found skopeo output with name: {:?}",
+                        maybe_skopeo_output_name
+                    );
+                }
+                maybe_skopeo_output_name = Some(skopeo_output.name);
+            }
+        }
+    }
+    let skopeo_outputname =
+        maybe_skopeo_output_name.expect("could not find name via skopeo output");
+    assert_eq!(skopeo_outputname, "docker.io/systeminit/whiskers");
+}
+
+#[test]
+async fn confirmation_to_fix_execution(ctx: &DalContext) {
+    let (payload, confirmation_resolver_id, action_workflow_prototype_id) =
+        setup_confirmation_resolver_and_get_action_prototype(ctx).await;
+
+    let mut batch = FixExecutionBatch::new(ctx)
+        .await
+        .expect("could not create fix execution batch");
+    assert!(!batch.completed());
+
+    let run_id = rand::random();
+    let (fix_execution, runner_state) = FixExecution::new_and_perform_fix(
+        ctx,
+        *batch.id(),
+        confirmation_resolver_id,
+        run_id,
+        action_workflow_prototype_id,
+        payload.component_id,
+    )
+    .await
+    .expect("could not create fix execution");
+    batch
+        .set_completed(ctx, true)
+        .await
+        .expect("could not set completed column on batch");
+    assert!(batch.completed());
+
+    let found_batch = fix_execution
+        .fix_execution_batch(ctx)
+        .await
+        .expect("could not get fix execution batch")
+        .expect("no fix execution batch found");
+    assert_eq!(batch.id(), found_batch.id());
+    assert_eq!(runner_state.status(), WorkflowRunnerStatus::Success);
+}
+
+async fn setup_confirmation_resolver_and_get_action_prototype(
+    ctx: &DalContext,
+) -> (
+    ComponentPayload,
+    ConfirmationResolverId,
+    WorkflowPrototypeId,
+) {
     let mut harness = SchemaBuiltinsTestHarness::new();
     let payload = harness
         .create_component(ctx, "systeminit/whiskers", Builtin::DockerImage)
@@ -77,40 +162,9 @@ async fn confirmation_to_action(ctx: &DalContext) {
 
     assert_eq!(found_action_prototype.id(), filtered_action_prototype.id());
 
-    let run_id = rand::random();
-    let (_runner, runner_state, func_binding_return_values, _created_resources, _updated_resources) =
-        WorkflowRunner::run(
-            ctx,
-            run_id,
-            filtered_action_prototype.workflow_prototype_id(),
-            payload.component_id,
-        )
-        .await
-        .expect("could not perform workflow runner run");
-    assert_eq!(runner_state.status(), WorkflowRunnerStatus::Success);
-
-    let mut maybe_skopeo_output_name: Option<String> = None;
-    for func_binding_return_value in func_binding_return_values {
-        for stream in func_binding_return_value
-            .get_output_stream(ctx)
-            .await
-            .expect("could not get output stream from func binding return value")
-            .unwrap_or_default()
-        {
-            let maybe_skopeo_output: serde_json::Result<SkopeoOutput> =
-                serde_json::from_str(&stream.message);
-            if let Ok(skopeo_output) = maybe_skopeo_output {
-                if maybe_skopeo_output_name.is_some() {
-                    panic!(
-                        "already found skopeo output with name: {:?}",
-                        maybe_skopeo_output_name
-                    );
-                }
-                maybe_skopeo_output_name = Some(skopeo_output.name);
-            }
-        }
-    }
-    let skopeo_outputname =
-        maybe_skopeo_output_name.expect("could not find name via skopeo output");
-    assert_eq!(skopeo_outputname, "docker.io/systeminit/whiskers");
+    (
+        payload,
+        *found_confirmation_resolver.id(),
+        found_action_prototype.workflow_prototype_id(),
+    )
 }
