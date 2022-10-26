@@ -30,7 +30,7 @@ use crate::{
     pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    AttributeContextError, AttributePrototypeArgumentError, ComponentId, DalContext,
+    AttributeContextError, AttributePrototypeArgumentError, ComponentId, DalContext, Func,
     FuncBackendKind, FuncBackendResponseType, FuncBinding, FuncError, HistoryEventError, IndexMap,
     InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind, ReadTenancyError,
     SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp,
@@ -1024,19 +1024,33 @@ impl AttributeValue {
                 }
             };
         }
-        info!("update_from_prototype_function({:?}) AttributePrototype.argument_values({:?}) took {:?}", self.id, self.context, update_start_time.elapsed());
-        // If we haven't gathered up any arguments, then that means that this attribute value does not depend on any external input,
-        // and should not change if re-evaluated.
-        //
-        // TODO: Make sure that not re-evaulating functions with no input is the right product decision. For now this is to handle things like `si:setString`, as there's not really anything to re-evaluate.
-        if func_binding_args.is_empty() {
-            info!(
-                "update_from_prototype_function({:?}) took {:?} func_binding has no args",
-                self.id,
-                update_start_time.elapsed()
-            );
 
-            return Ok(());
+        // If a function has no input, we probably don't need to re-execute it.
+        // TODO: we should confirm from a product standpoint whether this is true!
+        // However, if the function code has changed since the last execution, we *should*
+        // re-execute it, since it's a different function now
+        if func_binding_args.is_empty() {
+            let func = Func::get_by_id(ctx, &attribute_prototype.func_id())
+                .await?
+                .ok_or_else(|| {
+                    AttributeValueError::MissingFunc(
+                        "Missing attribute prototype function".to_string(),
+                    )
+                })?;
+
+            if let Some(func_binding) = FuncBinding::get_by_id(ctx, &self.func_binding_id()).await?
+            {
+                // Restricting the re-execution of no-args functions to
+                // JsAttribute funcs for now (unless code has changed!) This
+                // breaks inter_component_identity_update tests otherwise, but
+                // I'm not sure why.
+                if (func_binding.args() == &serde_json::json!({})
+                    || func_binding.backend_kind() != &FuncBackendKind::JsAttribute)
+                    && func_binding.code_sha256() == func.code_sha256()
+                {
+                    return Ok(());
+                }
+            }
         }
 
         let execution_start = std::time::Instant::now();
@@ -1047,9 +1061,11 @@ impl AttributeValue {
                 attribute_prototype.func_id(),
             )
             .await?;
+
         info!(
-            "update_from_prototype_function({:?}): Func execution took {:?}",
+            "update_from_prototype_function({:?}): Func {:?} execution took {:?}",
             self.id,
+            attribute_prototype.func_id(),
             execution_start.elapsed()
         );
 

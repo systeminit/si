@@ -8,7 +8,6 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_client::{OutputStream, ResolverFunctionComponent};
 
-use crate::func::backend::validation::FuncBackendValidation;
 use crate::func::backend::{
     array::FuncBackendArray,
     boolean::FuncBackendBoolean,
@@ -23,8 +22,10 @@ use crate::func::backend::{
     map::FuncBackendMap,
     prop_object::FuncBackendPropObject,
     string::FuncBackendString,
+    validation::FuncBackendValidation,
     FuncBackend, FuncDispatch, FuncDispatchContext,
 };
+use crate::func::execution::FuncExecutionPk;
 use crate::DalContext;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
@@ -84,6 +85,7 @@ pub struct FuncBinding {
     id: FuncBindingId,
     args: serde_json::Value,
     backend_kind: FuncBackendKind,
+    code_sha256: String,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -115,16 +117,21 @@ impl FuncBinding {
         octx.update_write_tenancy(write_tenancy);
         let ctx = &octx;
 
+        let func = Func::get_by_id(ctx, &func_id)
+            .await?
+            .ok_or(FuncBindingError::FuncNotFound(FuncBindingPk::NONE))?;
+
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM func_binding_create_v1($1, $2, $3, $4)",
+                "SELECT object FROM func_binding_create_v1($1, $2, $3, $4, $5)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &args,
                     &backend_kind.as_ref(),
+                    &func.code_sha256(),
                 ],
             )
             .await?;
@@ -178,6 +185,56 @@ impl FuncBinding {
         Ok((object, created))
     }
 
+    pub async fn find_or_create_with_existing_value(
+        ctx: &DalContext,
+        args: serde_json::Value,
+        value: Option<serde_json::Value>,
+        func_id: FuncId,
+    ) -> FuncBindingResult<(Self, FuncBindingReturnValue, bool)> {
+        let func = Func::get_by_id(ctx, &func_id)
+            .await?
+            .ok_or(FuncError::NotFound(func_id))?;
+        let (func_binding, created_func_binding) =
+            Self::find_or_create(ctx, args, func_id, func.backend_kind).await?;
+
+        let func_binding_return_value: FuncBindingReturnValue = if created_func_binding {
+            FuncBindingReturnValue::new(
+                ctx,
+                value.clone(),
+                value,
+                func_id,
+                *func_binding.id(),
+                FuncExecutionPk::NONE,
+            )
+            .await?
+        } else {
+            // If the func binding was not newly created, let's try to find a func binding
+            // return value first.
+            let maybe_func_binding_return_value =
+                FuncBindingReturnValue::get_by_func_binding_id(ctx, *func_binding.id()).await?;
+            if let Some(func_binding_return_value) = maybe_func_binding_return_value {
+                // If we found one, return it!
+                func_binding_return_value
+            } else {
+                FuncBindingReturnValue::new(
+                    ctx,
+                    value.clone(),
+                    value,
+                    func_id,
+                    *func_binding.id(),
+                    FuncExecutionPk::NONE,
+                )
+                .await?
+            }
+        };
+
+        Ok((
+            func_binding,
+            func_binding_return_value,
+            created_func_binding,
+        ))
+    }
+
     /// Runs [`Self::find_or_create()`] and executes if [`Self`] was newly created or
     /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) could not be found.
     ///
@@ -220,6 +277,7 @@ impl FuncBinding {
 
     standard_model_accessor!(args, PlainJson<JsonValue>, FuncBindingResult);
     standard_model_accessor!(backend_kind, Enum(FuncBackendKind), FuncBindingResult);
+    standard_model_accessor!(code_sha256, String, FuncBindingResult);
     standard_model_belongs_to!(
         lookup_fn: func,
         set_fn: set_func,
@@ -266,13 +324,12 @@ impl FuncBinding {
             FuncBackendKind::JsCommand => {
                 FuncBackendJsCommand::create_and_execute(context, &func, &self.args).await?
             }
-            FuncBackendKind::JsAttribute => {
-                FuncBackendJsAttribute::create_and_execute(context, &func, &self.args).await?
-            }
             FuncBackendKind::JsConfirmation => {
                 FuncBackendJsConfirmation::create_and_execute(context, &func, &self.args).await?
             }
-            FuncBackendKind::Json => {
+            // NOTE: Adding JsAttribute here is a *hack*. We need separate backends for the json transformation
+            // NOTE: functions and the JsAttribute functions. Probably neither of them should take a ComponentView
+            FuncBackendKind::Json | FuncBackendKind::JsAttribute => {
                 let component = FuncBackendJsAttributeArgs {
                     component: ResolverFunctionComponent {
                         data: veritech_client::ComponentView {

@@ -49,6 +49,7 @@ const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list
 const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_prototype_find_with_parent_value_and_key_for_context.sql");
 const FIND_FOR_FUNC: &str = include_str!("../queries/attribute_prototype_find_for_func.sql");
+const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_find_for_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
@@ -712,6 +713,32 @@ impl AttributePrototype {
             .query(
                 FIND_FOR_FUNC,
                 &[ctx.read_tenancy(), ctx.visibility(), func_id],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    pub async fn find_for_context(
+        ctx: &DalContext,
+        context: AttributeContext,
+    ) -> AttributePrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                FIND_FOR_CONTEXT,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &context.prop_id(),
+                    &context.internal_provider_id(),
+                    &context.external_provider_id(),
+                    &context.schema_id(),
+                    &context.schema_variant_id(),
+                    &context.component_id(),
+                    &context.system_id(),
+                ],
             )
             .await?;
 

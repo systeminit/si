@@ -71,6 +71,7 @@ BEGIN
             WHERE information_schema.columns.table_name = standard_model.table_name
               AND information_schema.columns.column_name NOT IN
                   ('visibility_change_set_pk', 'pk', 'created_at', 'updated_at')
+              AND information_schema.columns.is_generated = 'NEVER'
             INTO insert_column_names;
 
             SELECT string_agg(information_schema.columns.column_name::text || ' = EXCLUDED.' ||
@@ -80,6 +81,7 @@ BEGIN
               AND information_schema.columns.column_name NOT IN
                   ('pk', 'id', 'tenancy_universal', 'tenancy_billing_account_ids', 'tenancy_organization_ids',
                    'tenancy_workspace_ids', 'visibility_change_set_pk', 'pk', 'created_at', 'updated_at')
+              AND information_schema.columns.is_generated = 'NEVER'
             INTO update_set_names;
 
             -- Ok, this looks neat, huh? What's going on?

@@ -4,15 +4,16 @@ use super::{
 };
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
+use dal::attribute::context::AttributeContextBuilder;
 use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
     func::argument::FuncArgument,
     prototype_context::{
         associate_prototypes, HasPrototypeContext, PrototypeContextError, PrototypeContextField,
     },
-    AttributePrototype, AttributePrototypeArgument, CodeGenerationPrototype, ConfirmationPrototype,
-    DalContext, Func, FuncBackendKind, FuncId, PrototypeListForFunc, QualificationPrototype,
-    StandardModel, Visibility, WsEvent,
+    AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributeValue,
+    CodeGenerationPrototype, ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBinding,
+    FuncId, PrototypeListForFunc, QualificationPrototype, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -107,37 +108,102 @@ async fn save_attr_func_prototypes(
     for proto_view in prototypes {
         let context = proto_view.into_context(ctx).await?;
 
-        let create_all: bool;
-        let proto = if proto_view.id.is_none() {
-            create_all = false;
-            AttributePrototype::new_with_context_only(ctx, *func.id(), context, None).await?
-        } else {
-            let proto = AttributePrototype::get_by_id(ctx, &proto_view.id)
+        let (mut existing_value_proto, need_to_create) =
+            match AttributePrototype::find_for_context(ctx, context)
                 .await?
-                .ok_or(FuncError::AttributePrototypeMissing)?;
+                .pop()
+            {
+                Some(existing_proto) => (existing_proto, false),
+                None => {
+                    let default_value_context = AttributeContextBuilder::new()
+                        .set_prop_id(proto_view.prop_id)
+                        .to_context()?;
 
-            if proto.context != context {
-                create_all = true;
-                AttributePrototype::remove(ctx, proto.id()).await?;
-                AttributePrototype::new_with_context_only(ctx, *func.id(), context, None).await?
-            } else {
-                create_all = false;
-                proto
-            }
+                    (
+                        AttributePrototype::find_for_context(ctx, default_value_context)
+                            .await?
+                            .pop()
+                            .ok_or(FuncError::AttributePrototypeMissing)?,
+                        true,
+                    )
+                }
+            };
+
+        let proto = if !need_to_create {
+            existing_value_proto.set_func_id(ctx, *func.id()).await?;
+            existing_value_proto
+        } else {
+            let existing_value = existing_value_proto
+                .attribute_values(ctx)
+                .await?
+                .pop()
+                .ok_or(FuncError::AttributeValueMissing)?;
+
+            let maybe_parent_attribute_value = existing_value.parent_attribute_value(ctx).await?;
+
+            let (mut func_binding, fbrv, _) = FuncBinding::find_or_create_with_existing_value(
+                ctx,
+                serde_json::json!({}),
+                existing_value.get_value(ctx).await?,
+                *func.id(),
+            )
+            .await?;
+
+            // Clear out the function sha so we know to execute this on the first run in
+            // AttributeValue::update_from_prototype_function
+            func_binding.set_code_sha256(ctx, "0").await?;
+
+            AttributePrototype::new(
+                ctx,
+                *func.id(),
+                *func_binding.id(),
+                *fbrv.id(),
+                context,
+                None,
+                maybe_parent_attribute_value.map(|mpav| *mpav.id()),
+            )
+            .await?
         };
 
         id_set.insert(*proto.id());
 
-        save_attr_func_proto_arguments(ctx, &proto, proto_view.prototype_arguments, create_all)
+        save_attr_func_proto_arguments(ctx, &proto, proto_view.prototype_arguments, need_to_create)
             .await?;
     }
 
     // TODO: should use a custom query to fetch for *not in* id_set only
     for proto in AttributePrototype::find_for_func(ctx, func.id()).await? {
         if !id_set.contains(proto.id()) {
-            AttributePrototype::remove(ctx, proto.id()).await?;
+            reset_prototype_and_value_to_builtin_function(ctx, &proto, proto.context).await?
         }
     }
+
+    Ok(())
+}
+
+async fn reset_prototype_and_value_to_builtin_function(
+    ctx: &DalContext,
+    proto: &AttributePrototype,
+    context: AttributeContext,
+) -> FuncResult<()> {
+    let existing_value = proto
+        .attribute_values(ctx)
+        .await?
+        .pop()
+        .ok_or(FuncError::AttributeValueMissing)?;
+
+    let maybe_parent_attribute_value = existing_value.parent_attribute_value(ctx).await?;
+
+    // This should reset the prototype to a builtin value function
+    AttributeValue::update_for_context(
+        ctx,
+        *existing_value.id(),
+        maybe_parent_attribute_value.map(|pav| *pav.id()),
+        context,
+        existing_value.get_value(ctx).await?,
+        proto.key().map(|key| key.to_string()),
+    )
+    .await?;
 
     Ok(())
 }

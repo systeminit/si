@@ -2,9 +2,10 @@ use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    job::definition::Qualification, AttributePrototype, Component, DalContext, Func,
-    FuncBackendKind, FuncId, PrototypeListForFunc, QualificationPrototype,
-    QualificationPrototypeError, StandardModel, SystemId, Visibility, WsEvent,
+    job::definition::{DependentValuesUpdate, Qualification},
+    AttributePrototype, Component, DalContext, Func, FuncBackendKind, FuncId, PrototypeListForFunc,
+    QualificationPrototype, QualificationPrototypeError, StandardModel, SystemId, Visibility,
+    WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -25,21 +26,10 @@ pub struct ExecFuncResponse {
 async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     let prototypes = AttributePrototype::find_for_func(ctx, func.id()).await?;
     for proto in prototypes {
-        for value in proto.attribute_values(ctx).await? {
-            let maybe_parent_value_id = value
-                .parent_attribute_value(ctx)
-                .await?
-                .map(|pav| *pav.id());
-
-            super::update_attribute_value_by_func_for_context(
-                ctx,
-                *value.id(),
-                maybe_parent_value_id,
-                func,
-                value.context,
-                false,
-            )
-            .await?;
+        for value in proto.attribute_values(ctx).await?.iter_mut() {
+            value.update_from_prototype_function(ctx).await?;
+            ctx.enqueue_job(DependentValuesUpdate::new(ctx, *value.id()))
+                .await;
         }
     }
 
