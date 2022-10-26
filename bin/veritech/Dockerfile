@@ -126,7 +126,7 @@ RUN set -eux; \
     tar xvf /tmp/kubeval.tar.gz -C /usr/local/bin kubeval; \
     rm -v /tmp/kubeval.tar.gz; \
     wget -O /usr/local/bin/butane \
-        "https://github.com/coreos/butane/releases/download/v$BUTANE_VERSION/butane-ppc64le-unknown-linux-gnu"; \
+        "https://github.com/coreos/butane/releases/download/v$BUTANE_VERSION/butane-x86_64-unknown-linux-gnu"; \
     chmod +x /usr/local/bin/butane;
 
 WORKDIR /run/$BIN
