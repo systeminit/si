@@ -40,14 +40,10 @@ BEGIN
         FOREACH attribute_value_id IN ARRAY current_attribute_value_ids LOOP
             RAISE DEBUG 'attribute_value_affected_graph_v1: Looking at AttributeValue(%)', attribute_value_id;
 
-            SELECT DISTINCT ON (id) *
+            SELECT *
             INTO STRICT attribute_value
-            FROM attribute_values
-            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
-                  AND id = attribute_value_id
-            ORDER BY id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC NULLS FIRST;
+            FROM attribute_values_v1(this_tenancy, this_visibility)
+            WHERE id = attribute_value_id;
 
             -- If the attribute_context_prop_id != -1 then that means that this AttributeValue
             -- represents a value that is "directly" part of a Component's schema, either
@@ -55,14 +51,10 @@ BEGIN
             -- InternalProvider that is the "summary" of the schema from that Prop down to the
             -- leaf nodes.
             IF attribute_value.attribute_context_prop_id != -1 THEN
-                SELECT DISTINCT ON (id) *
+                SELECT *
                 INTO STRICT tmp_prop
-                FROM props
-                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
-                      AND id = attribute_value.attribute_context_prop_id
-                ORDER BY id,
-                         visibility_change_set_pk DESC,
-                         visibility_deleted_at DESC NULLS FIRST;
+                FROM props_v1(this_tenancy, this_visibility)
+                WHERE id = attribute_value.attribute_context_prop_id;
                 RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) is for Prop(%)', attribute_value.id, tmp_prop;
 
                 current_prop_id := attribute_value.attribute_context_prop_id;
@@ -71,24 +63,19 @@ BEGIN
                 -- need to consider them as needing an update.
                 SELECT array_agg(id)
                 INTO tmp_record_ids
-                FROM (
-                    SELECT DISTINCT ON (id) id
-                    FROM attribute_values
-                    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
-                          AND sealed_proxy = FALSE
-                          AND proxy_for_attribute_value_id = attribute_value.id
-                    ORDER BY id,
-                             visibility_change_set_pk DESC,
-                             visibility_deleted_at DESC NULLS FIRST
-                ) AS proxy_ids;
+                FROM attribute_values_v1(this_tenancy, this_visibility)
+                WHERE sealed_proxy = FALSE
+                    AND proxy_for_attribute_value_id = attribute_value.id;
 
                 IF FOUND THEN
                     RAISE DEBUG 'attribute_value_affected_graph_v1: Found unsealed proxies: %', tmp_record_ids;
                     RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) depend on AttributeValue(%)', tmp_record_ids, attribute_value.id;
 
-                    RETURN QUERY SELECT target_id AS attribute_value_id,
-                                        attribute_value_id AS dependent_attribute_value_id
-                                 FROM unnest(tmp_record_ids) AS target_id;
+                    RETURN QUERY
+                        SELECT
+                            target_id AS attribute_value_id,
+                            attribute_value_id AS dependent_attribute_value_id
+                        FROM unnest(tmp_record_ids) AS target_id;
                     -- Add these new AttributeValues to the ones we'll use in the next loop iteration.
                     next_attribute_value_ids := array_cat(next_attribute_value_ids, tmp_record_ids);
                 END IF;
@@ -111,15 +98,11 @@ BEGIN
                                                             'attribute_context_component_id',         attribute_value.attribute_context_component_id,
                                                             'attribute_context_system_id',            attribute_value.attribute_context_system_id);
 
-                SELECT DISTINCT ON (id) id
+                SELECT id
                 INTO tmp_record_id
-                FROM attribute_values
-                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
-                      AND exact_attribute_context_v1(tmp_attribute_context, attribute_values)
-                      AND attribute_context_internal_provider_id = internal_provider_id
-                ORDER BY id,
-                         visibility_change_set_pk DESC,
-                         visibility_deleted_at DESC NULLS FIRST;
+                FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+                WHERE exact_attribute_context_v1(tmp_attribute_context, av)
+                      AND attribute_context_internal_provider_id = internal_provider_id;
                 IF NOT FOUND THEN
                     RAISE 'attribute_value_affected_graph_v1: Unable to find AttributeValue for InternalProvider(%) at AttributeContext(%)',
                         internal_provider_id,

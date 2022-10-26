@@ -297,9 +297,9 @@ AS
 $$
 BEGIN
     SELECT DISTINCT ON (attribute_context_prop_id)
-        to_jsonb(attribute_values.*)
+        to_jsonb(av.*)
     INTO attribute_value
-    FROM attribute_values
+    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
     LEFT JOIN (
         SELECT DISTINCT ON (object_id)
             object_id AS child_attribute_value_id,
@@ -309,16 +309,15 @@ BEGIN
         ORDER BY object_id,
                  visibility_change_set_pk DESC,
                  visibility_deleted_at DESC
-    ) AS avbtav ON avbtav.child_attribute_value_id = attribute_values.id
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-          AND in_attribute_context_v1(this_attribute_context, attribute_values)
+    ) AS avbtav ON avbtav.child_attribute_value_id = av.id
+    WHERE in_attribute_context_v1(this_attribute_context, av)
           AND CASE
                   WHEN this_parent_attribute_value_id IS NULL THEN avbtav.parent_attribute_value_id IS NULL
                   ELSE avbtav.parent_attribute_value_id = this_parent_attribute_value_id
               END
           AND CASE
-                  WHEN this_key IS NULL THEN attribute_values.key IS NULL
-                  ELSE attribute_values.key = this_key
+                  WHEN this_key IS NULL THEN av.key IS NULL
+                  ELSE av.key = this_key
               END
     ORDER BY attribute_context_prop_id,
              visibility_change_set_pk DESC,
@@ -711,17 +710,17 @@ CREATE OR REPLACE FUNCTION attribute_value_new_v1(this_write_tenancy            
 AS
 $$
 DECLARE
-    found_attribute_value_json jsonb;
+    found_attribute_value attribute_values;
 BEGIN
     IF attribute_context_least_specific_is_provider_v1(this_attribute_context) THEN
-        SELECT found.attribute_value
-        INTO found_attribute_value_json
-        FROM attribute_value_find_with_key_in_context_v1(this_read_tenancy, this_visibility, this_key, this_attribute_context) AS found;
+        SELECT *
+        INTO found_attribute_value
+        FROM attribute_value_find_with_key_in_context_v1(this_read_tenancy, this_visibility, this_key, this_attribute_context);
 
-        IF found_attribute_value_json IS NOT NULL
-           AND attribute_contexts_match_v1(this_attribute_context, found_attribute_value_json) THEN
+        IF FOUND
+           AND attribute_contexts_match_v1(this_attribute_context, found_attribute_value) THEN
                RAISE 'Found duplicate AttributeValue(%) for provider context(%), Tenancy(%), Visibility(%)',
-                     found_attribute_value_json ->> 'id',
+                     found_attribute_value.id,
                      this_attribute_context,
                      this_read_tenancy,
                      this_visibility;
@@ -951,22 +950,12 @@ BEGIN
                                                                             original_child_value.func_binding_return_value_id,
                                                                             write_attribute_context,
                                                                             original_child_value.key));
-            SELECT DISTINCT ON (id) attribute_prototypes.*
+            SELECT ap.*
             INTO STRICT child_attribute_value_prototype
-            FROM attribute_prototypes
-            INNER JOIN (
-                SELECT DISTINCT ON (object_id) belongs_to_id AS attribute_prototype_id
-                FROM attribute_value_belongs_to_attribute_prototype
-                WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
-                      AND object_id = original_child_value.id
-                ORDER BY object_id,
-                         visibility_change_set_pk DESC,
-                         visibility_deleted_at DESC NULLS FIRST
-            ) AS avbtap ON avbtap.attribute_prototype_id = attribute_prototypes.id
-            WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototypes)
-            ORDER BY id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC NULLS FIRST;
+            FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
+            INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility) AS avbtap
+                ON avbtap.belongs_to_id = ap.id
+                    AND avbtap.object_id = original_child_value.id;
 
             PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
                                         this_write_tenancy,
@@ -1023,6 +1012,7 @@ DECLARE
     func_binding                    func_bindings%ROWTYPE;
     func_binding_created            bool;
     func_binding_id                 bigint;
+    func_binding_return_value       func_binding_return_values;
     func_binding_return_value_id    bigint;
     func_name                       text;
     given_attribute_value           attribute_values%ROWTYPE;
@@ -1033,40 +1023,25 @@ DECLARE
     parent_attribute_value          attribute_values%ROWTYPE;
     prop                            props%ROWTYPE;
     typeof_value                    text;
-    unprocessed_value               jsonb;
 BEGIN
     maybe_parent_attribute_value_id := this_maybe_parent_attribute_value_id;
 
-    SELECT DISTINCT ON (id) *
+    SELECT *
     INTO given_attribute_value
-    FROM attribute_values
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-          AND id = this_attribute_value_id
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    WHERE id = this_attribute_value_id;
     IF NOT FOUND THEN
         RAISE 'Unable to find AttributeValue(%) in Tenancy(%), Visibility(%)', this_attribute_value_id,
                                                                                this_read_tenancy,
                                                                                this_visibility;
     END IF;
 
-    SELECT DISTINCT ON (id) attribute_prototypes.*
+    SELECT ap.*
     INTO original_attribute_prototype
-    FROM attribute_prototypes
-    INNER JOIN (
-        SELECT DISTINCT ON (object_id) belongs_to_id AS attribute_prototype_id
-        FROM attribute_value_belongs_to_attribute_prototype
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
-              AND object_id = given_attribute_value.id
-        ORDER BY object_id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS avbtap ON avbtap.attribute_prototype_id = attribute_prototypes.id
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototypes)
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
+    INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility) AS avbtap
+        ON avbtap.belongs_to_id = ap.id
+            AND avbtap.object_id = given_attribute_value.id;
     IF NOT FOUND THEN
         RAISE 'Unable to find AttributePrototype for AttributeValue(%), Tenancy(%), Visibility(%)', attribute_value.id,
                                                                                                     this_read_tenancy,
@@ -1079,15 +1054,11 @@ BEGIN
     -- and not Objects/Arrays/Maps themselves (unless the Object/Array/Map itself is the element of an
     -- Array/Map).
     IF maybe_parent_attribute_value_id IS NOT NULL THEN
-        SELECT DISTINCT ON (id) *
+        SELECT *
         INTO parent_attribute_value
-        FROM attribute_values
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-              AND id = maybe_parent_attribute_value_id
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST;
-        IF parent_attribute_value IS NULL THEN
+        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+        WHERE id = maybe_parent_attribute_value_id;
+        IF NOT FOUND THEN
             RAISE 'Unable to find parent AttributeValue(%) in Tenancy(%), Visibility(%)',
                   maybe_parent_attribute_value_id,
                   this_read_tenancy,
@@ -1133,7 +1104,7 @@ BEGIN
                                            given_attribute_value.func_binding_id,
                                            given_attribute_value.func_binding_return_value_id,
                                            given_attribute_value.key) AS av;
-            IF attribute_value_id IS NULL THEN
+            IF NOT FOUND THEN
                 RAISE 'Unable to create AttributeValue: attribute_value_create_v1(%, %, %, %, %, %)',
                       this_write_tenancy,
                       this_visibility,
@@ -1199,16 +1170,10 @@ BEGIN
                     typeof_value;
         END CASE;
     ELSE
-        SELECT DISTINCT ON (id) *
+        SELECT *
         INTO STRICT prop
-        FROM props
-        WHERE
-            in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-            AND props.id = (this_attribute_context ->> 'attribute_context_prop_id')::bigint
-        ORDER BY
-            id,
-            visibility_change_set_pk DESC,
-            visibility_deleted_at DESC NULLS FIRST;
+        FROM props_v1(this_read_tenancy, this_visibility)
+        WHERE id = (this_attribute_context ->> 'attribute_context_prop_id')::bigint;
 
         IF this_new_value IS NULL THEN
             func_name := 'si:unset';
@@ -1234,14 +1199,10 @@ BEGIN
         func_args := jsonb_build_object('value', this_new_value);
     END IF;
 
-    SELECT DISTINCT ON (id) *
+    SELECT *
     INTO STRICT func
-    FROM funcs
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, funcs)
-          AND funcs.name = func_name
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM funcs_v1(this_read_tenancy, this_visibility)
+    WHERE name = func_name;
 
     SELECT new_func_binding_id, new_func_binding_return_value_id
     INTO func_binding_id, func_binding_return_value_id
@@ -1302,15 +1263,8 @@ BEGIN
     -- If the value we just updated is a proxy, we need to seal it to prevent it from automatically updated
     -- by the AttributeValue it is proxying, since we overrode that value.
     IF av.proxy_for_attribute_value_id IS NOT NULL
-       FROM (
-           SELECT DISTINCT ON (id) proxy_for_attribute_value_id
-           FROM attribute_values
-           WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-                 AND id = attribute_value_id
-           ORDER BY id,
-                    visibility_change_set_pk DESC,
-                    visibility_deleted_at DESC NULLS FIRST
-       ) AS av
+        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+        WHERE id = attribute_value_id
     THEN
         PERFORM update_by_id_v1('attribute_values',
                                 'sealed_proxy',
@@ -1328,33 +1282,19 @@ BEGIN
     -- Do we need to process the unprocessed value and populate nested values?  If the unprocessed value
     -- doesn't equal the value then we have a populated "container" (i.e. object, map, array) that contains
     -- values which need to be made into AttributeValues of their own.
-    IF fbrv.unprocessed_value IS NOT NULL
-       AND fbrv.unprocessed_value != fbrv.value
-       FROM (
-           SELECT DISTINCT ON (id) func_binding_return_values.unprocessed_value,
-                                   func_binding_return_values.value
-           FROM func_binding_return_values
-           WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, func_binding_return_values)
-                 AND id = func_binding_return_value_id
-           ORDER BY id,
-                    visibility_change_set_pk DESC,
-                    visibility_deleted_at DESC NULLS FIRST
-       ) AS fbrv
+    SELECT *
+    INTO func_binding_return_value
+    FROM func_binding_return_values_v1(this_read_tenancy, this_visibility)
+    WHERE id = func_binding_return_value_id;
+    IF func_binding_return_value.unprocessed_value IS NOT NULL
+        AND func_binding_return_value.unprocessed_value != func_binding_return_value.value
     THEN
-        SELECT DISTINCT ON (id) func_binding_return_values.unprocessed_value
-        INTO unprocessed_value
-        FROM func_binding_return_values
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, func_binding_return_values)
-              AND id = func_binding_return_value_id
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST;
         PERFORM attribute_value_populate_nested_values_v1(this_write_tenancy,
                                                           this_read_tenancy,
                                                           this_visibility,
                                                           attribute_value_id,
                                                           this_attribute_context,
-                                                          unprocessed_value);
+                                                          func_binding_return_value.unprocessed_value);
     END IF;
 
     new_attribute_value_id := attribute_value_id;
@@ -1422,47 +1362,24 @@ DECLARE
     parent_prop_id            bigint;
     parent_index_map          jsonb;
 BEGIN
-    SELECT DISTINCT ON (id) id, index_map, prop_kind
+    SELECT av.id, index_map, p.kind
     INTO parent_attribute_value_id, parent_index_map, parent_prop_kind
-    FROM attribute_values
-    INNER JOIN (
-        SELECT DISTINCT ON (object_id) belongs_to_id AS parent_attribute_value_id
-        FROM attribute_value_belongs_to_attribute_value
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
-              AND object_id = this_attribute_value_id
-        ORDER BY object_id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS avbtav ON avbtav.parent_attribute_value_id = attribute_values.id
-    INNER JOIN LATERAL (
-        SELECT DISTINCT ON (id) id AS prop_id,
-                                kind AS prop_kind
-        FROM props
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-              -- XXX: May not need to have this additional constraint (which makes it a lateral join).
-              AND id = attribute_values.attribute_context_prop_id
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS p ON p.prop_id = attribute_values.attribute_context_prop_id
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+        ON avbtav.belongs_to_id = av.id
+            AND avbtav.object_id = this_attribute_value_id
+    INNER JOIN props_v1(this_read_tenancy, this_visibility) AS p
+        ON p.id = av.attribute_context_prop_id;
 
     IF parent_attribute_value_id IS NULL
        OR (parent_prop_kind != 'array' AND parent_prop_kind != 'map') THEN
         RETURN;
     END IF;
 
-    SELECT DISTINCT ON (id) key
+    SELECT key
     INTO STRICT child_key
-    FROM attribute_values
-    WHERE id = this_attribute_value_id
-          AND in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    WHERE id = this_attribute_value_id;
 
     PERFORM update_by_id_v1('attribute_values',
                             'index_map',
@@ -1501,48 +1418,29 @@ DECLARE
     unset_func_binding_return_value_id bigint;
     update_read_attribute_context      jsonb;
 BEGIN
-    SELECT DISTINCT ON (id) *
+    SELECT *
     INTO STRICT parent_attribute_value
-    FROM attribute_values
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-          AND id = this_parent_attribute_value_id
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    WHERE id = this_parent_attribute_value_id;
 
-    SELECT DISTINCT ON (id) *
+    SELECT *
     INTO STRICT parent_prop
-    FROM props
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-          AND id = parent_attribute_value.attribute_context_prop_id
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
-
+    FROM props_v1(this_read_tenancy, this_visibility)
+    WHERE id = parent_attribute_value.attribute_context_prop_id;
 
     update_read_attribute_context := this_update_attribute_context || jsonb_build_object('attribute_context_prop_id', NULL);
     FOR child_value_id IN
-        SELECT DISTINCT ON (parent_attribute_value_id, attribute_context_prop_id, COALESCE(key, '')) id
-        FROM attribute_values
-        INNER JOIN (
-            SELECT DISTINCT ON (object_id) object_id AS child_attribute_value_id,
-                                           belongs_to_id AS parent_attribute_value_id
-            FROM attribute_value_belongs_to_attribute_value
-            WHERE in_tenancy_and_visible_v1(this_read_tenancy,
-                                            this_visibility,
-                                            attribute_value_belongs_to_attribute_value)
-                  AND belongs_to_id = this_parent_attribute_value_id
-            ORDER BY object_id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC NULLS FIRST
-        ) AS avbtav ON avbtav.child_attribute_value_id = attribute_values.id
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-              AND exact_attribute_context_v1(update_read_attribute_context, attribute_values)
-        ORDER BY parent_attribute_value_id,
-                 attribute_context_prop_id,
-                 COALESCE(key, ''),
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
+        SELECT DISTINCT ON (
+            avbtav.belongs_to_id,
+            attribute_context_prop_id,
+            COALESCE(key, '')
+        )
+            av.id
+        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+        INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+            ON avbtav.object_id = av.id
+                AND avbtav.belongs_to_id = this_parent_attribute_value_id
+        WHERE exact_attribute_context_v1(update_read_attribute_context, av)
     LOOP
         PERFORM attribute_value_remove_value_and_children_v1(this_write_tenancy,
                                                              this_read_tenancy,
@@ -1563,28 +1461,18 @@ BEGIN
         SELECT array_agg(obj.key)
         INTO invalid_object_keys
         FROM jsonb_object_keys(unprocessed_value) AS obj(key)
-        LEFT JOIN (
-            SELECT DISTINCT ON (id) name
-            FROM props
-            INNER JOIN (
-                SELECT DISTINCT ON (object_id) object_id AS child_prop_id
-                FROM prop_belongs_to_prop
-                WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, prop_belongs_to_prop)
-                      AND belongs_to_id = parent_prop.id
-                ORDER BY object_id,
-                         visibility_change_set_pk DESC,
-                         visibility_deleted_at DESC NULLS FIRST
-            ) AS pbtp ON pbtp.child_prop_id = props.id
-            WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-            ORDER BY id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC NULLS FIRST
-        ) AS prop ON prop.name = obj.key
-        WHERE prop.name IS NULL;
+        LEFT JOIN props_v1(this_read_tenancy, this_visibility) AS p
+            ON p.name = obj.key
+        LEFT JOIN prop_belongs_to_prop_v1(this_read_tenancy, this_visibility) AS pbtp
+            ON pbtp.object_id = p.id
+                AND pbtp.belongs_to_id = parent_prop.id
+        WHERE p.name IS NULL;
+        -- Can't use `IF NOT FOUND` because `array_agg` will always be `FOUND`, even if it is still
+        -- `NULL` because it didn't aggregate anything.
         IF invalid_object_keys IS NOT NULL THEN
             RAISE 'attribute_value_populate_nested_values_v1: Invalid object value fields(%) for Prop(%), Tenancy(%), Visibility(%)',
                   invalid_object_keys,
-                  parent_prop_id,
+                  parent_prop.id,
                   this_read_tenancy,
                   this_visibility;
         END IF;
@@ -1738,13 +1626,11 @@ $$
 DECLARE
     found_proxy RECORD;
 BEGIN
-    FOR found_proxy IN SELECT DISTINCT ON (id) attribute_values.*
-                       FROM attribute_values
-                       WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-                             AND proxy_for_attribute_value_id = this_attribute_value_id
-                       ORDER BY id,
-                                visibility_change_set_pk DESC,
-                                visibility_deleted_at DESC
+    FOR found_proxy IN
+        SELECT av.*
+        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+        WHERE proxy_for_attribute_value_id = this_attribute_value_id
+        ORDER BY id
     LOOP
         IF found_proxy.sealed_proxy = TRUE THEN
             PERFORM update_by_id_v1('attribute_values',
@@ -1785,8 +1671,8 @@ DECLARE
     attribute_value_count  bigint;
 BEGIN
     FOR child_value_id IN
-        SELECT DISTINCT ON (id) attribute_values.id
-        FROM attribute_values
+        SELECT av.id
+        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
         INNER JOIN (
             SELECT DISTINCT ON (object_id) object_id AS child_value_id
             FROM attribute_value_belongs_to_attribute_value
@@ -1795,11 +1681,8 @@ BEGIN
             ORDER BY object_id,
                      visibility_change_set_pk DESC,
                      visibility_deleted_at DESC
-        ) AS avbtav ON avbtav.child_value_id = attribute_values.id
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
+        ) AS avbtav ON avbtav.child_value_id = av.id
+        ORDER BY id
     LOOP
         PERFORM attribute_value_remove_value_and_children_v1(this_write_tenancy,
                                                              this_read_tenancy,
@@ -2265,14 +2148,11 @@ BEGIN
         this_attribute_context,
         this_attribute_value_id,
         this_create_child_proxies;
-    SELECT DISTINCT ON (id) *
+    SELECT *
     INTO attribute_value
-    FROM attribute_values
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-          AND id = this_attribute_value_id
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    WHERE id = this_attribute_value_id
+    ORDER BY id;
     IF NOT FOUND THEN
         RAISE 'Unable to find AttributeValue(%) with Tenancy(%) and Visibility(%)', this_attribute_value_id,
                                                                                     this_read_tenancy,
@@ -2474,22 +2354,17 @@ CREATE OR REPLACE FUNCTION props_find_for_attribute_value_v1(this_read_tenancy  
 AS
 $$
 BEGIN
-    SELECT DISTINCT ON (id) to_jsonb(props.*)
+    SELECT DISTINCT ON (props.id) to_jsonb(props.*)
     INTO found_prop
     FROM props
-    INNER JOIN (
-        SELECT DISTINCT ON (id) attribute_context_prop_id AS prop_id
-        FROM attribute_values
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-              AND id = this_attribute_value_id
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS av ON av.prop_id = props.id
+    INNER JOIN attribute_values_v1(this_read_tenancy, this_visibility) AS av ON
+        av.id = this_attribute_value_id
+        AND av.attribute_context_prop_id = props.id
     WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    ORDER BY
+        props.id,
+        props.visibility_change_set_pk DESC,
+        props.visibility_deleted_at DESC NULLS FIRST;
 END;
 $$ LANGUAGE PLPGSQL PARALLEL SAFE;
 

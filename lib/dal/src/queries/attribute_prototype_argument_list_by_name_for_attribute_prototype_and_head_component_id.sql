@@ -7,24 +7,20 @@
  */
 
 SELECT name, array_agg(arguments) as arguments
-FROM (SELECT DISTINCT ON (attribute_prototype_arguments.id) attribute_prototype_arguments.id,
-                                                            attribute_prototype_arguments.visibility_change_set_pk,
-                                                            attribute_prototype_arguments.visibility_deleted_at,
-                                                            fa.name                                      AS name,
-                                                            row_to_json(attribute_prototype_arguments.*) AS arguments
-      FROM attribute_prototype_arguments
-               JOIN func_arguments fa on attribute_prototype_arguments.func_argument_id = fa.id
-          AND in_tenancy_and_visible_v1($1, $2, fa)
-      WHERE in_tenancy_and_visible_v1($1, $2, attribute_prototype_arguments)
-        AND attribute_prototype_arguments.attribute_prototype_id = $3
+FROM (
+    SELECT
+        fa.name                                      AS name,
+        row_to_json(apa.*) AS arguments
+    FROM attribute_prototype_arguments_v1($1, $2) AS apa
+    JOIN func_arguments_v1($1, $2) AS fa
+        ON apa.func_argument_id = fa.id
+    WHERE
+        apa.attribute_prototype_id = $3
         AND CASE
                 WHEN external_provider_id != -1 THEN
                     head_component_id = $4
                 ELSE
                     TRUE
-          END
-
-      ORDER BY attribute_prototype_arguments.id,
-               visibility_change_set_pk DESC,
-               visibility_deleted_at DESC NULLS FIRST) as apa_found
+            END
+) as apa_found
 GROUP BY name;
