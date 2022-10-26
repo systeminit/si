@@ -145,30 +145,47 @@ END;
 -- always return the same result.
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION attribute_context_from_record_v1(source_record         RECORD,
-                                                            OUT attribute_context jsonb
-)
-AS
-$$
-BEGIN
-    attribute_context := jsonb_build_object('attribute_context_prop_id',              source_record.attribute_context_prop_id,
-                                            'attribute_context_internal_provider_id', source_record.attribute_context_internal_provider_id,
-                                            'attribute_context_external_provider_id', source_record.attribute_context_external_provider_id,
-                                            'attribute_context_schema_id',            source_record.attribute_context_schema_id,
-                                            'attribute_context_schema_variant_id',    source_record.attribute_context_schema_variant_id,
-                                            'attribute_context_component_id',         source_record.attribute_context_component_id,
-                                            'attribute_context_system_id',            source_record.attribute_context_system_id);
-END;
-$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+CREATE OR REPLACE FUNCTION attribute_context_from_record_v1(source_av attribute_values)
+RETURNS jsonb
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+    SELECT jsonb_build_object(
+        'attribute_context_prop_id',              source_av.attribute_context_prop_id,
+        'attribute_context_internal_provider_id', source_av.attribute_context_internal_provider_id,
+        'attribute_context_external_provider_id', source_av.attribute_context_external_provider_id,
+        'attribute_context_schema_id',            source_av.attribute_context_schema_id,
+        'attribute_context_schema_variant_id',    source_av.attribute_context_schema_variant_id,
+        'attribute_context_component_id',         source_av.attribute_context_component_id,
+        'attribute_context_system_id',            source_av.attribute_context_system_id
+    )
+$$;
 
-CREATE OR REPLACE FUNCTION attribute_context_from_jsonb_v1(
-    source_jsonb jsonb,
-    OUT attribute_context jsonb
-)
-AS
-$$
-BEGIN
-    attribute_context := jsonb_build_object(
+CREATE OR REPLACE FUNCTION attribute_context_from_record_v1(source_ap attribute_prototypes)
+RETURNS jsonb
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+    SELECT jsonb_build_object(
+        'attribute_context_prop_id',              source_ap.attribute_context_prop_id,
+        'attribute_context_internal_provider_id', source_ap.attribute_context_internal_provider_id,
+        'attribute_context_external_provider_id', source_ap.attribute_context_external_provider_id,
+        'attribute_context_schema_id',            source_ap.attribute_context_schema_id,
+        'attribute_context_schema_variant_id',    source_ap.attribute_context_schema_variant_id,
+        'attribute_context_component_id',         source_ap.attribute_context_component_id,
+        'attribute_context_system_id',            source_ap.attribute_context_system_id
+    )
+$$;
+
+CREATE OR REPLACE FUNCTION attribute_context_from_jsonb_v1(source_jsonb jsonb)
+RETURNS jsonb
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+    SELECT jsonb_build_object(
         'attribute_context_prop_id',              source_jsonb -> 'attribute_context_prop_id',
         'attribute_context_internal_provider_id', source_jsonb -> 'attribute_context_internal_provider_id',
         'attribute_context_external_provider_id', source_jsonb -> 'attribute_context_external_provider_id',
@@ -176,9 +193,8 @@ BEGIN
         'attribute_context_schema_variant_id',    source_jsonb -> 'attribute_context_schema_variant_id',
         'attribute_context_component_id',         source_jsonb -> 'attribute_context_component_id',
         'attribute_context_system_id',            source_jsonb -> 'attribute_context_system_id'
-    );
-END;
-$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+    )
+$$;
 
 CREATE OR REPLACE FUNCTION less_specific_attribute_context_v1(check_context jsonb,
                                                               reference     record,
@@ -202,21 +218,20 @@ END;
 -- attribute_context_* fields haven't either.
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION attribute_context_is_least_specific_v1(this_context jsonb,
-                                                                  OUT is_least_specific bool
-)
-AS
-$$
-BEGIN
+CREATE OR REPLACE FUNCTION attribute_context_is_least_specific_v1(this_context jsonb)
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
     -- Even though these fields are numeric, when we extract their values we either get a jsonb, or text. We'd
     -- have to further use jsonb_typeof(...)  to make sure it's actually a 'number' before doing a conversion,
     -- but checking against a string is good enough for now.
-    is_least_specific :=     this_context ->> 'attribute_context_schema_id'         = '-1'
-                         AND this_context ->> 'attribute_context_schema_variant_id' = '-1'
-                         AND this_context ->> 'attribute_context_component_id'      = '-1'
-                         AND this_context ->> 'attribute_context_system_id'         = '-1';
-END;
-$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+    SELECT  this_context ->> 'attribute_context_schema_id'         = '-1'
+        AND this_context ->> 'attribute_context_schema_variant_id' = '-1'
+        AND this_context ->> 'attribute_context_component_id'      = '-1'
+        AND this_context ->> 'attribute_context_system_id'         = '-1'
+$$;
 
 CREATE OR REPLACE FUNCTION attribute_value_set_parent_attribute_value_v1(this_write_tenancy             jsonb,
                                                                          this_read_tenancy              jsonb,
@@ -350,79 +365,54 @@ END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 DROP FUNCTION IF EXISTS ap_find_with_parent_value_and_key_for_context_v1;
-CREATE OR REPLACE FUNCTION ap_find_with_parent_value_and_key_for_context_v1(this_read_tenancy              jsonb,
-                                                                            this_visibility                jsonb,
-                                                                            this_parent_attribute_value_id bigint,
-                                                                            this_key                       text,
-                                                                            this_attribute_context         jsonb,
-                                                                            OUT found_attribute_prototype  json
+CREATE OR REPLACE FUNCTION ap_find_with_parent_value_and_key_for_context_v1(
+    this_read_tenancy              jsonb,
+    this_visibility                jsonb,
+    this_parent_attribute_value_id bigint,
+    this_key                       text,
+    this_attribute_context         jsonb
 )
-AS
-$$
-BEGIN
-    SELECT DISTINCT ON (attribute_prototypes.attribute_context_prop_id,
-                        COALESCE(attribute_prototypes.key, ''))
-        to_jsonb(attribute_prototypes.*)
-    INTO found_attribute_prototype
-    FROM attribute_prototypes
-    INNER JOIN (
-        SELECT DISTINCT ON (object_id) object_id AS attribute_value_id,
-                                       belongs_to_id AS attribute_prototype_id
-        FROM attribute_value_belongs_to_attribute_prototype
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
-        ORDER BY object_id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS avbtap ON attribute_prototypes.id = avbtap.attribute_prototype_id
-    INNER JOIN (
-        SELECT DISTINCT ON (id) id
-        FROM attribute_values
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-              AND in_attribute_context_v1(this_attribute_context, attribute_values)
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_change_set_pk DESC NULLS FIRST
-    ) AS av ON avbtap.attribute_value_id = av.id
-    LEFT JOIN (
-        SELECT DISTINCT ON (object_id) object_id AS attribute_value_id,
-                                       belongs_to_id AS parent_attribute_value_id
-        FROM attribute_value_belongs_to_attribute_value
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
-        ORDER BY object_id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS avbtav ON av.id = avbtav.attribute_value_id
-    LEFT JOIN (
-        SELECT DISTINCT ON (id) id
-        FROM attribute_values
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-              AND in_attribute_context_v1(this_attribute_context, attribute_values)
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS parent_av ON avbtav.parent_attribute_value_id = parent_av.id
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototypes)
-          AND exact_attribute_context_v1(this_attribute_context, attribute_prototypes)
-          AND CASE
-                  WHEN this_parent_attribute_value_id IS NULL THEN parent_av.id IS NULL
-                  ELSE parent_av.id = this_parent_attribute_value_id
-              END
-          AND CASE
-                  WHEN this_key IS NULL THEN attribute_prototypes.key IS NULL
-                  ELSE attribute_prototypes.key = this_key
-              END
-    ORDER BY attribute_prototypes.attribute_context_prop_id DESC,
-             COALESCE(attribute_prototypes.key, ''),
-             attribute_prototypes.visibility_change_set_pk DESC,
-             attribute_prototypes.visibility_deleted_at DESC NULLS FIRST,
-             attribute_prototypes.attribute_context_internal_provider_id DESC,
-             attribute_prototypes.attribute_context_external_provider_id DESC,
-             attribute_prototypes.attribute_context_schema_id DESC,
-             attribute_prototypes.attribute_context_schema_variant_id DESC,
-             attribute_prototypes.attribute_context_component_id DESC,
-             attribute_prototypes.attribute_context_system_id DESC;
-END;
-$$ LANGUAGE PLPGSQL PARALLEL SAFE;
+RETURNS json
+LANGUAGE sql
+STABLE
+PARALLEL SAFE
+AS $$
+    SELECT DISTINCT ON (
+        ap.attribute_context_prop_id,
+        COALESCE(ap.key, '')
+    )
+        to_jsonb(ap.*)
+    FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
+    INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility) AS avbtap
+        ON ap.id = avbtap.belongs_to_id
+    INNER JOIN attribute_values_v1(this_read_tenancy, this_visibility) AS av
+        ON avbtap.object_id = av.id
+            AND in_attribute_context_v1(this_attribute_context, av)
+    LEFT JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+        ON av.id = avbtav.object_id
+    LEFT JOIN attribute_values_v1(this_read_tenancy, this_visibility) AS parent_av
+        ON avbtav.belongs_to_id = parent_av.id
+            AND in_attribute_context_v1(this_attribute_context, av)
+    WHERE
+        exact_attribute_context_v1(this_attribute_context, ap)
+        AND CASE
+                WHEN this_parent_attribute_value_id IS NULL THEN parent_av.id IS NULL
+                ELSE parent_av.id = this_parent_attribute_value_id
+            END
+        AND CASE
+                WHEN this_key IS NULL THEN ap.key IS NULL
+                ELSE ap.key = this_key
+            END
+    ORDER BY
+        ap.attribute_context_prop_id DESC,
+        COALESCE(ap.key, ''),
+        ap.attribute_context_internal_provider_id DESC,
+        ap.attribute_context_external_provider_id DESC,
+        ap.attribute_context_schema_id DESC,
+        ap.attribute_context_schema_variant_id DESC,
+        ap.attribute_context_component_id DESC,
+        ap.attribute_context_system_id DESC
+$$;
 
 CREATE OR REPLACE FUNCTION attribute_prototype_create_intermediate_proxy_values_v1(this_write_tenancy             jsonb,
                                                                                    this_read_tenancy              jsonb,
@@ -636,80 +626,78 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_context_least_specific_is_provider_v1(this_attribute_context jsonb,
-                                                                           OUT is_for_provider    bool
+CREATE OR REPLACE FUNCTION attribute_context_least_specific_is_provider_v1(
+  this_attribute_context jsonb
 )
-AS
-$$
-BEGIN
-    is_for_provider :=    this_attribute_context ->> 'attribute_context_internal_provider_id' != '-1'
-                       OR this_attribute_context ->> 'attribtue_context_external_provider_id' != '-1';
-END;
-$$ LANGUAGE PLPGSQL PARALLEL SAFE;
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+AS $$
+    SELECT this_attribute_context ->> 'attribute_context_internal_provider_id' != '-1'
+        OR this_attribute_context ->> 'attribtue_context_external_provider_id' != '-1'
+$$;
 
-CREATE OR REPLACE FUNCTION exact_attribute_context_v1(check_context     jsonb,
-                                                      reference_context jsonb,
-                                                      OUT result        bool
+CREATE OR REPLACE FUNCTION exact_attribute_context_v1(
+    check_context     jsonb,
+    reference_context jsonb
 )
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
 AS
 $$
-BEGIN
-    result := exact_attribute_context_v1(check_context,
-                                         (reference_context ->> 'attribute_context_prop_id')::bigint,
-                                         (reference_context ->> 'attribute_context_internal_provider_id')::bigint,
-                                         (reference_context ->> 'attribute_context_external_provider_id')::bigint,
-                                         (reference_context ->> 'attribute_context_schema_id')::bigint,
-                                         (reference_context ->> 'attribute_context_schema_variant_id')::bigint,
-                                         (reference_context ->> 'attribute_context_component_id')::bigint,
-                                         (reference_context ->> 'attribute_context_system_id')::bigint);
-END;
-$$ LANGUAGE PLPGSQL PARALLEL SAFE;
+    SELECT exact_attribute_context_v1(
+        check_context,
+        (reference_context ->> 'attribute_context_prop_id')::bigint,
+        (reference_context ->> 'attribute_context_internal_provider_id')::bigint,
+        (reference_context ->> 'attribute_context_external_provider_id')::bigint,
+        (reference_context ->> 'attribute_context_schema_id')::bigint,
+        (reference_context ->> 'attribute_context_schema_variant_id')::bigint,
+        (reference_context ->> 'attribute_context_component_id')::bigint,
+        (reference_context ->> 'attribute_context_system_id')::bigint
+    )
+$$;
 
-CREATE OR REPLACE FUNCTION attribute_value_find_with_key_in_context_v1(this_read_tenancy      jsonb,
-                                                                       this_visibility        jsonb,
-                                                                       this_key               text,
-                                                                       this_attribute_context jsonb)
-RETURNS TABLE (attribute_value jsonb)
-AS
-$$
-BEGIN
-    RETURN QUERY SELECT DISTINCT ON (
-                     COALESCE(parent_attribute_value_id, -1),
-                     attribute_context_prop_id,
-                     attribute_context_internal_provider_id,
-                     attribute_context_external_provider_id,
-                     COALESCE(key, '')
-                 )
-                     to_jsonb(attribute_values.*) AS attribute_value
-                 FROM attribute_values
-                 LEFT JOIN (
-                     SELECT DISTINCT ON (object_id) object_id AS attribute_value_id,
-                                                    belongs_to_id AS parent_attribute_value_id
-                     FROM attribute_value_belongs_to_attribute_value
-                     WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
-                     ORDER BY object_id,
-                              visibility_change_set_pk DESC,
-                              visibility_deleted_at DESC NULLS FIRST
-                 ) AS avbtav ON avbtav.attribute_value_id = attribute_values.id
-                 WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-                       AND in_attribute_context_v1(this_attribute_context, attribute_values)
-                       AND CASE
-                               WHEN this_key IS NULL THEN key IS NULL
-                               ELSE key = this_key
-                           END
-                 ORDER BY COALESCE(parent_attribute_value_id, -1),
-                          attribute_context_prop_id DESC,
-                          attribute_context_internal_provider_id DESC,
-                          attribute_context_external_provider_id DESC,
-                          COALESCE(key, ''),
-                          visibility_change_set_pk DESC,
-                          visibility_deleted_at DESC NULLS FIRST,
-                          attribute_context_schema_id DESC,
-                          attribute_context_schema_variant_id DESC,
-                          attribute_context_component_id DESC,
-                          attribute_context_system_id DESC;
-END;
-$$ LANGUAGE PLPGSQL PARALLEL SAFE;
+-- Changing the return type from the previous version requires dropping & recreating.
+DROP FUNCTION IF EXISTS attribute_value_find_with_key_in_context_v1;
+CREATE OR REPLACE FUNCTION attribute_value_find_with_key_in_context_v1(
+    this_read_tenancy      jsonb,
+    this_visibility        jsonb,
+    this_key               text,
+    this_attribute_context jsonb)
+RETURNS SETOF attribute_values
+LANGUAGE sql
+STABLE
+PARALLEL SAFE
+AS $$
+    SELECT DISTINCT ON (
+        COALESCE(belongs_to_id, -1),
+        attribute_context_prop_id,
+        attribute_context_internal_provider_id,
+        attribute_context_external_provider_id,
+        COALESCE(key, '')
+    )
+        av.*
+    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    LEFT JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+        ON avbtav.object_id = av.id
+    WHERE in_attribute_context_v1(this_attribute_context, av)
+        AND CASE
+                WHEN this_key IS NULL THEN key IS NULL
+                ELSE key = this_key
+            END
+    ORDER BY COALESCE(belongs_to_id, -1),
+            attribute_context_prop_id DESC,
+            attribute_context_internal_provider_id DESC,
+            attribute_context_external_provider_id DESC,
+            COALESCE(key, ''),
+            attribute_context_schema_id DESC,
+            attribute_context_schema_variant_id DESC,
+            attribute_context_component_id DESC,
+            attribute_context_system_id DESC
+$$;
 
 CREATE OR REPLACE FUNCTION attribute_value_new_v1(this_write_tenancy                jsonb,
                                                   this_read_tenancy                 jsonb,
@@ -881,40 +869,33 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_value_child_attribute_values_for_context_v1(this_read_tenancy                jsonb,
-                                                                                 this_visibility                  jsonb,
-                                                                                 this_original_attribute_value_id bigint,
-                                                                                 this_read_attribute_context      jsonb)
-RETURNS TABLE (child_attribute_value jsonb)
-AS
-$$
-BEGIN
-    RETURN QUERY
-        SELECT DISTINCT ON (attribute_context_prop_id, COALESCE(key, '')) to_jsonb(attribute_values.*) AS child_attribute_value
-        FROM attribute_values
-        INNER JOIN (
-            SELECT DISTINCT ON (object_id) object_id AS child_attribute_value_id
-            FROM attribute_value_belongs_to_attribute_value
-            WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
-                  AND belongs_to_id = this_original_attribute_value_id
-            ORDER BY object_id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC NULLS FIRST
-        ) AS avbtav ON avbtav.child_attribute_value_id = attribute_values.id
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
-              AND in_attribute_context_v1(this_read_attribute_context, attribute_values)
-        ORDER BY attribute_context_prop_id,
-                 COALESCE(key, ''),
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST,
-                 attribute_context_internal_provider_id DESC,
-                 attribute_context_external_provider_id DESC,
-                 attribute_context_schema_id DESC,
-                 attribute_context_schema_variant_id DESC,
-                 attribute_context_component_id DESC,
-                 attribute_context_system_id DESC;
-END;
-$$ LANGUAGE PLPGSQL PARALLEL SAFE;
+DROP FUNCTION IF EXISTS attribute_value_child_attribute_values_for_context_v1;
+CREATE OR REPLACE FUNCTION attribute_value_child_attribute_values_for_context_v1(
+    this_read_tenancy                jsonb,
+    this_visibility                  jsonb,
+    this_original_attribute_value_id bigint,
+    this_read_attribute_context      jsonb)
+RETURNS SETOF attribute_values
+LANGUAGE sql
+STABLE
+PARALLEL SAFE
+AS $$
+    SELECT DISTINCT ON (attribute_context_prop_id, COALESCE(key, ''))
+        av.*
+    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+        ON avbtav.object_id = av.id
+            AND avbtav.belongs_to_id = this_original_attribute_value_id
+    WHERE in_attribute_context_v1(this_read_attribute_context, av)
+    ORDER BY attribute_context_prop_id,
+                COALESCE(key, ''),
+                attribute_context_internal_provider_id DESC,
+                attribute_context_external_provider_id DESC,
+                attribute_context_schema_id DESC,
+                attribute_context_schema_variant_id DESC,
+                attribute_context_component_id DESC,
+                attribute_context_system_id DESC
+$$;
 
 CREATE OR REPLACE FUNCTION attribute_value_populate_child_proxies_for_value_v1(this_write_tenancy               jsonb,
                                                                                this_read_tenancy                jsonb,
@@ -928,24 +909,22 @@ DECLARE
     child_attribute_value_prototype attribute_prototypes%ROWTYPE;
     new_child_value                 attribute_values%ROWTYPE;
     original_child_value            attribute_values%ROWTYPE;
-    original_child_value_json       jsonb;
     original_child_values           jsonb[];
     read_attribute_context          jsonb;
     write_attribute_context         jsonb;
 BEGIN
     read_attribute_context := this_previous_attribute_context || jsonb_build_object('attribute_context_prop_id', NULL);
 
-    FOR original_child_value_json IN
-        SELECT child_attribute_value
+    FOR original_child_value IN
+        SELECT *
         FROM attribute_value_child_attribute_values_for_context_v1(this_read_tenancy,
                                                                    this_visibility,
                                                                    this_original_attribute_value_id,
                                                                    read_attribute_context)
     LOOP
-        original_child_value := jsonb_populate_record(null::attribute_values, original_child_value_json);
         write_attribute_context := this_previous_attribute_context || jsonb_build_object('attribute_context_prop_id', original_child_value.attribute_context_prop_id);
 
-        IF attribute_contexts_match_v1(write_attribute_context, original_child_value_json) THEN
+        IF attribute_contexts_match_v1(write_attribute_context, to_jsonb(original_child_value)) THEN
             -- The `AttributeValue` that we found is one that was already set in the desired
             -- `AttributeContext`, but its parent was from a less-specific `AttributeContext`. Since it now has
             -- an appropriate parent `AttributeValue` within the desired `AttributeContext`, we need to have it
