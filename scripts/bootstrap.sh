@@ -159,7 +159,6 @@ function pop-bootstrap {
 
 function ubuntu-bootstrap {
     local pkgs=(
-        awscli
         build-essential
         git
         libprotobuf-dev
@@ -183,6 +182,7 @@ function ubuntu-bootstrap {
     sudo apt install -y "${pkgs[@]}"
     install-kubeval-linux-amd64
     install-butane-linux-amd64
+    install-awscli-linux-amd64
 
     if [ "${SI_WSL2}" == "false" ]; then
         echo "\
@@ -250,6 +250,14 @@ function install-butane-linux-amd64 {
     fi
     sudo mv /tmp/butane-download/butane /usr/local/bin
     rm -rf /tmp/butane-download
+}
+
+function install-awscli-linux-amd64 {
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    unzip awscliv2.zip
+    sudo ./aws/install
+    rm -rf ./aws ./awscliv2.zip
+    ln -s /usr/local/bin/aws /usr/bin/aws
 }
 
 function check-dependencies {

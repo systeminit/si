@@ -14,10 +14,12 @@ use crate::validation::Validation;
 use crate::AttributeValueError;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
-    schema::SchemaUiMenu, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
-    ExternalProvider, Func, InternalProvider, PropKind, QualificationPrototype, SchemaError,
-    SchemaKind, Socket, StandardModel,
+    schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult,
+    CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype, ConfirmationPrototypeContext,
+    DalContext, DiagramKind, ExternalProvider, Func, InternalProvider, PropKind,
+    QualificationPrototype, SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 
 mod vpc;
@@ -1229,6 +1231,40 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         *si_name_internal_provider.id(),
     )
     .await?;
+
+    let func_name = "si:awsKeyPairCreateWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let title = "Create AWS KeyPair";
+    let context = WorkflowPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    let workflow_prototype =
+        WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
+
+    let func_name = "si:resourceExistsConfirmation";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let context = ConfirmationPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ConfirmationPrototype::new(ctx, "Create AWS KeyPair", *func.id(), context).await?;
+
+    let name = "create";
+    let context = ActionPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
 
     Ok(())
 }

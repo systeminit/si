@@ -26,7 +26,7 @@ export type WsEventPayloadMap = {
     componentId: number;
     systemId: number;
     confirmationPrototypeId: number;
-    status: "success" | "running" | "pending" | "failure" | "error"
+    status: "success" | "running" | "pending" | "failure" | "error";
     errorMessage?: string;
   };
 
@@ -52,6 +52,6 @@ export type WsEventPayloadMap = {
     confirmationResolverId: number;
     action: string;
     output: string[];
-    runnerState: { status: "failure" | "success" | "running" | "created" },
-  }
+    runnerState: { status: "failure" | "success" | "running" | "created" };
+  };
 };

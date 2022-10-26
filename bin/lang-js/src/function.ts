@@ -78,5 +78,4 @@ export interface OutputLine {
   level: "debug" | "info" | "warn" | "error";
   group?: string;
   message: string;
-  data: unknown;
 }

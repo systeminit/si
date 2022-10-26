@@ -53,15 +53,14 @@ import { useFixesStore } from "@/store/fixes/fixes.store";
 import Icon from "@/ui-lib/icons/Icon.vue";
 
 const fixesStore = useFixesStore();
-const loadConfirmationsReqStatus = fixesStore.getRequestStatus("LOAD_CONFIRMATIONS");
+const loadConfirmationsReqStatus =
+  fixesStore.getRequestStatus("LOAD_CONFIRMATIONS");
 const execFixesReqStatus = fixesStore.getRequestStatus("EXECUTE_FIXES");
 
 const fixState = computed(() => {
   if (fixesStore.runningFixBatch) {
     const total = fixesStore.fixesOnRunningBatch.length;
     const executed = fixesStore.completedFixesOnRunningBatch.length;
-    console.log(total);
-    console.log(executed);
     let rate = executed / total;
 
     return {
