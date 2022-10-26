@@ -5,16 +5,7 @@
     clippy::missing_panics_doc,
     clippy::panic_in_result_fn
 )]
-#![allow(
-    clippy::missing_errors_doc,
-    clippy::module_inception,
-    clippy::module_name_repetitions
-)]
-
-#[cfg(feature = "event-log-fs")]
-pub mod event_log_fs;
-#[cfg(feature = "event-log-fs")]
-pub use event_log_fs::{EventLogFS, EventLogFSError, OutputLineStream};
+#![allow(clippy::missing_errors_doc)]
 
 pub mod faktory;
 pub use faktory::FaktoryConfig;

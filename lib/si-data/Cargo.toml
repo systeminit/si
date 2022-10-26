@@ -5,21 +5,5 @@ edition = "2021"
 rust-version = "1.56"
 publish = false
 
-[features]
-default = []
-
-event-log-fs = [
-    "strum",
-    "strum_macros",
-    "thiserror",
-    "tokio",
-]
-
 [dependencies]
 serde = { version = "1.0.123", features = ["derive"] }
-
-# event-log-fs only
-strum = { version = "0.24.0", optional = true }
-strum_macros = { version = "0.24.0", optional = true }
-thiserror = { version = "1.0.24", optional = true }
-tokio = { version = "1.2.0", features = ["full"], optional = true }
