@@ -20,5 +20,6 @@ if [[ "$(docker ps | grep registry)" != "" ]]; then
     docker stop registry
 fi
 docker run --rm -d -p ${REPO_PORT}:5000 --name registry registry:2
+sleep 1
 echo "Pushing"
 docker push ${REPO_TAG}

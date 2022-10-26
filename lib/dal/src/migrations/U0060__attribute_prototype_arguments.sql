@@ -40,6 +40,11 @@ CREATE UNIQUE INDEX inter_component_argument
     WHERE visibility_deleted_at IS NULL
         AND internal_provider_id = -1;
 
+CREATE INDEX ON attribute_prototype_arguments (attribute_prototype_id);
+CREATE INDEX ON attribute_prototype_arguments (external_provider_id);
+CREATE INDEX ON attribute_prototype_arguments (head_component_id);
+CREATE INDEX ON attribute_prototype_arguments (internal_provider_id);
+
 SELECT standard_model_table_constraints_v1('attribute_prototype_arguments');
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('attribute_prototype_arguments', 'model', 'attribute_prototype_argument', 'Attribute Prototype Argument');

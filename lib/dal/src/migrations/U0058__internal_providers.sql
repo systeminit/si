@@ -37,6 +37,11 @@ CREATE UNIQUE INDEX unique_explicit_internal_providers
     WHERE visibility_deleted_at IS NULL
         AND prop_id = -1;
 
+CREATE INDEX ON internal_providers (prop_id);
+CREATE INDEX ON internal_providers (schema_id);
+CREATE INDEX ON internal_providers (schema_variant_id);
+CREATE INDEX ON internal_providers (attribute_prototype_id);
+
 SELECT standard_model_table_constraints_v1('internal_providers');
 SELECT belongs_to_table_create_v1('socket_belongs_to_internal_provider', 'sockets', 'internal_providers');
 

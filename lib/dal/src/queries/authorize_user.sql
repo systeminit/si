@@ -1,3 +1,4 @@
+-- TODO: Not quite sure what's going on here with the pk = pk matching. Older understanding of how visibility querying works?
 SELECT true AS authorized, users.id, users.visibility_change_set_pk
 FROM users
          INNER JOIN group_many_to_many_users

@@ -78,3 +78,28 @@ BEGIN
     object := row_to_json(this_new_row);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
+
+-- sql functions can't take arguments of type RECORD, but they can
+-- take arguments of ROWTYPE, so we need to make a specific version
+-- of this function for every table we want to use it with.
+CREATE OR REPLACE FUNCTION in_attribute_context_v1(
+    check_context   jsonb,
+    record_to_check attribute_prototypes
+)
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+CALLED ON NULL INPUT
+AS $$
+    SELECT in_attribute_context_v1(
+        check_context,
+        record_to_check.attribute_context_prop_id,
+        record_to_check.attribute_context_internal_provider_id,
+        record_to_check.attribute_context_external_provider_id,
+        record_to_check.attribute_context_schema_id,
+        record_to_check.attribute_context_schema_variant_id,
+        record_to_check.attribute_context_component_id,
+        record_to_check.attribute_context_system_id
+    )
+$$;

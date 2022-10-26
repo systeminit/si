@@ -22,6 +22,9 @@ CREATE TABLE func_executions
     updated_at                   timestamp with time zone NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX ON func_executions (func_id);
+CREATE INDEX ON func_executions (func_binding_id);
+
 CREATE OR REPLACE FUNCTION func_execution_create_v1(
     this_tenancy jsonb,
     this_state text,

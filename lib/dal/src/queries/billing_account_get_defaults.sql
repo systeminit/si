@@ -1,3 +1,4 @@
+-- TODO: Not quite sure what's going on here with the pk = pk matching. Older understanding of how visibility querying works?
 SELECT row_to_json(organizations.*)                                     AS organization,
        row_to_json(workspaces.*)                                        AS workspace,
        organization_belongs_to_billing_account.id                       AS id,
