@@ -25,6 +25,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   lib/si-data-nats/**
   lib/si-data-pg/**
   lib/si-settings/**
+  lib/si-std/**
   lib/si-test-macros/**
   lib/telemetry-rs/**
   lib/veritech-client/**

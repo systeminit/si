@@ -24,7 +24,7 @@ use deadpool_postgres::{
 use futures::{Stream, StreamExt};
 use ouroboros::self_referencing;
 use serde::{Deserialize, Serialize};
-use si_data::{ResultExt, SensitiveString};
+use si_std::{ResultExt, SensitiveString};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 use tokio_postgres::{

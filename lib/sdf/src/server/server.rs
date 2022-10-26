@@ -10,9 +10,9 @@ use dal::{
     ResourceScheduler, ServicesContext,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use si_data::SensitiveString;
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
+use si_std::SensitiveString;
 use telemetry::{prelude::*, TelemetryClient};
 use thiserror::Error;
 use tokio::{

@@ -6,9 +6,9 @@ use axum::{
 };
 use dal::{context::ServicesContext, job::processor::JobQueueProcessor};
 use hyper::StatusCode;
-use si_data::SensitiveString;
 use si_data_nats::{NatsClient, NatsError};
 use si_data_pg::{PgError, PgPool};
+use si_std::SensitiveString;
 use std::sync::Arc;
 use telemetry::TelemetryClient;
 use thiserror::Error;

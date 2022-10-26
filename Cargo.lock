@@ -792,9 +792,9 @@ dependencies = [
  "names",
  "serde",
  "serde_json",
- "si-data",
  "si-data-nats",
  "si-data-pg",
+ "si-std",
  "si-test-macros",
  "sodiumoxide",
  "telemetry",
@@ -3021,6 +3021,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-settings",
+ "si-std",
  "sodiumoxide",
  "strum",
  "strum_macros",
@@ -3294,7 +3295,7 @@ dependencies = [
  "ouroboros",
  "refinery",
  "serde",
- "si-data",
+ "si-std",
  "telemetry",
  "thiserror",
  "tokio",
@@ -3310,6 +3311,13 @@ dependencies = [
  "serde_with",
  "sodiumoxide",
  "thiserror",
+]
+
+[[package]]
+name = "si-std"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

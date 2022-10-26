@@ -76,7 +76,7 @@ impl From<Box<str>> for SensitiveString {
     /// Basic usage:
     ///
     /// ```
-    /// # use si_data::SensitiveString;
+    /// # use si_std::SensitiveString;
     /// let s1: String = String::from("hello world");
     /// let s2: Box<str> = s1.into_boxed_str();
     /// let s3: SensitiveString = SensitiveString::from(s2);
@@ -96,7 +96,7 @@ impl<'a> From<Cow<'a, str>> for SensitiveString {
     /// # Examples
     ///
     /// ```
-    /// # use si_data::SensitiveString;
+    /// # use si_std::SensitiveString;
     /// use std::borrow::Cow;
     /// // If the string is not owned
     /// let cow: Cow<str> = Cow::Borrowed("eggplant");

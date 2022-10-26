@@ -12,9 +12,9 @@ lazy_static = "1.4.0"
 names = { version = "0.14.0", default-features = false }
 serde = { version = "1.0.123", features = ["rc", "derive"] }
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
-si-data = { path = "../../lib/si-data" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
+si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }
 sodiumoxide = "0.2.6"
 tempfile = "3.2.0"

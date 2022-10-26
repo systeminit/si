@@ -58,6 +58,7 @@ COMPONENTS = \
 	lib/si-data-nats \
 	lib/si-data-pg \
 	lib/si-settings \
+	lib/si-std \
 	lib/si-test-macros \
 	lib/telemetry-rs \
 	lib/veritech-client \
@@ -239,6 +240,8 @@ test//lib/si-data-nats//RTESTDEPS: test//lib/veritech-client test//lib/veritech-
 test//lib/si-data-pg//RTESTDEPS: test//lib/dal test//lib/sdf
 
 test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cyclone-server//TEST test//lib/sdf//TEST
+
+test//lib/si-std//RTESTDEPS: test//lib/si-data test//lib/dal-test test//lib/sdf
 
 test//lib/si-test-macros//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
 

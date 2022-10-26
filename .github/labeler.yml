@@ -112,6 +112,12 @@ A-si-settings:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
+A-si-std:
+  - lib/si-std/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 A-si-test-macros:
   - lib/si-test-macros/**/*
   - .cargo/**/*
