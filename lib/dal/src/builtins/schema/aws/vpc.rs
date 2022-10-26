@@ -9,10 +9,12 @@ use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::validation::Validation;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
-    schema::SchemaUiMenu, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, AttributeValueError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage,
-    DalContext, DiagramKind, ExternalProvider, Func, FuncError, InternalProvider, PropKind,
-    SchemaError, SchemaKind, Socket, StandardModel,
+    schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
+    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype,
+    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
+    InternalProvider, PropKind, SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 
 const INGRESS_EGRESS_DOCS_URL: &str =
@@ -1258,6 +1260,40 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
         *si_name_internal_provider.id(),
     )
     .await?;
+
+    let func_name = "si:awsSecurityGroupCreateWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let title = "Create AWS SecurityGroup";
+    let context = WorkflowPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    let workflow_prototype =
+        WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
+
+    let func_name = "si:resourceExistsConfirmation";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let context = ConfirmationPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ConfirmationPrototype::new(ctx, "Create AWS SecurityGroup", *func.id(), context).await?;
+
+    let name = "create";
+    let context = ActionPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
 
     Ok(())
 }
