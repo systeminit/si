@@ -29,3 +29,62 @@ FROM components
                       attribute_values.attribute_context_component_id = components.id
          LEFT JOIN func_binding_return_values
                    ON func_binding_return_values.id = attribute_values.func_binding_return_value_id;
+
+-- We need to create the following tenancy and visibility related functions by hand
+-- because we're trying to pretend that the components_with_attributes view is a
+-- "normal" standard model table.
+CREATE OR REPLACE FUNCTION in_tenancy_v1(
+    this_read_tenancy jsonb,
+    record_to_check   components_with_attributes
+)
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT in_tenancy_v1(
+        this_read_tenancy,
+        record_to_check.tenancy_universal,
+        record_to_check.tenancy_billing_account_ids,
+        record_to_check.tenancy_organization_ids,
+        record_to_check.tenancy_workspace_ids
+    )
+$$;
+
+CREATE OR REPLACE FUNCTION is_visible_v1(
+    this_visibility jsonb,
+    record_to_check components_with_attributes
+)
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT is_visible_v1(
+        this_visibility,
+        record_to_check.visibility_change_set_pk,
+        record_to_check.visibility_deleted_at
+    )
+$$;
+
+CREATE OR REPLACE FUNCTION in_tenancy_and_visible_v1(
+    this_read_tenancy jsonb,
+    this_visibility   jsonb,
+    record_to_check   components_with_attributes
+)
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT
+        in_tenancy_v1(
+            this_read_tenancy,
+            record_to_check.tenancy_universal,
+            record_to_check.tenancy_billing_account_ids,
+            record_to_check.tenancy_organization_ids,
+            record_to_check.tenancy_workspace_ids
+        )
+        AND is_visible_v1(
+            this_visibility,
+            record_to_check.visibility_change_set_pk,
+            record_to_check.visibility_deleted_at
+        )
+$$;
