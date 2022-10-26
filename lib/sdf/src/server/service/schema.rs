@@ -15,7 +15,7 @@ pub mod list_schemas;
 #[derive(Debug, Error)]
 pub enum SchemaError {
     #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error(transparent)]

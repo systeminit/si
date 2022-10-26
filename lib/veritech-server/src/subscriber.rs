@@ -12,7 +12,7 @@ use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
 use pin_project_lite::pin_project;
 use serde::de::DeserializeOwned;
-use si_data::{nats, NatsClient};
+use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_core::{
@@ -26,13 +26,13 @@ pub enum SubscriberError {
     #[error("failed to deserialize json message")]
     JSONDeserialize(#[source] serde_json::Error),
     #[error("failed to drain from nats subscription")]
-    NatsDrain(#[source] si_data::NatsError),
+    NatsDrain(#[source] si_data_nats::NatsError),
     #[error("nats io error when reading from subscription")]
-    NatsIo(#[source] si_data::NatsError),
+    NatsIo(#[source] si_data_nats::NatsError),
     #[error("failed to subscribe to nats topic")]
-    NatsSubscribe(#[source] si_data::NatsError),
+    NatsSubscribe(#[source] si_data_nats::NatsError),
     #[error("failed to unsubscribe from nats subscription")]
-    NatsUnsubscribe(#[source] si_data::NatsError),
+    NatsUnsubscribe(#[source] si_data_nats::NatsError),
     #[error("no return mailbox specified; bug! message data: {0:?}")]
     NoReplyMailbox(Vec<u8>),
 }
@@ -199,7 +199,7 @@ pin_project! {
     #[derive(Debug)]
     pub struct Subscription<T> {
         #[pin]
-        inner: nats::Subscription,
+        inner: si_data_nats::Subscription,
         _phantom: PhantomData<T>,
     }
 }

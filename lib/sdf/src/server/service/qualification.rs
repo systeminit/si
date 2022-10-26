@@ -50,7 +50,7 @@ pub enum QualificationError {
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error(transparent)]

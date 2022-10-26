@@ -9,6 +9,7 @@ WATCH_TASK := run
 WATCH_PATHS := . \
 	../../lib/dal \
 	../../lib/si-data \
+	../../lib/si-data-nats \
 	../../lib/si-settings \
 	../../lib/telemetry-rs \
 	../../lib/veritech-client

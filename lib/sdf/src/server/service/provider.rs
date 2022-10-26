@@ -13,7 +13,7 @@ pub enum ProviderError {
     #[error(transparent)]
     ContextError(#[from] TransactionsError),
     #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error(transparent)]

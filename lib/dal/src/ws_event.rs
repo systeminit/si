@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use si_data::NatsError;
+use si_data_nats::NatsError;
 
 use crate::code_generation_resolver::CodeGenerationId;
 use crate::confirmation_status::ConfirmationStatusUpdate;

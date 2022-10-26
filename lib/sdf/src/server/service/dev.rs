@@ -20,7 +20,7 @@ mod save_builtin_func;
 #[allow(clippy::large_enum_variant)]
 pub enum DevError {
     #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error(transparent)]

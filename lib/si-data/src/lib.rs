@@ -24,11 +24,6 @@ pub mod pg;
 #[cfg(feature = "pg")]
 pub use pg::{PgError, PgPool, PgPoolConfig, PgPoolError, PgRow, PgTxn};
 
-#[cfg(feature = "nats")]
-pub mod nats;
-#[cfg(feature = "nats")]
-pub use nats::{Client as NatsClient, Error as NatsError, NatsConfig, NatsTxn};
-
 mod sensitive_string;
 pub use sensitive_string::SensitiveString;
 

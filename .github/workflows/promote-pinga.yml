@@ -14,6 +14,7 @@ on:
       - lib/dal/**
       - lib/sdf/**
       - lib/si-data/**
+      - lib/si-data-nats/**
       - lib/si-settings/**
       - lib/telemetry-rs/**
       - lib/veritech-client/**

@@ -2,7 +2,8 @@
 //! graph.
 
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, PgError};
+use si_data::PgError;
+use si_data_nats::NatsError;
 use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;

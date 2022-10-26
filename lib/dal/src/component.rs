@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data::{NatsError, PgError};
+use si_data::PgError;
+use si_data_nats::NatsError;
 use std::collections::HashMap;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;

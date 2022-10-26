@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use si_data::{NatsError, PgError};
+use si_data::PgError;
+use si_data_nats::NatsError;
 use telemetry::prelude::*;
 use thiserror::Error;
 

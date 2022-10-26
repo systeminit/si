@@ -1,7 +1,15 @@
+#![warn(
+    clippy::unwrap_in_result,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::missing_panics_doc,
+    clippy::panic_in_result_fn
+)]
+#![allow(clippy::missing_errors_doc)]
+
 use std::{fmt::Debug, io, sync::Arc, time::Duration};
 
 use crossbeam_channel::RecvError;
-use nats_client as nats;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -16,9 +24,11 @@ mod options;
 mod subscription;
 
 pub use message::Message;
-pub use nats::{header::HeaderMap, rustls};
+pub use nats_client::{header::HeaderMap, rustls};
 pub use options::Options;
 pub use subscription::Subscription;
+
+pub type NatsError = Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -47,9 +57,11 @@ impl Default for NatsConfig {
     }
 }
 
+pub type NatsClient = Client;
+
 #[derive(Clone, Debug)]
 pub struct Client {
-    inner: nats::Connection,
+    inner: nats_client::Connection,
     metadata: Arc<ConnectionMetadata>,
 }
 
@@ -82,10 +94,10 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Client::connect_with_options(
+    /// # use si_data_nats::{Client, Options}; tokio_test::block_on(async {
+    /// let nc = Client::connect_with_options(
     ///         "demo.nats.io",
-    ///         nats::Options::default(),
+    ///         Options::default(),
     ///     ).await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -95,10 +107,10 @@ impl Client {
     /// that is your intention.
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Client::connect_with_options(
+    /// # use si_data_nats::{Client, Options}; tokio_test::block_on(async {
+    /// let nc = Client::connect_with_options(
     ///         "nats://demo.nats.io:4222,tls://demo.nats.io:4443",
-    ///         nats::Options::default(),
+    ///         Options::default(),
     ///     )
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -157,8 +169,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// let sub = nc.subscribe("foo").await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -203,8 +215,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// let sub = nc.queue_subscribe("foo", "production").await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -255,8 +267,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// nc.publish("foo", "Hello World!").await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -270,8 +282,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// let reply = nc.new_inbox();
     /// let rsub = nc.subscribe(&reply).await?;
     /// nc.publish_request("foo", &reply, "Help me!").await?;
@@ -323,8 +335,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// let reply = nc.new_inbox();
     /// let rsub = nc.subscribe(&reply).await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -340,8 +352,8 @@ impl Client {
     ///
     /// ```no_run
     /// # use futures::{TryStreamExt};
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// # nc.subscribe("foo").await?.try_for_each(|m| async move { m.respond("ans=42").await });
     /// # nc.subscribe("foo").await?;
     /// let resp = nc.request("foo", "Help me?").await?;
@@ -394,8 +406,8 @@ impl Client {
     ///
     /// ```no_run
     /// # use futures::{TryStreamExt};
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// # nc.subscribe("foo").await?.try_for_each(|m| async move { m.respond("ans=42").await });
     /// # nc.subscribe("foo").await?;
     /// let resp = nc.request_timeout("foo", "Help me?", std::time::Duration::from_secs(2)).await?;
@@ -447,8 +459,8 @@ impl Client {
     ///
     /// ```no_run
     /// # use futures::{TryStreamExt, StreamExt};
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// # nc.subscribe("foo").await?.try_for_each(|m| async move { m.respond("ans=42").await });
     /// for msg in nc.request_multi("foo", "Help").await?.take(1).next().await {}
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -526,8 +538,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// nc.flush().await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -567,8 +579,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// nc.flush_timeout(std::time::Duration::from_secs(8)).await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -608,8 +620,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// nc.close().await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -647,8 +659,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// println!("server rtt: {:?}", nc.rtt().await);
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -684,8 +696,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// println!("ip: {:?}", nc.client_ip());
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -698,8 +710,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// println!("ip: {:?}", nc.client_id());
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
@@ -721,8 +733,8 @@ impl Client {
     ///
     /// ```no_run
     /// # use std::sync::{Arc, atomic::{AtomicBool, Ordering::SeqCst}};
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// let received = Arc::new(AtomicBool::new(false));
     /// let received_2 = received.clone();
     ///
@@ -770,8 +782,8 @@ impl Client {
     ///
     /// ```no_run
     /// # use futures::StreamExt;
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// let mut sub = nc.subscribe("foo.headers").await?;
     /// let headers = [("header1", "value1"),
     ///                ("header2", "value2")].iter().collect();
@@ -837,8 +849,8 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// println!("max payload: {:?}", nc.max_payload());
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```

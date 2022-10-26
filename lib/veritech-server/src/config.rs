@@ -9,7 +9,7 @@ use deadpool_cyclone::{
 };
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_data::NatsConfig;
+use si_data_nats::NatsConfig;
 use telemetry::prelude::*;
 use thiserror::Error;
 

@@ -6,7 +6,8 @@ use axum::{
 };
 use dal::{context::ServicesContext, job::processor::JobQueueProcessor};
 use hyper::StatusCode;
-use si_data::{nats, pg, SensitiveString};
+use si_data::{pg, SensitiveString};
+use si_data_nats::{NatsClient, NatsError};
 use std::sync::Arc;
 use telemetry::TelemetryClient;
 use thiserror::Error;
@@ -54,7 +55,7 @@ impl SignupSecret {
 pub fn routes(
     telemetry: impl TelemetryClient,
     pg_pool: pg::PgPool,
-    nats_conn: nats::Client,
+    nats_conn: NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: VeritechClient,
     encryption_key: EncryptionKey,
@@ -150,7 +151,7 @@ pub fn dev_routes(router: Router) -> Router {
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error(transparent)]
-    Nats(#[from] nats::Error),
+    Nats(#[from] NatsError),
     #[error(transparent)]
     Pg(#[from] pg::PgError),
     #[error(transparent)]

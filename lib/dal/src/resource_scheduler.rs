@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use si_data::{NatsError, PgError, PgPoolError};
+use si_data::{PgError, PgPoolError};
+use si_data_nats::NatsError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{sync::broadcast, time};

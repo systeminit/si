@@ -20,7 +20,7 @@ pub mod update_selected_change_set;
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
     #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error(transparent)]

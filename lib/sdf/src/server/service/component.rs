@@ -42,7 +42,7 @@ pub enum ComponentError {
     #[error("invalid request")]
     InvalidRequest,
     #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error("read tenancy error: {0}")]

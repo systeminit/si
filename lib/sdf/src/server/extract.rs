@@ -10,7 +10,7 @@ use dal::{
     ReadTenancy, RequestContext, User, UserClaim, WorkspaceId, WriteTenancy,
 };
 use hyper::StatusCode;
-use si_data::{nats, pg};
+use si_data::pg;
 use veritech_client::Client as VeritechClient;
 
 pub struct AccessBuilder(pub context::AccessBuilder);
@@ -131,7 +131,7 @@ impl PgRoTxn {
     }
 }
 
-pub struct Nats(pub nats::Client);
+pub struct Nats(pub si_data_nats::NatsClient);
 
 #[async_trait]
 impl<P> FromRequest<P> for Nats
@@ -141,14 +141,14 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let Extension(nats) = Extension::<nats::Client>::from_request(req)
+        let Extension(nats) = Extension::<si_data_nats::NatsClient>::from_request(req)
             .await
             .map_err(internal_error)?;
         Ok(Self(nats))
     }
 }
 
-pub struct NatsTxn(nats::Client);
+pub struct NatsTxn(si_data_nats::NatsClient);
 
 #[async_trait]
 impl<P> FromRequest<P> for NatsTxn
@@ -164,7 +164,7 @@ where
 }
 
 impl NatsTxn {
-    pub async fn start(&mut self) -> Result<nats::NatsTxn, nats::Error> {
+    pub async fn start(&mut self) -> Result<si_data_nats::NatsTxn, si_data_nats::NatsError> {
         Ok(self.0.transaction())
     }
 }

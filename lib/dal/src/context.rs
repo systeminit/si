@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use si_data::{
-    nats,
     pg::{self, InstrumentedClient, PgPoolResult},
-    NatsClient, NatsTxn, PgPool, PgTxn,
+    PgPool, PgTxn,
 };
+use si_data_nats::{NatsClient, NatsError, NatsTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::{Client as VeritechClient, EncryptionKey};
@@ -633,7 +633,7 @@ pub enum TransactionsError {
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error(transparent)]
-    Nats(#[from] nats::Error),
+    Nats(#[from] NatsError),
     #[error(transparent)]
     Pg(#[from] pg::PgError),
     #[error(transparent)]

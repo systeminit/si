@@ -55,6 +55,7 @@ COMPONENTS = \
 	lib/deadpool-cyclone \
 	lib/sdf \
 	lib/si-data \
+	lib/si-data-nats \
 	lib/si-settings \
 	lib/si-test-macros \
 	lib/telemetry-rs \
@@ -231,6 +232,8 @@ test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
 test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga
 
 test//lib/si-data//RTESTDEPS: test//lib/veritech-client test//lib/veritech-server test//lib/dal test//lib/sdf
+
+test//lib/si-data-nats//RTESTDEPS: test//lib/veritech-client test//lib/veritech-server test//lib/dal test//lib/sdf
 
 test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cyclone-server//TEST test//lib/sdf//TEST
 

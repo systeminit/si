@@ -3,7 +3,7 @@ use axum::{
     response::IntoResponse,
 };
 use dal::BillingAccountId;
-use si_data::NatsClient;
+use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use tokio::sync::broadcast;
 
@@ -81,7 +81,7 @@ mod billing_account_updates {
     use axum::extract::ws::{self, WebSocket};
     use dal::BillingAccountId;
     use futures::TryStreamExt;
-    use si_data::{nats::Subscription, NatsClient, NatsError};
+    use si_data_nats::{NatsClient, NatsError, Subscription};
     use telemetry::prelude::*;
     use thiserror::Error;
     use tokio_tungstenite::tungstenite;

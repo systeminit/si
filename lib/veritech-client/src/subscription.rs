@@ -8,7 +8,6 @@ use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
 use pin_project_lite::pin_project;
 use serde::de::DeserializeOwned;
-use si_data::nats;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_core::FINAL_MESSAGE_HEADER_KEY;
@@ -18,9 +17,9 @@ pub enum SubscriptionError {
     #[error("failed to deserialize json message")]
     JSONDeserialize(#[source] serde_json::Error),
     #[error("nats io error when reading from subscription")]
-    NatsIo(#[source] si_data::NatsError),
+    NatsIo(#[source] si_data_nats::NatsError),
     #[error("failed to unsubscribe from nats subscription")]
-    NatsUnsubscribe(#[source] si_data::NatsError),
+    NatsUnsubscribe(#[source] si_data_nats::NatsError),
     #[error("the nats subscription closed before seeing a final message")]
     UnexpectedNatsSubscriptionClosed,
 }
@@ -29,13 +28,13 @@ pin_project! {
     #[derive(Debug)]
     pub struct Subscription<T> {
         #[pin]
-        inner: nats::Subscription,
+        inner: si_data_nats::Subscription,
         _phantom: PhantomData<T>,
     }
 }
 
 impl<T> Subscription<T> {
-    pub fn new(inner: nats::Subscription) -> Self {
+    pub fn new(inner: si_data_nats::Subscription) -> Self {
         Subscription {
             inner,
             _phantom: PhantomData,

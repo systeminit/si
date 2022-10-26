@@ -22,6 +22,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   lib/dal-test/**
   lib/sdf/**
   lib/si-data/**
+  lib/si-data-nats/**
   lib/si-settings/**
   lib/si-test-macros/**
   lib/telemetry-rs/**
@@ -36,6 +37,7 @@ VERITECH_PATHS=".github/workflows/promote-veritech.yml
   lib/cyclone-core/**
   lib/cyclone-server/**
   lib/si-data/**
+  lib/si-data-nats/**
   lib/si-settings/**
   lib/si-test-macros/**
   lib/telemetry-rs/**
