@@ -4,8 +4,8 @@
 //! the attribute's value.
 
 use serde::{Deserialize, Serialize};
-use si_data::PgError;
 use si_data_nats::NatsError;
+use si_data_pg::PgError;
 use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -62,7 +62,7 @@ pub enum AttributeValueError {
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
-    PgPool(#[from] si_data::PgPoolError),
+    PgPool(#[from] si_data_pg::PgPoolError),
     #[error("AttributeContext error: {0}")]
     AttributeContext(#[from] AttributeContextError),
     #[error("AttributeContextBuilder error: {0}")]

@@ -22,7 +22,7 @@ pub enum ChangeSetError {
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]

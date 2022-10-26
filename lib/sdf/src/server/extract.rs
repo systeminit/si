@@ -10,7 +10,7 @@ use dal::{
     ReadTenancy, RequestContext, User, UserClaim, WorkspaceId, WriteTenancy,
 };
 use hyper::StatusCode;
-use si_data::pg;
+use si_data_pg::{InstrumentedClient, InstrumentedTransaction, PgError};
 use veritech_client::Client as VeritechClient;
 
 pub struct AccessBuilder(pub context::AccessBuilder);
@@ -56,7 +56,7 @@ where
     }
 }
 
-pub struct PgPool(pub pg::PgPool);
+pub struct PgPool(pub si_data_pg::PgPool);
 
 #[async_trait]
 impl<P> FromRequest<P> for PgPool
@@ -66,14 +66,14 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let Extension(pg_pool) = Extension::<pg::PgPool>::from_request(req)
+        let Extension(pg_pool) = Extension::<si_data_pg::PgPool>::from_request(req)
             .await
             .map_err(internal_error)?;
         Ok(Self(pg_pool))
     }
 }
 
-pub struct PgConn(pub pg::InstrumentedClient);
+pub struct PgConn(pub InstrumentedClient);
 
 #[async_trait]
 impl<P> FromRequest<P> for PgConn
@@ -89,7 +89,7 @@ where
     }
 }
 
-pub struct PgRwTxn(pg::InstrumentedClient);
+pub struct PgRwTxn(InstrumentedClient);
 
 #[async_trait]
 impl<P> FromRequest<P> for PgRwTxn
@@ -105,12 +105,12 @@ where
 }
 
 impl PgRwTxn {
-    pub async fn start(&mut self) -> Result<pg::InstrumentedTransaction<'_>, pg::PgError> {
+    pub async fn start(&mut self) -> Result<InstrumentedTransaction<'_>, PgError> {
         self.0.transaction().await
     }
 }
 
-pub struct PgRoTxn(pg::InstrumentedClient);
+pub struct PgRoTxn(InstrumentedClient);
 
 #[async_trait]
 impl<P> FromRequest<P> for PgRoTxn
@@ -126,7 +126,7 @@ where
 }
 
 impl PgRoTxn {
-    pub async fn start(&mut self) -> Result<pg::InstrumentedTransaction<'_>, pg::PgError> {
+    pub async fn start(&mut self) -> Result<InstrumentedTransaction<'_>, PgError> {
         self.0.build_transaction().read_only(true).start().await
     }
 }

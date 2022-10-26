@@ -23,6 +23,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   lib/sdf/**
   lib/si-data/**
   lib/si-data-nats/**
+  lib/si-data-pg/**
   lib/si-settings/**
   lib/si-test-macros/**
   lib/telemetry-rs/**

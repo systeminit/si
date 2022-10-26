@@ -100,6 +100,12 @@ A-si-data-nats:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
+A-si-data-pg:
+  - lib/si-data-pg/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 A-si-settings:
   - lib/si-settings/**/*
   - .cargo/**/*

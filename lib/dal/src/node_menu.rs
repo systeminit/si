@@ -3,7 +3,7 @@
 //! [`Schema`](crate::Schema)'s menu items based on the diagram context for the menu.
 
 use serde::{Deserialize, Serialize};
-use si_data::PgError;
+use si_data_pg::PgError;
 use std::cell::RefCell;
 use std::sync::Arc;
 use thiserror::Error;

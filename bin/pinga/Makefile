@@ -10,6 +10,7 @@ WATCH_PATHS := . \
 	../../lib/dal \
 	../../lib/si-data \
 	../../lib/si-data-nats \
+	../../lib/si-data-pg \
 	../../lib/si-settings \
 	../../lib/telemetry-rs \
 	../../lib/veritech-client

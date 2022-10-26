@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;
 
-use si_data::PgError;
 use si_data_nats::NatsError;
+use si_data_pg::PgError;
 use telemetry::prelude::*;
 
 use crate::label_list::LabelList;

@@ -5,6 +5,7 @@ include ../../mk/rust.mk
 WATCH_PATHS := . \
 	../../lib/dal \
 	../../lib/si-data-nats \
+	../../lib/si-data-pg \
 	../../lib/si-settings \
 	../../lib/si-test-macros \
 	../../lib/telemetry-rs \

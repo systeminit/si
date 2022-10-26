@@ -6,8 +6,9 @@ use axum::{
 };
 use dal::{context::ServicesContext, job::processor::JobQueueProcessor};
 use hyper::StatusCode;
-use si_data::{pg, SensitiveString};
+use si_data::SensitiveString;
 use si_data_nats::{NatsClient, NatsError};
+use si_data_pg::{PgError, PgPool};
 use std::sync::Arc;
 use telemetry::TelemetryClient;
 use thiserror::Error;
@@ -54,7 +55,7 @@ impl SignupSecret {
 #[allow(clippy::too_many_arguments)]
 pub fn routes(
     telemetry: impl TelemetryClient,
-    pg_pool: pg::PgPool,
+    pg_pool: PgPool,
     nats_conn: NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: VeritechClient,
@@ -153,7 +154,7 @@ pub enum AppError {
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error(transparent)]
-    Pg(#[from] pg::PgError),
+    Pg(#[from] PgError),
     #[error(transparent)]
     Server(#[from] ServerError),
 }

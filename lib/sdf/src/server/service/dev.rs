@@ -22,7 +22,7 @@ pub enum DevError {
     #[error(transparent)]
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("billing account error: {0}")]

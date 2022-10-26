@@ -24,7 +24,7 @@ pub async fn demo(
     // Well, we have a custom extractor that starts a read-only transaction!
     mut ro_txn: PgRoTxn,
     // Maybe we need a low level instance of our PG pool? We have an extractor for this as well! In
-    // this case we're using destructuring to get at the `si_data::pg::PgPool` directly.
+    // this case we're using destructuring to get at the `si_data_pg::pg::PgPool` directly.
     PgPool(_pg): PgPool,
     // Just like with pg, we have our NATS txn which we can get, ready to start like so:
     mut nats_txn: NatsTxn,

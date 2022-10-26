@@ -4,7 +4,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value as JsonValue, Value};
-use si_data::PgError;
+use si_data_pg::PgError;
 use strum_macros::Display;
 use telemetry::prelude::*;
 use thiserror::Error;

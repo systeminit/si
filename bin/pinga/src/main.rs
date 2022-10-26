@@ -19,8 +19,8 @@ use dal::{
     TransactionsError,
 };
 use dal::{FaktoryProcessor, JobQueueProcessor};
-use si_data::{PgPool, PgPoolError};
 use si_data_nats::NatsClient;
+use si_data_pg::{PgPool, PgPoolError};
 use uuid::Uuid;
 
 mod args;

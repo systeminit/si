@@ -24,6 +24,7 @@ serde_json = { version = "1.0", features = ["preserve_order"] }
 serde_with = "2.0.0"
 si-data = { path = "../../lib/si-data" }
 si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
 si-settings = { path = "../../lib/si-settings" }
 sodiumoxide = "0.2.7"
 strum = "0.24.0"

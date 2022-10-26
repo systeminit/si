@@ -5,6 +5,7 @@ include ../../mk/rust.mk
 WATCH_PATHS := . \
 	../../lib/si-data \
 	../../lib/si-data-nats \
+	../../lib/si-data-pg \
 	../../lib/si-test-macros \
 	../../lib/telemetry-rs \
 	../../lib/veritech-client

@@ -19,11 +19,6 @@ pub use event_log_fs::{EventLogFS, EventLogFSError, OutputLineStream};
 pub mod faktory;
 pub use faktory::FaktoryConfig;
 
-#[cfg(feature = "pg")]
-pub mod pg;
-#[cfg(feature = "pg")]
-pub use pg::{PgError, PgPool, PgPoolConfig, PgPoolError, PgRow, PgTxn};
-
 mod sensitive_string;
 pub use sensitive_string::SensitiveString;
 

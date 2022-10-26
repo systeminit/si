@@ -19,3 +19,9 @@ tokio = { version = "1.2.0", features = ["full"] }
 nkeys = "0.2.0"
 tokio-test = "0.4.2"
 tracing-subscriber = { version = "0.3.11", features = [ "env-filter", "std" ] }
+
+[package.metadata.cargo-udeps.ignore]
+development = [
+  # used in NATS doctest to run async code with a suitable test runtime
+  "tokio-test",
+]

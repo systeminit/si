@@ -19,6 +19,7 @@ futures = "0.3"
 
 si-data = { path = "../../lib/si-data" }
 si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
 veritech-client = { path = "../../lib/veritech-client" }
 dal = { path = "../../lib/dal" }
 faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }

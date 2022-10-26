@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_data::{PgError, PgTxn};
+use si_data_pg::{PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 

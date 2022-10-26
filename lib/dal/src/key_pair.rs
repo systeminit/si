@@ -1,7 +1,7 @@
 use crate::WriteTenancy;
 use serde::{Deserialize, Serialize};
-use si_data::PgError;
 use si_data_nats::NatsError;
+use si_data_pg::PgError;
 use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
 use telemetry::prelude::*;
 use thiserror::Error;

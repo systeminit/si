@@ -5,8 +5,9 @@ use std::{
 
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_data::{FaktoryConfig, PgPoolConfig, SensitiveString};
+use si_data::{FaktoryConfig, SensitiveString};
 use si_data_nats::NatsConfig;
+use si_data_pg::PgPoolConfig;
 use si_settings::{CanonicalFile, CanonicalFileError};
 use thiserror::Error;
 

@@ -21,7 +21,7 @@ pub enum FuncArgumentError {
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] si_data_pg::PgError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]

@@ -766,8 +766,8 @@ dependencies = [
  "serde-aux",
  "serde_json",
  "serde_with",
- "si-data",
  "si-data-nats",
+ "si-data-pg",
  "sodiumoxide",
  "strum",
  "strum_macros",
@@ -794,6 +794,7 @@ dependencies = [
  "serde_json",
  "si-data",
  "si-data-nats",
+ "si-data-pg",
  "si-test-macros",
  "sodiumoxide",
  "telemetry",
@@ -2454,6 +2455,7 @@ dependencies = [
  "serde_json",
  "si-data",
  "si-data-nats",
+ "si-data-pg",
  "si-settings",
  "telemetry",
  "thiserror",
@@ -3017,6 +3019,7 @@ dependencies = [
  "serde_with",
  "si-data",
  "si-data-nats",
+ "si-data-pg",
  "si-settings",
  "sodiumoxide",
  "strum",
@@ -3259,23 +3262,11 @@ dependencies = [
 name = "si-data"
 version = "0.1.0"
 dependencies = [
- "bytes",
- "deadpool",
- "deadpool-postgres",
- "futures",
- "nkeys",
- "num_cpus",
- "ouroboros",
- "refinery",
  "serde",
  "strum",
  "strum_macros",
- "telemetry",
  "thiserror",
  "tokio",
- "tokio-postgres",
- "tokio-test",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3293,6 +3284,25 @@ dependencies = [
  "tokio",
  "tokio-test",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "si-data-pg"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "deadpool",
+ "deadpool-postgres",
+ "futures",
+ "num_cpus",
+ "ouroboros",
+ "refinery",
+ "serde",
+ "si-data",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
 ]
 
 [[package]]
