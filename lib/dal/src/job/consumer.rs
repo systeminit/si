@@ -8,12 +8,12 @@ use si_data_pg::PgPoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::fix::execution::FixExecutionError;
+use crate::fix::FixError;
 use crate::{
     func::binding_return_value::FuncBindingReturnValueError, workflow_runner::WorkflowRunnerError,
     AccessBuilder, ActionPrototypeError, AttributeValueError, ComponentError, ComponentId,
-    ConfirmationPrototypeError, DalContext, DalContextBuilder, FixExecutionBatchId,
-    FixResolverError, StandardModelError, TransactionsError, Visibility, WsEventError,
+    ConfirmationPrototypeError, DalContext, DalContextBuilder, FixBatchId, FixResolverError,
+    StandardModelError, TransactionsError, Visibility, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -25,9 +25,9 @@ pub enum JobConsumerError {
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error(transparent)]
-    FixExecution(#[from] FixExecutionError),
+    Fix(#[from] FixError),
     #[error("missing fix execution batch for id: {0}")]
-    MissingFixExecutionBatch(FixExecutionBatchId),
+    MissingFixBatch(FixBatchId),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error(transparent)]

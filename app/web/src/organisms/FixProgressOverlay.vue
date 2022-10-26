@@ -55,13 +55,17 @@ import Icon from "@/ui-lib/icons/Icon.vue";
 const fixesStore = useFixesStore();
 const loadConfirmationsReqStatus =
   fixesStore.getRequestStatus("LOAD_CONFIRMATIONS");
-const execFixesReqStatus = fixesStore.getRequestStatus("EXECUTE_FIXES");
+const _execFixesReqStatus = fixesStore.getRequestStatus(
+  "EXECUTE_FIXES_FROM_RECOMMENDATIONS",
+);
 
 const fixState = computed(() => {
   if (fixesStore.runningFixBatch) {
     const total = fixesStore.fixesOnRunningBatch.length;
-    const executed = fixesStore.completedFixesOnRunningBatch.length;
-    let rate = executed / total;
+    const executed = fixesStore.fixesOnRunningBatch.length;
+    console.log(total);
+    console.log(executed);
+    const rate = executed / total;
 
     return {
       mode: "fixing",
@@ -87,9 +91,9 @@ const fixState = computed(() => {
     let highlightedSummary = "";
     if (rate === 1) {
       summary = "Model up-to-date";
-      if (fixesStore.unstartedFixes.length !== 0) {
+      if (fixesStore.unstartedRecommendations.length !== 0) {
         summary += " - ";
-        highlightedSummary = `${fixesStore.unstartedFixes.length} Resources need to be fixed`;
+        highlightedSummary = `${fixesStore.unstartedRecommendations.length} Resources need to be fixed`;
       }
     }
 

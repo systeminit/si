@@ -1,7 +1,7 @@
 use dal::{
     workflow_runner::workflow_runner_state::WorkflowRunnerStatus, ActionPrototype,
-    ConfirmationPrototype, ConfirmationResolver, ConfirmationResolverId, DalContext, FixExecution,
-    FixExecutionBatch, StandardModel, SystemId, WorkflowPrototypeId, WorkflowRunner,
+    ConfirmationPrototype, ConfirmationResolver, ConfirmationResolverId, DalContext, Fix, FixBatch,
+    FixCompletionStatus, StandardModel, SystemId, WorkflowPrototypeId, WorkflowRunner,
 };
 use dal_test::helpers::component_payload::ComponentPayload;
 use dal_test::{
@@ -20,7 +20,7 @@ struct SkopeoOutput {
 
 #[test]
 async fn confirmation_to_action(ctx: &DalContext) {
-    let (payload, _confirmation_resolver_id, action_workflow_prototype_id) =
+    let (payload, _confirmation_resolver_id, action_workflow_prototype_id, _action_name) =
         setup_confirmation_resolver_and_get_action_prototype(ctx).await;
 
     let run_id = rand::random();
@@ -62,39 +62,71 @@ async fn confirmation_to_action(ctx: &DalContext) {
 }
 
 #[test]
-async fn confirmation_to_fix_execution(ctx: &DalContext) {
-    let (payload, confirmation_resolver_id, action_workflow_prototype_id) =
+async fn confirmation_to_fix(ctx: &DalContext) {
+    let (payload, confirmation_resolver_id, action_workflow_prototype_id, action_name) =
         setup_confirmation_resolver_and_get_action_prototype(ctx).await;
 
-    let mut batch = FixExecutionBatch::new(ctx)
+    // Create the batch.
+    let mut batch = FixBatch::new(ctx, "toddhoward@systeminit.com")
         .await
         .expect("could not create fix execution batch");
-    assert!(!batch.completed());
+    assert!(batch.started_at().is_none());
+    assert!(batch.finished_at().is_none());
+    assert!(batch.completion_status().is_none());
 
-    let run_id = rand::random();
-    let (fix_execution, runner_state) = FixExecution::new_and_perform_fix(
+    // Create all fix(es) before starting the batch.
+    let mut fix = Fix::new(
         ctx,
         *batch.id(),
         confirmation_resolver_id,
-        run_id,
-        action_workflow_prototype_id,
         payload.component_id,
     )
     .await
-    .expect("could not create fix execution");
-    batch
-        .set_completed(ctx, true)
-        .await
-        .expect("could not set completed column on batch");
-    assert!(batch.completed());
+    .expect("could not create fix");
+    assert!(fix.started_at().is_none());
+    assert!(fix.finished_at().is_none());
+    assert!(fix.completion_status().is_none());
 
-    let found_batch = fix_execution
-        .fix_execution_batch(ctx)
+    // NOTE(nick): batches are stamped as started inside their job.
+    batch
+        .stamp_started(ctx)
+        .await
+        .expect("could not stamp batch as started");
+    assert!(batch.started_at().is_some());
+    assert!(batch.finished_at().is_none());
+    assert!(batch.completion_status().is_none());
+
+    let run_id = rand::random();
+    fix.run(ctx, run_id, action_workflow_prototype_id, action_name)
+        .await
+        .expect("could not run fix");
+    assert!(fix.started_at().is_some());
+    assert!(fix.finished_at().is_some());
+    let completion_status = fix
+        .completion_status()
+        .expect("no completion status found for fix");
+    assert_eq!(completion_status, &FixCompletionStatus::Success);
+
+    // NOTE(nick): batches are stamped as finished inside their job.
+    let batch_completion_status = batch
+        .stamp_finished(ctx)
+        .await
+        .expect("could not complete batch");
+    assert!(batch.finished_at().is_some());
+    assert_eq!(
+        batch
+            .completion_status()
+            .expect("no completion status for batch"),
+        &FixCompletionStatus::Success
+    );
+    assert_eq!(batch_completion_status, FixCompletionStatus::Success);
+
+    let found_batch = fix
+        .fix_batch(ctx)
         .await
         .expect("could not get fix execution batch")
         .expect("no fix execution batch found");
     assert_eq!(batch.id(), found_batch.id());
-    assert_eq!(runner_state.status(), WorkflowRunnerStatus::Success);
 }
 
 async fn setup_confirmation_resolver_and_get_action_prototype(
@@ -103,6 +135,7 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
     ComponentPayload,
     ConfirmationResolverId,
     WorkflowPrototypeId,
+    String,
 ) {
     let mut harness = SchemaBuiltinsTestHarness::new();
     let payload = harness
@@ -166,5 +199,6 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
         payload,
         *found_confirmation_resolver.id(),
         found_action_prototype.workflow_prototype_id(),
+        found_action_prototype.name().to_string(),
     )
 }

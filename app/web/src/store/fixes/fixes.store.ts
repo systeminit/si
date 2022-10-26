@@ -1,43 +1,53 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
-import { watch } from "vue";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { ComponentId, useComponentsStore } from "@/store/components.store";
-import promiseDelay from "@/utils/promise_delay";
+import { ComponentId } from "@/store/components.store";
 import { ApiRequest } from "@/utils/pinia_api_tools";
-import { User } from "@/api/sdf/dal/user";
-import { Visibility } from "@/api/sdf/dal/visibility";
-import { useAuthStore } from "@/store/auth.store";
-import { ResourceStatus } from "@/api/sdf/dal/resource";
 import { useResourcesStore } from "../resources.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 
-export type FixStatus = "success" | "failure" | "running" | "unstarted";
-
-export type FixId = number;
+export type ConfirmationId = number;
 export type Confirmation = {
-  id: FixId;
+  id: ConfirmationId;
   status: "running" | "finished";
 };
-export type Fix = {
-  id: FixId;
+export type Recommendation = {
+  id: ConfirmationId;
   name: string;
   componentName: string;
   componentId: ComponentId;
   recommendation: string;
-  status: FixStatus;
+  status: "success" | "failure" | "running" | "unstarted";
   provider?: string;
   output?: string; // TODO(victor): output possibly comes from another endpoint, and should be linked at runtime. This is good for now.
   startedAt?: Date;
   finishedAt?: Date;
 };
 
+// TODO(nick): use real user data and real timestamps. This is dependent on the backend.
+export type FixId = number;
+export type Fix = {
+  id: FixId;
+  status: "success" | "failure" | "error";
+  action: string;
+  componentName: string;
+  componentId: ComponentId;
+  provider?: string;
+  output?: string;
+  startedAt: string;
+  finishedAt: string;
+};
+
+// TODO(nick): use real user data and real timestamps. This is dependent on the backend.
 export type FixBatchId = number;
 export type FixBatch = {
   id: FixBatchId;
-  author: User;
-  timestamp: Date;
+  status: "success" | "failure" | "error";
+  author: string;
+  fixes: Fix[];
+  startedAt: string;
+  finishedAt: string;
 };
 
 export const SCHEMA_MOCK_METADATA: Record<
@@ -66,9 +76,8 @@ export const useFixesStore = () => {
     defineStore(`w${workspaceId || "NONE"}/fixes`, {
       state: () => ({
         confirmations: [] as Array<Confirmation>,
-        fixes: [] as Array<Fix>,
-        fixBatchIdsByFix: {} as Record<string, FixBatchId>,
-        fixBatchesById: {} as Record<FixBatchId, FixBatch>,
+        recommendations: [] as Array<Recommendation>,
+        fixBatches: [] as Array<FixBatch>,
         runningFixBatch: undefined as FixBatchId | undefined,
         populatingFixes: false,
       }),
@@ -76,44 +85,33 @@ export const useFixesStore = () => {
         finishedConfirmations(): Confirmation[] {
           return this.confirmations.filter((c) => c.status !== "running");
         },
-        allFixes(): Fix[] {
-          return this.fixes;
+        allRecommendations(): Recommendation[] {
+          return this.recommendations;
         },
-        fixesByComponentId(): Record<ComponentId, Fix> {
-          return _.keyBy(this.allFixes, (f) => f.componentId);
+        recommendationsByComponentId(): Record<ComponentId, Recommendation> {
+          return _.keyBy(this.allRecommendations, (r) => r.componentId);
         },
-        allFixBatches(): FixBatch[] {
-          return _.values(this.fixBatchesById);
+        allFinishedFixBatches(): FixBatch[] {
+          return _.values(this.fixBatches);
         },
         fixesOnBatch() {
           return (fixBatchId: FixBatchId) => {
-            const fixes = [];
-
-            for (const key in this.fixBatchIdsByFix) {
-              if (this.fixBatchIdsByFix[key] === fixBatchId) {
-                const fix = this.fixes.find(
-                  (fix) => `${fix.id}-${fix.recommendation}` === key,
-                );
-                if (fix) fixes.push(fix);
+            for (const batch of this.fixBatches) {
+              if (batch.id === fixBatchId) {
+                return batch.fixes;
               }
             }
-
-            return fixes;
+            return [];
           };
         },
         fixesOnRunningBatch(): Fix[] {
           if (!this.runningFixBatch) return [];
-
           return this.fixesOnBatch(this.runningFixBatch);
         },
-        completedFixesOnRunningBatch(): Fix[] {
-          return _.filter(
-            this.fixesOnRunningBatch,
-            (fix) => fix.status !== "unstarted",
+        unstartedRecommendations(): Recommendation[] {
+          return this.allRecommendations.filter(
+            (recommendation) => recommendation.status === "unstarted",
           );
-        },
-        unstartedFixes(): Fix[] {
-          return _.filter(this.allFixes, (fix) => fix.status === "unstarted");
         },
       },
       actions: {
@@ -131,28 +129,34 @@ export const useFixesStore = () => {
             },
           });
         },
-        async LOAD_FIXES() {
+        async LOAD_RECOMMENDATIONS() {
           this.runningFixBatch = undefined; // TODO: backend should tell us that
-          return new ApiRequest<Array<Fix>>({
-            url: "/fix/list",
+          return new ApiRequest<Array<Recommendation>>({
+            url: "/fix/recommendations",
             params: { visibility_change_set_pk: -1 },
             onSuccess: (response) => {
-              this.fixes = response;
+              this.recommendations = response;
             },
           });
         },
-        async EXECUTE_FIXES(fixes: Array<Fix>) {
+        async LOAD_FIX_BATCHES() {
+          return new ApiRequest<Array<FixBatch>>({
+            url: "/fix/list",
+            params: { visibility_change_set_pk: -1 },
+            onSuccess: (response) => {
+              this.fixBatches = response;
+            },
+          });
+        },
+        async EXECUTE_FIXES_FROM_RECOMMENDATIONS(
+          recommendations: Array<Recommendation>,
+        ) {
           // TODO: have an actual FixBatch related to this run in the backend
           this.runningFixBatch = -1;
-          this.fixBatchIdsByFix = {};
-          for (const fix of fixes) {
-            this.fixBatchIdsByFix[`${fix.id}-${fix.recommendation}`] = -1;
-          }
-
           return new ApiRequest({
             method: "post",
             params: {
-              list: fixes.map((fix) => ({
+              list: recommendations.map((fix) => ({
                 id: fix.id,
                 componentId: fix.componentId,
                 actionName: fix.recommendation,
@@ -160,17 +164,17 @@ export const useFixesStore = () => {
               visibility_change_set_pk: -1,
             },
             url: "/fix/run",
-            onSuccess: (response) => {},
+            onSuccess: (_response) => {},
           });
         },
-        updateFix(fix: Fix) {
-          const index = this.fixes.findIndex(
-            (f) => f.id === fix.id && f.recommendation === fix.recommendation,
+        updateRecommendation(recommendation: Recommendation) {
+          const index = this.recommendations.findIndex(
+            (r) => r.id === recommendation.id,
           );
           if (index === -1) {
-            this.fixes.push(fix);
+            this.recommendations.push(recommendation);
           } else {
-            this.fixes[index] = fix;
+            this.recommendations[index] = recommendation;
           }
         },
       },
@@ -178,46 +182,55 @@ export const useFixesStore = () => {
         const resourcesStore = useResourcesStore();
         // What purpose does this serve?
         await resourcesStore.generateMockResources();
-        this.LOAD_FIXES();
+        this.LOAD_RECOMMENDATIONS();
         this.LOAD_CONFIRMATIONS();
+        this.LOAD_FIX_BATCHES();
 
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `workspace/${workspaceId}/head`, [
           {
             eventType: "ConfirmationStatusUpdate",
-            callback: (update) => {
+            callback: (_update) => {
               // we could be smarter with this
               this.LOAD_CONFIRMATIONS();
-              this.LOAD_FIXES();
+              this.LOAD_RECOMMENDATIONS();
+              this.LOAD_FIX_BATCHES();
             },
           },
           {
             eventType: "FixReturn",
             callback: (update) => {
-              const fix = this.fixes.find(
-                (f) =>
-                  f.id === update.confirmationResolverId &&
-                  f.recommendation === update.action,
+              const batch = this.fixBatches.find(
+                (b) => b.id === update.batchId,
               );
-              if (!fix) {
-                this.LOAD_FIXES();
+              if (!batch) {
+                this.LOAD_RECOMMENDATIONS();
+                this.LOAD_FIX_BATCHES();
                 return;
               }
-              switch (update.runnerState.status) {
-                case "success":
-                  fix.status = "success";
-                  break;
-                case "failure":
-                  fix.status = "failure";
-                  break;
-                case "running":
-                  fix.status = "running";
-                  break;
-                case "created":
-                  fix.status = "unstarted";
-                  break;
-                default:
-                  break;
+              const fix = batch.fixes.find((f) => f.id === update.id);
+              if (!fix) {
+                this.LOAD_RECOMMENDATIONS();
+                this.LOAD_FIX_BATCHES();
+                return;
+              }
+              if (update.status !== fix.status) {
+                fix.status = update.status;
+                fix.action = update.action;
+              }
+            },
+          },
+          {
+            eventType: "FixBatchReturn",
+            callback: (update) => {
+              const batch = this.fixBatches.find((b) => b.id === update.id);
+              if (!batch) {
+                this.LOAD_RECOMMENDATIONS();
+                this.LOAD_FIX_BATCHES();
+                return;
+              }
+              if (update.status !== batch.status) {
+                batch.status = update.status;
               }
             },
           },

@@ -28,7 +28,7 @@
           </VormInput>
           <VButton2
             :disabled="
-              selectedFixes.length < 1 ||
+              selectedRecommendations.length < 1 ||
               fixesStore.populatingFixes ||
               fixesStore.runningFixBatch !== undefined
             "
@@ -48,7 +48,7 @@
         >
           <div class="mr-2 whitespace-nowrap">Resources</div>
           <div
-            v-if="filteredFixes.length > 0"
+            v-if="filteredRecommendations.length > 0"
             class="py-1 px-2 rounded whitespace-nowrap flex flex-row items-center text-destructive-500 bg-destructive-50 dark:text-destructive-100 dark:bg-destructive-500"
           >
             <Icon
@@ -56,7 +56,7 @@
               size="xs"
               class="text-destructive-500 dark:text-destructive-100"
             />
-            <span class="pl-1">{{ filteredFixes.length }}</span>
+            <span class="pl-1">{{ filteredRecommendations.length }}</span>
           </div>
         </div>
         <div class="relative w-full h-full overflow-y-auto">
@@ -70,15 +70,21 @@
             leave-to-class="opacity-0"
           >
             <li
-              v-for="fix in filteredFixes"
-              :key="`${fix.id}-${fix.recommendation}`"
+              v-for="recommendation in filteredRecommendations"
+              :key="`${recommendation.id}-${recommendation.recommendation}`"
             >
-              <FixSprite
-                :fix="fix"
-                :selected="fixSelection[`${fix.id}-${fix.recommendation}`]"
+              <RecommendationSprite
+                :recommendation="recommendation"
+                :selected="
+                  recommendationSelection[
+                    `${recommendation.id}-${recommendation.recommendation}`
+                  ]
+                "
                 @toggle="
                   (c) => {
-                    fixSelection[`${fix.id}-${fix.recommendation}`] = c;
+                    recommendationSelection[
+                      `${recommendation.id}-${recommendation.recommendation}`
+                    ] = c;
                   }
                 "
               />
@@ -93,9 +99,12 @@
             leave-from-class="opacity-100 "
             leave-to-class="opacity-0"
           >
-            <div v-if="filteredFixes.length === 0" class="absolute top-0 p-4">
+            <div
+              v-if="filteredRecommendations.length === 0"
+              class="absolute top-0 p-4"
+            >
               <img
-                v-if="fixesStore.allFixes.length > 0"
+                v-if="fixesStore.allRecommendations.length > 0"
                 src="../assets/images/WhiskersTriumphV1.png"
                 alt="Whiskers the cat, relaxing"
               />
@@ -124,43 +133,49 @@ import SiSearch from "@/molecules/SiSearch.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
-import FixSprite from "@/molecules/FixSprite.vue";
-import { useFixesStore, Fix } from "@/store/fixes/fixes.store";
+import { useFixesStore } from "@/store/fixes/fixes.store";
 import { themeClasses } from "@/ui-lib/theme_tools";
+import RecommendationSprite from "@/molecules/RecommendationSprite.vue";
 
 const selectAll = (checked: boolean) => {
-  for (const fix of filteredFixes.value) {
-    fixSelection[`${fix.id}-${fix.recommendation}`] = checked;
+  for (const recommendation of filteredRecommendations.value) {
+    recommendationSelection[
+      `${recommendation.id}-${recommendation.recommendation}`
+    ] = checked;
   }
 };
 
 const allSelected = computed(() => {
-  if (filteredFixes.value.length === 0) return false;
-  else if (selectedFixes.value.length === filteredFixes.value.length)
+  if (filteredRecommendations.value.length === 0) return false;
+  else if (
+    selectedRecommendations.value.length ===
+    filteredRecommendations.value.length
+  )
     return true;
   return false;
 });
 
 const fixesStore = useFixesStore();
-const filteredFixes = computed(() =>
-  fixesStore.allFixes.filter(
-    (fix: Fix) =>
-      fix.finishedAt === undefined ||
-      fix.finishedAt > addSeconds(currentTime.value, -2),
+const filteredRecommendations = computed(() =>
+  fixesStore.allRecommendations.filter(
+    (recommendation) =>
+      recommendation.finishedAt === undefined ||
+      recommendation.finishedAt > addSeconds(currentTime.value, -2),
   ),
 );
-const fixSelection: Record<string, boolean> = reactive({});
-const selectedFixes = computed(() => {
-  return filteredFixes.value.filter((fix) => {
+const recommendationSelection: Record<string, boolean> = reactive({});
+const selectedRecommendations = computed(() => {
+  return filteredRecommendations.value.filter((recommendation) => {
     return (
-      fixSelection[`${fix.id}-${fix.recommendation}`] &&
-      fix.status === "unstarted"
+      recommendationSelection[
+        `${recommendation.id}-${recommendation.recommendation}`
+      ] && recommendation.status === "unstarted"
     );
   });
 });
 
 const runFixes = () => {
-  fixesStore.EXECUTE_FIXES(selectedFixes.value);
+  fixesStore.EXECUTE_FIXES_FROM_RECOMMENDATIONS(selectedRecommendations.value);
 };
 
 const currentTime = ref(new Date());
