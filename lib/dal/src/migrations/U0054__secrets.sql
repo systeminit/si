@@ -47,6 +47,80 @@ SELECT pk,
        kind
 FROM encrypted_secrets;
 
+-- We need to create the following tenancy and visibility related functions by hand
+-- because we're trying to pretend that the secrets view is a "normal" standard model
+-- table.
+CREATE OR REPLACE FUNCTION in_tenancy_v1(
+    this_read_tenancy jsonb,
+    record_to_check   secrets
+)
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT in_tenancy_v1(
+        this_read_tenancy,
+        record_to_check.tenancy_universal,
+        record_to_check.tenancy_billing_account_ids,
+        record_to_check.tenancy_organization_ids,
+        record_to_check.tenancy_workspace_ids
+    )
+$$;
+
+CREATE OR REPLACE FUNCTION is_visible_v1(
+    this_visibility jsonb,
+    record_to_check secrets
+)
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT is_visible_v1(
+        this_visibility,
+        record_to_check.visibility_change_set_pk,
+        record_to_check.visibility_deleted_at
+    )
+$$;
+
+CREATE OR REPLACE FUNCTION in_tenancy_and_visible_v1(
+    this_read_tenancy jsonb,
+    this_visibility   jsonb,
+    record_to_check   secrets
+)
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT
+        in_tenancy_v1(
+            this_read_tenancy,
+            record_to_check.tenancy_universal,
+            record_to_check.tenancy_billing_account_ids,
+            record_to_check.tenancy_organization_ids,
+            record_to_check.tenancy_workspace_ids
+        )
+        AND is_visible_v1(
+            this_visibility,
+            record_to_check.visibility_change_set_pk,
+            record_to_check.visibility_deleted_at
+        )
+$$;
+
+CREATE OR REPLACE FUNCTION secrets_v1(
+    this_read_tenancy jsonb,
+    this_visibility   jsonb
+)
+RETURNS SETOF secrets
+LANGUAGE sql
+STABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT DISTINCT ON (id) secrets.*
+    FROM secrets
+    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, secrets)
+    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST
+$$;
+
+
 CREATE OR REPLACE FUNCTION encrypted_secret_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
