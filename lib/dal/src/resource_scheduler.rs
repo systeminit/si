@@ -6,7 +6,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{sync::broadcast, time};
 
-use crate::{Resource, ServicesContext, StandardModel, StandardModelError, TransactionsError};
+use crate::{
+    standard_model, Component, Resource, ServicesContext, StandardModelError, SystemId,
+    TransactionsError,
+};
 
 #[derive(Error, Debug)]
 pub enum ResourceSchedulerError {
@@ -26,8 +29,8 @@ pub enum ResourceSchedulerError {
 
 pub type ResourceSchedulerResult<T> = Result<T, ResourceSchedulerError>;
 
-/// The resource scheduler handles looking up all the resources, and scheduling
-/// them to refresh. Eventually, it should become smart enough to parallelize,
+/// The resource scheduler handles looking up all the components, and scheduling
+/// their resources to refresh. Eventually, it should become smart enough to parallelize,
 /// it might be extracted to a fully separate service, etc etc. For now,
 /// it is the dumbest thing that could possibly work - no more often than every 30
 /// seconds, it will ask a resource to refresh
@@ -57,28 +60,29 @@ impl ResourceScheduler {
     }
 
     /// The internal task spawned by `start`. No more frequently than every 30
-    /// seconds, it will iterate over all the resources in the database and
+    /// seconds, it will iterate over all the components on head in the database and
     /// schedule them to refresh.
     #[instrument(name = "resource_scheduler.start_task", skip_all, level = "debug")]
     async fn start_task(&self) {
         let mut interval = time::interval(Duration::from_secs(30));
         'schedule: loop {
             interval.tick().await;
-            let resources = match self.resources().await {
+            let components = match self.components().await {
                 Ok(r) => r,
                 Err(error) => {
                     error!(
                         ?error,
-                        "Failed to fetch resources; aborting scheduled interval check"
+                        "Failed to fetch components; aborting scheduled interval check"
                     );
                     continue 'schedule;
                 }
             };
 
-            'refresh: for mut resource in resources {
+            'refresh: for component in components {
                 let builder = self.services_context.clone().into_builder();
                 // First we're building a ctx with universal head, then updating it with a
                 // workspace head request context
+
                 let mut ctx = match builder.build_default().await {
                     Ok(ctx) => ctx,
                     Err(err) => {
@@ -87,7 +91,7 @@ impl ResourceScheduler {
                     }
                 };
 
-                let read_tenancy = match resource.tenancy().clone_into_read_tenancy(&ctx).await {
+                let read_tenancy = match component.tenancy().clone_into_read_tenancy(&ctx).await {
                     Ok(tenancy) => tenancy,
                     Err(err) => {
                         error!(
@@ -97,9 +101,9 @@ impl ResourceScheduler {
                         continue 'refresh;
                     }
                 };
-                ctx.update_tenancies(read_tenancy, resource.tenancy().clone());
+                ctx.update_tenancies(read_tenancy, component.tenancy().clone());
 
-                if let Err(error) = resource.refresh(&ctx).await {
+                if let Err(error) = Resource::refresh(&ctx, &component, SystemId::NONE).await {
                     error!(?error, "Failed to refresh resource, moving to the next.");
                     continue 'refresh;
                 }
@@ -113,14 +117,25 @@ impl ResourceScheduler {
 
     /// Gets a list of all the resources in the database.
     #[instrument(skip_all, level = "debug")]
-    async fn resources(&self) -> ResourceSchedulerResult<Vec<Resource>> {
+    async fn components(&self) -> ResourceSchedulerResult<Vec<Component>> {
         let builder = self.services_context.clone().into_builder();
-        let ctx = builder
-            .build_default()
-            .await
-            .expect("cannot start transactions");
-        let results = Resource::list(&ctx).await?;
+        let ctx = builder.build_default().await?;
+
+        // We need to bypass tenancy checks, only lists components on head as they are the only ones refreshed
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                "SELECT DISTINCT ON (id) id, row_to_json(components.*) as object
+                 FROM components
+                 WHERE is_visible_v1($1, components.visibility_change_set_pk, components.visibility_deleted_at)
+                 ORDER BY id",
+                &[ctx.visibility()],
+            )
+            .await?;
+        let components: Vec<Component> = standard_model::objects_from_rows(rows)?;
+
         ctx.commit().await?;
-        Ok(results)
+        Ok(components)
     }
 }

@@ -7,9 +7,9 @@ use crate::{
     qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu,
     socket::SocketArity, ActionPrototype, ActionPrototypeContext, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsError, BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext, DalContext,
-    DiagramKind, ExternalProvider, Func, InternalProvider, Prop, PropKind, QualificationPrototype,
-    SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func,
+    InternalProvider, Prop, PropKind, QualificationPrototype, SchemaError, SchemaKind, Socket,
+    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 // Reference: https://www.docker.com/company/newsroom/media-resources/
@@ -293,12 +293,12 @@ async fn docker_image(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRes
     )
     .await?;
 
-    let func_name = "si:dockerImageCreateWorkflow";
+    let func_name = "si:dockerImageRefreshWorkflow";
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    let title = "Docker Image Resource Create";
+    let title = "Docker Image Refresh";
     let context = WorkflowPrototypeContext {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
@@ -306,26 +306,6 @@ async fn docker_image(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRes
     };
     let workflow_prototype =
         WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
-
-    let func_name = "si:resourceExistsConfirmation";
-    let func = Func::find_by_attr(ctx, "name", &func_name)
-        .await?
-        .pop()
-        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    let context = ConfirmationPrototypeContext {
-        schema_id: *schema.id(),
-        schema_variant_id: *schema_variant.id(),
-        ..Default::default()
-    };
-    ConfirmationPrototype::new(ctx, "Has docker image resource?", *func.id(), context).await?;
-
-    let name = "create";
-    let context = ActionPrototypeContext {
-        schema_id: *schema.id(),
-        schema_variant_id: *schema_variant.id(),
-        ..Default::default()
-    };
-    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
 
     let name = "refresh";
     let context = ActionPrototypeContext {

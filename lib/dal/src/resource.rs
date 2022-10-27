@@ -143,11 +143,11 @@ impl Resource {
         }
     }
 
-    pub async fn refresh(&mut self, ctx: &DalContext) -> ResourceResult<()> {
-        let component = Component::get_by_id(ctx, &self.component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(self.component_id))
-            .map_err(Box::new)?;
+    pub async fn refresh(
+        ctx: &DalContext,
+        component: &Component,
+        system_id: SystemId,
+    ) -> ResourceResult<()> {
         let schema_variant = component
             .schema_variant(ctx)
             .await
@@ -158,15 +158,16 @@ impl Resource {
             .await
             .map_err(Box::new)?
             .ok_or_else(|| ResourceError::NoSchema(*component.id()))?;
-        let action = match ActionPrototype::find_by_name(
-            ctx,
-            "refresh",
-            *schema.id(),
-            *schema_variant.id(),
-            SystemId::NONE,
-        )
-        .await?
-        {
+        let action = match dbg!(
+            ActionPrototype::find_by_name(
+                ctx,
+                "refresh",
+                *schema.id(),
+                *schema_variant.id(),
+                SystemId::NONE,
+            )
+            .await?
+        ) {
             Some(action) => action,
             None => return Ok(()),
         };
@@ -178,8 +179,8 @@ impl Resource {
             })?;
         let run_id: usize = rand::random();
         let (_runner, _state, _func_binding_return_values, _created_resources, _updated_resources) =
-            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.component_id).await?;
-        WsEvent::resource_refreshed(ctx, self.component_id, self.system_id)
+            dbg!(WorkflowRunner::run(ctx, run_id, *prototype.id(), *component.id()).await)?;
+        WsEvent::resource_refreshed(ctx, *component.id(), system_id)
             .publish(ctx)
             .await?;
         Ok(())

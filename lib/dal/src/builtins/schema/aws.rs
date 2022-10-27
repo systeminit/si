@@ -894,6 +894,28 @@ async fn region(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
     )
     .await?;
 
+    let func_name = "si:awsRegionRefreshWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let title = "AWS Region Refresh";
+    let context = WorkflowPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    let workflow_prototype =
+        WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
+
+    let name = "refresh";
+    let context = ActionPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
+
     Ok(())
 }
 

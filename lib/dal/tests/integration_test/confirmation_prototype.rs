@@ -59,7 +59,7 @@ async fn find_for_component(ctx: &DalContext) {
 
 #[test]
 async fn run(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
+    let schema = Schema::find_by_attr(ctx, "name", &"Key Pair".to_string())
         .await
         .expect("unable to find schema")
         .pop()
