@@ -2,7 +2,7 @@ use std::path::Path;
 
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_data::FaktoryConfig;
+use si_data_faktory::FaktoryConfig;
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_settings::{CanonicalFile, CanonicalFileError};

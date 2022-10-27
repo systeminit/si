@@ -29,7 +29,7 @@
 !lib/veritech-client
 !lib/veritech-core
 !lib/veritech-server
-!lib/si-data
+!lib/si-data-faktory
 !lib/si-data-nats
 !lib/si-data-pg
 !lib/si-settings
