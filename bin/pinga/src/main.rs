@@ -1,26 +1,27 @@
-use color_eyre::Result;
-use faktory_async::{BeatState, Client, FailConfig};
-use futures::{future::FutureExt, Future};
 use std::{any::TypeId, panic::AssertUnwindSafe, sync::Arc, time::Duration};
-use telemetry::{prelude::*, TelemetryClient};
-use tokio::{
-    signal,
-    sync::{mpsc, watch},
-    task::JoinError,
-};
 
+use color_eyre::Result;
 use dal::{
     job::consumer::{JobConsumer, JobConsumerError},
     job::definition::{
         CodeGeneration, Confirmation, Confirmations, DependentValuesUpdate, Fixes, Qualification,
         Qualifications, WorkflowRun,
     },
-    CycloneKeyPair, DalContext, DalContextBuilder, JobFailure, JobFailureError, ServicesContext,
-    TransactionsError,
+    CycloneKeyPair, DalContext, DalContextBuilder, FaktoryProcessor, JobFailure, JobFailureError,
+    JobQueueProcessor, ServicesContext, TransactionsError,
 };
-use dal::{FaktoryProcessor, JobQueueProcessor};
+use faktory_async::{BeatState, Client, FailConfig};
+use futures::{future::FutureExt, Future};
 use si_data_nats::NatsClient;
 use si_data_pg::{PgPool, PgPoolError};
+use telemetry_application::{
+    prelude::*, ApplicationTelemetryClient, TelemetryClient, TelemetryConfig,
+};
+use tokio::{
+    signal,
+    sync::{mpsc, watch},
+    task::JoinError,
+};
 use uuid::Uuid;
 
 mod args;
@@ -48,12 +49,12 @@ fn main() {
 
 async fn async_main() -> Result<()> {
     color_eyre::install()?;
-    let config = telemetry::Config::builder()
+    let config = TelemetryConfig::builder()
         .service_name("pinga")
         .service_namespace("si")
         .app_modules(vec!["pinga"])
         .build()?;
-    let telemetry = telemetry::init(config)?;
+    let telemetry = telemetry_application::init(config)?;
     let args = args::parse();
 
     let (shutdown_request_tx, shutdown_request_rx) = watch::channel(());
@@ -89,7 +90,7 @@ async fn async_main() -> Result<()> {
 
 async fn run(
     args: args::Args,
-    mut telemetry: telemetry::Client,
+    mut telemetry: ApplicationTelemetryClient,
     shutdown_request_rx: watch::Receiver<()>,
     shutdown_finished_tx: mpsc::Sender<()>,
 ) -> Result<()> {

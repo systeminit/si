@@ -5,10 +5,9 @@ use sdf::{
     Config, FaktoryProcessor, IncomingStream, JobQueueProcessor, MigrationMode, Server,
     SyncProcessor,
 };
-use telemetry::{
-    start_tracing_level_signal_handler_task,
-    tracing::{debug, error, info, trace},
-    TelemetryClient,
+use telemetry_application::{
+    prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
+    TelemetryClient, TelemetryConfig,
 };
 use tokio::sync::mpsc;
 
@@ -31,18 +30,18 @@ fn main() -> Result<()> {
 
 async fn async_main() -> Result<()> {
     color_eyre::install()?;
-    let config = telemetry::Config::builder()
+    let config = TelemetryConfig::builder()
         .service_name("sdf")
         .service_namespace("si")
         .app_modules(vec!["sdf_cli", "sdf"])
         .build()?;
-    let telemetry = telemetry::init(config)?;
+    let telemetry = telemetry_application::init(config)?;
     let args = args::parse();
 
     run(args, telemetry).await
 }
 
-async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
+async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Result<()> {
     if args.verbose > 0 {
         telemetry.set_verbosity(args.verbose.into()).await?;
     }

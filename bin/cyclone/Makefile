@@ -5,4 +5,4 @@ include ../../mk/rust.mk
 WATCH_TASK := run
 WATCH_PATHS := . \
 	../../lib/cyclone \
-	../../lib/telemetry-rs
+	../../lib/telemetry-application-rs

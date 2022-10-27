@@ -13,5 +13,5 @@ WATCH_PATHS := . \
 	../../lib/si-data-pg \
 	../../lib/si-settings \
 	../../lib/si-std \
-	../../lib/telemetry-rs \
+	../../lib/telemetry-application-rs \
 	../../lib/veritech-client

@@ -70,7 +70,7 @@ impl Server<(), ()> {
     #[allow(clippy::too_many_arguments)]
     pub fn http(
         config: Config,
-        telemetry: telemetry::Client,
+        telemetry: telemetry::ApplicationTelemetryClient,
         pg_pool: PgPool,
         nats: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
@@ -114,7 +114,7 @@ impl Server<(), ()> {
     #[allow(clippy::too_many_arguments)]
     pub async fn uds(
         config: Config,
-        telemetry: telemetry::Client,
+        telemetry: telemetry::ApplicationTelemetryClient,
         pg_pool: PgPool,
         nats: NatsClient,
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,

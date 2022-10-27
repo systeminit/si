@@ -60,6 +60,7 @@ COMPONENTS = \
 	lib/si-settings \
 	lib/si-std \
 	lib/si-test-macros \
+	lib/telemetry-application-rs \
 	lib/telemetry-rs \
 	lib/veritech-client \
 	lib/veritech-core \
@@ -244,6 +245,8 @@ test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cycl
 test//lib/si-std//RTESTDEPS: test//lib/dal-test test//lib/sdf
 
 test//lib/si-test-macros//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
+
+test//lib/telemetry-application-rs//RTESTDEPS: test//bin/cyclone test//bin/sdf test//bin/veritech
 
 test//lib/veritech-client//TESTDEPS: build//bin/cyclone
 test//lib/veritech-client//RTESTDEPS: test//lib/dal

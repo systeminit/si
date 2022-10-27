@@ -7,5 +7,5 @@ CONTAINER_NAME := veritech
 IMG := systeminit/veritech
 WATCH_TASK := run
 WATCH_PATHS := . \
-	../../lib/telemetry-rs \
+	../../lib/telemetry-application-rs \
 	../../lib/veritech-server

@@ -22,6 +22,7 @@ members = [
     "lib/si-settings",
     "lib/si-std",
     "lib/si-test-macros",
+    "lib/telemetry-application-rs",
     "lib/telemetry-rs",
     "lib/veritech-client",
     "lib/veritech-core",

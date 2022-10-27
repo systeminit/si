@@ -124,6 +124,12 @@ A-si-test-macros:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
+A-telemetry-application-rs:
+  - lib/telemetry-application-rs/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 A-telemetry-rs:
   - lib/telemetry-rs/**/*
   - .cargo/**/*
