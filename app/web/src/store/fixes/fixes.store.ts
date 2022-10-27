@@ -19,7 +19,7 @@ export type FixId = number;
 export type Confirmation = {
   id: FixId;
   status: "running" | "finished";
-}
+};
 export type Fix = {
   id: FixId;
   name: string;
@@ -67,7 +67,7 @@ export const useFixesStore = () => {
       state: () => ({
         confirmations: [] as Array<Confirmation>,
         fixes: [] as Array<Fix>,
-        fixBatchIdsByFixId: {} as Record<FixId, FixBatchId>,
+        fixBatchIdsByFix: {} as Record<string, FixBatchId>,
         fixBatchesById: {} as Record<FixBatchId, FixBatch>,
         runningFixBatch: undefined as FixBatchId | undefined,
         populatingFixes: false,
@@ -89,9 +89,11 @@ export const useFixesStore = () => {
           return (fixBatchId: FixBatchId) => {
             const fixes = [];
 
-            for (const fixId in this.fixBatchIdsByFixId) {
-              if (this.fixBatchIdsByFixId[fixId] === fixBatchId) {
-                const fix = this.fixes.find((fix) => String(fix.id) === fixId);
+            for (const key in this.fixBatchIdsByFix) {
+              if (this.fixBatchIdsByFix[key] === fixBatchId) {
+                const fix = this.fixes.find(
+                  (fix) => `${fix.id}-${fix.recommendation}` === key,
+                );
                 if (fix) fixes.push(fix);
               }
             }
@@ -123,7 +125,9 @@ export const useFixesStore = () => {
             params: { visibility_change_set_pk: -1 },
             onSuccess: (response) => {
               this.confirmations = response;
-              this.populatingFixes = response.length === 0 || response.some((c) => c.status === "running");
+              this.populatingFixes =
+                response.length === 0 ||
+                response.some((c) => c.status === "running");
             },
           });
         },
@@ -140,9 +144,9 @@ export const useFixesStore = () => {
         async EXECUTE_FIXES(fixes: Array<Fix>) {
           // TODO: have an actual FixBatch related to this run in the backend
           this.runningFixBatch = -1;
-          this.fixBatchIdsByFixId = {};
+          this.fixBatchIdsByFix = {};
           for (const fix of fixes) {
-            this.fixBatchIdsByFixId[fix.id] = -1;
+            this.fixBatchIdsByFix[`${fix.id}-${fix.recommendation}`] = -1;
           }
 
           return new ApiRequest({
@@ -160,7 +164,9 @@ export const useFixesStore = () => {
           });
         },
         updateFix(fix: Fix) {
-          const index = this.fixes.findIndex((f) => f.id === fix.id);
+          const index = this.fixes.findIndex(
+            (f) => f.id === fix.id && f.recommendation === fix.recommendation,
+          );
           if (index === -1) {
             this.fixes.push(fix);
           } else {
@@ -188,7 +194,11 @@ export const useFixesStore = () => {
           {
             eventType: "FixReturn",
             callback: (update) => {
-              const fix = this.fixes.find((f) => f.id === update.confirmationResolverId && f.recommendation === update.action);
+              const fix = this.fixes.find(
+                (f) =>
+                  f.id === update.confirmationResolverId &&
+                  f.recommendation === update.action,
+              );
               if (!fix) {
                 this.LOAD_FIXES();
                 return;

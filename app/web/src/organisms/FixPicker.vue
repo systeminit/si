@@ -69,13 +69,16 @@
             leave-from-class="opacity-100 "
             leave-to-class="opacity-0"
           >
-            <li v-for="fix in filteredFixes" :key="fix.id">
+            <li
+              v-for="fix in filteredFixes"
+              :key="`${fix.id}-${fix.recommendation}`"
+            >
               <FixSprite
                 :fix="fix"
-                :selected="fixSelection[fix.id]"
+                :selected="fixSelection[`${fix.id}-${fix.recommendation}`]"
                 @toggle="
                   (c) => {
-                    fixSelection[fix.id] = c;
+                    fixSelection[`${fix.id}-${fix.recommendation}`] = c;
                   }
                 "
               />
@@ -127,7 +130,7 @@ import { themeClasses } from "@/ui-lib/theme_tools";
 
 const selectAll = (checked: boolean) => {
   for (const fix of filteredFixes.value) {
-    fixSelection[fix.id] = checked;
+    fixSelection[`${fix.id}-${fix.recommendation}`] = checked;
   }
 };
 
@@ -149,7 +152,10 @@ const filteredFixes = computed(() =>
 const fixSelection: Record<string, boolean> = reactive({});
 const selectedFixes = computed(() => {
   return filteredFixes.value.filter((fix) => {
-    return fixSelection[fix.id] && fix.status === "unstarted";
+    return (
+      fixSelection[`${fix.id}-${fix.recommendation}`] &&
+      fix.status === "unstarted"
+    );
   });
 });
 

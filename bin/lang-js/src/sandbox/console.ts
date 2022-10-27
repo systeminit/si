@@ -1,44 +1,43 @@
 import { OutputLine } from "../function";
 
-const normalizeMessage = (message: unknown): string => {
-  if (typeof(message) === typeof("")) return message as string;
-  return JSON.stringify(message ?? "");
+const normalizeMessage = (msg: unknown[]): string => {
+  return msg.map((m) => {
+    if (typeof(m) === typeof("")) return m as string;
+    return JSON.stringify(m);
+  }).join(" ");
 }
 
 export const makeConsole = (executionId: string) => {
-  function debug(message: unknown, data: unknown): void {
+  function debug(...args: unknown[]): void {
     emitOutputLine({
       protocol: "output",
       executionId,
       stream: "stdout",
       level: "debug",
       group: "log",
-      message: normalizeMessage(message),
-      data,
+      message: normalizeMessage(args),
     });
   }
 
-  function error(message: unknown, data: unknown): void {
+  function error(...args: unknown[]): void {
     emitOutputLine({
       protocol: "output",
       executionId,
       stream: "stderr",
       level: "error",
       group: "log",
-      message: normalizeMessage(message),
-      data,
+      message: normalizeMessage(args),
     });
   }
 
-  function log(message: unknown, data: unknown): void {
+  function log(...args: unknown[]): void {
     emitOutputLine({
       protocol: "output",
       executionId,
       stream: "stdout",
       level: "info",
       group: "log",
-      message: normalizeMessage(message),
-      data,
+      message: normalizeMessage(args),
     });
   }
 
