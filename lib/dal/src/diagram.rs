@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_data::PgError;
+use si_data_pg::PgError;
 use std::num::ParseIntError;
 use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;

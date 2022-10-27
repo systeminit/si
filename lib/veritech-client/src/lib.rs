@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use futures::{StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Serialize};
-use si_data::NatsClient;
+use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
@@ -32,7 +32,7 @@ pub enum ClientError {
     #[error("failed to serialize json message")]
     JSONSerialize(#[source] serde_json::Error),
     #[error("nats error")]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error("no function result from cyclone; bug!")]
     NoResult,
     #[error("result error")]
@@ -348,9 +348,10 @@ async fn forward_output_task(
 #[allow(clippy::panic)]
 #[cfg(test)]
 mod tests {
-    use indoc::indoc;
-    use si_data::NatsConfig;
     use std::env;
+
+    use indoc::indoc;
+    use si_data_nats::NatsConfig;
     use test_log::test;
     use tokio::task::JoinHandle;
     use uuid::Uuid;

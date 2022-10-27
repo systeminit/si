@@ -1,10 +1,10 @@
 use std::default::Default;
 
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
-use si_data::{NatsError, PgError};
+use si_data_nats::NatsError;
+use si_data_pg::PgError;
 use telemetry::prelude::*;
+use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, DalContext,

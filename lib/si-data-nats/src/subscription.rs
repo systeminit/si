@@ -6,7 +6,6 @@ use std::{
 };
 
 use futures::{FutureExt, Stream};
-use nats_client as nats;
 use telemetry::prelude::*;
 use tokio::task::{spawn_blocking, JoinHandle};
 
@@ -15,7 +14,7 @@ use super::{ConnectionMetadata, Error, Message, Result};
 /// A `Subscription` receives `Message`s published to specific NATS `Subject`s.
 #[derive(Debug)]
 pub struct Subscription {
-    inner: nats::Subscription,
+    inner: nats_client::Subscription,
     next: Option<NextMessage>,
     #[allow(dead_code)]
     shutdown_tx: crossbeam_channel::Sender<()>,
@@ -27,7 +26,7 @@ pub struct Subscription {
 
 impl Subscription {
     pub(crate) fn new(
-        inner: nats::Subscription,
+        inner: nats_client::Subscription,
         subject: String,
         connection_metadata: Arc<ConnectionMetadata>,
         sub_span: Span,
@@ -70,8 +69,8 @@ impl Subscription {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// let sub = nc.subscribe("foo").await?;
     /// sub.unsubscribe().await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -111,8 +110,8 @@ impl Subscription {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// let sub = nc.subscribe("foo").await?;
     /// sub.close().await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -160,8 +159,8 @@ impl Subscription {
     /// # use std::sync::{Arc, atomic::{AtomicBool, Ordering::SeqCst}};
     /// # use std::thread;
     /// # use std::time::Duration;
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// # let nc = nats::Options::default().connect("demo.nats.io").await?;
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// # let nc = Options::default().connect("demo.nats.io").await?;
     /// let mut sub = nc.subscribe("test.drain").await?;
     ///
     /// nc.publish("test.drain", "message").await?;
@@ -297,7 +296,7 @@ impl Stream for Subscription {
 /// to completion.
 #[derive(Debug)]
 struct NextMessage {
-    handle: JoinHandle<Option<nats::Message>>,
+    handle: JoinHandle<Option<nats_client::Message>>,
     metadata: Arc<ConnectionMetadata>,
 }
 

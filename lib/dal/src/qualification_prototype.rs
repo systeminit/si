@@ -3,7 +3,8 @@ use std::default::Default;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use si_data::{NatsError, PgError};
+use si_data_nats::NatsError;
+use si_data_pg::PgError;
 use telemetry::prelude::*;
 
 use crate::{

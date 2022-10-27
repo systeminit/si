@@ -5,7 +5,7 @@ use jwt_simple::{
     prelude::{JWTClaims, RSAPublicKeyLike, Token},
 };
 use serde::{Deserialize, Serialize};
-use si_data::pg::InstrumentedTransaction;
+use si_data_pg::{InstrumentedTransaction, PgError, PgPoolError};
 use sodiumoxide::crypto::secretbox;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -47,9 +47,9 @@ pub enum JwtKeyError {
     #[error("bad string version of numeric id: {0}")]
     ParseInt(#[from] std::num::ParseIntError),
     #[error("pg error: {0}")]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] PgError),
     #[error("pg pool error: {0}")]
-    PgPool(#[from] si_data::PgPoolError),
+    PgPool(#[from] PgPoolError),
     #[error("{0}")]
     TaskJoin(#[from] JoinError),
     #[error("failed to convert into PEM format")]

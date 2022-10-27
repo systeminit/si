@@ -1,6 +1,6 @@
 use std::env;
 
-use si_data::{NatsClient, NatsConfig};
+use si_data_nats::{NatsClient, NatsConfig};
 use telemetry::prelude::*;
 use tracing_subscriber::{
     fmt::{self, format::FmtSpan},

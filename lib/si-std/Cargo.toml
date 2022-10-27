@@ -1,0 +1,11 @@
+[package]
+name = "si-std"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.56"
+publish = false
+
+# NOTE: dependencies should be extremely minimal or very broadly re-used
+# amongst a potential large number of component crates
+[dependencies]
+serde = { version = "1.0.123", features = ["derive"] }

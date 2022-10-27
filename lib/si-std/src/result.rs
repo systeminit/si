@@ -8,7 +8,7 @@ pub trait ResultExt<T, E> {
     /// # Examples
     ///
     /// ````
-    /// # use si_data::ResultExt;
+    /// # use si_std::ResultExt;
     /// let x: u8 = "4"
     ///     .parse::<u8>()
     ///     .si_inspect(|x| println!("original: {x}"))
@@ -22,7 +22,7 @@ pub trait ResultExt<T, E> {
     /// # Examples
     ///
     /// ```
-    /// # use si_data::ResultExt;
+    /// # use si_std::ResultExt;
     /// use std::{fs, io};
     ///
     /// fn read() -> io::Result<String> {

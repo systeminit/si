@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data::{NatsError, PgError};
+use si_data_nats::NatsError;
+use si_data_pg::PgError;
 use std::collections::HashMap;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
@@ -112,7 +113,7 @@ pub enum ComponentError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error(transparent)]
-    PgPool(#[from] si_data::PgPoolError),
+    PgPool(#[from] si_data_pg::PgPoolError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("nats txn error: {0}")]

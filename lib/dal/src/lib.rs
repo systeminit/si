@@ -5,7 +5,8 @@ use std::sync::Arc;
 
 use rand::Rng;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
+use si_data_nats::{NatsClient, NatsError};
+use si_data_pg::{PgError, PgPool, PgPoolError};
 use strum_macros::{Display, EnumString, EnumVariantNames};
 use telemetry::prelude::*;
 use thiserror::Error;

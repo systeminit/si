@@ -13,9 +13,9 @@ pub mod list_secrets;
 #[derive(Debug, Error)]
 pub enum SecretError {
     #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     Secret(#[from] dal::SecretError),
     #[error(transparent)]

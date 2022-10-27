@@ -1,10 +1,7 @@
 use std::env;
 
 use futures::TryStreamExt;
-use si_data::{
-    nats::{Message, Subscription},
-    NatsClient, NatsConfig,
-};
+use si_data_nats::{Message, NatsClient, NatsConfig, Subscription};
 use telemetry::prelude::*;
 use tracing_subscriber::{
     fmt::{self, format::FmtSpan},

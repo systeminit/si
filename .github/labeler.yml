@@ -88,14 +88,32 @@ A-deadpool-cyclone:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-si-data:
-  - lib/si-data/**/*
+A-si-data-faktory:
+  - lib/si-data-faktory/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-data-nats:
+  - lib/si-data-nats/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-data-pg:
+  - lib/si-data-pg/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
 A-si-settings:
   - lib/si-settings/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-std:
+  - lib/si-std/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain

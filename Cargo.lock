@@ -766,7 +766,8 @@ dependencies = [
  "serde-aux",
  "serde_json",
  "serde_with",
- "si-data",
+ "si-data-nats",
+ "si-data-pg",
  "sodiumoxide",
  "strum",
  "strum_macros",
@@ -791,7 +792,9 @@ dependencies = [
  "names",
  "serde",
  "serde_json",
- "si-data",
+ "si-data-nats",
+ "si-data-pg",
+ "si-std",
  "si-test-macros",
  "sodiumoxide",
  "telemetry",
@@ -2450,7 +2453,9 @@ dependencies = [
  "futures",
  "serde",
  "serde_json",
- "si-data",
+ "si-data-faktory",
+ "si-data-nats",
+ "si-data-pg",
  "si-settings",
  "telemetry",
  "thiserror",
@@ -3012,8 +3017,11 @@ dependencies = [
  "serde_json",
  "serde_url_params",
  "serde_with",
- "si-data",
+ "si-data-faktory",
+ "si-data-nats",
+ "si-data-pg",
  "si-settings",
+ "si-std",
  "sodiumoxide",
  "strum",
  "strum_macros",
@@ -3252,29 +3260,46 @@ dependencies = [
 ]
 
 [[package]]
-name = "si-data"
+name = "si-data-faktory"
 version = "0.1.0"
 dependencies = [
- "bytes",
+ "serde",
+]
+
+[[package]]
+name = "si-data-nats"
+version = "0.1.0"
+dependencies = [
  "crossbeam-channel",
- "deadpool",
- "deadpool-postgres",
  "futures",
  "nats",
  "nkeys",
+ "serde",
+ "serde_json",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "tokio-test",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "si-data-pg"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "deadpool",
+ "deadpool-postgres",
+ "futures",
  "num_cpus",
  "ouroboros",
  "refinery",
  "serde",
- "serde_json",
- "strum",
- "strum_macros",
+ "si-std",
  "telemetry",
  "thiserror",
  "tokio",
  "tokio-postgres",
- "tokio-test",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3286,6 +3311,13 @@ dependencies = [
  "serde_with",
  "sodiumoxide",
  "thiserror",
+]
+
+[[package]]
+name = "si-std"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -4091,7 +4123,7 @@ dependencies = [
  "pin-project-lite",
  "serde",
  "serde_json",
- "si-data",
+ "si-data-nats",
  "telemetry",
  "test-log",
  "thiserror",
@@ -4118,7 +4150,7 @@ dependencies = [
  "pin-project-lite",
  "serde",
  "serde_json",
- "si-data",
+ "si-data-nats",
  "si-settings",
  "telemetry",
  "thiserror",

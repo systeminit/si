@@ -23,9 +23,9 @@ pub enum SignupError {
     #[error("invalid signup secret")]
     InvalidSignupSecret,
     #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] si_data_pg::PgError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
     #[error("StandardModel error: {0}")]

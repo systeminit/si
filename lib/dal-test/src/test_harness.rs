@@ -19,7 +19,8 @@ use dal::{
 };
 use lazy_static::lazy_static;
 use names::{Generator, Name};
-use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
+use si_data_nats::{NatsClient, NatsConfig};
+use si_data_pg::{PgPool, PgPoolConfig};
 use uuid::Uuid;
 use veritech_client::EncryptionKey;
 use veritech_server::{Instance, StandardConfig};

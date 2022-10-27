@@ -14,7 +14,9 @@ use dal::{
     DalContext, JwtSecretKey, ServicesContext,
 };
 use lazy_static::lazy_static;
-use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig, ResultExt};
+use si_data_nats::{NatsClient, NatsConfig};
+use si_data_pg::{PgPool, PgPoolConfig};
+use si_std::ResultExt;
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 use uuid::Uuid;

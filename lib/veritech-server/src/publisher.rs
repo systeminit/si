@@ -1,6 +1,6 @@
 use deadpool_cyclone::{FunctionResult, OutputStream};
 use serde::Serialize;
-use si_data::NatsClient;
+use si_data_nats::NatsClient;
 use thiserror::Error;
 use veritech_core::{reply_mailbox_for_output, reply_mailbox_for_result, FINAL_MESSAGE_HEADER_KEY};
 
@@ -9,7 +9,7 @@ pub enum PublisherError {
     #[error("failed to serialize json message")]
     JSONSerialize(#[source] serde_json::Error),
     #[error("failed to publish message to nats subject: {1}")]
-    NatsPublish(#[source] si_data::NatsError, String),
+    NatsPublish(#[source] si_data_nats::NatsError, String),
 }
 
 type Result<T> = std::result::Result<T, PublisherError>;

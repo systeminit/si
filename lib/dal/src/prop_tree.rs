@@ -11,7 +11,7 @@ const PROP_TREE_FOR_ALL_SCHEMA_VARIANTS: &str =
 #[derive(Error, Debug)]
 pub enum PropTreeError {
     #[error("pg error: {0}")]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] si_data_pg::PgError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("error serializing/deserializing json: {0}")]

@@ -3,7 +3,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data::PgError;
+use si_data_pg::PgError;
 use sodiumoxide::crypto::{
     box_::{PublicKey, SecretKey},
     sealedbox,

@@ -17,7 +17,9 @@ tokio = { version = "1.12.0", features = ["full"] }
 thiserror = { version = "1.0" }
 futures = "0.3"
 
-si-data = { path = "../../lib/si-data" }
+si-data-faktory = { path = "../../lib/si-data-faktory" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
 veritech-client = { path = "../../lib/veritech-client" }
 dal = { path = "../../lib/dal" }
 faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }

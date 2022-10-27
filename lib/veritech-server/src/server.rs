@@ -7,7 +7,7 @@ use deadpool_cyclone::{
     WorkflowResolveResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
-use si_data::NatsClient;
+use si_data_nats::NatsClient;
 use std::io;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -31,7 +31,7 @@ pub enum ServerError {
     #[error("cyclone spec builder error")]
     CycloneSpec(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("error connecting to nats")]
-    NatsConnect(#[source] si_data::NatsError),
+    NatsConnect(#[source] si_data_nats::NatsError),
     #[error(transparent)]
     Publisher(#[from] PublisherError),
     #[error(transparent)]

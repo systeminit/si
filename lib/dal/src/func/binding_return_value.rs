@@ -1,7 +1,8 @@
 use crate::{AttributeValueId, WriteTenancy};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use si_data::{NatsError, PgError};
+use si_data_nats::NatsError;
+use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::OutputStream;

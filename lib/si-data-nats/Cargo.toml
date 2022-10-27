@@ -1,0 +1,27 @@
+[package]
+name = "si-data-nats"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.56"
+publish = false
+
+[dependencies]
+crossbeam-channel = { version = "0.5.1" }
+futures = { version = "0.3.17" }
+nats-client = { package = "nats", version = "0.23.0" }
+serde = { version = "1.0.123", features = ["derive"] }
+serde_json = { version = "1.0.64" }
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = "1.0.24"
+tokio = { version = "1.2.0", features = ["full"] }
+
+[dev-dependencies]
+nkeys = "0.2.0"
+tokio-test = "0.4.2"
+tracing-subscriber = { version = "0.3.11", features = [ "env-filter", "std" ] }
+
+[package.metadata.cargo-udeps.ignore]
+development = [
+  # used in NATS doctest to run async code with a suitable test runtime
+  "tokio-test",
+]

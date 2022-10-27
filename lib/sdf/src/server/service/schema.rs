@@ -15,9 +15,9 @@ pub mod list_schemas;
 #[derive(Debug, Error)]
 pub enum SchemaError {
     #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("no diagram kind for schema kind {0}")]

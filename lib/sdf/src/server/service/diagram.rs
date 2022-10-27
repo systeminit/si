@@ -27,11 +27,11 @@ pub mod set_node_position;
 #[derive(Debug, Error)]
 pub enum DiagramError {
     #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
+    Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
-    PgPool(#[from] si_data::PgPoolError),
+    PgPool(#[from] si_data_pg::PgPoolError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]

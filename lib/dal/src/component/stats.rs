@@ -2,7 +2,7 @@
 
 use serde::Deserialize;
 use serde::Serialize;
-use si_data::PgRow;
+use si_data_pg::PgRow;
 use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 

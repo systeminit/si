@@ -4,7 +4,7 @@ use std::{
 };
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use si_data::{PgError, PgRow};
+use si_data_pg::{PgError, PgRow};
 use strum::IntoEnumIterator;
 use thiserror::Error;
 

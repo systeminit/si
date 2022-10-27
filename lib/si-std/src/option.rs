@@ -8,7 +8,7 @@ pub trait OptionExt<T> {
     /// # Examples
     ///
     /// ```
-    /// # use si_data::OptionExt;
+    /// # use si_std::OptionExt;
     /// let v = vec![1, 2, 3, 4, 5];
     ///
     /// // prints "got: 4"
@@ -23,7 +23,7 @@ pub trait OptionExt<T> {
     ///
     /// # Examples
     /// ```
-    /// # use si_data::OptionExt;
+    /// # use si_std::OptionExt;
     /// let v = vec![1, 2, 3, 4, 5];
     ///
     /// // prints nonthing

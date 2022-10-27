@@ -43,9 +43,9 @@ pub mod save_func;
 #[derive(Error, Debug)]
 pub enum FuncError {
     #[error(transparent)]
-    Pg(#[from] si_data::PgError),
+    Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
-    PgPool(#[from] si_data::PgPoolError),
+    PgPool(#[from] si_data_pg::PgPoolError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
     #[error("write tenancy error: {0}")]

@@ -1,13 +1,11 @@
 use std::{io, path::Path, time::Duration};
 
-use nats_client as nats;
-
 use super::{Client, Result};
 
 /// Connect options.
 #[derive(Debug, Default)]
 pub struct Options {
-    pub(crate) inner: nats::Options,
+    pub(crate) inner: nats_client::Options,
 }
 
 impl Options {
@@ -21,15 +19,15 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::with_token("t0k3n!")
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::with_token("t0k3n!")
     ///     .connect("demo.nats.io")
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     #[must_use]
     pub fn with_token(token: &str) -> Self {
-        nats::Options::with_token(token).into()
+        nats_client::Options::with_token(token).into()
     }
 
     /// Authenticate with NATS using a username and password.
@@ -37,15 +35,15 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::with_user_pass("derek", "s3cr3t!")
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::with_user_pass("derek", "s3cr3t!")
     ///     .connect("demo.nats.io")
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     #[must_use]
     pub fn with_user_pass(user: &str, password: &str) -> Self {
-        nats::Options::with_user_pass(user, password).into()
+        nats_client::Options::with_user_pass(user, password).into()
     }
 
     /// Authenticate with NATS using a `.creds` file.
@@ -56,14 +54,14 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::with_credentials("path/to/my.creds")
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::with_credentials("path/to/my.creds")
     ///     .connect("connect.ngs.global")
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     pub fn with_credentials(path: impl AsRef<Path>) -> Self {
-        nats::Options::with_credentials(path).into()
+        nats_client::Options::with_credentials(path).into()
     }
 
     /// Authenticate with NATS using a static credential str, using the creds file format.
@@ -76,7 +74,7 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// let creds =
     /// "-----BEGIN NATS USER JWT-----
     /// eyJ0eXAiOiJqd3QiLCJhbGciOiJlZDI1NTE5...
@@ -91,14 +89,14 @@ impl Options {
     /// ------END USER NKEY SEED------
     /// ";
     ///
-    /// let nc = nats::Options::with_static_credentials(creds)
+    /// let nc = Options::with_static_credentials(creds)
     ///     .expect("failed to parse static creds")
     ///     .connect("connect.ngs.global")
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     pub fn with_static_credentials(creds: &str) -> Result<Self> {
-        Ok(nats::Options::with_static_credentials(creds)?.into())
+        Ok(nats_client::Options::with_static_credentials(creds)?.into())
     }
 
     /// Authenticate with a function that loads user JWT and a signature function.
@@ -113,8 +111,8 @@ impl Options {
     ///     todo!()
     /// }
     ///
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::with_jwt(load_jwt, move |nonce| kp.sign(nonce).unwrap())
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::with_jwt(load_jwt, move |nonce| kp.sign(nonce).unwrap())
     ///     .connect("localhost")
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -124,7 +122,7 @@ impl Options {
         J: Fn() -> io::Result<String> + Send + Sync + 'static,
         S: Fn(&[u8]) -> Vec<u8> + Send + Sync + 'static,
     {
-        nats::Options::with_jwt(jwt_cb, sig_cb).into()
+        nats_client::Options::with_jwt(jwt_cb, sig_cb).into()
     }
 
     /// Authenticate with NATS using a public key and a signature function.
@@ -136,8 +134,8 @@ impl Options {
     /// let seed = "SUANQDPB2RUOE4ETUA26CNX7FUKE5ZZKFCQIIW63OX225F2CO7UEXTM7ZY";
     /// let kp = nkeys::KeyPair::from_seed(seed).unwrap();
     ///
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::with_nkey(nkey, move |nonce| kp.sign(nonce).unwrap())
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::with_nkey(nkey, move |nonce| kp.sign(nonce).unwrap())
     ///     .connect("localhost")
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -146,7 +144,7 @@ impl Options {
     where
         F: Fn(&[u8]) -> Vec<u8> + Send + Sync + 'static,
     {
-        nats::Options::with_nkey(nkey, sig_cb).into()
+        nats_client::Options::with_nkey(nkey, sig_cb).into()
     }
 
     /// Set client certificate and private key files.
@@ -154,8 +152,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .client_cert("client-cert.pem", "client-key.pem")
     ///     .connect("nats://localhost:4443")
     ///     .await?;
@@ -174,26 +172,26 @@ impl Options {
     /// feasible.
     ///
     /// To avoid version conflicts, the `rustls` version used by this crate is exported as
-    /// `nats::rustls`.
+    /// `si_data_nats::rustls`.
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let mut tls_client_config = nats::rustls::ClientConfig::default();
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let mut tls_client_config = si_data_nats::rustls::ClientConfig::default();
     /// tls_client_config
     ///     .set_single_client_cert(
-    ///         vec![nats::rustls::Certificate(b"MY_CERT".to_vec())],
-    ///         nats::rustls::PrivateKey(b"MY_KEY".to_vec()),
+    ///         vec![si_data_nats::rustls::Certificate(b"MY_CERT".to_vec())],
+    ///         si_data_nats::rustls::PrivateKey(b"MY_KEY".to_vec()),
     ///     );
-    /// let nc = nats::Options::new()
+    /// let nc = Options::new()
     ///     .tls_client_config(tls_client_config)
     ///     .connect("nats://localhost:4443")
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
     /// ```
     #[must_use]
-    pub fn tls_client_config(self, tls_client_config: nats::rustls::ClientConfig) -> Self {
+    pub fn tls_client_config(self, tls_client_config: nats_client::rustls::ClientConfig) -> Self {
         self.inner.tls_client_config(tls_client_config).into()
     }
 
@@ -202,8 +200,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .with_name("My App")
     ///     .connect("demo.nats.io")
     ///     .await?;
@@ -219,8 +217,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .no_echo()
     ///     .connect("demo.nats.io")
     ///     .await?;
@@ -240,8 +238,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .max_reconnects(3)
     ///     .connect("demo.nats.io")
     ///     .await?;
@@ -259,8 +257,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .reconnect_buffer_size(64 * 1024)
     ///     .connect("demo.nats.io")
     ///     .await?;
@@ -280,8 +278,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .connect("demo.nats.io")
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -292,8 +290,8 @@ impl Options {
     /// that is your intention.
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .connect("nats://demo.nats.io:4222,tls://demo.nats.io:4443")
     ///     .await?;
     /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
@@ -307,8 +305,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .disconnect_callback(|| println!("connection has been lost"))
     ///     .connect("demo.nats.io")
     ///     .await?;
@@ -326,8 +324,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .reconnect_callback(|| println!("connection has been reestablished"))
     ///     .connect("demo.nats.io")
     ///     .await?;
@@ -350,8 +348,8 @@ impl Options {
     // # Examples
     //
     // ```no_run
-    // # use si_data::nats; tokio_test::block_on(async {
-    // let nc = nats::Options::new()
+    // # use si_data_nats::Options; tokio_test::block_on(async {
+    // let nc = Options::new()
     //     .jetstream_api_prefix("some_exported_prefix".to_string())
     //     .connect("demo.nats.io")
     //     .await?;
@@ -369,8 +367,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .close_callback(|| println!("connection has been closed"))
     ///     .connect("demo.nats.io")
     ///     .await?;
@@ -395,9 +393,9 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
     /// # use std::time::Duration;
-    /// let nc = nats::Options::new()
+    /// let nc = Options::new()
     ///     .reconnect_delay_callback(|c| {
     ///         Duration::from_millis(std::cmp::min((c * 100) as u64, 8000))
     ///     })
@@ -420,8 +418,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .tls_required(true)
     ///     .connect("tls://demo.nats.io:4443")
     ///     .await?;
@@ -439,8 +437,8 @@ impl Options {
     /// # Examples
     ///
     /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
+    /// # use si_data_nats::Options; tokio_test::block_on(async {
+    /// let nc = Options::new()
     ///     .add_root_certificate("my-certs.pem")
     ///     .connect("tls://demo.nats.io:4443")
     ///     .await?;
@@ -451,8 +449,8 @@ impl Options {
     }
 }
 
-impl From<nats::Options> for Options {
-    fn from(inner: nats::Options) -> Self {
+impl From<nats_client::Options> for Options {
+    fn from(inner: nats_client::Options) -> Self {
         Self { inner }
     }
 }

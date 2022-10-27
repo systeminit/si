@@ -1,3 +1,12 @@
+#![warn(
+    clippy::unwrap_in_result,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::missing_panics_doc,
+    clippy::panic_in_result_fn
+)]
+#![allow(clippy::missing_errors_doc)]
+
 use std::{
     cmp,
     fmt::{self, Debug},
@@ -15,6 +24,7 @@ use deadpool_postgres::{
 use futures::{Stream, StreamExt};
 use ouroboros::self_referencing;
 use serde::{Deserialize, Serialize};
+use si_std::{ResultExt, SensitiveString};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 use tokio_postgres::{
@@ -23,8 +33,6 @@ use tokio_postgres::{
     CancelToken, Client, Column, CopyInSink, CopyOutStream, IsolationLevel, NoTls, Portal, Row,
     SimpleQueryMessage, Statement, ToStatement,
 };
-
-use crate::{ResultExt, SensitiveString};
 
 pub use tokio_postgres::error::SqlState;
 

@@ -11,7 +11,8 @@
 
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, PgError};
+use si_data_nats::NatsError;
+use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 

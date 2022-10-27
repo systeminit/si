@@ -14,7 +14,7 @@ on:
       - lib/cyclone-client/**
       - lib/cyclone-core/**
       - lib/cyclone-server/**
-      - lib/si-data/**
+      - lib/si-data-nats/**
       - lib/si-settings/**
       - lib/telemetry-rs/**
       - lib/veritech-core/**
