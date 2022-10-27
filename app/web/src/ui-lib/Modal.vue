@@ -1,6 +1,6 @@
 <template>
   <TransitionRoot :show="open" appear as="template">
-    <Dialog as="div" class="relative z-50" @close="emit('close')">
+    <Dialog as="div" class="relative z-50" @close="handleClose">
       <TransitionChild
         as="template"
         enter="duration-300 ease-out"
@@ -116,6 +116,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  disableClose: {
+    type: Boolean,
+    default: false,
+  },
   hideTopCloseButton: {
     type: Boolean,
     default: false,
@@ -132,6 +136,10 @@ const dialogPanelClasses = computed(() => {
 
   return `${size} w-full transform rounded bg-white dark:bg-neutral-900 text-left align-middle shadow-xl transition-all text-shade-100 dark:text-white`;
 });
+
+const handleClose = () => {
+  if (!props.disableClose) emit("close");
+};
 
 const emit = defineEmits<{
   (e: "close"): void;

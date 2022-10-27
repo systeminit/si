@@ -27,6 +27,7 @@
       :open="showDialog === 'create'"
       size="sm"
       hide-top-close-button
+      disable-close
       type="custom"
       @close="onCloseCreateDialog"
     >
@@ -78,6 +79,7 @@
       :open="showDialog === 'select'"
       size="sm"
       hide-top-close-button
+      disable-close
       type="custom"
       @close="onCloseSelectDialog"
     >
@@ -99,7 +101,7 @@
             @update:model-value="onSelectChangeSet"
           />
           <Divider label="or" />
-          <VButton2 icon="plus-circle" @click="createNewChangeset">
+          <VButton2 icon="plus-circle" @click="switchToCreateMode">
             Create a new change set
           </VButton2>
         </Stack>
@@ -173,7 +175,7 @@ const applyChangeSet = async () => {
   if (applyReq.result.success) await navigateToFixMode();
 };
 
-const createNewChangeset = () => {
+const switchToCreateMode = () => {
   showDialog.value = "create";
 };
 

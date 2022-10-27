@@ -34,6 +34,7 @@
       <template v-else>
         <div class="w-full h-full flex flex-row relative overflow-hidden">
           <router-view :key="route.fullPath" />
+          <!-- without a key the router view doesn't update on route change, which we want here -->
         </div>
         <StatusBar :key="0" class="flex-none" />
       </template>

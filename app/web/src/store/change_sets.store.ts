@@ -126,9 +126,10 @@ export function useChangeSetsStore() {
         },
       },
       onActivated() {
+        if (!workspaceId) return;
+
         console.log("ACTIVATE CHANGE SETS STORE", workspaceId);
         this.FETCH_CHANGE_SETS();
-        if (!workspaceId) return;
         const stopWatchSelectedChangeSet = watch(
           () => this.selectedChangeSet,
           () => {
