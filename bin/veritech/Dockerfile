@@ -105,7 +105,6 @@ RUN set -eux; \
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-        awscli \
         busybox \
         ca-certificates \
         skopeo \
@@ -127,7 +126,12 @@ RUN set -eux; \
     rm -v /tmp/kubeval.tar.gz; \
     wget -O /usr/local/bin/butane \
         "https://github.com/coreos/butane/releases/download/v$BUTANE_VERSION/butane-x86_64-unknown-linux-gnu"; \
-    chmod +x /usr/local/bin/butane;
+    chmod +x /usr/local/bin/butane; \
+    wget -O /tmp/awscliv2.zip \
+        "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"; \
+    busybox unzip /tmp/awscliv2.zip -d /tmp; \
+    /tmp/aws/install; \
+    rm -rf /tmp/aws /tmp/awscliv2.zip;
 
 WORKDIR /run/$BIN
 COPY --from=builder /usr/src/target/release/$BIN /usr/local/bin/
