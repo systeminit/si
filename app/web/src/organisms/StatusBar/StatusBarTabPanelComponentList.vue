@@ -2,35 +2,30 @@
   <div class="w-64 shrink-0 border-shade-100 h-full flex flex-col">
     <!-- Filter button and its dropdown -->
     <div
-      class="h-11 w-full border-b border-shade-100 text-lg px-4 flex items-center flex-none"
+      class="w-full border-b border-shade-100 p-xs flex items-center justify-between"
     >
-      <span class="block whitespace-nowrap text-ellipsis overflow-hidden"
-        >Components Menu</span
-      >
-    </div>
-    <SiBarButton
-      class="h-11 border-b border-shade-100 flex-none"
-      tooltip-text="Filter"
-      fill-entire-width
-    >
-      <template #default="{ hovered, open }">
-        <div class="flex flex-row items-center">
-          {{ selectedFilter.title }}
-          <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
-        </div>
-      </template>
+      <div class="whitespace-nowrap text-ellipsis overflow-hidden">
+        Components Menu
+      </div>
+      <VButton2
+        icon="filter"
+        size="sm"
+        class="justify-self-end"
+        variant="ghost"
+        @click="filterMenuRef?.open"
+      />
 
-      <template #dropdownContent>
-        <SiDropdownItem
+      <DropdownMenu ref="filterMenuRef">
+        <DropdownMenuItem
           v-for="option of filterOptions"
           :key="option.value"
           :checked="selectedFilter.value === option.value"
           @select="emit('filter', option)"
         >
           {{ option.title }}
-        </SiDropdownItem>
-      </template>
-    </SiBarButton>
+        </DropdownMenuItem>
+      </DropdownMenu>
+    </div>
 
     <!-- List of components -->
     <div class="overflow-y-auto flex-expand">
@@ -42,7 +37,7 @@
             ? 'bg-action-500'
             : 'hover:bg-black'
         "
-        class="py-xs pl-sm pr-xs cursor-pointer flex justify-between items-center leading-tight"
+        class="py-xs px-xs cursor-pointer flex justify-between items-center leading-tight"
         @click="componentsStore.setSelectedComponentId(component.id)"
       >
         <span class="shrink h-full min-w-0 truncate mr-3">
@@ -55,12 +50,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import SiBarButton from "@/molecules/SiBarButton.vue";
-import SiArrow from "@/atoms/SiArrow.vue";
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
+import { computed, ref } from "vue";
 import { MockResource } from "@/store/resources.store";
 import { useComponentsStore } from "@/store/components.store";
+import VButton2 from "@/ui-lib/VButton2.vue";
+import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
+import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 
 export interface ComponentListItem {
   id: number;
@@ -83,6 +78,8 @@ const props = defineProps<{
   filterOptions?: FilterOption[];
   selectedFilter?: FilterOption;
 }>();
+
+const filterMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const defaultFilterOption = {
   value: "all",

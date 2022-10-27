@@ -16,15 +16,32 @@ export enum FuncBackendKind {
   ValidateStringValue = "ValidateStringValue",
 }
 
-const CUSTOMIZABLE_FUNCS = [
-  FuncBackendKind.JsQualification,
-  FuncBackendKind.JsAttribute,
-  FuncBackendKind.JsCodeGeneration,
-  FuncBackendKind.JsConfirmation,
-];
+export const CUSTOMIZABLE_FUNC_TYPES = {
+  [FuncBackendKind.JsQualification]: {
+    pluralLabel: "Qualifications",
+    singularLabel: "Qualification",
+    enableBuiltIn: true,
+  },
+  [FuncBackendKind.JsAttribute]: {
+    pluralLabel: "Attributes",
+    singularLabel: "Attribute",
+  },
+  [FuncBackendKind.JsCodeGeneration]: {
+    pluralLabel: "Code Generators",
+    singularLabel: "Code Generation",
+  },
+  [FuncBackendKind.JsConfirmation]: {
+    pluralLabel: "Confirmations",
+    singularLabel: "Confirmation",
+  },
+  [FuncBackendKind.JsCommand]: {
+    pluralLabel: "Commands",
+    singularLabel: "Command",
+  },
+};
 
 export const isCustomizableFuncKind = (f: FuncBackendKind) =>
-  CUSTOMIZABLE_FUNCS.includes(f);
+  f in CUSTOMIZABLE_FUNC_TYPES;
 
 export interface Func {
   id: number;

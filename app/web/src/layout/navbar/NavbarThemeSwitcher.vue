@@ -1,39 +1,39 @@
 <template>
   <!-- FIXME(nick,theo): dropdown-classes needs to be removed in favor of the dropdown knowing whether or not it is offscreen. -->
-  <SiBarButton tooltip-text="Change theme" dropdown-classes="-right-12">
+  <NavbarButton ref="buttonRef" tooltip-text="Change theme">
     <Icon :name="currentTheme === 'light' ? 'sun' : 'moon'" />
 
     <template #dropdownContent>
-      <SiDropdownItem
-        class="text-sm"
+      <DropdownMenuItem
         :checked="!userOverrideTheme"
+        icon="bolt"
         @select="userOverrideTheme = null"
       >
         System theme
-      </SiDropdownItem>
-      <SiDropdownItem
-        class="text-sm"
+      </DropdownMenuItem>
+      <DropdownMenuItem
         :checked="userOverrideTheme === 'light'"
+        icon="sun"
         @select="userOverrideTheme = 'light'"
       >
         Light theme
-      </SiDropdownItem>
-      <SiDropdownItem
-        class="text-sm"
+      </DropdownMenuItem>
+      <DropdownMenuItem
         :checked="userOverrideTheme === 'dark'"
+        icon="moon"
         @select="userOverrideTheme = 'dark'"
       >
         Dark theme
-      </SiDropdownItem>
+      </DropdownMenuItem>
     </template>
-  </SiBarButton>
+  </NavbarButton>
 </template>
 
 <script setup lang="ts">
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import SiBarButton from "@/molecules/SiBarButton.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { userOverrideTheme, useTheme } from "@/ui-lib/theme_tools";
+import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+import NavbarButton from "./NavbarButton.vue";
 
 const { theme: currentTheme } = useTheme();
 </script>

@@ -14,7 +14,7 @@
         "
       >
         <TabList
-          ref="tabList"
+          ref="tabListRef"
           :class="clsx('si-tab-group__tabs', tabListClasses)"
         >
           <div
@@ -23,22 +23,29 @@
             class="w-2 border-b border-neutral-300 dark:border-neutral-600"
           ></div>
           <slot name="tabs" />
-          <div ref="endSpace"></div>
+          <div
+            class="flex-grow border-b border-neutral-300 dark:border-neutral-600 order-last"
+          ></div>
         </TabList>
-        <SiBarButton
-          ref="dropDown"
-          :dropdown-item-show-suffix="false"
-          :hover-effect="false"
-          :navbar="false"
-          :padding-x="2"
-          dropdown-classes="right-0 overflow-x-hidden max-w-xs text-left text-ellipsis max-h-96 overflow-y-auto"
-          dropdown-item-classes="text-left text-ellipsis"
+
+        <div
+          v-if="showOverflowDropdown"
+          :class="
+            clsx(
+              'border border-neutral-300 dark:border-neutral-600 h-full px-xs items-center flex absolute right-0 top-0 z-10',
+              overflowMenuRef?.isOpen
+                ? 'bg-neutral-200 dark:bg-black'
+                : 'bg-white dark:bg-neutral-800',
+            )
+          "
+          @click="overflowMenuRef?.open"
         >
           <Icon name="dots-vertical" />
-          <template #dropdownContent>
-            <slot name="dropdownitems" />
-          </template>
-        </SiBarButton>
+        </div>
+
+        <DropdownMenu ref="overflowMenuRef">
+          <slot name="dropdownContent"></slot>
+        </DropdownMenu>
       </div>
       <TabPanels class="si-tab-group__body flex-grow overflow-auto relative">
         <slot name="panels" />
@@ -49,11 +56,18 @@
 
 <script lang="ts" setup>
 import { TabGroup, TabList, TabPanels } from "@headlessui/vue";
-import { onBeforeUnmount, onMounted, onUpdated, provide, ref } from "vue";
+import {
+  onBeforeUnmount,
+  onMounted,
+  onUpdated,
+  provide,
+  ref,
+  useSlots,
+} from "vue";
 import _ from "lodash";
 import clsx from "clsx";
-import SiBarButton from "@/molecules/SiBarButton.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
+import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -88,60 +102,33 @@ const props = withDefaults(
   },
 );
 
-const tabList = ref();
-const endSpace = ref();
-const dropDown = ref();
-const updateDropDown = () => {
-  const tabListEl = tabList.value?.$el;
-  const dropDownEl = dropDown.value?.$el;
-  const endSpaceEl = endSpace.value;
+const overflowMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
-  if (tabListEl !== undefined) {
-    endSpaceEl.classList = "";
-    dropDownEl.classList = "";
-    if (tabListEl.scrollWidth > tabListEl.clientWidth) {
-      endSpaceEl.classList.add("hidden");
-      dropDownEl.classList.add(
-        "border",
-        "border-neutral-300",
-        "dark:border-neutral-600",
-        "w-11",
-        "h-11",
-        "absolute",
-        "right-0",
-        "top-0",
-        "z-100",
-        "bg-white",
-        "dark:bg-neutral-800",
-        "text-center",
-      );
-    } else {
-      endSpaceEl.classList.add("grow");
-      if (props.selectedTabToFront) {
-        endSpaceEl.classList.add("order-last");
-      }
-      dropDownEl.classList.add("hidden");
-    }
-    endSpaceEl.classList.add(
-      "border-b",
-      "border-neutral-300",
-      "dark:border-neutral-600",
-    );
-  }
-};
+const showOverflowDropdown = ref(false);
 
-onMounted(updateDropDown);
-onUpdated(updateDropDown);
+const slots = useSlots();
 
-const debounceForResize = _.debounce(updateDropDown, 50);
+const tabListRef = ref();
+function fixOverflowDropdown() {
+  if (!slots.dropdownContent) return;
+  const tabListEl = tabListRef.value?.$el;
+  if (!tabListEl) return;
+
+  showOverflowDropdown.value = tabListEl.scrollWidth > tabListEl.clientWidth;
+}
+
+onMounted(fixOverflowDropdown);
+onUpdated(fixOverflowDropdown);
+
+const debounceForResize = _.debounce(fixOverflowDropdown, 50);
 const resizeObserver = new ResizeObserver(debounceForResize);
 
 onMounted(() => {
-  resizeObserver.observe(tabList.value?.$el);
+  resizeObserver.observe(tabListRef.value?.$el);
 });
 
 onBeforeUnmount(() => {
-  resizeObserver.unobserve(tabList.value?.$el);
+  resizeObserver.unobserve(tabListRef.value?.$el);
 });
 
 provide("noAfterMargin", props.noAfterMargin);

@@ -3,54 +3,21 @@
     <template #tabs>
       <SiTabHeader :key="0">FUNCTIONS</SiTabHeader>
     </template>
-    <template #dropdownitems>
-      <SiDropdownItem>FUNCTIONS</SiDropdownItem>
-    </template>
     <template #panels>
       <TabPanel :key="0" class="h-full overflow-auto flex flex-col">
         <div
           class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
         >
-          <!-- <Menu>
-            <div class="block w-fit">
-              <MenuButton>
-                <VButton
-                  button-rank="primary"
-                  button-type="success"
-                  icon="plus"
-                  icon-right="chevron--down"
-                  label="Function"
-                  size="sm"
-                />
-              </MenuButton>
-
-              <MenuItems
-                class="z-30 absolute mt-2 rounded bg-white dark:bg-black shadow-lg border focus:outline-none overflow-hidden"
-              >
-                <MenuItem
-                  v-for="(kindName, kind) in funcCreateTypes"
-                  :key="kind"
-                  as="a"
-                  class="flex flex-row relative items-center whitespace-nowrap py-2 px-4 cursor-pointer gap-2 hover:bg-action-500 hover:text-white"
-                  @click="createFunc(kind)"
-                >
-                  <FuncSkeleton />
-
-                  {{ kindName }}
-                </MenuItem>
-              </MenuItems>
-            </div>
-          </Menu> -->
           <NewFuncDropdown
             label="Function"
-            :menu-items="funcCreateTypes"
+            :fn-types="CREATE_OPTIONS"
             @selected-func-kind="createFunc"
           />
 
           <NewFuncDropdown
             v-if="isDevMode"
             label="Builtin"
-            :menu-items="devFuncCreateTypes"
+            :fn-types="BUILTIN_CREATE_OPTIONS"
             @selected-func-kind="openFuncNameModal"
           />
         </div>
@@ -66,7 +33,7 @@
         </div>
         <ul class="overflow-y-auto">
           <SiCollapsible
-            v-for="(kindName, kind) in funcTypes"
+            v-for="(fnTypeInfo, kind) in CUSTOMIZABLE_FUNC_TYPES"
             :key="kind"
             as="li"
             class="w-full"
@@ -76,7 +43,7 @@
             <template #label>
               <div class="flex items-center gap-2">
                 <FuncSkeleton />
-                <span> {{ kindName }} </span>
+                <span> {{ fnTypeInfo.pluralLabel }} </span>
               </div>
             </template>
             <template #default>
@@ -140,14 +107,14 @@ import { computed, ref, Ref } from "vue";
 import { TabPanel } from "@headlessui/vue";
 import validator from "validator";
 import { storeToRefs } from "pinia";
+import _ from "lodash";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
-import { FuncBackendKind } from "@/api/sdf/dal/func";
+import { CUSTOMIZABLE_FUNC_TYPES, FuncBackendKind } from "@/api/sdf/dal/func";
 import NewFuncDropdown from "@/organisms/NewFuncDropdown.vue";
 import Modal from "@/ui-lib/Modal.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
@@ -167,25 +134,11 @@ const onSearch = (search: string) => {
   searchString.value = search.trim().toLocaleLowerCase();
 };
 
-const funcTypes = {
-  [FuncBackendKind.JsQualification]: "Qualifications",
-  [FuncBackendKind.JsAttribute]: "Attributes",
-  [FuncBackendKind.JsCodeGeneration]: "Code Generators",
-  [FuncBackendKind.JsConfirmation]: "Confirmations",
-  [FuncBackendKind.JsCommand]: "Commands",
-};
-
-const funcCreateTypes = {
-  [FuncBackendKind.JsQualification]: "Qualification",
-  [FuncBackendKind.JsAttribute]: "Attribute",
-  [FuncBackendKind.JsCodeGeneration]: "Code Generation",
-  [FuncBackendKind.JsConfirmation]: "Confirmation",
-  [FuncBackendKind.JsCommand]: "Command",
-};
-
-const devFuncCreateTypes = {
-  [FuncBackendKind.JsQualification]: "Qualification",
-};
+const CREATE_OPTIONS = _.mapValues(CUSTOMIZABLE_FUNC_TYPES, "singularLabel");
+const BUILTIN_CREATE_OPTIONS = _.mapValues(
+  _.pickBy(CUSTOMIZABLE_FUNC_TYPES, { enableBuiltIn: true }),
+  "singularLabel",
+);
 
 const filteredList = computed(() =>
   searchString.value.length > 0

@@ -64,7 +64,7 @@ import { computed, reactive } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useHead } from "@vueuse/head";
 
-import AppLayout from "@/templates/AppLayout.vue";
+import AppLayout from "@/layout/AppLayout.vue";
 import Card from "@/ui-lib/Card.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";

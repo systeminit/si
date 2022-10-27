@@ -2,53 +2,53 @@
   <div
     class="flex items-center justify-center place-items-center mx-auto h-full"
   >
-    <SiBarButton
+    <NavbarButton
       tooltip-text="Model"
       :selected="route.name === 'workspace-compose'"
-      :router-link-to="{
+      :link-to="{
         name: 'workspace-compose',
         params: { changeSetId: 'auto' },
       }"
     >
       <Icon name="diagram" />
-    </SiBarButton>
+    </NavbarButton>
 
-    <SiBarButton
+    <NavbarButton
       tooltip-text="Customize"
       :selected="route.name === 'workspace-lab'"
-      :router-link-to="{
+      :link-to="{
         name: 'workspace-lab',
         params: { changeSetId: 'auto' },
       }"
     >
       <Icon name="beaker" />
-    </SiBarButton>
+    </NavbarButton>
 
     <!-- Vertical bar -->
     <div class="w-0.5 h-8 self-center mx-xs bg-white"></div>
 
-    <SiBarButton
+    <NavbarButton
       tooltip-text="Analyze"
       :selected="route.name === 'workspace-view'"
-      :router-link-to="{ name: 'workspace-view' }"
+      :link-to="{ name: 'workspace-view' }"
     >
       <Icon name="eye" />
-    </SiBarButton>
+    </NavbarButton>
 
-    <SiBarButton
+    <NavbarButton
       tooltip-text="Fix"
       :selected="route.name === 'workspace-fix'"
-      :router-link-to="{ name: 'workspace-fix' }"
+      :link-to="{ name: 'workspace-fix' }"
     >
       <Icon name="tools" />
-    </SiBarButton>
+    </NavbarButton>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from "vue-router";
-import SiBarButton from "@/molecules/SiBarButton.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
+import NavbarButton from "./NavbarButton.vue";
 
 const route = useRoute();
 </script>

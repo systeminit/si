@@ -19,7 +19,7 @@
         <VormInput type="container">
           <VButton2
             icon="git-merge"
-            size="sm"
+            size="md"
             loading-text="Applying"
             label="Apply"
             :request-status="applyChangeSetReqStatus"

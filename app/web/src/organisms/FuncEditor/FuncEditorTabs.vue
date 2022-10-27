@@ -29,15 +29,15 @@
         </template>
       </SiTabHeader>
     </template>
-    <template #dropdownitems>
-      <SiDropdownItem
+    <template #dropdownContent>
+      <DropdownMenuItem
         v-for="func in openFuncsList"
         :key="func.id"
         :checked="func.id === selectedFuncId"
         @select="routeToFunc(func.id)"
       >
         {{ func.name }}
-      </SiDropdownItem>
+      </DropdownMenuItem>
     </template>
     <template #panels>
       <TabPanel
@@ -57,12 +57,12 @@ import { storeToRefs } from "pinia";
 import clsx from "clsx";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { themeClasses } from "@/ui-lib/theme_tools";
+import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
@@ -85,6 +85,6 @@ const closeFunc = (funcId: number) => {
 
 const routeToFuncByIndex = (index: number) => {
   const func = getFuncByIndex.value(index);
-  routeToFunc(func.id);
+  routeToFunc(func?.id);
 };
 </script>
