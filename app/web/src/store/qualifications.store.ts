@@ -22,7 +22,7 @@ export const useQualificationsStore = () => {
   const changeSetId = changeSetsStore.selectedChangeSetId;
   const workspaceId = changeSetsStore.selectedWorkspaceId;
   return addStoreHooks(
-    defineStore(`cs${changeSetId}/qualifications`, {
+    defineStore(`cs${changeSetId || "NONE"}/qualifications`, {
       state: () => ({
         // stats per component - this is the raw data
         // we may change this to store qualificaiton ids and individual statuses to make realtime updates easier
@@ -120,6 +120,8 @@ export const useQualificationsStore = () => {
         },
       },
       onActivated() {
+        if (!changeSetId) return;
+
         this.FETCH_QUALIFICATIONS_SUMMARY();
 
         const realtimeStore = useRealtimeStore();

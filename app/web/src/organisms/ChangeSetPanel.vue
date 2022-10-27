@@ -62,13 +62,18 @@
           </p>
         </div>
         <div class="pt-2">
-          <VormInput v-model="createChangeSetName" label="Change set name" />
+          <VormInput
+            v-model="createChangeSetName"
+            label="Change set name"
+            required
+            required-message="Please choose a name for your change set!"
+          />
         </div>
       </template>
       <template #buttons>
         <div class="flex flex-row-reverse gap-sm">
           <VButton2
-            :disabled="false"
+            :disabled="!createChangeSetName"
             tone="success"
             icon="plus-circle"
             label="Create"
@@ -163,6 +168,8 @@ function onSelectChangeSet(newVal: number | "NEW") {
   }
 }
 async function onCreateChangeSet() {
+  if (!createChangeSetName.value.trim()) return;
+
   const createReq = await changeSetsStore.CREATE_CHANGE_SET(
     createChangeSetName.value,
   );
@@ -178,13 +185,17 @@ const applyChangeSet = async () => {
   if (applyReq.result.success) await navigateToFixMode();
 };
 
-watch(openChangeSets, () => {
-  if (!openChangeSets.value.length) {
-    showDialog.value = "create";
-  } else if (!selectedChangeSetId.value) {
-    showDialog.value = "select";
-  }
-});
+watch(
+  openChangeSets,
+  () => {
+    if (!openChangeSets.value.length) {
+      showDialog.value = "create";
+    } else if (!selectedChangeSetId.value) {
+      showDialog.value = "select";
+    }
+  },
+  { immediate: true },
+);
 
 // Navigates to the workspace fix page
 const navigateToFixMode = async () => {

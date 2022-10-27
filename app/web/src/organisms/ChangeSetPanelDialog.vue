@@ -37,10 +37,10 @@
               >
                 <slot name="title"></slot>
               </DialogTitle>
-              <div class="type-regular-sm p-sm">
+              <!-- <div class="type-regular-sm p-sm">
                 <slot name="error"></slot>
-              </div>
-              <div class="p-sm pb-0">
+              </div> -->
+              <div class="p-sm py-0">
                 <slot name="body"></slot>
               </div>
               <div class="p-sm">

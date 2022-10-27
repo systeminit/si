@@ -20,7 +20,11 @@
         <StatusBar :key="selectedChangeSet?.id" class="flex-none" />
       </template>
       <template v-else>
-        <div class="flex-grow p-lg">
+        <div class="w-full h-full flex flex-row relative overflow-hidden">
+          <WorkspaceModelAndView />
+        </div>
+        <StatusBar :key="0" class="flex-none" />
+        <!-- <div class="flex-grow p-lg">
           <template v-if="changeSetsReqStatus.isPending">
             <h2>Loading change sets...</h2>
           </template>
@@ -74,7 +78,7 @@
               </div>
             </Stack>
           </template>
-        </div>
+        </div> -->
       </template>
     </template>
   </AppLayout>
@@ -84,6 +88,7 @@
 import { computed, PropType, reactive, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import _ from "lodash";
+import { ChangeSet } from "@codemirror/state";
 import Navbar from "@/organisms/Navbar.vue";
 import StatusBar from "@/organisms/StatusBar.vue";
 import { ChangeSetId, useChangeSetsStore } from "@/store/change_sets.store";
@@ -93,6 +98,8 @@ import Divider from "@/ui-lib/layout/Divider.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
+import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import WorkspaceModelAndView from "@/organisms/Workspace/WorkspaceModelAndView.vue";
 import AppLayout from "./AppLayout.vue";
 
 const props = defineProps({
@@ -111,7 +118,27 @@ const workspacesReqStatus = workspacesStore.getRequestStatus(
 );
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 
-const openChangeSets = computed(() => changeSetsStore.openChangeSets);
+// TODO(wendy) - added test data to work on this, please set back to comment below
+const openChangeSets = computed(() => {
+  return [
+    {
+      id: 1,
+      name: "test",
+      status: ChangeSetStatus.Open,
+    },
+    {
+      id: 2,
+      name: "test2",
+      status: ChangeSetStatus.Open,
+    },
+    {
+      id: 3,
+      name: "test3",
+      status: ChangeSetStatus.Open,
+    },
+  ];
+}); // changeSetsStore.openChangeSets);
+
 const changeSetsReqStatus =
   changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
 const selectedChangeSet = computed(() => changeSetsStore.selectedChangeSet);
