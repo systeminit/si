@@ -3,13 +3,17 @@
     <Navbar />
 
     <template v-if="workspacesReqStatus.isPending">
-      Loading your workspace(s)...
+      <div class="flex-grow p-lg">Loading your workspace(s)...</div>
     </template>
     <template v-else-if="workspacesReqStatus.isError">
-      <ErrorMessage>Error loading your workspaces</ErrorMessage>
+      <div class="flex-grow p-lg">
+        <ErrorMessage>Error loading your workspaces</ErrorMessage>
+      </div>
     </template>
     <template v-else-if="!selectedWorkspace">
-      <ErrorMessage>Cannot find workspace {{ workspaceId }}</ErrorMessage>
+      <div class="flex-grow p-lg">
+        <ErrorMessage>Cannot find workspace {{ workspaceId }}</ErrorMessage>
+      </div>
     </template>
     <template v-else>
       <!-- no change set on some routes, otherwise it will only be set if change set is selected and valid -->
@@ -19,87 +23,33 @@
         </div>
         <StatusBar :key="selectedChangeSet?.id" class="flex-none" />
       </template>
+      <template v-else-if="changeSetsReqStatus.isPending">
+        <div class="flex-grow p-lg">Loading change sets...</div>
+      </template>
+      <template v-else-if="changeSetsReqStatus.isError">
+        <div class="flex-grow p-lg">
+          <ErrorMessage>Error loading change sets</ErrorMessage>
+        </div>
+      </template>
       <template v-else>
         <div class="w-full h-full flex flex-row relative overflow-hidden">
-          <WorkspaceModelAndView />
+          <router-view :key="route.fullPath" />
         </div>
         <StatusBar :key="0" class="flex-none" />
-        <!-- <div class="flex-grow p-lg">
-          <template v-if="changeSetsReqStatus.isPending">
-            <h2>Loading change sets...</h2>
-          </template>
-          <template v-else-if="changeSetsReqStatus.isError">
-            <ErrorMessage>Error loading change sets</ErrorMessage>
-          </template>
-          <template v-else>
-            <Stack>
-              <ErrorMessage
-                v-if="
-                  changeSetId && !selectedChangeSet && changeSetId !== 'auto'
-                "
-              >
-                Change set {{ changeSetId }} not found
-              </ErrorMessage>
-
-              <template v-if="openChangeSets.length">
-                <div v-for="changeSet in openChangeSets" :key="changeSet.id">
-                  {{ changeSet.name }}
-                  <VButton2
-                    icon="arrow--right"
-                    size="sm"
-                    variant="ghost"
-                    label="Select"
-                    :link-to="{
-                      name: 'change-set-home',
-                      params: { changeSetId: changeSet.id },
-                    }"
-                  />
-                </div>
-                <Divider label="or" />
-              </template>
-
-              <template v-if="openChangeSets.length">
-                <p>Create a new change set</p>
-              </template>
-              <template v-else>
-                <p>You have no open change sets - please create one.</p>
-              </template>
-
-              <div class="flex gap-sm">
-                <VormInput
-                  v-model="createChangeSetPayload.name"
-                  label="Change set name"
-                />
-                <VormInput type="container">
-                  <VButton2 icon="plus-circle" @click="onCreateChangeSet"
-                    >Create change set</VButton2
-                  >
-                </VormInput>
-              </div>
-            </Stack>
-          </template>
-        </div> -->
       </template>
     </template>
   </AppLayout>
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType, reactive, watch } from "vue";
+import { computed, PropType, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import _ from "lodash";
-import { ChangeSet } from "@codemirror/state";
 import Navbar from "@/organisms/Navbar.vue";
 import StatusBar from "@/organisms/StatusBar.vue";
 import { ChangeSetId, useChangeSetsStore } from "@/store/change_sets.store";
-import VormInput from "@/ui-lib/forms/VormInput.vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
-import Divider from "@/ui-lib/layout/Divider.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
-import Stack from "@/ui-lib/layout/Stack.vue";
-import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
-import WorkspaceModelAndView from "@/organisms/Workspace/WorkspaceModelAndView.vue";
 import AppLayout from "./AppLayout.vue";
 
 const props = defineProps({
@@ -117,27 +67,6 @@ const workspacesReqStatus = workspacesStore.getRequestStatus(
   "FETCH_USER_WORKSPACES",
 );
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
-
-// TODO(wendy) - added test data to work on this, please set back to comment below
-const openChangeSets = computed(() => {
-  return [
-    {
-      id: 1,
-      name: "test",
-      status: ChangeSetStatus.Open,
-    },
-    {
-      id: 2,
-      name: "test2",
-      status: ChangeSetStatus.Open,
-    },
-    {
-      id: 3,
-      name: "test3",
-      status: ChangeSetStatus.Open,
-    },
-  ];
-}); // changeSetsStore.openChangeSets);
 
 const changeSetsReqStatus =
   changeSetsStore.getRequestStatus("FETCH_CHANGE_SETS");
@@ -186,15 +115,5 @@ function tryAutoSelect() {
     // only clear the selected change set id if we are on "auto" mode and we can't autoamtically select
     changeSetsStore.selectedChangeSetId = null;
   }
-}
-
-const createChangeSetPayload = reactive({
-  name: "",
-});
-async function onCreateChangeSet() {
-  const req = await changeSetsStore.CREATE_CHANGE_SET(
-    createChangeSetPayload.name,
-  );
-  if (req.result.success) routeToChangeSet(req.result.data.changeSet.id);
 }
 </script>
