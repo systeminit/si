@@ -89,7 +89,7 @@ overflow hidden */
           }"
           />
           <DiagramIcon
-            icon="loading"
+            icon="loader"
             :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
             :config="{
               x: pendingInsert.position!.x - 30,
@@ -204,6 +204,8 @@ const props = defineProps({
   },
   // TODO: split this into controls for specific features rather than single toggle
   readOnly: { type: Boolean },
+
+  controlsDisabled: { type: Boolean, default: true },
 });
 
 const emit = defineEmits<{
@@ -287,6 +289,7 @@ const pointerIsWithinGrid = computed(() => {
 function onMouseWheel(e: KonvaEventObject<WheelEvent>) {
   // TODO check if target is the stage?
   e.evt.preventDefault();
+  if (props.controlsDisabled) return;
 
   // if CMD key, treat wheel as zoom, otherwise pan
   if (e.evt.metaKey) {
@@ -389,6 +392,8 @@ const spaceKeyIsDown = ref(false);
 const shiftKeyIsDown = ref(false);
 
 function onKeyDown(e: KeyboardEvent) {
+  if (props.controlsDisabled) return;
+
   // TODO: check is cursor is within graph bounds
   // TODO: check if something else (like an input) is focused and bail
 
@@ -436,6 +441,7 @@ const lastMouseDownEvent = ref<MouseEvent>();
 const lastMouseDownContainerPointerPos = ref<Vector2d>();
 const lastMouseDownDiagramElement = ref<DiagramElementIdentifier>();
 function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
+  if (props.controlsDisabled) return;
   // not sure why, but this is being called twice, once with the konva event, and once with the bare event
   // so we ignore the bare event
   if (!ke.evt) return;
@@ -458,6 +464,7 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   else handleMouseDownSelection();
 }
 function onMouseUp(e: MouseEvent) {
+  if (props.controlsDisabled) return;
   // we only care here about left click - might change this later...
   if (e.button !== 0) return;
   mouseIsDown.value = false;
@@ -472,6 +479,7 @@ function onMouseUp(e: MouseEvent) {
   else handleMouseUpSelection();
 }
 function onMouseMove(e: MouseEvent) {
+  if (props.controlsDisabled) return;
   // update pointer location relative to container, which is used throughout
   containerPointerPos.value = {
     x: e.clientX - containerViewportX.value,
@@ -494,6 +502,7 @@ function onMouseMove(e: MouseEvent) {
   }
 }
 function onRightClick(ke: KonvaEventObject<MouseEvent>) {
+  if (props.controlsDisabled) return;
   const e = ke.evt;
   e.preventDefault(); // do not show browser right click menu
   if (hoveredElement.value?.diagramElementType === "node") {

@@ -3,6 +3,7 @@
     <div class="flex flex-col h-full">
       <ChangeSetPanel
         v-if="!isViewMode"
+        ref="changeSetPanelRef"
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
 
@@ -35,6 +36,7 @@
       :nodes="diagramNodes"
       :edges="diagramEdges"
       :read-only="isViewMode"
+      :controls-disabled="changeSetPanelRef?.showDialog"
       @insert-element="onDiagramInsertElement"
       @move-element="onDiagramMoveElement"
       @draw-edge="onDrawEdge"
@@ -109,6 +111,8 @@ const diagramCustomConfig = {};
 const selectedComponent = computed(() => componentsStore.selectedComponent);
 
 const insertCallbacks: Record<string, () => void> = {};
+
+const changeSetPanelRef = ref();
 
 watch(
   () => componentsStore.selectedInsertSchemaId,

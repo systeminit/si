@@ -38,47 +38,47 @@
     >
       <template #title>Create Change Set</template>
       <template #content>
-        <div>
-          <p class="pb-2 type-regular-sm">
-            Modeling a configuration or extending SI happens within
-            <b>Change Sets</b>. Think of these like light-weight branches,
-            allowing you to experiment freely without risk of impacting
-            production systems.
-          </p>
-          <p class="pb-2 type-regular-sm">
-            Please give your <b>Change Set</b> a name below, and click the
-            Create button.
-          </p>
-        </div>
-        <div class="pt-2">
-          <VormInput
-            v-model="createChangeSetName"
-            label="Change set name"
-            required
-            required-message="Please choose a name for your change set!"
-          />
-        </div>
-      </template>
-      <template #buttons>
-        <div class="flex flex-row-reverse gap-sm">
-          <VButton2
-            :disabled="validationState.isError"
-            tone="success"
-            icon="plus-circle"
-            label="Create"
-            loading-text="Creating Change Set"
-            :request-status="createChangeSetReqStatus"
-            class="flex-grow"
-            @click="onCreateChangeSet"
-          />
-          <VButton2
-            tone="destructive"
-            variant="ghost"
-            icon="x-circle"
-            label="Cancel"
-            @click="onCloseCreateDialog"
-          />
-        </div>
+        <form @submit.prevent="onCreateChangeSet">
+          <div>
+            <p class="pb-2 type-regular-sm">
+              Modeling a configuration or extending SI happens within
+              <b>Change Sets</b>. Think of these like light-weight branches,
+              allowing you to experiment freely without risk of impacting
+              production systems.
+            </p>
+            <p class="pb-2 type-regular-sm">
+              Please give your <b>Change Set</b> a name below, and click the
+              Create button.
+            </p>
+          </div>
+          <div class="pt-2">
+            <VormInput
+              v-model="createChangeSetName"
+              label="Change set name"
+              required
+              required-message="Please choose a name for your change set!"
+            />
+          </div>
+          <div class="flex flex-row-reverse gap-sm py-3">
+            <VButton2
+              :disabled="validationState.isError"
+              tone="success"
+              icon="plus-circle"
+              label="Create"
+              loading-text="Creating Change Set"
+              :request-status="createChangeSetReqStatus"
+              class="flex-grow"
+              submit
+            />
+            <VButton2
+              tone="destructive"
+              variant="ghost"
+              icon="x-circle"
+              label="Cancel"
+              @click="onCloseCreateDialog"
+            />
+          </div>
+        </form>
       </template>
     </Modal>
 
@@ -230,4 +230,8 @@ function onCloseSelectDialog() {
   showDialog.value = false;
   if (!selectedChangeSetId.value) navigateToFixMode();
 }
+
+defineExpose({
+  showDialog,
+});
 </script>

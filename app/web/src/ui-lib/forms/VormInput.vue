@@ -627,6 +627,9 @@ defineExpose({
   // but this second call to `expose` was overwriting that one, so we must include it again
   validationState,
   validationMethods,
+
+  // Just in case you need to access the DOM element for the input field
+  inputRef,
 });
 </script>
 

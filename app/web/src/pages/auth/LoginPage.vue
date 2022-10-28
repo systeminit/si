@@ -82,11 +82,13 @@ useHead({ title: "Log in" });
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
+const devAutofill = true;
+
 // local dev prefills signup and login
 const loginPayload = reactive({
-  billingAccountName: import.meta.env.DEV ? "systeminit" : "",
-  userEmail: import.meta.env.DEV ? "example@systeminit.com" : "",
-  userPassword: import.meta.env.DEV ? "Password123!" : "",
+  billingAccountName: import.meta.env.DEV && devAutofill ? "systeminit" : "",
+  userEmail: import.meta.env.DEV && devAutofill ? "example@systeminit.com" : "",
+  userPassword: import.meta.env.DEV && devAutofill ? "Password123!" : "",
 });
 
 const authStore = useAuthStore();
