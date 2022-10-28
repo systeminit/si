@@ -8,31 +8,29 @@
         <div class="flex items-center justify-center place-items-center h-full">
           <img class="block h-11 w-11 my-2 mr-2" :src="logo" alt="SI Logo" />
 
-          <SiBarButton tooltip-text="Workspaces">
-            <template #default="{ hovered, open }">
-              <div class="flex-col flex text-left">
-                <div class="text-xs font-medium">WORKSPACE:</div>
+          <NavbarButton tooltip-text="Workspaces">
+            <template #default="{ open, hovered }">
+              <div class="flex-col flex text-left gap-xs">
+                <div class="text-xs font-medium capsize pt-2xs">WORKSPACE:</div>
                 <div class="flex-row flex font-semibold">
                   <span v-if="workspacesReqStatus.isPending">loading...</span>
                   <template v-else>
                     <span>{{ selectedWorkspace?.name || "- none -" }}</span>
-                    <SiArrow :nudge="hovered || open" class="ml-1 w-5" />
+                    <SiArrow :nudge="open || hovered" class="ml-1" />
                   </template>
                 </div>
               </div>
             </template>
 
             <template #dropdownContent>
-              <SiDropdownItem
+              <DropdownMenuItem
                 v-for="workspace in workspaces"
                 :key="workspace.id"
                 :checked="workspace.id === selectedWorkspaceId"
-                class="text-sm"
-              >
-                {{ workspace.name }}
-              </SiDropdownItem>
+                :label="workspace.name"
+              />
             </template>
-          </SiBarButton>
+          </NavbarButton>
         </div>
 
         <!-- Center -->
@@ -49,13 +47,13 @@
 import { computed } from "vue";
 import SiLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import SiLogoWtsDev from "@/assets/images/si-logo-wts-dev.svg?url";
-import NavbarPanelRight from "@/organisms/NavbarPanelRight.vue";
-import NavbarPanelCenter from "@/organisms/NavbarPanelCenter.vue";
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+import NavbarPanelCenter from "./NavbarPanelCenter.vue";
+import NavbarPanelRight from "./NavbarPanelRight.vue";
+import NavbarButton from "./NavbarButton.vue";
 
 const isDevMode = import.meta.env.DEV;
 

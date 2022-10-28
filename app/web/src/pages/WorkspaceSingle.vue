@@ -46,12 +46,12 @@
 import { computed, PropType, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import _ from "lodash";
-import Navbar from "@/organisms/Navbar.vue";
 import StatusBar from "@/organisms/StatusBar.vue";
 import { ChangeSetId, useChangeSetsStore } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
-import AppLayout from "./AppLayout.vue";
+import AppLayout from "@/layout/AppLayout.vue";
+import Navbar from "@/layout/navbar/Navbar.vue";
 
 const props = defineProps({
   workspaceId: { type: Number, required: true },

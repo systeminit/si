@@ -4,7 +4,7 @@
     class="vbutton"
     :class="computedClasses"
     v-bind="dynamicAttrs"
-    @click="clickHandler"
+    @click="clickHandler($event)"
   >
     <div class="vbutton__inner">
       <template v-if="computedLoading">
@@ -161,7 +161,7 @@ watch(
 const confirmFirstClickAt = ref<Date | null>(null);
 let confirmClickTimeout: Timeout;
 let successClickTimeout: Timeout;
-function clickHandler() {
+function clickHandler(e: MouseEvent) {
   if (props.confirmClick) {
     if (confirmFirstClickAt.value) {
       // check if the 2 clicks are super close together and ignore if they are
@@ -187,7 +187,7 @@ function clickHandler() {
       }, SHOW_SUCCESS_DELAY);
     }
 
-    emit("click");
+    emit("click", e);
   }
 }
 
@@ -215,7 +215,7 @@ const computedClasses = computed(() => ({
   border-color: rgba(0, 0, 0, 0);
   // margin-right: 4px;
   // margin-bottom: 1px;
-  font-size: 16px;
+  font-size: 14px;
   // font-family: @fancy-font;
   // text-transform: uppercase;
   text-decoration: none;
@@ -269,7 +269,7 @@ const computedClasses = computed(() => ({
       padding: 4px;
     }
     .vbutton__inner {
-      gap: 4px;
+      gap: 2px;
     }
     .vbutton__text {
       padding: 0 8px;
@@ -277,14 +277,17 @@ const computedClasses = computed(() => ({
   }
   &.--size-sm {
     font-size: 14px;
-    padding: 6px 8px;
+    padding: 2px 4px;
+    .vbutton__inner {
+      gap: 2px;
+    }
     .vbutton__icon {
       padding: 4px;
     }
   }
 
   &.--size-md {
-    padding: 6px 16px;
+    padding: 6px 8px;
     .vbutton__icon {
       width: 24px;
       height: 24px;

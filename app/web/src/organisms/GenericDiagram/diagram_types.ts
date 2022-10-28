@@ -124,3 +124,9 @@ export type InsertElementEvent = {
   position: Vector2d;
   onComplete: () => void;
 };
+
+export type RightClickElementEvent = {
+  id: string;
+  diagramElementType: DiagramElementTypes;
+  e: MouseEvent;
+};

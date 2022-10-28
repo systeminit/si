@@ -40,7 +40,11 @@
       @draw-edge="onDrawEdge"
       @delete-elements="onDiagramDelete"
       @update:selection="onDiagramUpdateSelection"
+      @right-click-element="onRightClickElement"
     />
+    <DropdownMenu ref="contextMenuRef">
+      <DropdownMenuItem icon="trash">Delete component</DropdownMenuItem>
+    </DropdownMenu>
   </div>
 
   <SiPanel
@@ -70,6 +74,8 @@ import ComponentDetails from "@/organisms/ComponentDetails.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { useComponentsStore } from "@/store/components.store";
+import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
+import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
@@ -78,6 +84,7 @@ import {
   DrawEdgeEvent,
   DiagramElementIdentifier,
   DeleteElementsEvent,
+  RightClickElementEvent,
 } from "../GenericDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline.vue";
 
@@ -88,6 +95,7 @@ const currentRoute = useRoute();
 const isViewMode = computed(() => currentRoute.name === "workspace-view");
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
+const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const componentsStore = useComponentsStore();
 // TODO: probably want to get more generic component data and then transform into diagram nodes
@@ -176,6 +184,10 @@ function onDiagramDelete(_e: DeleteElementsEvent) {
 
 function onOutlineSelectComponent(id: number) {
   componentsStore.setSelectedComponentId(id);
+}
+
+function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
+  contextMenuRef.value?.open(rightClickEventInfo.e, true);
 }
 
 watch(

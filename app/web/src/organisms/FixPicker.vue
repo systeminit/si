@@ -3,9 +3,6 @@
     <template #tabs>
       <SiTabHeader :key="0">FIX</SiTabHeader>
     </template>
-    <template #dropdownitems>
-      <SiDropdownItem>FIX</SiDropdownItem>
-    </template>
     <template #panels>
       <TabPanel :key="0" class="h-full overflow-hidden flex flex-col">
         <SiSearch auto-search placeholder="search fixes" />
@@ -134,7 +131,6 @@ import { addSeconds } from "date-fns";
 import clsx from "clsx";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";

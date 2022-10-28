@@ -7,32 +7,29 @@
       <Icon name="minus" size="full" />
     </div>
 
-    <Menu>
-      <MenuButton
-        as="div"
-        :class="
-          clsx(
-            'bg-white border-neutral-300 border text-black text-center w-20 cursor-pointer mx-2 flex flex-col justify-center',
-            'dark:bg-black dark:text-white dark:border-black',
-          )
-        "
-        title="set zoom level"
-      >
-        {{ roundedZoomPercent }}%
-      </MenuButton>
-      <MenuItems as="div" class="absolute mt-[-100%] -top-10 left-6 bg-red">
-        <SiDropdown>
-          <SiDropdownItem
-            v-for="zoomOptionAmount in ZOOM_LEVEL_OPTIONS"
-            :key="zoomOptionAmount"
-            class="text-sm text-white"
-            @select="emit('update:zoom', zoomOptionAmount / 100)"
-          >
-            {{ zoomOptionAmount }}%
-          </SiDropdownItem>
-        </SiDropdown>
-      </MenuItems>
-    </Menu>
+    <div
+      :class="
+        clsx(
+          'bg-white border-neutral-300 border text-black text-center w-20 cursor-pointer mx-2 flex flex-col justify-center',
+          'dark:bg-black dark:text-white dark:border-black',
+        )
+      "
+      title="set zoom level"
+      @click="zoomMenuRef?.open"
+    >
+      {{ roundedZoomPercent }}%
+
+      <DropdownMenu ref="zoomMenuRef" force-above>
+        <DropdownMenuItem
+          v-for="zoomOptionAmount in ZOOM_LEVEL_OPTIONS"
+          :key="zoomOptionAmount"
+          class="justify-end"
+          @select="emit('update:zoom', zoomOptionAmount / 100)"
+        >
+          {{ zoomOptionAmount }}%
+        </DropdownMenuItem>
+      </DropdownMenu>
+    </div>
 
     <div
       :class="getButtonClasses(zoomLevel >= MAX_ZOOM)"
@@ -52,14 +49,13 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import _ from "lodash";
-import { Menu, MenuButton, MenuItems } from "@headlessui/vue";
 import clsx from "clsx";
-import SiDropdown from "@/molecules/SiDropdown.vue";
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { tw } from "@/utils/style_helpers";
+import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
+import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 import { MAX_ZOOM, MIN_ZOOM } from "./diagram_constants";
 
 const ZOOM_LEVEL_OPTIONS = [25, 50, 100, 150, 200];
@@ -72,6 +68,8 @@ const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;
   (e: "open:help"): void;
 }>();
+
+const zoomMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 function adjustZoom(direction: "up" | "down") {
   const mult = direction === "down" ? -1 : 1;

@@ -34,7 +34,7 @@ function getSystemTheme(): ThemeValue {
     ? "dark"
     : "light";
 }
-const systemTheme = ref(getSystemTheme());
+export const systemTheme = ref(getSystemTheme());
 window
   .matchMedia("(prefers-color-scheme: dark)")
   .addEventListener("change", () => {

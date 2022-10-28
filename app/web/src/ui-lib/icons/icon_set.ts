@@ -56,6 +56,12 @@ import Selector from "~icons/heroicons-solid/selector";
 import Lock from "~icons/heroicons-solid/lock-closed";
 import LockOpen from "~icons/heroicons-solid/lock-open";
 import Diagram from "~icons/raphael/diagram";
+import Bolt from "~icons/heroicons/bolt-20-solid";
+import Logout from "~icons/material-symbols/logout";
+import Cat from "~icons/fa6-solid/cat";
+import Filter from "~icons/heroicons/funnel-20-solid";
+
+import EmptyIcon from "@/assets/images/custom-icons/empty-icon.svg?raw";
 
 // octicons (from github) available as no suffix, -16, -24
 import GitBranch from "~icons/octicon/git-branch-24";
@@ -79,6 +85,8 @@ export const ICONS = Object.freeze({
   "alert-triangle": AlertTriangle,
   beaker: Beaker,
   bell: Bell,
+  bolt: Bolt,
+  cat: Cat,
   check: Check,
   "check-badge": CheckBadge,
   "check-circle": CheckCircle,
@@ -94,6 +102,7 @@ export const ICONS = Object.freeze({
   "exclamation-circle": ExclamationCircle,
   "external-link": ExternalLink,
   eye: Eye,
+  filter: Filter,
   "git-branch": GitBranch,
   "git-commit": GitCommit,
   "git-merge": GitMerge,
@@ -103,9 +112,11 @@ export const ICONS = Object.freeze({
   loader: Loader,
   lock: Lock,
   "lock-open": LockOpen,
+  logout: Logout,
   minus: Minus,
   "minus-circle": MinusCircle,
   moon: Moon,
+  none: EmptyIcon,
   play: Play,
   "play-circle": PlayCircle,
   plus: Plus,

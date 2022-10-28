@@ -17,7 +17,7 @@ export type Status =
   | "modified"
   | "deleted";
 
-export type IconType = "change" | "confirmation" | "qualification";
+export type IconType = "change" | "confirmation" | "qualification" | "fix";
 
 const CONFIG = {
   change: {
@@ -33,6 +33,12 @@ const CONFIG = {
   qualification: {
     success: { iconName: "check-circle", tone: "success" },
     failure: { iconName: "x-circle", tone: "destructive" },
+    running: { iconName: "loader", tone: "action" },
+  },
+  fix: {
+    success: { iconName: "check-circle", tone: "success" },
+    failure: { iconName: "x-circle", tone: "destructive" },
+    unstarted: { iconName: "help-circle", tone: "neutral" },
     running: { iconName: "loader", tone: "action" },
   },
 };

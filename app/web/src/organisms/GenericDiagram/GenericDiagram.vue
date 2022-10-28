@@ -37,6 +37,7 @@ overflow hidden */
         offset: { x: gridMinX, y: gridMinY },
       }"
       @mousedown="onMouseDown"
+      @click.right="onRightClick"
     >
       <DiagramGridBackground
         :grid-min-x="gridMinX"
@@ -154,6 +155,7 @@ import {
   PendingInsertedElement,
   DiagramElementTypes,
   InsertElementEvent,
+  RightClickElementEvent,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramEdge from "./DiagramEdge.vue";
@@ -211,6 +213,7 @@ const emit = defineEmits<{
   (e: "delete-elements", deleteInfo: DeleteElementsEvent): void;
   (e: "insert-element", insertInfo: InsertElementEvent): void;
   (e: "draw-edge", drawEdgeInfo: DrawEdgeEvent): void;
+  (e: "right-click-element", elRightClickInfo: RightClickElementEvent): void;
 }>();
 
 const showDebugBar = false;
@@ -488,6 +491,17 @@ function onMouseMove(e: MouseEvent) {
     ) {
       checkIfDragStarted(e);
     }
+  }
+}
+function onRightClick(ke: KonvaEventObject<MouseEvent>) {
+  const e = ke.evt;
+  e.preventDefault(); // do not show browser right click menu
+  if (hoveredElement.value?.diagramElementType === "node") {
+    emit("right-click-element", {
+      id: hoveredElement.value.id,
+      diagramElementType: hoveredElement.value.diagramElementType,
+      e,
+    });
   }
 }
 
