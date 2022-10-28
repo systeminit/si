@@ -79,9 +79,6 @@
                     @click="emit('save')"
                   />
                 </div>
-                <div v-else class="py-3">
-                  <slot name="buttons" />
-                </div>
               </div>
             </DialogPanel>
           </TransitionChild>

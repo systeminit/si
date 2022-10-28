@@ -107,15 +107,15 @@ const router = useRouter();
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
-const test = false;
+const devAutofill = true;
 
 // local dev prefills signup and login
 const signupPayload = reactive({
-  billingAccountName: import.meta.env.DEV && test ? "systeminit" : "",
-  userName: import.meta.env.DEV && test ? "System Init" : "",
-  userEmail: import.meta.env.DEV && test ? "example@systeminit.com" : "",
-  userPassword: import.meta.env.DEV && test ? "Password123!" : "",
-  signupSecret: import.meta.env.DEV && test ? "cool-steam" : "",
+  billingAccountName: import.meta.env.DEV && devAutofill ? "systeminit" : "",
+  userName: import.meta.env.DEV && devAutofill ? "System Init" : "",
+  userEmail: import.meta.env.DEV && devAutofill ? "example@systeminit.com" : "",
+  userPassword: import.meta.env.DEV && devAutofill ? "Password123!" : "",
+  signupSecret: import.meta.env.DEV && devAutofill ? "cool-steam" : "",
 });
 
 // Check if a password manager put the password in both fields
