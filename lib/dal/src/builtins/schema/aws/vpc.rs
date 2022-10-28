@@ -247,7 +247,6 @@ async fn ingress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
     let (group_id_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
-            *schema.id(),
             *schema_variant.id(),
             "Security Group ID",
             identity_func_item.func_id,
@@ -263,7 +262,6 @@ async fn ingress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
     let (exposed_ports_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
-            *schema.id(),
             *schema_variant.id(),
             "Exposed Ports",
             identity_func_item.func_id,
@@ -278,7 +276,6 @@ async fn ingress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
     let (region_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
-            *schema.id(),
             *schema_variant.id(),
             "Region",
             identity_func_item.func_id,
@@ -718,7 +715,6 @@ async fn egress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
     let (group_id_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
-            *schema.id(),
             *schema_variant.id(),
             "Security Group ID",
             identity_func_item.func_id,
@@ -733,7 +729,6 @@ async fn egress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
     let (region_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
-            *schema.id(),
             *schema_variant.id(),
             "Region",
             identity_func_item.func_id,
@@ -1044,7 +1039,6 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
     let (region_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
-            *schema.id(),
             *schema_variant.id(),
             "Region",
             identity_func_item.func_id,

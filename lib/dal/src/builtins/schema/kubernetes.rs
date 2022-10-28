@@ -296,7 +296,6 @@ async fn kubernetes_deployment(ctx: &DalContext, driver: &MigrationDriver) -> Bu
     let (docker_image_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
-            *schema.id(),
             *schema_variant.id(),
             "Container Image",
             identity_func_item.func_id,
@@ -311,7 +310,6 @@ async fn kubernetes_deployment(ctx: &DalContext, driver: &MigrationDriver) -> Bu
     let (kubernetes_namespace_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
-            *schema.id(),
             *schema_variant.id(),
             "Kubernetes Namespace",
             identity_func_item.func_id,

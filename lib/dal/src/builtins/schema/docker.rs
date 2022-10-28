@@ -148,7 +148,6 @@ async fn docker_image(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRes
     let (_docker_hub_credential_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
-            *schema.id(),
             *schema_variant.id(),
             "Docker Hub Credential",
             identity_func_item.func_id,
