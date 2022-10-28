@@ -668,7 +668,9 @@ BEGIN
                            '    SELECT DISTINCT ON (object_id) %1$I.* '
                            '    FROM %1$I '
                            '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
-                           '    ORDER BY object_id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                           '    ORDER BY object_id DESC, '
+                           '             visibility_change_set_pk DESC, '
+                           '             visibility_deleted_at DESC NULLS FIRST '
                            '$table_view_fn$; ',
                            this_table_name,
                            this_object_table,
@@ -761,7 +763,9 @@ BEGIN
                           '    SELECT DISTINCT ON (id) %1$I.* '
                           '    FROM %1$I '
                           '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
-                          '    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                          '    ORDER BY id DESC, '
+                          '             visibility_change_set_pk DESC, '
+                          '             visibility_deleted_at DESC NULLS FIRST '
                           '$table_view_fn$; ',
                           this_table_name
         );
@@ -879,7 +883,9 @@ BEGIN
                            '    SELECT DISTINCT ON (id) %1$I.* '
                            '    FROM %1$I '
                            '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
-                           '    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                           '    ORDER BY id DESC, '
+                           '             visibility_change_set_pk DESC, '
+                           '             visibility_deleted_at DESC NULLS FIRST '
                            '$table_view_fn$;',
                            this_table_name,
                            this_left_object_table,
