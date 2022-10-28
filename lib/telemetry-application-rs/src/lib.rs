@@ -1,30 +1,42 @@
+#![warn(
+    clippy::unwrap_in_result,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::missing_panics_doc,
+    clippy::panic_in_result_fn
+)]
+// TODO(fnichol): document all, then drop `missing_errors_doc`
+#![allow(clippy::missing_errors_doc)]
+
 use std::{borrow::Cow, env, io, ops::Deref, time::Duration};
 
 use derive_builder::Builder;
-use opentelemetry::{
-    global,
-    sdk::{
-        propagation::TraceContextPropagator,
-        resource::{EnvResourceDetector, OsResourceDetector, ProcessResourceDetector},
-        trace::{self, Tracer},
-        Resource,
-    },
-    trace::TraceError,
-};
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_semantic_conventions::resource;
+use telemetry::{
+    opentelemetry::{
+        self, global,
+        sdk::{
+            propagation::TraceContextPropagator,
+            resource::{EnvResourceDetector, OsResourceDetector, ProcessResourceDetector},
+            trace::{self, Tracer},
+            Resource,
+        },
+        trace::TraceError,
+    },
+    tracing::{debug, info, trace, warn, Subscriber},
+    TracingLevel, UpdateOpenTelemetry, Verbosity,
+};
 use thiserror::Error;
 use tokio::{signal::unix, sync::mpsc};
-use tracing::{debug, info, warn, Subscriber};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{
     filter::ParseError, fmt::format::FmtSpan, layer::Layered, prelude::*, reload,
     util::TryInitError, EnvFilter, Registry,
 };
 
-use crate::{
-    tracing::trace, Client, TelemetryClient, TracingLevel, UpdateOpenTelemetry, Verbosity,
-};
+pub use telemetry::{prelude, tracing};
+pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -41,7 +53,7 @@ pub enum Error {
 type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Builder, Debug, Default)]
-pub struct Config {
+pub struct TelemetryConfig {
     #[builder(setter(into), default = r#"env!("CARGO_PKG_NAME").to_string()"#)]
     service_name: String,
 
@@ -75,26 +87,28 @@ pub struct Config {
     enable_opentelemetry: bool,
 }
 
-impl Config {
+impl TelemetryConfig {
     #[must_use]
-    pub fn builder() -> ConfigBuilder {
-        ConfigBuilder::default()
+    pub fn builder() -> TelemetryConfigBuilder {
+        TelemetryConfigBuilder::default()
     }
 }
 
-impl ConfigBuilder {
+impl TelemetryConfigBuilder {
     fn default_log_env_var_prefix(
         &self,
-    ) -> std::result::Result<Option<String>, ConfigBuilderError> {
+    ) -> std::result::Result<Option<String>, TelemetryConfigBuilderError> {
         match &self.service_namespace {
             Some(service_namespace) => Ok(Some(service_namespace.to_uppercase())),
-            None => Err(ConfigBuilderError::ValidationError(
+            None => Err(TelemetryConfigBuilderError::ValidationError(
                 "service_namespace must be set".to_string(),
             )),
         }
     }
 
-    fn default_log_env_var(&self) -> std::result::Result<Option<String>, ConfigBuilderError> {
+    fn default_log_env_var(
+        &self,
+    ) -> std::result::Result<Option<String>, TelemetryConfigBuilderError> {
         match (&self.log_env_var_prefix, &self.service_name) {
             (Some(Some(prefix)), Some(service_name)) => Ok(Some(format!(
                 "{}_{}_LOG",
@@ -104,7 +118,7 @@ impl ConfigBuilder {
             (Some(None) | None, Some(service_name)) => {
                 Ok(Some(format!("{}_LOG", service_name.to_uppercase())))
             }
-            (None | Some(_), None) => Err(ConfigBuilderError::ValidationError(
+            (None | Some(_), None) => Err(TelemetryConfigBuilderError::ValidationError(
                 "service_name must be set".to_string(),
             )),
         }
@@ -137,7 +151,7 @@ type OtelLayerHandler = reload::Handle<
     Layered<reload::Layer<Option<EnvFilter>, Registry>, Registry, Registry>,
 >;
 
-pub fn init(config: Config) -> Result<Client> {
+pub fn init(config: TelemetryConfig) -> Result<ApplicationTelemetryClient> {
     global::set_text_map_propagator(TraceContextPropagator::new());
     let tracing_level = default_tracing_level(&config);
     let (subscriber, env_handle, otel_handle, inner_otel_layer) =
@@ -154,7 +168,7 @@ pub fn init(config: Config) -> Result<Client> {
     Ok(telemetry_client)
 }
 
-fn default_tracing_level(config: &Config) -> TracingLevel {
+fn default_tracing_level(config: &TelemetryConfig) -> TracingLevel {
     if let Some(log_env_var) = config.log_env_var.as_deref() {
         if let Ok(value) = env::var(log_env_var.to_uppercase()) {
             if !value.is_empty() {
@@ -174,7 +188,7 @@ fn default_tracing_level(config: &Config) -> TracingLevel {
 }
 
 fn tracing_subscriber(
-    config: &Config,
+    config: &TelemetryConfig,
     tracing_level: &TracingLevel,
 ) -> Result<(
     impl Subscriber + Send + Sync,
@@ -208,7 +222,7 @@ fn tracing_subscriber(
     Ok((registry, env_handle, otel_handle, inner_otel_layer))
 }
 
-fn try_tracer(config: &Config) -> std::result::Result<Tracer, TraceError> {
+fn try_tracer(config: &TelemetryConfig) -> std::result::Result<Tracer, TraceError> {
     opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(opentelemetry_otlp::new_exporter().tonic().with_env())
@@ -216,7 +230,7 @@ fn try_tracer(config: &Config) -> std::result::Result<Tracer, TraceError> {
         .install_batch(opentelemetry::runtime::Tokio)
 }
 
-fn telemetry_resource(config: &Config) -> Resource {
+fn telemetry_resource(config: &TelemetryConfig) -> Resource {
     // TODO(fnichol): create opentelemetry-resource-detector-aws for ec2 & eks detection
     Resource::from_detectors(
         Duration::from_secs(3),
@@ -233,7 +247,9 @@ fn telemetry_resource(config: &Config) -> Resource {
     ]))
 }
 
-pub fn start_tracing_level_signal_handler_task(client: &Client) -> io::Result<()> {
+pub fn start_tracing_level_signal_handler_task(
+    client: &ApplicationTelemetryClient,
+) -> io::Result<()> {
     let user_defined1 = unix::signal(unix::SignalKind::user_defined1())?;
     let user_defined2 = unix::signal(unix::SignalKind::user_defined2())?;
     drop(tokio::spawn(tracing_level_signal_handler_task(
@@ -245,7 +261,7 @@ pub fn start_tracing_level_signal_handler_task(client: &Client) -> io::Result<()
 }
 
 async fn tracing_level_signal_handler_task(
-    mut client: Client,
+    mut client: ApplicationTelemetryClient,
     mut user_defined1: unix::Signal,
     mut user_defined2: unix::Signal,
 ) {
@@ -270,12 +286,12 @@ async fn tracing_level_signal_handler_task(
 }
 
 fn start_telemetry_update_tasks(
-    config: Config,
+    config: TelemetryConfig,
     tracing_level: TracingLevel,
     env_handle: EnvLayerHandle,
     otel_handle: OtelLayerHandler,
     otel_layer: OtelLayer,
-) -> Client {
+) -> ApplicationTelemetryClient {
     let (env_handle_tx, env_handle_rx) = mpsc::channel(2);
     drop(tokio::spawn(update_tracing_level_task(
         env_handle,
@@ -288,7 +304,7 @@ fn start_telemetry_update_tasks(
         otel_handle_rx,
     )));
 
-    Client::new(
+    ApplicationTelemetryClient::new(
         config.app_modules,
         tracing_level,
         env_handle_tx,

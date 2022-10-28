@@ -8,4 +8,4 @@ IMG := systeminit/sdf
 WATCH_TASK := run
 WATCH_PATHS := . \
 	../../lib/sdf \
-	../../lib/telemetry-rs
+	../../lib/telemetry-application-rs

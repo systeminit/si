@@ -19,13 +19,13 @@ default--build:
 ## check-lint: Checks all code and doc linting for the Rust crate
 default--check-lint:
 	$(call header,$@)
-	cargo clippy --no-deps --all-targets --all-features -- -D warnings
+	cargo clippy --no-deps --all-targets -- -D warnings
 .PHONY: default--check-lint
 
 ## check-doc: Checks all documentation for the Rust crate
 default--check-doc:
 	$(call header,$@)
-	env RUSTDOCFLAGS="-Dwarnings" cargo doc --all-features --no-deps
+	env RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps
 .PHONY: default--check-doc
 
 ## check-format: Checks all code formatting for the Rust crate
@@ -74,7 +74,7 @@ default--watch:
 ## test: Tests the Rust crate
 default--test:
 	$(call header,$@)
-	env RUST_BACKTRACE=1 cargo test $(TEST_FILTER) --all-features -- $(TEST_ARGS)
+	env RUST_BACKTRACE=1 cargo test $(TEST_FILTER) -- $(TEST_ARGS)
 .PHONY: default--test
 
 ## prepush: Runs all checks & tests required before pushing commits

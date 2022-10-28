@@ -18,6 +18,7 @@ on:
       - lib/si-data-pg/**
       - lib/si-settings/**
       - lib/si-std/**
+      - lib/telemetry-application-rs/**
       - lib/telemetry-rs/**
       - lib/veritech-client/**
       - lib/veritech-core/**

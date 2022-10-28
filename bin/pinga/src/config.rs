@@ -6,6 +6,7 @@ use si_data_faktory::FaktoryConfig;
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_settings::{CanonicalFile, CanonicalFileError};
+use telemetry_application::prelude::*;
 use thiserror::Error;
 
 pub use dal::CycloneKeyPair;
@@ -88,7 +89,7 @@ impl Default for ConfigFile {
                 .join("../../lib/cyclone-server/src/dev.encryption.key")
                 .to_string_lossy()
                 .to_string();
-            telemetry::tracing::warn!(
+            warn!(
                 cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
                 "detected cargo run, setting *default* key paths from sources"
             );

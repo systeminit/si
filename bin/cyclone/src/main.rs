@@ -1,24 +1,27 @@
 use color_eyre::Result;
 use cyclone_server::{Config, IncomingStream, Server};
-use telemetry::{start_tracing_level_signal_handler_task, tracing::debug, TelemetryClient};
+use telemetry_application::{
+    prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
+    TelemetryClient, TelemetryConfig,
+};
 
 mod args;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
-    let config = telemetry::Config::builder()
+    let config = TelemetryConfig::builder()
         .service_name("cyclone")
         .service_namespace("si")
         .app_modules(vec!["cyclone_cli", "cyclone"])
         .build()?;
-    let telemetry = telemetry::init(config)?;
+    let telemetry = telemetry_application::init(config)?;
     let args = args::parse();
 
     run(args, telemetry).await
 }
 
-async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
+async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Result<()> {
     if args.verbose > 0 {
         telemetry.set_verbosity(args.verbose.into()).await?;
     }

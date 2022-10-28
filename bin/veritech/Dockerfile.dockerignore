@@ -35,6 +35,7 @@
 !lib/si-settings
 !lib/si-std
 !lib/si-test-macros
+!lib/telemetry-application-rs
 !lib/telemetry-rs
 
 # Include lang-js as currently Veritech ships with Cyclone/lang-js as a bundle

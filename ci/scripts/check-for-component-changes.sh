@@ -27,6 +27,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   lib/si-settings/**
   lib/si-std/**
   lib/si-test-macros/**
+  lib/telemetry-application-rs/**
   lib/telemetry-rs/**
   lib/veritech-client/**
   rust-toolchain
@@ -41,6 +42,7 @@ VERITECH_PATHS=".github/workflows/promote-veritech.yml
   lib/si-data-nats/**
   lib/si-settings/**
   lib/si-test-macros/**
+  lib/telemetry-application-rs/**
   lib/telemetry-rs/**
   lib/veritech-core/**
   lib/veritech-server/**
