@@ -17,9 +17,14 @@
         </VormInput>
 
         <VormInput type="container">
-          <VButton2 icon="git-merge" size="sm" @click="applyChangeSet">
-            Apply
-          </VButton2>
+          <VButton2
+            icon="git-merge"
+            size="sm"
+            loading-text="Applying"
+            label="Apply"
+            :request-status="applyChangeSetReqStatus"
+            @click="applyChangeSet"
+          />
         </VormInput>
       </div>
     </section>
@@ -57,10 +62,12 @@
       <template #buttons>
         <div class="flex flex-row-reverse gap-sm">
           <VButton2
-            :disabled="!createChangeSetName"
+            :disabled="validationState.isError"
             tone="success"
             icon="plus-circle"
             label="Create"
+            loading-text="Creating Change Set"
+            :request-status="createChangeSetReqStatus"
             class="flex-grow"
             @click="onCreateChangeSet"
           />
@@ -122,6 +129,7 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import Divider from "@/ui-lib/layout/Divider.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
 import Modal from "@/ui-lib/Modal.vue";
+import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 
 const workspacesStore = useWorkspacesStore();
 const selectedWorkspaceId = computed(() => workspacesStore.selectedWorkspaceId);
@@ -143,6 +151,8 @@ const showDialog = ref<false | "create" | "select">(false);
 // The name for a new change set
 const createChangeSetName = ref("");
 
+const { validationState, validationMethods } = useValidatedInputGroup();
+
 function onSelectChangeSet(newVal: number | "NEW") {
   if (newVal === "NEW") {
     showDialog.value = "create";
@@ -158,7 +168,7 @@ function onSelectChangeSet(newVal: number | "NEW") {
   }
 }
 async function onCreateChangeSet() {
-  if (!createChangeSetName.value.trim()) return;
+  if (validationMethods.hasError()) return;
 
   const createReq = await changeSetsStore.CREATE_CHANGE_SET(
     createChangeSetName.value,
@@ -168,6 +178,12 @@ async function onCreateChangeSet() {
     onSelectChangeSet(createReq.result.data.changeSet.id);
   }
 }
+
+const createChangeSetReqStatus =
+  changeSetsStore.getRequestStatus("CREATE_CHANGE_SET");
+
+const applyChangeSetReqStatus =
+  changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
 
 // Saves the current edit session and then applies the current change set
 const applyChangeSet = async () => {
