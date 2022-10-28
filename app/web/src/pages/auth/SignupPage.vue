@@ -52,11 +52,13 @@
             />
 
             <VormInput
+              ref="agentInputRef"
               v-model="signupPayload.signupSecret"
               type="password"
               label="Agent Passphrase"
               required
               placeholder="provided to you by SI"
+              @focus="checkDuplicatePassword"
             />
 
             <VButton2
@@ -84,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useHead } from "@vueuse/head";
 
@@ -105,14 +107,29 @@ const router = useRouter();
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
+const test = false;
+
 // local dev prefills signup and login
 const signupPayload = reactive({
-  billingAccountName: import.meta.env.DEV ? "systeminit" : "",
-  userName: import.meta.env.DEV ? "System Init" : "",
-  userEmail: import.meta.env.DEV ? "example@systeminit.com" : "",
-  userPassword: import.meta.env.DEV ? "Password123!" : "",
-  signupSecret: import.meta.env.DEV ? "cool-steam" : "",
+  billingAccountName: import.meta.env.DEV && test ? "systeminit" : "",
+  userName: import.meta.env.DEV && test ? "System Init" : "",
+  userEmail: import.meta.env.DEV && test ? "example@systeminit.com" : "",
+  userPassword: import.meta.env.DEV && test ? "Password123!" : "",
+  signupSecret: import.meta.env.DEV && test ? "cool-steam" : "",
 });
+
+// Check if a password manager put the password in both fields
+const agentInputRef = ref<InstanceType<typeof VormInput>>();
+const checkDuplicatePassword = () => {
+  if (signupPayload.userPassword === signupPayload.signupSecret) {
+    signupPayload.signupSecret = "";
+
+    // this removes the 1password highlight from the Agent Passphrase field
+    agentInputRef.value?.inputRef?.removeAttribute(
+      "data-com-onepassword-filled",
+    );
+  }
+};
 
 const authStore = useAuthStore();
 const signupReqStatus = authStore.getRequestStatus("SIGNUP");

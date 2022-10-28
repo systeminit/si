@@ -27,6 +27,8 @@ useHead(
       // add some base classes we need these type classes set for capsize plugin to work throughout
       // and add dark mode style/class
       class: tw`font-sans text-base leading-none ${rootTheme.value}`,
+    },
+    htmlAttrs: {
       style: `color-scheme: ${rootTheme.value};`,
     },
     // set up title template and a default
