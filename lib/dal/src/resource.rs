@@ -41,6 +41,8 @@ pub enum ResourceError {
 
     #[error("found unset component id (must use a \"set\" component id)")]
     FoundUnsetComponentId,
+    #[error("component not found: {0}")]
+    ComponentNotFound(ComponentId),
     #[error("no schema for component {0}")]
     NoSchema(ComponentId),
     #[error("no schema variant for component {0}")]
@@ -105,6 +107,7 @@ impl Resource {
         if component_id == ComponentId::NONE {
             return Err(ResourceError::FoundUnsetComponentId);
         }
+
         let row = ctx
             .txns()
             .pg()
@@ -119,6 +122,15 @@ impl Resource {
                 ],
             )
             .await?;
+
+        let component = Component::get_by_id(ctx, &component_id)
+            .await?
+            .ok_or(ResourceError::ComponentNotFound(component_id))?;
+        component
+            .set_value_by_json_pointer(ctx, "/root/resource", Some(serde_json::to_string(&data)?))
+            .await
+            .map_err(Box::new)?;
+
         Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
 
@@ -132,8 +144,20 @@ impl Resource {
     ) -> ResourceResult<(Self, bool)> {
         let resource = Self::get_by_component_and_system(ctx, component_id, system_id).await?;
         if let Some(mut resource) = resource {
+            let component = Component::get_by_id(ctx, &component_id)
+                .await?
+                .ok_or(ResourceError::ComponentNotFound(component_id))?;
+            component
+                .set_value_by_json_pointer(
+                    ctx,
+                    "/root/resource",
+                    Some(serde_json::to_string(&data)?),
+                )
+                .await
+                .map_err(Box::new)?;
+
             if resource.data != data {
-                resource.set_data(ctx, data).await?;
+                resource.set_data(ctx, data.clone()).await?;
                 Ok((resource, true))
             } else {
                 Ok((resource, false))
@@ -158,16 +182,15 @@ impl Resource {
             .await
             .map_err(Box::new)?
             .ok_or_else(|| ResourceError::NoSchema(*component.id()))?;
-        let action = match dbg!(
-            ActionPrototype::find_by_name(
-                ctx,
-                "refresh",
-                *schema.id(),
-                *schema_variant.id(),
-                SystemId::NONE,
-            )
-            .await?
-        ) {
+        let action = match ActionPrototype::find_by_name(
+            ctx,
+            "refresh",
+            *schema.id(),
+            *schema_variant.id(),
+            SystemId::NONE,
+        )
+        .await?
+        {
             Some(action) => action,
             None => return Ok(()),
         };
@@ -179,7 +202,7 @@ impl Resource {
             })?;
         let run_id: usize = rand::random();
         let (_runner, _state, _func_binding_return_values, _created_resources, _updated_resources) =
-            dbg!(WorkflowRunner::run(ctx, run_id, *prototype.id(), *component.id()).await)?;
+            WorkflowRunner::run(ctx, run_id, *prototype.id(), *component.id()).await?;
         WsEvent::resource_refreshed(ctx, *component.id(), system_id)
             .publish(ctx)
             .await?;
