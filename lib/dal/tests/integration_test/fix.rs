@@ -1,22 +1,15 @@
 use dal::{
     workflow_runner::workflow_runner_state::WorkflowRunnerStatus, ActionPrototype,
-    ConfirmationPrototype, ConfirmationResolver, ConfirmationResolverId, DalContext, Fix, FixBatch,
-    FixCompletionStatus, StandardModel, SystemId, WorkflowPrototypeId, WorkflowRunner,
+    ActionPrototypeContext, ConfirmationPrototype, ConfirmationPrototypeContext,
+    ConfirmationResolver, ConfirmationResolverId, DalContext, Fix, FixBatch, FixCompletionStatus,
+    Func, StandardModel, SystemId, WorkflowPrototype, WorkflowPrototypeContext,
+    WorkflowPrototypeId, WorkflowRunner,
 };
 use dal_test::helpers::component_payload::ComponentPayload;
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
 };
-use serde::Deserialize;
-
-/// Expected output shape from running `skopeo inspect`, which is used by the builtin action
-/// in this test module.
-#[derive(Deserialize, Debug)]
-struct SkopeoOutput {
-    #[serde(rename = "Name")]
-    name: String,
-}
 
 #[test]
 async fn confirmation_to_action(ctx: &DalContext) {
@@ -35,30 +28,19 @@ async fn confirmation_to_action(ctx: &DalContext) {
         .expect("could not perform workflow runner run");
     assert_eq!(runner_state.status(), WorkflowRunnerStatus::Success);
 
-    let mut maybe_skopeo_output_name: Option<String> = None;
+    let mut maybe_skopeo_output_name = None;
     for func_binding_return_value in &func_binding_return_values {
-        for stream in func_binding_return_value
-            .get_output_stream(ctx)
-            .await
-            .expect("could not get output stream from func binding return value")
-            .unwrap_or_default()
-        {
-            let maybe_skopeo_output: serde_json::Result<SkopeoOutput> =
-                serde_json::from_str(&stream.message);
-            if let Ok(skopeo_output) = maybe_skopeo_output {
-                if maybe_skopeo_output_name.is_some() {
-                    panic!(
-                        "already found skopeo output with name: {:?}",
-                        maybe_skopeo_output_name
-                    );
-                }
-                maybe_skopeo_output_name = Some(skopeo_output.name);
-            }
-        }
+        maybe_skopeo_output_name = maybe_skopeo_output_name.or_else(|| {
+            func_binding_return_value
+                .value()
+                .and_then(|v| v.pointer("/value/Name"))
+                .and_then(|v| v.as_str())
+        });
     }
-    let skopeo_outputname =
-        maybe_skopeo_output_name.expect("could not find name via skopeo output");
-    assert_eq!(skopeo_outputname, "docker.io/systeminit/whiskers");
+    assert_eq!(
+        maybe_skopeo_output_name,
+        Some("docker.io/systeminit/whiskers")
+    );
 }
 
 #[test]
@@ -142,17 +124,49 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
         .create_component(ctx, "systeminit/whiskers", Builtin::DockerImage)
         .await;
 
-    let confirmation_prototype = ConfirmationPrototype::get_by_component_and_name(
-        ctx,
-        payload.component_id,
-        "Has docker image resource?",
-        payload.schema_id,
-        payload.schema_variant_id,
-        SystemId::NONE,
-    )
-    .await
-    .expect("could not find confirmation prototype")
-    .expect("no confirmation prototype found");
+    let func_name = "si:resourceExistsConfirmation";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await
+        .expect("unable to find func")
+        .pop()
+        .expect("func not found");
+    let context = ConfirmationPrototypeContext {
+        schema_id: payload.schema_id,
+        schema_variant_id: payload.schema_variant_id,
+        ..Default::default()
+    };
+    let confirmation_prototype =
+        ConfirmationPrototype::new(ctx, "Create Docker Image", *func.id(), context)
+            .await
+            .expect("unable to create confirmation prototype");
+
+    let func_name = "si:dockerImageRefreshWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await
+        .expect("unable to find func")
+        .pop()
+        .expect("unable to find func");
+
+    let title = "Docker Image Refresh - Test";
+    let context = WorkflowPrototypeContext {
+        schema_id: payload.schema_id,
+        schema_variant_id: payload.schema_variant_id,
+        ..Default::default()
+    };
+    let workflow_prototype =
+        WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
+            .await
+            .expect("unable to create workflow prototype");
+
+    let name = "create";
+    let context = ActionPrototypeContext {
+        schema_id: payload.schema_id,
+        schema_variant_id: payload.schema_variant_id,
+        ..Default::default()
+    };
+    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context)
+        .await
+        .expect("unable to create action prototype");
 
     let confirmation_resolver = confirmation_prototype
         .run(ctx, payload.component_id, SystemId::NONE)

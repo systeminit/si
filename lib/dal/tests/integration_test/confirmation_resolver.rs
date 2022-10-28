@@ -6,7 +6,7 @@ use dal_test::{test, test_harness::create_component_for_schema};
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
+    let schema = Schema::find_by_attr(ctx, "name", &"Key Pair".to_string())
         .await
         .expect("unable to find schema")
         .pop()
@@ -59,7 +59,7 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn find_for_prototype(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
+    let schema = Schema::find_by_attr(ctx, "name", &"Key Pair".to_string())
         .await
         .expect("unable to find schema")
         .pop()

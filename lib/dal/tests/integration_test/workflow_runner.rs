@@ -143,7 +143,7 @@ async fn fail(ctx: &DalContext) {
 
 #[test]
 async fn run(ctx: &DalContext) {
-    let title = "Docker Image Resource Create";
+    let title = "Docker Image Refresh";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
         .expect("unable to find workflow by attr")
