@@ -18,4 +18,5 @@ ORDER BY
     attribute_context_schema_id DESC,
     attribute_context_schema_variant_id DESC,
     attribute_context_component_id DESC,
-    attribute_context_system_id DESC;
+    attribute_context_system_id DESC,
+    av.tenancy_universal -- bools sort false first ascending.

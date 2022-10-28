@@ -75,7 +75,8 @@ FROM (
             attribute_context_schema_id DESC,
             attribute_context_schema_variant_id DESC,
             attribute_context_component_id DESC,
-            attribute_context_system_id DESC
+            attribute_context_system_id DESC,
+            av.tenancy_universal -- bools sort false first ascending.
     ) AS internal_provider_data ON prototype_argument_data.internal_provider_id = internal_provider_data.internal_provider_id
     LEFT JOIN LATERAL (
         SELECT DISTINCT ON (attribute_context_external_provider_id)
@@ -112,7 +113,8 @@ FROM (
             attribute_context_schema_id DESC,
             attribute_context_schema_variant_id DESC,
             attribute_context_component_id DESC,
-            attribute_context_system_id DESC
+            attribute_context_system_id DESC,
+            av.tenancy_universal -- bools sort false first ascending.
     ) AS external_provider_data ON prototype_argument_data.external_provider_id = external_provider_data.external_provider_id
     GROUP BY
         attribute_prototype_id,

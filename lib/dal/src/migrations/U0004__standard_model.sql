@@ -689,7 +689,11 @@ BEGIN
                            '    SELECT DISTINCT ON (object_id) %1$I.* '
                            '    FROM %1$I '
                            '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
-                           '    ORDER BY object_id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                           '    ORDER BY '
+                           '        object_id, '
+                           '        visibility_change_set_pk DESC, '
+                           '        visibility_deleted_at DESC NULLS FIRST, '
+                           '        tenancy_universal ' -- Make sure non-universal things are used before universal things if everything else is equal. bools sort false first ascending
                            '$table_view_fn$; ',
                            this_table_name,
                            this_object_table,
