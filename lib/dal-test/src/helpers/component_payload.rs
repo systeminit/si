@@ -11,6 +11,7 @@ use dal::{
 };
 use serde_json::Value;
 
+#[derive(Debug)]
 /// Payload used for bundling a [`Component`](dal::Component) with all metadata needed for a test.
 pub struct ComponentPayload {
     pub schema_id: SchemaId,

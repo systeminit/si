@@ -126,20 +126,25 @@ END ;
 $$ LANGUAGE PLPGSQL STABLE;
 
 
-CREATE OR REPLACE FUNCTION update_by_id_v1(this_table text,
-                                           this_column text,
-                                           this_tenancy jsonb,
-                                           this_visibility jsonb,
-                                           this_id bigint,
-                                           this_value text,
-                                           OUT updated_at timestamp with time zone)
+CREATE OR REPLACE FUNCTION update_by_id_v1(
+    this_table         text,
+    this_column        text,
+    this_read_tenancy  jsonb,
+    this_write_tenancy jsonb,
+    this_visibility    jsonb,
+    this_id            bigint,
+    this_value         text,
+    OUT updated_at     timestamp with time zone)
 AS
 $$
 DECLARE
     this_visibility_row          visibility_record_v1;
+    this_write_tenancy_row       tenancy_record_v1;
     copy_change_set_column_names text;
+    debugging_record_info        record;
 BEGIN
     this_visibility_row = visibility_json_to_columns_v1(this_visibility);
+    this_write_tenancy_row = tenancy_json_to_columns_v1(this_write_tenancy);
 
     IF this_visibility_row.visibility_deleted_at IS NOT NULL THEN
         RAISE EXCEPTION 'update_by_id_v1: cannot update column % on table % for a deleted record',
@@ -159,7 +164,7 @@ BEGIN
                    ' RETURNING updated_at',
                    this_table,
                    this_column,
-                   this_tenancy,
+                   this_write_tenancy,
                    this_visibility_row.visibility_change_set_pk,
                    this_id,
                    this_value) INTO updated_at;
@@ -179,10 +184,27 @@ BEGIN
             FROM information_schema.columns
             WHERE information_schema.columns.table_name = this_table
               AND information_schema.columns.column_name NOT IN
-                  (this_column, 'visibility_change_set_pk', 'pk', 'created_at', 'updated_at')
+                  (
+                    this_column,
+                    'visibility_change_set_pk',
+                    'pk',
+                    'created_at',
+                    'updated_at',
+                    'tenancy_universal',
+                    'tenancy_billing_account_ids',
+                    'tenancy_organization_ids',
+                    'tenancy_workspace_ids'
+                  )
             INTO copy_change_set_column_names;
-            EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, %3$s) '
-                           ' SELECT %4$L, %5$L, %3$s FROM %1$I WHERE '
+            EXECUTE format('INSERT INTO %1$I ( '
+                           '    %2$s, '
+                           '    visibility_change_set_pk, '
+                           '    tenancy_universal, '
+                           '    tenancy_billing_account_ids, '
+                           '    tenancy_organization_ids, '
+                           '    tenancy_workspace_ids, '
+                           '    %3$s) '
+                           ' SELECT %4$L, %5$L, %8$L, %9$L, %10$L, %11$L, %3$s FROM %1$I WHERE '
                            ' %1$I.id = %6$L '
                            ' AND in_tenancy_v1(%7$L, '
                            '                   %1$I.tenancy_universal, '
@@ -198,38 +220,29 @@ BEGIN
                            this_value,
                            this_visibility_row.visibility_change_set_pk,
                            this_id,
-                           this_tenancy) INTO updated_at;
-        ELSE
-            EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, %3$s) '
-                           ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE '
-                           ' %1$I.id = %6$L '
-                           ' AND in_tenancy_v1(%7$L, '
-                           '                   %1$I.tenancy_universal, '
-                           '                   %1$I.tenancy_billing_account_ids, '
-                           '                   %1$I.tenancy_organization_ids, '
-                           '                   %1$I.tenancy_workspace_ids) '
-                           ' AND %1$I.visibility_change_set_pk = -1 '
-                           ' AND %1$I.visibility_deleted_at IS NULL '
-                           ' RETURNING updated_at',
-                           this_table,
-                           this_column,
-                           copy_change_set_column_names,
-                           this_value,
-                           this_visibility_row.visibility_change_set_pk,
-                           this_id,
-                           this_tenancy) INTO updated_at;
+                           this_read_tenancy,
+                           this_write_tenancy_row.tenancy_universal,
+                           this_write_tenancy_row.tenancy_billing_account_ids,
+                           this_write_tenancy_row.tenancy_organization_ids,
+                           this_write_tenancy_row.tenancy_workspace_ids
+                        ) INTO updated_at;
         END IF;
 
         -- If updated_at is still null, then there is a provided tenancy
         -- that is not suitable--this could be an application bug!
         IF updated_at IS NULL THEN
-            RAISE EXCEPTION 'update_by_id_v1: cannot update column % on table % of record % to value % (likely a tenancy issue). Tenancy(%), Visibility(%)',
+            EXECUTE format('SELECT * FROM %1$I WHERE id = %2$L', this_table, this_id)
+                INTO debugging_record_info;
+            RAISE EXCEPTION
+                'update_by_id_v1: cannot update column % on table % of record % to value % (likely a tenancy issue). Tenancy(%), Visibility(%), %(%)',
                 this_column,
                 this_table,
                 this_id,
                 this_value,
-                this_tenancy,
-                this_visibility;
+                this_write_tenancy,
+                this_visibility,
+                this_table,
+                debugging_record_info;
 
         END IF;
     END IF;
@@ -239,7 +252,8 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 -- update_by_id_v1 (BOOL)
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
-                                           this_tenancy jsonb,
+                                           this_read_tenancy jsonb,
+                                           this_write_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id bigint,
                                            this_value jsonb,
@@ -249,7 +263,8 @@ $$
 BEGIN
     SELECT update_by_id_v1(this_table_text,
                            this_column,
-                           this_tenancy,
+                           this_read_tenancy,
+                           this_write_tenancy,
                            this_visibility,
                            this_id,
                            CAST(this_value as text))
@@ -260,7 +275,8 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 -- update_by_id_v1 (BOOL)
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
-                                           this_tenancy jsonb,
+                                           this_read_tenancy jsonb,
+                                           this_write_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id bigint,
                                            this_value bool,
@@ -270,7 +286,8 @@ $$
 BEGIN
     SELECT update_by_id_v1(this_table_text,
                            this_column,
-                           this_tenancy,
+                           this_read_tenancy,
+                           this_write_tenancy,
                            this_visibility,
                            this_id,
                            CAST(this_value as text))
@@ -281,7 +298,8 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 -- update_by_id_v1 (bigint)
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
-                                           this_tenancy jsonb,
+                                           this_read_tenancy jsonb,
+                                           this_write_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id bigint,
                                            this_value bigint,
@@ -291,7 +309,8 @@ $$
 BEGIN
     SELECT update_by_id_v1(this_table_text,
                            this_column,
-                           this_tenancy,
+                           this_read_tenancy,
+                           this_write_tenancy,
                            this_visibility,
                            this_id,
                            CAST(this_value as text))
@@ -300,7 +319,8 @@ END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION delete_by_id_v1(this_table_text text,
-                                           this_tenancy jsonb,
+                                           this_read_tenancy jsonb,
+                                           this_write_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id bigint,
                                            OUT updated_at timestamp with time zone)
@@ -309,7 +329,8 @@ $$
 BEGIN
     SELECT update_by_id_v1(this_table_text,
                            'visibility_deleted_at',
-                           this_tenancy,
+                           this_read_tenancy,
+                           this_write_tenancy,
                            this_visibility,
                            this_id,
                            CAST(now() as text))

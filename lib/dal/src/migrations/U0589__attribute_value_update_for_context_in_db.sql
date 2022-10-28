@@ -461,6 +461,7 @@ BEGIN
                                                                                 proxy_target.key));
             PERFORM update_by_id_v1('attribute_values',
                                     'proxy_for_attribute_value_id',
+                                    this_read_tenancy,
                                     this_write_tenancy,
                                     this_visibility,
                                     proxy_attribute_value.id,
@@ -777,6 +778,7 @@ BEGIN
 
         PERFORM update_by_id_v1('attribute_values',
                                 'func_binding_id',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 this_existing_attribute_value_id,
@@ -797,6 +799,7 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_prototypes',
                             'func_id',
+                            this_read_tenancy,
                             this_write_tenancy,
                             this_visibility,
                             new_attribute_prototype_id,
@@ -973,6 +976,7 @@ BEGIN
                                       this_attribute_value_id);
             PERFORM update_by_id_v1('attribute_values',
                                     'proxy_for_attribute_value_id',
+                                    this_read_tenancy,
                                     this_write_tenancy,
                                     this_visibility,
                                     new_child_value.id,
@@ -1214,6 +1218,7 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_values',
                             'func_binding_id',
+                            this_read_tenancy,
                             this_write_tenancy,
                             this_visibility,
                             attribute_value_id,
@@ -1255,6 +1260,7 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_values',
                             'func_binding_return_value_id',
+                            this_read_tenancy,
                             this_write_tenancy,
                             this_visibility,
                             attribute_value_id,
@@ -1268,6 +1274,7 @@ BEGIN
     THEN
         PERFORM update_by_id_v1('attribute_values',
                                 'sealed_proxy',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 attribute_value_id,
@@ -1383,6 +1390,7 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_values',
                             'index_map',
+                            this_read_tenancy,
                             this_write_tenancy,
                             this_visibility,
                             parent_attribute_value_id,
@@ -1635,12 +1643,14 @@ BEGIN
         IF found_proxy.sealed_proxy = TRUE THEN
             PERFORM update_by_id_v1('attribute_values',
                                     'proxy_for_attribute_value_id',
+                                    this_read_tenancy,
                                     this_write_tenancy,
                                     this_visibility,
                                     found_proxy.id,
                                     NULL);
             PERFORM update_by_id_v1('attribute_values',
                                     'sealed_proxy',
+                                    this_read_tenancy,
                                     this_write_tenancy,
                                     this_visibility,
                                     found_proxy.id,
@@ -1651,6 +1661,7 @@ BEGIN
                                                       this_visibility,
                                                       found_proxy.id);
             PERFORM delete_by_id_v1('attribute_values',
+                                    this_read_tenancy,
                                     this_write_tenancy,
                                     this_visibility,
                                     found_proxy.id);
@@ -1731,12 +1742,14 @@ BEGIN
     ) AS x;
     IF attribute_value_count = 0 THEN
         PERFORM delete_by_id_v1('attribute_prototypes',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 attribute_prototype_id);
     END IF;
 
     PERFORM delete_by_id_v1('attribute_values',
+                            this_read_tenancy,
                             this_write_tenancy,
                             this_visibility,
                             this_parent_attribute_value_id);
@@ -1901,18 +1914,21 @@ BEGIN
     IF fbrv.id IS NOT NULL THEN
         PERFORM update_by_id_v1('func_binding_return_values',
                                 'value',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 fbrv.id,
                                 this_value);
         PERFORM update_by_id_v1('func_binding_return_values',
                                 'unprocessed_value',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 fbrv.id,
                                 this_unprocessed_value);
         PERFORM update_by_id_v1('func_binding_return_values',
                                 'func_execution_pk',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 fbrv.id,
@@ -2268,6 +2284,7 @@ BEGIN
         PERFORM update_by_id_v1(
             'attribute_values',
             'proxy_for_attribute_value_id',
+            this_read_tenancy,
             this_write_tenancy,
             this_visibility,
             new_attribute_value_id,

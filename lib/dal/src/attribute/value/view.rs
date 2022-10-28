@@ -2,6 +2,7 @@
 //! in the database.
 
 use std::collections::{HashMap, VecDeque};
+use telemetry::prelude::*;
 
 use crate::{
     AttributeReadContext, AttributeValue, AttributeValueError, AttributeValueId,
@@ -100,6 +101,13 @@ impl AttributeView {
 
         while !work_queue.is_empty() {
             let mut unprocessed: Vec<AttributeValuePayload> = vec![];
+            if root_stack.is_empty() {
+                warn!(
+                    "Unexpected empty root stack with work_queue: {:?}",
+                    &work_queue
+                );
+                break;
+            }
             let (root_id, json_pointer) = root_stack.pop().ok_or_else(|| {
                 dbg!(&work_queue);
                 AttributeValueError::UnexpectedEmptyRootStack
