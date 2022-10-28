@@ -17,38 +17,27 @@
         </VormInput>
 
         <VormInput type="container">
-          <VButton2 icon="git-merge" size="sm" @click="applyChangeSet">
-            Apply
-          </VButton2>
+          <VButton2
+            icon="git-merge"
+            size="sm"
+            loading-text="Applying"
+            label="Apply"
+            :request-status="applyChangeSetReqStatus"
+            @click="applyChangeSet"
+          />
         </VormInput>
       </div>
     </section>
-    <ChangeSetPanelDialog
-      :show="showDialog === 'create'"
+    <Modal
+      :open="showDialog === 'create'"
+      size="sm"
+      hide-top-close-button
+      disable-close
+      type="custom"
       @close="onCloseCreateDialog"
     >
       <template #title>Create Change Set</template>
-      <!-- <template #error>
-        <div
-          v-if="createChangeSetErrorMessage"
-          class="mb-4 border bg-warning-300 py-1 px-2"
-        >
-          <VButton
-            hide-label
-            button-rank="tertiary"
-            button-type="neutral"
-            class="float-right"
-            icon="x"
-            label="Close Dialog"
-            @click="createChangeSetErrorMessage = ''"
-          />
-          <p class="type-bold-xs">Failed to create Change Set</p>
-          <p class="type-italic-xs">
-            {{ createChangeSetErrorMessage }}
-          </p>
-        </div>
-      </template> -->
-      <template #body>
+      <template #content>
         <div>
           <p class="pb-2 type-regular-sm">
             Modeling a configuration or extending SI happens within
@@ -56,22 +45,29 @@
             allowing you to experiment freely without risk of impacting
             production systems.
           </p>
-          <p class="type-regular-sm">
+          <p class="pb-2 type-regular-sm">
             Please give your <b>Change Set</b> a name below, and click the
             Create button.
           </p>
         </div>
         <div class="pt-2">
-          <VormInput v-model="createChangeSetName" label="Change set name" />
+          <VormInput
+            v-model="createChangeSetName"
+            label="Change set name"
+            required
+            required-message="Please choose a name for your change set!"
+          />
         </div>
       </template>
       <template #buttons>
         <div class="flex flex-row-reverse gap-sm">
           <VButton2
-            :disabled="false"
+            :disabled="validationState.isError"
             tone="success"
             icon="plus-circle"
             label="Create"
+            loading-text="Creating Change Set"
+            :request-status="createChangeSetReqStatus"
             class="flex-grow"
             @click="onCreateChangeSet"
           />
@@ -84,15 +80,19 @@
           />
         </div>
       </template>
-    </ChangeSetPanelDialog>
+    </Modal>
 
-    <ChangeSetPanelDialog
-      :show="showDialog === 'select'"
+    <Modal
+      :open="showDialog === 'select'"
+      size="sm"
+      hide-top-close-button
+      disable-close
+      type="custom"
       @close="onCloseSelectDialog"
     >
       <template #title>Select Change Set</template>
-      <template #body>
-        <div class="type-regular-sm pb-2">
+      <template #content>
+        <div class="type-regular-sm pt-2">
           <p>
             Select the Change Set you would like to resume working in, or select
             <b>- new -</b> to create a new Change Set.
@@ -108,10 +108,12 @@
             @update:model-value="onSelectChangeSet"
           />
           <Divider label="or" />
-          <VButton2 icon="plus-circle">Create a new change set</VButton2>
+          <VButton2 icon="plus-circle" @click="switchToCreateMode">
+            Create a new change set
+          </VButton2>
         </Stack>
       </template>
-    </ChangeSetPanelDialog>
+    </Modal>
   </div>
 </template>
 
@@ -126,7 +128,8 @@ import VormInputOption from "@/ui-lib/forms/VormInputOption.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import Divider from "@/ui-lib/layout/Divider.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
-import ChangeSetPanelDialog from "./ChangeSetPanelDialog.vue";
+import Modal from "@/ui-lib/Modal.vue";
+import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 
 const workspacesStore = useWorkspacesStore();
 const selectedWorkspaceId = computed(() => workspacesStore.selectedWorkspaceId);
@@ -148,6 +151,8 @@ const showDialog = ref<false | "create" | "select">(false);
 // The name for a new change set
 const createChangeSetName = ref("");
 
+const { validationState, validationMethods } = useValidatedInputGroup();
+
 function onSelectChangeSet(newVal: number | "NEW") {
   if (newVal === "NEW") {
     showDialog.value = "create";
@@ -163,6 +168,8 @@ function onSelectChangeSet(newVal: number | "NEW") {
   }
 }
 async function onCreateChangeSet() {
+  if (validationMethods.hasError()) return;
+
   const createReq = await changeSetsStore.CREATE_CHANGE_SET(
     createChangeSetName.value,
   );
@@ -172,19 +179,33 @@ async function onCreateChangeSet() {
   }
 }
 
+const createChangeSetReqStatus =
+  changeSetsStore.getRequestStatus("CREATE_CHANGE_SET");
+
+const applyChangeSetReqStatus =
+  changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
+
 // Saves the current edit session and then applies the current change set
 const applyChangeSet = async () => {
   const applyReq = await changeSetsStore.APPLY_CHANGE_SET();
   if (applyReq.result.success) await navigateToFixMode();
 };
 
-watch(openChangeSets, () => {
-  if (!openChangeSets.value.length) {
-    showDialog.value = "create";
-  } else if (!selectedChangeSetId.value) {
-    showDialog.value = "select";
-  }
-});
+const switchToCreateMode = () => {
+  showDialog.value = "create";
+};
+
+watch(
+  openChangeSets,
+  () => {
+    if (!openChangeSets.value.length) {
+      showDialog.value = "create";
+    } else if (!selectedChangeSetId.value) {
+      showDialog.value = "select";
+    }
+  },
+  { immediate: true },
+);
 
 // Navigates to the workspace fix page
 const navigateToFixMode = async () => {

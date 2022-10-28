@@ -1,6 +1,6 @@
 <template>
   <TransitionRoot :show="open" appear as="template">
-    <Dialog as="div" class="relative z-50" @close="emit('close')">
+    <Dialog as="div" class="relative z-50" @close="handleClose">
       <TransitionChild
         as="template"
         enter="duration-300 ease-out"
@@ -10,7 +10,7 @@
         leave-from="opacity-100"
         leave-to="opacity-0"
       >
-        <div class="fixed inset-0 bg-black bg-opacity-50" />
+        <div class="fixed inset-0 bg-shade-100 bg-opacity-50" />
       </TransitionChild>
 
       <div class="fixed inset-0 overflow-y-auto">
@@ -26,12 +26,13 @@
           >
             <DialogPanel :class="dialogPanelClasses">
               <div
-                class="flex justify-between items-center py-2 border-b border-black px-2"
+                class="flex justify-between items-center py-2 border-b border-shade-100 px-2"
               >
                 <DialogTitle as="p" class="capitalize">
                   <slot name="title" />
                 </DialogTitle>
                 <VButton
+                  v-if="!hideTopCloseButton"
                   hide-label
                   button-rank="tertiary"
                   button-type="neutral"
@@ -42,7 +43,7 @@
               </div>
 
               <div
-                class="py-1 px-2 border-t dark:border-black flex flex-col place-content-center"
+                class="py-1 px-2 border-t dark:border-shade-100 flex flex-col place-content-center"
               >
                 <slot name="content" />
 
@@ -78,6 +79,9 @@
                     @click="emit('save')"
                   />
                 </div>
+                <div v-else class="py-3">
+                  <slot name="buttons" />
+                </div>
               </div>
             </DialogPanel>
           </TransitionChild>
@@ -105,10 +109,18 @@ const props = defineProps({
     required: true,
   },
   type: {
-    type: String as PropType<"alert" | "save">,
+    type: String as PropType<"alert" | "save" | "custom">,
     default: "alert",
   },
   disableSave: {
+    type: Boolean,
+    default: false,
+  },
+  disableClose: {
+    type: Boolean,
+    default: false,
+  },
+  hideTopCloseButton: {
     type: Boolean,
     default: false,
   },
@@ -122,8 +134,12 @@ const dialogPanelClasses = computed(() => {
   if (props.size === "xl") size = "max-w-xl";
   if (props.size === "2xl") size = "max-w-2xl";
 
-  return `${size} w-full transform rounded bg-white dark:bg-neutral-900 text-left align-middle shadow-xl transition-all text-black dark:text-white`;
+  return `${size} w-full transform rounded bg-white dark:bg-neutral-900 text-left align-middle shadow-xl transition-all text-shade-100 dark:text-white`;
 });
+
+const handleClose = () => {
+  if (!props.disableClose) emit("close");
+};
 
 const emit = defineEmits<{
   (e: "close"): void;

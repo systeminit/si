@@ -10,12 +10,12 @@
       <TabPanel :key="0" class="h-full overflow-hidden flex flex-col">
         <SiSearch auto-search placeholder="search fixes" />
         <div
-          class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2 border-b dark:border-neutral-600"
+          class="w-full flex-none text-neutral-400 dark:text-neutral-300 text-sm p-2 border-b dark:border-neutral-600"
         >
           Select fixes from the list below to run them.
         </div>
         <div
-          class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2 border-b dark:border-neutral-600 flex flex-row items-center justify-between whitespace-nowrap gap-4 overflow-hidden"
+          class="w-full flex-none text-neutral-400 dark:text-neutral-300 text-sm p-2 border-b dark:border-neutral-600 flex flex-row items-center justify-between whitespace-nowrap gap-4 overflow-hidden"
         >
           <VormInput
             class="ml-2"
@@ -41,7 +41,7 @@
         <div
           :class="
             clsx(
-              'flex flex-row p-4 w-full items-center justify-between border-b',
+              'flex-none flex flex-row p-4 w-full items-center justify-between border-b',
               themeClasses('border-neutral-200', 'border-neutral-600'),
             )
           "
@@ -58,6 +58,12 @@
             />
             <span class="pl-1">{{ filteredFixes.length }}</span>
           </div>
+          <Icon
+            v-if="fixesStore.populatingFixes"
+            name="loader"
+            size="md"
+            class="text-action-500 dark:text-action-100"
+          />
         </div>
         <div class="relative w-full h-full overflow-y-auto">
           <TransitionGroup

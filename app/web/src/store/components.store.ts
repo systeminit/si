@@ -108,7 +108,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   };
 
   return addStoreHooks(
-    defineStore(`cs${changeSetId}/components`, {
+    defineStore(`cs${changeSetId || "NONE"}/components`, {
       state: () => ({
         // components within this changeset
         // componentsById: {} as Record<ComponentId, Component>,
@@ -479,6 +479,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
       },
       onActivated() {
+        if (!changeSetId) return;
+
         this.FETCH_DIAGRAM_DATA();
         this.FETCH_COMPONENTS();
         this.FETCH_AVAILABLE_SCHEMAS();
