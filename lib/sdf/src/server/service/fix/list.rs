@@ -1,125 +1,105 @@
-use super::{FixError, FixResult};
-use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
+use dal::fix::FixError as DalFixError;
+use dal::ComponentError as DalComponentError;
 use dal::{
-    AttributeReadContext, Component, ComponentId, ConfirmationPrototype, ConfirmationResolver,
-    ConfirmationResolverId, ConfirmationResolverTree, FixResolver, FixResolverContext,
-    StandardModel, SystemId, Visibility,
+    Component, ComponentId, FixBatch, FixBatchId, FixCompletionStatus, FixId, StandardModel,
+    Visibility,
 };
 use serde::{Deserialize, Serialize};
 
+use super::FixResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::service::fix::FixError;
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListFixesRequest {
+pub struct ListRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum FixStatusView {
-    Success,
-    Failure,
-    Unstarted,
-}
-
-// TODO: add fields that are optional in the frontend
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ListedFixView {
-    id: ConfirmationResolverId,
-    name: String,
+pub struct FixHistoryView {
+    id: FixId,
+    status: FixCompletionStatus,
+    action: String,
     component_name: String,
     component_id: ComponentId,
-    recommendation: String,
-    status: FixStatusView,
+    provider: Option<String>,
+    output: Option<String>,
+    started_at: String,
+    finished_at: String,
 }
 
-pub type ListFixesResponse = Vec<ListedFixView>;
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchHistoryView {
+    id: FixBatchId,
+    status: FixCompletionStatus,
+    author: String,
+    fixes: Vec<FixHistoryView>,
+    started_at: String,
+    finished_at: String,
+}
+
+pub type ListResponse = Vec<BatchHistoryView>;
 
 pub async fn list(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Query(request): Query<ListFixesRequest>,
-) -> FixResult<Json<ListFixesResponse>> {
+    Query(request): Query<ListRequest>,
+) -> FixResult<Json<ListResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let resolvers = ConfirmationResolver::list(&ctx).await?;
+    let mut batch_views = Vec::new();
+    for batch in FixBatch::list_finished(&ctx).await? {
+        let mut fix_views = Vec::new();
+        for fix in batch.fixes(&ctx).await? {
+            let component = Component::get_by_id(&ctx, &fix.component_id())
+                .await?
+                .ok_or_else(|| DalComponentError::NotFound(fix.component_id()))?;
 
-    // Sorted resolvers
-    let resolvers = ConfirmationResolverTree::build(&ctx, resolvers)
-        .await?
-        .into_vec();
-
-    let mut views = Vec::with_capacity(resolvers.len());
-    for resolver in resolvers {
-        if resolver.success().is_none() {
-            continue;
-        }
-
-        let component_id = resolver.context().component_id;
-        if component_id.is_none() {
-            continue;
-        }
-
-        let component = Component::get_by_id(&ctx, &component_id)
-            .await?
-            .ok_or(FixError::ComponentNotFound(component_id))?;
-        let schema = component
-            .schema(&ctx)
-            .await?
-            .ok_or(FixError::NoSchemaForComponent(component_id))?;
-        let schema_variant = component
-            .schema_variant(&ctx)
-            .await?
-            .ok_or(FixError::NoSchemaVariantForComponent(component_id))?;
-
-        let context = FixResolverContext {
-            component_id,
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            system_id: SystemId::NONE,
-        };
-        let fix = FixResolver::find_for_confirmation(&ctx, *resolver.id(), context).await?;
-
-        let recommendations = resolver
-            .recommended_actions(&ctx)
-            .await?
-            .into_iter()
-            .map(|action| action.name().to_owned());
-
-        for recommendation in recommendations {
-            let prototype =
-                ConfirmationPrototype::get_by_id(&ctx, &resolver.confirmation_prototype_id())
-                    .await?
-                    .ok_or_else(|| {
-                        FixError::ConfirmationPrototypeNotFound(
-                            resolver.confirmation_prototype_id(),
-                        )
-                    })?;
-
-            views.push(ListedFixView {
-                id: *resolver.id(),
-                name: prototype.name().to_owned(),
-                component_name: Component::name_from_context(
-                    &ctx,
-                    AttributeReadContext {
-                        component_id: Some(component_id),
-                        system_id: Some(SystemId::NONE),
-                        ..AttributeReadContext::any()
-                    },
-                )
-                .await?,
-                component_id,
-                recommendation,
-                status: match fix.as_ref().and_then(FixResolver::success) {
-                    Some(true) => FixStatusView::Success,
-                    Some(false) => FixStatusView::Failure,
-                    None => FixStatusView::Unstarted,
-                },
+            fix_views.push(FixHistoryView {
+                id: *fix.id(),
+                status: *fix
+                    .completion_status()
+                    .ok_or(DalFixError::EmptyCompletionStatus)?,
+                action: fix
+                    .action()
+                    .map(|a| a.to_string())
+                    .ok_or_else(|| FixError::MissingAction(*fix.id()))?,
+                component_name: component.name(&ctx).await?,
+                component_id: *component.id(),
+                provider: None,
+                output: fix.logs().map(|l| l.to_string()),
+                started_at: fix
+                    .started_at()
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| FixError::MissingStartedTimestampForFix(*fix.id()))?,
+                finished_at: fix
+                    .finished_at()
+                    .map(|s| s.to_string())
+                    .ok_or_else(|| FixError::MissingFinishedTimestampForFix(*fix.id()))?,
             })
         }
+        batch_views.push(BatchHistoryView {
+            id: *batch.id(),
+            status: *batch
+                .completion_status()
+                .ok_or(DalFixError::EmptyCompletionStatus)?,
+            fixes: fix_views,
+            author: batch.author(),
+            started_at: batch
+                .started_at()
+                .map(|s| s.to_string())
+                .ok_or_else(|| FixError::MissingStartedTimestampForFixBatch(*batch.id()))?,
+            finished_at: batch
+                .finished_at()
+                .map(|s| s.to_string())
+                .ok_or_else(|| FixError::MissingFinishedTimestampForFixBatch(*batch.id()))?,
+        })
     }
 
-    Ok(Json(views))
+    Ok(Json(batch_views))
 }

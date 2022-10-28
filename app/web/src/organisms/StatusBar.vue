@@ -83,22 +83,6 @@
             </template>
           </StatusBarTab>
         </Tab>
-        <!--
-        <Tab
-          v-slot="{ selected }"
-          :aria-hidden="!isViewMode"
-          :class="[isViewMode ? '' : 'hidden']"
-        >
-          <WorkflowHistoryTab :selected="selected" />
-        </Tab>
-        -->
-        <Tab
-          v-slot="{ selected }"
-          :aria-hidden="!isViewMode"
-          :class="[isViewMode ? '' : 'hidden']"
-        >
-          <FixHistoryTab :selected="selected" />
-        </Tab>
         <Tab
           v-slot="{ selected }"
           :aria-hidden="!isViewMode"
@@ -170,13 +154,6 @@
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
-            <FixHistoryPanel />
-          </TabPanel>
-          <TabPanel
-            :aria-hidden="!isViewMode"
-            :class="[isViewMode ? '' : 'hidden']"
-            class="h-full"
-          >
             <ConfirmationsPanel />
           </TabPanel>
         </TabPanels>
@@ -203,8 +180,6 @@ import { useThemeContainer } from "@/ui-lib/theme_tools";
 import ChangeSetTabPanel from "@/organisms/StatusBarTabs/Changes/ChangesTabPanel.vue";
 import ChangeSetTab from "@/organisms/StatusBarTabs/Changes/ChangesTab.vue";
 import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
-import FixHistoryTab from "./StatusBarTabs/Fix/FixHistoryTab.vue";
-import FixHistoryPanel from "./StatusBarTabs/Fix/FixHistoryPanel.vue";
 import ConfirmationsTab from "./StatusBarTabs/Confirmations/ConfirmationsTab.vue";
 
 // override theme to be always dark within status bar

@@ -3,54 +3,74 @@ use std::{collections::HashMap, convert::TryFrom};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
+use crate::fix::FixError;
 use crate::{
     job::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, ActionPrototype, ChangeSetPk, Component, ComponentId, ConfirmationResolverId,
-    DalContext, FixExecution, FixExecutionBatch, FixExecutionBatchId, FixResolver,
-    FixResolverContext, StandardModel, SystemId, Visibility, WorkflowRunnerStatus, WsEvent,
+    DalContext, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver,
+    FixResolverContext, StandardModel, SystemId, Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Fix {
+pub struct FixItem {
+    pub id: FixId,
     pub action: String,
     pub component_id: ComponentId,
     pub confirmation_resolver_id: ConfirmationResolverId,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct FixesArgs {
-    fixes: Vec<Fix>,
-    batch_id: FixExecutionBatchId,
+struct FixesJobArgs {
+    fixes: Vec<FixItem>,
+    batch_id: FixBatchId,
+    started: bool,
 }
 
-impl From<Fixes> for FixesArgs {
-    fn from(value: Fixes) -> Self {
+impl From<FixesJob> for FixesJobArgs {
+    fn from(value: FixesJob) -> Self {
         Self {
             fixes: value.fixes,
             batch_id: value.batch_id,
+            started: value.started,
         }
     }
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub struct Fixes {
-    fixes: Vec<Fix>,
-    batch_id: FixExecutionBatchId,
+pub struct FixesJob {
+    fixes: Vec<FixItem>,
+    started: bool,
+    batch_id: FixBatchId,
     access_builder: AccessBuilder,
     visibility: Visibility,
     faktory_job: Option<FaktoryJobInfo>,
 }
 
-impl Fixes {
-    pub fn new(ctx: &DalContext, fixes: Vec<Fix>, batch_id: FixExecutionBatchId) -> Box<Self> {
+impl FixesJob {
+    pub fn new(ctx: &DalContext, fixes: Vec<FixItem>, batch_id: FixBatchId) -> Box<Self> {
+        Self::new_raw(ctx, fixes, batch_id, false)
+    }
+
+    /// Used for creating another fix job in a "fixes" sequence.
+    fn new_iteration(ctx: &DalContext, fixes: Vec<FixItem>, batch_id: FixBatchId) -> Box<Self> {
+        Self::new_raw(ctx, fixes, batch_id, true)
+    }
+
+    fn new_raw(
+        ctx: &DalContext,
+        fixes: Vec<FixItem>,
+        batch_id: FixBatchId,
+        started: bool,
+    ) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
         let visibility = *ctx.visibility();
 
         Box::new(Self {
             fixes,
+            started,
             batch_id,
             access_builder,
             visibility,
@@ -59,9 +79,9 @@ impl Fixes {
     }
 }
 
-impl JobProducer for Fixes {
+impl JobProducer for FixesJob {
     fn args(&self) -> JobProducerResult<serde_json::Value> {
-        Ok(serde_json::to_value(FixesArgs::from(self.clone()))?)
+        Ok(serde_json::to_value(FixesJobArgs::from(self.clone()))?)
     }
 
     fn meta(&self) -> JobProducerResult<JobMeta> {
@@ -83,14 +103,14 @@ impl JobProducer for Fixes {
     }
 
     fn identity(&self) -> String {
-        serde_json::to_string(self).expect("Cannot serialize Fixes")
+        serde_json::to_string(self).expect("Cannot serialize FixesJob")
     }
 }
 
 #[async_trait]
-impl JobConsumer for Fixes {
+impl JobConsumer for FixesJob {
     fn type_name(&self) -> String {
-        "Fixes".to_string()
+        "FixesJob".to_string()
     }
 
     fn access_builder(&self) -> AccessBuilder {
@@ -102,49 +122,66 @@ impl JobConsumer for Fixes {
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
-        let run_id = rand::random();
+        // Mark the batch as started if it has not been yet.
+        if !self.started {
+            let mut batch = FixBatch::get_by_id(ctx, &self.batch_id)
+                .await?
+                .ok_or(JobConsumerError::MissingFixBatch(self.batch_id))?;
+            batch.stamp_started(ctx).await?;
+        }
 
         if self.fixes.is_empty() {
             return Ok(());
         }
+        let fix_item = &self.fixes[0];
 
-        let fix = &self.fixes[0];
-
-        let component = Component::get_by_id(ctx, &fix.component_id)
+        // Get the workflow for the action we need to run.
+        let component = Component::get_by_id(ctx, &fix_item.component_id)
             .await?
-            .ok_or(JobConsumerError::ComponentNotFound(fix.component_id))?;
-        let schema_variant = component
-            .schema_variant(ctx)
-            .await?
-            .ok_or(JobConsumerError::NoSchemaVariantFound(fix.component_id))?;
+            .ok_or(JobConsumerError::ComponentNotFound(fix_item.component_id))?;
+        let schema_variant =
+            component
+                .schema_variant(ctx)
+                .await?
+                .ok_or(JobConsumerError::NoSchemaVariantFound(
+                    fix_item.component_id,
+                ))?;
         let schema = component
             .schema(ctx)
             .await?
-            .ok_or(JobConsumerError::NoSchemaFound(fix.component_id))?;
-
+            .ok_or(JobConsumerError::NoSchemaFound(fix_item.component_id))?;
         let action = ActionPrototype::find_by_name(
             ctx,
-            &fix.action,
+            &fix_item.action,
             *schema.id(),
             *schema_variant.id(),
             SystemId::NONE,
         )
         .await?
-        .ok_or_else(|| JobConsumerError::ActionNotFound(fix.action.clone(), fix.component_id))?;
+        .ok_or_else(|| {
+            JobConsumerError::ActionNotFound(fix_item.action.clone(), fix_item.component_id)
+        })?;
         let workflow_prototype_id = action.workflow_prototype_id();
 
-        let (fix_execution, runner_state) = FixExecution::new_and_perform_fix(
+        // Run the fix (via the action's workflow prototype).
+        let mut fix = Fix::get_by_id(ctx, &fix_item.id)
+            .await?
+            .ok_or(FixError::MissingFix(fix_item.id))?;
+        let run_id = rand::random();
+        fix.run(
             ctx,
-            self.batch_id,
-            fix.confirmation_resolver_id,
             run_id,
             workflow_prototype_id,
-            fix.component_id,
+            action.name().to_string(),
         )
         .await?;
+        let completion_status: FixCompletionStatus = *fix
+            .completion_status()
+            .ok_or(FixError::EmptyCompletionStatus)?;
 
+        // Upsert the relevant fix resolver.
         let context = FixResolverContext {
-            component_id: fix.component_id,
+            component_id: fix_item.component_id,
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             system_id: SystemId::NONE,
@@ -152,28 +189,35 @@ impl JobConsumer for Fixes {
         let _fix_resolver = FixResolver::upsert(
             ctx,
             workflow_prototype_id,
-            fix.confirmation_resolver_id,
-            match runner_state.status() {
-                WorkflowRunnerStatus::Success => Some(true),
-                WorkflowRunnerStatus::Failure => Some(false),
-                _ => None,
-            },
+            fix_item.confirmation_resolver_id,
+            Some(matches!(completion_status, FixCompletionStatus::Success)),
             context,
         )
         .await?;
 
+        // TODO(nick): once the logs' type changes, to Vec<String>, remove this.
+        let logs = match fix.logs() {
+            Some(logs) => logs
+                .split('\n')
+                .map(|log| log.to_string())
+                .collect::<Vec<String>>(),
+            None => vec![],
+        };
+
         WsEvent::fix_return(
             ctx,
-            fix.confirmation_resolver_id,
-            fix.action.clone(),
-            runner_state,
-            fix_execution.logs(),
+            *fix.id(),
+            self.batch_id,
+            fix_item.confirmation_resolver_id,
+            fix_item.action.clone(),
+            completion_status,
+            logs,
         )
         .publish(ctx)
         .await?;
 
         if self.fixes.len() > 1 {
-            ctx.enqueue_job(Fixes::new(
+            ctx.enqueue_job(FixesJob::new_iteration(
                 ctx,
                 self.fixes.iter().skip(1).cloned().collect(),
                 self.batch_id,
@@ -181,10 +225,13 @@ impl JobConsumer for Fixes {
             .await;
         } else {
             // Mark the batch as completed.
-            let mut batch = FixExecutionBatch::get_by_id(ctx, &self.batch_id)
+            let mut batch = FixBatch::get_by_id(ctx, &self.batch_id)
                 .await?
-                .ok_or(JobConsumerError::MissingFixExecutionBatch(self.batch_id))?;
-            batch.set_completed(ctx, true).await?;
+                .ok_or(JobConsumerError::MissingFixBatch(self.batch_id))?;
+            let batch_completion_status = batch.stamp_finished(ctx).await?;
+            WsEvent::fix_batch_return(ctx, *batch.id(), batch_completion_status)
+                .publish(ctx)
+                .await?;
 
             // Re-trigger confirmations and informs the frontend to re-fetch everything on head
             WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
@@ -197,18 +244,18 @@ impl JobConsumer for Fixes {
     }
 }
 
-impl TryFrom<faktory_async::Job> for Fixes {
+impl TryFrom<faktory_async::Job> for FixesJob {
     type Error = JobConsumerError;
 
     fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
-                r#"[{ "fixes": [Fixes], "batch_id": [BatchId] }, <AccessBuilder>, <Visibility>]"#
+                r#"[{ fixes: Vec<FixItem>, batch_id: FixBatchId, started: bool }, <AccessBuilder>, <Visibility>]"#
                     .to_string(),
                 job.args().to_vec(),
             ));
         }
-        let args: FixesArgs = serde_json::from_value(job.args()[0].clone())?;
+        let args: FixesJobArgs = serde_json::from_value(job.args()[0].clone())?;
         let access_builder: AccessBuilder = serde_json::from_value(job.args()[1].clone())?;
         let visibility: Visibility = serde_json::from_value(job.args()[2].clone())?;
 
@@ -217,6 +264,7 @@ impl TryFrom<faktory_async::Job> for Fixes {
         Ok(Self {
             fixes: args.fixes,
             batch_id: args.batch_id,
+            started: args.started,
             access_builder,
             visibility,
             faktory_job: Some(faktory_job_info),

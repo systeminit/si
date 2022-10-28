@@ -6,7 +6,7 @@
     <template #panels>
       <TabPanel :key="0" class="h-full overflow-auto">
         <div
-          v-if="fixBatchesWithFixes.length === 0"
+          v-if="fixBatches.length === 0"
           :class="
             clsx(
               'm-6 p-3 border rounded-md h-64 flex items-center font-bold justify-around text-center',
@@ -20,7 +20,7 @@
         <div v-else>
           <SiSearch auto-search class="border-b-0" />
           <SiCollapsible
-            v-for="(fixBatch, batch_index) of fixBatchesWithFixes"
+            v-for="(fixBatch, batch_index) of fixBatches"
             :key="batch_index"
             hide-bottom-border
           >
@@ -35,7 +35,7 @@
                     )
                   "
                 >
-                  (<Timestamp :date="fixBatch.timestamp" relative />)
+                  <!-- (<Timestamp :date="fixBatch.finishedAt" relative />) -->
                 </span>
               </div>
             </template>
@@ -53,9 +53,9 @@
                     )
                   "
                 >
-                  <Timestamp :date="fixBatch.timestamp" size="extended" />
+                  <!-- <Timestamp :date="fixBatch.finishedAt" size="extended" /> -->
                 </div>
-                <div>by: {{ fixBatch.author.email }}</div>
+                <div>by: {{ fixBatch.author }}</div>
               </div>
 
               <ul class="pl-5 mt-2">
@@ -76,13 +76,13 @@
                         )
                       "
                     >
-                      {{ fix.name }}
+                      {{ fix.action }}
                     </span>
                   </template>
                   <template #default>
                     <div class="p-2">
                       <CodeViewer :code="fix.output">
-                        <template #title>{{ fix.name }}</template>
+                        <template #title>{{ fix.action }}</template>
                       </CodeViewer>
                     </div>
                   </template>
@@ -106,19 +106,10 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { useFixesStore } from "@/store/fixes/fixes.store";
-import Timestamp from "@/ui-lib/Timestamp.vue";
+// import Timestamp from "@/ui-lib/Timestamp.vue";
 import CodeViewer from "./CodeViewer.vue";
 
 const fixesStore = useFixesStore();
 
-const fixBatchesWithFixes = computed(() =>
-  fixesStore.allFixBatches
-    .map((batch) => ({
-      ...batch,
-      fixes: fixesStore
-        .fixesOnBatch(batch.id)
-        .filter((fix) => fix.status === "success"),
-    }))
-    .reverse(),
-);
+const fixBatches = computed(() => fixesStore.allFinishedFixBatches);
 </script>

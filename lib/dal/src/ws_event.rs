@@ -5,9 +5,11 @@ use si_data_nats::NatsError;
 
 use crate::code_generation_resolver::CodeGenerationId;
 use crate::confirmation_status::ConfirmationStatusUpdate;
+use crate::fix::batch::FixBatchReturn;
+use crate::fix::FixReturn;
 use crate::qualification::QualificationCheckId;
 use crate::resource::ResourceRefreshId;
-use crate::workflow::{CommandOutput, CommandReturn, FixReturn};
+use crate::workflow::{CommandOutput, CommandReturn};
 use crate::{
     BillingAccountId, ChangeSetPk, ConfirmationPrototypeError, DalContext, HistoryActor,
     ReadTenancy, SchemaPk, StandardModelError,
@@ -29,6 +31,7 @@ pub type WsEventResult<T> = Result<T, WsEventError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 #[serde(tag = "kind", content = "data")]
+#[allow(clippy::large_enum_variant)]
 pub enum WsPayload {
     ChangeSetCreated(ChangeSetPk),
     ChangeSetApplied(ChangeSetPk),
@@ -40,6 +43,7 @@ pub enum WsPayload {
     CheckedQualifications(QualificationCheckId),
     CommandOutput(CommandOutput),
     CommandReturn(CommandReturn),
+    FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
     ConfirmationStatusUpdate(ConfirmationStatusUpdate),
 }

@@ -3,10 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use super::FixResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use dal::{
-    job::definition::{fix::Fix, Fixes},
-    ComponentId, ConfirmationResolverId, FixExecutionBatch, StandardModel, Visibility,
-};
+use dal::job::definition::{FixItem, FixesJob};
+use dal::{ComponentId, ConfirmationResolverId, Fix, FixBatch, StandardModel, Visibility};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -37,18 +35,27 @@ pub async fn run(
 ) -> FixResult<Json<FixesRunResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    // TODO(nick): use the logged-in user account information.
+    let batch = FixBatch::new(&ctx, "toddhoward@systeminit.com").await?;
     let mut fixes = Vec::with_capacity(request.list.len());
-    for fix in request.list {
-        fixes.push(Fix {
-            confirmation_resolver_id: fix.id,
-            component_id: fix.component_id,
-            action: fix.action_name,
+    for fix_run_request in request.list {
+        let fix = Fix::new(
+            &ctx,
+            *batch.id(),
+            fix_run_request.id,
+            fix_run_request.component_id,
+        )
+        .await?;
+        fixes.push(FixItem {
+            id: *fix.id(),
+            confirmation_resolver_id: fix_run_request.id,
+            component_id: fix_run_request.component_id,
+            action: fix_run_request.action_name,
         });
     }
 
-    let batch = FixExecutionBatch::new(&ctx).await?;
-
-    ctx.enqueue_job(Fixes::new(&ctx, fixes, *batch.id())).await;
+    ctx.enqueue_job(FixesJob::new(&ctx, fixes, *batch.id()))
+        .await;
 
     ctx.commit().await?;
 

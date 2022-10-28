@@ -8,7 +8,7 @@
   >
     <template #prefix>
       <VormInput
-        v-if="fix.status === 'unstarted'"
+        v-if="recommendation.status === 'unstarted'"
         :model-value="selected"
         type="checkbox"
         class="flex-none pl-1"
@@ -21,7 +21,7 @@
         "
       />
       <Icon
-        v-else-if="fix.status === 'running'"
+        v-else-if="recommendation.status === 'running'"
         name="loader"
         :class="clsx('flex-none pl-1', statusIconProps.color)"
         size="lg"
@@ -39,16 +39,20 @@
         :class="classes"
       >
         <Icon
-          v-if="fix.status !== 'success'"
+          v-if="recommendation.status !== 'success'"
           name="tools"
           size="md"
           class="text-destructive-500 flex-none"
         />
         <div class="flex flex-col min-w-0">
-          <span class="font-bold truncate"> {{ fix.name }}</span>
+          <span class="font-bold truncate"> {{ recommendation.name }}</span>
           <span class="text-xs text-neutral-700 dark:text-neutral-300 truncate">
             <!-- TODO(wendy) - sometimes the component name doesn't load properly? not sure why -->
-            {{ fix.componentName ? fix.componentName : "unknown" }}
+            {{
+              recommendation.componentName
+                ? recommendation.componentName
+                : "unknown"
+            }}
           </span>
         </div>
       </div>
@@ -65,7 +69,11 @@
         <div class="flex flex-row justify-between text-sm">
           <div class="flex flex-col">
             <div class="font-bold">Cloud Provider:</div>
-            <div>{{ fix.provider ? fix.provider : "unknown" }}</div>
+            <div>
+              {{
+                recommendation.provider ? recommendation.provider : "unknown"
+              }}
+            </div>
           </div>
           <div class="flex flex-col">
             <div class="font-bold">Environment:</div>
@@ -75,7 +83,7 @@
         <div class="py-4 text-sm">
           <div class="flex flex-col">
             <div class="font-bold">Recommendation:</div>
-            <div>{{ fix.recommendation }}</div>
+            <div>{{ recommendation.recommendation }}</div>
           </div>
         </div>
       </div>
@@ -90,11 +98,11 @@ import Icon from "@/ui-lib/icons/Icon.vue";
 import { IconNames } from "@/ui-lib/icons/icon_set";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-import { Fix } from "@/store/fixes/fixes.store";
+import { Recommendation } from "@/store/fixes/fixes.store";
 import { themeClasses } from "@/ui-lib/theme_tools";
 
 const props = defineProps({
-  fix: { type: Object as PropType<Fix>, required: true },
+  recommendation: { type: Object as PropType<Recommendation>, required: true },
   class: { type: String },
   selected: { type: Boolean, default: false },
 });
@@ -107,7 +115,7 @@ const emit = defineEmits<{
 
 const statusIconProps: Ref<{ name: IconNames; color: string }> = computed(
   () => {
-    switch (props.fix.status) {
+    switch (props.recommendation.status) {
       case "failure":
         return { name: "x-circle", color: "text-destructive-500" };
       case "success":

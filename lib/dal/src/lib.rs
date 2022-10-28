@@ -129,9 +129,9 @@ pub use diagram::{
     connection::Connection, connection::DiagramEdgeView, Diagram, DiagramError, DiagramKind,
 };
 pub use edge::{Edge, EdgeError, EdgeResult};
-pub use fix::execution::batch::{FixExecutionBatch, FixExecutionBatchId};
-pub use fix::execution::{FixExecution, FixExecutionId};
+pub use fix::batch::{FixBatch, FixBatchId};
 pub use fix::resolver::{FixResolver, FixResolverContext, FixResolverError, FixResolverId};
+pub use fix::{Fix, FixCompletionStatus, FixId};
 pub use func::binding_return_value::FuncBindingReturnValue;
 pub use func::{
     backend::{FuncBackendError, FuncBackendKind, FuncBackendResponseType},

@@ -11,10 +11,10 @@ use veritech_client::OutputStream;
 use crate::{
     func::backend::js_workflow::FuncBackendJsWorkflowArgs, func::backend::FuncDispatchContext,
     func::binding::FuncBindingId, func::execution::FuncExecution, resource::ResourceView,
-    workflow_runner::workflow_runner_state::WorkflowRunnerState, ConfirmationResolverId,
-    Connections, DalContext, DalContextBuilder, Func, FuncBackendKind, FuncBinding,
-    FuncBindingError, FuncBindingReturnValue, PgPoolError, RequestContext, ServicesContext,
-    StandardModel, StandardModelError, TransactionsError, WsEvent, WsEventError, WsPayload,
+    workflow_runner::workflow_runner_state::WorkflowRunnerState, Connections, DalContext,
+    DalContextBuilder, Func, FuncBackendKind, FuncBinding, FuncBindingError,
+    FuncBindingReturnValue, PgPoolError, RequestContext, ServicesContext, StandardModel,
+    StandardModelError, TransactionsError, WsEvent, WsEventError, WsPayload,
 };
 
 #[derive(Error, Debug)]
@@ -526,15 +526,6 @@ pub struct CommandReturn {
     output: Vec<String>,
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct FixReturn {
-    confirmation_resolver_id: ConfirmationResolverId,
-    action: String,
-    runner_state: WorkflowRunnerState,
-    output: Vec<String>,
-}
-
 impl WsEvent {
     pub fn command_output(ctx: &DalContext, run_id: usize, output: String) -> Self {
         WsEvent::new(
@@ -557,24 +548,6 @@ impl WsEvent {
                 run_id,
                 created_resources,
                 updated_resources,
-                runner_state,
-                output,
-            }),
-        )
-    }
-
-    pub fn fix_return(
-        ctx: &DalContext,
-        confirmation_resolver_id: ConfirmationResolverId,
-        action: String,
-        runner_state: WorkflowRunnerState,
-        output: Vec<String>,
-    ) -> Self {
-        WsEvent::new(
-            ctx,
-            WsPayload::FixReturn(FixReturn {
-                confirmation_resolver_id,
-                action,
                 runner_state,
                 output,
             }),
