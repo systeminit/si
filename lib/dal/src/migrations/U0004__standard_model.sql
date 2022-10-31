@@ -621,6 +621,7 @@ BEGIN
                            '                    WHERE visibility_deleted_at IS NULL; '
                            'CREATE UNIQUE INDEX %1$s_single_association ON %1$I (object_id, '
                            '                                        visibility_change_set_pk, '
+                           '                                        tenancy_universal, '
                            '                                        (visibility_deleted_at IS NULL)) '
                            '                    WHERE visibility_deleted_at IS NULL; '
                            'CREATE INDEX ON %1$I (object_id); '
