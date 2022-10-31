@@ -26,7 +26,7 @@
           <div aria-hidden="true" class="hidden" />
         </Tab>
 
-        <!-- Edit tabs -->
+        <!-- Edit mode tabs -->
         <Tab
           v-slot="{ selected }"
           :aria-hidden="isViewMode"
@@ -42,7 +42,7 @@
           <QualificationTab :selected="selected" />
         </Tab>
 
-        <!-- View tabs -->
+        <!-- View mode tabs -->
         <!-- SLA Tab mockup, currently disabled -->
         <!-- <Tab
           v-slot="{ selected }"
@@ -88,6 +88,13 @@
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
         >
+          <FixHistoryTab :selected="selected" />
+        </Tab>
+        <Tab
+          v-slot="{ selected }"
+          :aria-hidden="!isViewMode"
+          :class="[isViewMode ? '' : 'hidden']"
+        >
           <ConfirmationsTab :selected="selected" />
         </Tab>
 
@@ -115,7 +122,7 @@
           <!-- Prefix panel -->
           <TabPanel aria-hidden="true" class="hidden">hidden</TabPanel>
 
-          <!-- Edit panels -->
+          <!-- Edit mode panels -->
           <TabPanel
             :aria-hidden="isViewMode"
             :class="[isViewMode ? 'hidden' : '']"
@@ -131,7 +138,7 @@
             <QualificationTabPanel />
           </TabPanel>
 
-          <!-- View panels -->
+          <!-- View mode panels -->
           <!-- SLA TabPanel, currently incomplete and disabled -->
           <!-- <TabPanel
             :aria-hidden="!isViewMode"
@@ -146,8 +153,14 @@
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
-            <!-- TOOD(nick): replace with a Costs tab panel -->
             <GenericTabPanel :component-list="componentList" />
+          </TabPanel>
+          <TabPanel
+            :aria-hidden="!isViewMode"
+            :class="[isViewMode ? '' : 'hidden']"
+            class="h-full"
+          >
+            <FixHistoryPanel />
           </TabPanel>
           <TabPanel
             :aria-hidden="!isViewMode"
@@ -179,8 +192,10 @@ import { useComponentsStore } from "@/store/components.store";
 import { useThemeContainer } from "@/ui-lib/theme_tools";
 import ChangeSetTabPanel from "@/organisms/StatusBarTabs/Changes/ChangesTabPanel.vue";
 import ChangeSetTab from "@/organisms/StatusBarTabs/Changes/ChangesTab.vue";
-import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
-import ConfirmationsTab from "./StatusBarTabs/Confirmations/ConfirmationsTab.vue";
+import FixHistoryTab from "@/organisms/StatusBarTabs/Fixes/FixHistoryTab.vue";
+import FixHistoryPanel from "@/organisms/StatusBarTabs/Fixes/FixHistoryPanel.vue";
+import ConfirmationsPanel from "@/organisms/StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
+import ConfirmationsTab from "@/organisms/StatusBarTabs/Confirmations/ConfirmationsTab.vue";
 
 // override theme to be always dark within status bar
 const { themeContainerClasses } = useThemeContainer("dark");

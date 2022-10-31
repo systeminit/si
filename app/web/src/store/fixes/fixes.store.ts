@@ -7,6 +7,8 @@ import { ApiRequest } from "@/utils/pinia_api_tools";
 import { useResourcesStore } from "../resources.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 
+export type FixStatus = "success" | "failure" | "running" | "unstarted";
+
 export type ConfirmationId = number;
 export type Confirmation = {
   id: ConfirmationId;
@@ -18,7 +20,7 @@ export type Recommendation = {
   componentName: string;
   componentId: ComponentId;
   recommendation: string;
-  status: "success" | "failure" | "running" | "unstarted";
+  status: FixStatus;
   provider?: string;
   output?: string; // TODO(victor): output possibly comes from another endpoint, and should be linked at runtime. This is good for now.
   startedAt?: Date;
@@ -26,10 +28,12 @@ export type Recommendation = {
 };
 
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.
+// A potential temporary fix: we decide to convert the "string" from the database row into
+// a "date" object within the sdf route(s).
 export type FixId = number;
 export type Fix = {
   id: FixId;
-  status: "success" | "failure" | "error";
+  status: FixStatus;
   action: string;
   componentName: string;
   componentId: ComponentId;
@@ -43,7 +47,7 @@ export type Fix = {
 export type FixBatchId = number;
 export type FixBatch = {
   id: FixBatchId;
-  status: "success" | "failure" | "error";
+  status: FixStatus;
   author: string;
   fixes: Fix[];
   startedAt: string;
