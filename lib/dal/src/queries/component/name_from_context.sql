@@ -43,7 +43,8 @@ WHERE id IN (
         av.attribute_context_schema_id DESC,
         av.attribute_context_schema_variant_id DESC,
         av.attribute_context_component_id DESC,
-        av.attribute_context_system_id DESC
+        av.attribute_context_system_id DESC,
+        av.tenancy_universal -- bools sort false first ascending.
 )
 
 -- This ends up with an extremely bad query plan to the point where it
@@ -109,7 +110,8 @@ WHERE id IN (
 --         attribute_context_schema_id DESC,
 --         attribute_context_schema_variant_id DESC,
 --         attribute_context_component_id DESC,
---         attribute_context_system_id DESC
+--         attribute_context_system_id DESC,
+--         av.tenancy_universal
 -- ) AS name_av
 --     ON name_av.attribute_context_prop_id = name_prop.id
 -- INNER JOIN func_binding_return_values_v1($1, $2) AS fbrv

@@ -327,7 +327,9 @@ BEGIN
              attribute_context_schema_id DESC,
              attribute_context_schema_variant_id DESC,
              attribute_context_component_id DESC,
-             attribute_context_system_id DESC;
+             attribute_context_system_id DESC,
+             -- bools sort false first ascending.
+             av.tenancy_universal;
 END;
 $$ LANGUAGE PLPGSQL PARALLEL SAFE;
 
@@ -410,7 +412,8 @@ AS $$
         ap.attribute_context_schema_id DESC,
         ap.attribute_context_schema_variant_id DESC,
         ap.attribute_context_component_id DESC,
-        ap.attribute_context_system_id DESC
+        ap.attribute_context_system_id DESC,
+        av.tenancy_universal -- bools sort false first ascending.
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_prototype_create_intermediate_proxy_values_v1(this_write_tenancy             jsonb,
@@ -461,6 +464,7 @@ BEGIN
                                                                                 proxy_target.key));
             PERFORM update_by_id_v1('attribute_values',
                                     'proxy_for_attribute_value_id',
+                                    this_read_tenancy,
                                     this_write_tenancy,
                                     this_visibility,
                                     proxy_attribute_value.id,
@@ -695,7 +699,8 @@ AS $$
             attribute_context_schema_id DESC,
             attribute_context_schema_variant_id DESC,
             attribute_context_component_id DESC,
-            attribute_context_system_id DESC
+            attribute_context_system_id DESC,
+            av.tenancy_universal -- bools sort false first ascending.
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_value_new_v1(this_write_tenancy                jsonb,
@@ -715,7 +720,8 @@ BEGIN
     IF attribute_context_least_specific_is_provider_v1(this_attribute_context) THEN
         SELECT *
         INTO found_attribute_value
-        FROM attribute_value_find_with_key_in_context_v1(this_read_tenancy, this_visibility, this_key, this_attribute_context);
+        FROM attribute_value_find_with_key_in_context_v1(this_read_tenancy, this_visibility, this_key, this_attribute_context) AS av
+        WHERE in_tenancy_v1(this_write_tenancy, av);
 
         IF FOUND
            AND attribute_contexts_match_v1(this_attribute_context, found_attribute_value) THEN
@@ -763,7 +769,7 @@ BEGIN
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC NULLS FIRST;
 
-    IF attribute_contexts_match_v1(this_attribute_context, to_jsonb(given_attribute_prototype)) THEN
+    IF attribute_contexts_match_v1(this_attribute_context, given_attribute_prototype) THEN
         new_attribute_prototype_id := given_attribute_prototype.id;
     ELSIF this_existing_attribute_value_id IS NOT NULL THEN
         new_attribute_prototype_id := attribute_prototype_new_with_attribute_value_v1(this_write_tenancy,
@@ -777,6 +783,7 @@ BEGIN
 
         PERFORM update_by_id_v1('attribute_values',
                                 'func_binding_id',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 this_existing_attribute_value_id,
@@ -797,6 +804,7 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_prototypes',
                             'func_id',
+                            this_read_tenancy,
                             this_write_tenancy,
                             this_visibility,
                             new_attribute_prototype_id,
@@ -893,7 +901,8 @@ AS $$
                 attribute_context_schema_id DESC,
                 attribute_context_schema_variant_id DESC,
                 attribute_context_component_id DESC,
-                attribute_context_system_id DESC
+                attribute_context_system_id DESC,
+                av.tenancy_universal -- bools sort false first ascending.
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_value_populate_child_proxies_for_value_v1(this_write_tenancy               jsonb,
@@ -923,7 +932,7 @@ BEGIN
     LOOP
         write_attribute_context := this_previous_attribute_context || jsonb_build_object('attribute_context_prop_id', original_child_value.attribute_context_prop_id);
 
-        IF attribute_contexts_match_v1(write_attribute_context, to_jsonb(original_child_value)) THEN
+        IF attribute_contexts_match_v1(write_attribute_context, original_child_value) THEN
             -- The `AttributeValue` that we found is one that was already set in the desired
             -- `AttributeContext`, but its parent was from a less-specific `AttributeContext`. Since it now has
             -- an appropriate parent `AttributeValue` within the desired `AttributeContext`, we need to have it
@@ -973,6 +982,7 @@ BEGIN
                                       this_attribute_value_id);
             PERFORM update_by_id_v1('attribute_values',
                                     'proxy_for_attribute_value_id',
+                                    this_read_tenancy,
                                     this_write_tenancy,
                                     this_visibility,
                                     new_child_value.id,
@@ -1079,7 +1089,7 @@ BEGIN
     -- new one. This is necessary, since the one that we were given might be the "default" one that is directly
     -- attached to a Prop, or the one from a SchemaVariant, and the AttributeContext might be requesting that
     -- we set the value in a more specific context.
-    IF attribute_contexts_match_v1(this_attribute_context, to_jsonb(given_attribute_value)) THEN
+    IF attribute_contexts_match_v1(this_attribute_context, given_attribute_value) THEN
         attribute_value_id := given_attribute_value.id;
     ELSE
         -- Check if we created an appropriate AttributeValue in the process of vivifying the parent
@@ -1091,7 +1101,7 @@ BEGIN
                                                                                                                given_attribute_value.key,
                                                                                                                this_attribute_context));
         IF maybe_attribute_value.id IS NOT NULL
-           AND attribute_contexts_match_v1(this_attribute_context, to_jsonb(maybe_attribute_value))
+           AND attribute_contexts_match_v1(this_attribute_context, maybe_attribute_value)
         THEN
             attribute_value_id := maybe_attribute_value.id;
         ELSE
@@ -1214,6 +1224,7 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_values',
                             'func_binding_id',
+                            this_read_tenancy,
                             this_write_tenancy,
                             this_visibility,
                             attribute_value_id,
@@ -1255,6 +1266,7 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_values',
                             'func_binding_return_value_id',
+                            this_read_tenancy,
                             this_write_tenancy,
                             this_visibility,
                             attribute_value_id,
@@ -1268,6 +1280,7 @@ BEGIN
     THEN
         PERFORM update_by_id_v1('attribute_values',
                                 'sealed_proxy',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 attribute_value_id,
@@ -1383,6 +1396,7 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_values',
                             'index_map',
+                            this_read_tenancy,
                             this_write_tenancy,
                             this_visibility,
                             parent_attribute_value_id,
@@ -1635,12 +1649,14 @@ BEGIN
         IF found_proxy.sealed_proxy = TRUE THEN
             PERFORM update_by_id_v1('attribute_values',
                                     'proxy_for_attribute_value_id',
+                                    this_read_tenancy,
                                     this_write_tenancy,
                                     this_visibility,
                                     found_proxy.id,
                                     NULL);
             PERFORM update_by_id_v1('attribute_values',
                                     'sealed_proxy',
+                                    this_read_tenancy,
                                     this_write_tenancy,
                                     this_visibility,
                                     found_proxy.id,
@@ -1651,6 +1667,7 @@ BEGIN
                                                       this_visibility,
                                                       found_proxy.id);
             PERFORM delete_by_id_v1('attribute_values',
+                                    this_read_tenancy,
                                     this_write_tenancy,
                                     this_visibility,
                                     found_proxy.id);
@@ -1731,12 +1748,14 @@ BEGIN
     ) AS x;
     IF attribute_value_count = 0 THEN
         PERFORM delete_by_id_v1('attribute_prototypes',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 attribute_prototype_id);
     END IF;
 
     PERFORM delete_by_id_v1('attribute_values',
+                            this_read_tenancy,
                             this_write_tenancy,
                             this_visibility,
                             this_parent_attribute_value_id);
@@ -1901,18 +1920,21 @@ BEGIN
     IF fbrv.id IS NOT NULL THEN
         PERFORM update_by_id_v1('func_binding_return_values',
                                 'value',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 fbrv.id,
                                 this_value);
         PERFORM update_by_id_v1('func_binding_return_values',
                                 'unprocessed_value',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 fbrv.id,
                                 this_unprocessed_value);
         PERFORM update_by_id_v1('func_binding_return_values',
                                 'func_execution_pk',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 fbrv.id,
@@ -2019,86 +2041,109 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(a_prop_id              text,
-                                                       a_internal_provider_id text,
-                                                       a_external_provider_id text,
-                                                       a_schema_id            text,
-                                                       a_schema_variant_id    text,
-                                                       a_component_id         text,
-                                                       a_system_id            text,
-                                                       b_prop_id              text,
-                                                       b_internal_provider_id text,
-                                                       b_external_provider_id text,
-                                                       b_schema_id            text,
-                                                       b_schema_variant_id    text,
-                                                       b_component_id         text,
-                                                       b_system_id            text,
-                                                       OUT                    match_result bool
+CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(
+    a_prop_id              text,
+    a_internal_provider_id text,
+    a_external_provider_id text,
+    a_schema_id            text,
+    a_schema_variant_id    text,
+    a_component_id         text,
+    a_system_id            text,
+    b_prop_id              text,
+    b_internal_provider_id text,
+    b_external_provider_id text,
+    b_schema_id            text,
+    b_schema_variant_id    text,
+    b_component_id         text,
+    b_system_id            text
 )
-AS
-$$
-BEGIN
-    match_result :=     a_prop_id              = b_prop_id
-                    AND a_internal_provider_id = b_internal_provider_id
-                    AND a_external_provider_id = b_external_provider_id
-                    AND a_schema_id            = b_schema_id
-                    AND a_schema_variant_id    = b_schema_variant_id
-                    AND a_component_id         = b_component_id
-                    AND a_system_id            = b_system_id;
-END;
--- This is safe to be IMMUTABLE as it's a pure function that will always return the same value if given the
--- same set of inputs.
-$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT  a_prop_id              = b_prop_id
+        AND a_internal_provider_id = b_internal_provider_id
+        AND a_external_provider_id = b_external_provider_id
+        AND a_schema_id            = b_schema_id
+        AND a_schema_variant_id    = b_schema_variant_id
+        AND a_component_id         = b_component_id
+        AND a_system_id            = b_system_id
+$$;
 
-CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(record_a         jsonb,
-                                                       record_b         jsonb,
-                                                       OUT match_result bool
+CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(
+    record_a         jsonb,
+    record_b         jsonb
 )
-AS
-$$
-BEGIN
-    match_result := attribute_contexts_match_v1(record_a ->> 'attribute_context_prop_id',
-                                                record_a ->> 'attribute_context_internal_provider_id',
-                                                record_a ->> 'attribute_context_external_provider_id',
-                                                record_a ->> 'attribute_context_schema_id',
-                                                record_a ->> 'attribute_context_schema_variant_id',
-                                                record_a ->> 'attribute_context_component_id',
-                                                record_a ->> 'attribute_context_system_id',
-                                                record_b ->> 'attribute_context_prop_id',
-                                                record_b ->> 'attribute_context_internal_provider_id',
-                                                record_b ->> 'attribute_context_external_provider_id',
-                                                record_b ->> 'attribute_context_schema_id',
-                                                record_b ->> 'attribute_context_schema_variant_id',
-                                                record_b ->> 'attribute_context_component_id',
-                                                record_b ->> 'attribute_context_system_id');
-END;
-$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT attribute_contexts_match_v1(
+        record_a ->> 'attribute_context_prop_id',
+        record_a ->> 'attribute_context_internal_provider_id',
+        record_a ->> 'attribute_context_external_provider_id',
+        record_a ->> 'attribute_context_schema_id',
+        record_a ->> 'attribute_context_schema_variant_id',
+        record_a ->> 'attribute_context_component_id',
+        record_a ->> 'attribute_context_system_id',
+        record_b ->> 'attribute_context_prop_id',
+        record_b ->> 'attribute_context_internal_provider_id',
+        record_b ->> 'attribute_context_external_provider_id',
+        record_b ->> 'attribute_context_schema_id',
+        record_b ->> 'attribute_context_schema_variant_id',
+        record_b ->> 'attribute_context_component_id',
+        record_b ->> 'attribute_context_system_id'
+    )
+$$;
 
-CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(record_a RECORD,
-                                                       record_b RECORD,
-                                                       OUT      match_result bool
+CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(
+    record_a jsonb,
+    record_b attribute_values
 )
-AS
-$$
-BEGIN
-    match_result := attribute_contexts_match_v1(record_a.attribute_context_prop_id,
-                                                record_a.attribute_context_internal_provider_id,
-                                                record_a.attribute_context_external_provider_id,
-                                                record_a.attribute_context_schema_id,
-                                                record_a.attribute_context_schema_variant_id,
-                                                record_a.attribute_context_component_id,
-                                                record_a.attribute_context_system_id,
-                                                record_b.attribute_context_prop_id,
-                                                record_b.attribute_context_internal_provider_id,
-                                                record_b.attribute_context_external_provider_id,
-                                                record_b.attribute_context_schema_id,
-                                                record_b.attribute_context_schema_variant_id,
-                                                record_b.attribute_context_component_id,
-                                                record_b.attribute_context_system_id);
-END;
--- We only care about a subset of the records, but if nothing has changed on either, then the result will
--- always be the same.
-$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT attribute_contexts_match_v1(record_a, to_jsonb(record_b))
+$$;
+
+CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(
+    record_a jsonb,
+    record_b attribute_prototypes
+)
+RETURNS bool
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+AS $$
+    SELECT attribute_contexts_match_v1(record_a, to_jsonb(record_b))
+$$;
+
+-- CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(
+--     record_a RECORD,
+--     record_b RECORD
+-- )
+-- RETURNS bool
+-- LANGUAGE sql
+-- IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
+-- AS $$
+--     SELECT attribute_contexts_match_v1(
+--         record_a.attribute_context_prop_id,
+--         record_a.attribute_context_internal_provider_id,
+--         record_a.attribute_context_external_provider_id,
+--         record_a.attribute_context_schema_id,
+--         record_a.attribute_context_schema_variant_id,
+--         record_a.attribute_context_component_id,
+--         record_a.attribute_context_system_id,
+--         record_b.attribute_context_prop_id,
+--         record_b.attribute_context_internal_provider_id,
+--         record_b.attribute_context_external_provider_id,
+--         record_b.attribute_context_schema_id,
+--         record_b.attribute_context_schema_variant_id,
+--         record_b.attribute_context_component_id,
+--         record_b.attribute_context_system_id
+--     )
+-- $$;
+
 
 -- AttributeValue::update_for_context_without_creating_proxies
 CREATE OR REPLACE FUNCTION attribute_value_update_for_context_without_child_proxies_v1(this_write_tenancy                   jsonb,
@@ -2144,7 +2189,10 @@ DECLARE
     func_id                         bigint;
     maybe_parent_attribute_value_id bigint;
 BEGIN
-    RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1(%, %, %)',
+    RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1(%, %, %, %, %, %)',
+        this_write_tenancy,
+        this_read_tenancy,
+        this_visibility,
         this_attribute_context,
         this_attribute_value_id,
         this_create_child_proxies;
@@ -2159,31 +2207,19 @@ BEGIN
                                                                                     this_visibility;
     END IF;
 
-    SELECT DISTINCT ON (id) *
+    SELECT *
     INTO prop
-    FROM props
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-          AND id = attribute_value.attribute_context_prop_id
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM props_v1(this_read_tenancy, this_visibility) AS p
+    WHERE id = attribute_value.attribute_context_prop_id;
     -- If the AttributeValue isn't for a Prop, check if it's for an InternalProvider, and grab the
     -- associated Prop.
     IF NOT FOUND THEN
-        SELECT DISTINCT ON (id) props.*
+        SELECT DISTINCT ON (id) p.*
         INTO prop
-        FROM props
-        INNER JOIN (
-            SELECT DISTINCT ON (id) prop_id
-            FROM internal_providers
-            WHERE
-                in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, internal_providers)
-                AND id = attribute_value.attribute_context_internal_provider_id
-            ORDER BY
-                id,
-                visibility_change_set_pk DESC,
-                visibility_deleted_at DESC NULLS FIRST
-        ) AS ip ON ip.prop_id = props.id
+        FROM props_v1(this_read_tenancy, this_visibility) AS p
+        INNER JOIN internal_providers_v1(this_read_tenancy, this_visibility) AS ip
+            ON ip.prop_id = p.id
+        WHERE ip.id = attribute_value.attribute_context_internal_provider_id
         ORDER BY
             id,
             visibility_change_set_pk DESC,
@@ -2228,7 +2264,7 @@ BEGIN
         IF prop.kind = 'array' OR prop.kind = 'map' THEN
             -- If the Prop is an Array or a Map, we need it to be set in the specific context we're looking
             -- at. All other PropKind, just need to exist as something other than unset.
-            IF attribute_contexts_match_v1(this_attribute_context, to_jsonb(attribute_value)) THEN
+            IF attribute_contexts_match_v1(this_attribute_context, attribute_value) THEN
                 RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1: Found appropriate AttributeValue(%) for array/map', attribute_value;
                 new_attribute_value_id := attribute_value.id;
                 RETURN;
@@ -2241,14 +2277,10 @@ BEGIN
         END IF;
     END IF;
 
-    SELECT DISTINCT ON (id) belongs_to_id
+    SELECT belongs_to_id
     INTO maybe_parent_attribute_value_id
-    FROM attribute_value_belongs_to_attribute_value
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
-          AND object_id = attribute_value.id
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+    WHERE object_id = attribute_value.id;
 
     new_attribute_value_id := attribute_value_update_for_context_raw_v1(this_write_tenancy,
                                                                         this_read_tenancy,
@@ -2268,6 +2300,7 @@ BEGIN
         PERFORM update_by_id_v1(
             'attribute_values',
             'proxy_for_attribute_value_id',
+            this_read_tenancy,
             this_write_tenancy,
             this_visibility,
             new_attribute_value_id,

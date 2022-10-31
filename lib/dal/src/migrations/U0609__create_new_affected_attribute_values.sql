@@ -289,7 +289,9 @@ BEGIN
                         attribute_context_schema_id DESC,
                         attribute_context_schema_variant_id DESC,
                         attribute_context_component_id DESC,
-                        attribute_context_system_id DESC;
+                        attribute_context_system_id DESC,
+                        -- bools sort false first ascending.
+                        av.tenancy_universal;
                     IF exact_attribute_context_v1(tmp_attribute_context, attribute_context_from_record_v1(tmp_attribute_value)) THEN
                         -- There's already an appropriate AttributeValue for the InternalProvider. Nothing to do.
                         RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Found appropriate pre-existing AttributeValue(%) for InternalProvider(%)',

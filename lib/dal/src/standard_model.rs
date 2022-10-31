@@ -395,7 +395,7 @@ where
     VALUE: Send + Sync + ToSql,
 {
     let query = format!(
-        "SELECT updated_at FROM update_by_id_v1($1, $2, $3, $4, $5, $6::{})",
+        "SELECT updated_at FROM update_by_id_v1($1, $2, $3, $4, $5, $6, $7::{})",
         hint.as_ref()
     );
 
@@ -407,6 +407,7 @@ where
             &[
                 &table,
                 &column,
+                ctx.read_tenancy(),
                 ctx.write_tenancy(),
                 ctx.visibility(),
                 &id,
