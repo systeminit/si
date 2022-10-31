@@ -1,6 +1,8 @@
 // This is a map of valid websocket events to the shape of their payload
 // used in the subscribe fn to limit valid event names and set callback payload type
 
+import { FixStatus } from "../fixes/fixes.store";
+
 // TODO: a few of these use the same id objects (ex: componentId + systemId)
 // but in a few cases the changeset ID may have been accidentally left out?
 // once things are working again, we should do a big review of all the realtime events coming from the backend...
@@ -54,10 +56,10 @@ export type WsEventPayloadMap = {
     confirmationResolverId: number;
     action: string;
     output: string[];
-    status: "failure" | "success" | "error";
+    status: FixStatus;
   };
   FixBatchReturn: {
     id: number;
-    status: "failure" | "success" | "error";
+    status: FixStatus;
   };
 };
