@@ -115,5 +115,5 @@ function wrapCode(
   handle: string,
   component: ResolverComponent
 ): string {
-  return code + `\n${handle}(${JSON.stringify(component)});\n`;
+  return code + `\n${handle}(${JSON.stringify(component?.data?.properties)});\n`;
 }

@@ -753,7 +753,7 @@ mod tests {
             handler: "doit".to_string(),
             component: ResolverFunctionComponent {
                 data: ComponentView {
-                    properties: serde_json::json!({}),
+                    properties: serde_json::json!({"salt": "n", "peppa": "pig"}),
                     system: None,
                     kind: ComponentKind::Standard,
                     resource: None,
@@ -774,8 +774,8 @@ mod tests {
                 ],
             },
             code_base64: base64::encode(
-                r#"function doit(component) {
-                    console.log(`${component.parents.length}`);
+                r#"function doit(input) {
+                    console.log(`${Object.keys(input).length}`);
                     console.log('my butt');
                     v = { a: 'b' };
                     return v;
@@ -847,7 +847,7 @@ mod tests {
             handler: "doit".to_string(),
             component: ResolverFunctionComponent {
                 data: ComponentView {
-                    properties: serde_json::json!({}),
+                    properties: serde_json::json!({"salt": "n", "peppa": "pig"}),
                     system: None,
                     kind: ComponentKind::Standard,
                     resource: None,
@@ -868,8 +868,8 @@ mod tests {
                 ],
             },
             code_base64: base64::encode(
-                r#"function doit(component) {
-                    console.log(`${component.parents.length}`);
+                r#"function doit(input) {
+                    console.log(`${Object.keys(input).length}`);
                     console.log('my butt');
                     v = { a: 'b' };
                     return v;
