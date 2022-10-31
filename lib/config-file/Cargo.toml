@@ -2,7 +2,8 @@
 name = "config-file"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.64"
+publish = false
 
 [features]
 default = []

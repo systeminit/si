@@ -2,7 +2,9 @@
 name = "dal"
 version = "0.1.0"
 authors = ["Adam Jacob <adam@systeminit.com>"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.64"
+publish = false
 
 [dependencies]
 async-recursion = "1.0.0"
