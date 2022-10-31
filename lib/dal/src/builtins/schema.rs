@@ -26,14 +26,141 @@ mod kubernetes;
 mod systeminit;
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
-    let driver = MigrationDriver::new(ctx).await?;
-
-    systeminit::migrate(ctx, &driver).await?;
-    docker::migrate(ctx, &driver).await?;
-    kubernetes::migrate(ctx, &driver).await?;
-    coreos::migrate(ctx, &driver).await?;
-    aws::migrate(ctx, &driver).await?;
+    let driver = BuiltinSchemaDriver::new(ctx).await?;
+    driver.migrate_systeminit(ctx).await?;
+    driver.migrate_docker(ctx).await?;
+    driver.migrate_kubernetes(ctx).await?;
+    driver.migrate_coreos(ctx).await?;
+    driver.migrate_aws(ctx).await?;
     Ok(())
+}
+
+/// An item containing useful metadata alongside a [`FuncId`](crate::Func). This is used by
+/// the [`BuiltinSchemaDriver`].
+#[derive(Copy, Clone)]
+pub struct FuncCacheItem {
+    func_id: FuncId,
+    func_binding_id: FuncBindingId,
+    func_binding_return_value_id: FuncBindingReturnValueId,
+    func_argument_id: FuncArgumentId,
+}
+
+/// A private struct providing caches and helper methods for efficiently creating builtin
+/// [`Schemas`](crate::Schema).
+#[derive(Default)]
+struct BuiltinSchemaDriver {
+    pub func_item_cache: HashMap<String, FuncCacheItem>,
+    pub func_id_cache: HashMap<String, FuncId>,
+}
+
+impl BuiltinSchemaDriver {
+    /// Create a [`driver`](Self) with commonly used, cached data.
+    pub async fn new(ctx: &DalContext) -> BuiltinsResult<Self> {
+        let mut driver = Self::default();
+
+        driver
+            .add_func_item(
+                ctx,
+                "si:identity".to_string(),
+                serde_json::json![{ "identity": null }],
+                "identity".to_string(),
+            )
+            .await?;
+
+        for builtin_func_name in ["si:validation", "si:generateAwsJSON", "si:generateYAML"] {
+            driver
+                .add_func_id(ctx, builtin_func_name.to_string())
+                .await?;
+        }
+
+        Ok(driver)
+    }
+
+    /// Add a [`FuncCacheItem`] for a given [`Func`](crate::Func) name.
+    pub async fn add_func_item(
+        &mut self,
+        ctx: &DalContext,
+        func_name: String,
+        func_binding_args: Value,
+        func_argument_name: String,
+    ) -> BuiltinsResult<()> {
+        let func: Func = Func::find_by_attr(ctx, "name", &func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| FuncError::NotFoundByName(func_name.clone()))?;
+        let func_id = *func.id();
+        let (func_binding, func_binding_return_value, _) =
+            FuncBinding::find_or_create_and_execute(ctx, func_binding_args, func_id).await?;
+        let func_argument = FuncArgument::find_by_name_for_func(ctx, &func_argument_name, func_id)
+            .await?
+            .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
+                func_id,
+                func_argument_name,
+            ))?;
+        self.func_item_cache.insert(
+            func_name,
+            FuncCacheItem {
+                func_id,
+                func_binding_id: *func_binding.id(),
+                func_binding_return_value_id: *func_binding_return_value.id(),
+                func_argument_id: *func_argument.id(),
+            },
+        );
+
+        Ok(())
+    }
+
+    /// Add a [`FuncId`](crate::Func) for a given [`Func`](crate::Func) name.
+    pub async fn add_func_id(&mut self, ctx: &DalContext, func_name: String) -> BuiltinsResult<()> {
+        let func: Func = Func::find_by_attr(ctx, "name", &func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| FuncError::NotFoundByName(func_name.clone()))?;
+        self.func_id_cache.insert(func_name, *func.id());
+        Ok(())
+    }
+
+    /// Get a [`FuncCacheItem`] (from the cache) for a given [`Func`](crate::Func) name.
+    pub fn get_func_item(&self, name: impl AsRef<str>) -> Option<FuncCacheItem> {
+        self.func_item_cache.get(name.as_ref()).copied()
+    }
+
+    /// Get a [`FuncId`](crate::Func) (from the cache) for a given [`Func`](crate::Func) name.
+    pub fn get_func_id(&self, name: impl AsRef<str>) -> Option<FuncId> {
+        self.func_id_cache.get(name.as_ref()).copied()
+    }
+
+    /// Create a [`validation`](crate::validation) for a [`Prop`](crate::Prop) within a
+    /// [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant).
+    ///
+    /// Users of this helper should provide a [`None`] value to the "value" (or similar) field.
+    pub async fn create_validation(
+        &self,
+        ctx: &DalContext,
+        validation: Validation,
+        prop_id: PropId,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+    ) -> BuiltinsResult<()> {
+        let validation_func_id = self
+            .get_func_id("si:validation")
+            .ok_or(BuiltinsError::FuncNotFoundInCache("si:validation"))?;
+
+        let mut builder = ValidationPrototypeContext::builder();
+        builder
+            .set_prop_id(prop_id)
+            .set_schema_id(schema_id)
+            .set_schema_variant_id(schema_variant_id);
+
+        ValidationPrototype::new(
+            ctx,
+            validation_func_id,
+            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
+            builder.to_context(ctx).await?,
+        )
+        .await?;
+        Ok(())
+    }
 }
 
 /// This private unit struct (zero bytes) provides a singular place to index helpers for creating
@@ -191,132 +318,5 @@ impl BuiltinSchemaHelpers {
             }
             _ => Err(BuiltinsError::NonPrimitivePropKind(*prop.kind())),
         }
-    }
-}
-
-/// An item containing useful metadata alongside a [`FuncId`](crate::Func). This is used by
-/// the [`MigrationDriver`].
-#[derive(Copy, Clone)]
-pub struct FuncCacheItem {
-    func_id: FuncId,
-    func_binding_id: FuncBindingId,
-    func_binding_return_value_id: FuncBindingReturnValueId,
-    func_argument_id: FuncArgumentId,
-}
-
-/// A driver providing caches and helper methods for efficiently creating builtin
-/// [`Schemas`](crate::Schema).
-#[derive(Default)]
-pub struct MigrationDriver {
-    pub func_item_cache: HashMap<String, FuncCacheItem>,
-    pub func_id_cache: HashMap<String, FuncId>,
-}
-
-impl MigrationDriver {
-    /// Create a [`driver`](Self) with commonly used, cached data.
-    pub async fn new(ctx: &DalContext) -> BuiltinsResult<Self> {
-        let mut driver = Self::default();
-
-        driver
-            .add_func_item(
-                ctx,
-                "si:identity".to_string(),
-                serde_json::json![{ "identity": null }],
-                "identity".to_string(),
-            )
-            .await?;
-
-        for builtin_func_name in ["si:validation", "si:generateAwsJSON", "si:generateYAML"] {
-            driver
-                .add_func_id(ctx, builtin_func_name.to_string())
-                .await?;
-        }
-
-        Ok(driver)
-    }
-
-    /// Create a [`validation`](crate::validation) for a [`Prop`](crate::Prop) within a
-    /// [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant).
-    ///
-    /// Users of this helper should provide a [`None`] value to the "value" (or similar) field.
-    pub async fn create_validation(
-        &self,
-        ctx: &DalContext,
-        validation: Validation,
-        prop_id: PropId,
-        schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
-    ) -> BuiltinsResult<()> {
-        let validation_func_id = self
-            .get_func_id("si:validation")
-            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:validation"))?;
-
-        let mut builder = ValidationPrototypeContext::builder();
-        builder
-            .set_prop_id(prop_id)
-            .set_schema_id(schema_id)
-            .set_schema_variant_id(schema_variant_id);
-
-        ValidationPrototype::new(
-            ctx,
-            validation_func_id,
-            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
-            builder.to_context(ctx).await?,
-        )
-        .await?;
-        Ok(())
-    }
-
-    /// Add a [`FuncCacheItem`] for a given [`Func`](crate::Func) name.
-    pub async fn add_func_item(
-        &mut self,
-        ctx: &DalContext,
-        func_name: String,
-        func_binding_args: Value,
-        func_argument_name: String,
-    ) -> BuiltinsResult<()> {
-        let func: Func = Func::find_by_attr(ctx, "name", &func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| FuncError::NotFoundByName(func_name.clone()))?;
-        let func_id = *func.id();
-        let (func_binding, func_binding_return_value, _) =
-            FuncBinding::find_or_create_and_execute(ctx, func_binding_args, func_id).await?;
-        let func_argument = FuncArgument::find_by_name_for_func(ctx, &func_argument_name, func_id)
-            .await?
-            .ok_or_else(|| {
-                BuiltinsError::BuiltinMissingFuncArgument(func_name.clone(), func_argument_name)
-            })?;
-        self.func_item_cache.insert(
-            func_name,
-            FuncCacheItem {
-                func_id,
-                func_binding_id: *func_binding.id(),
-                func_binding_return_value_id: *func_binding_return_value.id(),
-                func_argument_id: *func_argument.id(),
-            },
-        );
-
-        Ok(())
-    }
-
-    /// Add a [`FuncId`](crate::Func) for a given [`Func`](crate::Func) name.
-    pub async fn add_func_id(&mut self, ctx: &DalContext, func_name: String) -> BuiltinsResult<()> {
-        let func: Func = Func::find_by_attr(ctx, "name", &func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| FuncError::NotFoundByName(func_name.clone()))?;
-        self.func_id_cache.insert(func_name, *func.id());
-        Ok(())
-    }
-
-    /// Get a [`FuncCacheItem`] (from the cache) for a given [`Func`](crate::Func) name.
-    pub fn get_func_item(&self, name: impl AsRef<str>) -> Option<FuncCacheItem> {
-        self.func_item_cache.get(name.as_ref()).copied()
-    }
-
-    /// Get a [`FuncId`](crate::Func) (from the cache) for a given [`Func`](crate::Func) name.
-    pub fn get_func_id(&self, name: impl AsRef<str>) -> Option<FuncId> {
-        self.func_id_cache.get(name.as_ref()).copied()
     }
 }

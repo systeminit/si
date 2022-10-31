@@ -1,7 +1,7 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::{builtins::BuiltinsResult, DalContext, Prop, PropId, PropKind, StandardModel};
 
-use crate::builtins::schema::kubernetes::doc_url;
+use crate::builtins::schema::kubernetes::kubernetes_doc_url;
 
 pub async fn create_selector_prop(
     ctx: &DalContext,
@@ -13,7 +13,7 @@ pub async fn create_selector_prop(
         PropKind::Object,
         None,
         Some(parent_prop_id),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/common-definitions/label-selector/#LabelSelector",
         )),
     )
@@ -26,7 +26,7 @@ pub async fn create_selector_prop(
             PropKind::Map,
             None,
             Some(*selector_prop.id()),
-            Some(doc_url(
+            Some(kubernetes_doc_url(
                 "reference/kubernetes-api/common-definitions/label-selector/#LabelSelector",
             )),
         )
@@ -37,7 +37,7 @@ pub async fn create_selector_prop(
             PropKind::String,
             None,
             Some(*match_labels_prop.id()),
-            Some(doc_url(
+            Some(kubernetes_doc_url(
                 "reference/kubernetes-api/common-definitions/label-selector/#LabelSelector",
             )),
         )

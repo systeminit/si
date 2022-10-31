@@ -2,7 +2,7 @@ use crate::builtins::schema::BuiltinSchemaHelpers;
 
 use crate::{BuiltinsResult, DalContext, Prop, PropId, PropKind, StandardModel};
 
-use crate::builtins::schema::kubernetes::doc_url;
+use crate::builtins::schema::kubernetes::kubernetes_doc_url;
 use crate::builtins::schema::kubernetes::kubernetes_metadata::create_metadata_prop;
 use crate::builtins::schema::kubernetes::kubernetes_selector::create_selector_prop;
 
@@ -16,7 +16,7 @@ pub async fn create_deployment_spec_prop(
         PropKind::Object,
         None,
         Some(parent_prop_id),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/deployment-v1/#DeploymentSpec",
         )),
     )
@@ -28,7 +28,7 @@ pub async fn create_deployment_spec_prop(
         PropKind::Integer,
         None,
         Some(*spec_prop.id()),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/deployment-v1/#DeploymentSpec",
         )),
     )
@@ -50,7 +50,7 @@ async fn create_pod_template_spec_prop(
         PropKind::Object,
         None,
         Some(parent_prop_id),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/pod-template-v1/#PodTemplateSpec",
         )),
     )
@@ -75,7 +75,7 @@ async fn create_pod_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
         PropKind::Object,
         None,
         Some(parent_prop_id),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#PodSpec",
         )),
     )
@@ -87,7 +87,7 @@ async fn create_pod_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> Built
         PropKind::Array,
         None,
         Some(*spec_prop.id()),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#containers",
         )),
     )
@@ -104,7 +104,7 @@ async fn create_container_prop(ctx: &DalContext, parent_prop_id: PropId) -> Buil
         PropKind::Object,
         None,
         Some(parent_prop_id),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#Container",
         )),
     )
@@ -116,7 +116,7 @@ async fn create_container_prop(ctx: &DalContext, parent_prop_id: PropId) -> Buil
         PropKind::String,
         None,
         Some(*container_prop.id()),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#Container",
         )),
     )
@@ -128,7 +128,7 @@ async fn create_container_prop(ctx: &DalContext, parent_prop_id: PropId) -> Buil
         PropKind::String,
         None,
         Some(*container_prop.id()),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#image",
         )),
     )
@@ -140,7 +140,7 @@ async fn create_container_prop(ctx: &DalContext, parent_prop_id: PropId) -> Buil
         PropKind::Array,
         None,
         Some(*container_prop.id()),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#ports",
         )),
     )
@@ -160,7 +160,7 @@ async fn create_container_port_prop(
         PropKind::Object,
         None,
         Some(parent_prop_id),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#ports",
         )),
     )
@@ -172,7 +172,7 @@ async fn create_container_port_prop(
         PropKind::Integer,
         None,
         Some(*port_prop.id()),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#ports",
         )),
     )
@@ -184,7 +184,7 @@ async fn create_container_port_prop(
         PropKind::String,
         None,
         Some(*port_prop.id()),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/workload-resources/pod-v1/#ports",
         )),
     )

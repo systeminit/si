@@ -17,7 +17,7 @@ use crate::{
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
     CodeGenerationPrototypeError, ConfirmationPrototypeError, DalContext, ExternalProviderId,
-    FuncError, PropError, PropId, PropKind, QualificationPrototypeError, SchemaError,
+    FuncError, FuncId, PropError, PropId, PropKind, QualificationPrototypeError, SchemaError,
     StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
 };
 
@@ -55,8 +55,8 @@ pub enum BuiltinsError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-    #[error("func not found in migration cache {0}")]
-    FuncNotFoundInMigrationCache(&'static str),
+    #[error("func not found in cache {0}")]
+    FuncNotFoundInCache(&'static str),
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] ExternalProviderError),
     #[error("implicit internal provider not found for prop: {0}")]
@@ -103,8 +103,8 @@ pub enum BuiltinsError {
     ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error("Func Metadata error: {0}")]
     FuncMetadata(String),
-    #[error("builtin {0} missing func argument {0}")]
-    BuiltinMissingFuncArgument(String, String),
+    #[error("builtin func ({0}) missing func argument with name: {1}")]
+    BuiltinMissingFuncArgument(FuncId, String),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;

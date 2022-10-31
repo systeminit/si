@@ -1,7 +1,7 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::{builtins::BuiltinsResult, DalContext, Prop, PropId, PropKind, StandardModel};
 
-use crate::builtins::schema::kubernetes::doc_url;
+use crate::builtins::schema::kubernetes::kubernetes_doc_url;
 
 pub async fn create_metadata_prop(
     ctx: &DalContext,
@@ -14,7 +14,7 @@ pub async fn create_metadata_prop(
         PropKind::Object,
         None,
         Some(parent_prop_id),
-        Some(doc_url(
+        Some(kubernetes_doc_url(
             "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
         )),
     )
@@ -41,7 +41,7 @@ pub async fn create_metadata_prop(
             PropKind::String,
             None,
             Some(*metadata_prop.id()),
-            Some(doc_url(
+            Some(kubernetes_doc_url(
                 "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
             )),
         )
@@ -55,7 +55,7 @@ pub async fn create_metadata_prop(
             PropKind::String,
             None,
             Some(*metadata_prop.id()),
-            Some(doc_url(
+            Some(kubernetes_doc_url(
                 "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
             )),
         )
@@ -70,7 +70,7 @@ pub async fn create_metadata_prop(
             PropKind::String,
             None,
             Some(*metadata_prop.id()),
-            Some(doc_url(
+            Some(kubernetes_doc_url(
                 "concepts/overview/working-with-objects/namespaces/",
             )),
         )
@@ -84,7 +84,9 @@ pub async fn create_metadata_prop(
             PropKind::Map,
             None,
             Some(*metadata_prop.id()),
-            Some(doc_url("concepts/overview/working-with-objects/labels/")),
+            Some(kubernetes_doc_url(
+                "concepts/overview/working-with-objects/labels/",
+            )),
         )
         .await?;
         let _labels_value_prop = BuiltinSchemaHelpers::create_prop(
@@ -93,7 +95,9 @@ pub async fn create_metadata_prop(
             PropKind::String,
             None,
             Some(*labels_prop.id()),
-            Some(doc_url("concepts/overview/working-with-objects/labels/")),
+            Some(kubernetes_doc_url(
+                "concepts/overview/working-with-objects/labels/",
+            )),
         )
         .await?;
     }
@@ -105,7 +109,7 @@ pub async fn create_metadata_prop(
             PropKind::Map,
             None, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),
-            Some(doc_url(
+            Some(kubernetes_doc_url(
                 "concepts/overview/working-with-objects/annotations/",
             )),
         )
@@ -116,7 +120,7 @@ pub async fn create_metadata_prop(
             PropKind::String,
             None,
             Some(*annotations_prop.id()),
-            Some(doc_url(
+            Some(kubernetes_doc_url(
                 "concepts/overview/working-with-objects/annotations/",
             )),
         )
