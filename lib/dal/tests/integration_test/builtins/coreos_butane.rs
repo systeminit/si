@@ -118,7 +118,6 @@ async fn butane_is_valid_ignition(ctx: &DalContext) {
     );
 }
 
-#[ignore]
 #[test]
 async fn connected_butane_is_valid_ignition(ctx: &DalContext) {
     let mut harness = SchemaBuiltinsTestHarness::new();

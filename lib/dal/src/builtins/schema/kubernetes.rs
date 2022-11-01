@@ -131,10 +131,11 @@ async fn kubernetes_namespace(ctx: &DalContext, driver: &MigrationDriver) -> Bui
     };
     let metadata_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
+    let metadata_name_prop_id = *metadata_name_prop.id();
     let metadata_name_attribute_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
-            prop_id: Some(*metadata_name_prop.id()),
+            prop_id: Some(metadata_name_prop_id),
             ..base_attribute_read_context
         },
     )
@@ -167,14 +168,12 @@ async fn kubernetes_namespace(ctx: &DalContext, driver: &MigrationDriver) -> Bui
         external_provider.attribute_prototype_id().ok_or_else(|| {
             BuiltinsError::MissingAttributePrototypeForExternalProvider(*external_provider.id())
         })?;
-    let metadata_name_prop =
-        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
     let metadata_name_implicit_internal_provider =
-        InternalProvider::get_for_prop(ctx, *metadata_name_prop.id())
+        InternalProvider::get_for_prop(ctx, metadata_name_prop_id)
             .await?
-            .ok_or_else(|| {
-                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*metadata_name_prop.id())
-            })?;
+            .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                metadata_name_prop_id,
+            ))?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,

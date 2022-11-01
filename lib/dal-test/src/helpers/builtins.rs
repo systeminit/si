@@ -279,7 +279,7 @@ impl SchemaBuiltinsTestHarness {
             find_prop_and_parent_by_name(ctx, "name", "metadata", None, schema_variant_id)
                 .await
                 .expect("could not find prop and/or parent");
-        prop_map.insert("/root/si/metadata/name", metadata_name_prop_id);
+        prop_map.insert("/root/domain/metadata/name", metadata_name_prop_id);
         prop_map
     }
 }
