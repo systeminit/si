@@ -74,7 +74,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, ref, Ref } from "vue";
+import { computed, inject, ref, Ref, toRef } from "vue";
 import { storeToRefs } from "pinia";
 import {
   AttributeAssocations,
@@ -99,7 +99,7 @@ const makeEmptyPrototype = (): AttributePrototypeView => ({
   schemaVariantId: -1,
   componentId: -1,
   propId: -1,
-  prototypeArguments: props.associations.arguments.map(({ id }) => ({
+  prototypeArguments: associations.value.arguments.map(({ id }) => ({
     funcArgumentId: id,
   })),
 });
@@ -123,7 +123,7 @@ const openModal = (prototypeId?: number) => {
   // clear the prototype and then if we are editing an existing one, set it
   editingPrototype.value = makeEmptyPrototype();
   if (prototypeId) {
-    editingPrototype.value = props.associations.prototypes.find(
+    editingPrototype.value = associations.value.prototypes.find(
       (proto) => proto.id === prototypeId,
     );
   }
@@ -139,8 +139,15 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
+const associations = toRef(props, "associations", {
+  type: "attribute",
+  prototypes: [],
+  arguments: [],
+});
+
 const prototypeView = computed(() => {
-  return props.associations.prototypes.map((proto) => {
+  console.log("prototypeView");
+  return associations.value.prototypes.map((proto) => {
     const schemaVariant =
       schemaVariantOptions.value.find(
         (sv) => sv.value === proto.schemaVariantId,

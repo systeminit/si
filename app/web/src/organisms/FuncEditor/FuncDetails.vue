@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="funcId > 0"
+    v-if="selectedFuncId > 0"
     class="absolute h-full w-full flex flex-col overflow-hidden"
   >
     <SiTabGroup :selected-index="0">
@@ -107,7 +107,7 @@
           >
             <FuncArguments
               v-if="associations && associations.type === 'attribute'"
-              :func-id="funcId"
+              :func-id="selectedFuncId"
               :arguments="associations.arguments"
               :disabled="editingFunc.isBuiltin"
             />
@@ -117,7 +117,7 @@
         <TabPanel v-if="editingFunc.kind === FuncBackendKind.JsAttribute">
           <AttributeBindings
             v-if="associations && associations.type === 'attribute'"
-            :func-id="funcId"
+            :func-id="selectedFuncId"
             :associations="associations"
           />
         </TabPanel>
@@ -131,14 +131,13 @@
 
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
-import { toRef, ref, watch, computed, provide } from "vue";
+import { computed, provide } from "vue";
 import { storeToRefs } from "pinia";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import VButton from "@/molecules/VButton.vue";
-import { FuncAssociations, EditingFunc } from "@/store/func/types";
 import { FuncBackendKind, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, nullEditingFunc } from "@/store/func/funcs.store";
 import QualificationDetails from "./QualificationDetails.vue";
@@ -148,18 +147,9 @@ import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ConfirmationDetails from "./ConfirmationDetails.vue";
 
 const funcStore = useFuncStore();
-const { getFuncById } = storeToRefs(funcStore);
-
-const props = defineProps<{
-  funcId?: number;
-}>();
-
-const funcId = toRef(props, "funcId", -1);
+const { getFuncById, selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
-
-const editingFunc = ref<EditingFunc>(nullEditingFunc);
-const associations = ref<FuncAssociations | undefined>(undefined);
 const funcArgumentsIdMap = computed(() =>
   associations.value?.type === "attribute"
     ? associations.value.arguments.reduce((idMap, arg) => {
@@ -171,17 +161,13 @@ const funcArgumentsIdMap = computed(() =>
 
 provide("funcArgumentsIdMap", funcArgumentsIdMap);
 
-watch(
-  funcId,
-  (newFuncId) => {
-    editingFunc.value = getFuncById.value(newFuncId) ?? nullEditingFunc;
-    associations.value = editingFunc.value.associations;
-  },
-  { immediate: true },
+const editingFunc = computed(
+  () => getFuncById.value(selectedFuncId.value) ?? nullEditingFunc,
 );
+const associations = computed(() => editingFunc.value.associations);
 
 const updateFunc = () => {
-  funcStore.updateFuncAssociations(funcId.value, associations.value);
+  funcStore.updateFuncAssociations(editingFunc.value.id, associations.value);
 };
 
 const revertFunc = async () => {

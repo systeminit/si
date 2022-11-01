@@ -23,7 +23,7 @@
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    <FuncDetails v-if="!funcReqStatus.isPending" :func-id="funcIdParam" />
+    <FuncDetails v-if="!funcReqStatus.isPending" />
   </SiPanel>
 </template>
 

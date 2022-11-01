@@ -52,7 +52,6 @@ export const useFuncStore = () => {
       openFuncsById: {} as Record<FuncId, EditingFunc>,
       openFuncsList: [] as ListedFuncView[],
       selectedFuncId: -1 as FuncId,
-      editingFunc: nullEditingFunc as EditingFunc,
       inputSources: { sockets: [], props: [] } as ListInputSourcesResponse,
 
       saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
@@ -75,7 +74,7 @@ export const useFuncStore = () => {
         }));
       },
       componentOptions() {
-        return componentsStore.allComponents.map(({displayName, id}) => ({
+        return componentsStore.allComponents.map(({ displayName, id }) => ({
           label: displayName,
           value: id,
         }));
