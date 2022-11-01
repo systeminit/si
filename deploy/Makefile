@@ -57,6 +57,16 @@ prod:
 			--profile si \
 			up --detach
 
+prod-service:
+	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
+		docker-compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			-f $(MAKEPATH)/docker-compose.env-static.yml \
+			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
+			-f $(MAKEPATH)/docker-compose.prod.yml \
+			--profile si \
+			up
+
 web: init
 	# REPOPATH=$(REPOPATH) $(MAKEPATH)/scripts/check-for-artifacts-before-mounting.sh
 	$(MAKEPATH)/scripts/generate-ci-yml.sh $(CI_FROM_REF) $(CI_TO_REF)
