@@ -181,6 +181,7 @@ async fn ami(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (region_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
+            *schema.id(),
             *schema_variant.id(),
             "Region",
             identity_func_item.func_id,
@@ -497,6 +498,7 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (image_id_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
+            *schema.id(),
             *schema_variant.id(),
             "Image ID",
             identity_func_item.func_id,
@@ -511,6 +513,7 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (security_group_ids_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
+            *schema.id(),
             *schema_variant.id(),
             "Security Group ID",
             identity_func_item.func_id,
@@ -525,6 +528,7 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (keyname_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
+            *schema.id(),
             *schema_variant.id(),
             "Key Name",
             identity_func_item.func_id,
@@ -539,6 +543,7 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (region_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
+            *schema.id(),
             *schema_variant.id(),
             "Region",
             identity_func_item.func_id,
@@ -553,6 +558,7 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     let (user_data_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
+            *schema.id(),
             *schema_variant.id(),
             "User Data",
             identity_func_item.func_id,
@@ -1093,6 +1099,7 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
     let (region_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
+            *schema.id(),
             *schema_variant.id(),
             "Region",
             identity_func_item.func_id,

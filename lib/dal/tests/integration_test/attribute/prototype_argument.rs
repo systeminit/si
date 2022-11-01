@@ -88,7 +88,7 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
     .expect("cannot create new attribute prototype");
 
     let internal_provider =
-        InternalProvider::new_implicit(ctx, *name_prop.id(), *schema_variant.id())
+        InternalProvider::new_implicit(ctx, *name_prop.id(), *schema.id(), *schema_variant.id())
             .await
             .expect("could not create internal provider");
 

@@ -11,6 +11,7 @@ CREATE TABLE internal_providers
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     prop_id                     bigint                   NOT NULL,
+    schema_id                   bigint                   NOT NULL,
     schema_variant_id           bigint                   NOT NULL,
     attribute_prototype_id      bigint,
     name                        text                     NOT NULL,
@@ -20,6 +21,7 @@ CREATE TABLE internal_providers
 
 CREATE UNIQUE INDEX unique_implicit_internal_providers
     ON internal_providers (prop_id,
+                           schema_id,
                            schema_variant_id,
                            visibility_change_set_pk,
                            (visibility_deleted_at IS NULL))
@@ -28,6 +30,7 @@ CREATE UNIQUE INDEX unique_implicit_internal_providers
 
 CREATE UNIQUE INDEX unique_explicit_internal_providers
     ON internal_providers (name,
+                           schema_id,
                            schema_variant_id,
                            visibility_change_set_pk,
                            (visibility_deleted_at IS NULL))
@@ -35,6 +38,7 @@ CREATE UNIQUE INDEX unique_explicit_internal_providers
         AND prop_id = -1;
 
 CREATE INDEX ON internal_providers (prop_id);
+CREATE INDEX ON internal_providers (schema_id);
 CREATE INDEX ON internal_providers (schema_variant_id);
 CREATE INDEX ON internal_providers (attribute_prototype_id);
 
@@ -49,6 +53,7 @@ CREATE OR REPLACE FUNCTION internal_provider_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_prop_id bigint,
+    this_schema_id bigint,
     this_schema_variant_id bigint,
     this_name text,
     this_inbound_type_definition text,
@@ -70,6 +75,7 @@ BEGIN
                                     visibility_change_set_pk,
                                     visibility_deleted_at,
                                     prop_id,
+                                    schema_id,
                                     schema_variant_id,
                                     name,
                                     inbound_type_definition,
@@ -81,6 +87,7 @@ BEGIN
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_prop_id,
+            this_schema_id,
             this_schema_variant_id,
             this_name,
             this_inbound_type_definition,

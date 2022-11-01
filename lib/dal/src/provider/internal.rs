@@ -130,6 +130,8 @@ pub struct InternalProvider {
     /// [`UNSET_ID_VALUE`](crate::attribute::context::UNSET_ID_VALUE) if [`Self`] is "explicit". If
     /// [`Self`] is "implicit", this will always be a "set" id.
     prop_id: PropId,
+    /// Indicates which [`Schema`](crate::Schema) this provider belongs to.
+    schema_id: SchemaId,
     /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
     schema_variant_id: SchemaVariantId,
     /// Indicates which transformation function should be used for "emit".
@@ -148,6 +150,7 @@ impl InternalProvider {
     pub async fn new_implicit(
         ctx: &DalContext,
         prop_id: PropId,
+        schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) -> InternalProviderResult<Self> {
         // Use the prop name for the implicit internal provider name. We need an owned string that
@@ -161,11 +164,12 @@ impl InternalProvider {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &prop_id,
+                    &schema_id,
                     &schema_variant_id,
                     &name,
                     &Option::<String>::None,
@@ -193,6 +197,8 @@ impl InternalProvider {
         // and for an InternalProvider that is having only the InternalProviderId set.
         let context = AttributeContext::builder()
             .set_internal_provider_id(*internal_provider.id())
+            .set_schema_id(schema_id)
+            .set_schema_variant_id(schema_variant_id)
             .to_context()?;
 
         // Key and parent are unneeded because the provider exists not strictly as part of the
@@ -220,6 +226,7 @@ impl InternalProvider {
     #[tracing::instrument(skip(ctx, name))]
     pub async fn new_explicit_with_socket(
         ctx: &DalContext,
+        schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
         name: impl AsRef<str>,
         func_id: FuncId,
@@ -234,11 +241,12 @@ impl InternalProvider {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &prop_id,
+                    &schema_id,
                     &schema_variant_id,
                     &name,
                     &Option::<String>::None,
@@ -301,6 +309,7 @@ impl InternalProvider {
 
     // Immutable fields.
     standard_model_accessor_ro!(prop_id, PropId);
+    standard_model_accessor_ro!(schema_id, SchemaId);
     standard_model_accessor_ro!(schema_variant_id, SchemaVariantId);
 
     // Mutable fields.
@@ -345,6 +354,25 @@ impl InternalProvider {
         }
         if !consume_attribute_context.is_least_specific_field_kind_prop()? {
             return Err(InternalProviderError::MissingPropForImplicitEmit);
+        }
+
+        // Ensure that if the schema and/or schema variant fields are set, that they match our
+        // corresponding fields. We only need to perform this check for internal consumers.
+        if !consume_attribute_context.is_schema_unset()
+            && consume_attribute_context.schema_id() != self.schema_id
+        {
+            return Err(InternalProviderError::SchemaMismatch(
+                self.schema_id,
+                consume_attribute_context.schema_id(),
+            ));
+        }
+        if !consume_attribute_context.is_schema_variant_unset()
+            && consume_attribute_context.schema_variant_id() != self.schema_variant_id
+        {
+            return Err(InternalProviderError::SchemaVariantMismatch(
+                self.schema_variant_id,
+                consume_attribute_context.schema_variant_id(),
+            ));
         }
 
         // Update or create the emit attribute value using the newly generated func binding return
@@ -567,10 +595,13 @@ impl InternalProvider {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    /// Returns an [`AttributeContext`](crate::AttributeContext) corresponding to our id.
+    /// Returns an [`AttributeContext`](crate::AttributeContext) corresponding to our id, our
+    /// [`SchemaId`](crate::SchemaId) and our [`SchemaVariantId`](crate::SchemaVariantId).
     pub fn attribute_context(&self) -> InternalProviderResult<AttributeContext> {
         Ok(AttributeContext::builder()
             .set_internal_provider_id(self.id)
+            .set_schema_id(self.schema_id)
+            .set_schema_variant_id(self.schema_variant_id)
             .to_context()?)
     }
 
