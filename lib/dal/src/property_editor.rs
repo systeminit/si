@@ -121,6 +121,13 @@ impl From<&PropId> for PropertyEditorPropId {
     }
 }
 
+impl From<&PropertyEditorPropId> for PropId {
+    fn from(property_editor_prop_id: &PropertyEditorPropId) -> Self {
+        let number: i64 = (*property_editor_prop_id).into();
+        number.into()
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PropertyEditorProp {
@@ -193,6 +200,16 @@ impl PropertyEditorSchema {
             if let Some(child_prop_ids) = maybe_child_prop_ids {
                 child_props.insert(property_editor_prop.id, child_prop_ids);
             }
+
+            // Note: horrible hack to ignore resource in the frontend for now, I have no idea how to do it properly, let's leave it for after we test the concept
+            if child_props
+                .get(&root_prop.id().into())
+                .map_or(false, |p| p.contains(&property_editor_prop.id))
+                && property_editor_prop.name == "resource"
+            {
+                continue;
+            }
+
             props.insert(property_editor_prop.id, property_editor_prop);
         }
 

@@ -1,0 +1,10 @@
+{
+  "kind": "Json",
+  "response_type": "String",
+  "code_file": "awsSecurityGroupIdFromResource.js",
+  "code_entrypoint": "parse",
+  "arguments": [{
+    "name": "resource",
+    "kind": "String"
+  }]
+}

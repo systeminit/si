@@ -12,9 +12,9 @@ use crate::{
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
     BuiltinsResult, CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype,
-    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
-    InternalProvider, PropKind, SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncBinding,
+    FuncError, InternalProvider, PropKind, SchemaError, SchemaKind, Socket, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 const INGRESS_EGRESS_DOCS_URL: &str =
@@ -945,16 +945,6 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
         .await?;
 
     // Prop Creation
-    let security_group_id_prop = BuiltinSchemaHelpers::create_prop(
-        ctx,
-        "SecurityGroupId",
-        PropKind::String,
-        None,
-        Some(root_prop.domain_prop_id),
-        Some(SECURITY_GROUP_DOCS_URL.to_string()),
-    )
-    .await?;
-
     BuiltinSchemaHelpers::create_prop(
         ctx,
         "Description",
@@ -1056,6 +1046,18 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
         .await?;
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
+    let func_name = "si:awsSecurityGroupIdFromResource";
+    let aws_security_group_id_from_resource_func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let (func_binding, func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
+        ctx,
+        serde_json::json!({}),
+        *aws_security_group_id_from_resource_func.id(),
+    )
+    .await?;
+
     let (security_group_id_external_provider, mut output_socket) =
         ExternalProvider::new_with_socket(
             ctx,
@@ -1063,9 +1065,9 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
             *schema_variant.id(),
             "Security Group ID",
             None,
-            identity_func_item.func_id,
-            identity_func_item.func_binding_id,
-            identity_func_item.func_binding_return_value_id,
+            *aws_security_group_id_from_resource_func.id(),
+            *func_binding.id(),
+            *func_binding_return_value.id(),
             SocketArity::Many,
             DiagramKind::Configuration,
         )
@@ -1190,15 +1192,29 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
             })?;
 
     let security_group_id_internal_provider =
-        InternalProvider::get_for_prop(ctx, *security_group_id_prop.id())
+        InternalProvider::get_for_prop(ctx, root_prop.resource_prop_id)
             .await?
-            .ok_or_else(|| {
-                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*security_group_id_prop.id())
-            })?;
+            .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                root_prop.resource_prop_id,
+            ))?;
+
+    let func_argument = FuncArgument::find_by_name_for_func(
+        ctx,
+        "resource",
+        *aws_security_group_id_from_resource_func.id(),
+    )
+    .await?
+    .ok_or_else(|| {
+        BuiltinsError::BuiltinMissingFuncArgument(
+            "si:awsSecurityGroupIdFromResource".to_owned(),
+            "resource".to_owned(),
+        )
+    })?;
+
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *security_group_id_external_provider_attribute_prototype_id,
-        identity_func_item.func_argument_id,
+        *func_argument.id(),
         *security_group_id_internal_provider.id(),
     )
     .await?;

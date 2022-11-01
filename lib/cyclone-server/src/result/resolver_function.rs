@@ -6,6 +6,7 @@ use serde_json::Value;
 #[serde(rename_all = "camelCase")]
 pub struct LangServerResolverFunctionResultSuccess {
     pub execution_id: String,
+    #[serde(default)]
     pub data: Value,
     pub unset: bool,
 }

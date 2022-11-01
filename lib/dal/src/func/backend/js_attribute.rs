@@ -54,7 +54,6 @@ impl FuncDispatch for FuncBackendJsAttribute {
             }
             _ => {}
         };
-
         Ok(value)
     }
 }

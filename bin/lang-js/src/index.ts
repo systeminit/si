@@ -42,8 +42,8 @@ async function main() {
 
   try {
     const requestJson = fs.readFileSync(STDIN_FD, "utf8");
+    debug({ request: requestJson });
     const request = JSON.parse(requestJson);
-    debug({ request, data: JSON.stringify(request?.data) });
     if (request.executionId) {
       executionId = request.executionId;
     } else {

@@ -17,6 +17,7 @@ pub struct RootProp {
     pub prop_id: PropId,
     pub si_prop_id: PropId,
     pub domain_prop_id: PropId,
+    pub resource_prop_id: PropId,
 }
 
 impl RootProp {
@@ -43,6 +44,11 @@ impl RootProp {
 
         let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object, None).await?;
         domain_specific_prop
+            .set_parent_prop(ctx, *root_prop.id())
+            .await?;
+
+        let resource_specific_prop = Prop::new(ctx, "resource", PropKind::String, None).await?;
+        resource_specific_prop
             .set_parent_prop(ctx, *root_prop.id())
             .await?;
 
@@ -118,6 +124,7 @@ impl RootProp {
             prop_id: *root_prop.id(),
             si_prop_id: *si_specific_prop.id(),
             domain_prop_id: *domain_specific_prop.id(),
+            resource_prop_id: *resource_specific_prop.id(),
         })
     }
 }
