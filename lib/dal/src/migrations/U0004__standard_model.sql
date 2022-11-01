@@ -195,6 +195,7 @@ BEGIN
                     'tenancy_organization_ids',
                     'tenancy_workspace_ids'
                   )
+              AND information_schema.columns.is_generated = 'NEVER'
             INTO copy_change_set_column_names;
             EXECUTE format('INSERT INTO %1$I ( '
                            '    %2$s, '

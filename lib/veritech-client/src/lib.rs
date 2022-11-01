@@ -428,31 +428,18 @@ mod tests {
 
         let request = ResolverFunctionRequest {
             execution_id: "1234".to_string(),
-            handler: "numberOfParents".to_string(),
+            handler: "numberOfInputs".to_string(),
             component: ResolverFunctionComponent {
                 data: ComponentView {
-                    properties: serde_json::json!({}),
+                    properties: serde_json::json!({ "foo": "bar", "baz": "quux" }),
                     system: None,
                     kind: ComponentKind::Standard,
                     resource: None,
                 },
-                parents: vec![
-                    ComponentView {
-                        properties: serde_json::json!({}),
-                        system: None,
-                        kind: ComponentKind::Standard,
-                        resource: None,
-                    },
-                    ComponentView {
-                        properties: serde_json::json!({}),
-                        system: None,
-                        kind: ComponentKind::Standard,
-                        resource: None,
-                    },
-                ],
+                parents: vec![],
             },
             code_base64: base64::encode(
-                "function numberOfParents(component) { return component.parents.length; }",
+                "function numberOfInputs(input) { return Object.keys(input).length; }",
             ),
         };
 

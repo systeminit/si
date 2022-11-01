@@ -1432,7 +1432,9 @@ async fn cyclone_crypto_e2e(ctx: &DalContext) {
     }))
     .expect("Secret serialization failed");
     let encoded = ctx.encryption_key().encrypt_and_encode(&secret);
-    let code = format!("function testE2ECrypto(component) {{ return component.data.properties.secret.message.key === '{secret_value}'; }}");
+    let code = format!(
+        "function testE2ECrypto(input) {{ return input.secret.message.key === '{secret_value}'; }}"
+    );
     let request = veritech_client::ResolverFunctionRequest {
         execution_id: "seujorge".to_owned(),
         handler: "testE2ECrypto".to_owned(),

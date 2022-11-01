@@ -8,8 +8,9 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model::TypeHint, standard_model_accessor,
-    DalContext, HistoryEvent, HistoryEventError, QualificationPrototypeError, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError,
+    QualificationPrototypeError, StandardModel, StandardModelError, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -78,6 +79,7 @@ pub struct Func {
     backend_response_type: FuncBackendResponseType,
     handler: Option<String>,
     code_base64: Option<String>,
+    code_sha256: String,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -184,4 +186,5 @@ impl Func {
     );
     standard_model_accessor!(handler, Option<String>, FuncResult);
     standard_model_accessor!(code_base64, Option<String>, FuncResult);
+    standard_model_accessor_ro!(code_sha256, String);
 }

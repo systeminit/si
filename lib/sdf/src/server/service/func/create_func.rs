@@ -4,12 +4,11 @@ use crate::service::func::FuncError;
 use axum::Json;
 use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
-    attribute::context::AttributeContextBuilder, generate_name,
-    prototype_context::HasPrototypeContext, qualification_prototype::QualificationPrototypeContext,
-    AttributeValue, AttributeValueId, CodeGenerationPrototype, CodeLanguage, ComponentId,
-    ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    FuncBindingReturnValue, FuncId, QualificationPrototype, SchemaId, SchemaVariantId,
-    StandardModel, Visibility, WsEvent,
+    generate_name, job::definition::DependentValuesUpdate, prototype_context::HasPrototypeContext,
+    qualification_prototype::QualificationPrototypeContext, AttributeValue, AttributeValueId,
+    CodeGenerationPrototype, CodeLanguage, ComponentId, ConfirmationPrototype, DalContext, Func,
+    FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, FuncId,
+    QualificationPrototype, SchemaId, SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -224,10 +223,6 @@ async fn create_default_attribute_func(
 async fn create_attribute_func(
     ctx: &DalContext,
     value_id: Option<AttributeValueId>,
-    parent_value_id: Option<AttributeValueId>,
-    component_id: Option<ComponentId>,
-    schema_variant_id: Option<SchemaVariantId>,
-    schema_id: Option<SchemaId>,
     current_func_id: Option<FuncId>,
 ) -> FuncResult<Func> {
     let current_func = match current_func_id {
@@ -259,23 +254,12 @@ async fn create_attribute_func(
 
     // If we were given a value, update that value with the new function
     if let Some(value_id) = value_id {
-        let prop = AttributeValue::find_prop_for_value(ctx, value_id).await?;
-        let context = AttributeContextBuilder::new()
-            .set_prop_id(*prop.id())
-            .set_component_id(component_id.into())
-            .set_schema_variant_id(schema_variant_id.into())
-            .set_schema_id(schema_id.into())
-            .to_context()?;
-
-        super::update_attribute_value_by_func_for_context(
-            ctx,
-            value_id,
-            parent_value_id,
-            &func,
-            context,
-            true,
-        )
-        .await?;
+        let mut value = AttributeValue::get_by_id(ctx, &value_id)
+            .await?
+            .ok_or(FuncError::AttributeValueMissing)?;
+        value.update_from_prototype_function(ctx).await?;
+        ctx.enqueue_job(DependentValuesUpdate::new(ctx, value_id))
+            .await;
     }
 
     Ok(func)
@@ -292,24 +276,10 @@ pub async fn create_func(
         FuncBackendKind::JsAttribute => match request.options {
             Some(CreateFuncOptions::AttributeOptions {
                 value_id,
-                parent_value_id,
-                component_id,
-                schema_variant_id,
-                schema_id,
                 current_func_id,
-            }) => {
-                create_attribute_func(
-                    &ctx,
-                    value_id,
-                    parent_value_id,
-                    component_id,
-                    schema_variant_id,
-                    schema_id,
-                    current_func_id,
-                )
-                .await?
-            }
-            None => create_attribute_func(&ctx, None, None, None, None, None, None).await?,
+                ..
+            }) => create_attribute_func(&ctx, value_id, current_func_id).await?,
+            None => create_attribute_func(&ctx, None, None).await?,
         },
         FuncBackendKind::JsQualification => create_qualification_func(&ctx).await?,
         FuncBackendKind::JsCodeGeneration => create_code_gen_func(&ctx).await?,

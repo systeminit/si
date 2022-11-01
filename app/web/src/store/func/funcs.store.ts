@@ -75,9 +75,9 @@ export const useFuncStore = () => {
         }));
       },
       componentOptions() {
-        return componentsStore.schemaVariants.map((sv) => ({
-          label: sv.schemaName,
-          value: sv.id,
+        return componentsStore.allComponents.map(({displayName, id}) => ({
+          label: displayName,
+          value: id,
         }));
       },
       providerIdToSourceName() {
