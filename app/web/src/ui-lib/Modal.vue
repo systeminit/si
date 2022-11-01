@@ -74,7 +74,7 @@
                     button-rank="primary"
                     button-type="success"
                     icon="check"
-                    label="Create"
+                    :label="saveLabel"
                     size="xs"
                     @click="emit('save')"
                   />
@@ -96,7 +96,7 @@ import {
   TransitionChild,
   TransitionRoot,
 } from "@headlessui/vue";
-import { PropType, computed } from "vue";
+import { PropType, computed, toRef } from "vue";
 import VButton from "@/molecules/VButton.vue";
 
 const props = defineProps({
@@ -121,7 +121,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  saveLabel: {
+    type: String,
+    default: "Create",
+    required: false,
+  },
 });
+
+const saveLabel = toRef(props, "saveLabel", "Create");
 
 const dialogPanelClasses = computed(() => {
   let size;

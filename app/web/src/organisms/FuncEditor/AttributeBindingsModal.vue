@@ -2,13 +2,13 @@
   <Modal
     :open="open"
     type="save"
-    save-label="Save Bindings"
+    :save-label="isCreating ? 'Add Binding' : 'Update Binding'"
     size="2xl"
     @close="emit('close')"
     @save="emit('save', editedPrototype)"
   >
     <template #title
-      >{{ props.prototype?.id === -1 ? "Add" : "Update" }} Function Bindings
+      >{{ isCreating ? "Add" : "Update" }} Function Bindings
     </template>
     <template #content>
       <div class="p-4 flex flex-col place-content-center">
@@ -88,6 +88,8 @@ const props = withDefaults(
 );
 
 const prototype = toRef(props, "prototype", undefined);
+
+const isCreating = computed(() => props.prototype?.id === -1);
 
 const emit = defineEmits<{
   (e: "close"): void;

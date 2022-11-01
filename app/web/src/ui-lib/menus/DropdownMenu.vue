@@ -252,7 +252,7 @@ function startListening() {
 function onWindowMousedown(e: MouseEvent) {
   // we normally close on mousedown, but if the thing being clicked is an item in this menu
   // we want to let the click through to enable the normal behaviour and then close after the click fires (mouseup)
-  if (internalRef.value?.contains(e.target as any)) {
+  if (e.target instanceof Element && internalRef.value?.contains(e.target)) {
     window.addEventListener("click", close, { once: true });
   } else {
     close();
