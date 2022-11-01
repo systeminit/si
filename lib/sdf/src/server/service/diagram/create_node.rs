@@ -4,9 +4,8 @@ use crate::service::schema::SchemaError;
 use axum::Json;
 use dal::WsEvent;
 use dal::{
-    generate_name, node::NodeViewKind, node_position::NodePositionView, Component, DiagramKind,
-    NodePosition, NodeTemplate, NodeView, Schema, SchemaId, StandardModel, SystemId, Visibility,
-    WorkspaceId,
+    generate_name, node_position::NodePositionView, Component, DiagramKind, NodePosition,
+    NodeTemplate, NodeView, Schema, SchemaId, StandardModel, SystemId, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -55,7 +54,6 @@ pub async fn create_node(
         Component::new_for_schema_variant_with_node(&ctx, &name, schema_variant_id).await?;
 
     let component_id = *component.id();
-    let kind = NodeViewKind::Component { component_id };
 
     let node_template = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;
 
@@ -69,7 +67,7 @@ pub async fn create_node(
     )
     .await?;
     let positions = vec![NodePositionView::from(position)];
-    let node_view = NodeView::new(name, &node, kind, positions, node_template);
+    let node_view = NodeView::new(name, &node, component_id, positions, node_template);
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 

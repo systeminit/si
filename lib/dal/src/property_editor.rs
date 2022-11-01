@@ -43,6 +43,8 @@ pub enum PropertyEditorError {
     Component(#[from] ComponentError),
     #[error("validation resolver error: {0}")]
     ValidationResolver(#[from] ValidationResolverError),
+    #[error("prop not found for id: {0}")]
+    PropNotFound(PropId),
 }
 
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
@@ -227,10 +229,27 @@ pk!(PropertyEditorValueId);
 #[serde(rename_all = "camelCase")]
 pub struct PropertyEditorValue {
     id: PropertyEditorValueId,
-    pub prop_id: PropertyEditorPropId,
+    prop_id: PropertyEditorPropId,
     key: Option<String>,
     value: Value,
     func: FuncWithPrototypeContext,
+}
+
+impl PropertyEditorValue {
+    pub fn value(&self) -> Value {
+        self.value.clone()
+    }
+
+    /// Returns the [`Prop`](crate::Prop) corresponding to the "prop_id" field.
+    pub async fn prop(&self, ctx: &DalContext) -> PropertyEditorResult<Prop> {
+        // FIXME(nick): implement from.
+        let unchecked_id: i64 = self.prop_id.into();
+        let prop_id: PropId = unchecked_id.into();
+        let prop = Prop::get_by_id(ctx, &prop_id)
+            .await?
+            .ok_or(PropertyEditorError::PropNotFound(prop_id))?;
+        Ok(prop)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -248,8 +267,8 @@ impl PropertyEditorValues {
     ) -> PropertyEditorResult<Self> {
         let mut root_value_id = None;
         let mut values = HashMap::new();
-        let mut child_values = HashMap::new();
-
+        let mut child_values: HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>> =
+            HashMap::new();
         let mut work_queue = AttributeValue::list_payload_for_read_context(ctx, context).await?;
 
         // We sort the work queue according to the order of every nested IndexMap. This ensures that
@@ -285,7 +304,7 @@ impl PropertyEditorValues {
             if let Some(parent_id) = work.parent_attribute_value_id {
                 child_values
                     .entry(i64::from(parent_id).into())
-                    .or_insert(vec![])
+                    .or_default()
                     .push(i64::from(*work.attribute_value.id()).into());
             } else {
                 root_value_id = Some(i64::from(*work.attribute_value.id()).into());

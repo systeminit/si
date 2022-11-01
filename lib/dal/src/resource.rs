@@ -126,10 +126,7 @@ impl Resource {
         let component = Component::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ResourceError::ComponentNotFound(component_id))?;
-        component
-            .set_value_by_json_pointer(ctx, "/root/resource", Some(serde_json::to_string(&data)?))
-            .await
-            .map_err(Box::new)?;
+        component.set_resource(ctx, &data).await.map_err(Box::new)?;
 
         Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
@@ -147,14 +144,7 @@ impl Resource {
             let component = Component::get_by_id(ctx, &component_id)
                 .await?
                 .ok_or(ResourceError::ComponentNotFound(component_id))?;
-            component
-                .set_value_by_json_pointer(
-                    ctx,
-                    "/root/resource",
-                    Some(serde_json::to_string(&data)?),
-                )
-                .await
-                .map_err(Box::new)?;
+            component.set_resource(ctx, &data).await.map_err(Box::new)?;
 
             if resource.data != data {
                 resource.set_data(ctx, data.clone()).await?;

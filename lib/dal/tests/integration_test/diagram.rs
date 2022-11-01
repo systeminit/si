@@ -1,12 +1,98 @@
+use dal::node_position::NodePositionView;
 use dal::{
     socket::{SocketArity, SocketEdgeKind, SocketKind},
-    Connection, DalContext, Diagram, DiagramEdgeView, DiagramKind, NodePosition, Schema,
-    SchemaVariant, StandardModel,
+    AttributeReadContext, Component, ComponentView, Connection, DalContext, Diagram,
+    DiagramEdgeView, DiagramKind, NodePosition, NodeTemplate, NodeView, Schema, SchemaVariant,
+    StandardModel,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
 };
+
+#[test]
+async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
+    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
+        .await
+        .expect("could not perform schema find by attr")
+        .pop()
+        .expect("docker image schema not found");
+    let schema_variant_id = schema
+        .default_schema_variant_id()
+        .expect("could not find default schema variant id");
+    let name = "13700KF".to_string();
+
+    let (component, node) =
+        Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
+            .await
+            .expect("could not create component");
+
+    let component_view = ComponentView::for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: None,
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant_id),
+            component_id: Some(*component.id()),
+            ..AttributeReadContext::default()
+        },
+    )
+    .await
+    .expect("could not get component view");
+    assert_eq!(
+        serde_json::json![{
+            "domain": {
+                "image": "13700KF"
+            },
+            "si": {
+                "name": "13700KF",
+            },
+        }], // expected
+        component_view.properties // actual
+    );
+
+    let node_template = NodeTemplate::new_from_schema_id(ctx, *schema.id())
+        .await
+        .expect("could not create node template");
+    let diagram_kind = schema.diagram_kind().expect("no diagram kind for schema");
+    assert_eq!(diagram_kind, DiagramKind::Configuration);
+
+    let position = NodePosition::new(ctx, *node.id(), diagram_kind, None, "0", "0")
+        .await
+        .expect("could not create node position");
+    let positions = vec![NodePositionView::from(position)];
+    let node_view = NodeView::new(name, &node, *component.id(), positions, node_template);
+
+    let found_component = Component::get_by_id(ctx, &node_view.component_id())
+        .await
+        .expect("could not perform get by id for component")
+        .expect("component not found by id");
+    assert_eq!(*component.id(), *found_component.id());
+
+    let component_view = ComponentView::for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: None,
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant_id),
+            component_id: Some(*component.id()),
+            ..AttributeReadContext::default()
+        },
+    )
+    .await
+    .expect("could not get component view");
+    assert_eq!(
+        serde_json::json![{
+            "domain": {
+                "image": "13700KF"
+            },
+            "si": {
+                "name": "13700KF",
+            },
+        }], // expected
+        component_view.properties // actual
+    );
+}
 
 #[test]
 async fn get_diagram_and_create_connection(ctx: &DalContext) {

@@ -1482,4 +1482,11 @@ impl Component {
         };
         Self::name_from_context(ctx, context).await
     }
+
+    /// Sets the "string" field, "/root/resource" with a given value.
+    pub async fn set_resource(&self, ctx: &DalContext, data: &Value) -> ComponentResult<()> {
+        self.set_value_by_json_pointer(ctx, "/root/resource", Some(serde_json::to_string(data)?))
+            .await?;
+        Ok(())
+    }
 }

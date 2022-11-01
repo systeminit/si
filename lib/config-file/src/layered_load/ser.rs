@@ -342,7 +342,7 @@ impl<'a> ser::SerializeMap for &'a mut Serializer {
     where
         T: Serialize,
     {
-        key.serialize(MapKeySerializer { ser: *self })?;
+        key.serialize(MapKeySerializer { ser: self })?;
         Ok(())
     }
 

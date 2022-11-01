@@ -144,10 +144,10 @@ impl Client {
         };
 
         let span = Span::current();
-        span.record("messaging.protocol", &metadata.messaging_protocol);
-        span.record("messaging.system", &metadata.messaging_system);
-        span.record("messaging.url", &metadata.messaging_url.as_str());
-        span.record("net.transport", &metadata.net_transport);
+        span.record("messaging.protocol", metadata.messaging_protocol);
+        span.record("messaging.system", metadata.messaging_system);
+        span.record("messaging.url", metadata.messaging_url.as_str());
+        span.record("net.transport", metadata.net_transport);
 
         let inner = spawn_blocking(move || options.inner.connect(&nats_url))
             .await
@@ -198,8 +198,8 @@ impl Client {
         let span = Span::current();
 
         let subject = subject.into();
-        span.record("messaging.destination", &subject.as_str());
-        span.record("otel.name", &format!("{} receive", &subject).as_str());
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} receive", &subject).as_str());
         let inner = self.inner.clone();
         let sub_subject = subject.clone();
         let sub = spawn_blocking(move || inner.subscribe(&sub_subject))
@@ -249,9 +249,9 @@ impl Client {
 
         let subject = subject.into();
         let queue = queue.into();
-        span.record("messaging.destination", &subject.as_str());
-        span.record("messaging.subscription.queue", &queue.as_str());
-        span.record("otel.name", &format!("{} receive", &subject).as_str());
+        span.record("messaging.destination", subject.as_str());
+        span.record("messaging.subscription.queue", queue.as_str());
+        span.record("otel.name", format!("{} receive", &subject).as_str());
         let inner = self.inner.clone();
         let sub_subject = subject.clone();
         let sub = spawn_blocking(move || inner.queue_subscribe(&sub_subject, &queue))
@@ -318,8 +318,8 @@ impl Client {
         let subject = subject.into();
         let reply = reply.into();
         let msg = msg.into();
-        span.record("messaging.destination", &subject.as_str());
-        span.record("otel.name", &format!("{} send", &subject).as_str());
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
         let inner = self.inner.clone();
         spawn_blocking(move || inner.publish_request(&subject, &reply, &msg))
             .await
@@ -386,8 +386,8 @@ impl Client {
 
         let subject = subject.into();
         let msg = msg.into();
-        span.record("messaging.destination", &subject.as_str());
-        span.record("otel.name", &format!("{} send", &subject).as_str());
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
         let inner = self.inner.clone();
         let msg = spawn_blocking(move || inner.request(&subject, &msg))
             .await
@@ -441,8 +441,8 @@ impl Client {
 
         let subject = subject.into();
         let msg = msg.into();
-        span.record("messaging.destination", &subject.as_str());
-        span.record("otel.name", &format!("{} send", &subject).as_str());
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
         let inner = self.inner.clone();
         let msg = spawn_blocking(move || inner.request_timeout(&subject, &msg, timeout))
             .await
@@ -493,8 +493,8 @@ impl Client {
         let subject = subject.into();
         let sub_span_subject = subject.clone();
         let msg = msg.into();
-        span.record("messaging.destination", &subject.as_str());
-        span.record("otel.name", &format!("{} send", &subject).as_str());
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
         let inner = self.inner.clone();
         let sub_subject = subject.clone();
         let sub = spawn_blocking(move || inner.request_multi(&sub_subject, &msg))
@@ -830,8 +830,8 @@ impl Client {
         let headers = headers.map(HeaderMap::clone);
         let reply = reply.map(Into::into);
         let msg = msg.into();
-        span.record("messaging.destination", &subject.as_str());
-        span.record("otel.name", &format!("{} send", &subject).as_str());
+        span.record("messaging.destination", subject.as_str());
+        span.record("otel.name", format!("{} send", &subject).as_str());
         let inner = self.inner.clone();
         spawn_blocking(move || {
             inner.publish_with_reply_or_headers(&subject, reply.as_deref(), headers.as_ref(), &msg)
@@ -972,7 +972,7 @@ impl NatsTxn {
         }
 
         self.tx_span.record_ok();
-        self.tx_span.record("messaging.transaction", &"commit");
+        self.tx_span.record("messaging.transaction", "commit");
         span.record_ok();
 
         Ok(self.client)
@@ -1013,7 +1013,7 @@ impl NatsTxn {
         // function returns (i.e. it consumes `self`).
 
         self.tx_span.record_ok();
-        self.tx_span.record("messaging.transaction", &"rollback");
+        self.tx_span.record("messaging.transaction", "rollback");
         span.record_ok();
 
         Ok(self.client)

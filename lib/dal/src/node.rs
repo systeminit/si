@@ -163,15 +163,6 @@ impl NodeTemplate {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-pub enum NodeViewKind {
-    #[serde(rename_all = "camelCase")]
-    Component { component_id: ComponentId },
-    #[serde(rename_all = "camelCase")]
-    Deployment { component_id: ComponentId },
-}
-
 /// This maps to the typescript DiagramNode, and can go from the database
 /// representation of a node, combined with the schema data.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -180,7 +171,7 @@ pub struct NodeView {
     id: NodeId,
     name: String,
     title: String,
-    kind: NodeViewKind,
+    component_id: ComponentId,
     schema_variant_id: SchemaVariantId,
     positions: Vec<NodePositionView>,
 }
@@ -189,7 +180,7 @@ impl NodeView {
     pub fn new(
         name: impl Into<String>,
         node: &Node,
-        kind: NodeViewKind,
+        component_id: ComponentId,
         positions: Vec<NodePositionView>,
         node_template: NodeTemplate,
     ) -> Self {
@@ -197,7 +188,7 @@ impl NodeView {
         NodeView {
             id: node.id,
             name,
-            kind,
+            component_id,
             schema_variant_id: node_template.schema_variant_id,
             title: node_template.title,
             positions,
@@ -206,6 +197,10 @@ impl NodeView {
 
     pub fn id(&self) -> &NodeId {
         &self.id
+    }
+
+    pub fn component_id(&self) -> ComponentId {
+        self.component_id
     }
 
     pub fn positions(&self) -> &[NodePositionView] {
