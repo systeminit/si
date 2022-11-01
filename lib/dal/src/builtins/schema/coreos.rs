@@ -170,6 +170,7 @@ async fn butane(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
     let (docker_image_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
+            *schema.id(),
             *schema_variant.id(),
             "Container Image",
             identity_func_item.func_id,
