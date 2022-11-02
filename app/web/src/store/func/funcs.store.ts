@@ -176,7 +176,7 @@ export const useFuncStore = () => {
         });
       },
 
-      removeFuncAttrPrototype(funcId: FuncId, prototypeId: number) {
+      async removeFuncAttrPrototype(funcId: FuncId, prototypeId: number) {
         const func = this.openFuncsById[funcId];
         if (func?.associations?.type !== "attribute") {
           return;
@@ -185,9 +185,10 @@ export const useFuncStore = () => {
         func.associations.prototypes = func.associations.prototypes.filter(
           (proto) => proto.id !== prototypeId,
         );
-        this.enqueueFuncSave(funcId);
+        this.openFuncsById[funcId] = { ...func };
+        await this.SAVE_UPDATED_FUNC(funcId);
       },
-      updateFuncAttrPrototype(
+      async updateFuncAttrPrototype(
         funcId: FuncId,
         prototype: AttributePrototypeView,
       ) {
@@ -204,28 +205,27 @@ export const useFuncStore = () => {
           );
           func.associations.prototypes[currentPrototypeIdx] = prototype;
         }
-        this.enqueueFuncSave(funcId);
+        this.SAVE_UPDATED_FUNC(funcId);
       },
-      updateFuncAttrArgs(funcId: FuncId, args: FuncArgument[]) {
+      async updateFuncAttrArgs(funcId: FuncId, args: FuncArgument[]) {
         const func = this.openFuncsById[funcId];
         if (func?.associations?.type !== "attribute") {
           return;
         }
         func.associations.arguments = args;
-        this.enqueueFuncSave(funcId);
+        await this.SAVE_UPDATED_FUNC(funcId);
       },
-      updateFuncAssociations(
+      async updateFuncAssociations(
         funcId: FuncId,
         associations: FuncAssociations | undefined,
       ) {
         this.openFuncsById[funcId].associations = associations;
-        this.enqueueFuncSave(funcId);
+        await this.SAVE_UPDATED_FUNC(funcId);
       },
       updateFuncCode(funcId: FuncId, code: string) {
         this.openFuncsById[funcId].code = code;
         this.enqueueFuncSave(funcId);
       },
-
       enqueueFuncSave(funcId: FuncId) {
         // Lots of ways to handle this... we may want to handle this debouncing in the component itself
         // so the component has it's own "draft" state that it passes back to the store when it's ready to save

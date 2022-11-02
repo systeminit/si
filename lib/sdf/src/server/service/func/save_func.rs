@@ -45,6 +45,16 @@ async fn save_attr_func_proto_arguments(
     arguments: Vec<AttributePrototypeArgumentView>,
     create_all: bool,
 ) -> FuncResult<()> {
+    let mut id_set = HashSet::new();
+
+    if create_all {
+        for proto_arg in
+            AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?
+        {
+            proto_arg.delete(ctx).await?;
+        }
+    }
+
     for arg in &arguments {
         if let Some(arg_id) = arg.id {
             let proto_arg = if arg_id.is_none() || create_all {
@@ -58,7 +68,7 @@ async fn save_attr_func_proto_arguments(
                         )
                         .await?,
                     ),
-                    None => None,
+                    None => None, // This should probably be an error
                 }
             } else {
                 Some(
@@ -84,6 +94,9 @@ async fn save_attr_func_proto_arguments(
                             .await?;
                     }
                 }
+
+                let proto_arg_id = *proto_arg.id();
+                id_set.insert(proto_arg_id);
             }
         } else if let Some(internal_provider_id) = arg.internal_provider_id {
             AttributePrototypeArgument::new_for_intra_component(
@@ -94,6 +107,14 @@ async fn save_attr_func_proto_arguments(
             )
             .await?;
         } // else condition should be error here? (saving an arg that has no internal provider id)
+    }
+
+    for proto_arg in
+        AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?
+    {
+        if !id_set.contains(proto_arg.id()) {
+            proto_arg.delete(ctx).await?;
+        }
     }
 
     Ok(())
@@ -193,6 +214,13 @@ async fn reset_prototype_and_value_to_builtin_function(
         .ok_or(FuncError::AttributeValueMissing)?;
 
     let maybe_parent_attribute_value = existing_value.parent_attribute_value(ctx).await?;
+    let value_value = existing_value.get_value(ctx).await?;
+
+    for proto_arg in
+        AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?
+    {
+        proto_arg.delete(ctx).await?;
+    }
 
     // This should reset the prototype to a builtin value function
     AttributeValue::update_for_context(
@@ -200,7 +228,7 @@ async fn reset_prototype_and_value_to_builtin_function(
         *existing_value.id(),
         maybe_parent_attribute_value.map(|pav| *pav.id()),
         context,
-        existing_value.get_value(ctx).await?,
+        value_value,
         proto.key().map(|key| key.to_string()),
     )
     .await?;
