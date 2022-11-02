@@ -132,13 +132,8 @@ impl SchemaVariant {
     /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
     /// [`SchemaVariant`]. This method should only be called once, as it is not fully idempotent.
     pub async fn finalize(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(SchemaVariantError::MissingSchema(self.id))?;
-
         Self::create_default_prototypes_and_values(ctx, self.id).await?;
-        Self::create_implicit_internal_providers(ctx, *schema.id(), self.id).await?;
+        Self::create_implicit_internal_providers(ctx, self.id).await?;
 
         Ok(())
     }
@@ -166,7 +161,6 @@ impl SchemaVariant {
     /// or a map.
     async fn create_implicit_internal_providers(
         ctx: &DalContext,
-        schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
         // If no props have been created for the schema variant, there are no internal providers
@@ -179,7 +173,7 @@ impl SchemaVariant {
         let mut work_queue = vec![root_prop];
 
         while let Some(work) = work_queue.pop() {
-            InternalProvider::new_implicit(ctx, *work.id(), schema_id, schema_variant_id).await?;
+            InternalProvider::new_implicit(ctx, *work.id(), SchemaVariantId::NONE).await?;
 
             // Only check for child props if the current prop is of kind object.
             if work.kind() == &PropKind::Object {

@@ -32,7 +32,6 @@ async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket
     let (_schema_explicit_internal_provider, input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
-            *schema.id(),
             *schema_variant.id(),
             "Schema",
             identity_func_id,

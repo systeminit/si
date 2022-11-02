@@ -61,7 +61,6 @@ async fn new_implicit_internal(ctx: &DalContext) {
 
     let (explicit_internal_provider, input_socket) = InternalProvider::new_explicit_with_socket(
         ctx,
-        *schema.id(),
         *schema_variant.id(),
         "poop",
         func_id,

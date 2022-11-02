@@ -353,6 +353,9 @@ BEGIN
 
                     IF attribute_prototype.attribute_context_prop_id != -1 THEN
                         -- This AttributePrototype is directly associated with a Prop
+                        RAISE DEBUG 'attribute_value_create_new_affected_values_v1: AttributePrototype(%) is for Prop(%)',
+                            attribute_prototype.id,
+                            attribute_prototype.attribute_context_prop_id;
 
                         -- For each AttributeValue for this AttributePrototype, check if it is the level of specificity that we want,
                         -- if not, check the AttributeValue that is a proxy for the AttributeValue that we just looked at. Repeat
