@@ -2171,13 +2171,14 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_value_vivify_value_and_parent_values_raw_v1(this_write_tenancy         jsonb,
-                                                                                 this_read_tenancy          jsonb,
-                                                                                 this_visibility            jsonb,
-                                                                                 this_attribute_context     jsonb,
-                                                                                 this_attribute_value_id    bigint,
-                                                                                 this_create_child_proxies  bool,
-                                                                                 OUT new_attribute_value_id bigint
+CREATE OR REPLACE FUNCTION attribute_value_vivify_value_and_parent_values_raw_v1(
+    this_write_tenancy         jsonb,
+    this_read_tenancy          jsonb,
+    this_visibility            jsonb,
+    this_attribute_context     jsonb,
+    this_attribute_value_id    bigint,
+    this_create_child_proxies  bool,
+    OUT new_attribute_value_id bigint
 )
 AS
 $$
@@ -2214,16 +2215,12 @@ BEGIN
     -- If the AttributeValue isn't for a Prop, check if it's for an InternalProvider, and grab the
     -- associated Prop.
     IF NOT FOUND THEN
-        SELECT DISTINCT ON (id) p.*
+        SELECT p.*
         INTO prop
         FROM props_v1(this_read_tenancy, this_visibility) AS p
         INNER JOIN internal_providers_v1(this_read_tenancy, this_visibility) AS ip
             ON ip.prop_id = p.id
-        WHERE ip.id = attribute_value.attribute_context_internal_provider_id
-        ORDER BY
-            id,
-            visibility_change_set_pk DESC,
-            visibility_deleted_at DESC NULLS FIRST;
+        WHERE ip.id = attribute_value.attribute_context_internal_provider_id;
     END IF;
     -- If the AttributeValue isn't for a Prop, or an Internal Provider, then the only thing left
     -- is an ExternalProvider, which doesn't have a Prop at all. Pretend that the `prop.kind` is
@@ -2242,22 +2239,20 @@ BEGIN
             empty_value := NULL;
     END CASE;
 
-    SELECT DISTINCT ON (object_id) belongs_to_id
+    SELECT belongs_to_id
     INTO STRICT func_id
-    FROM func_binding_belongs_to_func
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, func_binding_belongs_to_func)
-          AND func_binding_belongs_to_func.object_id = attribute_value.func_binding_id
-    ORDER BY object_id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM func_binding_belongs_to_func_v1(this_read_tenancy, this_visibility)
+    WHERE object_id = attribute_value.func_binding_id;
 
     SELECT id
     INTO unset_func_id
-    FROM find_by_attr_v1('funcs',
-                         this_read_tenancy,
-                         this_visibility,
-                         'name',
-                         'si:unset');
+    FROM find_by_attr_v1(
+        'funcs',
+        this_read_tenancy,
+        this_visibility,
+        'name',
+        'si:unset'
+    );
 
     -- If the AttributeValue is already set, there might not be anything for us to do.
     IF func_id != unset_func_id THEN
@@ -2282,19 +2277,24 @@ BEGIN
     FROM attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
     WHERE object_id = attribute_value.id;
 
-    new_attribute_value_id := attribute_value_update_for_context_raw_v1(this_write_tenancy,
-                                                                        this_read_tenancy,
-                                                                        this_visibility,
-                                                                        attribute_value.id,
-                                                                        maybe_parent_attribute_value_id,
-                                                                        this_attribute_context,
-                                                                        empty_value,
-                                                                        null,
-                                                                        this_create_child_proxies);
+    RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1: Update for context on AttributeValue(%) in AttributeContext(%)',
+        attribute_value.id,
+        this_attribute_context;
+    new_attribute_value_id := attribute_value_update_for_context_raw_v1(
+        this_write_tenancy,
+        this_read_tenancy,
+        this_visibility,
+        attribute_value.id,
+        maybe_parent_attribute_value_id,
+        this_attribute_context,
+        empty_value,
+        null,
+        this_create_child_proxies
+    );
 
     IF
         new_attribute_value_id != attribute_value.id
-        -- Providers don't have Proxy values.
+        -- Providers don't have Proxy values, only AttributeValues directly for Props.
         AND this_attribute_context ->> 'attribute_context_prop_id' != '-1'
     THEN
         PERFORM update_by_id_v1(
