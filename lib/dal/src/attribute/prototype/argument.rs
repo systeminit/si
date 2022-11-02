@@ -205,7 +205,7 @@ impl AttributePrototypeArgument {
     /// Wraps the standard model accessor for "internal_provider_id" to ensure that a set value
     /// cannot become unset and vice versa.
     pub async fn set_internal_provider_id_safe(
-        mut self,
+        &mut self,
         ctx: &DalContext,
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<()> {
