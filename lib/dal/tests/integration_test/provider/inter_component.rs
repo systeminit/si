@@ -155,7 +155,6 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Create the "swings" explicit internal provider for intra component connection.
     let (swings_explicit_internal_provider, _socket) = InternalProvider::new_explicit_with_socket(
         ctx,
-        swings_payload.schema_id,
         swings_payload.schema_variant_id,
         "swings",
         identity_func_id,
@@ -559,7 +558,6 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         .expect("cannot set function on destination object prototype");
     let (destination_internal_provider, _socket) = InternalProvider::new_explicit_with_socket(
         ctx,
-        *destination_schema.id(),
         *destination_schema_variant.id(),
         "destination_data",
         identity_func_id,
