@@ -104,6 +104,10 @@ export const useFuncStore = () => {
     },
     actions: {
       async SELECT_FUNC(funcId: FuncId) {
+        if (funcId === -1) {
+          return;
+        }
+
         const existing = this.openFuncsById[funcId];
         if (existing) {
           this.selectedFuncId = funcId;
