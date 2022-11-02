@@ -53,22 +53,28 @@ const props = defineProps<{
 
 const funcIdParam = toRef(props, "funcId", -1);
 
+const routeToFunc = useRouteToFunc();
+const selectFunc = (func: ListedFuncView) => {
+  routeToFunc(func.id);
+};
+
 watch(
   () => funcIdParam.value,
   (funcIdParam) => {
     let funcId = funcIdParam ?? -1;
-    if (Number.isNaN(funcIdParam)) {
-      funcId = -1;
+    if (Number.isNaN(funcIdParam) || funcId === -1) {
+      if (selectedFuncId.value !== -1) {
+        routeToFunc(selectedFuncId.value);
+        return;
+      } else {
+        funcId = -1;
+      }
     }
     funcStore.SELECT_FUNC(funcId);
   },
   { immediate: true },
 );
 
-const routeToFunc = useRouteToFunc();
-const selectFunc = (func: ListedFuncView) => {
-  routeToFunc(func.id);
-};
 
 const createFunc = async ({
   isBuiltin,
