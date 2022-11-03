@@ -16,18 +16,15 @@
       <div class="relative">
         <ListboxButton
           :class="boxClasses"
-          class="relative w-full rounded-sm shadow-sm pr-10 py-1 text-left cursor-default sm:text-sm disabled:opacity-50"
+          class="relative w-full rounded-sm shadow-sm pr-10 py-1 text-left cursor-default sm:text-sm disabled:opacity-50 block h-8"
           @mouseover="changeListboxHovered(true)"
           @mouseleave="changeListboxHovered(false)"
         >
           <span class="block" :class="selectedLabelClasses">
-            <template v-if="selectedLabel">
-              {{ selectedLabel }}
-            </template>
-            <template v-else />
+            {{ selectedLabel }}
           </span>
 
-          <span
+          <div
             class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none"
           >
             <div v-if="props.navbarMode">
@@ -39,7 +36,7 @@
             <div v-else class="text-neutral-400">
               <Icon name="selector" />
             </div>
-          </span>
+          </div>
         </ListboxButton>
 
         <transition

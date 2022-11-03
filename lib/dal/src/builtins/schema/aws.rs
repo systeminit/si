@@ -351,7 +351,7 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
         ctx,
         "InstanceType",
         PropKind::String,
-        Some((WidgetKind::Select, instance_types_option_list_json)),
+        Some((WidgetKind::ComboBox, instance_types_option_list_json)),
         Some(root_prop.domain_prop_id),
         Some(EC2_INSTANCE_TYPES_URL.to_string()),
     )
@@ -832,7 +832,7 @@ async fn region(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         ctx,
         "region",
         PropKind::String,
-        Some((WidgetKind::Select, regions_dropdown_options_json)),
+        Some((WidgetKind::ComboBox, regions_dropdown_options_json)),
         Some(root_prop.domain_prop_id),
         Some(AWS_REGIONS_DOCS_URL.to_string()),
     )

@@ -1,7 +1,7 @@
 <template>
   <component
     :is="linkTo ? RouterLink : 'button'"
-    v-tooltip="{ content: tooltipText, delay: { show: 50, hide: 100 } }"
+    v-tooltip="{ content: tooltipText, delay: { show: 10, hide: 100 } }"
     :to="linkTo"
     :class="
       clsx(

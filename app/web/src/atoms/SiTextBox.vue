@@ -171,7 +171,7 @@ const textBoxClasses = computed((): Record<string, boolean> => {
     results["placeholder:text-xs"] = true;
   } else {
     results["bg-neutral-50"] = true;
-    results["border-neutral-300"] = true;
+    results["border-neutral-200"] = true;
     results["dark:border-neutral-600"] = true;
     results["dark:bg-neutral-900"] = true;
   }
