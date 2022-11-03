@@ -80,8 +80,8 @@ impl Message {
 
         let msg = msg.into();
         if let Some(reply) = self.reply() {
-            span.record("messaging.destination", &reply);
-            span.record("otel.name", &format!("{} send", &reply).as_str());
+            span.record("messaging.destination", reply);
+            span.record("otel.name", format!("{} send", &reply).as_str());
         }
         let inner = self.inner.clone();
         spawn_blocking(move || inner.respond(&msg))
@@ -122,8 +122,8 @@ impl Message {
         let span = Span::current();
 
         if let Some(reply) = self.reply() {
-            span.record("messaging.destination", &reply);
-            span.record("otel.name", &format!("{} send", &reply).as_str());
+            span.record("messaging.destination", reply);
+            span.record("otel.name", format!("{} send", &reply).as_str());
         }
         let inner = self.inner.clone();
         spawn_blocking(move || inner.ack())
@@ -163,8 +163,8 @@ impl Message {
         let span = Span::current();
 
         if let Some(reply) = self.reply() {
-            span.record("messaging.destination", &reply);
-            span.record("otel.name", &format!("{} send", &reply).as_str());
+            span.record("messaging.destination", reply);
+            span.record("otel.name", format!("{} send", &reply).as_str());
         }
         let inner = self.inner.clone();
         spawn_blocking(move || inner.ack_kind(ack_kind))
@@ -205,8 +205,8 @@ impl Message {
         let span = Span::current();
 
         if let Some(reply) = self.reply() {
-            span.record("messaging.destination", &reply);
-            span.record("otel.name", &format!("{} send", &reply).as_str());
+            span.record("messaging.destination", reply);
+            span.record("otel.name", format!("{} send", &reply).as_str());
         }
         let inner = self.inner.clone();
         spawn_blocking(move || inner.double_ack(ack_kind))

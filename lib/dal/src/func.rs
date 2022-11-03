@@ -150,6 +150,7 @@ impl Func {
         Ok(())
     }
 
+    #[allow(clippy::result_large_err)]
     pub fn code_plaintext(&self) -> FuncResult<Option<String>> {
         Ok(match self.code_base64() {
             Some(base64_code) => Some(String::from_utf8(base64::decode(base64_code)?)?),
@@ -162,7 +163,7 @@ impl Func {
         ctx: &DalContext,
         code: Option<&'_ str>,
     ) -> FuncResult<()> {
-        self.set_code_base64(ctx, code.as_ref().map(|code| base64::encode(&code)))
+        self.set_code_base64(ctx, code.as_ref().map(base64::encode))
             .await
     }
 

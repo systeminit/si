@@ -56,7 +56,7 @@ impl SpanExt for tracing::Span {
         E: std::error::Error,
     {
         self.record("otel.status_code", "ERROR");
-        self.record("otel.status_message", &err.to_string().as_str());
+        self.record("otel.status_message", err.to_string().as_str());
         err
     }
 }

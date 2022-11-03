@@ -94,7 +94,7 @@ fn find_first_file_candidate(
         let user_candidate = ProjectDirs::from("", "", app_name)
             .ok_or(ConfigFileError::HomeDirectory)?
             .config_dir()
-            .join(&goal);
+            .join(goal);
         trace!(path = %user_candidate.display(), "checking candidate in user directory");
         if user_candidate.is_file() {
             debug!(path = %user_candidate.display(), "found candidate in user directory");
@@ -105,7 +105,7 @@ fn find_first_file_candidate(
     // Return candidate if found in root location
     for (goal, file_format) in &goals {
         for prefix in ["/usr/local/etc", "/etc"] {
-            let mut root_candidate = Path::new(prefix).join(app_name).join(&goal);
+            let mut root_candidate = Path::new(prefix).join(app_name).join(goal);
             if let Ok(fs_root) = env::var("FS_ROOT") {
                 root_candidate = Path::new(&fs_root).join(root_candidate);
             }

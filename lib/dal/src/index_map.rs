@@ -89,7 +89,7 @@ impl postgres_types::ToSql for IndexMap {
     where
         Self: Sized,
     {
-        let json = serde_json::to_value(&self)?;
+        let json = serde_json::to_value(self)?;
         postgres_types::ToSql::to_sql(&json, ty, out)
     }
 

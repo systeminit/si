@@ -30,7 +30,7 @@ impl FuncBackend for FuncBackendBoolean {
     async fn inline(
         self: Box<Self>,
     ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
-        let value = serde_json::to_value(&self.args.value)?;
+        let value = serde_json::to_value(self.args.value)?;
         Ok((Some(value.clone()), Some(value)))
     }
 }

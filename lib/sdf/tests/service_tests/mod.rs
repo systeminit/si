@@ -32,7 +32,7 @@ pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
         );
 
     // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
-    let request_json = serde_json::to_value(&request).expect("cannot serialize params to json");
+    let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
     if let Some(workspace_id) = request_json
         .as_object()
         .and_then(|obj| obj.get("workspaceId"))
@@ -75,7 +75,7 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
         );
 
     // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
-    let request_json = serde_json::to_value(&request).expect("cannot serialize params to json");
+    let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
     if let Some(workspace_id) = request_json
         .as_object()
         .and_then(|obj| obj.get("workspaceId"))
@@ -153,7 +153,7 @@ pub async fn api_request<Req: Serialize, Res: DeserializeOwned>(
         .header(http::header::CONTENT_TYPE, "application/json");
 
     // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
-    let request_json = serde_json::to_value(&request).expect("cannot serialize params to json");
+    let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
     if let Some(workspace_id) = request_json
         .as_object()
         .and_then(|obj| obj.get("workspaceId"))

@@ -411,7 +411,7 @@ impl LocalUdsInstanceSpec {
     fn build_command(&self, socket: &Path) -> Command {
         let mut cmd = Command::new(&self.cyclone_cmd_path);
         cmd.arg("--bind-uds")
-            .arg(&socket)
+            .arg(socket)
             .arg("--decryption-key")
             .arg(&self.cyclone_decryption_key_path)
             .arg("--lang-server")

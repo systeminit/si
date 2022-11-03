@@ -75,16 +75,10 @@ impl QualificationSummary {
                     Some(qual_result) => (true, qual_result.success),
                 };
 
-            let total =
-                row.get::<&str, i64>("total_qualifications") + if has_validation { 1 } else { 0 };
-            let succeeded =
-                row.get::<&str, i64>("succeeded") + if validation_passed { 1 } else { 0 };
-            let failed = row.get::<&str, i64>("failed")
-                + if has_validation && !validation_passed {
-                    1
-                } else {
-                    0
-                };
+            let total = row.get::<&str, i64>("total_qualifications") + i64::from(has_validation);
+            let succeeded = row.get::<&str, i64>("succeeded") + i64::from(validation_passed);
+            let failed =
+                row.get::<&str, i64>("failed") + i64::from(has_validation && !validation_passed);
 
             let component = QualificationSummaryForComponent {
                 component_id,

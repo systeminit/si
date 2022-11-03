@@ -1,7 +1,7 @@
 use dal::{
-    attribute::context::AttributeContextBuilder, component::view::ComponentView, AttributeContext,
-    AttributeReadContext, AttributeValue, Component, DalContext, PropKind, SchemaKind,
-    StandardModel, SystemId,
+    attribute::context::AttributeContextBuilder, component::view::ComponentView, generate_name,
+    AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
+    Schema, SchemaKind, StandardModel, SystemId,
 };
 use dal_test::{
     test,
@@ -616,4 +616,75 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         .to_context()
         .expect("cannot create system array AttributeContext");
     assert_eq!(system_array_context, system_array_value.context);
+}
+
+#[test]
+async fn list_payload(ctx: &DalContext) {
+    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
+        .await
+        .expect("cannot find docker image schema")
+        .pop()
+        .expect("no docker image schema found");
+    let schema_variant_id = schema
+        .default_schema_variant_id()
+        .expect("missing default schema variant id");
+    let name = generate_name(None);
+    let (component, _node) =
+        Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
+            .await
+            .expect("could not create component");
+
+    let payloads = AttributeValue::list_payload_for_read_context(
+        ctx,
+        AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant_id),
+            component_id: Some(*component.id()),
+            prop_id: None,
+            ..AttributeReadContext::default()
+        },
+    )
+    .await
+    .expect("could not list payload for read context");
+
+    let mut name_value = None;
+    let mut image_value = None;
+    for payload in payloads {
+        if let Some(parent_prop) = payload
+            .prop
+            .parent_prop(ctx)
+            .await
+            .expect("could not perform parent prop fetch")
+        {
+            if payload.prop.name() == "name" && parent_prop.name() == "si" {
+                if name_value.is_some() {
+                    panic!("found more than one list payload value with prop \"name\" and parent \"si\"");
+                }
+                name_value = Some(payload.func_binding_return_value);
+            } else if payload.prop.name() == "image" && parent_prop.name() == "domain" {
+                if image_value.is_some() {
+                    panic!("found more than one list payload value with prop \"image\" and parent \"domain\"");
+                }
+                image_value = Some(payload.func_binding_return_value);
+            }
+        }
+    }
+
+    let name_value = name_value
+        .expect("did not find list payload value with prop \"name\" and parent \"si\"")
+        .expect("value is empty");
+    let name_value = name_value
+        .value()
+        .expect("value empty for func binding return value");
+
+    let image_value = image_value
+        .expect("did not find list payload value with prop \"image\" and parent \"domain\"")
+        .expect("value is empty");
+    let image_value = image_value
+        .value()
+        .expect("value empty for func binding return value");
+
+    let found_name = serde_json::to_string(name_value).expect("could not deserialize value");
+    assert_eq!(found_name.replace('"', ""), name);
+    assert_eq!(name_value, image_value);
 }

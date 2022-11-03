@@ -18,7 +18,9 @@ use super::{
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Builtin {
     AwsEc2,
+    AwsIngress,
     AwsRegion,
+    AwsSecurityGroup,
     CoreOsButane,
     DockerHubCredential,
     DockerImage,
@@ -31,7 +33,9 @@ impl Builtin {
     pub fn as_str(&self) -> &'static str {
         match &self {
             Builtin::AwsEc2 => "EC2 Instance",
+            Builtin::AwsIngress => "Ingress",
             Builtin::AwsRegion => "Region",
+            Builtin::AwsSecurityGroup => "Security Group",
             Builtin::CoreOsButane => "Butane",
             Builtin::DockerHubCredential => "Docker Hub Credential",
             Builtin::DockerImage => "Docker Image",
@@ -145,7 +149,11 @@ impl SchemaBuiltinsTestHarness {
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {
         let mut prop_map = match builtin {
+            Builtin::AwsIngress => Self::cache_props_for_aws_ingress(ctx, schema_variant_id).await,
             Builtin::AwsRegion => Self::cache_props_for_aws_region(ctx, schema_variant_id).await,
+            Builtin::AwsSecurityGroup => {
+                Self::cache_props_for_aws_security_group(ctx, schema_variant_id).await
+            }
             Builtin::CoreOsButane => {
                 Self::cache_props_for_coreos_butane(ctx, schema_variant_id).await
             }
@@ -155,7 +163,7 @@ impl SchemaBuiltinsTestHarness {
             Builtin::KubernetesNamespace => {
                 Self::cache_props_for_kubernetes_namespace(ctx, schema_variant_id).await
             }
-            _ => HashMap::new(),
+            _ => PropMap::new(),
         };
 
         // Always provide "/root/si/name" for all builtins.
@@ -168,16 +176,59 @@ impl SchemaBuiltinsTestHarness {
         prop_map
     }
 
+    async fn cache_props_for_aws_ingress(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropMap {
+        let mut prop_map = PropMap::new();
+        let (prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "GroupId", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/GroupId", prop_id);
+        prop_map
+    }
+
     async fn cache_props_for_aws_region(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {
-        let mut prop_map = HashMap::new();
-        let (variant_prop_id, _) =
+        let mut prop_map = PropMap::new();
+        let (prop_id, _) =
             find_prop_and_parent_by_name(ctx, "region", "domain", None, schema_variant_id)
                 .await
                 .expect("could not find prop and/or parent");
-        prop_map.insert("/root/domain/region", variant_prop_id);
+        prop_map.insert("/root/domain/region", prop_id);
+        prop_map
+    }
+
+    async fn cache_props_for_aws_security_group(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropMap {
+        let mut prop_map = PropMap::new();
+
+        let (prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "Description", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/Description", prop_id);
+        let (prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "GroupName", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/VpcId", prop_id);
+        let (prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "VpcId", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/VpcId", prop_id);
+        let (prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "region", "domain", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/domain/region", prop_id);
+
         prop_map
     }
 
@@ -185,7 +236,7 @@ impl SchemaBuiltinsTestHarness {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {
-        let mut prop_map = HashMap::new();
+        let mut prop_map = PropMap::new();
 
         // All fields including and above "unit".
         let (variant_prop_id, _) =
@@ -243,7 +294,7 @@ impl SchemaBuiltinsTestHarness {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {
-        let mut prop_map = HashMap::new();
+        let mut prop_map = PropMap::new();
         let (image_prop_id, _) =
             find_prop_and_parent_by_name(ctx, "image", "domain", None, schema_variant_id)
                 .await
@@ -274,7 +325,7 @@ impl SchemaBuiltinsTestHarness {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {
-        let mut prop_map = HashMap::new();
+        let mut prop_map = PropMap::new();
         let (metadata_name_prop_id, _) =
             find_prop_and_parent_by_name(ctx, "name", "metadata", None, schema_variant_id)
                 .await

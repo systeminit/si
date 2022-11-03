@@ -206,17 +206,17 @@ impl PgPool {
         };
 
         let span = Span::current();
-        span.record("db.system", &metadata.db_system);
+        span.record("db.system", metadata.db_system);
         span.record(
             "db.connection_string",
-            &metadata.db_connection_string.as_str(),
+            metadata.db_connection_string.as_str(),
         );
-        span.record("db.name", &metadata.db_name.as_str());
-        span.record("db.user", &metadata.db_user.as_str());
-        span.record("db.pool.max_size", &metadata.db_pool_max_size);
-        span.record("net.peer.ip", &metadata.net_peer_ip.as_str());
-        span.record("net.peer.port", &metadata.net_peer_port);
-        span.record("net.transport", &metadata.net_transport);
+        span.record("db.name", metadata.db_name.as_str());
+        span.record("db.user", metadata.db_user.as_str());
+        span.record("db.pool.max_size", metadata.db_pool_max_size);
+        span.record("net.peer.ip", metadata.net_peer_ip.as_str());
+        span.record("net.peer.port", metadata.net_peer_port);
+        span.record("net.transport", metadata.net_transport);
 
         let pg_pool = Self {
             pool,
@@ -302,9 +302,9 @@ impl PgPool {
     pub async fn get(&self) -> PgPoolResult<InstrumentedClient> {
         let pool_status = self.pool.status();
         let span = Span::current();
-        span.record("db.pool.max_size", &pool_status.max_size);
-        span.record("db.pool.size", &pool_status.size);
-        span.record("db.pool.available", &pool_status.available);
+        span.record("db.pool.max_size", pool_status.max_size);
+        span.record("db.pool.size", pool_status.size);
+        span.record("db.pool.available", pool_status.available);
 
         let inner = self.pool.get().await?;
 
@@ -557,7 +557,7 @@ impl InstrumentedClient {
             })
             .map_err(Into::into);
         if let Ok(ref rows) = r {
-            Span::current().record("db.rows", &rows.len());
+            Span::current().record("db.rows", rows.len());
         }
         r
     }
@@ -605,7 +605,7 @@ impl InstrumentedClient {
             .map(|inner| PgRow { inner })
             .map_err(Into::into);
         if r.is_ok() {
-            Span::current().record("db.rows", &1);
+            Span::current().record("db.rows", 1);
         }
         r
     }
@@ -655,7 +655,7 @@ impl InstrumentedClient {
         if let Ok(ref maybe) = r {
             Span::current().record(
                 "db.rows",
-                &match maybe {
+                match maybe {
                     Some(_) => 1,
                     None => 0,
                 },
@@ -1071,7 +1071,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .instrument(self.tx_span.clone())
             .await
             .map_err(Into::into);
-        self.tx_span.record("db.transaction", &"commit");
+        self.tx_span.record("db.transaction", "commit");
         r
     }
 
@@ -1104,7 +1104,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .instrument(self.tx_span.clone())
             .await
             .map_err(Into::into);
-        self.tx_span.record("db.transaction", &"rollback");
+        self.tx_span.record("db.transaction", "rollback");
         r
     }
 
@@ -1219,7 +1219,7 @@ impl<'a> InstrumentedTransaction<'a> {
             })
             .map_err(Into::into);
         if let Ok(ref rows) = r {
-            Span::current().record("db.rows", &rows.len());
+            Span::current().record("db.rows", rows.len());
         }
         r
     }
@@ -1269,7 +1269,7 @@ impl<'a> InstrumentedTransaction<'a> {
             .map(|inner| PgRow { inner })
             .map_err(Into::into);
         if r.is_ok() {
-            Span::current().record("db.rows", &1);
+            Span::current().record("db.rows", 1);
         }
         r
     }
@@ -1321,7 +1321,7 @@ impl<'a> InstrumentedTransaction<'a> {
         if let Ok(ref maybe) = r {
             Span::current().record(
                 "db.rows",
-                &match maybe {
+                match maybe {
                     Some(_) => 1,
                     None => 0,
                 },
