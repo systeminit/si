@@ -2,9 +2,9 @@
   "kind": "JsCommand",
   "arguments": [],
   "response_type": "Command",
-  "display_name": "si:awsIngressCreateCommand",
+  "display_name": "si:awsEc2CreateCommand",
   "description": null,
   "link": null,
-  "code_file": "awsIngressCreateCommand.js",
+  "code_file": "awsEc2CreateCommand.js",
   "code_entrypoint": "create"
 }

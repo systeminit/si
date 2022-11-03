@@ -17,7 +17,7 @@ use crate::{
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult,
     CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype, ConfirmationPrototypeContext,
-    DalContext, DiagramKind, ExternalProvider, Func, InternalProvider, PropKind,
+    DalContext, DiagramKind, ExternalProvider, Func, FuncError, InternalProvider, PropKind,
     QualificationPrototype, SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype,
     WorkflowPrototypeContext,
 };
@@ -740,30 +740,47 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     )
     .await?;
 
-    let security_group_id_attribute_value_read_context = AttributeReadContext {
-        prop_id: Some(*security_groups_prop.id()),
-        ..base_attribute_read_context
-    };
-    let security_group_id_attribute_value =
-        AttributeValue::find_for_context(ctx, security_group_id_attribute_value_read_context)
+    // Security Group Ids from input socket
+    {
+        let transformation_func_name = "si:normalizeToArray".to_string();
+        let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
             .await?
-            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                security_group_id_attribute_value_read_context,
-            ))?;
-    let mut security_group_id_attribute_prototype = security_group_id_attribute_value
-        .attribute_prototype(ctx)
-        .await?
-        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-    security_group_id_attribute_prototype
-        .set_func_id(ctx, identity_func_item.func_id)
+            .pop()
+            .ok_or_else(|| FuncError::NotFoundByName(transformation_func_name.clone()))?;
+        let arg = FuncArgument::find_by_name_for_func(ctx, "value", *transformation_func.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    transformation_func_name.clone(),
+                    "value".to_string(),
+                )
+            })?;
+
+        let security_group_id_attribute_value_read_context = AttributeReadContext {
+            prop_id: Some(*security_groups_prop.id()),
+            ..base_attribute_read_context
+        };
+        let security_group_id_attribute_value =
+            AttributeValue::find_for_context(ctx, security_group_id_attribute_value_read_context)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    security_group_id_attribute_value_read_context,
+                ))?;
+        let mut security_group_id_attribute_prototype = security_group_id_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+        security_group_id_attribute_prototype
+            .set_func_id(ctx, *transformation_func.id())
+            .await?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *security_group_id_attribute_prototype.id(),
+            *arg.id(),
+            *security_group_ids_explicit_internal_provider.id(),
+        )
         .await?;
-    AttributePrototypeArgument::new_for_intra_component(
-        ctx,
-        *security_group_id_attribute_prototype.id(),
-        identity_func_item.func_argument_id,
-        *security_group_ids_explicit_internal_provider.id(),
-    )
-    .await?;
+    }
 
     let user_data_attribute_value_read_context = AttributeReadContext {
         prop_id: Some(*user_data_prop.id()),
@@ -789,6 +806,40 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
         *user_data_explicit_internal_provider.id(),
     )
     .await?;
+
+    let func_name = "si:awsEc2CreateWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let title = "Create AWS EC2";
+    let context = WorkflowPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    let workflow_prototype =
+        WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
+
+    let func_name = "si:resourceExistsConfirmation";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let context = ConfirmationPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ConfirmationPrototype::new(ctx, "Create AWS EC2", *func.id(), context).await?;
+
+    let name = "create";
+    let context = ActionPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
 
     Ok(())
 }

@@ -378,7 +378,7 @@ function onMountedAndReady() {
 }
 
 onBeforeUnmount(() => {
-  kStage.off("wheel", onMouseWheel);
+  kStage?.off("wheel", onMouseWheel);
   window.removeEventListener("mousemove", onMouseMove);
   window.removeEventListener("mouseup", onMouseUp);
   window.removeEventListener("keydown", onKeyDown);
