@@ -38,7 +38,7 @@
             size="xs"
             class="inline-block align-middle"
           />
-          {{ fixState.mode === "syncing" ? "Synced" : "Fixed" }}
+          {{ fixState.mode === "syncing" ? "Synced" : "Applied" }}
         </span>
       </div>
     </Transition>
@@ -72,7 +72,10 @@ const fixState = computed(() => {
       rate,
       executed,
       total,
-      summary: total === executed ? "Fixes applied!" : "Applying fixes...",
+      summary:
+        total === executed
+          ? "Recommendations applied!"
+          : "Applying recommendations...",
       highlightedSummary: "",
     };
   } else {
@@ -87,13 +90,16 @@ const fixState = computed(() => {
       }
     }
 
-    let summary = "Determining fixes for updated model...";
+    let summary = "Determining recommendations for updated model...";
     let highlightedSummary = "";
     if (rate === 1) {
       summary = "Model up-to-date";
-      if (fixesStore.unstartedRecommendations.length !== 0) {
+      const { length } = fixesStore.unstartedRecommendations;
+      if (length !== 0) {
         summary += " - ";
-        highlightedSummary = `${fixesStore.unstartedRecommendations.length} Resources need to be fixed`;
+        highlightedSummary = `${length} recommendation${
+          length > 1 ? "s" : ""
+        } pending`;
       }
     }
 

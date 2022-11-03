@@ -15,7 +15,7 @@
             )
           "
         >
-          No fixes have been made ... yet
+          Nothing has been applied
         </div>
         <div v-else>
           <SiSearch auto-search class="border-b-0" />
@@ -26,7 +26,12 @@
           >
             <template #label>
               <div class="flex flex-row items-center gap-2">
-                <span class="font-bold">Fix Happened</span>
+                <span class="font-bold"
+                  >{{ fixBatch.fixes.length }} recommendation{{
+                    fixBatch.fixes.length > 1 ? "s" : ""
+                  }}
+                  applied</span
+                >
                 <span
                   :class="
                     clsx(
@@ -41,10 +46,11 @@
             </template>
             <template #default>
               <div class="text-sm pl-8">
-                <div class="text-success-500 tracking-tight font-bold">
+                <!-- Note(victor): Not 100% sure this should be removed, but it looks redundant. Confirm with mark.-->
+                <!--div class="text-success-500 tracking-tight font-bold">
                   {{ fixBatch.fixes.length }}
                   resource{{ fixBatch.fixes.length > 1 ? "s" : "" }} fixed
-                </div>
+                </div-->
                 <div
                   :class="
                     clsx(

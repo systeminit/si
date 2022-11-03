@@ -20,8 +20,8 @@
           <VButton2
             icon="git-merge"
             size="md"
-            loading-text="Applying"
-            label="Apply"
+            loading-text="Merging"
+            label="Merge"
             :request-status="applyChangeSetReqStatus"
             @click="applyChangeSet"
           />
@@ -167,6 +167,7 @@ function onSelectChangeSet(newVal: number | "NEW") {
     showDialog.value = false;
   }
 }
+
 async function onCreateChangeSet() {
   if (validationMethods.hasError()) return;
 
@@ -226,6 +227,7 @@ function onCloseCreateDialog() {
   showDialog.value = false;
   if (!selectedChangeSetId.value) navigateToFixMode();
 }
+
 function onCloseSelectDialog() {
   showDialog.value = false;
   if (!selectedChangeSetId.value) navigateToFixMode();

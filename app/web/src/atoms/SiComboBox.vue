@@ -18,10 +18,16 @@
         as="div"
       >
         <li
-          class="flex flex-col px-2 py-1 gap-1 border-b dark:border-neutral-600"
+          class="flex flex-col gap-0.5 px-2.5 py-2.5 gap-1 border-b dark:border-neutral-600"
         >
-          <div>Type in the field above to filter the list below.</div>
-          <div><b>Results:</b> {{ filteredOptions.length }}</div>
+          <div>
+            <b>{{ filteredOptions.length }}</b> Result{{
+              filteredOptions.length === 1 ? "" : "s"
+            }}
+          </div>
+          <div class="text-neutral-500 italic text-smt">
+            Type in the field above to filter the list below.
+          </div>
         </li>
         <ul class="max-h-60 overflow-y-auto overflow-x-hidden">
           <ComboboxOption
@@ -32,15 +38,16 @@
             :value="value"
           >
             <li
-              class="relative cursor-default select-none py-1.5 px-2 dark:text-white rounded m-0.5"
+              class="relative cursor-default select-none py-1.5 mx-2 dark:text-white rounded m-0.5 pl flex flex-row items-center"
               :class="{
                 'bg-action-400 text-white': active,
                 'text-gray-900': !active,
               }"
             >
+              <Icon v-if="selected" name="check" class="mx-2" size="sm" />
               <span
                 class="block truncate"
-                :class="clsx(selected ? 'font-extrabold' : 'font-normal')"
+                :class="clsx(selected ? 'font-extrabold' : 'font-normal pl-9')"
               >
                 {{ label }}
               </span>

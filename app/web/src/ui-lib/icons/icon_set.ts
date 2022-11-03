@@ -69,6 +69,7 @@ import GitCommit from "~icons/octicon/git-commit-24";
 import GitMerge from "~icons/octicon/git-merge-24";
 import Tools from "~icons/octicon/tools";
 import ExternalLink from "~icons/octicon/link-external";
+import Globe from "~icons/octicon/globe-24";
 
 // 3p logos
 import AwsLogo from "~icons/cib/amazon-aws";
@@ -106,6 +107,7 @@ export const ICONS = Object.freeze({
   "git-branch": GitBranch,
   "git-commit": GitCommit,
   "git-merge": GitMerge,
+  globe: Globe,
   "help-circle": QuestionMarkCircle,
   hide: EyeOff,
   link: Link,

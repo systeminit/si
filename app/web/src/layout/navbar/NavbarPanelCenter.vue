@@ -36,11 +36,11 @@
     </NavbarButton>
 
     <NavbarButton
-      tooltip-text="Fix"
+      tooltip-text="Apply"
       :selected="route.name === 'workspace-fix'"
       :link-to="{ name: 'workspace-fix' }"
     >
-      <Icon name="tools" />
+      <Icon name="globe" />
     </NavbarButton>
   </div>
 </template>
