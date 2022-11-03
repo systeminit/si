@@ -35,9 +35,10 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 #[ignore]
-async fn intelligence(ctx: &mut DalContext, wid: WorkspaceId) {
+async fn intelligence(mut octx: DalContext, wid: WorkspaceId) {
     // Switch to universal head (tenancy and visibility) to author schemas and
     // intra-schema-variant relationships.
+    let ctx = &mut octx;
     ctx.update_to_universal_head();
 
     // Create "ekwb" schema.
@@ -176,32 +177,29 @@ async fn intelligence(ctx: &mut DalContext, wid: WorkspaceId) {
     .await
     .expect("could not connect providers for components");
 
-    let ekwb_component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: None,
-            schema_id: Some(*ekwb_schema.id()),
-            schema_variant_id: Some(*ekwb_schema_variant.id()),
-            component_id: Some(*ekwb_component.id()),
-            ..AttributeReadContext::default()
-        },
-    )
-    .await
-    .expect("could not generate component view");
+    // Cache the read contexts for generating views for our components.
+    let ekwb_component_view_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*ekwb_schema.id()),
+        schema_variant_id: Some(*ekwb_schema_variant.id()),
+        component_id: Some(*ekwb_component.id()),
+        ..AttributeReadContext::default()
+    };
+    let noctua_component_view_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*noctua_schema.id()),
+        schema_variant_id: Some(*noctua_schema_variant.id()),
+        component_id: Some(*noctua_component.id()),
+        ..AttributeReadContext::default()
+    };
 
-    let noctua_component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: None,
-            schema_id: Some(*noctua_schema.id()),
-            schema_variant_id: Some(*noctua_schema_variant.id()),
-            component_id: Some(*noctua_component.id()),
-            ..AttributeReadContext::default()
-        },
-    )
-    .await
-    .expect("could not generate component view");
-
+    // Ensure everything looks correct post connection.
+    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
+        .await
+        .expect("could not generate component view");
+    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
+        .await
+        .expect("could not generate component view");
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -221,7 +219,8 @@ async fn intelligence(ctx: &mut DalContext, wid: WorkspaceId) {
         noctua_component_view.properties // actual
     );
 
-    // Now, update the ekwb component on HEAD.
+    // Now, merge the change set and ensure we are on HEAD.
+    assert_eq!(new_change_set.pk, ctx.visibility().change_set_pk);
     let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
         .await
         .expect("could not fetch change set by pk")
@@ -231,47 +230,64 @@ async fn intelligence(ctx: &mut DalContext, wid: WorkspaceId) {
         .await
         .expect("cannot apply change set");
     assert_eq!(&change_set.status, &ChangeSetStatus::Applied);
-
     ctx.update_visibility(Visibility::new_head(false));
 
+    // Update the resource field on HEAD for the tail end of the relationship.
     ekwb_component
-        .set_resource(ctx, &serde_json::json!["quantum"])
+        .set_resource(ctx, serde_json::json!["quantum"])
         .await
         .expect("could not set resource field");
 
-    let ekwb_component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: None,
-            schema_id: Some(*ekwb_schema.id()),
-            schema_variant_id: Some(*ekwb_schema_variant.id()),
-            component_id: Some(*ekwb_component.id()),
-            ..AttributeReadContext::default()
-        },
-    )
-    .await
-    .expect("could not generate component view");
-
-    let noctua_component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: None,
-            schema_id: Some(*noctua_schema.id()),
-            schema_variant_id: Some(*noctua_schema_variant.id()),
-            component_id: Some(*noctua_component.id()),
-            ..AttributeReadContext::default()
-        },
-    )
-    .await
-    .expect("could not generate component view");
-
+    // Ensure the value is propagated end-to-end.
+    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
+        .await
+        .expect("could not generate component view");
+    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
+        .await
+        .expect("could not generate component view");
     assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "ekwb",
             },
             "domain": {},
-            "resource": "\"quantum\""
+            "resource": "quantum"
+        }], // expected
+        ekwb_component_view.properties // actual
+    );
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "noctua",
+            },
+            "domain": {
+                "u12a": "quantum"
+            }
+        }], // expected
+        noctua_component_view.properties // actual
+    );
+
+    // Create a new change set and change our visibility to it (analogous to opening a new change
+    // set in the frontend).
+    let new_change_set = ChangeSet::new(ctx, "poop", None)
+        .await
+        .expect("could not create new change set");
+    ctx.update_visibility(Visibility::new(new_change_set.pk, None));
+
+    // Ensure the views are identical to HEAD.
+    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
+        .await
+        .expect("could not generate component view");
+    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
+        .await
+        .expect("could not generate component view");
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "ekwb",
+            },
+            "domain": {},
+            "resource": "quantum"
         }], // expected
         ekwb_component_view.properties // actual
     );
