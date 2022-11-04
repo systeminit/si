@@ -2,11 +2,13 @@
 //pub enum PropertyEditorError {
 //}
 
+use std::{cmp::Ordering, collections::HashMap};
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data_pg::PgError;
-use std::{cmp::Ordering, collections::HashMap};
 use thiserror::Error;
+
+use si_data_pg::PgError;
 
 use crate::attribute::value::FuncWithPrototypeContext;
 use crate::{
@@ -83,6 +85,7 @@ pub enum PropertyEditorPropWidgetKind {
     Map,
     SecretSelect { options: LabelList<i64> },
     Select { options: Option<Value> },
+    ComboBox { options: Option<Value> },
     Text,
 }
 
@@ -110,6 +113,9 @@ impl PropertyEditorPropWidgetKind {
                 ),
             },
             WidgetKind::Text => Self::Text,
+            WidgetKind::ComboBox => Self::ComboBox {
+                options: widget_options,
+            },
         })
     }
 }

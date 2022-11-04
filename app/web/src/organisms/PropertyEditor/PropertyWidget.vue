@@ -90,6 +90,20 @@
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
+    <WidgetComboBox
+      v-else-if="props.schemaProp.widgetKind.kind === 'comboBox'"
+      :name="props.schemaProp.name"
+      :options="props.schemaProp.widgetKind.options || []"
+      :path="path"
+      :collapsed-paths="props.collapsedPaths"
+      :value="props.propValue.value"
+      :prop-id="props.propValue.propId"
+      :value-id="props.propValue.id"
+      :doc-link="props.schemaProp.docLink"
+      :disabled="disabled"
+      :class="INPUT_CLASSES"
+      @updated-property="updatedProperty($event)"
+    />
 
     <!-- restricting to text props for now -->
 
@@ -137,6 +151,7 @@ import WidgetCheckBox from "./WidgetCheckBox.vue";
 import WidgetSelectBox from "./WidgetSelectBox.vue";
 import WidgetArray from "./WidgetArray.vue";
 import WidgetMap from "./WidgetMap.vue";
+import WidgetComboBox from "./WidgetComboBox.vue";
 // import WidgetFuncButton from "./WidgetFuncButton.vue";
 
 const INPUT_CLASSES = tw`pl-lg pr-sm pt-sm`;

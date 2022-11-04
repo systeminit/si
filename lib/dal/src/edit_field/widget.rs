@@ -16,4 +16,7 @@ pub enum WidgetKind {
     /// Provides a select box for corresponding "primitive" (e.g. string, number, boolean)
     /// [`PropKinds`](crate::PropKind).
     Select,
+    /// Provides a text input with auto-completion for corresponding "primitive" (e.g. string, number, boolean)
+    /// [`PropKinds`](crate::PropKind).
+    ComboBox,
 }

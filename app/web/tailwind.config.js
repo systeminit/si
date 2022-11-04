@@ -2,6 +2,7 @@ const formsPlugin = require("@tailwindcss/forms");
 const colors = require("tailwindcss/colors");
 const capsizePlugin = require("tailwindcss-capsize");
 const lineClampPlugin = require("@tailwindcss/line-clamp");
+const headlessUiPlugin = require("@headlessui/tailwindcss");
 const themeValues = require("./src/assets/style/tailwind_customization/tailwind_theme_values.js");
 const typographyPlugin = require("./src/assets/style/tailwind_customization/typography_plugin.js");
 const childrenVariantPlugin = require("./src/assets/style/tailwind_customization/children_variant_plugin");
@@ -62,5 +63,6 @@ module.exports = {
     typographyPlugin,
     lineClampPlugin,
     childrenVariantPlugin,
+    headlessUiPlugin,
   ],
 };

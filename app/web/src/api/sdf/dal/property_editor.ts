@@ -20,29 +20,42 @@ export enum PropertyEditorPropKind {
 export interface PropertyEditorPropWidgetKindArray {
   kind: "array";
 }
+
 export interface PropertyEditorPropWidgetKindCheckBox {
   kind: "checkbox";
 }
+
 export interface PropertyEditorPropWidgetKindHeader {
   kind: "header";
 }
+
 export interface PropertyEditorPropWidgetKindMap {
   kind: "map";
 }
+
 export interface PropertyEditorPropWidgetKindText {
   kind: "text";
 }
+
 export interface PropertyEditorPropWidgetKindInteger {
   kind: "integer";
 }
+
+export interface PropertyEditorPropWidgetKindComboBox {
+  kind: "comboBox";
+  options?: LabelList<string | number>;
+}
+
 export interface PropertyEditorPropWidgetKindSelect {
   kind: "select";
   options?: LabelList<string | number>;
 }
+
 export interface PropertyEditorPropWidgetKindSecretSelect {
   kind: "secretSelect";
   options: LabelList<string | number>;
 }
+
 export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindText
   | PropertyEditorPropWidgetKindCheckBox
@@ -50,6 +63,7 @@ export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindInteger
   | PropertyEditorPropWidgetKindHeader
   | PropertyEditorPropWidgetKindArray
+  | PropertyEditorPropWidgetKindComboBox
   | PropertyEditorPropWidgetKindSelect
   | PropertyEditorPropWidgetKindSecretSelect;
 
