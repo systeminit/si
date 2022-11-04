@@ -1,9 +1,9 @@
 <template>
   <SiPanel remember-size-key="workflow-left" side="left" :min-size="315">
-    <FixPicker />
+    <RecommendationPicker />
   </SiPanel>
   <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
-    <FixProgressOverlay />
+    <RecommendationProgressOverlay />
     <GenericDiagram
       v-if="diagramNodes"
       :custom-config="diagramCustomConfig"
@@ -13,7 +13,7 @@
     />
   </div>
   <SiPanel remember-size-key="workflow-right" side="right" :min-size="280">
-    <FixHistory />
+    <ApplyHistory />
   </SiPanel>
 </template>
 
@@ -21,9 +21,9 @@
 import { computed } from "vue";
 import SiPanel from "@/atoms/SiPanel.vue";
 import { useComponentsStore } from "@/store/components.store";
-import FixProgressOverlay from "@/organisms/FixProgressOverlay.vue";
-import FixPicker from "../FixPicker.vue";
-import FixHistory from "../FixHistory.vue";
+import RecommendationProgressOverlay from "@/organisms/RecommendationProgressOverlay.vue";
+import RecommendationPicker from "../RecommendationPicker.vue";
+import ApplyHistory from "../ApplyHistory.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 
 const componentsStore = useComponentsStore();

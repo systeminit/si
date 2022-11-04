@@ -81,7 +81,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: "r",
         name: "workspace-fix",
-        component: () => import("@/organisms/Workspace/WorkspaceFix.vue"),
+        component: () => import("@/organisms/Workspace/WorkspaceApply.vue"),
       },
       ...(isDevMode
         ? [
