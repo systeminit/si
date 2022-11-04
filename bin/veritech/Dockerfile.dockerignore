@@ -25,6 +25,7 @@
 !lib/dal
 !lib/dal-test
 !lib/deadpool-cyclone
+!lib/pinga-server
 !lib/sdf
 !lib/veritech-client
 !lib/veritech-core

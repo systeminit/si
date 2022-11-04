@@ -15,6 +15,5 @@ echo "::group::Checking for required artifacts"
 [[ -f "$REPOPATH/app/web/nginx/nginx-selfsigned.crt" ]]
 [[ -f "$REPOPATH/app/web/nginx/nginx-selfsigned.key" ]]
 [[ -f "$REPOPATH/target/debug/pinga" ]]
-[[ -f "$REPOPATH/bin/pinga/src/dev.jwt_secret_key.bin" ]]
 echo "::endgroup::"
 exit 0

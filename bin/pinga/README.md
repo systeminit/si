@@ -27,5 +27,5 @@ cargo run
 You can also use the following command in the global workspace:
 
 ```
-make pinga-run
+make run//bin/pinga
 ```

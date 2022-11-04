@@ -6,7 +6,7 @@ use si_data_faktory::FaktoryConfig;
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_settings::{CanonicalFile, CanonicalFileError};
-use telemetry_application::prelude::*;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 pub use dal::CycloneKeyPair;

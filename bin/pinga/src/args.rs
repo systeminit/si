@@ -1,9 +1,5 @@
-use std::path::PathBuf;
-
-use clap::{builder::PossibleValuesParser, ArgAction, Parser};
-
-use crate::config::{Config, ConfigError, ConfigFile, StandardConfigFile};
-use dal::MigrationMode;
+use clap::{ArgAction, Parser};
+use pinga_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
 
 const NAME: &str = "pinga";
 
@@ -49,10 +45,6 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) nats_url: Option<String>,
 
-    /// Database migration mode on startup
-    #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
-    pub(crate) migration_mode: Option<MigrationMode>,
-
     /// Disable OpenTelemetry on startup
     #[arg(long)]
     pub(crate) disable_opentelemetry: bool,
@@ -60,18 +52,6 @@ pub(crate) struct Args {
     /// Cyclone encryption key file location [default: /run/pinga/cyclone_encryption.key]
     #[arg(long)]
     pub(crate) cyclone_encryption_key_path: Option<String>,
-
-    /// Generates cyclone secret key file (does not run server)
-    ///
-    /// Will error if set when `generate_cyclone_public_key_path` is not set
-    #[arg(long, requires = "generate_cyclone_public_key_path")]
-    pub(crate) generate_cyclone_secret_key_path: Option<PathBuf>,
-
-    /// Generates cyclone public key file (does not run server)
-    ///
-    /// Will error if set when `generate_cyclone_secret_key_path` is not set
-    #[arg(long, requires = "generate_cyclone_secret_key_path")]
-    pub(crate) generate_cyclone_public_key_path: Option<PathBuf>,
 }
 
 impl TryFrom<Args> for Config {
@@ -93,9 +73,6 @@ impl TryFrom<Args> for Config {
             }
             if let Some(user) = args.pg_user {
                 config_map.set("pg.user", user);
-            }
-            if let Some(migration_mode) = args.migration_mode {
-                config_map.set("migration_mode", migration_mode.to_string());
             }
             if let Some(url) = args.nats_url {
                 config_map.set("nats.url", url);

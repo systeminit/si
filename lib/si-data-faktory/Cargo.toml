@@ -6,4 +6,5 @@ rust-version = "1.64"
 publish = false
 
 [dependencies]
+faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }
 serde = { version = "1.0.123", features = ["derive"] }

@@ -16,7 +16,7 @@ function set-repopath {
 echo "::group::Generating correct docker compose for CI web testing"
 set-repopath
 CHANGED_COMPONENTS=$(git --no-pager diff --name-only $BEFORE_SHA...$AFTER_SHA | xargs dirname | grep '^lib/\|bin/' | awk -F"/" '{print $1 "/" $2 "\n"}' | sort -u)
-echo $CHANGED_COMPONENTS | grep "lib/sdf\|lib/dal\|bin/sdf\|lib/veritech-server\|bin/veritech"
+echo $CHANGED_COMPONENTS | grep "lib/dal\|lib/pinga-server\|lib/sdf\|lib/veritech-server\|bin/pinga\|bin/sdf\|bin/veritech"
 found_components=$?
 if [ $found_components -ne 0 ]; then
   echo "No need to build sdf, veritech and pinga"

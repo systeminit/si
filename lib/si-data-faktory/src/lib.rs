@@ -9,6 +9,8 @@
 
 use serde::{Deserialize, Serialize};
 
+pub use faktory_async::*;
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct FaktoryConfig {

@@ -13,6 +13,25 @@ OTELCOL_PATHS=".github/workflows/promote-otelcol.yml
   component/otelcol/**"
 POSTGRES_PATHS=".github/workflows/promote-postgres.yml
   component/postgres/**"
+PINGA_PATHS=".github/workflows/promote-pinga.yml
+  .cargo/**
+  Cargo.*
+  bin/pinga/**
+  lib/config-file/**
+  lib/dal/**
+  lib/dal-test/**
+  lib/pinga-server/**
+  lib/si-data-faktory/**
+  lib/si-data-nats/**
+  lib/si-data-pg/**
+  lib/si-settings/**
+  lib/si-std/**
+  lib/si-test-macros/**
+  lib/telemetry-application-rs/**
+  lib/telemetry-rs/**
+  lib/veritech-client/**
+  rust-toolchain
+  rustfmt.toml"
 SDF_PATHS=".github/workflows/promote-sdf.yml
   .cargo/**
   Cargo.*
@@ -52,8 +71,6 @@ WEB_PATHS=".github/workflows/promote-web.yml
   .prettierrc.js
   babel.config.js
   app/web/**"
-PINGA_PATHS="${SDF_PATHS}
-  bin/pinga/**"
 
 NATS_CHANGES=false
 OTELCOL_CHANGES=false

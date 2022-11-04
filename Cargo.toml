@@ -16,6 +16,7 @@ members = [
     "lib/dal",
     "lib/dal-test",
     "lib/deadpool-cyclone",
+    "lib/pinga-server",
     "lib/sdf",
     "lib/si-data-faktory",
     "lib/si-data-nats",

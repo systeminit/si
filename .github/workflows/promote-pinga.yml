@@ -12,7 +12,7 @@ on:
       - bin/pinga/**
       - lib/config-file/**
       - lib/dal/**
-      - lib/sdf/**
+      - lib/ping-server/**
       - lib/si-data-faktory/**
       - lib/si-data-nats/**
       - lib/si-data-pg/**

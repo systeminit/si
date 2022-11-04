@@ -2407,22 +2407,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
-name = "pinga"
+name = "pinga-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
  "color-eyre",
+ "pinga-server",
+ "telemetry-application",
+ "tokio",
+]
+
+[[package]]
+name = "pinga-server"
+version = "0.1.0"
+dependencies = [
  "dal",
  "derive_builder",
- "faktory-async",
  "futures",
  "serde",
- "serde_json",
  "si-data-faktory",
  "si-data-nats",
  "si-data-pg",
  "si-settings",
- "telemetry-application",
+ "telemetry",
  "thiserror",
  "tokio",
  "uuid",
@@ -3219,6 +3226,7 @@ dependencies = [
 name = "si-data-faktory"
 version = "0.1.0"
 dependencies = [
+ "faktory-async",
  "serde",
 ]
 

@@ -53,6 +53,7 @@ COMPONENTS = \
 	lib/dal \
 	lib/dal-test \
 	lib/deadpool-cyclone \
+	lib/pinga-server \
 	lib/sdf \
 	lib/si-data-faktory \
 	lib/si-data-nats \
@@ -231,22 +232,24 @@ test//lib/dal-test//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
 test//lib/deadpool-cyclone//TESTDEPS: build//bin/cyclone
 test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech-server
 
+test//lib/pinga-server//RTESTDEPS: test//bin/pinga
+
 test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
 test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga
 
-test//lib/si-data-faktory//RTESTDEPS: test//lib/sdf test//bin/pinga
+test//lib/si-data-faktory//RTESTDEPS: test//lib/sdf test//lib/pinga-server
 
-test//lib/si-data-nats//RTESTDEPS: test//lib/veritech-client test//lib/veritech-server test//lib/dal test//lib/sdf
+test//lib/si-data-nats//RTESTDEPS: test//lib/veritech-client test//lib/veritech-server test//lib/dal test//lib/pinga-server test//lib/sdf
 
-test//lib/si-data-pg//RTESTDEPS: test//lib/dal test//lib/sdf
+test//lib/si-data-pg//RTESTDEPS: test//lib/dal test//lib/pinga-server test//lib/sdf
 
-test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cyclone-server//TEST test//lib/sdf//TEST
+test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cyclone-server//TEST test//lib/pinga-server//TEST test//lib/sdf//TEST
 
 test//lib/si-std//RTESTDEPS: test//lib/dal-test test//lib/sdf
 
 test//lib/si-test-macros//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
 
-test//lib/telemetry-application-rs//RTESTDEPS: test//bin/cyclone test//bin/sdf test//bin/veritech
+test//lib/telemetry-application-rs//RTESTDEPS: test//bin/cyclone test//bin/pinga test//bin/sdf test//bin/veritech
 
 test//lib/veritech-client//TESTDEPS: build//bin/cyclone
 test//lib/veritech-client//RTESTDEPS: test//lib/dal
