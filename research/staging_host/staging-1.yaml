@@ -9,11 +9,11 @@ storage:
     - path: /usr/local/bin/docker-auth.sh
       mode: 0755
       contents:
-        local: environments/aws/staging_host/scripts/docker-auth.sh
+        local: research/staging_host/scripts/docker-auth.sh
     - path: /usr/local/bin/load-keys.sh
       mode: 0755
       contents:
-        local: environments/aws/staging_host/scripts/load-keys.sh
+        local: research/staging_host/scripts/load-keys.sh
     - path: /opt/deploy/Makefile
       mode: 0755
       contents:
