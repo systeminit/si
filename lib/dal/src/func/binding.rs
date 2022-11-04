@@ -18,6 +18,7 @@ use crate::func::backend::{
     js_command::FuncBackendJsCommand,
     js_confirmation::FuncBackendJsConfirmation,
     js_qualification::FuncBackendJsQualification,
+    js_validation::FuncBackendJsValidation,
     js_workflow::FuncBackendJsWorkflow,
     map::FuncBackendMap,
     prop_object::FuncBackendPropObject,
@@ -318,6 +319,9 @@ impl FuncBinding {
             FuncBackendKind::JsQualification => {
                 FuncBackendJsQualification::create_and_execute(context, &func, &self.args).await?
             }
+            FuncBackendKind::JsValidation => {
+                FuncBackendJsValidation::create_and_execute(context, &func, &self.args).await?
+            }
             FuncBackendKind::JsWorkflow => {
                 FuncBackendJsWorkflow::create_and_execute(context, &func, &self.args).await?
             }
@@ -440,6 +444,7 @@ impl FuncBinding {
             | FuncBackendKind::JsWorkflow
             | FuncBackendKind::JsCommand
             | FuncBackendKind::JsConfirmation
+            | FuncBackendKind::JsValidation
             | FuncBackendKind::Json => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Dispatch)

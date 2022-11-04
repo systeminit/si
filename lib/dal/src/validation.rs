@@ -18,7 +18,7 @@ pub mod resolver;
 
 /// Struct for creating a consumable error for the frontend when a "field" fails its validation
 /// check.
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct ValidationError {
     pub message: String,
     /// This really should be an enum at some point, but we need to figure out the set of values it
@@ -147,6 +147,7 @@ pub enum ValidationErrorKind {
     StringDoesNotHavePrefix,
     StringNotInStringArray,
     ValueMustBePresent,
+    JsValidation,
 }
 
 impl ValidationErrorKind {
@@ -158,6 +159,7 @@ impl ValidationErrorKind {
             Self::StringDoesNotHavePrefix => "StringDoesNotHavePrefix",
             Self::StringNotInStringArray => "StringNotInStringArray",
             Self::ValueMustBePresent => "ValueMustBePresent",
+            Self::JsValidation => "JsValidation",
         }
     }
 }
