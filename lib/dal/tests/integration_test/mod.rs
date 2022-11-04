@@ -5,7 +5,6 @@ mod builtins;
 mod capability;
 mod change_set;
 mod code_generation_prototype;
-mod code_generation_resolver;
 mod component;
 mod confirmation_prototype;
 mod confirmation_resolver;

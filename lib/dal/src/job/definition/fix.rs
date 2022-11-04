@@ -208,8 +208,12 @@ impl JobConsumer for FixesJob {
 
         // Inline dependent values propagation so we can run consecutive fixes that depend on the /root/resource from the previous fix
         if resource_got_updated {
-            let attribute_value =
-                Component::resource_attribute_value_for_component(ctx, *component.id()).await?;
+            let attribute_value = Component::root_child_attribute_value_for_component(
+                ctx,
+                "resource",
+                *component.id(),
+            )
+            .await?;
 
             DependentValuesUpdate::new(ctx, *attribute_value.id())
                 .run(ctx)

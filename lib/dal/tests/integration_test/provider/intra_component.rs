@@ -155,7 +155,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties // actual
@@ -228,7 +228,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties // actual
@@ -260,7 +260,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties // actual
@@ -292,7 +292,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties // actual

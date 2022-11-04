@@ -120,7 +120,7 @@ async fn resolve(ctx: &DalContext) {
         ..AttributeReadContext::default()
     };
 
-    let component_view = ComponentView::for_context(ctx, context)
+    let component_view = ComponentView::for_context(ctx, context, false)
         .await
         .expect("unable to generate component view for docker image component");
     let tree = prototype

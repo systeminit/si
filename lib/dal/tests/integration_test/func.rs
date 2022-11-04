@@ -311,10 +311,10 @@ async fn func_binding_execute_unset(ctx: &DalContext) {
 #[test]
 async fn func_argument_new(ctx: &DalContext) {
     for kind in FuncArgumentKind::iter() {
-        FuncArgument::new(ctx, generate_name(None), kind, None, 1.into())
+        FuncArgument::new(ctx, generate_name(), kind, None, 1.into())
             .await
             .expect("Could not create function argument with null argument kind");
-        FuncArgument::new(ctx, generate_name(None), kind, Some(kind), 1.into())
+        FuncArgument::new(ctx, generate_name(), kind, Some(kind), 1.into())
             .await
             .expect("Could not create function argument with element kind");
     }
@@ -323,7 +323,7 @@ async fn func_argument_new(ctx: &DalContext) {
 #[test]
 async fn func_argument_list_for_func(ctx: &DalContext) {
     for kind in FuncArgumentKind::iter() {
-        FuncArgument::new(ctx, generate_name(None), kind, None, 1.into())
+        FuncArgument::new(ctx, generate_name(), kind, None, 1.into())
             .await
             .expect("Could not create function argument with null argument kind");
     }

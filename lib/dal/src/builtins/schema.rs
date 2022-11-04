@@ -27,7 +27,6 @@ mod systeminit;
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     let driver = MigrationDriver::new(ctx).await?;
-
     systeminit::migrate(ctx, &driver).await?;
     docker::migrate(ctx, &driver).await?;
     kubernetes::migrate(ctx, &driver).await?;

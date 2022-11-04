@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use thiserror::Error;
 
+use crate::attribute::value::view::PropertiesWithoutCode;
 use crate::{
     component::ComponentKind, func::binding_return_value::FuncBindingReturnValueId,
     AttributeReadContext, AttributeValue, AttributeValueError, Component, ComponentId, DalContext,
@@ -7,8 +10,6 @@ use crate::{
     InternalProviderError, Prop, PropError, PropId, SchemaVariantId, SecretError, SecretId,
     StandardModel, StandardModelError, System,
 };
-
-use thiserror::Error;
 
 type ComponentViewResult<T> = Result<T, ComponentViewError>;
 
@@ -50,7 +51,7 @@ pub enum ComponentViewError {
 pub struct ComponentView {
     pub system: Option<System>,
     pub kind: ComponentKind,
-    pub properties: serde_json::Value,
+    pub properties: Value,
 }
 
 impl Default for ComponentView {
@@ -67,6 +68,7 @@ impl ComponentView {
     pub async fn for_context(
         ctx: &DalContext,
         context: AttributeReadContext,
+        include_code: bool,
     ) -> ComponentViewResult<ComponentView> {
         let component_id = match context.component_id() {
             Some(c) => c,
@@ -110,7 +112,7 @@ impl ComponentView {
             .await?
             .ok_or(ComponentViewError::NoAttributeValue(value_context))?;
 
-        let properties =
+        let properties_func_binding_return_value =
             FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
                 .await?
                 .ok_or_else(|| {
@@ -118,15 +120,19 @@ impl ComponentView {
                         attribute_value.func_binding_return_value_id(),
                     )
                 })?;
-        let properties = properties
+        let properties = properties_func_binding_return_value
             .value()
-            .unwrap_or(&serde_json::Value::Null)
-            .clone();
+            .unwrap_or(&serde_json::Value::Null);
 
         Ok(ComponentView {
             system,
             kind: *component.kind(),
-            properties,
+            properties: match include_code {
+                true => properties.clone(),
+                false => {
+                    PropertiesWithoutCode::drop_root_code_tree_if_applicable(properties.clone())?
+                }
+            },
         })
     }
 

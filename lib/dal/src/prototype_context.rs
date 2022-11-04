@@ -32,6 +32,8 @@ pub enum PrototypeContextError {
     SerdeJson(#[from] serde_json::Error),
     #[error("func {0} not found")]
     FuncNotFound(FuncId),
+    #[error("prototype context field ({0:?}) is invalid for code gen, need schema variant id")]
+    InvalidForCodeGen(PrototypeContextField),
 }
 
 pub type PrototypeContextResult<T> = Result<T, PrototypeContextError>;

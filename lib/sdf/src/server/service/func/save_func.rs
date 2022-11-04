@@ -1,11 +1,8 @@
-use super::{
-    AttributePrototypeArgumentView, AttributePrototypeView, FuncArgumentView, FuncAssociations,
-    FuncError, FuncResult, ValidationPrototypeView,
-};
-use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+
 use dal::attribute::context::AttributeContextBuilder;
-use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::validation::prototype::context::ValidationPrototypeContext;
 use dal::{
     func::argument::FuncArgument,
@@ -18,8 +15,13 @@ use dal::{
     WsEvent,
 };
 use dal::{SchemaVariant, ValidationPrototype};
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+
+use super::ValidationPrototypeView;
+use super::{
+    AttributePrototypeArgumentView, AttributePrototypeView, FuncArgumentView, FuncAssociations,
+    FuncError, FuncResult,
+};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -389,6 +391,8 @@ pub async fn save_func<'a>(
             };
         }
         FuncBackendKind::JsCodeGeneration => {
+            // FIXME(nick): this likely will not work as intended since code generation prototypes
+            // and resolvers no longer exist.
             let mut associations: Vec<PrototypeContextField> = vec![];
             if let Some(FuncAssociations::CodeGeneration {
                 schema_variant_ids,
@@ -397,39 +401,48 @@ pub async fn save_func<'a>(
             }) = request.associations
             {
                 associations.append(&mut schema_variant_ids.iter().map(|f| (*f).into()).collect());
+
+                // NOTE(nick): code gen prototypes only exist for schema variants.
                 associations.append(&mut component_ids.iter().map(|f| (*f).into()).collect());
 
-                let mut existing_protos =
-                    CodeGenerationPrototype::list_for_func(&ctx, *func.id()).await?;
-                for proto in existing_protos.iter_mut() {
-                    if *proto.format() != format {
-                        proto.set_format(&ctx, format).await?;
+                let mut existing_prototypes = CodeGenerationPrototype::list(&ctx)
+                    .await?
+                    .into_iter()
+                    .filter(|g| g.func_id() == func_id_copy)
+                    .collect::<Vec<CodeGenerationPrototype>>();
+                for prototype in existing_prototypes.iter_mut() {
+                    if *prototype.output_format() != format {
+                        prototype.set_output_format(&ctx, format).await?;
                     }
                 }
 
-                let create_prototype_closure =
-                    move |ctx: DalContext, context_field: PrototypeContextField| async move {
-                        let code_gen_args = FuncBackendJsCodeGenerationArgs::default();
-                        let code_gen_args_json = serde_json::to_value(&code_gen_args)?;
-                        CodeGenerationPrototype::new(
-                            &ctx,
-                            func_id_copy,
-                            code_gen_args_json.clone(),
-                            format,
-                            CodeGenerationPrototype::new_context_for_context_field(context_field),
-                        )
-                        .await?;
+                // FIXME(nick): this isn't going to work (1/2).
+                // let create_prototype_closure =
+                //     move |ctx: DalContext, context_field: PrototypeContextField| async move {
+                //         match context_field {
+                //             PrototypeContextField::SchemaVariant(schema_variant_id) => {
+                //                 CodeGenerationPrototype::new(
+                //                     &ctx,
+                //                     func_id_copy,
+                //                     None,
+                //                     format,
+                //                     schema_variant_id,
+                //                 )
+                //                 .await?;
+                //                 Ok(())
+                //             }
+                //             _ => Err(PrototypeContextError::InvalidForCodeGen(context_field)),
+                //         }
+                //     };
 
-                        Ok(())
-                    };
-
-                associate_prototypes(
-                    &ctx,
-                    &existing_protos,
-                    &associations,
-                    Box::new(create_prototype_closure),
-                )
-                .await?;
+                // FIXME(nick): this isn't going to work (2/2).
+                // associate_prototypes(
+                //     &ctx,
+                //     &existing_protos,
+                //     &associations,
+                //     Box::new(create_prototype_closure),
+                // )
+                // .await?;
             };
         }
         FuncBackendKind::JsConfirmation => {

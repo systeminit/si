@@ -53,7 +53,7 @@ impl ComponentPayload {
 
     /// Generates a new [`ComponentView`] and returns the "properites" field.
     pub async fn component_view_properties(&self, ctx: &DalContext) -> serde_json::Value {
-        ComponentView::for_context(ctx, self.base_attribute_read_context)
+        ComponentView::for_context(ctx, self.base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties

@@ -397,7 +397,7 @@ async fn remove_component_specific(ctx: &DalContext) {
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
-    let component_view = ComponentView::for_context(ctx, read_context)
+    let component_view = ComponentView::for_context(ctx, read_context, false)
         .await
         .expect("cannot get component view");
 

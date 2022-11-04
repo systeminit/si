@@ -599,7 +599,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "domain": {},
             }
         ],
-        ComponentView::for_context(ctx, source_attribute_read_context)
+        ComponentView::for_context(ctx, source_attribute_read_context, false)
             .await
             .expect("cannot get source component view")
             .properties,
@@ -627,7 +627,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "domain": {},
             }
         ],
-        ComponentView::for_context(ctx, destination_attribute_read_context)
+        ComponentView::for_context(ctx, destination_attribute_read_context, false)
             .await
             .expect("cannot get destination component view")
             .properties,
@@ -711,7 +711,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, source_attribute_read_context)
+        ComponentView::for_context(ctx, source_attribute_read_context, false)
             .await
             .expect("cannot get source component view")
             .properties,
@@ -732,7 +732,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, destination_attribute_read_context)
+        ComponentView::for_context(ctx, destination_attribute_read_context, false)
             .await
             .expect("cannot get destination component view")
             .properties,
@@ -796,7 +796,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, source_attribute_read_context)
+        ComponentView::for_context(ctx, source_attribute_read_context, false)
             .await
             .expect("cannot get source component view")
             .properties,
@@ -818,7 +818,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, destination_attribute_read_context)
+        ComponentView::for_context(ctx, destination_attribute_read_context, false)
             .await
             .expect("cannot get destination component view")
             .properties,

@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use si_data_nats::NatsError;
-
-use crate::code_generation_resolver::CodeGenerationId;
+use crate::code_generation_prototype::CodeGeneratedPayload;
 use crate::component::ResourceRefreshId;
 use crate::confirmation_status::ConfirmationStatusUpdate;
 use crate::fix::batch::FixBatchReturn;
@@ -14,6 +12,7 @@ use crate::{
     BillingAccountId, ChangeSetPk, ConfirmationPrototypeError, DalContext, HistoryActor,
     ReadTenancy, SchemaPk, StandardModelError,
 };
+use si_data_nats::NatsError;
 
 #[derive(Error, Debug)]
 pub enum WsEventError {
@@ -39,9 +38,9 @@ pub enum WsPayload {
     ChangeSetWritten(ChangeSetPk),
     SchemaCreated(SchemaPk),
     ResourceRefreshed(ResourceRefreshId),
-    CodeGenerated(CodeGenerationId),
     CheckedQualifications(QualificationCheckId),
     CommandOutput(CommandOutput),
+    CodeGenerated(CodeGeneratedPayload),
     CommandReturn(CommandReturn),
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),

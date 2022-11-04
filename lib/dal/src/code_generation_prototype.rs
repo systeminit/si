@@ -1,130 +1,88 @@
-use crate::DalContext;
+//! This module contains [`CodeGenerationPrototype`], which is used to generate code based on the status
+//! of a [`Prop`](crate::Prop) tree specified by a [`SchemaVariant`](crate::SchemaVariant).
+//!
+//! These prototypes are used in the [`CodeGeneration`](crate::job::definition::CodeGeneration) job
+//! in order to perform the generation for a given [`ComponentId`](crate::Component) and set the
+//! resulting value on the corresponding [`Prop`](crate::Prop) underneath "/root/code".
+
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
+use serde_json::{Value as JsonValue, Value};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
+use crate::schema::variant::SchemaVariantError;
 use crate::{
-    func::FuncId,
-    impl_prototype_list_for_func, impl_standard_model, pk,
-    prototype_context::{HasPrototypeContext, PrototypeContext},
-    standard_model, standard_model_accessor, CodeLanguage, ComponentId, HistoryEventError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WriteTenancy,
+    func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor, CodeLanguage,
+    ComponentId, Func, FuncError, HistoryEventError, Prop, PropError, PropKind, SchemaVariant,
+    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    WsEvent, WsPayload,
 };
+use crate::{DalContext, PropId};
+
+const LIST_FOR_SCHEMA_VARIANT: &str =
+    include_str!("queries/code_generation_prototype_list_for_schema_variant.sql");
+const FIND_FOR_PROP: &str = include_str!("queries/code_generation_prototype_find_for_prop.sql");
 
 #[derive(Error, Debug)]
 pub enum CodeGenerationPrototypeError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
-    #[error("component not found: {0}")]
-    ComponentNotFound(ComponentId),
-    #[error("component error: {0}")]
-    Component(String),
-    #[error("schema not found")]
-    SchemaNotFound,
-    #[error("schema variant not found")]
-    SchemaVariantNotFound,
+
+    #[error("must provide valid schema variant, found unset schema variant id")]
+    InvalidSchemaVariant,
 }
 
 pub type CodeGenerationPrototypeResult<T> = Result<T, CodeGenerationPrototypeError>;
 
-pub const UNSET_ID_VALUE: i64 = -1;
-
-const FIND_FOR_CONTEXT: &str =
-    include_str!("./queries/code_generation_prototype_find_for_context.sql");
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct CodeGenerationPrototypeContext {
-    component_id: ComponentId,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
-}
-
-// Hrm - is this a universal resolver context? -- Adam
-impl Default for CodeGenerationPrototypeContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl PrototypeContext for CodeGenerationPrototypeContext {
-    fn component_id(&self) -> ComponentId {
-        self.component_id
-    }
-
-    fn set_component_id(&mut self, component_id: ComponentId) {
-        self.component_id = component_id;
-    }
-
-    fn schema_id(&self) -> SchemaId {
-        self.schema_id
-    }
-
-    fn set_schema_id(&mut self, schema_id: SchemaId) {
-        self.schema_id = schema_id;
-    }
-
-    fn schema_variant_id(&self) -> SchemaVariantId {
-        self.schema_variant_id
-    }
-
-    fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
-        self.schema_variant_id = schema_variant_id;
-    }
-
-    fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
-    }
-}
-
-impl CodeGenerationPrototypeContext {
-    pub fn new() -> Self {
-        Self {
-            component_id: UNSET_ID_VALUE.into(),
-            schema_id: UNSET_ID_VALUE.into(),
-            schema_variant_id: UNSET_ID_VALUE.into(),
-            system_id: UNSET_ID_VALUE.into(),
-        }
-    }
-}
-
 pk!(CodeGenerationPrototypePk);
 pk!(CodeGenerationPrototypeId);
 
-// An CodeGenerationPrototype joins a `Func` to the context in which
-// the component that is created with it can use to generate a CodeGenerationResolver.
+/// A [`CodeGenerationPrototype`] joins a [`Func`](crate::Func) to a [`SchemaVariant`](crate::SchemaVariant)
+/// in order to generate code based on the current state of the corresponding [`Prop`](crate::Prop)
+/// tree.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct CodeGenerationPrototype {
     pk: CodeGenerationPrototypePk,
     id: CodeGenerationPrototypeId,
-    func_id: FuncId,
-    args: serde_json::Value,
-    format: CodeLanguage,
-    #[serde(flatten)]
-    context: CodeGenerationPrototypeContext,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
-    timestamp: Timestamp,
-    #[serde(flatten)]
     visibility: Visibility,
+    #[serde(flatten)]
+    timestamp: Timestamp,
+
+    /// The [`Func`](crate::Func) used for execution. For all [`prototypes`](self) for a given
+    /// [`SchemaVariant`](crate::SchemaVariant), there cannot be duplicate [`Funcs`](crate::Func).
+    func_id: FuncId,
+    /// The arguments to the [`Func`](crate::Func).
+    args: Value,
+    /// The format of the output of the [`Func`](crate::Func).
+    output_format: CodeLanguage,
+    /// The [`Prop`](crate::Prop) that provides the tree needed for code
+    /// generation.
+    prop_id: PropId,
+    /// The [`SchemaVariant`](crate::SchemaVariant) that the [`Prop`](crate::Prop) belongs to
+    /// underneath "/root/code". This field technically isn't necessary since a
+    /// [`PropId`](crate::Prop) can only belong to one or zero [`variants`](crate::SchemaVariant).
+    /// This field is used for lookups.
+    schema_variant_id: SchemaVariantId,
 }
 
 impl_standard_model! {
@@ -133,89 +91,168 @@ impl_standard_model! {
     id: CodeGenerationPrototypeId,
     table_name: "code_generation_prototypes",
     history_event_label_base: "code_generation_prototype",
-    history_event_message_name: "CodeGeneration Prototype"
-}
-
-impl HasPrototypeContext<CodeGenerationPrototypeContext> for CodeGenerationPrototype {
-    fn context(&self) -> CodeGenerationPrototypeContext {
-        self.context.clone()
-    }
-
-    fn new_context() -> CodeGenerationPrototypeContext {
-        CodeGenerationPrototypeContext::new()
-    }
+    history_event_message_name: "Code Generation Prototype"
 }
 
 impl CodeGenerationPrototype {
-    #[allow(clippy::too_many_arguments)]
+    /// Create a new [`CodeGenerationPrototype`] with a corresponding [`Prop`](crate::Prop)
+    /// underneath the "/root/code" field for a [`SchemaVariant`](crate::SchemaVariant).
+    /// If "args" are not provided, a default set of "args" will be created.
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
         func_id: FuncId,
-        args: serde_json::Value,
-        format: CodeLanguage,
-        context: CodeGenerationPrototypeContext,
+        args: Option<Value>,
+        output_format: CodeLanguage,
+        schema_variant_id: SchemaVariantId,
     ) -> CodeGenerationPrototypeResult<Self> {
-        let row = ctx.txns().pg().query_one(
-                "SELECT object FROM code_generation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                &[ctx.write_tenancy(), ctx.visibility(),
+        if schema_variant_id.is_none() {
+            return Err(CodeGenerationPrototypeError::InvalidSchemaVariant);
+        }
+
+        let args = match args {
+            Some(args) => args,
+            None => {
+                let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
+                serde_json::to_value(&code_generation_args)?
+            }
+        };
+
+        let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
+            .await?
+            .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
+        let code_prop = schema_variant.code_prop(ctx).await?;
+
+        // The new prop is named after the func name since func names must be unique for a given
+        // tenancy and visibility. If that changes, then this may break.
+        let func = Func::get_by_id(ctx, &func_id)
+            .await?
+            .ok_or(FuncError::NotFound(func_id))?;
+        let new_prop = Prop::new(ctx, func.name(), PropKind::String, None).await?;
+        new_prop.set_parent_prop(ctx, *code_prop.id()).await?;
+        let new_prop_id = *new_prop.id();
+
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM code_generation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &func_id,
                     &args,
-                    &format.as_ref(),
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.system_id(),
+                    &output_format.as_ref(),
+                    &new_prop_id,
+                    &schema_variant_id,
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(ctx, row).await?;
-        Ok(object)
+        Ok(standard_model::finish_create_from_row(ctx, row).await?)
+    }
+
+    // FIXME(nick): this is not right at all. However, we want "save func" and "create func"
+    // work. Creating code prototypes in progress is likely useful. Thus, once
+    // we get serious about authoring code prototypes, we will need to think
+    // about transitory states further. As a result, this function should _only_ be used for
+    // function authoring.
+    #[instrument(skip_all)]
+    pub async fn new_temporary(
+        ctx: &DalContext,
+        func_id: FuncId,
+        args: Option<Value>,
+        output_format: CodeLanguage,
+    ) -> CodeGenerationPrototypeResult<Self> {
+        let args = match args {
+            Some(args) => args,
+            _ => {
+                let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
+                serde_json::to_value(&code_generation_args)?
+            }
+        };
+
+        let prop_id = PropId::NONE;
+        let schema_variant_id = SchemaVariantId::NONE;
+
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM code_generation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &func_id,
+                    &args,
+                    &output_format.as_ref(),
+                    &prop_id,
+                    &schema_variant_id,
+                ],
+            )
+            .await?;
+        Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
 
     standard_model_accessor!(func_id, Pk(FuncId), CodeGenerationPrototypeResult);
     standard_model_accessor!(args, Json<JsonValue>, CodeGenerationPrototypeResult);
-    standard_model_accessor!(format, Enum(CodeLanguage), CodeGenerationPrototypeResult);
+    standard_model_accessor!(
+        output_format,
+        Enum(CodeLanguage),
+        CodeGenerationPrototypeResult
+    );
 
-    #[allow(clippy::too_many_arguments)]
-    pub async fn find_for_component(
+    pub fn prop_id(&self) -> PropId {
+        self.prop_id
+    }
+
+    pub fn schema_variant_id(&self) -> SchemaVariantId {
+        self.schema_variant_id
+    }
+
+    #[instrument(skip_all)]
+    pub async fn list_for_schema_variant(
         ctx: &DalContext,
-        component_id: ComponentId,
-        schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
-        system_id: SystemId,
     ) -> CodeGenerationPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .pg()
             .query(
-                FIND_FOR_CONTEXT,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &component_id,
-                    &system_id,
-                    &schema_variant_id,
-                    &schema_id,
-                ],
+                LIST_FOR_SCHEMA_VARIANT,
+                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
-        let object = standard_model::objects_from_rows(rows)?;
-        Ok(object)
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn find_for_prop(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> CodeGenerationPrototypeResult<Self> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                FIND_FOR_PROP,
+                &[ctx.read_tenancy(), ctx.visibility(), &prop_id],
+            )
+            .await?;
+        Ok(standard_model::object_from_row(row)?)
     }
 }
 
-impl_prototype_list_for_func! {model: CodeGenerationPrototype}
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeGeneratedPayload {
+    component_id: ComponentId,
+}
 
-#[cfg(test)]
-mod test {
-    use super::CodeGenerationPrototypeContext;
-    use crate::prototype_context::PrototypeContext;
-
-    #[test]
-    fn context_builder() {
-        let mut c = CodeGenerationPrototypeContext::new();
-        c.set_component_id(22.into());
-        assert_eq!(c.component_id(), 22.into());
+impl WsEvent {
+    pub fn code_generated(ctx: &DalContext, component_id: ComponentId) -> Self {
+        WsEvent::new(
+            ctx,
+            WsPayload::CodeGenerated(CodeGeneratedPayload { component_id }),
+        )
     }
 }

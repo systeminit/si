@@ -28,6 +28,8 @@ pub enum SchemaVariantError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("'/root/code' prop not found for schema variant: {0}")]
+    CodePropNotFound(SchemaVariantId),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
@@ -134,7 +136,6 @@ impl SchemaVariant {
     pub async fn finalize(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
         Self::create_default_prototypes_and_values(ctx, self.id).await?;
         Self::create_implicit_internal_providers(ctx, self.id).await?;
-
         Ok(())
     }
 
@@ -244,14 +245,18 @@ impl SchemaVariant {
         Ok(results)
     }
 
-    /// Find the root [`Prop`](crate::Prop) for [`Self`](Self).
-    pub async fn root_prop(&self, ctx: &DalContext) -> SchemaVariantResult<Prop> {
+    /// Find the "/root/code" [`Prop`](crate::Prop) for [`Self`](Self).
+    pub async fn code_prop(&self, ctx: &DalContext) -> SchemaVariantResult<Prop> {
         // FIXME(nick): this is an inefficient solution that would be better suited by a database query.
-        for prop in self.all_props(ctx).await? {
-            if prop.parent_prop(ctx).await?.is_none() && prop.name() == "root" {
-                return Ok(prop);
+        // That query could just take in a "schema_variant_id" rather than requiring "self" too.
+        let root_prop = Prop::find_root_for_schema_variant(ctx, self.id)
+            .await?
+            .ok_or(SchemaVariantError::RootPropNotFound(self.id))?;
+        for maybe_code_prop in root_prop.child_props(ctx).await? {
+            if maybe_code_prop.name() == "code" {
+                return Ok(maybe_code_prop);
             }
         }
-        return Err(SchemaVariantError::RootPropNotFound(*self.id()));
+        return Err(SchemaVariantError::CodePropNotFound(*self.id()));
     }
 }

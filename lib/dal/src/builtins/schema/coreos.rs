@@ -4,8 +4,6 @@ use crate::func::argument::FuncArgument;
 use crate::prototype_context::PrototypeContext;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::{
-    code_generation_prototype::CodeGenerationPrototypeContext,
-    func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs,
     qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
     BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
@@ -132,18 +130,12 @@ async fn butane(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
             .await?
             .pop()
             .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
-
-    let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
-    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
-    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
-    code_generation_prototype_context.set_schema_variant_id(*schema_variant.id());
-
-    let _prototype = CodeGenerationPrototype::new(
+    CodeGenerationPrototype::new(
         ctx,
         *code_generation_func.id(),
-        code_generation_args_json,
+        None,
         CodeLanguage::Json,
-        code_generation_prototype_context,
+        *schema_variant.id(),
     )
     .await?;
 

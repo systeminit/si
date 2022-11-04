@@ -1120,7 +1120,7 @@ impl AttributeValue {
         // point.
         if self.is_for_internal_provider_of_root_prop(ctx).await? {
             ctx.enqueue_job(
-                CodeGeneration::new(ctx, self.context.component_id(), self.context.system_id())
+                CodeGeneration::new(ctx, self.context.component_id())
                     .await
                     .map_err(|e| AttributeValueError::Component(e.to_string()))?,
             )

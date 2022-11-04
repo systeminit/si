@@ -86,6 +86,8 @@ pub enum InternalProviderError {
     NotFound(InternalProviderId),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
+    #[error("root prop not found for schema variant: {0}")]
+    RootPropNotFound(SchemaVariantId),
     #[error("schema id mismatch: {0} (self) and {1} (provided)")]
     SchemaMismatch(SchemaId, SchemaId),
     #[error("schema variant id mismatch: {0} (self) and {1} (provided)")]
@@ -346,6 +348,7 @@ impl InternalProvider {
         if !consume_attribute_context.is_least_specific_field_kind_prop()? {
             return Err(InternalProviderError::MissingPropForImplicitEmit);
         }
+        let consume_prop_id = consume_attribute_context.prop_id();
 
         // Update or create the emit attribute value using the newly generated func binding return
         // value. For its context, we use the provided context and replace the least specific field
@@ -381,10 +384,30 @@ impl InternalProvider {
             prop_id: None,
             ..AttributeReadContext::from(consume_attribute_context)
         };
+
+        // Default to not including "/root/code". If we are dealing with an attribute value
+        // whose context contains a set schema variant and whose prop is the root prop for that
+        // variant, then we _do_ want to include "/root/code".
+        let include_code = if !consume_attribute_context.is_schema_variant_unset() {
+            let prop = Prop::find_root_for_schema_variant(
+                ctx,
+                consume_attribute_context.schema_variant_id(),
+            )
+            .await?
+            .ok_or_else(|| {
+                InternalProviderError::RootPropNotFound(
+                    consume_attribute_context.schema_variant_id(),
+                )
+            })?;
+            *prop.id() == consume_prop_id
+        } else {
+            false
+        };
         let found_attribute_view = AttributeView::new(
             ctx,
             found_attribute_view_context,
             Some(*found_attribute_value.id()),
+            include_code,
         )
         .await?;
         let (func_binding, func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
@@ -458,14 +481,12 @@ impl InternalProvider {
                     .check_validations(ctx)
                     .await
                     .map_err(|e| InternalProviderError::Component(e.to_string()))?;
+
+                // Generate code if anything under "/root" has changed.
                 ctx.enqueue_job(
-                    CodeGeneration::new(
-                        ctx,
-                        emit_attribute_context.component_id(),
-                        emit_attribute_context.system_id(),
-                    )
-                    .await
-                    .map_err(|err| InternalProviderError::Component(err.to_string()))?,
+                    CodeGeneration::new(ctx, emit_attribute_context.component_id())
+                        .await
+                        .map_err(|err| InternalProviderError::Component(err.to_string()))?,
                 )
                 .await;
             }
