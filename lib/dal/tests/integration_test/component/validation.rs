@@ -192,7 +192,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
         .expect("could not find status for validation(s) of a given component");
     let (match_validation_status, prefix_validation_status) = (
         get_validation_status(&validation_statuses, updated_gecs_attribute_value_id),
-        get_validation_status(&validation_statuses, updated_gecs_attribute_value_id),
+        get_validation_status(&validation_statuses, updated_prefix_attribute_value_id),
     );
 
     // Check match validation errors.

@@ -18,7 +18,7 @@ pub mod resolver;
 
 /// Struct for creating a consumable error for the frontend when a "field" fails its validation
 /// check.
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ValidationError {
     pub message: String,
     /// This really should be an enum at some point, but we need to figure out the set of values it
