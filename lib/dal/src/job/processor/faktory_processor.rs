@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use faktory_async::Client;
+use si_data_faktory::Client;
 use std::convert::TryInto;
 use telemetry::prelude::*;
 use tokio::sync::mpsc;

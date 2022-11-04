@@ -12,7 +12,6 @@ base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
 dal = { path = "../dal" }
 derive_builder = { version = "0.11.2" }
-faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }
 futures = { version = "0.3.17" }
 hyper = { version = "0.14", features = ["http1", "runtime", "server"] }
 names = { version = "0.14.0", default-features = false }

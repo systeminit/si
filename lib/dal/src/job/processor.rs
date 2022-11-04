@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use dyn_clone::DynClone;
+use si_data_faktory::Error as FaktoryError;
 use thiserror::Error;
 
 use super::producer::{JobProducer, JobProducerError};
@@ -11,7 +12,7 @@ pub mod sync_processor;
 #[derive(Error, Debug)]
 pub enum JobQueueProcessorError {
     #[error(transparent)]
-    Faktory(#[from] faktory_async::Error),
+    Faktory(#[from] FaktoryError),
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
 }

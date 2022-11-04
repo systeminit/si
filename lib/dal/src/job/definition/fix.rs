@@ -2,6 +2,7 @@ use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use si_data_faktory::Job;
 
 use crate::fix::FixError;
 use crate::{
@@ -244,10 +245,10 @@ impl JobConsumer for FixesJob {
     }
 }
 
-impl TryFrom<faktory_async::Job> for FixesJob {
+impl TryFrom<Job> for FixesJob {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
                 r#"[{ fixes: Vec<FixItem>, batch_id: FixBatchId, started: bool }, <AccessBuilder>, <Visibility>]"#

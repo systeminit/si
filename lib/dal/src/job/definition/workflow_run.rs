@@ -2,6 +2,7 @@ use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use si_data_faktory::Job;
 
 use crate::{
     job::{
@@ -158,10 +159,10 @@ impl JobConsumer for WorkflowRun {
     }
 }
 
-impl TryFrom<faktory_async::Job> for WorkflowRun {
+impl TryFrom<Job> for WorkflowRun {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
                 r#"[{ "component_id": <ComponentId>, "prototype_id": [WorkflowPrototypeId], "run_id": usize }, <AccessBuilder>, <Visibility>]"#.to_string(),

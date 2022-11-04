@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use si_data_faktory::Job;
 use std::{collections::HashMap, convert::TryFrom};
 use thiserror::Error;
 
@@ -32,13 +33,13 @@ pub struct JobMeta {
     pub custom: HashMap<String, serde_json::Value>,
 }
 
-impl TryFrom<Box<dyn JobProducer + Send + Sync>> for faktory_async::Job {
+impl TryFrom<Box<dyn JobProducer + Send + Sync>> for Job {
     type Error = JobProducerError;
 
     fn try_from(job_producer: Box<dyn JobProducer + Send + Sync>) -> Result<Self, Self::Error> {
         let job_producer_meta = job_producer.meta()?;
 
-        let mut faktory_job = faktory_async::Job::new(
+        let mut faktory_job = Job::new(
             job_producer.type_name(),
             vec![
                 job_producer.args()?,

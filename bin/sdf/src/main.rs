@@ -87,12 +87,10 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
-    let faktory_client = faktory_async::Client::new(
-        faktory_async::Config::from_uri(&config.faktory().url, Some("sdf".to_string()), None),
-        256,
-    );
+    let faktory = Server::create_faktory_client(config.faktory());
+
     let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
-    let job_processor = Box::new(FaktoryProcessor::new(faktory_client.clone(), alive_marker))
+    let job_processor = Box::new(FaktoryProcessor::new(faktory.clone(), alive_marker))
         as Box<dyn JobQueueProcessor + Send + Sync>;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
@@ -193,7 +191,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     let _ = job_processor_shutdown_rx.recv().await;
 
     info!("Shutting down the faktory client");
-    if let Err(err) = faktory_client.close().await {
+    if let Err(err) = faktory.close().await {
         error!("Failed to close faktory client: {err}");
     }
 

@@ -2,6 +2,7 @@ use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use si_data_faktory::Job;
 
 use crate::{
     component::ComponentResult,
@@ -124,10 +125,10 @@ impl JobConsumer for Qualification {
     }
 }
 
-impl TryFrom<faktory_async::Job> for Qualification {
+impl TryFrom<Job> for Qualification {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
                 r#"[{ "component_id": <ComponentId>, "system_id": [SystemId], "prototype_id": <QualificationPrototypeId> }, <AccessBuilder>, <Visibility>]"#.to_string(),

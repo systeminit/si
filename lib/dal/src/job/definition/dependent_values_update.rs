@@ -2,6 +2,7 @@ use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use si_data_faktory::Job;
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
 
@@ -208,10 +209,10 @@ async fn update_value(
     Ok(*attribute_value.id())
 }
 
-impl TryFrom<faktory_async::Job> for DependentValuesUpdate {
+impl TryFrom<Job> for DependentValuesUpdate {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
                 r#"[{ "attribute_value_id": <AttributeValueId> }, <AccessBuilder>, <Visibility>]"#

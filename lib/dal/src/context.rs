@@ -626,7 +626,7 @@ impl DalContextBuilder {
 #[derive(Debug, Error)]
 pub enum TransactionsError {
     #[error("faktory error: {0}")]
-    Faktory(#[from] faktory_async::Error),
+    Faktory(#[from] si_data_faktory::Error),
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error(transparent)]

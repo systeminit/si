@@ -3,6 +3,7 @@ use std::{collections::HashMap, convert::TryFrom};
 use async_trait::async_trait;
 use jwt_simple::prelude::Deserialize;
 use serde::Serialize;
+use si_data_faktory::Job;
 
 use crate::confirmation_status::ConfirmationStatus;
 
@@ -154,10 +155,10 @@ impl JobConsumer for Confirmation {
     }
 }
 
-impl TryFrom<faktory_async::Job> for Confirmation {
+impl TryFrom<Job> for Confirmation {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
                 r#"[{ component_id: ComponentId, system_id: SystemId, confirmation_prototype_id: ConfirmationPrototypeId }, <AccessBuilder>, <Visibility>]"#.to_string(),

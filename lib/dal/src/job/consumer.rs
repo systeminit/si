@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use si_data_faktory::Job;
 use si_data_pg::PgPoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -82,10 +83,10 @@ pub struct FaktoryJobInfo {
     pub custom: JobConsumerCustomPayload,
 }
 
-impl TryFrom<faktory_async::Job> for FaktoryJobInfo {
+impl TryFrom<Job> for FaktoryJobInfo {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: Job) -> Result<Self, Self::Error> {
         let custom: JobConsumerCustomPayload =
             serde_json::from_value(serde_json::to_value(job.custom.clone())?)?;
 

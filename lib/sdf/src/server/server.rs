@@ -10,6 +10,7 @@ use dal::{
     ResourceScheduler, ServicesContext,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
+use si_data_faktory::{Client as FaktoryClient, FaktoryConfig};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgError, PgPool, PgPoolConfig, PgPoolError};
 use si_std::SensitiveString;
@@ -239,6 +240,15 @@ impl Server<(), ()> {
 
     pub fn create_veritech_client(nats: NatsClient) -> VeritechClient {
         VeritechClient::new(nats)
+    }
+
+    #[instrument(name = "sdf.init.create_faktory_client", skip_all)]
+    pub fn create_faktory_client(faktory_config: &FaktoryConfig) -> FaktoryClient {
+        let config =
+            si_data_faktory::Config::from_uri(&faktory_config.url, Some("sdf".to_string()), None);
+        let client = FaktoryClient::new(config, 256);
+        debug!("successfully spawned faktory client connection");
+        client
     }
 }
 
