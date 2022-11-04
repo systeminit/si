@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
     let config = TelemetryConfig::builder()
         .service_name("veritech")
         .service_namespace("si")
-        .app_modules(vec!["veritech_cli", "veritech"])
+        .app_modules(vec!["veritech_cli", "veritech_server"])
         .build()?;
     let telemetry = telemetry_application::init(config)?;
     let args = args::parse();
