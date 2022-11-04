@@ -143,6 +143,8 @@ pub enum AttributeValueError {
         "parent must be for an array, map, or object prop: attribute resolver id {0} is for a {1}"
     )]
     ParentNotAllowed(AttributeValueId, PropKind),
+    #[error("parent not found or does not exist for value: {0}")]
+    ParentNotFound(AttributeValueId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("prop error: {0}")]

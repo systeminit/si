@@ -342,9 +342,10 @@ impl Edge {
                 *head_explicit_internal_provider.id(),
             ));
         }
-        let head_explicit_internal_provider_attribute_prototype = head_explicit_internal_provider
-            .attribute_prototype_id()
-            .ok_or(InternalProviderError::EmptyAttributePrototype)?;
+        let head_explicit_internal_provider_attribute_prototype_id =
+            head_explicit_internal_provider
+                .attribute_prototype_id()
+                .ok_or(InternalProviderError::EmptyAttributePrototype)?;
 
         let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
             .await?
@@ -358,7 +359,7 @@ impl Edge {
         // Now, we can create the inter component attribute prototype argument.
         AttributePrototypeArgument::new_for_inter_component(
             ctx,
-            *head_explicit_internal_provider_attribute_prototype,
+            *head_explicit_internal_provider_attribute_prototype_id,
             *identity_func_arg.id(),
             head_component_id,
             tail_component_id,

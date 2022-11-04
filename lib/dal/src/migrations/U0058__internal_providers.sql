@@ -6,7 +6,7 @@ CREATE TABLE internal_providers
     tenancy_billing_account_ids bigint[],
     tenancy_organization_ids    bigint[],
     tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint,
+    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),

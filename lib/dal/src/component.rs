@@ -7,6 +7,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
@@ -24,6 +25,7 @@ use crate::qualification_resolver::QualificationResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::SocketEdgeKind;
+use crate::standard_model::object_from_row;
 use crate::validation::ValidationConstructorError;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
@@ -187,6 +189,8 @@ const LIST_FOR_SCHEMA_VARIANT: &str =
 const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
     include_str!("queries/component_list_sockets_for_socket_edge_kind.sql");
 const NAME_FROM_CONTEXT: &str = include_str!("./queries/component/name_from_context.sql");
+const RESOURCE_ATTRIBUTE_VALUE_FOR_COMPONENT: &str =
+    include_str!("queries/component/resource_attribute_value_for_component.sql");
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -294,8 +298,7 @@ impl Component {
         // persist. But it isn't, - our node is anemic.
         let node = Node::new(ctx, &(*schema.kind()).into()).await?;
         node.set_component(ctx, component.id()).await?;
-
-        let _ = component
+        component
             .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
             .await?;
 
@@ -1259,6 +1262,8 @@ impl Component {
     }
 
     // Note: Won't work for arrays and maps
+    // NOTE(nick): please do not use this for anything other than setting "/root/si/name" in its
+    // current state.
     #[instrument(skip_all)]
     pub async fn set_value_by_json_pointer<T: Serialize + std::fmt::Debug + std::clone::Clone>(
         &self,
@@ -1483,10 +1488,58 @@ impl Component {
         Self::name_from_context(ctx, context).await
     }
 
-    /// Sets the "string" field, "/root/resource" with a given value.
-    pub async fn set_resource(&self, ctx: &DalContext, data: &Value) -> ComponentResult<()> {
-        self.set_value_by_json_pointer(ctx, "/root/resource", Some(serde_json::to_string(data)?))
+    /// Grabs the [`AttributeValue`](crate::AttributeValue) corresponding to the "/root/resource"
+    /// [`Prop`](crate::Prop) for the given [`Component`](Self).
+    #[instrument(skip_all)]
+    pub async fn resource_attribute_value_for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<AttributeValue> {
+        let row = ctx
+            .pg_txn()
+            .query_one(
+                RESOURCE_ATTRIBUTE_VALUE_FOR_COMPONENT,
+                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+            )
             .await?;
+        Ok(object_from_row(row)?)
+    }
+
+    /// Sets the "string" field, "/root/resource" with a given value. After that, ensure dependent
+    /// [`AttributeValues`](crate::AttributeValue) are updated.
+    pub async fn set_resource(&self, ctx: &DalContext, data: Value) -> ComponentResult<()> {
+        let resource_attribute_value =
+            Component::resource_attribute_value_for_component(ctx, self.id).await?;
+        let root_attribute_value = resource_attribute_value
+            .parent_attribute_value(ctx)
+            .await?
+            .ok_or_else(|| AttributeValueError::ParentNotFound(*resource_attribute_value.id()))?;
+
+        let schema = self
+            .schema(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = self
+            .schema_variant(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+        let update_attribute_context =
+            AttributeContextBuilder::from(resource_attribute_value.context)
+                .set_schema_id(*schema.id())
+                .set_schema_variant_id(*schema_variant.id())
+                .set_component_id(self.id)
+                .to_context()?;
+
+        let (_, _) = AttributeValue::update_for_context(
+            ctx,
+            *resource_attribute_value.id(),
+            Some(*root_attribute_value.id()),
+            update_attribute_context,
+            Some(data),
+            None,
+        )
+        .await?;
         Ok(())
     }
 }
