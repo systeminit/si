@@ -1,10 +1,10 @@
 use dal::{
     attribute::context::AttributeContextBuilder,
     func::backend::validation::FuncBackendValidationArgs,
-    validation::{Validation, ValidationErrorKind},
+    validation::{Validation, ValidationError, ValidationErrorKind},
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentView, DalContext,
-    Func, PropKind, SchemaKind, StandardModel, SystemId, ValidationPrototype,
-    ValidationPrototypeContext, ValidationResolver, ValidationStatus,
+    Func, FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind, StandardModel, SystemId,
+    ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
@@ -190,10 +190,9 @@ async fn check_validations_for_component(ctx: &DalContext) {
     let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
         .await
         .expect("could not find status for validation(s) of a given component");
-    let (match_validation_status, prefix_validation_status) = get_validation_statuses(
-        &validation_statuses,
-        updated_gecs_attribute_value_id,
-        updated_prefix_attribute_value_id,
+    let (match_validation_status, prefix_validation_status) = (
+        get_validation_status(&validation_statuses, updated_gecs_attribute_value_id),
+        get_validation_status(&validation_statuses, updated_prefix_attribute_value_id),
     );
 
     // Check match validation errors.
@@ -268,45 +267,210 @@ async fn check_validations_for_component(ctx: &DalContext) {
     let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
         .await
         .expect("could not find status for validation(s) of a given component");
-    let (match_validation_status, prefix_validation_status) = get_validation_statuses(
-        &validation_statuses,
-        updated_gecs_attribute_value_id,
-        updated_prefix_attribute_value_id,
+    let (match_validation_status, prefix_validation_status) = (
+        get_validation_status(&validation_statuses, updated_gecs_attribute_value_id),
+        get_validation_status(&validation_statuses, updated_prefix_attribute_value_id),
     );
     assert!(match_validation_status.errors.is_empty());
     assert!(prefix_validation_status.errors.is_empty());
 }
 
-fn get_validation_statuses(
-    validation_statuses: &Vec<ValidationStatus>,
-    match_attribute_value_id: AttributeValueId,
-    prefix_attribute_value_id: AttributeValueId,
-) -> (ValidationStatus, ValidationStatus) {
-    let mut match_validation_status = None;
-    let mut prefix_validation_status = None;
+#[test]
+async fn check_js_validation_for_component(ctx: &DalContext) {
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+        .await
+        .expect("cannot set default schema variant");
+    let prop = create_prop_of_kind_with_name(ctx, PropKind::String, "Tamarian").await;
+    prop.set_parent_prop(ctx, root_prop.domain_prop_id)
+        .await
+        .expect("cannot set parent prop");
+
+    let mut func = Func::new(
+        ctx,
+        "test:jsValidation",
+        FuncBackendKind::JsValidation,
+        FuncBackendResponseType::Validation,
+    )
+    .await
+    .expect("create js validation func");
+
+    let js_validation_code = "function validate(value) { 
+        return { 
+            valid: value === 'Temba, his arms open', message: 'Darmok and Jalad at Tanagra'
+        };
+    }";
+
+    func.set_code_plaintext(ctx, Some(js_validation_code))
+        .await
+        .expect("set code");
+    func.set_handler(ctx, Some("validate"))
+        .await
+        .expect("set handler");
+
+    let mut builder = ValidationPrototypeContext::builder();
+    builder.set_prop_id(*prop.id());
+    builder.set_schema_id(*schema.id());
+    builder.set_schema_variant_id(*schema_variant.id());
+    ValidationPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::json!(null),
+        builder
+            .to_context(ctx)
+            .await
+            .expect("could not convert builder to context"),
+    )
+    .await
+    .expect("unable to create validation prototype");
+
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("could not finalize");
+
+    let (component, _) =
+        Component::new_for_schema_variant_with_node(ctx, "Danoth", schema_variant.id())
+            .await
+            .expect("could not create component");
+
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        component_id: Some(*component.id()),
+        ..AttributeReadContext::default()
+    };
+
+    let av = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*prop.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await
+    .expect("could not perform find for context")
+    .expect("could not find attribute value");
+
+    let pav = av
+        .parent_attribute_value(ctx)
+        .await
+        .expect("could not get parent attribute value");
+
+    let av_update_context = AttributeContextBuilder::from(base_attribute_read_context)
+        .set_prop_id(*prop.id())
+        .to_context()
+        .expect("make attribute context for update");
+
+    let (_, updated_av_id) = AttributeValue::update_for_context(
+        ctx,
+        *av.id(),
+        pav.map(|pav| *pav.id()),
+        av_update_context,
+        Some(serde_json::json!("Shaka, when the walls fell")),
+        None,
+    )
+    .await
+    .expect("update attr value");
+
+    let properties = ComponentView::for_context(ctx, base_attribute_read_context)
+        .await
+        .expect("cannot get component view")
+        .properties;
+
+    assert_eq!(
+        serde_json::json!({
+            "si": {
+                "name": "Danoth",
+            },
+            "domain": {
+                "Tamarian": "Shaka, when the walls fell",
+            }
+        }),
+        properties
+    );
+
+    let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
+        .await
+        .expect("could not find status for validation(s) of a given component");
+
+    let status = get_validation_status(&validation_statuses, updated_av_id);
+
+    let darmok: Vec<ValidationError> = vec![ValidationError {
+        message: "Darmok and Jalad at Tanagra".to_string(),
+        level: None,
+        kind: ValidationErrorKind::JsValidation,
+        link: None,
+    }];
+
+    assert_eq!(darmok, status.errors);
+
+    let av = AttributeValue::get_by_id(ctx, &updated_av_id)
+        .await
+        .expect("get updated av")
+        .expect("not none");
+    let pav = av
+        .parent_attribute_value(ctx)
+        .await
+        .expect("could not get parent attribute value");
+
+    let (_, updated_av_id) = AttributeValue::update_for_context(
+        ctx,
+        *av.id(),
+        pav.map(|pav| *pav.id()),
+        av_update_context,
+        Some(serde_json::json!("Temba, his arms open")),
+        None,
+    )
+    .await
+    .expect("update attr value");
+
+    let properties = ComponentView::for_context(ctx, base_attribute_read_context)
+        .await
+        .expect("cannot get component view")
+        .properties;
+
+    assert_eq!(
+        serde_json::json!({
+            "si": {
+                "name": "Danoth",
+            },
+            "domain": {
+                "Tamarian": "Temba, his arms open",
+            }
+        }),
+        properties
+    );
+
+    let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
+        .await
+        .expect("could not find status for validation(s) of a given component");
+
+    let status = get_validation_status(&validation_statuses, updated_av_id);
+
+    let empty: Vec<ValidationError> = vec![];
+    assert_eq!(empty, status.errors);
+}
+
+fn get_validation_status(
+    validation_statuses: &[ValidationStatus],
+    attribute_value_id: AttributeValueId,
+) -> ValidationStatus {
+    let mut the_validation_status = None;
     for validation_status in validation_statuses {
-        if validation_status.attribute_value_id == match_attribute_value_id {
-            if match_validation_status.is_some() {
+        if validation_status.attribute_value_id == attribute_value_id {
+            if the_validation_status.is_some() {
                 panic!(
-                    "found more than one match validation status: {:?}",
+                    "found more than one validation status for that attribute_value_id: {:?}",
                     validation_statuses
                 );
             }
-            match_validation_status = Some(validation_status.clone());
-        } else if validation_status.attribute_value_id == prefix_attribute_value_id {
-            if prefix_validation_status.is_some() {
-                panic!(
-                    "found more than one prefix validation status: {:?}",
-                    validation_statuses
-                );
-            }
-            prefix_validation_status = Some(validation_status.clone());
+            the_validation_status = Some(validation_status.clone());
         }
     }
-    (
-        match_validation_status.expect("did not find match validation status"),
-        prefix_validation_status.expect("did not find prefix validation status"),
-    )
+    the_validation_status.expect("did not find a validation status")
 }
 
 /// This test ensures that validation statuses correspond to attribute values that exist in an

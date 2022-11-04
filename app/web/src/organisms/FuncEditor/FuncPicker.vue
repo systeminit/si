@@ -38,7 +38,7 @@
             as="li"
             class="w-full"
             content-as="ul"
-            default-open
+            :default-open="selectedFuncId > -1 && selectedFunc?.kind === kind"
           >
             <template #label>
               <div class="flex items-center gap-2">
@@ -47,10 +47,7 @@
               </div>
             </template>
             <template #default>
-              <li
-                v-for="func in filteredList.filter((f) => f && f.kind === kind)"
-                :key="func.id"
-              >
+              <li v-for="func in funcsByKind[kind] ?? []" :key="func.id">
                 <SiFuncSprite
                   :class="
                     selectedFuncId === func.id
@@ -124,7 +121,7 @@ import { useRouteToFunc } from "@/utils/useRouteToFunc";
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
-const { funcList, selectedFuncId } = storeToRefs(funcStore);
+const { funcList, selectedFuncId, selectedFunc } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 
@@ -146,6 +143,16 @@ const filteredList = computed(() =>
         f.name.toLocaleLowerCase().includes(searchString.value),
       )
     : funcList.value,
+);
+
+const funcsByKind = computed(() =>
+  filteredList.value.reduce(
+    (funcMap, func) =>
+      typeof funcMap[func.kind] === "undefined"
+        ? { ...funcMap, [func.kind]: [func] }
+        : { ...funcMap, [func.kind]: [...funcMap[func.kind], func] },
+    {} as { [key in FuncBackendKind]-?: typeof filteredList.value },
+  ),
 );
 
 const emits = defineEmits<{

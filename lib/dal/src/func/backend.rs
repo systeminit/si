@@ -19,6 +19,7 @@ pub mod js_code_generation;
 pub mod js_command;
 pub mod js_confirmation;
 pub mod js_qualification;
+pub mod js_validation;
 pub mod js_workflow;
 pub mod map;
 pub mod prop_object;
@@ -47,7 +48,7 @@ pub enum FuncBackendError {
     SendError,
     #[error("dispatch func missing code_base64 {0}")]
     DispatchMissingBase64(FuncId),
-    #[error("dispatch func missing code_base64 {0}")]
+    #[error("dispatch func missing handler {0}")]
     DispatchMissingHandler(FuncId),
     #[error("function result command run error: {0:?}")]
     FunctionResultCommandRun(FunctionResult<CommandRunResultSuccess>),
@@ -80,6 +81,7 @@ pub enum FuncBackendKind {
     JsWorkflow,
     JsConfirmation,
     JsCommand,
+    JsValidation,
     Map,
     PropObject,
     String,

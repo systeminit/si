@@ -13,6 +13,8 @@ export interface ValidationRequest extends RequestWithCode {
     value: unknown;
 }
 
+// TODO: validation funcs should return array of error messages since more than one thing can be
+// wrong with a value
 export interface ValidationResultSuccess extends ResultSuccess {
     valid: boolean,
     message?: string;

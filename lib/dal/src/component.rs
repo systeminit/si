@@ -11,10 +11,10 @@ use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
-use crate::func::backend::validation::FuncBackendValidationArgs;
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
-    js_qualification::FuncBackendJsQualificationArgs,
+    js_qualification::FuncBackendJsQualificationArgs, js_validation::FuncBackendJsValidationArgs,
+    validation::FuncBackendValidationArgs,
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::{
@@ -477,16 +477,25 @@ impl Component {
             let func = Func::get_by_id(ctx, &validation_prototype.func_id())
                 .await?
                 .ok_or_else(|| PropError::MissingFuncById(validation_prototype.func_id()))?;
-            if func.backend_kind() != &FuncBackendKind::Validation {
-                return Err(ComponentError::InvalidFuncBackendKindForValidations(
-                    *func.backend_kind(),
-                ));
-            }
 
-            // Deserialize the args, update the "value", and serialize the mutated args.
-            let mut args = FuncBackendValidationArgs::deserialize(validation_prototype.args())?;
-            args.validation = args.validation.update_value(&maybe_value)?;
-            let mutated_args = serde_json::to_value(args)?;
+            let mutated_args = match func.backend_kind() {
+                FuncBackendKind::Validation => {
+                    // Deserialize the args, update the "value", and serialize the mutated args.
+                    let mut args =
+                        FuncBackendValidationArgs::deserialize(validation_prototype.args())?;
+                    args.validation = args.validation.update_value(&maybe_value)?;
+
+                    serde_json::to_value(args)?
+                }
+                FuncBackendKind::JsValidation => {
+                    serde_json::to_value(FuncBackendJsValidationArgs {
+                        value: maybe_value.unwrap_or(serde_json::json!(null)),
+                    })?
+                }
+                kind => {
+                    return Err(ComponentError::InvalidFuncBackendKindForValidations(*kind));
+                }
+            };
 
             // Now, we can load in the mutated args!
             let (func_binding, _, created) =
