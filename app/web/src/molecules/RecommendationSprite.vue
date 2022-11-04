@@ -38,11 +38,12 @@
         class="flex gap-2 items-center text-sm relative min-w-0"
         :class="classes"
       >
+        <!-- TODO(victor): We'll identify recommendations by their types. When this is done, the icon color should respond to that. -->
         <Icon
           v-if="recommendation.status !== 'success'"
           name="tools"
           size="md"
-          class="text-destructive-500 flex-none"
+          class="text-success-500 flex-none"
         />
         <div class="flex flex-col min-w-0">
           <span class="font-bold truncate"> {{ recommendation.name }}</span>

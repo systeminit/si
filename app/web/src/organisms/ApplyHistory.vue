@@ -1,7 +1,7 @@
 <template>
   <SiTabGroup :selected-index="0">
     <template #tabs>
-      <SiTabHeader :key="0">FIX HISTORY</SiTabHeader>
+      <SiTabHeader :key="0">Apply History</SiTabHeader>
     </template>
     <template #panels>
       <TabPanel :key="0" class="h-full overflow-auto">
