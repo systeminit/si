@@ -36,7 +36,7 @@ impl Recommendation {
         // Sorted resolvers
         let resolvers = ConfirmationResolverTree::build(ctx, resolvers)
             .await?
-            .into_vec();
+            .into_vec()?;
 
         let mut views = Vec::with_capacity(resolvers.len());
         for resolver in resolvers {
