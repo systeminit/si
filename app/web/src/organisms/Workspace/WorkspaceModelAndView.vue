@@ -36,7 +36,7 @@
       :nodes="diagramNodes"
       :edges="diagramEdges"
       :read-only="isViewMode"
-      :controls-disabled="changeSetPanelRef?.showDialog"
+      :controls-disabled="changeSetPanelRef?.showDialog === undefined"
       @insert-element="onDiagramInsertElement"
       @move-element="onDiagramMoveElement"
       @draw-edge="onDrawEdge"
