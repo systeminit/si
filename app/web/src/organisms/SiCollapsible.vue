@@ -40,13 +40,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useSlots, PropType } from "vue";
+import { computed, useSlots, PropType, toRef } from "vue";
 import { Disclosure, DisclosurePanel, DisclosureButton } from "@headlessui/vue";
 import clsx from "clsx";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { themeClasses } from "@/ui-lib/theme_tools";
 
-defineProps({
+const props = defineProps({
   label: { type: String },
   showLabelAndSlot: { type: Boolean, default: false },
   as: { type: String },
@@ -60,6 +60,9 @@ defineProps({
   hideBottomBorderWhenOpen: { type: Boolean, default: false },
   hideBottomBorder: { type: Boolean, default: false },
 });
+
+// why on earth are vue props not reactive by default
+const defaultOpen = toRef(props, 'defaultOpen', true);
 
 const slots = useSlots();
 const labelSlot = computed(() => slots.label?.());

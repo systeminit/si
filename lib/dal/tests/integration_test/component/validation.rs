@@ -1,7 +1,7 @@
 use dal::{
     attribute::context::AttributeContextBuilder,
     func::backend::validation::FuncBackendValidationArgs,
-    validation::{Validation, ValidationErrorKind, ValidationError},
+    validation::{Validation, ValidationError, ValidationErrorKind},
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentView, DalContext,
     Func, FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind, StandardModel, SystemId,
     ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
@@ -375,11 +375,10 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .await
     .expect("update attr value");
 
-    let properties = 
-        ComponentView::for_context(ctx, base_attribute_read_context)
-            .await
-            .expect("cannot get component view")
-            .properties;
+    let properties = ComponentView::for_context(ctx, base_attribute_read_context)
+        .await
+        .expect("cannot get component view")
+        .properties;
 
     assert_eq!(
         serde_json::json!({
@@ -403,7 +402,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         message: "Darmok and Jalad at Tanagra".to_string(),
         level: None,
         kind: ValidationErrorKind::JsValidation,
-        link: None
+        link: None,
     }];
 
     assert_eq!(darmok, status.errors);
@@ -428,11 +427,10 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .await
     .expect("update attr value");
 
-    let properties = 
-        ComponentView::for_context(ctx, base_attribute_read_context)
-            .await
-            .expect("cannot get component view")
-            .properties;
+    let properties = ComponentView::for_context(ctx, base_attribute_read_context)
+        .await
+        .expect("cannot get component view")
+        .properties;
 
     assert_eq!(
         serde_json::json!({
