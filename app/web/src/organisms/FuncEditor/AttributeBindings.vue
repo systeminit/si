@@ -153,8 +153,6 @@ const prototypeView = computed(() => {
         (sv) => sv.value === proto.schemaVariantId,
       )?.label ?? "none";
 
-    console.log(componentOptions.value);
-
     const component =
       componentOptions.value.find((c) => c.value === proto.componentId)
         ?.label ?? "all";

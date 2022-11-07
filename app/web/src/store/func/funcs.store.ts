@@ -53,7 +53,6 @@ export const useFuncStore = () => {
       openFuncsList: [] as ListedFuncView[],
       selectedFuncId: -1 as FuncId,
       inputSources: { sockets: [], props: [] } as ListInputSourcesResponse,
-
       saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
     }),
     getters: {
@@ -66,6 +65,18 @@ export const useFuncStore = () => {
       getFuncByIndex: (state) => (index: number) => state.openFuncsList[index],
       getIndexForFunc: (state) => (funcId: FuncId) =>
         state.openFuncsList.findIndex((f) => f.id === funcId),
+      // Filter props by schema variant
+      propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: number) =>
+        state.inputSources.props
+          .filter(
+            (prop) =>
+              schemaVariantId === -1 ||
+              schemaVariantId === prop.schemaVariantId,
+          )
+          .map((prop) => ({
+            label: `${prop.path}${prop.name}`,
+            value: prop.propId,
+          })),
       selectedFunc: (state) => state.openFuncsById[state.selectedFuncId],
       schemaVariantOptions() {
         return componentsStore.schemaVariants.map((sv) => ({

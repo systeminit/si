@@ -23,6 +23,17 @@ export interface QualificationAssocations {
   componentIds: number[];
 }
 
+export interface ValidationAssociations {
+  type: "validation";
+  prototypes: ValidationPrototypeView[];
+}
+
+export interface ValidationPrototypeView {
+  id: number;
+  schemaVariantId: number;
+  propId: number;
+}
+
 export interface AttributePrototypeArgumentView {
   funcArgumentId: number;
   id?: number;
@@ -47,4 +58,5 @@ export type FuncAssociations =
   | AttributeAssocations
   | CodeGenerationAssociations
   | ConfirmationAssociations
-  | QualificationAssocations;
+  | QualificationAssocations
+  | ValidationAssociations;

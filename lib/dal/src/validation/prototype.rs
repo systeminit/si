@@ -43,6 +43,8 @@ pub type ValidationPrototypeResult<T> = Result<T, ValidationPrototypeError>;
 const LIST_FOR_PROP: &str = include_str!("../queries/validation_prototype_list_for_prop.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/validation_prototype_list_for_schema_variant.sql");
+const LIST_FOR_FUNC: &str = include_str!("../queries/validation_prototype_list_for_func.sql");
+const FIND_FOR_CONTEXT: &str = include_str!("../queries/validation_prototype_find_for_context.sql");
 
 pk!(ValidationPrototypePk);
 pk!(ValidationPrototypeId);
@@ -157,5 +159,45 @@ impl ValidationPrototype {
             .await?;
         let object = objects_from_rows(rows)?;
         Ok(object)
+    }
+
+    /// List all [`ValidationPrototypes`](Self) for a [`Func`](crate::Func)
+    #[instrument(skip_all)]
+    pub async fn list_for_func(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> ValidationPrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_FUNC,
+                &[ctx.read_tenancy(), ctx.visibility(), &func_id],
+            )
+            .await?;
+
+        Ok(objects_from_rows(rows)?)
+    }
+
+    pub async fn find_for_context(
+        ctx: &DalContext,
+        context: ValidationPrototypeContext,
+    ) -> ValidationPrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                FIND_FOR_CONTEXT,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &context.prop_id(),
+                    &context.schema_variant_id(),
+                    &context.schema_id(),
+                ],
+            )
+            .await?;
+
+        Ok(objects_from_rows(rows)?)
     }
 }

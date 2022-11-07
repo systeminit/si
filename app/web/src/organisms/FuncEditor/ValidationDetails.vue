@@ -1,0 +1,135 @@
+<template>
+  <div class="p-3 flex flex-col gap-2">
+    <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
+      Run this validation on the selected schema variant attributes below.
+    </h1>
+
+    <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+      Run on Schema Variant and Attribute:
+    </h2>
+    <SelectMenu
+      v-model="selectedVariant"
+      class="flex-auto"
+      :options="schemaVariantOptions ?? []"
+    />
+    <SelectMenu
+      v-model="selectedProp"
+      class="flex-auto"
+      :options="propOptions"
+    />
+    <VButton
+      label="Add"
+      button-rank="primary"
+      icon="plus"
+      :disabled="disabled"
+      @click="addValidation"
+    />
+  </div>
+  <h2 class="p-3 pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+    Currently Validating:
+  </h2>
+  <ul class="flex flex-col p-3 gap-1 list-disc list-inside">
+    <li
+      v-for="protoView in prototypeViews"
+      :key="protoView.key"
+      class="flex flex-row gap-1 items-center text-sm pb-2 pl-4"
+    >
+      <div class="pr-2" role="decoration">•</div>
+      {{ protoView.schemaVariantName }}: {{ protoView.propName }}
+      <VButton
+        class="flex-none"
+        label=""
+        icon="trash"
+        button-rank="tertiary"
+        :disabled="disabled"
+        @click="deleteValidation(protoView.proto)"
+      />
+    </li>
+  </ul>
+</template>
+
+<script lang="ts" setup>
+import { computed, ref } from "vue";
+import { storeToRefs } from "pinia";
+import isEqual from "lodash/isEqual";
+import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
+import { useFuncStore } from "@/store/func/funcs.store";
+import {
+  ValidationAssociations,
+  ValidationPrototypeView,
+} from "@/store/func/types";
+import VButton from "@/molecules/VButton.vue";
+
+const funcStore = useFuncStore();
+const {
+  schemaVariantOptions,
+  propsAsOptionsForSchemaVariant,
+  propIdToSourceName,
+} = storeToRefs(funcStore);
+
+const props = defineProps<{
+  modelValue: ValidationAssociations;
+  disabled?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: "update:modelValue", v: ValidationAssociations): void;
+  (e: "change", v: ValidationAssociations): void;
+}>();
+
+const noneVariant = { label: "select schema variant", value: -1 };
+const noneProp = { label: "select attribute to validate", value: -1 };
+
+const selectedVariant = ref<Option>(noneVariant);
+const selectedProp = ref<Option>(noneProp);
+
+const propOptions = computed<Option[]>(() =>
+  propsAsOptionsForSchemaVariant.value(
+    typeof selectedVariant.value.value === "number"
+      ? selectedVariant.value.value
+      : -1,
+  ),
+);
+
+const prototypeViews = computed(() => {
+  return props.modelValue.prototypes.map((proto) => {
+    const schemaVariantName =
+      schemaVariantOptions.value.find(
+        (sv) => sv.value === proto.schemaVariantId,
+      )?.label ?? "none";
+    const propName = propIdToSourceName.value[proto.propId] ?? "none";
+
+    return {
+      schemaVariantName,
+      propName,
+      key: `${proto.id}-${proto.schemaVariantId}`,
+      proto: { ...proto },
+    };
+  });
+});
+
+const addValidation = () => {
+  const prototypes = Array.from(
+    new Set(
+      props.modelValue.prototypes.concat({
+        id: -1,
+        schemaVariantId: selectedVariant.value.value as number,
+        propId: selectedProp.value.value as number,
+      }),
+    ),
+  );
+
+  emit("update:modelValue", { type: "validation", prototypes });
+  emit("change", { type: "validation", prototypes });
+  selectedVariant.value = noneVariant;
+  selectedProp.value = noneProp;
+};
+
+const deleteValidation = (protoToDelete: ValidationPrototypeView) => {
+  const prototypes = props.modelValue.prototypes.filter(
+    (proto) => !isEqual(proto, protoToDelete),
+  );
+  emit("update:modelValue", { type: "validation", prototypes });
+  emit("change", { type: "validation", prototypes });
+};
+</script>
