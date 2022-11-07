@@ -80,6 +80,8 @@ impl ConfirmationResolverTree {
                     }
                 }
             }
+            parent_ids.sort();
+            children_ids.sort();
 
             tree.tree.insert(
                 *resolver.id(),
@@ -104,6 +106,7 @@ impl ConfirmationResolverTree {
         for el in self.tree.values().filter(|el| el.parent_ids.is_empty()) {
             work_queue.push_back(el);
         }
+        work_queue.make_contiguous().sort_by_key(|el| el.id);
 
         'outer: while let Some(element) = work_queue.pop_front() {
             // Element might be child of multiple components so we should only process it once
