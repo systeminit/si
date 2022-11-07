@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, toRefs, computed, watch } from "vue";
+import { ref, toRefs, computed, watch, onBeforeUnmount } from "vue";
 import _, { parseInt } from "lodash";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
@@ -138,6 +138,8 @@ const triggerBlur = (event: KeyboardEvent) => {
     event.target.blur();
   }
 };
+
+onBeforeUnmount(setField);
 
 const canUnset = computed(() => {
   return (props.path?.triggerPath ?? []).join(".") !== "name.si.root";
