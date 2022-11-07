@@ -62,7 +62,7 @@ const props = defineProps({
 });
 
 // why on earth are vue props not reactive by default
-const defaultOpen = toRef(props, 'defaultOpen', true);
+const defaultOpen = toRef(props, "defaultOpen", true);
 
 const slots = useSlots();
 const labelSlot = computed(() => slots.label?.());

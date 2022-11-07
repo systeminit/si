@@ -76,26 +76,45 @@
             v-if="
               editingFunc.kind === FuncBackendKind.JsQualification ||
               editingFunc.kind === FuncBackendKind.JsCodeGeneration ||
-              editingFunc.kind === FuncBackendKind.JsConfirmation
+              editingFunc.kind === FuncBackendKind.JsConfirmation ||
+              editingFunc.kind === FuncBackendKind.JsValidation
             "
             label="Run On"
             default-open
           >
             <QualificationDetails
-              v-if="associations && associations.type === 'qualification'"
-              v-model="associations"
+              v-if="
+                editingFunc.associations &&
+                editingFunc.associations.type === 'qualification'
+              "
+              v-model="editingFunc.associations"
               :disabled="editingFunc.isBuiltin"
               @change="updateFunc"
             />
             <CodeGenerationDetails
-              v-if="associations && associations.type === 'codeGeneration'"
-              v-model="associations"
+              v-if="
+                editingFunc.associations &&
+                editingFunc.associations.type === 'codeGeneration'
+              "
+              v-model="editingFunc.associations"
               :disabled="editingFunc.isBuiltin"
               @change="updateFunc"
             />
             <ConfirmationDetails
-              v-if="associations && associations.type === 'confirmation'"
-              v-model="associations"
+              v-if="
+                editingFunc.associations &&
+                editingFunc.associations.type === 'confirmation'
+              "
+              v-model="editingFunc.associations"
+              :disabled="editingFunc.isBuiltin"
+              @change="updateFunc"
+            />
+            <ValidationDetails
+              v-if="
+                editingFunc.associations &&
+                editingFunc.associations.type === 'validation'
+              "
+              v-model="editingFunc.associations"
               :disabled="editingFunc.isBuiltin"
               @change="updateFunc"
             />
@@ -106,9 +125,12 @@
             default-open
           >
             <FuncArguments
-              v-if="associations && associations.type === 'attribute'"
+              v-if="
+                editingFunc.associations &&
+                editingFunc.associations.type === 'attribute'
+              "
               :func-id="selectedFuncId"
-              :arguments="associations.arguments"
+              :arguments="editingFunc.associations.arguments"
               :disabled="editingFunc.isBuiltin"
             />
           </SiCollapsible>
@@ -116,9 +138,12 @@
 
         <TabPanel v-if="editingFunc.kind === FuncBackendKind.JsAttribute">
           <AttributeBindings
-            v-if="associations && associations.type === 'attribute'"
+            v-if="
+              editingFunc.associations &&
+              editingFunc.associations.type === 'attribute'
+            "
             :func-id="selectedFuncId"
-            :associations="associations"
+            :associations="editingFunc.associations"
           />
         </TabPanel>
       </template>
@@ -145,14 +170,15 @@ import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ConfirmationDetails from "./ConfirmationDetails.vue";
+import ValidationDetails from "./ValidationDetails.vue";
 
 const funcStore = useFuncStore();
 const { getFuncById, selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 const funcArgumentsIdMap = computed(() =>
-  associations.value?.type === "attribute"
-    ? associations.value.arguments.reduce((idMap, arg) => {
+  editingFunc?.value?.associations?.type === "attribute"
+    ? editingFunc?.value?.associations.arguments.reduce((idMap, arg) => {
         idMap[arg.id] = arg;
         return idMap;
       }, {} as { [key: number]: FuncArgument })
@@ -164,10 +190,12 @@ provide("funcArgumentsIdMap", funcArgumentsIdMap);
 const editingFunc = computed(
   () => getFuncById.value(selectedFuncId.value) ?? nullEditingFunc,
 );
-const associations = computed(() => editingFunc.value.associations);
 
 const updateFunc = () => {
-  funcStore.updateFuncAssociations(editingFunc.value.id, associations.value);
+  funcStore.updateFuncAssociations(
+    editingFunc.value.id,
+    editingFunc.value.associations,
+  );
 };
 
 const revertFunc = async () => {

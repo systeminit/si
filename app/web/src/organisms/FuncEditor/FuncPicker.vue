@@ -38,7 +38,7 @@
             as="li"
             class="w-full"
             content-as="ul"
-            :default-open="selectedFuncId > -1 && selectedFunc?.kind === kind"
+            default-open
           >
             <template #label>
               <div class="flex items-center gap-2">
@@ -121,7 +121,7 @@ import { useRouteToFunc } from "@/utils/useRouteToFunc";
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
-const { funcList, selectedFuncId, selectedFunc } = storeToRefs(funcStore);
+const { funcList, selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 

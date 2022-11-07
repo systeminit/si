@@ -76,7 +76,8 @@ const componentsStore = useComponentsStore();
 const { allComponents } = storeToRefs(componentsStore);
 
 const funcStore = useFuncStore();
-const { schemaVariantOptions, inputSources } = storeToRefs(funcStore);
+const { schemaVariantOptions, inputSources, propsAsOptionsForSchemaVariant } =
+  storeToRefs(funcStore);
 
 const props = withDefaults(
   defineProps<{
@@ -147,18 +148,12 @@ const filteredComponentOptions = computed<Option[]>(() =>
   ),
 );
 
-const outputLocationOptions = computed<Option[]>(
-  () =>
-    inputSources?.value.props
-      .filter(
-        (prop) =>
-          selectedVariant.value.value === -1 ||
-          selectedVariant.value.value === prop.schemaVariantId,
-      )
-      .map((prop) => ({
-        label: `${prop.path}${prop.name}`,
-        value: prop.propId,
-      })) ?? [],
+const outputLocationOptions = computed<Option[]>(() =>
+  propsAsOptionsForSchemaVariant.value(
+    typeof selectedVariant.value.value === "number"
+      ? selectedVariant.value.value
+      : -1,
+  ),
 );
 
 const inputSourceOptions = computed<Option[]>(() => {
