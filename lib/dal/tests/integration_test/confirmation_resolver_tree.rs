@@ -158,21 +158,16 @@ async fn new(ctx: &DalContext) {
     let mut resolvers = Vec::new();
     for prototype in prototypes {
         if prototype.context().schema_id == *schema.id() {
+            // Creates in random order so we ensure there is no dependency on the creation order
+            resolvers.push(
+                prototype
+                    .run(ctx, *third2.id(), SystemId::NONE)
+                    .await
+                    .expect("unable to run prototype"),
+            );
             resolvers.push(
                 prototype
                     .run(ctx, *first.id(), SystemId::NONE)
-                    .await
-                    .expect("unable to run prototype"),
-            );
-            resolvers.push(
-                prototype
-                    .run(ctx, *first2.id(), SystemId::NONE)
-                    .await
-                    .expect("unable to run prototype"),
-            );
-            resolvers.push(
-                prototype
-                    .run(ctx, *second.id(), SystemId::NONE)
                     .await
                     .expect("unable to run prototype"),
             );
@@ -184,13 +179,19 @@ async fn new(ctx: &DalContext) {
             );
             resolvers.push(
                 prototype
+                    .run(ctx, *first2.id(), SystemId::NONE)
+                    .await
+                    .expect("unable to run prototype"),
+            );
+            resolvers.push(
+                prototype
                     .run(ctx, *third.id(), SystemId::NONE)
                     .await
                     .expect("unable to run prototype"),
             );
             resolvers.push(
                 prototype
-                    .run(ctx, *third2.id(), SystemId::NONE)
+                    .run(ctx, *second.id(), SystemId::NONE)
                     .await
                     .expect("unable to run prototype"),
             );
@@ -202,6 +203,7 @@ async fn new(ctx: &DalContext) {
         .expect("unable to build confirmation resolver tree");
     let ids: Vec<_> = tree
         .into_vec()
+        .expect("unable to convert tree into vec")
         .into_iter()
         .map(|r| r.context().component_id)
         .collect();
@@ -210,10 +212,10 @@ async fn new(ctx: &DalContext) {
         vec![
             *first.id(),
             *first2.id(),
-            *second.id(),
             *second2.id(),
-            *third.id(),
+            *second.id(),
             *third2.id(),
+            *third.id(),
         ]
     );
 }
