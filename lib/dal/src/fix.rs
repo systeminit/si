@@ -238,14 +238,14 @@ impl Fix {
         Ok(())
     }
 
-    /// Executes the [`fix`](Self).
+    /// Executes the [`fix`](Self). Returns true if some resource got updated, false if not
     pub async fn run(
         &mut self,
         ctx: &DalContext,
         run_id: usize,
         action_workflow_prototype_id: WorkflowPrototypeId,
         action_name: String,
-    ) -> FixResult<()> {
+    ) -> FixResult<bool> {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
         self.set_action(ctx, Some(action_name)).await?;
@@ -259,8 +259,8 @@ impl Fix {
                     _runner,
                     runner_state,
                     func_binding_return_values,
-                    _created_resources,
-                    _updated_resources,
+                    created_resources,
+                    updated_resources,
                 ) = post_run_data;
 
                 // Set the run as completed. Record the error message if it exists.
@@ -299,15 +299,16 @@ impl Fix {
 
                 // TODO(nick): change once logs' type is converted from Option<String> to Vec<String>.
                 self.set_logs(ctx, Some(logs.join("\n"))).await?;
+                Ok(!updated_resources.is_empty() || !created_resources.is_empty())
             }
             Err(e) => {
                 // If the workflow had an error, we can record an error completion status with
                 // the error as a message.
                 self.stamp_finished(ctx, FixCompletionStatus::Error, Some(format!("{:?}", e)))
                     .await?;
+                Ok(false)
             }
         }
-        Ok(())
     }
 
     /// A safe wrapper around setting completion-related columns.

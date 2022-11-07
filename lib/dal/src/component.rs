@@ -1410,14 +1410,9 @@ impl Component {
             .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
-        let schema_variant_id = *schema_variant.id();
         let prop = Prop::find_root_for_schema_variant(ctx, *schema_variant.id())
             .await?
-            .ok_or_else(|| {
-                ComponentError::PropNotFound(format!(
-                    "root not found for schema variant {schema_variant_id}"
-                ))
-            })?;
+            .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
 
         let implicit_provider = InternalProvider::get_for_prop(ctx, *prop.id())
             .await?
