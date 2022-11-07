@@ -7,6 +7,7 @@ use crate::fix::FixError;
 use crate::{
     job::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
+        definition::DependentValuesUpdate,
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, ActionPrototype, ChangeSetPk, Component, ComponentId, ConfirmationResolverId,
@@ -168,13 +169,14 @@ impl JobConsumer for FixesJob {
             .await?
             .ok_or(FixError::MissingFix(fix_item.id))?;
         let run_id = rand::random();
-        fix.run(
-            ctx,
-            run_id,
-            workflow_prototype_id,
-            action.name().to_string(),
-        )
-        .await?;
+        let resource_got_updated = fix
+            .run(
+                ctx,
+                run_id,
+                workflow_prototype_id,
+                action.name().to_string(),
+            )
+            .await?;
         let completion_status: FixCompletionStatus = *fix
             .completion_status()
             .ok_or(FixError::EmptyCompletionStatus)?;
@@ -203,6 +205,16 @@ impl JobConsumer for FixesJob {
                 .collect::<Vec<String>>(),
             None => vec![],
         };
+
+        // Inline dependent values propagation so we can run consecutive fixes that depend on the /root/resource from the previous fix
+        if resource_got_updated {
+            let attribute_value =
+                Component::resource_attribute_value_for_component(ctx, *component.id()).await?;
+
+            DependentValuesUpdate::new(ctx, *attribute_value.id())
+                .run(ctx)
+                .await?;
+        }
 
         WsEvent::fix_return(
             ctx,
