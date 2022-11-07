@@ -101,6 +101,7 @@ impl ConfirmationResolverTree {
         let mut stuck_elements = HashSet::new();
 
         // List root components
+
         for el in self.tree.values().filter(|el| el.parent_ids.is_empty()) {
             work_queue.push_back(el);
         }
