@@ -128,6 +128,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         rawNodeAddMenu: [] as MenuItem[],
 
         selectedComponentId: null as ComponentId | null,
+        lastSelectedComponentId: null as ComponentId | null,
 
         /** number of operations being executed on component. Basically a semaphore `loading` state  */
         activityCounterByComponentId: {} as Record<ComponentId, number>,
@@ -168,6 +169,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
         selectedComponentCode(): CodeView[] | undefined {
           return this.componentCodeViewsById[this.selectedComponentId || 0];
+        },
+
+        lastSelectedComponent(): Component {
+          return this.componentsById[this.lastSelectedComponentId || 0];
         },
 
         diagramNodes(): DiagramNodeDef[] {
@@ -451,6 +456,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         setSelectedComponentId(id: ComponentId | null) {
           if (!id) this.selectedComponentId = null;
           else {
+            this.lastSelectedComponentId = id;
             if (this.componentsById[id]) {
               this.selectedComponentId = id;
             } else {

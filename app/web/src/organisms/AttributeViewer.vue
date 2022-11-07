@@ -2,7 +2,7 @@
   <div class="flex flex-col w-full">
     <div class="flex flex-row items-center h-10 p-sm text-base align-middle">
       <div class="text-lg whitespace-nowrap overflow-hidden text-ellipsis">
-        {{ selectedComponent.schemaName }}
+        {{ lastSelectedComponent.schemaName }}
       </div>
       <!-- <div class="ml-2 flex" :aria-label="qualificationTooltip">
         <Icon name="check-circle" :class="qualificationColorClass" />
@@ -48,7 +48,6 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import _ from "lodash";
 
 import {
   UpdatedProperty,
@@ -67,20 +66,27 @@ const funcStore = useFuncStore();
 const routeToFunc = useRouteToFunc();
 
 const componentsStore = useComponentsStore();
-const selectedComponent = computed(() => componentsStore.selectedComponent);
+// Note(victor): This component will only be rendered if there's a selected component.
+// To avoid weird data races where the store has already unset the value but we still need to use it, we can default to
+// using lastSelectedComponent instead of selectedComponent.
+// This helps us, for example, to save attributes onBeforeUnmount here or on any children.
+const lastSelectedComponent = computed(
+  () => componentsStore.lastSelectedComponent,
+);
 
 const componentAttributesStore = useComponentAttributesStore();
 
 const editorContext = computed(() => componentAttributesStore.editorContext);
 
-// TODO: not sure why we need to pass this all back to the backend - seems like we shoudl pass the minimal data
+// TODO: not sure why we need to pass this all back to the backend - seems like we should pass the minimal data
 const getAttributeContext = (propId: number) => ({
   attribute_context_prop_id: propId,
   attribute_context_internal_provider_id: -1,
   attribute_context_external_provider_id: -1,
-  attribute_context_schema_id: selectedComponent.value.schemaId,
-  attribute_context_schema_variant_id: selectedComponent.value.schemaVariantId,
-  attribute_context_component_id: selectedComponent.value.id,
+  attribute_context_schema_id: lastSelectedComponent.value.schemaId,
+  attribute_context_schema_variant_id:
+    lastSelectedComponent.value.schemaVariantId,
+  attribute_context_component_id: lastSelectedComponent.value.id,
   attribute_context_system_id: -1,
 });
 
@@ -124,9 +130,9 @@ const onCreateAttributeFunc = async (
     options: {
       valueId,
       parentValueId,
-      componentId: selectedComponent.value.id,
-      schemaVariantId: selectedComponent.value.schemaVariantId,
-      schemaId: selectedComponent.value.schemaId,
+      componentId: lastSelectedComponent.value.id,
+      schemaVariantId: lastSelectedComponent.value.schemaVariantId,
+      schemaId: lastSelectedComponent.value.schemaId,
       currentFuncId: currentFunc.id,
       type: "attributeOptions",
     },
