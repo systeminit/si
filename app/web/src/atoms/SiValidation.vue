@@ -32,7 +32,9 @@ const emit = defineEmits<{ (e: "errors", errors: ErrorsArray): void }>();
 
 const errors = ref<ErrorsArray>([]);
 
-const evaluateErrors = (newValue: string) => {
+const { value, validations, required, showRequired, dirty } = toRefs(props);
+
+const evaluateErrors = (newValue: string, validations?: ValidatorArray) => {
   const currentErrors: ErrorsArray = [];
 
   if (required?.value && value.value.length === 0) {
@@ -42,8 +44,8 @@ const evaluateErrors = (newValue: string) => {
     });
   }
 
-  if (validations?.value) {
-    for (const v of validations.value) {
+  if (validations) {
+    for (const v of validations) {
       if (v.check(newValue) === false) {
         if (dirty.value) {
           currentErrors.push({ id: v.id, message: v.message });
@@ -56,19 +58,11 @@ const evaluateErrors = (newValue: string) => {
   emit("errors", errors.value);
 };
 
-const { value, validations, required, showRequired, dirty } = toRefs(props);
 watch(
-  value,
-  (newValue, _oldValue) => {
-    evaluateErrors(newValue);
-  },
-  { immediate: true },
-);
-watch(
-  dirty,
-  (newValue) => {
+  [() => value.value, () => dirty.value, () => validations?.value],
+  ([newValue, _newDirty, newValidations]) => {
     if (newValue) {
-      evaluateErrors(value.value);
+      evaluateErrors(newValue, newValidations);
     }
   },
   { immediate: true },

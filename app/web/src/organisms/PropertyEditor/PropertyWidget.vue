@@ -52,7 +52,7 @@
       :value-id="props.propValue.id"
       :prop-kind="props.schemaProp.kind"
       :doc-link="props.schemaProp.docLink"
-      :validation="props.validation"
+      :validation="validation"
       :disabled="disabled"
       :func="props.propValue.func"
       :class="INPUT_CLASSES"
@@ -67,7 +67,7 @@
       :prop-id="props.propValue.propId"
       :value-id="props.propValue.id"
       :doc-link="props.schemaProp.docLink"
-      :validation="props.validation"
+      :validation="validation"
       :disabled="disabled"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
@@ -85,7 +85,7 @@
       :prop-id="props.propValue.propId"
       :value-id="props.propValue.id"
       :doc-link="props.schemaProp.docLink"
-      :validation="props.validation"
+      :validation="validation"
       :disabled="disabled"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
@@ -167,6 +167,8 @@ const props = defineProps<{
   arrayLength?: number;
   isFirstProp?: boolean;
 }>();
+
+const { validation } = toRefs(props);
 
 const emits = defineEmits<{
   (e: "toggleCollapsed", path: Array<string>): void;

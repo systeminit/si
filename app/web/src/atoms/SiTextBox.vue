@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType, ref } from "vue";
+import { computed, PropType, ref, toRefs } from "vue";
 import _ from "lodash";
 import { useFormSettings } from "@/composables/formSettings";
 import SiValidation, {
@@ -113,6 +113,8 @@ const props = defineProps({
   disabled: Boolean,
   loginMode: Boolean,
 });
+
+const { validations } = toRefs(props);
 
 const formSettings = useFormSettings();
 
