@@ -1,3 +1,4 @@
+use dal::action_prototype::ActionKind;
 use dal::component::ComponentKind;
 use dal::{
     edge::EdgeKind, edge::VertexObjectKind, socket::SocketArity, ActionPrototype,
@@ -76,7 +77,14 @@ async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ActionPrototype::new(ctx, WorkflowPrototypeId::NONE, name, context).await?;
+    ActionPrototype::new(
+        ctx,
+        WorkflowPrototypeId::NONE,
+        name,
+        ActionKind::Other,
+        context,
+    )
+    .await?;
 
     Ok((schema, input_socket, output_socket))
 }

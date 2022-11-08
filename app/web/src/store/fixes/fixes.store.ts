@@ -8,6 +8,7 @@ import { useResourcesStore } from "../resources.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
+export type RecommendationKind = "create" | "other";
 
 export type ConfirmationId = number;
 export type Confirmation = {
@@ -20,6 +21,7 @@ export type Recommendation = {
   componentName: string;
   componentId: ComponentId;
   recommendation: string;
+  recommendationKind: RecommendationKind;
   status: FixStatus;
   provider?: string;
   output?: string; // TODO(victor): output possibly comes from another endpoint, and should be linked at runtime. This is good for now.

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::action_prototype::ActionKind;
 use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::builtins::BuiltinsError;
 use crate::code_generation_prototype::CodeGenerationPrototypeContext;
@@ -280,7 +281,14 @@ async fn ami(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Other,
+        context,
+    )
+    .await?;
 
     Ok(())
 }
@@ -839,7 +847,14 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Create,
+        context,
+    )
+    .await?;
 
     Ok(())
 }
@@ -981,7 +996,14 @@ async fn region(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Other,
+        context,
+    )
+    .await?;
 
     Ok(())
 }
@@ -1352,7 +1374,14 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Create,
+        context,
+    )
+    .await?;
 
     Ok(())
 }

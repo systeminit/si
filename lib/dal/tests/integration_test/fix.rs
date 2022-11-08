@@ -1,3 +1,4 @@
+use dal::action_prototype::ActionKind;
 use dal::{
     workflow_runner::workflow_runner_state::WorkflowRunnerStatus, ActionPrototype,
     ActionPrototypeContext, ConfirmationPrototype, ConfirmationPrototypeContext,
@@ -164,9 +165,15 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
         schema_variant_id: payload.schema_variant_id,
         ..Default::default()
     };
-    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context)
-        .await
-        .expect("unable to create action prototype");
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Other,
+        context,
+    )
+    .await
+    .expect("unable to create action prototype");
 
     let confirmation_resolver = confirmation_prototype
         .run(ctx, payload.component_id, SystemId::NONE)

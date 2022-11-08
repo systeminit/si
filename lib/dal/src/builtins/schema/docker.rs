@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::action_prototype::ActionKind;
 use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
@@ -312,7 +313,14 @@ async fn docker_image(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRes
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Other,
+        context,
+    )
+    .await?;
 
     Ok(())
 }
