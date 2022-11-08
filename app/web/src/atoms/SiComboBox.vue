@@ -88,7 +88,7 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits(["update:modelValue", "change"]);
 
 const query = ref(props.modelValue === "string" ? props.modelValue : "");
 
@@ -106,6 +106,7 @@ const inputValue = computed<string | number | undefined>({
   },
   set(value) {
     emit("update:modelValue", value);
+    emit("change", value);
     query.value = typeof value === "string" ? value : "";
   },
 });
