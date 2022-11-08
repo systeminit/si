@@ -71,15 +71,18 @@ const values = ref<PropertyEditorValues>(props.editorContext.values);
 const validations = ref<PropertyEditorValidation[]>(
   props.editorContext.validations,
 );
-watch(editorContext, (newValue) => {
-  schema.value = newValue.schema;
-  values.value = newValue.values;
-  validations.value = newValue.validations;
-});
+watch(
+  editorContext,
+  (newValue) => {
+    schema.value = newValue.schema;
+    values.value = newValue.values;
+    validations.value = newValue.validations;
+  },
+  { immediate: true },
+);
 
-const validationForValueId = (valueId: number) => {
-  return validations.value.find((validation) => validation.valueId === valueId);
-};
+const validationForValueId = (valueId: number) =>
+  validations.value.find((validation) => validation.valueId === valueId);
 
 const schemaForPropId = (propId: number) => {
   const schemaForProp = schema.value.props[propId];
