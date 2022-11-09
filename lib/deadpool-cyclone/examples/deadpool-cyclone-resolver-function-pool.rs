@@ -117,7 +117,6 @@ async fn execute(
                     stream = &output.stream.as_str(),
                     level = &output.level.as_str(),
                     message = &output.message.as_str(),
-                    data = ?output.data,
                     timestamp = output.timestamp,
                 );
             }
@@ -126,10 +125,9 @@ async fn execute(
     let result = progress.finish().await?;
     match result {
         FunctionResult::Success(success) => info!(
-                execution_id = &success.execution_id.as_str(),
-                data = ?success.data,
-                unset = success.unset,
-                timestamp = success.timestamp,
+            execution_id = &success.execution_id.as_str(),
+            unset = success.unset,
+            timestamp = success.timestamp,
         ),
         FunctionResult::Failure(failure) => error!(
             execution_id = &failure.execution_id.as_str(),

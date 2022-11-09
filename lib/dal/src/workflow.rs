@@ -267,14 +267,7 @@ impl WorkflowTree {
                             .build_with_conns(request_context.clone(), conns)
                             .await?;
 
-                        let text = match &stream.data {
-                            Some(data) => format!(
-                                "{} {}",
-                                stream.message,
-                                serde_json::to_string_pretty(&data)?
-                            ),
-                            None => stream.message.clone(),
-                        };
+                        let text = stream.message.clone();
                         output.push(stream);
 
                         WsEvent::command_output(&ctx, run_id, text)

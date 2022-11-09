@@ -2,7 +2,7 @@
   <div class="flex flex-row h-full w-full">
     <ConfirmationsResourceList />
     <div
-      v-if="!selectedResource"
+      v-if="!hasSelectedResource"
       class="flex flex-row items-center text-center w-full h-full bg-shade-100"
     >
       <p class="w-full text-3xl text-neutral-500">No Resource Selected</p>
@@ -20,12 +20,11 @@
 <script lang="ts" setup>
 import _ from "lodash";
 import { computed } from "vue";
-import { useResourcesStore } from "@/store/resources.store";
+import { useComponentsStore } from "@/store/components.store";
 
 import ConfirmationViewerMultiple from "./ConfirmationViewerMultiple.vue";
 import ConfirmationsResourceList from "./ConfirmationsResourceList.vue";
 
-const resourcesStore = useResourcesStore();
-
-const selectedResource = computed(() => resourcesStore.selectedResource);
+const componentsStore = useComponentsStore();
+const hasSelectedResource = computed(() => !!componentsStore.selectedComponentId);
 </script>

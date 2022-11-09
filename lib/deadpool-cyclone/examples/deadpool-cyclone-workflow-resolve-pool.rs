@@ -121,7 +121,6 @@ async fn execute(
                     stream = &output.stream.as_str(),
                     level = &output.level.as_str(),
                     message = &output.message.as_str(),
-                    data = ?output.data,
                     timestamp = output.timestamp,
                 );
             }

@@ -57,7 +57,7 @@
 import { ref } from "vue";
 import StatusMessageBox from "@/molecules/StatusMessageBox.vue";
 import Modal from "@/ui-lib/Modal.vue";
-import { Confirmation } from "@/store/resources.store";
+import { Confirmation } from "@/store/fixes/fixes.store";
 
 defineProps<{
   confirmation: Confirmation;

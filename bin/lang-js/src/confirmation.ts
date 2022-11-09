@@ -115,6 +115,18 @@ async function execute(
   }
 
   if (confirmationResult["success"]) {
+    if (!(_.isUndefined(confirmationResult["recommendedActions"]) || (_.isArray(confirmationResult["recommendedActions"]) && _.isEmpty(confirmationResult["recommendedActions"])))) {
+      return {
+        protocol: "result",
+        status: "failure",
+        executionId,
+        error: {
+          kind: "InvalidReturnType",
+          message: "recommendedActions field must undefined or an empty array on success",
+        },
+      };
+    }
+  } else {
     if (!_.isArray(confirmationResult["recommendedActions"])) {
       return {
         protocol: "result",
@@ -122,34 +134,22 @@ async function execute(
         executionId,
         error: {
           kind: "InvalidReturnType",
-          message: "recommendedActions field must be an array of strings on success",
+          message: "recommendedActions field must be an array of strings on failure",
         },
       };
-    }
+     }
 
-    if (confirmationResult["recommendedActions"].some((field) => !_.isString(field))) {
-      return {
-        protocol: "result",
-        status: "failure",
-        executionId,
-        error: {
-          kind: "InvalidReturnType",
-          message: "recommendedActions field must be an array of strings on success",
-        },
-      };
-    }
-  } else {
-    if (!_.isUndefined(confirmationResult["recommendedActions"])) {
-      return {
-        protocol: "result",
-        status: "failure",
-        executionId,
-        error: {
-          kind: "InvalidReturnType",
-          message: "recommendedActions field must undefined on failure",
-        },
-      };
-    }
+     if (confirmationResult["recommendedActions"].some((field) => !_.isString(field))) {
+       return {
+         protocol: "result",
+         status: "failure",
+         executionId,
+         error: {
+           kind: "InvalidReturnType",
+           message: "recommendedActions field must be an array of strings on failure",
+         },
+       };
+     }
   }
 
   if (!_.isUndefined(confirmationResult["message"]) && !_.isString(confirmationResult["message"])) {

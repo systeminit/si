@@ -8,29 +8,27 @@
         >Resources Menu</span
       >
     </div>
-    <!-- List of resources -->
+    <!-- List of components -->
     <div class="overflow-y-auto flex-expand">
       <div
-        v-for="resource in resources"
-        :key="resource.id"
+        v-for="componentId in componentIds"
+        :key="componentId"
         :class="
           clsx(
             'py-xs pl-sm pr-xs cursor-pointer flex justify-between items-center leading-tight',
-            resource.componentId === selectedComponentId
+            componentId === selectedComponentId
               ? 'bg-action-500'
               : 'hover:bg-black',
           )
         "
-        @click="onSelectResource(resource.componentId)"
+        @click="onSelectResource(componentId)"
       >
         <span class="shrink min-w-0 truncate mr-3">
-          {{ componentsStore.componentsById[resource.componentId].displayName }}
+          {{ componentsStore.componentsById[componentId].displayName }}
         </span>
         <StatusIndicatorIcon
           type="confirmation"
-          :status="
-            resourcesStore.confirmationStatusByComponentId[resource.componentId]
-          "
+          :status="fixesStore.statusByComponentId[componentId]"
         />
       </div>
     </div>
@@ -40,13 +38,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import clsx from "clsx";
-import { useResourcesStore } from "@/store/resources.store";
+import { useFixesStore } from "@/store/fixes/fixes.store";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 
-const resourcesStore = useResourcesStore();
+const fixesStore = useFixesStore();
 const componentsStore = useComponentsStore();
-const resources = computed(() => resourcesStore.allResources);
+const componentIds = computed(() => fixesStore.allComponents);
 const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 
 function onSelectResource(id: ComponentId) {

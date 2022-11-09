@@ -1,5 +1,4 @@
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_json::Value;
 
 /// A line of output, streamed from an executing function.
 ///
@@ -27,10 +26,6 @@ pub struct OutputStream {
     ///
     /// Group can be used upstream (i.e. a frontend UI) to group sets of `OutputStream`s together.
     pub group: Option<String>,
-    /// An optional bundle of lightly structured data.
-    ///
-    /// Data mimics the data parameter in JavaScript's `console.log()` function.
-    pub data: Option<Value>,
     /// The contents of the output line.
     pub message: String,
     /// A timestamp in seconds since UNIX epoch.

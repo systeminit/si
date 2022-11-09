@@ -42,16 +42,16 @@ import { computed } from "vue";
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
-import { useResourcesStore } from "@/store/resources.store";
+import { useFixesStore } from "@/store/fixes/fixes.store";
 
 defineProps<{ selected: boolean }>();
 
-const resourcesStore = useResourcesStore();
+const fixesStore = useFixesStore();
 const componentStats = computed(
-  () => resourcesStore.componentsConfirmationStats,
+  () => fixesStore.confirmationStats,
 );
 
 const workspaceStatus = computed(
-  () => resourcesStore.workspaceConfirmationResult,
+  () => fixesStore.workspaceStatus,
 );
 </script>

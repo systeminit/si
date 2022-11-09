@@ -10,7 +10,7 @@ use dal::fix::FixError as DalFixError;
 use dal::{
     ComponentError, ComponentId, ConfirmationPrototypeError, ConfirmationPrototypeId,
     ConfirmationResolverError, ConfirmationResolverTreeError, FixBatchId, FixId, FixResolverError,
-    StandardModelError, TransactionsError,
+    FuncBindingReturnValueError, StandardModelError, TransactionsError,
 };
 
 mod confirmations;
@@ -34,6 +34,8 @@ pub enum FixError {
     ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error(transparent)]
     FixResolver(#[from] FixResolverError),
+    #[error(transparent)]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
     DalFix(#[from] DalFixError),
     #[error("confirmation prototype {0} not found")]

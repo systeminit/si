@@ -281,17 +281,7 @@ impl Fix {
                         .await?
                         .unwrap_or_default()
                     {
-                        match stream.data {
-                            Some(data) => logs.push((
-                                stream.timestamp,
-                                format!(
-                                    "{} {}",
-                                    stream.message,
-                                    serde_json::to_string_pretty(&data)?
-                                ),
-                            )),
-                            None => logs.push((stream.timestamp, stream.message)),
-                        }
+                        logs.push((stream.timestamp, stream.message));
                     }
                 }
                 logs.sort_by_key(|(timestamp, _)| *timestamp);
