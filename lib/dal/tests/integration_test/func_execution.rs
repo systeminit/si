@@ -59,7 +59,6 @@ async fn set_output_stream(ctx: &DalContext) {
                     execution_id: "foo".to_string(),
                     level: "info".to_string(),
                     group: None,
-                    data: None,
                     message: "worm shepherd".to_string(),
                     timestamp: 1865,
                 }),

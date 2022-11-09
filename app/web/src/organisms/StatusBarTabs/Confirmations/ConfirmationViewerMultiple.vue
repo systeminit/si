@@ -14,14 +14,16 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import { useResourcesStore } from "@/store/resources.store";
+import { useComponentsStore } from "@/store/components.store";
+import { useFixesStore } from "@/store/fixes/fixes.store";
 import ConfirmationViewerSingle from "./ConfirmationViewerSingle.vue";
 
-const resourcesStore = useResourcesStore();
+const componentsStore = useComponentsStore();
+const fixesStore = useFixesStore();
 
 const confirmations = computed(() => {
-  const componentId = resourcesStore.selectedResource?.componentId;
+  const componentId = componentsStore.selectedComponentId;
   if (!componentId) return [];
-  return resourcesStore.confirmationsByComponentId[componentId];
+  return fixesStore.confirmationsByComponentId[componentId];
 });
 </script>

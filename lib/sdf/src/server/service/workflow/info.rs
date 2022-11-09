@@ -58,14 +58,7 @@ pub async fn info(
         .await?
         .unwrap_or_default()
     {
-        match stream.data {
-            Some(data) => logs.push(format!(
-                "{} {}",
-                stream.message,
-                serde_json::to_string_pretty(&data)?
-            )),
-            None => logs.push(stream.message),
-        }
+        logs.push(stream.message);
     }
 
     let runner_state = WorkflowRunnerState::find_for_workflow_runner(&ctx, *runner.id())

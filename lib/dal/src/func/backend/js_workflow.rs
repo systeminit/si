@@ -55,7 +55,6 @@ impl FuncDispatch for FuncBackendJsWorkflow {
                             stream: "return".to_owned(),
                             level: "info".to_owned(),
                             group: None,
-                            data: None,
                             message: message.clone(),
                             timestamp: std::cmp::max(Utc::now().timestamp(), 0) as u64,
                         })

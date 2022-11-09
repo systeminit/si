@@ -31,7 +31,7 @@ import {
   useQualificationsStore,
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
-import { ConfirmationStatus, useResourcesStore } from "./resources.store";
+import { useFixesStore } from "./fixes/fixes.store";
 
 export type ComponentId = number;
 type Component = {
@@ -72,7 +72,7 @@ const qualificationStatusToIconMap: Record<
 };
 
 const confirmationStatusToIconMap: Record<
-  ConfirmationStatus,
+  "success" | "failure" | "running",
   DiagramStatusIcon
 > = {
   success: { icon: "check-square", tone: "success" },
@@ -177,7 +177,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         diagramNodes(): DiagramNodeDef[] {
           const qualificationsStore = useQualificationsStore();
-          const resourcesStore = useResourcesStore();
+          const fixesStore = useFixesStore();
 
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
@@ -186,8 +186,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             const qualificationStatus =
               qualificationsStore.qualificationStatusByComponentId[componentId];
-            const confirmationStatus =
-              resourcesStore.confirmationStatusByComponentId[componentId];
+            const confirmationStatus = fixesStore.statusByComponentId[componentId];
             const changeStatus = this.componentChangeStatusById[componentId];
 
             const activityCounter = _.get(
@@ -289,9 +288,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // but I think ideally we fetch more generic component data and then transform into diagram format as necessary
               this.rawDiagramNodes = response.nodes;
               this.diagramEdges = response.edges;
-
-              const resourcesStore = useResourcesStore();
-              resourcesStore.generateMockResources().then();
             },
           });
         },

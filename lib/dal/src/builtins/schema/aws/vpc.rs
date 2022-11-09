@@ -13,8 +13,8 @@ use crate::{
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
     BuiltinsResult, CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype,
     ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncBinding,
-    FuncError, InternalProvider, PropKind, SchemaError, SchemaKind, Socket, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    FuncError, InternalProvider, PropKind, QualificationPrototype, QualificationPrototypeContext,
+    SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 const INGRESS_EGRESS_DOCS_URL: &str =
@@ -1153,6 +1153,18 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
         code_generation_prototype_context,
     )
     .await?;
+
+    // Qualifications
+    let qual_func_name = "si:qualificationSecurityGroupCanCreate".to_string();
+    let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
+        .await?
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
+
+    let mut qual_prototype_context = QualificationPrototypeContext::new();
+    qual_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
     // Wrap it up!
     schema_variant.finalize(ctx).await?;

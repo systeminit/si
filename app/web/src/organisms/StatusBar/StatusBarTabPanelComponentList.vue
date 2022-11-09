@@ -51,7 +51,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { MockResource } from "@/store/resources.store";
 import { useComponentsStore } from "@/store/components.store";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
@@ -61,7 +60,6 @@ export interface ComponentListItem {
   id: number;
   name: string;
   schema?: string;
-  resource?: MockResource;
 }
 
 export interface FilterOption {

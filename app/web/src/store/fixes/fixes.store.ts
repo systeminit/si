@@ -4,7 +4,6 @@ import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ComponentId } from "@/store/components.store";
 import { ApiRequest } from "@/utils/pinia_api_tools";
-import { useResourcesStore } from "../resources.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
@@ -12,7 +11,11 @@ export type FixStatus = "success" | "failure" | "running" | "unstarted";
 export type ConfirmationId = number;
 export type Confirmation = {
   id: ConfirmationId;
-  status: "running" | "finished";
+  title: string;
+  description?: string;
+  componentId: ComponentId;
+  output?: string[];
+  status: "running" | "success" | "failure";
 };
 export type Recommendation = {
   id: ConfirmationId;
@@ -54,22 +57,11 @@ export type FixBatch = {
   finishedAt: string;
 };
 
-export const SCHEMA_MOCK_METADATA: Record<
-  string,
-  { provider: string; fixDelay: number; order: number }
-> = {
-  AMI: { provider: "AWS", fixDelay: 0, order: 0 },
-  "EC2 Instance": { provider: "AWS", fixDelay: 15000, order: 40 },
-  Egress: { provider: "AWS", fixDelay: 3000, order: 31 },
-  Ingress: { provider: "AWS", fixDelay: 3000, order: 30 },
-  "Key Pair": { provider: "AWS", fixDelay: 5000, order: 10 },
-  Region: { provider: "AWS", fixDelay: 0, order: 0 },
-  "Security Group": { provider: "AWS", fixDelay: 5000, order: 20 },
-  Butane: { provider: "CoreOS", fixDelay: 0, order: 0 },
-  "Kubernetes Deployment": { provider: "Kubernetes", fixDelay: 1000, order: 0 },
-  "Kubernetes Namespace": { provider: "Kubernetes", fixDelay: 500, order: 0 },
-  "Docker Image": { provider: "Docker", fixDelay: 0, order: 0 },
-  "Docker Hub Credential": { provider: "Docker", fixDelay: 0, order: 0 },
+export interface ConfirmationStats {
+  failure: number;
+  success: number;
+  running: number;
+  total: number;
 };
 
 export const useFixesStore = () => {
@@ -86,6 +78,51 @@ export const useFixesStore = () => {
         populatingFixes: false,
       }),
       getters: {
+        allComponents(): ComponentId[] {
+          return _.uniq(this.confirmations.map((c) => c.componentId));
+        },
+        confirmationsByComponentId(): Record<ComponentId, Confirmation[]> {
+          let obj: Record<ComponentId, Confirmation[]> = {};
+          for (const confirmation of this.confirmations) {
+            if (!obj[confirmation.componentId]) obj[confirmation.componentId] = [];
+            obj[confirmation.componentId].push(confirmation);
+          }
+          return obj;
+        },
+        confirmationStats(): ConfirmationStats {
+          const obj = { failure: 0, success: 0, running: 0, total: 0 };
+          for (const confirmation of this.confirmations) {
+            obj[confirmation.status]++;
+            obj.total++;
+          }
+          return obj;
+        },
+        workspaceStatus(): "running" | "failure" | "success" {
+          for (const confirmation of this.confirmations) {
+            if (confirmation.status === "running") return "running";
+            if (confirmation.status === "failure") return "failure";
+          }
+          return "success";
+        }, 
+        statusByComponentId(): Record<ComponentId, "success" | "failure" | "running"> {
+          let map: Record<ComponentId, "success" | "failure" | "running"> = {};
+          for (const confirmation of this.confirmations) {
+            switch (confirmation.status) {
+              case "success":
+                if (!map[confirmation.componentId]) map[confirmation.componentId] = "success";
+                break;
+              case "failure":
+                if (map[confirmation.componentId] !== "running") map[confirmation.componentId] = "failure";
+                break;
+              case "running":
+                map[confirmation.componentId] = "running";
+                break;
+              default:
+                break;
+            }
+          }
+          return map;
+        },
         finishedConfirmations(): Confirmation[] {
           return this.confirmations.filter((c) => c.status !== "running");
         },
@@ -183,9 +220,6 @@ export const useFixesStore = () => {
         },
       },
       async onActivated() {
-        const resourcesStore = useResourcesStore();
-        // What purpose does this serve?
-        await resourcesStore.generateMockResources();
         this.LOAD_RECOMMENDATIONS();
         this.LOAD_CONFIRMATIONS();
         this.LOAD_FIX_BATCHES();

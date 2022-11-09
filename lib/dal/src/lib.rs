@@ -132,7 +132,7 @@ pub use edge::{Edge, EdgeError, EdgeResult};
 pub use fix::batch::{FixBatch, FixBatchId};
 pub use fix::resolver::{FixResolver, FixResolverContext, FixResolverError, FixResolverId};
 pub use fix::{Fix, FixCompletionStatus, FixId};
-pub use func::binding_return_value::FuncBindingReturnValue;
+pub use func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 pub use func::{
     backend::{FuncBackendError, FuncBackendKind, FuncBackendResponseType},
     binding::{FuncBinding, FuncBindingError, FuncBindingId},
@@ -166,7 +166,8 @@ pub use qualification_check::{
     QualificationCheck, QualificationCheckError, QualificationCheckId, QualificationCheckPk,
 };
 pub use qualification_prototype::{
-    QualificationPrototype, QualificationPrototypeError, QualificationPrototypeId,
+    QualificationPrototype, QualificationPrototypeContext, QualificationPrototypeError,
+    QualificationPrototypeId,
 };
 pub use qualification_resolver::{
     QualificationResolver, QualificationResolverError, QualificationResolverId,

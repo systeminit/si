@@ -290,12 +290,6 @@ where
     }
 
     fn filter_output(output: &mut LangServerOutput, credentials: &[SensitiveString]) -> Result<()> {
-        let mut data_value = output
-            .data
-            .as_ref()
-            .map(serde_json::to_value)
-            .transpose()
-            .map_err(ExecutionError::JSONSerialize)?;
         // Note: This brings a possibility of random substrings being matched out of context,
         // exposing that we have a secret by censoring it But trying to infer word boundary might
         // leak the plaintext credential which is arguably worse
@@ -303,31 +297,7 @@ where
             if output.message.contains(credential.as_str()) {
                 output.message = output.message.replace(credential.as_str(), "[redacted]");
             }
-            if let Some(value) = &mut data_value {
-                let mut work_queue = vec![value];
-                while let Some(work) = work_queue.pop() {
-                    match work {
-                        Value::Array(values) => work_queue.extend(values),
-                        Value::Object(object) => {
-                            object.values_mut().for_each(|v| work_queue.push(v))
-                        }
-                        Value::String(v) if v.contains(credential.as_str()) => {
-                            *v = v.replace(credential.as_str(), "[redacted]");
-                        }
-                        Value::String(_) => {}
-                        // For now credentials can only be strings, although we should reconsider
-                        // it
-                        Value::Null => {}
-                        Value::Number(_) => {}
-                        Value::Bool(_) => {}
-                    }
-                }
-            }
         }
-        output.data = data_value
-            .map(serde_json::from_value)
-            .transpose()
-            .map_err(ExecutionError::JSONDeserialize)?;
 
         Ok(())
     }
@@ -448,7 +418,6 @@ pub struct LangServerOutput {
     level: String,
     group: Option<String>,
     message: String,
-    data: Option<Value>,
 }
 
 impl From<LangServerOutput> for OutputStream {
@@ -458,7 +427,6 @@ impl From<LangServerOutput> for OutputStream {
             stream: value.stream,
             level: value.level,
             group: value.group,
-            data: value.data,
             message: value.message,
             timestamp: crate::timestamp(),
         }

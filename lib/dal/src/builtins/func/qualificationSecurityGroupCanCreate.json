@@ -1,0 +1,10 @@
+{
+  "kind": "JsQualification",
+  "arguments": [],
+  "response_type": "Qualification",
+  "display_name": "Can create security group",
+  "description": null,
+  "link": null,
+  "code_file": "qualificationSecurityGroupCanCreate.js",
+  "code_entrypoint": "qualification"
+}

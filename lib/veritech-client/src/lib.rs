@@ -635,7 +635,7 @@ mod tests {
                 system: None,
                 kind: ComponentKind::Standard, resource: None,
             },
-            code_base64: base64::encode("function confirmItOut(component) { return { success: true, recommendedActions: ['vai te catar'] } }")
+            code_base64: base64::encode("function confirmItOut(component) { return { success: false, recommendedActions: ['vai te catar'] } }")
         };
 
         let result = client
@@ -646,7 +646,7 @@ mod tests {
         match result {
             FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "7868");
-                assert!(success.success);
+                assert!(!success.success);
                 assert_eq!(success.recommended_actions, vec!["vai te catar".to_owned()]);
             }
             FunctionResult::Failure(failure) => {

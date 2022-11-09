@@ -1132,9 +1132,9 @@ mod tests {
                     console.log('i like');
                     console.log('my butt');
                     if (component.properties.si.name == "Aipim Frito") {
-                        return { success: true, recommendedActions: ["fried cassava baby"] };
+                        return { success: false, recommendedActions: ["fried cassava baby"] };
                     } else {
-                        return { success: false, message: "unable to deepfry cassava" };
+                        return { success: true, message: "unable to deepfry cassava" };
                     }
                 }"#,
             ),
@@ -1175,7 +1175,6 @@ mod tests {
         loop {
             match progress.next().await {
                 None => {
-                    assert!(true);
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
@@ -1185,7 +1184,7 @@ mod tests {
         let result = progress.finish().await.expect("failed to return result");
         match result {
             FunctionResult::Success(success) => {
-                assert!(success.success);
+                assert!(!success.success);
                 assert_eq!(
                     success.recommended_actions,
                     vec!["fried cassava baby".to_owned()]
@@ -1220,9 +1219,9 @@ mod tests {
                     console.log('i like');
                     console.log('my butt');
                     if (component.properties.si.name == "Aipim Frito") {
-                        return { success: true, recommendedActions: ["fried cassava baby"] };
+                        return { success: false, recommendedActions: ["fried cassava baby"] };
                     } else {
-                        return { success: false, message: "unable to deepfry cassava" };
+                        return { success: true, message: "unable to deepfry cassava" };
                     }
                 }"#,
             ),
@@ -1263,7 +1262,6 @@ mod tests {
         loop {
             match progress.next().await {
                 None => {
-                    assert!(true);
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
@@ -1274,7 +1272,7 @@ mod tests {
         let result = progress.finish().await.expect("failed to return result");
         match result {
             FunctionResult::Success(success) => {
-                assert!(success.success);
+                assert!(!success.success);
                 assert_eq!(
                     success.recommended_actions,
                     vec!["fried cassava baby".to_owned()]
