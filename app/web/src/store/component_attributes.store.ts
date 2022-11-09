@@ -7,6 +7,7 @@ import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import {
   PropertyEditorSchema,
   PropertyEditorValidation,
+  PropertyEditorValue,
   PropertyEditorValues,
 } from "@/api/sdf/dal/property_editor";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
@@ -49,6 +50,10 @@ export const useComponentAttributesStore = () => {
         values: null as PropertyEditorValues | null,
       }),
       getters: {
+        currentValueForValueId:
+          (state) =>
+          (valueId: number): PropertyEditorValue | undefined =>
+            state.values?.values[valueId],
         // puts the schema, validations, values all together in a format used by the property editor
         editorContext: (state) => {
           const { schema, validations, values } = state;
@@ -163,6 +168,17 @@ export const useComponentAttributesStore = () => {
             | { insert: InsertPropertyEditorValueArgs },
         ) {
           const isInsert = "insert" in updatePayload;
+          // If the valueid for this update does not exist in the values tree,
+          // we shouldn't perform the update!
+          if (
+            this.currentValueForValueId(
+              isInsert
+                ? updatePayload.insert.parentAttributeValueId
+                : updatePayload.update.attributeValueId,
+            ) === undefined
+          ) {
+            return;
+          }
           return new ApiRequest<{ success: true }>({
             method: "post",
             url: isInsert
