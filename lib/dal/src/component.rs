@@ -37,16 +37,17 @@ use crate::{
     provider::internal::InternalProviderError,
     qualification::QualificationError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
-    CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
-    CodeGenerationResolverError, CodeLanguage, CodeView, DalContext, Edge, EdgeError,
-    ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider,
-    InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError, PropId,
-    QualificationPrototype, QualificationPrototypeError, QualificationResolver,
-    QualificationResolverError, ReadTenancyError, Schema, SchemaError, SchemaId, Socket, SocketId,
-    StandardModel, StandardModelError, SystemId, Timestamp, TransactionsError, ValidationPrototype,
-    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
-    WorkspaceError, WriteTenancy,
+    ActionPrototype, ActionPrototypeError, AttributeContext, AttributeContextBuilderError,
+    AttributeContextError, AttributeReadContext, CodeGenerationPrototype,
+    CodeGenerationPrototypeError, CodeGenerationResolver, CodeGenerationResolverError,
+    CodeLanguage, CodeView, DalContext, Edge, EdgeError, ExternalProviderId, Func, FuncBackendKind,
+    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, OrganizationError,
+    Prop, PropError, PropId, QualificationPrototype, QualificationPrototypeError,
+    QualificationResolver, QualificationResolverError, ReadTenancyError, Schema, SchemaError,
+    SchemaId, Socket, SocketId, StandardModel, StandardModelError, SystemId, Timestamp,
+    TransactionsError, ValidationPrototype, ValidationPrototypeError, ValidationResolver,
+    ValidationResolverError, Visibility, WorkflowPrototype, WorkflowPrototypeId, WorkflowRunner,
+    WorkflowRunnerError, WorkspaceError, WriteTenancy, WsPayload,
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
 
@@ -72,6 +73,10 @@ pub enum ComponentError {
     CodeLanguageMismatch(CodeLanguage, CodeLanguage),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error(transparent)]
+    WorkflowRunner(#[from] WorkflowRunnerError),
+    #[error(transparent)]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("func not found: {0}")]
     FuncNotFound(FuncId),
     #[error(transparent)]
@@ -92,6 +97,8 @@ pub enum ComponentError {
     MultipleRootProps(Vec<Prop>),
     #[error("root prop not found for schema variant: {0}")]
     RootPropNotFound(SchemaVariantId),
+    #[error("workflow prototype {0} not found")]
+    WorkflowPrototypeNotFound(WorkflowPrototypeId),
     #[error("validation error: {0}")]
     Validation(#[from] ValidationConstructorError),
 
@@ -134,10 +141,10 @@ pub enum ComponentError {
     Prop(#[from] PropError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
-    #[error("schema variant not found")]
-    SchemaVariantNotFound,
-    #[error("schema not found")]
-    SchemaNotFound,
+    #[error("no schema variant for component {0}")]
+    NoSchemaVariant(ComponentId),
+    #[error("no schema for component {0}")]
+    NoSchema(ComponentId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("unable to find system")]
@@ -252,11 +259,11 @@ impl Component {
     ) -> ComponentResult<(Self, Node)> {
         let schema = Schema::get_by_id(ctx, schema_id)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(SchemaError::NotFound(*schema_id))?;
 
         let schema_variant_id = schema
             .default_schema_variant_id()
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(SchemaError::NoDefaultVariant(*schema_id))?;
 
         Self::new_for_schema_variant_with_node(ctx, name, schema_variant_id).await
     }
@@ -269,11 +276,11 @@ impl Component {
     ) -> ComponentResult<(Self, Node)> {
         let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(SchemaVariantError::NotFound(*schema_variant_id))?;
         let schema = schema_variant
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(SchemaVariantError::MissingSchema(*schema_variant_id))?;
 
         let row = ctx
             .txns()
@@ -325,7 +332,7 @@ impl Component {
         let schema = self
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(self.id))?;
         let diagram_kind = schema
             .diagram_kind()
             .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
@@ -414,11 +421,11 @@ impl Component {
         let schema_variant = self
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
         let schema = self
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(self.id))?;
 
         let base_attribute_read_context = AttributeReadContext {
             prop_id: None,
@@ -599,11 +606,11 @@ impl Component {
         let schema = self
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(self.id))?;
         let schema_variant = self
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
 
         let qualification_prototypes = QualificationPrototype::find_for_component(
             ctx,
@@ -749,11 +756,11 @@ impl Component {
         let schema = self
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(self.id))?;
         let schema_variant = self
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
 
         let qualification_prototypes = QualificationPrototype::find_for_component(
             ctx,
@@ -837,11 +844,11 @@ impl Component {
         let schema = self
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(self.id))?;
         let schema_variant = self
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
 
         let code_generation_prototypes = CodeGenerationPrototype::find_for_component(
             ctx,
@@ -925,11 +932,11 @@ impl Component {
         let schema = self
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(self.id))?;
         let schema_variant = self
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
 
         let code_generation_prototypes = CodeGenerationPrototype::find_for_component(
             ctx,
@@ -1155,11 +1162,11 @@ impl Component {
             let schema = component
                 .schema(ctx)
                 .await?
-                .ok_or(ComponentError::SchemaNotFound)?;
+                .ok_or(ComponentError::NoSchema(component.id))?;
             let schema_variant = component
                 .schema_variant(ctx)
                 .await?
-                .ok_or(ComponentError::SchemaVariantNotFound)?;
+                .ok_or(ComponentError::NoSchemaVariant(component.id))?;
             let prototypes = QualificationPrototype::find_for_component(
                 ctx,
                 component_id,
@@ -1202,11 +1209,11 @@ impl Component {
         let schema = component
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(component.id))?;
         let schema_variant = component
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(ComponentError::NoSchemaVariant(component.id))?;
         let read_context = AttributeReadContext {
             prop_id: None,
             schema_id: Some(*schema.id()),
@@ -1288,11 +1295,11 @@ impl Component {
         let schema_variant = self
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
-        let schema = schema_variant
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
+        let schema = self
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(self.id))?;
 
         let attribute_context = AttributeContext::builder()
             .set_component_id(*self.id())
@@ -1336,7 +1343,7 @@ impl Component {
         let schema_variant = self
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
 
         let mut hierarchy = json_pointer.split('/');
         hierarchy.next(); // Ignores empty part
@@ -1371,11 +1378,11 @@ impl Component {
             let schema = self
                 .schema(ctx)
                 .await?
-                .ok_or(ComponentError::SchemaNotFound)?;
+                .ok_or(ComponentError::NoSchema(self.id))?;
             let schema_variant = self
                 .schema_variant(ctx)
                 .await?
-                .ok_or(ComponentError::SchemaVariantNotFound)?;
+                .ok_or(ComponentError::NoSchemaVariant(self.id))?;
 
             // System will be unset since this method should only be used when creating a component.
             let read_context = AttributeReadContext {
@@ -1405,11 +1412,11 @@ impl Component {
         let schema = self
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(self.id))?;
         let schema_variant = self
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
         let prop = Prop::find_root_for_schema_variant(ctx, *schema_variant.id())
             .await?
             .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
@@ -1509,11 +1516,49 @@ impl Component {
         Ok(object_from_row(row)?)
     }
 
+    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<serde_json::Value> {
+        let attribute_value =
+            Component::resource_attribute_value_for_component(ctx, self.id).await?;
+        let func_binding_return_value =
+            FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
+                .await?
+                .ok_or_else(|| {
+                    ComponentError::FuncBindingReturnValueNotFound(
+                        attribute_value.func_binding_return_value_id(),
+                    )
+                })?;
+
+        // Resources currently get stored as JSON in a string prop, they eventually will be complete objects
+        let value = match func_binding_return_value.value() {
+            None => serde_json::Value::Null,
+            Some(serde_json::Value::String(string)) => serde_json::from_str(string)?,
+            Some(v) => v.clone(),
+        };
+        Ok(value)
+    }
+
     /// Sets the "string" field, "/root/resource" with a given value. After that, ensure dependent
     /// [`AttributeValues`](crate::AttributeValue) are updated.
     pub async fn set_resource(&self, ctx: &DalContext, data: Value) -> ComponentResult<()> {
         let resource_attribute_value =
             Component::resource_attribute_value_for_component(ctx, self.id).await?;
+
+        let func_binding_return_value = FuncBindingReturnValue::get_by_id(
+            ctx,
+            &resource_attribute_value.func_binding_return_value_id(),
+        )
+        .await?
+        .ok_or_else(|| {
+            ComponentError::FuncBindingReturnValueNotFound(
+                resource_attribute_value.func_binding_return_value_id(),
+            )
+        })?;
+
+        // No need to trigger a /root update if the value hasn't changed
+        if Some(&data) == func_binding_return_value.value() {
+            return Ok(());
+        }
+
         let root_attribute_value = resource_attribute_value
             .parent_attribute_value(ctx)
             .await?
@@ -1522,11 +1567,11 @@ impl Component {
         let schema = self
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(self.id))?;
         let schema_variant = self
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
 
         let update_attribute_context =
             AttributeContextBuilder::from(resource_attribute_value.context)
@@ -1545,5 +1590,76 @@ impl Component {
         )
         .await?;
         Ok(())
+    }
+
+    pub async fn act(&self, ctx: &DalContext, action_name: &str) -> ComponentResult<()> {
+        let schema_variant = self
+            .schema_variant(ctx)
+            .await?
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
+        let schema = self
+            .schema(ctx)
+            .await?
+            .ok_or(ComponentError::NoSchema(self.id))?;
+        let action = match ActionPrototype::find_by_name(
+            ctx,
+            action_name,
+            *schema.id(),
+            *schema_variant.id(),
+            SystemId::NONE,
+        )
+        .await?
+        {
+            Some(action) => action,
+            None => return Ok(()),
+        };
+
+        let prototype = WorkflowPrototype::get_by_id(ctx, &action.workflow_prototype_id())
+            .await?
+            .ok_or_else(|| {
+                ComponentError::WorkflowPrototypeNotFound(action.workflow_prototype_id())
+            })?;
+        let run_id: usize = rand::random();
+        let (_runner, _state, _func_binding_return_values, _created_resources, _updated_resources) =
+            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id).await?;
+        WsEvent::resource_refreshed(ctx, self.id, SystemId::NONE)
+            .publish(ctx)
+            .await?;
+        Ok(())
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceView {
+    pub data: Value,
+}
+
+impl ResourceView {
+    pub fn new(data: serde_json::Value) -> Self {
+        Self { data }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceRefreshId {
+    component_id: ComponentId,
+    system_id: SystemId,
+}
+
+impl WsEvent {
+    pub fn resource_refreshed(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> Self {
+        WsEvent::new(
+            ctx,
+            WsPayload::ResourceRefreshed(ResourceRefreshId {
+                component_id,
+                system_id,
+            }),
+        )
     }
 }

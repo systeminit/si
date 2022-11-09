@@ -6,10 +6,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{sync::broadcast, time};
 
-use crate::{
-    standard_model, Component, Resource, ServicesContext, StandardModelError, SystemId,
-    TransactionsError,
-};
+use crate::{standard_model, Component, ServicesContext, StandardModelError, TransactionsError};
 
 #[derive(Error, Debug)]
 pub enum ResourceSchedulerError {
@@ -103,7 +100,7 @@ impl ResourceScheduler {
                 };
                 ctx.update_tenancies(read_tenancy, component.tenancy().clone());
 
-                if let Err(error) = Resource::refresh(&ctx, &component, SystemId::NONE).await {
+                if let Err(error) = component.act(&ctx, "refresh").await {
                     error!(?error, "Failed to refresh resource, moving to the next.");
                     continue 'refresh;
                 }

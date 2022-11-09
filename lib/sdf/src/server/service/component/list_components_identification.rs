@@ -1,8 +1,8 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    node::Node, resource::ResourceView, ComponentId, DiagramKind, LabelEntry, LabelList, Resource,
-    SchemaId, SchemaVariantId, StandardModel, SystemId, Visibility, WorkspaceId,
+    node::Node, ComponentId, DiagramKind, LabelEntry, LabelList, ResourceView, SchemaId,
+    SchemaVariantId, StandardModel, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +27,7 @@ pub struct ListComponentsIdentificationItem {
     pub schema_name: String,
     pub diagram_kind: DiagramKind,
     pub schema_variant_name: String,
-    pub resource: Option<ResourceView>,
+    pub resource: ResourceView,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -51,9 +51,7 @@ pub async fn list_components_identification(
             Some(component) => component,
             None => continue,
         };
-        let resource = Resource::get_by_component_and_system(&ctx, *component.id(), SystemId::NONE)
-            .await?
-            .map(ResourceView::new);
+        let resource = ResourceView::new(component.resource(&ctx).await?);
 
         let schema_variant = component
             .schema_variant(&ctx)

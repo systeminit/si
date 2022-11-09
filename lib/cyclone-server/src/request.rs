@@ -370,7 +370,6 @@ mod tests {
         let secrets = ComponentView {
             system: None,
             kind: ComponentKind::Credential,
-            resource: None,
             properties: serde_json::json!({
                 "secret": {
                     "name": "ufo",
@@ -406,7 +405,6 @@ mod tests {
         let json = ComponentView {
             system: None,
             kind: ComponentKind::Credential,
-            resource: None,
             properties: serde_json::json!({
                 "secret": {
                     "name": "ufo",
@@ -430,7 +428,6 @@ mod tests {
                     "message": secret_json,
                 },
             },
-            "resource": null
         });
         assert_eq!(json, decrypted_json);
     }

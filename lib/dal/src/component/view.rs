@@ -4,8 +4,8 @@ use crate::{
     component::ComponentKind, func::binding_return_value::FuncBindingReturnValueId,
     AttributeReadContext, AttributeValue, AttributeValueError, Component, ComponentId, DalContext,
     EncryptedSecret, ExternalProviderId, FuncBindingReturnValue, InternalProvider,
-    InternalProviderError, Prop, PropError, PropId, Resource, ResourceError, SchemaVariantId,
-    SecretError, SecretId, StandardModel, StandardModelError, System, SystemId,
+    InternalProviderError, Prop, PropError, PropId, SchemaVariantId, SecretError, SecretId,
+    StandardModel, StandardModelError, System,
 };
 
 use thiserror::Error;
@@ -20,8 +20,6 @@ pub enum ComponentViewError {
     Secret(#[from] SecretError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    Resource(#[from] ResourceError),
     #[error(transparent)]
     AttributeValue(#[from] AttributeValueError),
     #[error(transparent)]
@@ -53,7 +51,6 @@ pub struct ComponentView {
     pub system: Option<System>,
     pub kind: ComponentKind,
     pub properties: serde_json::Value,
-    pub resource: Option<veritech_client::ResourceView>,
 }
 
 impl Default for ComponentView {
@@ -62,7 +59,6 @@ impl Default for ComponentView {
             system: Default::default(),
             kind: Default::default(),
             properties: serde_json::json!({}),
-            resource: None,
         }
     }
 }
@@ -127,19 +123,10 @@ impl ComponentView {
             .unwrap_or(&serde_json::Value::Null)
             .clone();
 
-        let resource = Resource::get_by_component_and_system(
-            ctx,
-            component_id,
-            context.system_id().unwrap_or(SystemId::NONE),
-        )
-        .await?
-        .map(|r| r.into());
-
         Ok(ComponentView {
             system,
             kind: *component.kind(),
             properties,
-            resource,
         })
     }
 
@@ -212,7 +199,6 @@ impl From<ComponentView> for veritech_client::ComponentView {
             }),
             kind: view.kind.into(),
             properties: view.properties,
-            resource: view.resource,
         }
     }
 }

@@ -1453,7 +1453,6 @@ async fn cyclone_crypto_e2e(ctx: &DalContext) {
                         },
                     },
                 }),
-                resource: None,
             },
             parents: Vec::new(),
         },

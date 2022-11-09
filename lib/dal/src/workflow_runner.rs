@@ -11,12 +11,12 @@ use crate::{
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     func::execution::{FuncExecution, FuncExecutionError},
     func::{binding::FuncBindingId, FuncId},
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many,
-    ChangeSetPk, ComponentId, Func, FuncBinding, FuncBindingError, HistoryEventError,
-    InternalProviderError, Resource, ResourceError, ResourceId, SchemaId, SchemaVariantId,
-    StandardModel, StandardModelError, SystemId, Timestamp, Visibility, WorkflowError,
-    WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowResolverError,
-    WorkflowResolverId, WriteTenancy, WsEvent, WsEventError,
+    impl_standard_model, pk, standard_model, standard_model_accessor, ChangeSetPk, Component,
+    ComponentError, ComponentId, Func, FuncBinding, FuncBindingError, HistoryEventError,
+    InternalProviderError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
+    Timestamp, Visibility, WorkflowError, WorkflowPrototype, WorkflowPrototypeError,
+    WorkflowPrototypeId, WorkflowResolverError, WorkflowResolverId, WriteTenancy, WsEvent,
+    WsEventError,
 };
 
 pub mod workflow_runner_state;
@@ -32,11 +32,11 @@ pub enum WorkflowRunnerError {
     #[error(transparent)]
     Workflow(#[from] WorkflowError),
     #[error(transparent)]
-    Resource(#[from] Box<ResourceError>),
-    #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
     FuncExecution(#[from] FuncExecutionError),
+    #[error(transparent)]
+    Component(#[from] Box<ComponentError>),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -53,6 +53,8 @@ pub enum WorkflowRunnerError {
     PrototypeNotFound(WorkflowPrototypeId),
     #[error("missing workflow {0}")]
     MissingWorkflow(String),
+    #[error("component {0} not found")]
+    ComponentNotFound(ComponentId),
 }
 
 pub type WorkflowRunnerResult<T> = Result<T, WorkflowRunnerError>;
@@ -130,6 +132,8 @@ pub struct WorkflowRunner {
     workflow_resolver_id: WorkflowResolverId,
     func_id: FuncId,
     func_binding_id: FuncBindingId,
+    created_resources: serde_json::Value,
+    updated_resources: serde_json::Value,
     #[serde(flatten)]
     context: WorkflowRunnerContext,
     #[serde(flatten)]
@@ -159,11 +163,11 @@ impl WorkflowRunner {
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         context: WorkflowRunnerContext,
-        created_resources: Vec<ResourceId>,
-        updated_resources: Vec<ResourceId>,
+        created_resources: &[serde_json::Value],
+        updated_resources: &[serde_json::Value],
     ) -> WorkflowRunnerResult<Self> {
         let row = ctx.txns().pg().query_one(
-            "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
             &[
                 ctx.write_tenancy(),
                 ctx.visibility(),
@@ -175,19 +179,13 @@ impl WorkflowRunner {
                 &context.schema_id(),
                 &context.schema_variant_id(),
                 &context.system_id(),
+                &serde_json::to_value(created_resources)?,
+                &serde_json::to_value(updated_resources)?,
             ],
         )
             .await?;
 
         let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
-
-        for resource in &created_resources {
-            object.add_created_resource(ctx, resource).await?;
-        }
-
-        for resource in &updated_resources {
-            object.add_updated_resource(ctx, resource).await?;
-        }
 
         if !created_resources.is_empty() || !updated_resources.is_empty() {
             WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
@@ -211,8 +209,8 @@ impl WorkflowRunner {
         Self,
         WorkflowRunnerState,
         Vec<FuncBindingReturnValue>,
-        Vec<Resource>,
-        Vec<Resource>,
+        Vec<serde_json::Value>,
+        Vec<serde_json::Value>,
     )> {
         let prototype = WorkflowPrototype::get_by_id(ctx, &prototype_id)
             .await?
@@ -254,8 +252,8 @@ impl WorkflowRunner {
             func_id,
             func_binding_id,
             context,
-            created_resources.iter().map(|r| *r.id()).collect(),
-            updated_resources.iter().map(|r| *r.id()).collect(),
+            &created_resources,
+            &updated_resources,
         )
         .await?;
 
@@ -301,7 +299,12 @@ impl WorkflowRunner {
         ctx: &DalContext,
         func_binding_return_values: &Vec<FuncBindingReturnValue>,
         component_id: ComponentId,
-    ) -> WorkflowRunnerResult<(FuncId, FuncBindingId, Vec<Resource>, Vec<Resource>)> {
+    ) -> WorkflowRunnerResult<(
+        FuncId,
+        FuncBindingId,
+        Vec<serde_json::Value>,
+        Vec<serde_json::Value>,
+    )> {
         let identity = Func::find_by_attr(ctx, "name", &"si:identity")
             .await?
             .pop()
@@ -328,22 +331,19 @@ impl WorkflowRunner {
 
             if let Some(value) = return_value.value() {
                 let result = CommandRunResult::deserialize(value)?;
+                let component = Component::get_by_id(ctx, &component_id)
+                    .await?
+                    .ok_or(WorkflowRunnerError::ComponentNotFound(component_id))?;
+
+                component
+                    .set_resource(ctx, result.value.clone())
+                    .await
+                    .map_err(Box::new)?;
+
                 if result.created {
-                    // If the function creates multiple resources with the same key we will duplicate them
-                    // Otherwise a EC2 instance might get lost if the command function has a glitch
-                    created_resources.push(
-                        Resource::new(ctx, result.value, component_id, SystemId::NONE)
-                            .await
-                            .map_err(Box::new)?,
-                    );
+                    created_resources.push(result.value);
                 } else {
-                    let (resource, created) =
-                        Resource::upsert(ctx, result.value, component_id, SystemId::NONE)
-                            .await
-                            .map_err(Box::new)?;
-                    if created {
-                        updated_resources.push(resource);
-                    }
+                    updated_resources.push(result.value);
                 }
             }
         }
@@ -402,35 +402,13 @@ impl WorkflowRunner {
         Ok(object)
     }
 
-    standard_model_many_to_many!(
-        lookup_fn: created_resources,
-        associate_fn: add_created_resource,
-        disassociate_fn: remove_created_resource,
-        disassociate_all_fn: remove_all_created_resources,
-        table_name: "workflow_runner_many_to_many_created_resources",
-        left_table: "workflow_runners",
-        left_id: WorkflowRunnerId,
-        right_table: "resources",
-        right_id: ResourceId,
-        which_table_is_this: "left",
-        returns: Resource,
-        result: WorkflowRunnerResult,
-    );
+    pub async fn created_resources(&self) -> WorkflowRunnerResult<Vec<serde_json::Value>> {
+        Ok(serde_json::from_value(self.created_resources.clone())?)
+    }
 
-    standard_model_many_to_many!(
-        lookup_fn: updated_resources,
-        associate_fn: add_updated_resource,
-        disassociate_fn: remove_updated_resource,
-        disassociate_all_fn: remove_all_updated_resources,
-        table_name: "workflow_runner_many_to_many_updated_resources",
-        left_table: "workflow_runners",
-        left_id: WorkflowRunnerId,
-        right_table: "resources",
-        right_id: ResourceId,
-        which_table_is_this: "left",
-        returns: Resource,
-        result: WorkflowRunnerResult,
-    );
+    pub async fn updated_resources(&self) -> WorkflowRunnerResult<Vec<serde_json::Value>> {
+        Ok(serde_json::from_value(self.updated_resources.clone())?)
+    }
 }
 
 #[cfg(test)]

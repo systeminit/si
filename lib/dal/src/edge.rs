@@ -220,13 +220,13 @@ impl Edge {
             .schema(ctx)
             .await
             .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?
-            .ok_or(ComponentError::SchemaNotFound)
+            .ok_or_else(|| ComponentError::NoSchema(*head_component.id()))
             .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?;
         let tail_schema = tail_component
             .schema(ctx)
             .await
             .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?
-            .ok_or(ComponentError::SchemaNotFound)
+            .ok_or_else(|| ComponentError::NoSchema(*tail_component.id()))
             .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?;
         if head_schema.name() == "EC2 Instance" && tail_schema.name() == "Butane" {
             butane_to_ec2_user_data_omega_hack(ctx, *head_schema.id(), *head_component.id())
@@ -398,7 +398,7 @@ async fn butane_to_ec2_user_data_omega_hack(
         .schema_variant(ctx)
         .await
         .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?
-        .ok_or(ComponentError::SchemaVariantNotFound)
+        .ok_or_else(|| ComponentError::NoSchemaVariant(*head_component.id()))
         .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?;
     let mut maybe_user_data_prop = None;
     for prop in head_schema_variant

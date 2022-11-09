@@ -23,7 +23,7 @@ pub use cyclone_core::{
     FunctionResultFailure, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
     QualificationCheckResultSuccess, QualificationSubCheck, QualificationSubCheckStatus,
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ResourceView, SensitiveContainer, SystemView, ValidationRequest, ValidationResultSuccess,
+    SensitiveContainer, SystemView, ValidationRequest, ValidationResultSuccess,
     WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 
@@ -434,7 +434,6 @@ mod tests {
                     properties: serde_json::json!({ "foo": "bar", "baz": "quux" }),
                     system: None,
                     kind: ComponentKind::Standard,
-                    resource: None,
                 },
                 parents: vec![],
             },
@@ -482,7 +481,6 @@ mod tests {
                     properties: serde_json::json!({"image": "systeminit/whiskers"}),
                     system: None,
                     kind: ComponentKind::Standard,
-                    resource: None,
                 },
                 codes: vec![CodeGenerated {
                     format: "yaml".to_owned(),
@@ -592,7 +590,6 @@ mod tests {
             properties: serde_json::json!({"image": "abc"}),
             system: None,
             kind: ComponentKind::Standard,
-            resource: None,
         };
 
         // Now update the request to re-run an unqualified check (i.e. qualification returning
@@ -633,7 +630,7 @@ mod tests {
             component: ComponentView {
                 properties: serde_json::json!({"pkg": "cider"}),
                 system: None,
-                kind: ComponentKind::Standard, resource: None,
+                kind: ComponentKind::Standard,
             },
             code_base64: base64::encode("function confirmItOut(component) { return { success: true, recommendedActions: ['vai te catar'] } }")
         };
@@ -676,7 +673,6 @@ mod tests {
                 properties: serde_json::json!({"pkg": "cider"}),
                 system: None,
                 kind: ComponentKind::Standard,
-                    resource: None,
             },
             code_base64: base64::encode("function generateItOut(component) { return { format: 'yaml', code: YAML.stringify(component.properties) }; }"),
         };

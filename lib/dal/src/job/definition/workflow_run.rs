@@ -8,9 +8,8 @@ use crate::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    resource::ResourceView,
-    AccessBuilder, ComponentId, DalContext, Visibility, WorkflowPrototypeId, WorkflowRunner,
-    WsEvent,
+    AccessBuilder, ComponentId, DalContext, ResourceView, Visibility, WorkflowPrototypeId,
+    WorkflowRunner, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]

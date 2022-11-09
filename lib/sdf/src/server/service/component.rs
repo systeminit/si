@@ -6,9 +6,8 @@ use axum::{
 };
 use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeValueError,
-    ComponentError as DalComponentError, ComponentId, DiagramError, ReadTenancyError,
-    ResourceError, SchemaError as DalSchemaError, StandardModelError, SystemId, TransactionsError,
-    WsEventError,
+    ComponentError as DalComponentError, DiagramError, ReadTenancyError,
+    SchemaError as DalSchemaError, StandardModelError, TransactionsError, WsEventError,
 };
 use thiserror::Error;
 
@@ -47,14 +46,10 @@ pub enum ComponentError {
     Pg(#[from] si_data_pg::PgError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
-    #[error("resource not found")]
-    ResourceNotFound(ComponentId, SystemId),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
     #[error("diagram error: {0}")]
     Diagram(#[from] DiagramError),
-    #[error(transparent)]
-    Resource(#[from] ResourceError),
 
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),

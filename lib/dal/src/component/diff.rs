@@ -51,11 +51,11 @@ impl ComponentDiff {
         let schema_variant = component
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or(ComponentError::NoSchemaVariant(component_id))?;
         let schema = component
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or(ComponentError::NoSchema(component_id))?;
         let root_prop = schema_variant.root_prop(ctx).await?;
 
         let component_view_context = AttributeReadContext {

@@ -10,11 +10,11 @@ use veritech_client::OutputStream;
 
 use crate::{
     func::backend::js_workflow::FuncBackendJsWorkflowArgs, func::backend::FuncDispatchContext,
-    func::binding::FuncBindingId, func::execution::FuncExecution, resource::ResourceView,
+    func::binding::FuncBindingId, func::execution::FuncExecution,
     workflow_runner::workflow_runner_state::WorkflowRunnerState, Connections, DalContext,
     DalContextBuilder, Func, FuncBackendKind, FuncBinding, FuncBindingError,
-    FuncBindingReturnValue, PgPoolError, RequestContext, ServicesContext, StandardModel,
-    StandardModelError, TransactionsError, WsEvent, WsEventError, WsPayload,
+    FuncBindingReturnValue, PgPoolError, RequestContext, ResourceView, ServicesContext,
+    StandardModel, StandardModelError, TransactionsError, WsEvent, WsEventError, WsPayload,
 };
 
 #[derive(Error, Debug)]

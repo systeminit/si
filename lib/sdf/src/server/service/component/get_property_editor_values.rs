@@ -44,7 +44,7 @@ pub async fn get_property_editor_values(
     let schema_variant_id = *component
         .schema_variant(&ctx)
         .await?
-        .ok_or(ComponentError::SchemaNotFound)?
+        .ok_or(ComponentError::SchemaVariantNotFound)?
         .id();
     let context = AttributeReadContext {
         schema_id: Some(schema_id),
