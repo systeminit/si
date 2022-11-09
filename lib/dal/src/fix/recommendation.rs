@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::action_prototype::ActionKind;
 use crate::fix::{FixError, FixResult};
 use crate::{
     AttributeReadContext, Component, ComponentId, ConfirmationPrototype, ConfirmationResolver,
@@ -26,6 +27,7 @@ pub struct Recommendation {
     component_name: String,
     component_id: ComponentId,
     recommendation: String,
+    recommendation_kind: ActionKind,
     status: RecommendationStatus,
 }
 
@@ -73,9 +75,9 @@ impl Recommendation {
                 .recommended_actions(ctx)
                 .await?
                 .into_iter()
-                .map(|action| action.name().to_owned());
+                .map(|action| (action.name().to_owned(), action.kind().to_owned()));
 
-            for recommendation in recommendations {
+            for (recommendation, recommendation_kind) in recommendations {
                 let prototype =
                     ConfirmationPrototype::get_by_id(ctx, &resolver.confirmation_prototype_id())
                         .await?
@@ -99,6 +101,7 @@ impl Recommendation {
                     .await?,
                     component_id,
                     recommendation,
+                    recommendation_kind,
                     status: match fix.as_ref().and_then(FixResolver::success) {
                         Some(true) => RecommendationStatus::Success,
                         Some(false) => RecommendationStatus::Failure,

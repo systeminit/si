@@ -1,3 +1,4 @@
+use crate::action_prototype::ActionKind;
 use crate::builtins::schema::aws::{AWS_NODE_COLOR, EC2_DOCS_URL, EC2_TAG_DOCS_URL};
 use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::builtins::BuiltinsError;
@@ -550,7 +551,14 @@ async fn ingress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Create,
+        context,
+    )
+    .await?;
 
     Ok(())
 }
@@ -973,7 +981,14 @@ async fn egress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Create,
+        context,
+    )
+    .await?;
 
     Ok(())
 }
@@ -1371,7 +1386,14 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ActionPrototype::new(ctx, *workflow_prototype.id(), name, context).await?;
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Create,
+        context,
+    )
+    .await?;
 
     Ok(())
 }

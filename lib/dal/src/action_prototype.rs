@@ -1,10 +1,12 @@
 use std::default::Default;
 
 use serde::{Deserialize, Serialize};
+use strum_macros::{AsRefStr, Display};
+use thiserror::Error;
+
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, DalContext,
@@ -46,6 +48,17 @@ pub struct ActionPrototypeContext {
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
     pub system_id: SystemId,
+}
+
+// Describes how an action affects the world
+#[derive(AsRefStr, Deserialize, Display, Serialize, Debug, Eq, PartialEq, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+pub enum ActionKind {
+    // Create a new resource
+    Create,
+    // Internal only action or action with multiple effects
+    Other,
 }
 
 // Hrm - is this a universal resolver context? -- Adam
@@ -140,6 +153,7 @@ pub struct ActionPrototype {
     id: ActionPrototypeId,
     workflow_prototype_id: WorkflowPrototypeId,
     name: String,
+    kind: ActionKind,
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
@@ -200,18 +214,20 @@ impl ActionPrototype {
         ctx: &DalContext,
         workflow_prototype_id: WorkflowPrototypeId,
         name: &str,
+        kind: ActionKind,
         context: ActionPrototypeContext,
     ) -> ActionPrototypeResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM action_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM action_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &workflow_prototype_id,
                     &name,
+                    &kind.as_ref(),
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
@@ -264,6 +280,7 @@ impl ActionPrototype {
     standard_model_accessor!(component_id, Pk(ComponentId), ActionPrototypeResult);
 
     standard_model_accessor!(name, String, ActionPrototypeResult);
+    standard_model_accessor!(kind, Enum(ActionKind), ActionPrototypeResult);
     standard_model_accessor!(system_id, Pk(SystemId), ActionPrototypeResult);
 
     pub fn context(&self) -> ActionPrototypeContext {

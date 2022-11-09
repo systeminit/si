@@ -57,7 +57,7 @@
             <span class="pl-1">{{ creationRecommendations.length }}</span>
           </div>
           <div
-            v-if="modificationRecommendations.length > 0"
+            v-if="genericRecommendations.length > 0"
             class="py-1 px-2 rounded whitespace-nowrap flex flex-row items-center text-destructive-500 bg-destructive-50 dark:text-destructive-100 dark:bg-destructive-500"
           >
             <Icon
@@ -170,13 +170,21 @@ const allSelected = computed(() => {
 });
 
 const fixesStore = useFixesStore();
-const creationRecommendations = computed(() =>
+const recommendations = computed(() =>
   fixesStore.allRecommendations.filter(
     (recommendation) =>
       recommendation.finishedAt === undefined ||
       recommendation.finishedAt > addSeconds(currentTime.value, -2),
   ),
 );
+const creationRecommendations = computed(() =>
+  recommendations.value.filter((r) => r.recommendationKind === "create"),
+);
+
+const genericRecommendations = computed(() =>
+  recommendations.value.filter((r) => r.recommendationKind === "other"),
+);
+
 const recommendationSelection: Record<string, boolean> = reactive({});
 const selectedRecommendations = computed(() => {
   return creationRecommendations.value.filter((recommendation) => {
@@ -187,9 +195,6 @@ const selectedRecommendations = computed(() => {
     );
   });
 });
-
-// TODO(victor): There should be something to indicate the "type" of a recommendation. This is a mock.
-const modificationRecommendations = ref([]);
 
 const runFixes = () => {
   fixesStore.EXECUTE_FIXES_FROM_RECOMMENDATIONS(selectedRecommendations.value);
