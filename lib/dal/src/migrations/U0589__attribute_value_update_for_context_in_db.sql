@@ -1034,6 +1034,16 @@ DECLARE
     prop                            props%ROWTYPE;
     typeof_value                    text;
 BEGIN
+    RAISE DEBUG 'attribute_value_update_for_context_raw_v1: WriteTenancy(%) ReadTenancy(%), Visibility(%) AttributeValue(%) ParentAttributeValue(%) AttributeContext(%) Value(%) Key(%) CreateChild(%)',
+        this_write_tenancy,
+        this_read_tenancy,
+        this_visibility,
+        this_attribute_value_id,
+        this_maybe_parent_attribute_value_id,
+        this_attribute_context,
+        this_new_value,
+        this_key,
+        this_create_child_proxies;
     maybe_parent_attribute_value_id := this_maybe_parent_attribute_value_id;
 
     SELECT *
