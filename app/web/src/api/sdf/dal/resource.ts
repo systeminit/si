@@ -14,19 +14,5 @@ export enum ResourceStatus {
 }
 
 export interface Resource {
-  id: number;
-  // unixTimestamp: string;
-  createdAt: string;
-  updatedAt: string;
-  error?: string; // TODO: what is this?
-  key: string;
-  data: unknown; // TODO: what is this?
-  // state: any;
-  // status: ResourceStatus;
-  health: ResourceHealth;
-  // systemId: string;
-  // nodeId: string;
-  // entityId: string;
-  entityType: string; // TODO: make it an enum?
-  // siStorable: ISiStorable;
+  data: unknown;
 }

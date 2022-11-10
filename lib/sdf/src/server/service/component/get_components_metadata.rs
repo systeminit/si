@@ -1,9 +1,6 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{
-    resource::ResourceHealth, Component, ComponentId, StandardModel, SystemId, Visibility,
-    WorkspaceId,
-};
+use dal::{Component, ComponentId, StandardModel, SystemId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -24,7 +21,6 @@ pub struct ComponentMetadata {
     pub schema_name: String,
     pub schema_link: Option<String>,
     pub qualified: Option<bool>,
-    pub resource_health: Option<ResourceHealth>,
     pub component_id: ComponentId,
 }
 
@@ -77,7 +73,6 @@ pub async fn get_components_metadata(
                 .await?
                 .and_then(|v| v.link().map(ToOwned::to_owned)),
             qualified,
-            resource_health: None, //resource.map(|r| r.health),
             component_id: *component.id(),
         });
     }

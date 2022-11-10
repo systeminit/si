@@ -4,11 +4,11 @@ use thiserror::Error;
 use si_data_nats::NatsError;
 
 use crate::code_generation_resolver::CodeGenerationId;
+use crate::component::ResourceRefreshId;
 use crate::confirmation_status::ConfirmationStatusUpdate;
 use crate::fix::batch::FixBatchReturn;
 use crate::fix::FixReturn;
 use crate::qualification::QualificationCheckId;
-use crate::resource::ResourceRefreshId;
 use crate::workflow::{CommandOutput, CommandReturn};
 use crate::{
     BillingAccountId, ChangeSetPk, ConfirmationPrototypeError, DalContext, HistoryActor,

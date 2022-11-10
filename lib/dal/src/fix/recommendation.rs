@@ -57,11 +57,11 @@ impl Recommendation {
             let schema = component
                 .schema(ctx)
                 .await?
-                .ok_or(ComponentError::SchemaNotFound)?;
+                .ok_or(ComponentError::NoSchema(component_id))?;
             let schema_variant = component
                 .schema_variant(ctx)
                 .await?
-                .ok_or(ComponentError::SchemaVariantNotFound)?;
+                .ok_or(ComponentError::NoSchemaVariant(component_id))?;
 
             let context = FixResolverContext {
                 component_id,

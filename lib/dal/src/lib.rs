@@ -55,7 +55,6 @@ pub mod qualification_check;
 pub mod qualification_prototype;
 pub mod qualification_resolver;
 pub mod read_tenancy;
-pub mod resource;
 pub mod resource_scheduler;
 pub mod schema;
 pub mod secret;
@@ -110,7 +109,7 @@ pub use code_generation_resolver::{
     CodeGenerationResolver, CodeGenerationResolverError, CodeGenerationResolverId,
 };
 pub use code_view::{CodeLanguage, CodeView};
-pub use component::{Component, ComponentError, ComponentId, ComponentView};
+pub use component::{Component, ComponentError, ComponentId, ComponentView, ResourceView};
 pub use confirmation_prototype::{
     ConfirmationPrototype, ConfirmationPrototypeContext, ConfirmationPrototypeError,
     ConfirmationPrototypeId,
@@ -173,7 +172,6 @@ pub use qualification_resolver::{
     QualificationResolver, QualificationResolverError, QualificationResolverId,
 };
 pub use read_tenancy::{ReadTenancy, ReadTenancyError};
-pub use resource::{Resource, ResourceError, ResourceId, ResourceView};
 pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
 pub use schema::{
     Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
@@ -182,7 +180,7 @@ pub use secret::{
     DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretKind,
     SecretObjectType, SecretPk, SecretResult, SecretVersion,
 };
-pub use socket::{Socket, SocketId};
+pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use system::{System, SystemError, SystemId, SystemPk, SystemResult};
 pub use timestamp::{Timestamp, TimestampError};

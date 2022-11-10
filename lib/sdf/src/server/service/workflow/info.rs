@@ -3,8 +3,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::workflow_runner::workflow_runner_state::{WorkflowRunnerState, WorkflowRunnerStatus};
 use dal::{
-    resource::ResourceView, FuncBindingReturnValue, StandardModel, Timestamp, Visibility,
-    WorkflowPrototype, WorkflowRunner, WorkflowRunnerId,
+    FuncBindingReturnValue, ResourceView, StandardModel, Timestamp, Visibility, WorkflowPrototype,
+    WorkflowRunner, WorkflowRunnerId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -65,8 +65,8 @@ pub async fn info(
         .await?
         .ok_or_else(|| WorkflowError::RunnerStateNotFound(*runner.id()))?;
 
-    let created_resources = runner.created_resources(&ctx).await?;
-    let updated_resources = runner.updated_resources(&ctx).await?;
+    let created_resources = runner.created_resources().await?;
+    let updated_resources = runner.updated_resources().await?;
 
     let view = WorkflowRunInfoView {
         id: *runner.id(),

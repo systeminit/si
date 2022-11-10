@@ -48,22 +48,22 @@
           text-size="md"
           show-label-and-slot
         >
-          <template #label>
+          <!--<template #label>
             <HealthIcon
               :health="selectedComponent.resource.health"
               size="md"
               hide-text
             />
-          </template>
+          </template>-->
           <div class="px-xs pb-xs max-h-96 overflow-hidden flex">
             <div class="flex-grow">
               <CodeViewer
                 :code="JSON.stringify(selectedComponent.resource.data)"
                 border
               >
-                <template #title>
+                <!--<template #title>
                   <HealthIcon :health="selectedComponent.resource.health" />
-                </template>
+                </template>-->
               </CodeViewer>
             </div>
           </div>

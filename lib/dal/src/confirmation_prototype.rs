@@ -324,11 +324,11 @@ impl ConfirmationPrototype {
         let schema = component
             .schema(ctx)
             .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
+            .ok_or_else(|| ComponentError::NoSchema(*component.id()))?;
         let schema_variant = component
             .schema_variant(ctx)
             .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+            .ok_or_else(|| ComponentError::NoSchemaVariant(*component.id()))?;
         let rows = ctx
             .txns()
             .pg()
