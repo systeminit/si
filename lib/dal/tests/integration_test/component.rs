@@ -164,7 +164,6 @@ async fn name_from_context(ctx: &DalContext) {
 }
 
 #[test]
-#[ignore]
 async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: WorkspaceId) {
     // Switch to universal head (tenancy and visibility) to author schemas and
     // intra-schema-variant relationships.

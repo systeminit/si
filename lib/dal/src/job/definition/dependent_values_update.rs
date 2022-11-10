@@ -233,3 +233,39 @@ impl TryFrom<faktory_async::Job> for DependentValuesUpdate {
         })
     }
 }
+
+#[allow(unused)]
+async fn dependency_graph_to_dot(
+    ctx: &DalContext,
+    graph: &HashMap<AttributeValueId, Vec<AttributeValueId>>,
+) -> AttributeValueResult<String> {
+    let mut node_definitions = String::new();
+    for attr_val_id in graph.keys() {
+        let attr_val = AttributeValue::get_by_id(ctx, attr_val_id)
+            .await?
+            .ok_or_else(|| AttributeValueError::NotFound(*attr_val_id, *ctx.visibility()))?;
+        node_definitions.push_str(&format!(
+            "{node_id}[label=\"\\l{node_id:?}\\n\\n{context:#?}\"];",
+            node_id = attr_val_id,
+            context = attr_val.context,
+        ));
+    }
+
+    let mut node_graph = String::new();
+    for (attr_val, inputs) in graph {
+        let dependencies = format!(
+            "{{{dep_list}}}",
+            dep_list = inputs
+                .iter()
+                .map(|i| i.to_string())
+                .collect::<Vec<String>>()
+                .join(" ")
+        );
+        let dependency_line = format!("{attr_val} -> {dependencies};",);
+        node_graph.push_str(&dependency_line);
+    }
+
+    let dot_digraph = format!("digraph G {{{node_definitions}{node_graph}}}");
+
+    Ok(dot_digraph)
+}
