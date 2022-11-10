@@ -49,6 +49,8 @@ pub enum ValidationResolverError {
 pub type ValidationResolverResult<T> = Result<T, ValidationResolverError>;
 
 const FIND_STATUS: &str = include_str!("../queries/validation_resolver_find_status.sql");
+const FIND_FOR_ATTRIBUTE_VALUE_AND_FUNC_BINDING: &str =
+    include_str!("../queries/validation_resolver_find_for_attribute_value_and_func_binding.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ValidationStatus {
@@ -123,6 +125,33 @@ impl ValidationResolver {
     );
     standard_model_accessor!(func_id, Pk(FuncId), ValidationResolverResult);
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), ValidationResolverResult);
+    standard_model_accessor!(
+        func_binding_return_value_id,
+        Pk(FuncBindingReturnValueId),
+        ValidationResolverResult
+    );
+
+    pub async fn find_for_attribute_value_and_validation_func_binding(
+        ctx: &DalContext,
+        attribute_value_id: &AttributeValueId,
+        func_binding_id: &FuncBindingId,
+    ) -> ValidationResolverResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                FIND_FOR_ATTRIBUTE_VALUE_AND_FUNC_BINDING,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    attribute_value_id,
+                    func_binding_id,
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
 
     /// Find the status of validation(s) for a given [`ComponentId`](crate::Component).
     pub async fn find_status(

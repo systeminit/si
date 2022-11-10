@@ -443,15 +443,15 @@ impl Component {
 
         // Cache data necessary for assembling func arguments. We do this since a prop can have
         // multiple validation prototypes within schema variant.
-        let mut cache: HashMap<PropId, (Option<Value>, AttributeValueId)> = HashMap::new();
+        let mut cache: HashMap<PropId, (Option<Value>, AttributeValue)> = HashMap::new();
 
         for validation_prototype in validation_prototypes {
             let prop_id = validation_prototype.context().prop_id();
 
             // Grab the data necessary for assembling the func arguments. We'll check if it's in
             // the cache first.
-            let (maybe_value, attribute_value_id) = match cache.get(&prop_id) {
-                Some((value, attribute_value_id)) => (value.to_owned(), *attribute_value_id),
+            let (maybe_value, attribute_value) = match cache.get(&prop_id) {
+                Some((value, attribute_value)) => (value.to_owned(), attribute_value.clone()),
                 None => {
                     let attribute_read_context = AttributeReadContext {
                         prop_id: Some(prop_id),
@@ -476,8 +476,8 @@ impl Component {
                         None => None,
                     };
 
-                    cache.insert(prop_id, (value.clone(), *attribute_value.id()));
-                    (value, *attribute_value.id())
+                    cache.insert(prop_id, (value.clone(), attribute_value.clone()));
+                    (value, attribute_value)
                 }
             };
 
@@ -505,19 +505,44 @@ impl Component {
             };
 
             // Now, we can load in the mutated args!
-            let (func_binding, _, created) =
+            let (func_binding, _, _) =
                 FuncBinding::find_or_create_and_execute(ctx, mutated_args, *func.id()).await?;
 
-            // If the func binding was newly created, then we need to also create a validation
-            // resolver.
-            if created {
-                ValidationResolver::new(
-                    ctx,
-                    *validation_prototype.id(),
-                    attribute_value_id,
-                    *func_binding.id(),
-                )
-                .await?;
+            let attribute_value_id = *attribute_value.id();
+
+            // Does a resolver already exist for this validation? If so, we need to make
+            // sure the func_binding_return_value_id matches the func_binding_return_value_id of
+            // the current attribute value, since it could be different *even if the value is
+            // the same* (it could have been set by a different function that returned the
+            // same value, for example). We also need to create a resolver for each
+            // attribute_value_id, since the way func_bindings are cached means the validation
+            // func won't be created for the same validation func + value, despite running
+            // this on a completely different attribute value (or even prop).
+            match ValidationResolver::find_for_attribute_value_and_validation_func_binding(
+                ctx,
+                &attribute_value_id,
+                func_binding.id(),
+            )
+            .await?
+            .pop()
+            {
+                Some(mut existing_resolver) => {
+                    existing_resolver
+                        .set_func_binding_return_value_id(
+                            ctx,
+                            attribute_value.func_binding_return_value_id(),
+                        )
+                        .await?;
+                }
+                None => {
+                    ValidationResolver::new(
+                        ctx,
+                        *validation_prototype.id(),
+                        attribute_value_id,
+                        *func_binding.id(),
+                    )
+                    .await?;
+                }
             }
         }
 
