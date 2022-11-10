@@ -124,36 +124,14 @@ BEGIN
                 RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) is InternalProvider(%)', attribute_value.id, attribute_value.attribute_context_internal_provider_id;
 
                 -- Is there a parent Prop (and therefore an InternalProvider) that needs to be updated?
-                SELECT DISTINCT ON (id) internal_providers.*
+                SELECT ip.*
                 INTO tmp_internal_provider
-                FROM internal_providers
-                INNER JOIN (
-                    SELECT DISTINCT ON (object_id)
-                        object_id AS child_prop_id,
-                        belongs_to_id AS parent_prop_id
-                    FROM prop_belongs_to_prop
-                    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, prop_belongs_to_prop)
-                    ORDER BY
-                        object_id,
-                        visibility_change_set_pk DESC,
-                        visibility_deleted_at DESC NULLS FIRST
-                ) AS pbtp ON pbtp.parent_prop_id = internal_providers.prop_id
-                INNER JOIN (
-                    SELECT DISTINCT ON (id) internal_providers.prop_id
-                    FROM internal_providers
-                    WHERE
-                        in_tenancy_and_visible_v1(this_tenancy, this_visibility, internal_providers)
-                        AND id = attribute_value.attribute_context_internal_provider_id
-                    ORDER BY
-                        id,
-                        visibility_change_set_pk DESC,
-                        visibility_deleted_at DESC NULLS FIRST
-                ) AS child_internal_providers ON child_internal_providers.prop_id = pbtp.child_prop_id
-                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, internal_providers)
-                ORDER BY
-                    id,
-                    visibility_change_set_pk DESC,
-                    visibility_deleted_at DESC NULLS FIRST;
+                FROM internal_providers_v1(this_tenancy, this_visibility) AS ip
+                INNER JOIN prop_belongs_to_prop_v1(this_tenancy, this_visibility) AS pbtp
+                    ON pbtp.belongs_to_id = ip.prop_id
+                INNER JOIN internal_providers_v1(this_tenancy, this_visibility) AS child_internal_providers
+                    ON child_internal_providers.prop_id = pbtp.object_id
+                WHERE child_internal_providers.id = attribute_value.attribute_context_internal_provider_id;
 
                 IF FOUND THEN
                     RAISE DEBUG 'attribute_value_affected_graph_v1: Found a parent InternalProvider(%) for InternalProvider(%)', tmp_internal_provider.id, attribute_value.attribute_context_internal_provider_id;
@@ -173,16 +151,10 @@ BEGIN
                     --                this (possibly less specific) AttributeValue.
                     SELECT array_agg(id)
                     INTO tmp_record_ids
-                    FROM (
-                        SELECT DISTINCT ON (id) id
-                        FROM attribute_values
-                        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
-                              AND attribute_context_internal_provider_id = tmp_internal_provider.id
-                              AND exact_or_more_attribute_read_context_v1(tmp_attribute_context, attribute_values)
-                        ORDER BY id,
-                                 attribute_values.visibility_change_set_pk DESC,
-                                 attribute_values.visibility_deleted_at DESC NULLS FIRST
-                    ) AS internal_provider_attribute_value_ids;
+                    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+                    WHERE 
+                        attribute_context_internal_provider_id = tmp_internal_provider.id
+                        AND exact_or_more_attribute_read_context_v1(tmp_attribute_context, av);
 
                     IF tmp_record_ids IS NOT NULL THEN
                         RAISE DEBUG 'attribute_value_affected_graph_v1: Found AttributeValues for parent InternalProvider';
@@ -216,39 +188,16 @@ BEGIN
                     attribute_value.attribute_context_internal_provider_id,
                     tmp_attribute_context;
 
-                -- TODO WORKING HERE
+                -- AttributeValues for AttributePrototypes that use this AttributeValue's InternalProvider as an argument.
                 FOR attribute_value_id IN
-                    SELECT DISTINCT ON (id) id
-                    FROM attribute_values
-                    INNER JOIN (
-                        SELECT DISTINCT ON (object_id)
-                            object_id AS attribute_value_id,
-                            belongs_to_id AS attribute_prototype_id
-                        FROM attribute_value_belongs_to_attribute_prototype
-                        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
-                        ORDER BY
-                            object_id,
-                            visibility_change_set_pk DESC,
-                            visibility_deleted_at DESC NULLS FIRST
-                    ) AS avbtap ON avbtap.attribute_value_id = attribute_values.id
-                    INNER JOIN (
-                        SELECT DISTINCT ON (id) attribute_prototype_id
-                        FROM attribute_prototype_arguments
-                        WHERE
-                            in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_prototype_arguments)
-                            AND attribute_prototype_arguments.internal_provider_id = attribute_value.attribute_context_internal_provider_id
-                        ORDER BY
-                            id,
-                            visibility_change_set_pk DESC,
-                            visibility_deleted_at DESC NULLS FIRST
-                    ) AS apa ON apa.attribute_prototype_id = avbtap.attribute_prototype_id
-                    WHERE
-                        in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
-                        AND exact_or_more_attribute_read_context_v1(tmp_attribute_context, attribute_values)
-                    ORDER BY
-                        id,
-                        visibility_change_set_pk DESC,
-                        visibility_deleted_at DESC NULLS FIRST
+                    SELECT av.id
+                    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+                    INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_tenancy, this_visibility) AS avbtap
+                        ON avbtap.object_id = av.id
+                    INNER JOIN attribute_prototype_arguments_v1(this_tenancy, this_visibility) AS apa
+                        ON apa.attribute_prototype_id = avbtap.belongs_to_id
+                            AND apa.internal_provider_id = attribute_value.attribute_context_internal_provider_id
+                    WHERE exact_or_more_attribute_read_context_v1(tmp_attribute_context, av)
                 LOOP
                     RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) depends on AttributeValue(%)', attribute_value_id, attribute_value.id;
 
@@ -303,30 +252,20 @@ BEGIN
                 --
                 -- Which InternalProviders reference this ExternalProvider in their arguments (and specifically
                 -- the Component) that the AttributeValue is for.
-                SELECT array_agg(id)
+                SELECT array_agg(av.id)
                 INTO tmp_record_ids
-                FROM (
-                    SELECT DISTINCT ON (attribute_values.id) attribute_values.id
-                    FROM attribute_values
-                    INNER JOIN attribute_value_belongs_to_attribute_prototype
-                        ON attribute_value_belongs_to_attribute_prototype.object_id = attribute_values.id
-                           AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
-                    INNER JOIN attribute_prototypes
-                        ON attribute_prototypes.id = attribute_value_belongs_to_attribute_prototype.belongs_to_id
-                           AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_prototypes)
-                    INNER JOIN attribute_prototype_arguments
-                        ON attribute_prototype_arguments.attribute_prototype_id = attribute_prototypes.id
-                           AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_prototype_arguments)
-                           AND attribute_prototype_arguments.external_provider_id = attribute_value.attribute_context_external_provider_id
-                           AND attribute_prototype_arguments.tail_component_id = attribute_value.attribute_context_component_id
-                    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
-                          -- See the TODO above tmp_attribute_context for why this is commented out.
-                          --
-                          -- AND exact_or_more_attribute_read_context_v1(tmp_attribute_context, attribute_values)
-                    ORDER BY attribute_values.id,
-                             attribute_values.visibility_change_set_pk DESC,
-                             attribute_values.visibility_deleted_at DESC NULLS FIRST
-                ) AS internal_provider_attribute_value_ids;
+                FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+                INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_tenancy, this_visibility) AS avbtap
+                    ON avbtap.object_id = av.id
+                INNER JOIN attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
+                    ON ap.id = avbtap.belongs_to_id
+                INNER JOIN attribute_prototype_arguments_v1(this_tenancy, this_visibility) AS apa
+                    ON apa.attribute_prototype_id = ap.id
+                        AND apa.external_provider_id = attribute_value.attribute_context_external_provider_id
+                        AND apa.tail_component_id = attribute_value.attribute_context_component_id
+                -- See the TODO above tmp_attribute_context for why this is commented out.
+                --
+                -- WHERE exact_or_more_attribute_read_context_v1(tmp_attribute_context, av)
 
                 IF tmp_record_ids IS NOT NULL THEN
                     RAISE DEBUG 'attribute_value_affected_graph_v1: Found InternalProviders that use this ExternalProvider';
@@ -378,14 +317,10 @@ BEGIN
     -- InternalProvider, we need to keep looking towards the root of the Prop
     -- tree, until we find one.
     LOOP
-        SELECT DISTINCT ON (id) id
+        SELECT id
         INTO internal_provider_id
-        FROM internal_providers
-        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, internal_providers)
-              AND internal_providers.prop_id = current_prop_id
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST;
+        FROM internal_providers_v1(this_tenancy, this_visibility) AS ip
+        WHERE ip.prop_id = current_prop_id;
 
         IF FOUND THEN
             -- We found the closest InternalProvider between us & the root of the
@@ -393,14 +328,10 @@ BEGIN
             EXIT;
         END IF;
 
-        SELECT DISTINCT ON (id) belongs_to_id
+        SELECT belongs_to_id
         INTO current_prop_id
-        FROM prop_belongs_to_prop
-        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, prop_belongs_to_prop)
-              AND object_id = current_prop_id
-        ORDER BY id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST;
+        FROM prop_belongs_to_prop_v1(this_tenancy, this_visibility) AS pbtp
+        WHERE object_id = current_prop_id;
 
         -- We somehow got to the root of the Prop tree without finding any
         -- InternalProviders. This is likely a bug in the configuration of
