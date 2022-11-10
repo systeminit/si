@@ -263,6 +263,8 @@ BEGIN
                     ON apa.attribute_prototype_id = ap.id
                         AND apa.external_provider_id = attribute_value.attribute_context_external_provider_id
                         AND apa.tail_component_id = attribute_value.attribute_context_component_id
+                -- For an AttributeValue to actually be using an ExternalProvider, it _must_ be (at least) for a Component.
+                WHERE av.attribute_context_component_id != -1;
                 -- See the TODO above tmp_attribute_context for why this is commented out.
                 --
                 -- WHERE exact_or_more_attribute_read_context_v1(tmp_attribute_context, av)
