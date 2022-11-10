@@ -2,7 +2,6 @@ use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::func::FuncError;
 use axum::Json;
-use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
     generate_name, job::definition::DependentValuesUpdate, prototype_context::HasPrototypeContext,
     qualification_prototype::QualificationPrototypeContext, AttributeValue, AttributeValueId,
@@ -65,7 +64,7 @@ pub static DEFAULT_VALIDATION_CODE: &str = include_str!("./defaults/validation.t
 async fn create_qualification_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
-        generate_name(None),
+        generate_name(),
         FuncBackendKind::JsQualification,
         FuncBackendResponseType::Qualification,
     )
@@ -85,7 +84,7 @@ async fn create_qualification_func(ctx: &DalContext) -> FuncResult<Func> {
 async fn create_validation_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
-        generate_name(None),
+        generate_name(),
         FuncBackendKind::JsValidation,
         FuncBackendResponseType::Validation,
     )
@@ -102,7 +101,7 @@ async fn create_validation_func(ctx: &DalContext) -> FuncResult<Func> {
 async fn create_command_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
-        generate_name(None),
+        generate_name(),
         FuncBackendKind::JsCommand,
         FuncBackendResponseType::Command,
     )
@@ -118,7 +117,7 @@ async fn create_command_func(ctx: &DalContext) -> FuncResult<Func> {
 async fn copy_attribute_func(ctx: &DalContext, func_to_copy: &Func) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
-        generate_name(None),
+        generate_name(),
         FuncBackendKind::JsAttribute,
         *func_to_copy.backend_response_type(),
     )
@@ -136,7 +135,7 @@ async fn copy_attribute_func(ctx: &DalContext, func_to_copy: &Func) -> FuncResul
 async fn create_confirmation_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
-        generate_name(None),
+        generate_name(),
         FuncBackendKind::JsConfirmation,
         FuncBackendResponseType::Confirmation,
     )
@@ -161,7 +160,7 @@ async fn create_confirmation_func(ctx: &DalContext) -> FuncResult<Func> {
 async fn create_code_gen_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
-        generate_name(None),
+        generate_name(),
         FuncBackendKind::JsCodeGeneration,
         FuncBackendResponseType::CodeGeneration,
     )
@@ -172,17 +171,8 @@ async fn create_code_gen_func(ctx: &DalContext) -> FuncResult<Func> {
     func.set_handler(ctx, Some(DEFAULT_CODE_GENERATION_HANDLER))
         .await?;
 
-    let code_gen_args = FuncBackendJsCodeGenerationArgs::default();
-    let code_gen_args_json = serde_json::to_value(&code_gen_args)?;
-
-    CodeGenerationPrototype::new(
-        ctx,
-        *func.id(),
-        code_gen_args_json,
-        DEFAULT_CODE_GENERATION_FORMAT,
-        CodeGenerationPrototype::new_context(),
-    )
-    .await?;
+    CodeGenerationPrototype::new_temporary(ctx, *func.id(), None, DEFAULT_CODE_GENERATION_FORMAT)
+        .await?;
 
     Ok(func)
 }
@@ -226,7 +216,7 @@ async fn create_default_attribute_func(
 
     let mut func = Func::new(
         ctx,
-        generate_name(None),
+        generate_name(),
         FuncBackendKind::JsAttribute,
         backend_response_type,
     )

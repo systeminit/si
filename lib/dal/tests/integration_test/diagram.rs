@@ -36,6 +36,7 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         },
+        false,
     )
     .await
     .expect("could not get component view");
@@ -78,6 +79,7 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         },
+        false,
     )
     .await
     .expect("could not get component view");

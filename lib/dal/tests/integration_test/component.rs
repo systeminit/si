@@ -16,6 +16,7 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
+mod code;
 mod validation;
 mod view;
 
@@ -281,7 +282,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     ctx.update_to_workspace_tenancies(wid)
         .await
         .expect("could not update to workspace tenancies");
-    let new_change_set = ChangeSet::new(ctx, generate_name(None), None)
+    let new_change_set = ChangeSet::new(ctx, generate_name(), None)
         .await
         .expect("could not create new change set");
     ctx.update_visibility(Visibility::new(new_change_set.pk, None));
@@ -323,12 +324,13 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     };
 
     // Ensure everything looks correct post connection.
-    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
+    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context, false)
         .await
         .expect("could not generate component view");
-    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
-        .await
-        .expect("could not generate component view");
+    let noctua_component_view =
+        ComponentView::for_context(ctx, noctua_component_view_context, false)
+            .await
+            .expect("could not generate component view");
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -368,12 +370,13 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         .expect("could not set resource field");
 
     // Ensure the value is propagated end-to-end.
-    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
+    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context, false)
         .await
         .expect("could not generate component view");
-    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
-        .await
-        .expect("could not generate component view");
+    let noctua_component_view =
+        ComponentView::for_context(ctx, noctua_component_view_context, false)
+            .await
+            .expect("could not generate component view");
     assert_eq!(
         serde_json::json![{
             "si": {
@@ -404,12 +407,13 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     ctx.update_visibility(Visibility::new(new_change_set.pk, None));
 
     // Ensure the views are identical to HEAD.
-    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
+    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context, false)
         .await
         .expect("could not generate component view");
-    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
-        .await
-        .expect("could not generate component view");
+    let noctua_component_view =
+        ComponentView::for_context(ctx, noctua_component_view_context, false)
+            .await
+            .expect("could not generate component view");
     assert_eq!(
         serde_json::json![{
             "si": {

@@ -28,10 +28,7 @@ pub async fn get_code(
 ) -> ComponentResult<Json<GetCodeResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let system_id = request.system_id.unwrap_or(SystemId::NONE);
-    let code_views =
-        Component::list_code_generated_by_component_id(&ctx, request.component_id, system_id)
-            .await?;
+    let code_views = Component::list_code_generated(&ctx, request.component_id).await?;
 
     Ok(Json(GetCodeResponse { code_views }))
 }

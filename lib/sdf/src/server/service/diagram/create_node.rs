@@ -34,7 +34,7 @@ pub async fn create_node(
 ) -> DiagramResult<Json<CreateNodeResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let name = generate_name(None);
+    let name = generate_name();
     let schema = Schema::get_by_id(&ctx, &request.schema_id)
         .await?
         .ok_or(DiagramError::SchemaNotFound)?;

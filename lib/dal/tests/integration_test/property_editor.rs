@@ -31,7 +31,7 @@ async fn property_editor_value(ctx: &DalContext) {
     let schema_variant_id = schema
         .default_schema_variant_id()
         .expect("missing default schema variant id");
-    let name = generate_name(None);
+    let name = generate_name();
     let (component, _node) =
         Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
             .await

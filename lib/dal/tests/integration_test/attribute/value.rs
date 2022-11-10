@@ -51,7 +51,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 "domain": {},
             }
         ],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties,
@@ -107,7 +107,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties,
@@ -135,7 +135,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties,
@@ -187,7 +187,7 @@ async fn insert_for_context_simple(ctx: &DalContext) {
             },
             "domain": {},
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties,
@@ -222,7 +222,7 @@ async fn insert_for_context_simple(ctx: &DalContext) {
                 "array_prop": [],
             },
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties,
@@ -293,7 +293,7 @@ async fn update_for_context_object(ctx: &DalContext) {
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
-    let component_view = ComponentView::for_context(ctx, read_context)
+    let component_view = ComponentView::for_context(ctx, read_context, false)
         .await
         .expect("cannot get component view");
 
@@ -375,7 +375,7 @@ async fn update_for_context_object(ctx: &DalContext) {
     .await
     .expect("cannot update value");
 
-    let component_view = ComponentView::for_context(ctx, read_context)
+    let component_view = ComponentView::for_context(ctx, read_context, false)
         .await
         .expect("cannot get component view");
 
@@ -425,7 +425,7 @@ async fn update_for_context_object(ctx: &DalContext) {
     .await
     .expect("cannot update value");
 
-    let component_view = ComponentView::for_context(ctx, read_context)
+    let component_view = ComponentView::for_context(ctx, read_context, false)
         .await
         .expect("cannot get component view");
 
@@ -497,7 +497,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
             },
             "domain": {},
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties,
@@ -539,7 +539,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
                 ],
             },
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties,
@@ -590,7 +590,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
                 ],
             },
         }],
-        ComponentView::for_context(ctx, system_attribute_read_context)
+        ComponentView::for_context(ctx, system_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties,
@@ -628,7 +628,7 @@ async fn list_payload(ctx: &DalContext) {
     let schema_variant_id = schema
         .default_schema_variant_id()
         .expect("missing default schema variant id");
-    let name = generate_name(None);
+    let name = generate_name();
     let (component, _node) =
         Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
             .await

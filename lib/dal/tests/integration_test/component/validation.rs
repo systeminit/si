@@ -179,7 +179,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
                 "thousand_gecs": "wrongLyrics"
             }
         }], // actual
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties // expected
@@ -257,7 +257,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
                 "thousand_gecs": "stupidHorse"
             }
         }], // actual
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::for_context(ctx, base_attribute_read_context, false)
             .await
             .expect("cannot get component view")
             .properties // expected
@@ -375,7 +375,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .await
     .expect("update attr value");
 
-    let properties = ComponentView::for_context(ctx, base_attribute_read_context)
+    let properties = ComponentView::for_context(ctx, base_attribute_read_context, false)
         .await
         .expect("cannot get component view")
         .properties;
@@ -427,7 +427,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .await
     .expect("update attr value");
 
-    let properties = ComponentView::for_context(ctx, base_attribute_read_context)
+    let properties = ComponentView::for_context(ctx, base_attribute_read_context, false)
         .await
         .expect("cannot get component view")
         .properties;

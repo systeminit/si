@@ -210,10 +210,11 @@ impl PropertyEditorSchema {
             }
 
             // Note: horrible hack to ignore resource in the frontend for now, I have no idea how to do it properly, let's leave it for after we test the concept
+            // NOTE(nick): continuing this horrible hack for code.
             if child_props
                 .get(&root_prop.id().into())
                 .map_or(false, |p| p.contains(&property_editor_prop.id))
-                && property_editor_prop.name == "resource"
+                && (property_editor_prop.name == "resource" || property_editor_prop.name == "code")
             {
                 continue;
             }

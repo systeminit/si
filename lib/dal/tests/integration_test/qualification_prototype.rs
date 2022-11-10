@@ -191,7 +191,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
 
     let mut func = Func::new(
         ctx,
-        generate_name(None),
+        generate_name(),
         FuncBackendKind::JsQualification,
         FuncBackendResponseType::Qualification,
     )

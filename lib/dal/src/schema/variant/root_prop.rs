@@ -14,10 +14,18 @@ use crate::{
 /// [`ComponentView`](crate::ComponentView) "properties" field.
 #[derive(Debug, Copy, Clone)]
 pub struct RootProp {
+    /// The parent of the other [`Props`](crate::Prop) on [`self`](Self).
     pub prop_id: PropId,
+    /// Contains the tree of [`Props`](crate::Prop) corresponding to System Initiative metadata.
     pub si_prop_id: PropId,
+    /// Contains the tree of [`Props`](crate::Prop) corresponding to the real world _model_.
     pub domain_prop_id: PropId,
+    /// Contains the tree of [`Props`](crate::Prop) corresponding to the real world _resource_.
+    /// All information needed to populate the _model_ should be derived from this tree.
     pub resource_prop_id: PropId,
+    /// Contains the tree of [`Props`](crate::Prop) corresponding to
+    /// [`code generated`](crate::CodeGenerationPrototype) by populating the real world _model_.
+    pub code_prop: PropId,
 }
 
 impl RootProp {
@@ -49,6 +57,11 @@ impl RootProp {
 
         let resource_specific_prop = Prop::new(ctx, "resource", PropKind::String, None).await?;
         resource_specific_prop
+            .set_parent_prop(ctx, *root_prop.id())
+            .await?;
+
+        let code_specific_prop = Prop::new(ctx, "code", PropKind::Object, None).await?;
+        code_specific_prop
             .set_parent_prop(ctx, *root_prop.id())
             .await?;
 
@@ -120,11 +133,28 @@ impl RootProp {
         )
         .await?;
 
+        let code_context = AttributeContext::builder()
+            .set_prop_id(*code_specific_prop.id())
+            .to_context()?;
+        let (_, _) = AttributeValue::update_for_context(
+            ctx,
+            *AttributeValue::find_for_context(ctx, code_context.into())
+                .await?
+                .ok_or(AttributeValueError::Missing)?
+                .id(),
+            Some(root_value_id),
+            code_context,
+            Some(serde_json::json![{}]),
+            None,
+        )
+        .await?;
+
         Ok(Self {
             prop_id: *root_prop.id(),
             si_prop_id: *si_specific_prop.id(),
             domain_prop_id: *domain_specific_prop.id(),
             resource_prop_id: *resource_specific_prop.id(),
+            code_prop: *code_specific_prop.id(),
         })
     }
 }

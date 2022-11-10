@@ -10,9 +10,7 @@ use thiserror::Error;
 use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
-use crate::code_generation_resolver::CodeGenerationResolverContext;
 use crate::func::backend::{
-    js_code_generation::FuncBackendJsCodeGenerationArgs,
     js_qualification::FuncBackendJsQualificationArgs, js_validation::FuncBackendJsValidationArgs,
     validation::FuncBackendValidationArgs,
 };
@@ -38,21 +36,21 @@ use crate::{
     qualification::QualificationError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototype, ActionPrototypeError, AttributeContext, AttributeContextBuilderError,
-    AttributeContextError, AttributeReadContext, CodeGenerationPrototype,
-    CodeGenerationPrototypeError, CodeGenerationResolver, CodeGenerationResolverError,
-    CodeLanguage, CodeView, DalContext, Edge, EdgeError, ExternalProviderId, Func, FuncBackendKind,
-    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, OrganizationError,
-    Prop, PropError, PropId, QualificationPrototype, QualificationPrototypeError,
-    QualificationResolver, QualificationResolverError, ReadTenancyError, Schema, SchemaError,
-    SchemaId, Socket, SocketId, StandardModel, StandardModelError, SystemId, Timestamp,
-    TransactionsError, ValidationPrototype, ValidationPrototypeError, ValidationResolver,
-    ValidationResolverError, Visibility, WorkflowPrototype, WorkflowPrototypeId, WorkflowRunner,
-    WorkflowRunnerError, WorkspaceError, WriteTenancy, WsPayload,
+    AttributeContextError, AttributeReadContext, CodeGenerationPrototypeError, CodeLanguage,
+    DalContext, Edge, EdgeError, ExternalProviderId, Func, FuncBackendKind, HistoryEventError,
+    InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
+    PropId, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    QualificationResolverError, ReadTenancyError, Schema, SchemaError, SchemaId, Socket, SocketId,
+    StandardModel, StandardModelError, SystemId, Timestamp, TransactionsError, ValidationPrototype,
+    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
+    WorkflowPrototype, WorkflowPrototypeId, WorkflowRunner, WorkflowRunnerError, WorkspaceError,
+    WriteTenancy, WsPayload,
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
 
 pub use view::{ComponentView, ComponentViewError};
 
+pub mod code;
 pub mod diff;
 pub mod stats;
 pub mod view;
@@ -69,7 +67,7 @@ pub enum ComponentError {
     AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("invalid json pointer: {0} for {1}")]
     BadJsonPointer(String, String),
-    #[error("codegen function returned unexpected format, expected {0:?}, got {1:?}")]
+    #[error("code generation function returned unexpected format, expected {0:?}, got {1:?}")]
     CodeLanguageMismatch(CodeLanguage, CodeLanguage),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
@@ -111,8 +109,6 @@ pub enum ComponentError {
     QualificationResolver(#[from] QualificationResolverError),
     #[error("code generation prototype error: {0}")]
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
-    #[error("code generation resolver error: {0}")]
-    CodeGenerationResolver(#[from] CodeGenerationResolverError),
     #[error("unable to find code generated")]
     CodeGeneratedNotFound,
     #[error("qualification prototype not found")]
@@ -190,14 +186,13 @@ pub type ComponentResult<T> = Result<T, ComponentError>;
 const FIND_FOR_NODE: &str = include_str!("./queries/component_find_for_node.sql");
 //const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
 const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
-const LIST_CODE_GENERATED: &str = include_str!("./queries/component_list_code_generated.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("./queries/component_list_for_schema_variant.sql");
 const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
     include_str!("queries/component_list_sockets_for_socket_edge_kind.sql");
 const NAME_FROM_CONTEXT: &str = include_str!("./queries/component/name_from_context.sql");
-const RESOURCE_ATTRIBUTE_VALUE_FOR_COMPONENT: &str =
-    include_str!("queries/component/resource_attribute_value_for_component.sql");
+const ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT: &str =
+    include_str!("queries/component/root_child_attribute_value_for_component.sql");
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -576,7 +571,7 @@ impl Component {
                 .await?;
         } else {
             let mut resolver_context = QualificationResolverContext::new();
-            resolver_context.set_component_id(*self.id());
+            resolver_context.set_component_id(self.id);
             QualificationResolver::new(
                 ctx,
                 *prototype.id(),
@@ -587,7 +582,7 @@ impl Component {
             .await?;
         }
 
-        WsEvent::checked_qualifications(ctx, *prototype.id(), *self.id(), system_id)
+        WsEvent::checked_qualifications(ctx, *prototype.id(), self.id, system_id)
             .publish(ctx)
             .await?;
 
@@ -614,7 +609,7 @@ impl Component {
 
         let qualification_prototypes = QualificationPrototype::find_for_component(
             ctx,
-            *self.id(),
+            self.id,
             *schema.id(),
             *schema_variant.id(),
             system_id,
@@ -667,7 +662,7 @@ impl Component {
                     .await?;
             } else {
                 let mut resolver_context = QualificationResolverContext::new();
-                resolver_context.set_component_id(*self.id());
+                resolver_context.set_component_id(self.id);
                 QualificationResolver::new(
                     ctx,
                     *prototype.id(),
@@ -678,7 +673,7 @@ impl Component {
                 .await?;
             }
 
-            WsEvent::checked_qualifications(ctx, *prototype.id(), *self.id(), system_id)
+            WsEvent::checked_qualifications(ctx, *prototype.id(), self.id, system_id)
                 .publish(ctx)
                 .await?;
         }
@@ -730,7 +725,7 @@ impl Component {
                 .await?;
         } else {
             let mut resolver_context = QualificationResolverContext::new();
-            resolver_context.set_component_id(*self.id());
+            resolver_context.set_component_id(self.id);
             QualificationResolver::new(
                 ctx,
                 *prototype.id(),
@@ -741,7 +736,7 @@ impl Component {
             .await?;
         }
 
-        WsEvent::checked_qualifications(ctx, *prototype.id(), *self.id(), system_id)
+        WsEvent::checked_qualifications(ctx, *prototype.id(), self.id, system_id)
             .publish(ctx)
             .await?;
 
@@ -764,7 +759,7 @@ impl Component {
 
         let qualification_prototypes = QualificationPrototype::find_for_component(
             ctx,
-            *self.id(),
+            self.id,
             *schema.id(),
             *schema_variant.id(),
             system_id,
@@ -813,7 +808,7 @@ impl Component {
                     .await?;
             } else {
                 let mut resolver_context = QualificationResolverContext::new();
-                resolver_context.set_component_id(*self.id());
+                resolver_context.set_component_id(self.id);
                 QualificationResolver::new(
                     ctx,
                     *prototype.id(),
@@ -824,188 +819,10 @@ impl Component {
                 .await?;
             }
 
-            WsEvent::checked_qualifications(ctx, *prototype.id(), *self.id(), system_id)
+            WsEvent::checked_qualifications(ctx, *prototype.id(), self.id, system_id)
                 .publish(ctx)
                 .await?;
         }
-
-        Ok(())
-    }
-
-    /// Creates code generation [`FuncBinding`](crate::FuncBinding), a
-    /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) without a value and a
-    /// [`CodeGenerationResolver`](crate::CodeGenerationResolver). The func is not executed yet,
-    /// it's just a placeholder for some code generation that will be executed.
-    pub async fn prepare_code_generation(
-        &self,
-        ctx: &DalContext,
-        system_id: SystemId,
-    ) -> ComponentResult<()> {
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-
-        let code_generation_prototypes = CodeGenerationPrototype::find_for_component(
-            ctx,
-            *self.id(),
-            *schema.id(),
-            *schema_variant.id(),
-            system_id,
-        )
-        .await?;
-
-        for prototype in code_generation_prototypes {
-            let func = Func::get_by_id(ctx, &prototype.func_id())
-                .await?
-                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
-
-            let args = FuncBackendJsCodeGenerationArgs {
-                component: self
-                    .veritech_code_generation_component(ctx, system_id)
-                    .await?,
-            };
-            let json_args = serde_json::to_value(args)?;
-
-            let (func_binding, _created) = FuncBinding::find_or_create(
-                ctx,
-                json_args,
-                prototype.func_id(),
-                *func.backend_kind(),
-            )
-            .await?;
-
-            // Empty func_binding_return_value means the function is still being executed
-            let _func_binding_return_value = FuncBindingReturnValue::upsert(
-                ctx,
-                None,
-                None,
-                prototype.func_id(),
-                *func_binding.id(),
-                UNSET_ID_VALUE.into(),
-            )
-            .await?;
-
-            let mut existing_resolvers = CodeGenerationResolver::find_for_prototype_and_component(
-                ctx,
-                prototype.id(),
-                self.id(),
-            )
-            .await?;
-
-            // If we do not have one, create the code generation resolver. If we do, update the
-            // func binding id to point to the new value.
-            if let Some(mut resolver) = existing_resolvers.pop() {
-                resolver
-                    .set_func_binding_id(ctx, *func_binding.id())
-                    .await?;
-            } else {
-                let mut resolver_context = CodeGenerationResolverContext::new();
-                resolver_context.set_component_id(*self.id());
-                let _resolver = CodeGenerationResolver::new(
-                    ctx,
-                    *prototype.id(),
-                    *func.id(),
-                    *func_binding.id(),
-                    resolver_context,
-                )
-                .await?;
-            }
-        }
-
-        WsEvent::code_generated(ctx, *self.id(), system_id)
-            .publish(ctx)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn generate_code(
-        &self,
-        ctx: &DalContext,
-        system_id: SystemId,
-    ) -> ComponentResult<()> {
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-
-        let code_generation_prototypes = CodeGenerationPrototype::find_for_component(
-            ctx,
-            *self.id(),
-            *schema.id(),
-            *schema_variant.id(),
-            system_id,
-        )
-        .await?;
-
-        for prototype in code_generation_prototypes {
-            let func = Func::get_by_id(ctx, &prototype.func_id())
-                .await?
-                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
-
-            let args = FuncBackendJsCodeGenerationArgs {
-                component: self
-                    .veritech_code_generation_component(ctx, system_id)
-                    .await?,
-            };
-            let json_args = serde_json::to_value(args)?;
-
-            let (func_binding, _created) = FuncBinding::find_or_create(
-                ctx,
-                json_args,
-                prototype.func_id(),
-                *func.backend_kind(),
-            )
-            .await?;
-
-            // We always re-execute the code generation, as the previous one might have failed
-            // This is a temporary work-around until we have a battle-tested failure-detection
-            // system for async tasks
-
-            // Note for future humans - if this isn't a built in, then we need to
-            // think about execution time. Probably higher up than this? But just
-            // an FYI.
-            func_binding.execute(ctx).await?;
-
-            let mut existing_resolvers = CodeGenerationResolver::find_for_prototype_and_component(
-                ctx,
-                prototype.id(),
-                self.id(),
-            )
-            .await?;
-
-            // If we do not have one, create the code generation resolver. If we do, update the
-            // func binding id to point to the new value.
-            if let Some(mut resolver) = existing_resolvers.pop() {
-                resolver
-                    .set_func_binding_id(ctx, *func_binding.id())
-                    .await?;
-            } else {
-                let mut resolver_context = CodeGenerationResolverContext::new();
-                resolver_context.set_component_id(*self.id());
-                let _resolver = CodeGenerationResolver::new(
-                    ctx,
-                    *prototype.id(),
-                    *func.id(),
-                    *func_binding.id(),
-                    resolver_context,
-                )
-                .await?;
-            }
-        }
-
-        WsEvent::code_generated(ctx, *self.id(), system_id)
-            .publish(ctx)
-            .await?;
 
         Ok(())
     }
@@ -1042,70 +859,12 @@ impl Component {
     }
 
     #[instrument(skip_all)]
-    pub async fn list_code_generated_by_component_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        system_id: SystemId,
-    ) -> ComponentResult<Vec<CodeView>> {
-        let mut results = Vec::new();
-
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                LIST_CODE_GENERATED,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &component_id,
-                    &system_id,
-                ],
-            )
-            .await?;
-        for row in rows {
-            let format: String = row.try_get("format")?;
-            let format = CodeLanguage::deserialize(serde_json::Value::String(format.clone()))
-                .unwrap_or_else(|err| {
-                    error!("Unable to identify format {} ({err})", format);
-                    CodeLanguage::Unknown
-                });
-
-            let json: serde_json::Value = row.try_get("object")?;
-            let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
-            if let Some(value) = func_binding_return_value.value() {
-                let code_generated = veritech_client::CodeGenerated::deserialize(value)?;
-
-                let lang = CodeLanguage::deserialize(serde_json::Value::String(
-                    code_generated.format.clone(),
-                ))
-                .unwrap_or_else(|err| {
-                    error!(
-                        "Unable to identify format {} ({err})",
-                        code_generated.format
-                    );
-                    CodeLanguage::Unknown
-                });
-
-                if lang != format {
-                    return Err(ComponentError::CodeLanguageMismatch(lang, format));
-                }
-
-                results.push(CodeView::new(format, Some(code_generated.code)));
-            } else {
-                // Means the code generation is being executed
-                results.push(CodeView::new(format, None));
-            }
-        }
-        Ok(results)
-    }
-
-    #[instrument(skip_all)]
     pub async fn list_qualifications(
         &self,
         ctx: &DalContext,
         system_id: SystemId,
     ) -> ComponentResult<Vec<QualificationView>> {
-        Self::list_qualifications_by_component_id(ctx, *self.id(), system_id).await
+        Self::list_qualifications_by_component_id(ctx, self.id, system_id).await
     }
 
     #[instrument(skip_all)]
@@ -1193,9 +952,8 @@ impl Component {
     pub async fn veritech_code_generation_component(
         &self,
         ctx: &DalContext,
-        system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
-        Self::view(ctx, self.id, system_id).await
+        Self::view(ctx, self.id, SystemId::NONE).await
     }
 
     pub async fn view(
@@ -1222,7 +980,7 @@ impl Component {
             system_id: Some(system_id),
             ..AttributeReadContext::default()
         };
-        Ok(ComponentView::for_context(ctx, read_context).await?)
+        Ok(ComponentView::for_context(ctx, read_context, false).await?)
     }
 
     pub async fn veritech_qualification_check_component(
@@ -1230,7 +988,7 @@ impl Component {
         ctx: &DalContext,
         system_id: SystemId,
     ) -> ComponentResult<veritech_client::QualificationCheckComponent> {
-        let parent_ids = Edge::list_parents_for_component(ctx, *self.id()).await?;
+        let parent_ids = Edge::list_parents_for_component(ctx, self.id).await?;
 
         let mut parents = Vec::new();
         for id in parent_ids {
@@ -1240,7 +998,7 @@ impl Component {
 
         let qualification_view = veritech_client::QualificationCheckComponent {
             data: Self::view(ctx, self.id, system_id).await?.into(),
-            codes: Self::list_code_generated_by_component_id(ctx, *self.id(), system_id)
+            codes: Self::list_code_generated(ctx, self.id)
                 .await?
                 .into_iter()
                 .flat_map(|view| {
@@ -1302,7 +1060,7 @@ impl Component {
             .ok_or(ComponentError::NoSchema(self.id))?;
 
         let attribute_context = AttributeContext::builder()
-            .set_component_id(*self.id())
+            .set_component_id(self.id)
             .set_schema_variant_id(*schema_variant.id())
             .set_schema_id(*schema.id())
             .set_prop_id(attribute_value.context.prop_id())
@@ -1389,7 +1147,7 @@ impl Component {
                 prop_id: Some(*prop.id()),
                 schema_id: Some(*schema.id()),
                 schema_variant_id: Some(*schema_variant.id()),
-                component_id: Some(*self.id()),
+                component_id: Some(self.id),
                 ..AttributeReadContext::default()
             };
 
@@ -1428,7 +1186,7 @@ impl Component {
         let value_context = AttributeReadContext {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
-            component_id: Some(*self.id()),
+            component_id: Some(self.id),
             system_id: Some(SystemId::NONE),
 
             internal_provider_id: Some(*implicit_provider.id()),
@@ -1492,33 +1250,41 @@ impl Component {
 
     pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
         let context = AttributeReadContext {
-            component_id: Some(*self.id()),
+            component_id: Some(self.id),
             system_id: Some(SystemId::NONE),
             ..AttributeReadContext::any()
         };
         Self::name_from_context(ctx, context).await
     }
 
-    /// Grabs the [`AttributeValue`](crate::AttributeValue) corresponding to the "/root/resource"
-    /// [`Prop`](crate::Prop) for the given [`Component`](Self).
+    /// Grabs the [`AttributeValue`](crate::AttributeValue) corresponding to the "/root/<child>"
+    /// [`Prop`](crate::Prop) for the given [`Component`](Self) (e.g. "/root/resource" and
+    /// "/root/code").
     #[instrument(skip_all)]
-    pub async fn resource_attribute_value_for_component(
+    pub async fn root_child_attribute_value_for_component(
         ctx: &DalContext,
+        root_child_prop_name: impl AsRef<str>,
         component_id: ComponentId,
     ) -> ComponentResult<AttributeValue> {
+        let root_child_prop_name = root_child_prop_name.as_ref();
         let row = ctx
             .pg_txn()
             .query_one(
-                RESOURCE_ATTRIBUTE_VALUE_FOR_COMPONENT,
-                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+                ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &root_child_prop_name,
+                    &component_id,
+                ],
             )
             .await?;
         Ok(object_from_row(row)?)
     }
 
-    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<serde_json::Value> {
+    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<Value> {
         let attribute_value =
-            Component::resource_attribute_value_for_component(ctx, self.id).await?;
+            Component::root_child_attribute_value_for_component(ctx, "resource", self.id).await?;
         let func_binding_return_value =
             FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
                 .await?
@@ -1541,8 +1307,7 @@ impl Component {
     /// [`AttributeValues`](crate::AttributeValue) are updated.
     pub async fn set_resource(&self, ctx: &DalContext, data: Value) -> ComponentResult<()> {
         let resource_attribute_value =
-            Component::resource_attribute_value_for_component(ctx, self.id).await?;
-
+            Component::root_child_attribute_value_for_component(ctx, "resource", self.id).await?;
         let func_binding_return_value = FuncBindingReturnValue::get_by_id(
             ctx,
             &resource_attribute_value.func_binding_return_value_id(),

@@ -486,6 +486,7 @@ async fn only_string_props(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
+        false,
     )
     .await
     .expect("cannot get component view");
@@ -598,6 +599,7 @@ async fn one_object_prop(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
+        false,
     )
     .await
     .expect("cannot get component view");
@@ -757,6 +759,7 @@ async fn nested_object_prop(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
+        false,
     )
     .await
     .expect("cannot get component view");
@@ -861,6 +864,7 @@ async fn simple_array_of_strings(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
+        false,
     )
     .await
     .expect("cannot get component view");
@@ -1110,6 +1114,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
+        false,
     )
     .await
     .expect("cannot get component view");
@@ -1221,6 +1226,7 @@ async fn simple_map(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
+        false,
     )
     .await
     .expect("cannot get component view");
@@ -1401,6 +1407,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
             prop_id: None,
             ..AttributeReadContext::default()
         },
+        false,
     )
     .await
     .expect("cannot get component view");

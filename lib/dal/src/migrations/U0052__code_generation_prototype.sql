@@ -12,27 +12,36 @@ CREATE TABLE code_generation_prototypes
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     func_id                     bigint                   NOT NULL,
     args                        jsonb                    NOT NULL,
-    format                      text                     NOT NULL,
-    component_id                bigint                   NOT NULL,
-    schema_id                   bigint                   NOT NULL,
-    schema_variant_id           bigint                   NOT NULL,
-    system_id                   bigint                   NOT NULL
+    output_format               text                     NOT NULL,
+    prop_id                     bigint                   NOT NULL,
+    schema_variant_id           bigint                   NOT NULL
 );
-SELECT standard_model_table_constraints_v1('code_generation_prototypes');
 
+CREATE UNIQUE INDEX unique_code_generation_prototypes_for_schema_variants
+    ON code_generation_prototypes (func_id,
+                                   schema_variant_id,
+                                   visibility_change_set_pk,
+                                   (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
+
+CREATE UNIQUE INDEX unique_props_for_code_generation_prototypes
+    ON code_generation_prototypes (prop_id,
+                                   visibility_change_set_pk,
+                                   (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
+
+SELECT standard_model_table_constraints_v1('code_generation_prototypes');
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('code_generation_prototypes', 'model', 'code_generation_prototype', 'code generation Prototype');
+VALUES ('code_generation_prototypes', 'model', 'code_generation_prototype', 'Code Generation Prototype');
 
 CREATE OR REPLACE FUNCTION code_generation_prototype_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_func_id bigint,
     this_args jsonb,
-    this_format text,
-    this_component_id bigint,
-    this_schema_id bigint,
+    this_output_format text,
+    this_prop_id bigint,
     this_schema_variant_id bigint,
-    this_system_id bigint,
     OUT object json) AS
 $$
 DECLARE
@@ -51,11 +60,9 @@ BEGIN
                                             visibility_deleted_at,
                                             func_id,
                                             args,
-                                            format,
-                                            component_id,
-                                            schema_id,
-                                            schema_variant_id,
-                                            system_id)
+                                            output_format,
+                                            prop_id,
+                                            schema_variant_id)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
@@ -64,11 +71,9 @@ BEGIN
             this_visibility_record.visibility_deleted_at,
             this_func_id,
             this_args,
-            this_format,
-            this_component_id,
-            this_schema_id,
-            this_schema_variant_id,
-            this_system_id)
+            this_output_format,
+            this_prop_id,
+            this_schema_variant_id)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

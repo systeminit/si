@@ -157,7 +157,7 @@ impl NodeTemplate {
         Ok(NodeTemplate {
             kind: diagram_kind,
             title: schema.name().to_owned(),
-            name: generate_name(None),
+            name: generate_name(),
             schema_variant_id,
         })
     }

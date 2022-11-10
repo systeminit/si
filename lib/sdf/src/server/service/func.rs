@@ -377,19 +377,26 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             })
         }
         FuncBackendKind::JsCodeGeneration => {
-            let protos = CodeGenerationPrototype::list_for_func(ctx, *func.id()).await?;
+            let func_id = *func.id();
+            let prototypes = CodeGenerationPrototype::list(ctx)
+                .await?
+                .into_iter()
+                .filter(|g| g.func_id() == func_id)
+                .collect::<Vec<CodeGenerationPrototype>>();
 
-            let format = match protos.get(0) {
-                Some(proto) => *proto.format(),
+            let format = match prototypes.get(0) {
+                Some(prototype) => *prototype.output_format(),
                 None => CodeLanguage::Unknown,
             };
 
-            let (schema_variant_ids, component_ids) =
-                prototype_context_into_schema_variants_and_components(&protos);
+            let mut schema_variant_ids = vec![];
+            for prototype in prototypes {
+                schema_variant_ids.push(prototype.schema_variant_id());
+            }
 
             Some(FuncAssociations::CodeGeneration {
                 schema_variant_ids,
-                component_ids,
+                component_ids: vec![],
                 format,
             })
         }

@@ -18,7 +18,6 @@ pub mod builtins;
 pub mod capability;
 pub mod change_set;
 pub mod code_generation_prototype;
-pub mod code_generation_resolver;
 pub mod code_view;
 pub mod component;
 pub mod confirmation_prototype;
@@ -105,9 +104,6 @@ pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO
 pub use code_generation_prototype::{
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationPrototypeId,
 };
-pub use code_generation_resolver::{
-    CodeGenerationResolver, CodeGenerationResolverError, CodeGenerationResolverId,
-};
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{Component, ComponentError, ComponentId, ComponentView, ResourceView};
 pub use confirmation_prototype::{
@@ -173,6 +169,7 @@ pub use qualification_resolver::{
 };
 pub use read_tenancy::{ReadTenancy, ReadTenancyError};
 pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
+pub use schema::variant::root_prop::RootProp;
 pub use schema::{
     Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
 };
@@ -342,11 +339,7 @@ pub async fn migrate_builtins(
     Ok(())
 }
 
-pub fn generate_name(name: Option<String>) -> String {
-    if let Some(name) = name {
-        return name;
-    }
-
+pub fn generate_name() -> String {
     let mut rng = rand::thread_rng();
     let unique_id: String = (0..4)
         .map(|_| {
