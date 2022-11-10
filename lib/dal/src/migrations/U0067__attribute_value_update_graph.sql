@@ -101,8 +101,9 @@ BEGIN
                 SELECT id
                 INTO tmp_record_id
                 FROM attribute_values_v1(this_tenancy, this_visibility) AS av
-                WHERE exact_attribute_context_v1(tmp_attribute_context, av)
-                      AND attribute_context_internal_provider_id = internal_provider_id;
+                WHERE
+                    exact_attribute_context_v1(tmp_attribute_context, av)
+                    AND attribute_context_internal_provider_id = internal_provider_id;
                 IF NOT FOUND THEN
                     RAISE 'attribute_value_affected_graph_v1: Unable to find AttributeValue for InternalProvider(%) at AttributeContext(%)',
                         internal_provider_id,
@@ -113,8 +114,9 @@ BEGIN
                 RAISE DEBUG 'attribute_value_affected_graph_v1: Found InternalProvider value(s): %', tmp_record_id;
                 RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) depends on AttributeValue(%)', tmp_record_id, attribute_value.id;
 
-                RETURN QUERY SELECT tmp_record_id AS attribute_value_id,
-                             attribute_value.id AS dependency_attribute_value_id;
+                RETURN QUERY SELECT
+                    tmp_record_id AS attribute_value_id,
+                    attribute_value.id AS dependency_attribute_value_id;
 
                 next_attribute_value_ids := array_append(next_attribute_value_ids, tmp_record_id);
             ELSIF attribute_value.attribute_context_internal_provider_id != -1 THEN
@@ -155,13 +157,15 @@ BEGIN
 
                 IF FOUND THEN
                     RAISE DEBUG 'attribute_value_affected_graph_v1: Found a parent InternalProvider(%) for InternalProvider(%)', tmp_internal_provider.id, attribute_value.attribute_context_internal_provider_id;
-                    tmp_attribute_context := jsonb_build_object('attribute_context_prop_id', -1,
-                                                                'attribute_context_internal_provider_id', tmp_internal_provider.id,
-                                                                'attribute_context_external_provider_id', -1,
-                                                                'attribute_context_schema_id', attribute_value.attribute_context_schema_id,
-                                                                'attribute_context_schema_variant_id', attribute_value.attribute_context_schema_variant_id,
-                                                                'attribute_context_component_id', attribute_value.attribute_context_component_id,
-                                                                'attribute_context_system_id', attribute_value.attribute_context_system_id);
+                    tmp_attribute_context := jsonb_build_object(
+                        'attribute_context_prop_id',              -1,
+                        'attribute_context_internal_provider_id', tmp_internal_provider.id,
+                        'attribute_context_external_provider_id', -1,
+                        'attribute_context_schema_id',            attribute_value.attribute_context_schema_id,
+                        'attribute_context_schema_variant_id',    attribute_value.attribute_context_schema_variant_id,
+                        'attribute_context_component_id',         attribute_value.attribute_context_component_id,
+                        'attribute_context_system_id',            attribute_value.attribute_context_system_id
+                    );
                     -- TODO(jhelwig): This can, strictly speaking, find more AttributeValues that it considers
                     --                depending on this specific AttributeValue than there really are. The
                     --                problem is that we're not checking to see if there is a more appropriate
@@ -184,9 +188,11 @@ BEGIN
                         RAISE DEBUG 'attribute_value_affected_graph_v1: Found AttributeValues for parent InternalProvider';
                         RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) depend on AttributeValue(%)', tmp_record_ids, attribute_value.id;
 
-                        RETURN QUERY SELECT target_id AS attribute_value_id,
-                                            attribute_value.id AS dependency_attribute_value_id
-                                     FROM unnest(tmp_record_ids) AS target_id;
+                        RETURN QUERY
+                            SELECT
+                                target_id AS attribute_value_id,
+                                attribute_value.id AS dependency_attribute_value_id
+                            FROM unnest(tmp_record_ids) AS target_id;
                         next_attribute_value_ids := array_cat(next_attribute_value_ids, tmp_record_ids);
                     END IF;
                 END IF;
@@ -197,13 +203,15 @@ BEGIN
                 -- The AttributePrototypes could be associated with any of a Prop, an InternalProvider, or an,
                 -- ExternalProvider, but they will always need to be within the same Component to be able to
                 -- pull data from _this_ InternalProvider. (Which is why they're called _Internal_ Providers.)
-                tmp_attribute_context := jsonb_build_object('attribute_context_prop_id', NULL,
-                                                            'attribute_context_internal_provider_id', NULL,
-                                                            'attribute_context_external_provider_id', NULL,
-                                                            'attribute_context_schema_id', attribute_value.attribute_context_schema_id,
-                                                            'attribute_context_schema_variant_id', attribute_value.attribute_context_schema_variant_id,
-                                                            'attribute_context_component_id', attribute_value.attribute_context_component_id,
-                                                            'attribute_context_system_id', attribute_value.attribute_context_system_id);
+                tmp_attribute_context := jsonb_build_object(
+                    'attribute_context_prop_id',              NULL,
+                    'attribute_context_internal_provider_id', NULL,
+                    'attribute_context_external_provider_id', NULL,
+                    'attribute_context_schema_id',            attribute_value.attribute_context_schema_id,
+                    'attribute_context_schema_variant_id',    attribute_value.attribute_context_schema_variant_id,
+                    'attribute_context_component_id',         attribute_value.attribute_context_component_id,
+                    'attribute_context_system_id',            attribute_value.attribute_context_system_id
+                );
                 RAISE DEBUG 'attribute_value_affected_graph_v1: Looking for AttributeValues with AttributePrototypes that use InternalProvider(%) in at least AttributeContext(%)',
                     attribute_value.attribute_context_internal_provider_id,
                     tmp_attribute_context;
@@ -264,25 +272,27 @@ BEGIN
                 --
                 -- Build up an AttributeReadContext appropriate for finding InternalProviders
                 -- that are using this ExternalProvider as one of their arguments.
-                tmp_attribute_context := jsonb_build_object('attribute_context_prop_id',              -1,
-                                                            -- The InternalProvider is likely to be for some other Schema/Variant, and is
-                                                            -- pretty much guaranteed to be for a different Component, so we need to be
-                                                            -- looking at any possible values there. If this value for the ExternalProvider
-                                                            -- is specific to a SystemId, then we need to make sure that we're only
-                                                            -- considering AttributeValues that are also specific to that SystemId, but if
-                                                            -- the AttributeValue for the ExternalProvider isn't specific to a SystemId,
-                                                            -- then it doesn't matter whether or not the InternalProvider-side AttributeValue
-                                                            -- is specific to a SystemId.
-                                                            'attribute_context_internal_provider_id', NULL,
-                                                            'attribute_context_external_provider_id', -1,
-                                                            'attribute_context_schema_id',            NULL,
-                                                            'attribute_context_schema_variant_id',    NULL,
-                                                            'attribute_context_component_id',         NULL,
-                                                            'attribute_context_system_id',            CASE WHEN attribute_value.attribute_context_system_id = -1 THEN
-                                                                                                          NULL
-                                                                                                      ELSE
-                                                                                                          attribute_value.attribute_context_system_id
-                                                                                                      END);
+                tmp_attribute_context := jsonb_build_object(
+                    'attribute_context_prop_id',              -1,
+                    -- The InternalProvider is likely to be for some other Schema/Variant, and is
+                    -- pretty much guaranteed to be for a different Component, so we need to be
+                    -- looking at any possible values there. If this value for the ExternalProvider
+                    -- is specific to a SystemId, then we need to make sure that we're only
+                    -- considering AttributeValues that are also specific to that SystemId, but if
+                    -- the AttributeValue for the ExternalProvider isn't specific to a SystemId,
+                    -- then it doesn't matter whether or not the InternalProvider-side AttributeValue
+                    -- is specific to a SystemId.
+                    'attribute_context_internal_provider_id', NULL,
+                    'attribute_context_external_provider_id', -1,
+                    'attribute_context_schema_id',            NULL,
+                    'attribute_context_schema_variant_id',    NULL,
+                    'attribute_context_component_id',         NULL,
+                    'attribute_context_system_id',            CASE WHEN attribute_value.attribute_context_system_id = -1 THEN
+                                                                    NULL
+                                                                ELSE
+                                                                    attribute_value.attribute_context_system_id
+                                                                END
+                );
 
                 -- TODO(jhelwig): This can, strictly speaking, find more AttributeValues that it considers
                 --                depending on this specific AttributeValue for the ExternalProvider than
@@ -322,9 +332,11 @@ BEGIN
                     RAISE DEBUG 'attribute_value_affected_graph_v1: Found InternalProviders that use this ExternalProvider';
                     RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) depend on AttributeValue(%)', tmp_record_ids, attribute_value.id;
 
-                    RETURN QUERY SELECT target_id AS attribute_value_id,
-                                        attribute_value.id AS dependency_attribute_value_id
-                                 FROM unnest(tmp_record_ids) AS target_id;
+                    RETURN QUERY
+                        SELECT
+                            target_id AS attribute_value_id,
+                            attribute_value.id AS dependency_attribute_value_id
+                        FROM unnest(tmp_record_ids) AS target_id;
                     next_attribute_value_ids := array_cat(next_attribute_value_ids, tmp_record_ids);
                 END IF;
             ELSE
@@ -346,15 +358,16 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION closest_internal_provider_to_prop_v1(this_tenancy jsonb,
-                                                                this_visibility jsonb,
-                                                                this_prop_id bigint,
-                                                                OUT internal_provider_id bigint
+CREATE OR REPLACE FUNCTION closest_internal_provider_to_prop_v1(
+    this_tenancy jsonb,
+    this_visibility jsonb,
+    this_prop_id bigint,
+    OUT internal_provider_id bigint
 )
 AS
 $$
 DECLARE
-  current_prop_id bigint;
+    current_prop_id bigint;
 BEGIN
     RAISE DEBUG 'closest_internal_provider_to_prop_v1: Looking for InternalProvider for Prop(%)', this_prop_id;
 
