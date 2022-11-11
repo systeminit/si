@@ -8,9 +8,9 @@ use thiserror::Error;
 use crate::{
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many,
-    ActionPrototype, ActionPrototypeId, ComponentId, ConfirmationPrototypeId, HistoryEventError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WriteTenancy,
+    ActionPrototype, ActionPrototypeId, ComponentId, ConfirmationPrototype,
+    ConfirmationPrototypeId, HistoryEventError, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -21,6 +21,8 @@ pub enum ConfirmationResolverError {
     HistoryEvent(#[from] HistoryEventError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error("confirmation prototype {0} not found")]
+    ConfirmationPrototypeNotFound(ConfirmationPrototypeId),
 }
 
 pub type ConfirmationResolverResult<T> = Result<T, ConfirmationResolverError>;
@@ -183,6 +185,17 @@ impl ConfirmationResolver {
             .await?;
         let object = standard_model::option_object_from_row(row)?;
         Ok(object)
+    }
+
+    pub async fn confirmation_prototype(
+        &self,
+        ctx: &DalContext,
+    ) -> ConfirmationResolverResult<ConfirmationPrototype> {
+        ConfirmationPrototype::get_by_id(ctx, &self.confirmation_prototype_id)
+            .await?
+            .ok_or(ConfirmationResolverError::ConfirmationPrototypeNotFound(
+                self.confirmation_prototype_id,
+            ))
     }
 
     standard_model_accessor!(

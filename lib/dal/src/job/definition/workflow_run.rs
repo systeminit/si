@@ -109,7 +109,8 @@ impl JobConsumer for WorkflowRun {
             func_binding_return_values,
             created_resources,
             updated_resources,
-        ) = WorkflowRunner::run(ctx, self.run_id, self.prototype_id, self.component_id).await?;
+        ) = WorkflowRunner::run(ctx, self.run_id, self.prototype_id, self.component_id, true)
+            .await?;
 
         // NOTE(nick,wendy): this looks similar to code insider WorkflowRunner::run(). Do we need to run
         // it twice?

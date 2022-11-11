@@ -112,6 +112,9 @@ pub struct ConfirmationPrototype {
     pk: ConfirmationPrototypePk,
     id: ConfirmationPrototypeId,
     name: String,
+    success_description: Option<String>,
+    failure_description: Option<String>,
+    provider: Option<String>,
     func_id: FuncId,
     component_id: ComponentId,
     schema_id: SchemaId,
@@ -301,6 +304,17 @@ impl ConfirmationPrototype {
     }
 
     standard_model_accessor!(name, String, ConfirmationPrototypeResult);
+    standard_model_accessor!(
+        success_description,
+        Option<String>,
+        ConfirmationPrototypeResult
+    );
+    standard_model_accessor!(
+        failure_description,
+        Option<String>,
+        ConfirmationPrototypeResult
+    );
+    standard_model_accessor!(provider, Option<String>, ConfirmationPrototypeResult);
     standard_model_accessor!(func_id, Pk(FuncId), ConfirmationPrototypeResult);
     standard_model_accessor!(schema_id, Pk(SchemaId), ConfirmationPrototypeResult);
     standard_model_accessor!(

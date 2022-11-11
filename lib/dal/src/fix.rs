@@ -12,9 +12,9 @@ use crate::fix::batch::FixBatchId;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    ComponentError, ComponentId, ConfirmationPrototypeId, ConfirmationResolverError,
-    ConfirmationResolverId, ConfirmationResolverTreeError, DalContext, FixResolverError,
-    HistoryEventError, StandardModel, StandardModelError, Timestamp, Visibility,
+    ActionPrototypeError, ComponentError, ComponentId, ConfirmationResolver,
+    ConfirmationResolverError, ConfirmationResolverId, ConfirmationResolverTreeError, DalContext,
+    FixResolverError, HistoryEventError, StandardModel, StandardModelError, Timestamp, Visibility,
     WorkflowPrototypeId, WorkflowRunnerError, WorkflowRunnerStatus, WriteTenancy, WsEvent,
     WsPayload,
 };
@@ -73,6 +73,8 @@ impl FixCompletionStatus {
 #[derive(Error, Debug)]
 pub enum FixError {
     #[error(transparent)]
+    ActionPrototype(#[from] ActionPrototypeError),
+    #[error(transparent)]
     Component(#[from] ComponentError),
     #[error(transparent)]
     ConfirmationResolver(#[from] ConfirmationResolverError),
@@ -101,8 +103,8 @@ pub enum FixError {
     BatchAlreadyFinished(FixId, FixBatchId),
     #[error("cannot set batch for {0}: fix batch ({1}) already started")]
     BatchAlreadyStarted(FixId, FixBatchId),
-    #[error("confirmation prototype {0} not found")]
-    ConfirmationPrototypeNotFound(ConfirmationPrototypeId),
+    #[error("confirmation resolver {0} not found")]
+    ConfirmationResolverNotFound(ConfirmationResolverId),
     #[error("completion status is empty")]
     EmptyCompletionStatus,
     #[error("workflow runner status {0} cannot be converted to fix completion status")]
@@ -200,6 +202,14 @@ impl Fix {
         self.component_id
     }
 
+    pub async fn confirmation_resolver(&self, ctx: &DalContext) -> FixResult<ConfirmationResolver> {
+        ConfirmationResolver::get_by_id(ctx, &self.confirmation_resolver_id)
+            .await?
+            .ok_or(FixError::ConfirmationResolverNotFound(
+                self.confirmation_resolver_id,
+            ))
+    }
+
     standard_model_accessor!(logs, Option<String>, FixResult);
     standard_model_accessor!(action, Option<String>, FixResult);
     standard_model_accessor!(started_at, Option<String>, FixResult);
@@ -210,6 +220,11 @@ impl Fix {
         FixResult
     );
     standard_model_accessor!(completion_message, Option<String>, FixResult);
+    standard_model_accessor!(
+        confirmation_resolver_id,
+        Pk(ConfirmationResolverId),
+        FixResult
+    );
 
     standard_model_belongs_to!(
         lookup_fn: fix_batch,
@@ -245,12 +260,19 @@ impl Fix {
         run_id: usize,
         action_workflow_prototype_id: WorkflowPrototypeId,
         action_name: String,
+        should_trigger_confirmations: bool,
     ) -> FixResult<bool> {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
         self.set_action(ctx, Some(action_name)).await?;
-        let runner_result =
-            WorkflowRunner::run(ctx, run_id, action_workflow_prototype_id, self.component_id).await;
+        let runner_result = WorkflowRunner::run(
+            ctx,
+            run_id,
+            action_workflow_prototype_id,
+            self.component_id,
+            should_trigger_confirmations,
+        )
+        .await;
 
         // Evaluate the workflow result.
         match runner_result {

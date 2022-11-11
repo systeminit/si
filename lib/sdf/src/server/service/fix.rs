@@ -8,8 +8,8 @@ use thiserror::Error;
 
 use dal::fix::FixError as DalFixError;
 use dal::{
-    ComponentError, ComponentId, ConfirmationPrototypeError, ConfirmationPrototypeId,
-    ConfirmationResolverError, ConfirmationResolverTreeError, FixBatchId, FixId, FixResolverError,
+    ComponentError, ComponentId, ConfirmationPrototypeError, ConfirmationResolverError,
+    ConfirmationResolverTreeError, FixBatchId, FixId, FixResolverError,
     FuncBindingReturnValueError, StandardModelError, TransactionsError,
 };
 
@@ -38,8 +38,6 @@ pub enum FixError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
     DalFix(#[from] DalFixError),
-    #[error("confirmation prototype {0} not found")]
-    ConfirmationPrototypeNotFound(ConfirmationPrototypeId),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
     #[error("missing action for fix: {0}")]

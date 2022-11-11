@@ -11,12 +11,13 @@ use crate::{
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     func::execution::{FuncExecution, FuncExecutionError},
     func::{binding::FuncBindingId, FuncId},
-    impl_standard_model, pk, standard_model, standard_model_accessor, ChangeSetPk, Component,
-    ComponentError, ComponentId, Func, FuncBinding, FuncBindingError, HistoryEventError,
-    InternalProviderError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
-    Timestamp, Visibility, WorkflowError, WorkflowPrototype, WorkflowPrototypeError,
-    WorkflowPrototypeId, WorkflowResolverError, WorkflowResolverId, WriteTenancy, WsEvent,
-    WsEventError,
+    impl_standard_model,
+    job::definition::Confirmations,
+    pk, standard_model, standard_model_accessor, Component, ComponentError, ComponentId, Func,
+    FuncBinding, FuncBindingError, HistoryEventError, InternalProviderError, SchemaId,
+    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
+    WorkflowError, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
+    WorkflowResolverError, WorkflowResolverId, WriteTenancy, WsEventError,
 };
 
 pub mod workflow_runner_state;
@@ -165,6 +166,7 @@ impl WorkflowRunner {
         context: WorkflowRunnerContext,
         created_resources: &[serde_json::Value],
         updated_resources: &[serde_json::Value],
+        should_trigger_confirmations: bool,
     ) -> WorkflowRunnerResult<Self> {
         let row = ctx.txns().pg().query_one(
             "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
@@ -187,11 +189,10 @@ impl WorkflowRunner {
 
         let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
 
-        if !created_resources.is_empty() || !updated_resources.is_empty() {
-            WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
-                .await
-                .publish(ctx)
-                .await?;
+        if should_trigger_confirmations
+            && (!created_resources.is_empty() || !updated_resources.is_empty())
+        {
+            ctx.enqueue_job(Confirmations::new(ctx)).await;
         }
 
         Ok(object)
@@ -205,6 +206,7 @@ impl WorkflowRunner {
         run_id: usize,
         prototype_id: WorkflowPrototypeId,
         component_id: ComponentId,
+        should_trigger_confirmations: bool,
     ) -> WorkflowRunnerResult<(
         Self,
         WorkflowRunnerState,
@@ -254,6 +256,7 @@ impl WorkflowRunner {
             context,
             &created_resources,
             &updated_resources,
+            should_trigger_confirmations,
         )
         .await?;
 

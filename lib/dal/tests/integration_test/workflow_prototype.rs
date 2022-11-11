@@ -93,12 +93,12 @@ async fn fb(ctx: &DalContext, name: &str, args: serde_json::Value) -> serde_json
 
 #[test]
 async fn resolve(ctx: &DalContext) {
-    let title = "Docker Image Refresh";
+    let title = "Refresh Docker Image";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
         .expect("unable to find workflow by attr")
         .pop()
-        .expect("unable to find docker image resource create workflow prototype");
+        .expect("unable to find docker image resource refresh workflow prototype");
 
     let schema = Schema::find_by_attr(ctx, "name", &"Docker Image")
         .await
@@ -146,12 +146,12 @@ async fn resolve(ctx: &DalContext) {
 
 #[test]
 async fn run(ctx: &DalContext) {
-    let title = "Docker Image Refresh";
+    let title = "Refresh Docker Image";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
         .expect("unable to find workflow by attr")
         .pop()
-        .expect("unable to find docker image resource create workflow prototype");
+        .expect("unable to find docker image resource refresh workflow prototype");
 
     let schema = Schema::find_by_attr(ctx, "name", &"Docker Image")
         .await

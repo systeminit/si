@@ -43,8 +43,7 @@ use crate::{
     QualificationResolverError, ReadTenancyError, Schema, SchemaError, SchemaId, Socket, SocketId,
     StandardModel, StandardModelError, SystemId, Timestamp, TransactionsError, ValidationPrototype,
     ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
-    WorkflowPrototype, WorkflowPrototypeId, WorkflowRunner, WorkflowRunnerError, WorkspaceError,
-    WriteTenancy, WsPayload,
+    WorkflowRunner, WorkflowRunnerError, WorkspaceError, WriteTenancy, WsPayload,
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
 
@@ -95,8 +94,6 @@ pub enum ComponentError {
     MultipleRootProps(Vec<Prop>),
     #[error("root prop not found for schema variant: {0}")]
     RootPropNotFound(SchemaVariantId),
-    #[error("workflow prototype {0} not found")]
-    WorkflowPrototypeNotFound(WorkflowPrototypeId),
     #[error("validation error: {0}")]
     Validation(#[from] ValidationConstructorError),
 
@@ -1404,17 +1401,15 @@ impl Component {
             None => return Ok(()),
         };
 
-        let prototype = WorkflowPrototype::get_by_id(ctx, &action.workflow_prototype_id())
-            .await?
-            .ok_or_else(|| {
-                ComponentError::WorkflowPrototypeNotFound(action.workflow_prototype_id())
-            })?;
+        let prototype = action.workflow_prototype(ctx).await?;
         let run_id: usize = rand::random();
-        let (_runner, _state, _func_binding_return_values, _created_resources, _updated_resources) =
-            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id).await?;
-        WsEvent::resource_refreshed(ctx, self.id, SystemId::NONE)
-            .publish(ctx)
-            .await?;
+        let (_runner, _state, _func_binding_return_values, created_resources, updated_resources) =
+            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id, true).await?;
+        if !created_resources.is_empty() || !updated_resources.is_empty() {
+            WsEvent::resource_refreshed(ctx, self.id, SystemId::NONE)
+                .publish(ctx)
+                .await?;
+        }
         Ok(())
     }
 }
