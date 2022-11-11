@@ -1,0 +1,10 @@
+{
+  "kind": "JsQualification",
+  "arguments": [],
+  "response_type": "Qualification",
+  "display_name": "Can create egress",
+  "description": null,
+  "link": null,
+  "code_file": "qualificationEgressCanCreate.js",
+  "code_entrypoint": "qualification"
+}

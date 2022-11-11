@@ -1,0 +1,6 @@
+{
+  "kind": "JsCommand",
+  "response_type": "Command",
+  "code_file": "awsSecurityGroupRefreshCommand.js",
+  "code_entrypoint": "refresh"
+}

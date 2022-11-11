@@ -42,7 +42,7 @@
         </template>
       </TabPanel>
 
-      <TabPanel class="w-full">
+      <TabPanel class="w-full h-full">
         <SiCollapsible
           v-if="selectedComponent.resource"
           text-size="md"
@@ -55,18 +55,14 @@
               hide-text
             />
           </template>-->
-          <div class="px-xs pb-xs max-h-96 overflow-hidden flex">
-            <div class="flex-grow">
-              <CodeViewer
-                :code="JSON.stringify(selectedComponent.resource.data)"
-                border
-              >
-                <!--<template #title>
-                  <HealthIcon :health="selectedComponent.resource.health" />
-                </template>-->
-              </CodeViewer>
-            </div>
-          </div>
+          <CodeViewer
+            :code="JSON.stringify(selectedComponent.resource.data, null, 2)"
+            class="dark:text-neutral-50 text-neutral-900"
+          >
+	    <template #title>
+                <!--<HealthIcon :health="selectedComponent.resource.health" />-->
+            </template>
+          </CodeViewer>
         </SiCollapsible>
       </TabPanel>
     </template>

@@ -1,0 +1,6 @@
+{
+  "kind": "JsWorkflow",
+  "response_type": "Workflow",
+  "code_file": "awsSecurityGroupRefreshWorkflow.js",
+  "code_entrypoint": "refresh"
+}
