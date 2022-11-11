@@ -1,0 +1,6 @@
+{
+  "kind": "JsWorkflow",
+  "response_type": "Workflow",
+  "code_file": "awsEgressRefreshWorkflow.js",
+  "code_entrypoint": "refresh"
+}

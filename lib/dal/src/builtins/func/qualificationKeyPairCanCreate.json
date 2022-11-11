@@ -1,0 +1,10 @@
+{
+  "kind": "JsQualification",
+  "arguments": [],
+  "response_type": "Qualification",
+  "display_name": "Can create Key Pair",
+  "description": null,
+  "link": null,
+  "code_file": "qualificationKeyPairCanCreate.js",
+  "code_entrypoint": "qualification"
+}

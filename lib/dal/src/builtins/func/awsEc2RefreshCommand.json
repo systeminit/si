@@ -1,0 +1,10 @@
+{
+  "kind": "JsCommand",
+  "arguments": [],
+  "response_type": "Command",
+  "display_name": "si:awsEc2RefreshCommand",
+  "description": null,
+  "link": null,
+  "code_file": "awsEc2RefreshCommand.js",
+  "code_entrypoint": "refresh"
+}

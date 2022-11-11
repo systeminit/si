@@ -853,6 +853,35 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     )
     .await?;
 
+    let func_name = "si:awsEc2RefreshWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let title = "Refresh EC2 Instance's Resource";
+    let context = WorkflowPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    let workflow_prototype =
+        WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
+
+    let name = "refresh";
+    let context = ActionPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Other,
+        context,
+    )
+    .await?;
+
     Ok(())
 }
 
@@ -1169,6 +1198,18 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         .await?; // TODO(wendy) - Can a key pair have multiple regions? Idk!
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
+    // Qualifications
+    let qual_func_name = "si:qualificationKeyPairCanCreate".to_string();
+    let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
+        .await?
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
+
+    let mut qual_prototype_context = QualificationPrototypeContext::new();
+    qual_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+
     // Wrap it up.
     schema_variant.finalize(ctx).await?;
 
@@ -1387,6 +1428,35 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         *workflow_prototype.id(),
         name,
         ActionKind::Create,
+        context,
+    )
+    .await?;
+
+    let func_name = "si:awsKeyPairRefreshWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let title = "Refresh Key Pair Resource";
+    let context = WorkflowPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    let workflow_prototype =
+        WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
+
+    let name = "refresh";
+    let context = ActionPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Other,
         context,
     )
     .await?;
