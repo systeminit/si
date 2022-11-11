@@ -7,12 +7,12 @@ use crate::fix::FixError;
 use crate::{
     job::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
-        definition::DependentValuesUpdate,
+        definition::{Confirmations, DependentValuesUpdate},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionPrototype, ChangeSetPk, Component, ComponentId, ConfirmationResolverId,
-    DalContext, Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver,
-    FixResolverContext, StandardModel, SystemId, Visibility, WsEvent,
+    AccessBuilder, ActionPrototype, Component, ComponentId, ConfirmationResolverId, DalContext,
+    Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, FixResolverContext,
+    StandardModel, SystemId, Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,6 +175,7 @@ impl JobConsumer for FixesJob {
                 run_id,
                 workflow_prototype_id,
                 action.name().to_string(),
+                false,
             )
             .await?;
         let completion_status: FixCompletionStatus = *fix
@@ -232,14 +233,7 @@ impl JobConsumer for FixesJob {
         .publish(ctx)
         .await?;
 
-        if self.fixes.len() > 1 {
-            ctx.enqueue_job(FixesJob::new_iteration(
-                ctx,
-                self.fixes.iter().skip(1).cloned().collect(),
-                self.batch_id,
-            ))
-            .await;
-        } else {
+        if self.fixes.is_empty() {
             // Mark the batch as completed.
             let mut batch = FixBatch::get_by_id(ctx, &self.batch_id)
                 .await?
@@ -249,11 +243,14 @@ impl JobConsumer for FixesJob {
                 .publish(ctx)
                 .await?;
 
-            // Re-trigger confirmations and informs the frontend to re-fetch everything on head
-            WsEvent::change_set_applied(ctx, ChangeSetPk::NONE)
-                .await
-                .publish(ctx)
-                .await?;
+            ctx.enqueue_job(Confirmations::new(ctx)).await;
+        } else {
+            ctx.enqueue_job(FixesJob::new_iteration(
+                ctx,
+                self.fixes.iter().skip(1).cloned().collect(),
+                self.batch_id,
+            ))
+            .await;
         }
 
         Ok(())

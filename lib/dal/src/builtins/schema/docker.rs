@@ -298,7 +298,7 @@ async fn docker_image(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRes
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    let title = "Docker Image Refresh";
+    let title = "Refresh Docker Image";
     let context = WorkflowPrototypeContext {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),

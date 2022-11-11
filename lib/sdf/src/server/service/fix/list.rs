@@ -56,6 +56,9 @@ pub async fn list(
     for batch in FixBatch::list_finished(&ctx).await? {
         let mut fix_views = Vec::new();
         for fix in batch.fixes(&ctx).await? {
+            let resolver = fix.confirmation_resolver(&ctx).await?;
+            let prototype = resolver.confirmation_prototype(&ctx).await?;
+
             let component = Component::get_by_id(&ctx, &fix.component_id())
                 .await?
                 .ok_or_else(|| DalComponentError::NotFound(fix.component_id()))?;
@@ -71,7 +74,7 @@ pub async fn list(
                     .ok_or_else(|| FixError::MissingAction(*fix.id()))?,
                 component_name: component.name(&ctx).await?,
                 component_id: *component.id(),
-                provider: None,
+                provider: prototype.provider().map(ToOwned::to_owned),
                 output: fix.logs().map(|l| l.to_string()),
                 started_at: fix
                     .started_at()

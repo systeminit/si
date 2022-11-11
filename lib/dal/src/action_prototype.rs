@@ -11,7 +11,7 @@ use telemetry::prelude::*;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, DalContext,
     HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
-    Timestamp, Visibility, WorkflowPrototypeId, WriteTenancy,
+    Timestamp, Visibility, WorkflowPrototype, WorkflowPrototypeId, WriteTenancy,
 };
 
 const FIND_BY_NAME: &str = include_str!("./queries/action_prototype_find_by_name.sql");
@@ -38,6 +38,8 @@ pub enum ActionPrototypeError {
     SchemaVariantNotFound,
     #[error("not found with name {0}")]
     NotFoundByName(String),
+    #[error("workflow prototype {0} not found")]
+    WorkflowPrototypeNotFound(WorkflowPrototypeId),
 }
 
 pub type ActionPrototypeResult<T> = Result<T, ActionPrototypeError>;
@@ -264,6 +266,17 @@ impl ActionPrototype {
             .await?;
         let object = standard_model::option_object_from_row(rows)?;
         Ok(object)
+    }
+
+    pub async fn workflow_prototype(
+        &self,
+        ctx: &DalContext,
+    ) -> ActionPrototypeResult<WorkflowPrototype> {
+        WorkflowPrototype::get_by_id(ctx, &self.workflow_prototype_id)
+            .await?
+            .ok_or(ActionPrototypeError::WorkflowPrototypeNotFound(
+                self.workflow_prototype_id,
+            ))
     }
 
     standard_model_accessor!(

@@ -41,6 +41,7 @@ async fn new(ctx: &DalContext) {
         workflow_runner_context,
         &[],
         &[],
+        true,
     )
     .await
     .expect("cannot create new workflow runner");
@@ -80,6 +81,7 @@ async fn find_for_prototype(ctx: &DalContext) {
         runner_context,
         &[],
         &[],
+        true,
     )
     .await
     .expect("cannot create new workflow runner");
@@ -131,7 +133,7 @@ async fn fail(ctx: &DalContext) {
     .await
     .expect("cannot create new prototype");
 
-    let (_, state, _, _, _) = WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id())
+    let (_, state, _, _, _) = WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id(), true)
         .await
         .expect("unable to run workflow");
     assert_eq!(
@@ -143,7 +145,7 @@ async fn fail(ctx: &DalContext) {
 
 #[test]
 async fn run(ctx: &DalContext) {
-    let title = "Docker Image Refresh";
+    let title = "Refresh Docker Image";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
         .expect("unable to find workflow by attr")
@@ -167,7 +169,7 @@ async fn run(ctx: &DalContext) {
         .is_null());
 
     let (_runner, state, _func_bindings, _, _) =
-        WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id())
+        WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id(), true)
             .await
             .expect("unable to run workflow runner");
     assert_eq!(state.status(), WorkflowRunnerStatus::Success);

@@ -24,6 +24,7 @@ async fn confirmation_to_action(ctx: &DalContext) {
             run_id,
             action_workflow_prototype_id,
             payload.component_id,
+            true,
         )
         .await
         .expect("could not perform workflow runner run");
@@ -80,7 +81,7 @@ async fn confirmation_to_fix(ctx: &DalContext) {
     assert!(batch.completion_status().is_none());
 
     let run_id = rand::random();
-    fix.run(ctx, run_id, action_workflow_prototype_id, action_name)
+    fix.run(ctx, run_id, action_workflow_prototype_id, action_name, true)
         .await
         .expect("could not run fix");
     assert!(fix.started_at().is_some());

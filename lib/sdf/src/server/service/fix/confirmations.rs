@@ -1,9 +1,9 @@
-use super::{FixError, FixResult};
+use super::FixResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
-    ComponentId, ConfirmationPrototype, ConfirmationResolver, ConfirmationResolverId,
-    FuncBindingReturnValue, StandardModel, Visibility,
+    ComponentId, ConfirmationResolver, ConfirmationResolverId, FuncBindingReturnValue,
+    StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -46,12 +46,7 @@ pub async fn confirmations(
     let mut views = Vec::with_capacity(resolvers.len());
 
     for resolver in resolvers {
-        let prototype =
-            ConfirmationPrototype::get_by_id(&ctx, &resolver.confirmation_prototype_id())
-                .await?
-                .ok_or_else(|| {
-                    FixError::ConfirmationPrototypeNotFound(resolver.confirmation_prototype_id())
-                })?;
+        let prototype = resolver.confirmation_prototype(&ctx).await?;
 
         let mut output = Vec::new();
         if let Some(message) = resolver.message() {
@@ -67,17 +62,26 @@ pub async fn confirmations(
             }
         }
 
+        let status = match resolver.success() {
+            Some(true) => ConfirmationStatusView::Success,
+            Some(false) => ConfirmationStatusView::Failure,
+            None => ConfirmationStatusView::Running,
+        };
         views.push(ConfirmationView {
             id: *resolver.id(),
             title: prototype.name().to_owned(),
-            description: None,
+            description: match status {
+                ConfirmationStatusView::Success => {
+                    prototype.success_description().map(ToOwned::to_owned)
+                }
+                ConfirmationStatusView::Failure => {
+                    prototype.failure_description().map(ToOwned::to_owned)
+                }
+                ConfirmationStatusView::Running => None,
+            },
             component_id: resolver.context().component_id(),
             output: Some(output).filter(|o| !o.is_empty()),
-            status: match resolver.success() {
-                Some(true) => ConfirmationStatusView::Success,
-                Some(false) => ConfirmationStatusView::Failure,
-                None => ConfirmationStatusView::Running,
-            },
+            status,
         });
     }
 

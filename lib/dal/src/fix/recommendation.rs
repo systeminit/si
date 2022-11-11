@@ -2,11 +2,10 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::action_prototype::ActionKind;
-use crate::fix::{FixError, FixResult};
+use crate::fix::FixResult;
 use crate::{
-    AttributeReadContext, Component, ComponentId, ConfirmationPrototype, ConfirmationResolver,
-    ConfirmationResolverId, ConfirmationResolverTree, FixResolver, FixResolverContext,
-    StandardModel, SystemId,
+    AttributeReadContext, Component, ComponentId, ConfirmationResolver, ConfirmationResolverId,
+    ConfirmationResolverTree, FixResolver, FixResolverContext, StandardModel, SystemId,
 };
 use crate::{ComponentError, DalContext};
 
@@ -29,6 +28,8 @@ pub struct Recommendation {
     recommendation: String,
     recommendation_kind: ActionKind,
     status: RecommendationStatus,
+    provider: Option<String>,
+    output: Option<String>,
 }
 
 impl Recommendation {
@@ -71,25 +72,15 @@ impl Recommendation {
             };
             let fix = FixResolver::find_for_confirmation(ctx, *resolver.id(), context).await?;
 
-            let recommendations = resolver
-                .recommended_actions(ctx)
-                .await?
-                .into_iter()
-                .map(|action| (action.name().to_owned(), action.kind().to_owned()));
+            let recommendations = resolver.recommended_actions(ctx).await?;
 
-            for (recommendation, recommendation_kind) in recommendations {
-                let prototype =
-                    ConfirmationPrototype::get_by_id(ctx, &resolver.confirmation_prototype_id())
-                        .await?
-                        .ok_or_else(|| {
-                            FixError::ConfirmationPrototypeNotFound(
-                                resolver.confirmation_prototype_id(),
-                            )
-                        })?;
+            for action in recommendations {
+                let workflow_prototype = action.workflow_prototype(ctx).await?;
+                let prototype = resolver.confirmation_prototype(ctx).await?;
 
                 views.push(Recommendation {
                     id: *resolver.id(),
-                    name: prototype.name().to_owned(),
+                    name: workflow_prototype.title().to_owned(),
                     component_name: Component::name_from_context(
                         ctx,
                         AttributeReadContext {
@@ -100,13 +91,15 @@ impl Recommendation {
                     )
                     .await?,
                     component_id,
-                    recommendation,
-                    recommendation_kind,
+                    recommendation: action.name().to_owned(),
+                    recommendation_kind: action.kind().to_owned(),
                     status: match fix.as_ref().and_then(FixResolver::success) {
                         Some(true) => RecommendationStatus::Success,
                         Some(false) => RecommendationStatus::Failure,
                         None => RecommendationStatus::Unstarted,
                     },
+                    provider: prototype.provider().map(ToOwned::to_owned),
+                    output: None,
                 })
             }
         }

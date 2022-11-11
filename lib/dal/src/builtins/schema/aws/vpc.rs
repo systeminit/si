@@ -517,7 +517,7 @@ async fn ingress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    let title = "Create AWS Ingress";
+    let title = "Create Ingress";
     let context = WorkflowPrototypeContext {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
@@ -536,7 +536,23 @@ async fn ingress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ConfirmationPrototype::new(ctx, "Create AWS Ingress", *func.id(), context).await?;
+    let mut confirmation_prototype =
+        ConfirmationPrototype::new(ctx, "Ingress Exists?", *func.id(), context).await?;
+    confirmation_prototype
+        .set_provider(ctx, Some("AWS".to_owned()))
+        .await?;
+    confirmation_prototype
+        .set_success_description(ctx, Some("Ingress exists!".to_owned()))
+        .await?;
+    confirmation_prototype
+        .set_failure_description(
+            ctx,
+            Some(
+                "This Ingress rule has not been created yet. Please run the fix above to create it!"
+                    .to_owned(),
+            ),
+        )
+        .await?;
 
     let name = "create";
     let context = ActionPrototypeContext {
@@ -942,7 +958,7 @@ async fn egress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    let title = "Create AWS Egress";
+    let title = "Create Egress";
     let context = WorkflowPrototypeContext {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
@@ -961,7 +977,23 @@ async fn egress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ConfirmationPrototype::new(ctx, "Create AWS Egress", *func.id(), context).await?;
+    let mut confirmation_prototype =
+        ConfirmationPrototype::new(ctx, "Egress Exists?", *func.id(), context).await?;
+    confirmation_prototype
+        .set_provider(ctx, Some("AWS".to_owned()))
+        .await?;
+    confirmation_prototype
+        .set_success_description(ctx, Some("Egress exists!".to_owned()))
+        .await?;
+    confirmation_prototype
+        .set_failure_description(
+            ctx,
+            Some(
+                "This Egress rule has not been created yet. Please run the fix above to create it!"
+                    .to_owned(),
+            ),
+        )
+        .await?;
 
     let name = "create";
     let context = ActionPrototypeContext {
@@ -1354,7 +1386,7 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    let title = "Create AWS SecurityGroup";
+    let title = "Create Security Group";
     let context = WorkflowPrototypeContext {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
@@ -1373,7 +1405,15 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ConfirmationPrototype::new(ctx, "Create AWS SecurityGroup", *func.id(), context).await?;
+    let mut confirmation_prototype =
+        ConfirmationPrototype::new(ctx, "Security Group Exists?", *func.id(), context).await?;
+    confirmation_prototype
+        .set_provider(ctx, Some("AWS".to_owned()))
+        .await?;
+    confirmation_prototype
+        .set_success_description(ctx, Some("Security Group exists!".to_owned()))
+        .await?;
+    confirmation_prototype.set_failure_description(ctx, Some("This Security Group has not been created yet. Please run the fix above to create it!".to_owned())).await?;
 
     let name = "create";
     let context = ActionPrototypeContext {

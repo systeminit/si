@@ -119,8 +119,10 @@ impl ChangeSet {
             &serde_json::json![{ "pk": &self.pk }],
         )
         .await?;
+
+        ctx.enqueue_job(Confirmations::new(ctx)).await;
+
         WsEvent::change_set_applied(ctx, self.pk)
-            .await
             .publish(ctx)
             .await?;
 
@@ -158,9 +160,7 @@ impl WsEvent {
         WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_pk))
     }
 
-    pub async fn change_set_applied(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {
-        ctx.enqueue_job(Confirmations::new(ctx)).await;
-
+    pub fn change_set_applied(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {
         WsEvent::new(ctx, WsPayload::ChangeSetApplied(change_set_pk))
     }
 

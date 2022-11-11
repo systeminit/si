@@ -1,6 +1,10 @@
 {
   "kind": "JsCommand",
+  "arguments": [],
   "response_type": "Command",
+  "display_name": "si:awsKeyPairCreateCommand",
+  "description": null,
+  "link": null,
   "code_file": "awsKeyPairCreateCommand.js",
   "code_entrypoint": "create"
 }

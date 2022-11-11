@@ -260,7 +260,7 @@ async fn ami(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    let title = "AWS AMI Refresh";
+    let title = "Refresh AMI";
     let context = WorkflowPrototypeContext {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
@@ -809,7 +809,7 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    let title = "Create AWS EC2";
+    let title = "Create EC2 Instance";
     let context = WorkflowPrototypeContext {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
@@ -828,7 +828,15 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ConfirmationPrototype::new(ctx, "Create AWS EC2", *func.id(), context).await?;
+    let mut confirmation_prototype =
+        ConfirmationPrototype::new(ctx, "EC2 Instance Exists?", *func.id(), context).await?;
+    confirmation_prototype
+        .set_provider(ctx, Some("AWS".to_owned()))
+        .await?;
+    confirmation_prototype
+        .set_success_description(ctx, Some("EC2 instance exists!".to_owned()))
+        .await?;
+    confirmation_prototype.set_failure_description(ctx, Some("This EC2 instance has not been created yet. Please run the fix above to create it!".to_owned())).await?;
 
     let name = "create";
     let context = ActionPrototypeContext {
@@ -970,7 +978,7 @@ async fn region(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    let title = "AWS Region Refresh";
+    let title = "Refresh Region";
     let context = WorkflowPrototypeContext {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
@@ -1331,7 +1339,7 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    let title = "Create AWS KeyPair";
+    let title = "Create Key Pair";
     let context = WorkflowPrototypeContext {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
@@ -1350,7 +1358,23 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         schema_variant_id: *schema_variant.id(),
         ..Default::default()
     };
-    ConfirmationPrototype::new(ctx, "Create AWS KeyPair", *func.id(), context).await?;
+    let mut confirmation_prototype =
+        ConfirmationPrototype::new(ctx, "Key Pair Exists?", *func.id(), context).await?;
+    confirmation_prototype
+        .set_provider(ctx, Some("AWS".to_owned()))
+        .await?;
+    confirmation_prototype
+        .set_success_description(ctx, Some("Key Pair exists!".to_owned()))
+        .await?;
+    confirmation_prototype
+        .set_failure_description(
+            ctx,
+            Some(
+                "This Key Pair has not been created yet. Please run the fix above to create it!"
+                    .to_owned(),
+            ),
+        )
+        .await?;
 
     let name = "create";
     let context = ActionPrototypeContext {
