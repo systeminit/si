@@ -20,6 +20,7 @@ WHERE in_tenancy_v1(
         props.visibility_change_set_pk,
         props.visibility_deleted_at
     )
+  AND props.hidden = FALSE
   AND props.id IN (WITH RECURSIVE recursive_props AS (SELECT left_object_id AS prop_id
                                                       FROM prop_many_to_many_schema_variants
                                                       WHERE right_object_id = $3

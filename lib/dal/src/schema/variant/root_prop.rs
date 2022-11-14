@@ -55,12 +55,14 @@ impl RootProp {
             .set_parent_prop(ctx, *root_prop.id())
             .await?;
 
-        let resource_specific_prop = Prop::new(ctx, "resource", PropKind::String, None).await?;
+        let mut resource_specific_prop = Prop::new(ctx, "resource", PropKind::String, None).await?;
+        resource_specific_prop.set_hidden(ctx, true).await?;
         resource_specific_prop
             .set_parent_prop(ctx, *root_prop.id())
             .await?;
 
-        let code_specific_prop = Prop::new(ctx, "code", PropKind::Object, None).await?;
+        let mut code_specific_prop = Prop::new(ctx, "code", PropKind::Object, None).await?;
+        code_specific_prop.set_hidden(ctx, true).await?;
         code_specific_prop
             .set_parent_prop(ctx, *root_prop.id())
             .await?;
