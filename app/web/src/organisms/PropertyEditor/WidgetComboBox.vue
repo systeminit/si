@@ -16,10 +16,10 @@
         :title="props.name"
         :doc-link="docLink"
         :disabled="disabled"
+        :validations="validations"
         always-validate
         @change="setField"
       />
-
       <UnsetButton
         v-if="!disabled"
         class="mt-0"
@@ -41,11 +41,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, toRefs, computed, watch } from "vue";
+import { ref, toRefs, computed, watch, toRef } from "vue";
 import SiComboBox from "@/atoms/SiComboBox.vue";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
-import { UpdatedProperty, PropertyPath } from "@/api/sdf/dal/property_editor";
+import {
+  UpdatedProperty,
+  PropertyPath,
+  PropertyEditorValidation,
+} from "@/api/sdf/dal/property_editor";
+import {
+  ValidatorArray,
+  usePropertyEditorValidations,
+} from "@/utils/input_validations";
 import UnsetButton from "./UnsetButton.vue";
 
 const props = defineProps<{
@@ -56,11 +64,14 @@ const props = defineProps<{
   value: unknown;
   propId: number;
   valueId: number;
+  validation?: PropertyEditorValidation;
   docLink?: string;
   disabled?: boolean;
   required?: boolean; // NOTE(victor) this was being passed down as undefined. Keeping it since we'll use it someday.
   description?: string; // NOTE(victor) this was being passed down as undefined. Keeping it since we'll use it someday.
 }>();
+
+const validation = toRef(props, "validation", undefined);
 
 const emit = defineEmits<{
   (e: "updatedProperty", v: UpdatedProperty): void;
@@ -109,4 +120,6 @@ const unsetField = () => {
     valueId: valueId.value,
   });
 };
+
+const validations = usePropertyEditorValidations(validation);
 </script>

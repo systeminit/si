@@ -83,13 +83,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType, ref, toRefs } from "vue";
+import { computed, PropType, toRefs } from "vue";
 import _ from "lodash";
 import { useFormSettings } from "@/composables/formSettings";
-import SiValidation, {
-  ErrorsArray,
-  ValidatorArray,
-} from "@/atoms/SiValidation.vue";
+import SiValidation from "@/atoms/SiValidation.vue";
+import { ValidatorArray, useValidations } from "@/utils/input_validations";
 import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps({
@@ -114,42 +112,11 @@ const props = defineProps({
   loginMode: Boolean,
 });
 
-const { validations } = toRefs(props);
+const { validations, alwaysValidate } = toRefs(props);
 
 const formSettings = useFormSettings();
 
 const emit = defineEmits(["update:modelValue", "error", "blur"]);
-
-const dirty = ref<boolean>(false);
-const setDirty = () => {
-  dirty.value = true;
-  emit("blur", inputValue);
-};
-
-const reallyDirty = computed(() => {
-  if (props.alwaysValidate) {
-    return true;
-  }
-  return dirty.value;
-});
-
-const inError = ref<boolean>(false);
-const setInError = (errors: ErrorsArray) => {
-  let nextInError = false;
-  if (errors.length === 1) {
-    if (_.find(errors, (e) => e.id === "required")) {
-      if (dirty.value) {
-        nextInError = true;
-      }
-    } else {
-      nextInError = true;
-    }
-  } else if (errors.length > 1) {
-    nextInError = true;
-  }
-  inError.value = nextInError;
-  emit("error", inError);
-};
 
 const inputValue = computed<string>({
   get() {
@@ -159,6 +126,12 @@ const inputValue = computed<string>({
     emit("update:modelValue", value);
   },
 });
+
+const { inError, reallyDirty, setInError, setDirty } = useValidations(
+  alwaysValidate,
+  () => emit("blur", inputValue),
+  (inError: boolean) => emit("error", inError),
+);
 
 const textBoxClasses = computed((): Record<string, boolean> => {
   const results: Record<string, boolean> = {

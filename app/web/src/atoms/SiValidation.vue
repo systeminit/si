@@ -12,13 +12,7 @@
 <script setup lang="ts">
 import { ref, watch, toRefs, computed } from "vue";
 import _ from "lodash";
-
-export type ValidatorArray = Array<{
-  id: string;
-  check: (v: string) => boolean;
-  message: string;
-}>;
-export type ErrorsArray = Array<{ id: string; message: string }>;
+import { ValidatorArray, ErrorsArray } from "@/utils/input_validations";
 
 const props = defineProps<{
   required?: boolean;

@@ -11,6 +11,12 @@
           name="selector"
           class="absolute right-1.5 top-1.5 text-neutral-400"
         />
+        <div
+          v-if="inError"
+          class="absolute right-8 top-1.5 flex items-center text-destructive-400"
+        >
+          <Icon name="exclamation-circle" />
+        </div>
       </ComboboxButton>
       <ComboboxOptions
         class="absolute z-20 w-full mt-1 text-sm border dark:border-neutral-600 rounded-sm"
@@ -56,11 +62,20 @@
         </ul>
       </ComboboxOptions>
     </Combobox>
+
+    <SiValidation
+      :value="String(inputValue)"
+      :validations="validations"
+      :required="required"
+      :dirty="reallyDirty"
+      class="mt-2"
+      @errors="setInError($event)"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, toRef } from "vue";
 import {
   Combobox,
   ComboboxInput,
@@ -72,6 +87,8 @@ import clsx from "clsx";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { themeClasses } from "@/ui-lib/theme_tools";
+import SiValidation from "@/atoms/SiValidation.vue";
+import { ValidatorArray, useValidations } from "@/utils/input_validations";
 
 const props = defineProps<{
   modelValue: string | number | undefined;
@@ -80,6 +97,7 @@ const props = defineProps<{
   id: string;
   description?: string;
 
+  validations?: ValidatorArray;
   required?: boolean;
   alwaysValidate?: boolean;
 
@@ -88,9 +106,11 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
-const emit = defineEmits(["update:modelValue", "change"]);
+const emit = defineEmits(["update:modelValue", "change", "error"]);
 
 const query = ref(props.modelValue === "string" ? props.modelValue : "");
+
+const alwaysValidate = toRef(props, "alwaysValidate", false);
 
 const filteredOptions = computed(() =>
   query.value === ""
@@ -107,7 +127,14 @@ const inputValue = computed<string | number | undefined>({
   set(value) {
     emit("update:modelValue", value);
     emit("change", value);
+    setDirty();
     query.value = typeof value === "string" ? value : "";
   },
 });
+
+const { reallyDirty, inError, setInError, setDirty } = useValidations(
+  alwaysValidate,
+  () => {},
+  (inError: boolean) => emit("error", inError),
+);
 </script>
