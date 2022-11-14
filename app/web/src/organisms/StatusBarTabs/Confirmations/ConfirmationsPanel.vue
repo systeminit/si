@@ -26,5 +26,7 @@ import ConfirmationViewerMultiple from "./ConfirmationViewerMultiple.vue";
 import ConfirmationsResourceList from "./ConfirmationsResourceList.vue";
 
 const componentsStore = useComponentsStore();
-const hasSelectedResource = computed(() => !!componentsStore.selectedComponentId);
+const hasSelectedResource = computed(
+  () => !!componentsStore.selectedComponentId,
+);
 </script>

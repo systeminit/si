@@ -64,7 +64,7 @@ export interface ConfirmationStats {
   success: number;
   running: number;
   total: number;
-};
+}
 
 export const useFixesStore = () => {
   const workspacesStore = useWorkspacesStore();
@@ -84,9 +84,10 @@ export const useFixesStore = () => {
           return _.uniq(this.confirmations.map((c) => c.componentId));
         },
         confirmationsByComponentId(): Record<ComponentId, Confirmation[]> {
-          let obj: Record<ComponentId, Confirmation[]> = {};
+          const obj: Record<ComponentId, Confirmation[]> = {};
           for (const confirmation of this.confirmations) {
-            if (!obj[confirmation.componentId]) obj[confirmation.componentId] = [];
+            if (!obj[confirmation.componentId])
+              obj[confirmation.componentId] = [];
             obj[confirmation.componentId].push(confirmation);
           }
           return obj;
@@ -105,16 +106,22 @@ export const useFixesStore = () => {
             if (confirmation.status === "failure") return "failure";
           }
           return "success";
-        }, 
-        statusByComponentId(): Record<ComponentId, "success" | "failure" | "running"> {
-          let map: Record<ComponentId, "success" | "failure" | "running"> = {};
+        },
+        statusByComponentId(): Record<
+          ComponentId,
+          "success" | "failure" | "running"
+        > {
+          const map: Record<ComponentId, "success" | "failure" | "running"> =
+            {};
           for (const confirmation of this.confirmations) {
             switch (confirmation.status) {
               case "success":
-                if (!map[confirmation.componentId]) map[confirmation.componentId] = "success";
+                if (!map[confirmation.componentId])
+                  map[confirmation.componentId] = "success";
                 break;
               case "failure":
-                if (map[confirmation.componentId] !== "running") map[confirmation.componentId] = "failure";
+                if (map[confirmation.componentId] !== "running")
+                  map[confirmation.componentId] = "failure";
                 break;
               case "running":
                 map[confirmation.componentId] = "running";
