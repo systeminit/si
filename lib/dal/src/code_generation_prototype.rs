@@ -128,7 +128,8 @@ impl CodeGenerationPrototype {
         let func = Func::get_by_id(ctx, &func_id)
             .await?
             .ok_or(FuncError::NotFound(func_id))?;
-        let new_prop = Prop::new(ctx, func.name(), PropKind::String, None).await?;
+        let mut new_prop = Prop::new(ctx, func.name(), PropKind::String, None).await?;
+        new_prop.set_hidden(ctx, true).await?;
         new_prop.set_parent_prop(ctx, *code_prop.id()).await?;
         let new_prop_id = *new_prop.id();
 

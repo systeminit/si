@@ -14,7 +14,8 @@ CREATE TABLE props
     kind                        text                     NOT NULL,
     widget_kind                 text                     NOT NULL,
     widget_options              jsonb,
-    doc_link                    text
+    doc_link                    text,
+    hidden                      bool                     NOT NULL DEFAULT FALSE
 );
 SELECT standard_model_table_constraints_v1('props');
 SELECT many_to_many_table_create_v1('prop_many_to_many_schema_variants', 'props',
