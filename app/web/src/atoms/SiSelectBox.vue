@@ -47,12 +47,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, toRef } from "vue";
 import _ from "lodash";
-import SiValidation, {
-  ValidatorArray,
-  ErrorsArray,
-} from "@/atoms/SiValidation.vue";
+import SiValidation from "@/atoms/SiValidation.vue";
+import { ValidatorArray, useValidations } from "@/utils/input_validations";
 import SiSelect from "@/atoms/SiSelect.vue";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import Icon from "@/ui-lib/icons/Icon.vue";
@@ -73,38 +71,9 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
+const alwaysValidate = toRef(props, "alwaysValidate", false);
+
 const emit = defineEmits(["update:modelValue", "error", "change"]);
-
-const dirty = ref<boolean>(false);
-const setDirty = () => {
-  dirty.value = true;
-  emit("change", inputValue);
-};
-
-const reallyDirty = computed(() => {
-  if (props.alwaysValidate) {
-    return true;
-  }
-  return dirty.value;
-});
-
-const inError = ref<boolean>(false);
-const setInError = (errors: ErrorsArray) => {
-  let nextInError = false;
-  if (errors.length === 1) {
-    if (_.find(errors, (e) => e.id === "required")) {
-      if (dirty.value) {
-        nextInError = true;
-      }
-    } else {
-      nextInError = true;
-    }
-  } else if (errors.length > 1) {
-    nextInError = true;
-  }
-  inError.value = nextInError;
-  emit("error", inError);
-};
 
 const inputValue = computed<string | number | null>({
   get() {
@@ -114,6 +83,12 @@ const inputValue = computed<string | number | null>({
     emit("update:modelValue", value);
   },
 });
+
+const { inError, reallyDirty, setDirty, setInError } = useValidations(
+  alwaysValidate,
+  () => emit("change", inputValue),
+  (inError: boolean) => emit("error", inError),
+);
 
 const boxClasses = computed((): Record<string, boolean> => {
   if (inError.value) {

@@ -100,6 +100,7 @@
       :prop-id="props.propValue.propId"
       :value-id="props.propValue.id"
       :doc-link="props.schemaProp.docLink"
+      :validation="validation"
       :disabled="disabled"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"

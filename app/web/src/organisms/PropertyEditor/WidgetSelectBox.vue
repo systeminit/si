@@ -35,7 +35,10 @@ import {
   UpdatedProperty,
   PropertyPath,
 } from "@/api/sdf/dal/property_editor";
-import { ValidatorArray } from "@/atoms/SiValidation.vue";
+import {
+  ValidatorArray,
+  usePropertyEditorValidations,
+} from "@/utils/input_validations";
 import UnsetButton from "./UnsetButton.vue";
 
 const props = defineProps<{
@@ -100,18 +103,5 @@ const unsetField = () => {
   });
 };
 
-const validations = computed(() => {
-  const results: ValidatorArray = [];
-  if (validation?.value) {
-    for (let x = 0; x < validation.value.errors.length; x++) {
-      const error = validation.value.errors[x];
-      results.push({
-        id: `${x}`,
-        message: error.message,
-        check: () => false,
-      });
-    }
-  }
-  return results;
-});
+const validations = usePropertyEditorValidations(validation);
 </script>
