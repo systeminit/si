@@ -227,7 +227,7 @@ impl WorkflowPrototype {
                 component_id: Some(*component.id()),
                 ..AttributeReadContext::default()
             };
-            let component = ComponentView::for_context(ctx, context, false)
+            let component = ComponentView::for_context(ctx, context)
                 .await
                 .map_err(|err| WorkflowPrototypeError::Component(err.to_string()))?;
             Some(component)

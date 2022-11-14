@@ -69,8 +69,7 @@ impl ComponentDiff {
         };
 
         // TODO(nick): perhaps, we can serialize the value into other kinds of structure in the future.
-        let curr_component_view =
-            ComponentView::for_context(ctx, component_view_context, false).await?;
+        let curr_component_view = ComponentView::for_context(ctx, component_view_context).await?;
         let curr_json = serde_json::to_string_pretty(&curr_component_view.properties)?;
 
         // Find the "diffs" given the head dal context only if the component exists on head.
@@ -79,7 +78,7 @@ impl ComponentDiff {
             .is_some()
         {
             let prev_component_view =
-                ComponentView::for_context(&head_ctx, component_view_context, false).await?;
+                ComponentView::for_context(&head_ctx, component_view_context).await?;
             let prev_json = serde_json::to_string_pretty(&prev_component_view.properties)?;
 
             let mut lines = Vec::new();

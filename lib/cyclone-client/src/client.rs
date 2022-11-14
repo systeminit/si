@@ -938,7 +938,6 @@ mod tests {
                     system: None,
                     kind: ComponentKind::Standard,
                 },
-                codes: Vec::new(),
                 parents: Vec::new(),
             },
             code_base64: base64::encode(
@@ -1029,7 +1028,6 @@ mod tests {
                     system: None,
                     kind: ComponentKind::Standard,
                 },
-                codes: Vec::new(),
                 parents: Vec::new(),
             },
             code_base64: base64::encode(

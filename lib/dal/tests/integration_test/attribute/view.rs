@@ -54,7 +54,6 @@ async fn schema_variant_specific(ctx: &DalContext) {
             ..base_context
         },
         Some(*root_attribute_value.id()),
-        false,
     )
     .await
     .expect("could not create attribute view");
@@ -63,6 +62,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
         serde_json::json![
             {
                 "domain": {},
+                "code": {},
                 "si": {}
             }
         ], // expected
@@ -114,7 +114,6 @@ async fn schema_variant_specific(ctx: &DalContext) {
             ..base_context
         },
         Some(*root_attribute_value.id()),
-        false,
     )
     .await
     .expect("could not create attribute view");
@@ -125,6 +124,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
                 "domain": {
                     "name": "toddhoward"
                 },
+                "code": {},
                 "si": {}
             }
         ], // expected
@@ -139,7 +139,6 @@ async fn schema_variant_specific(ctx: &DalContext) {
             ..base_context
         },
         Some(updated_name_attribute_value_id),
-        false,
     )
     .await
     .expect("could not create attribute view");

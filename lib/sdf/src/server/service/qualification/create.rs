@@ -79,7 +79,6 @@ pub async fn create(
 * interface Component {
 *   data: Data;
 *   parents: Component[]; // The parent's parents won't be available
-*   codes: Code[];
 * }
 *
 * interface Qualification {

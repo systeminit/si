@@ -19,14 +19,8 @@ export interface QualificationCheckRequest extends RequestWithCode {
   component: QualificationComponent;
 }
 
-export interface Code {
-  format: string;
-  code: string;
-}
-
 export interface QualificationComponent {
   data: Component;
-  codes: Array<Code>;
 }
 
 export type QualificationCheckResult =

@@ -30,6 +30,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                     "source": "zero-source",
                 },
             },
+            "code": {},
             "si": {
                 "name": "esp",
             },
@@ -38,6 +39,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {},
             "si": {
                 "name": "swings",
@@ -97,6 +99,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Ensure that they look as we expect.
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "object": {
                     "intermediate": "one",
@@ -111,6 +114,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {},
             "si": {
                 "name": "swings",
@@ -195,6 +199,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // component identity update working.
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "object": {
                     "intermediate": "one",
@@ -209,6 +214,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {},
             "si": {
                 "name": "swings",
@@ -231,6 +237,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Ensure that both components continue to look as we expect.
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "object": {
                     "intermediate": "one",
@@ -245,6 +252,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {},
             "si": {
                 "name": "swings",
@@ -265,6 +273,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Observe that inter component identity updating work.
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "object": {
                     "intermediate": "two",
@@ -279,6 +288,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "destination": "two",
             },
@@ -596,10 +606,11 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Source Component",
                 },
+                "code": {},
                 "domain": {},
             }
         ],
-        ComponentView::for_context(ctx, source_attribute_read_context, false)
+        ComponentView::for_context(ctx, source_attribute_read_context)
             .await
             .expect("cannot get source component view")
             .properties,
@@ -624,10 +635,11 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Destination Component",
                 },
+                "code": {},
                 "domain": {},
             }
         ],
-        ComponentView::for_context(ctx, destination_attribute_read_context, false)
+        ComponentView::for_context(ctx, destination_attribute_read_context)
             .await
             .expect("cannot get destination component view")
             .properties,
@@ -704,6 +716,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Source Component",
                 },
+                "code": {},
                 "domain": {
                     "base_object": {
                         "foo_string": "deep update",
@@ -711,7 +724,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, source_attribute_read_context, false)
+        ComponentView::for_context(ctx, source_attribute_read_context)
             .await
             .expect("cannot get source component view")
             .properties,
@@ -723,6 +736,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Destination Component",
                 },
+                "code": {},
                 "domain": {
                     "parent_object": {
                         "base_object": {
@@ -732,7 +746,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, destination_attribute_read_context, false)
+        ComponentView::for_context(ctx, destination_attribute_read_context)
             .await
             .expect("cannot get destination component view")
             .properties,
@@ -788,6 +802,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Source Component",
                 },
+                "code": {},
                 "domain": {
                     "base_object": {
                         "foo_string": "deep update",
@@ -796,7 +811,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, source_attribute_read_context, false)
+        ComponentView::for_context(ctx, source_attribute_read_context)
             .await
             .expect("cannot get source component view")
             .properties,
@@ -808,6 +823,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Destination Component",
                 },
+                "code": {},
                 "domain": {
                     "parent_object": {
                         "base_object": {
@@ -818,7 +834,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, destination_attribute_read_context, false)
+        ComponentView::for_context(ctx, destination_attribute_read_context)
             .await
             .expect("cannot get destination component view")
             .properties,

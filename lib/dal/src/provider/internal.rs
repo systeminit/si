@@ -348,7 +348,6 @@ impl InternalProvider {
         if !consume_attribute_context.is_least_specific_field_kind_prop()? {
             return Err(InternalProviderError::MissingPropForImplicitEmit);
         }
-        let consume_prop_id = consume_attribute_context.prop_id();
 
         // Update or create the emit attribute value using the newly generated func binding return
         // value. For its context, we use the provided context and replace the least specific field
@@ -385,29 +384,10 @@ impl InternalProvider {
             ..AttributeReadContext::from(consume_attribute_context)
         };
 
-        // Default to not including "/root/code". If we are dealing with an attribute value
-        // whose context contains a set schema variant and whose prop is the root prop for that
-        // variant, then we _do_ want to include "/root/code".
-        let include_code = if !consume_attribute_context.is_schema_variant_unset() {
-            let prop = Prop::find_root_for_schema_variant(
-                ctx,
-                consume_attribute_context.schema_variant_id(),
-            )
-            .await?
-            .ok_or_else(|| {
-                InternalProviderError::RootPropNotFound(
-                    consume_attribute_context.schema_variant_id(),
-                )
-            })?;
-            *prop.id() == consume_prop_id
-        } else {
-            false
-        };
         let found_attribute_view = AttributeView::new(
             ctx,
             found_attribute_view_context,
             Some(*found_attribute_value.id()),
-            include_code,
         )
         .await?;
         let (func_binding, func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(

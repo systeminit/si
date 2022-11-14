@@ -26,6 +26,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
             "domain": {
                 "image": "tail"
             },
+            "code": {},
             "si": {
                 "name": "tail"
             }
@@ -36,6 +37,12 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     );
     assert_eq!(
         serde_json::json![{
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
+            },
             "domain": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",
@@ -80,6 +87,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     // Ensure the view did not drift.
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "image": "tail"
             },
@@ -93,6 +101,12 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     );
     assert_eq!(
         serde_json::json![{
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
+            },
             "domain": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",
@@ -116,6 +130,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     // Observe that it worked.
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "image": "ironsides"
             },
@@ -130,6 +145,12 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
 
     assert_eq!(
         serde_json::json![{
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\nspec:\n  template:\n    spec:\n      containers:\n        - name: ironsides\n          image: ironsides\n          ports: []\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
+            },
             "domain": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",

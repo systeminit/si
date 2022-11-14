@@ -1,8 +1,6 @@
 //! This module contains the [`AttributeView`] struct and its methods. This object does not exist
 //! in the database.
 
-use serde::Deserialize;
-use serde::Serialize;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
 use telemetry::prelude::*;
@@ -12,40 +10,6 @@ use crate::{
     AttributeValuePayload, AttributeValueResult, DalContext, Prop, PropError, PropKind,
     StandardModel,
 };
-
-/// The properties of a [`SchemaVariant`](crate::SchemaVariant) or [`Component`](crate::Component)
-/// without the "/root/code" part of the [`Prop`](crate::Prop) tree stemming from the
-/// [`RootProp`](crate::RootProp).
-#[derive(Deserialize, Serialize, Debug)]
-pub struct PropertiesWithoutCode {
-    si: Value,
-    domain: Value,
-    #[serde(skip_serializing_if = "is_empty_or_null")]
-    resource: Option<Value>,
-}
-
-fn is_empty_or_null(maybe_value: &Option<Value>) -> bool {
-    match maybe_value {
-        Some(value) => value.is_null(),
-        None => true,
-    }
-}
-
-impl PropertiesWithoutCode {
-    /// Drop the "/root/code" subtree within the [`RootProp`](crate::RootProp) tree. If the
-    /// [`value`](serde_json::Value) passed cannot be serialized into [`Self`](Self), then we will
-    /// assume that it is not a [`value`](serde_json::Value) representing the
-    /// [`RootProp`](crate::RootProp) tree.
-    pub fn drop_root_code_tree_if_applicable(value: Value) -> serde_json::Result<Value> {
-        // FIXME(nick): this is naive and will break if (for some reason) a domain in
-        // the wild contains "si" and "domain" fields. What does this do then? It drops
-        // the "/root/code" tree, if applicable.
-        match serde_json::from_value::<PropertiesWithoutCode>(value.clone()) {
-            Ok(serialized) => serde_json::to_value(serialized),
-            Err(_) => Ok(value),
-        }
-    }
-}
 
 /// A generated view for an [`AttributeReadContext`](crate::AttributeReadContext) and an optional
 /// root [`AttributeValueId`](crate::AttributeValue). The requirements for the context are laid
@@ -74,7 +38,6 @@ impl AttributeView {
         ctx: &DalContext,
         attribute_read_context: AttributeReadContext,
         root_attribute_value_id: Option<AttributeValueId>,
-        include_code: bool,
     ) -> AttributeValueResult<Self> {
         let mut initial_work = match root_attribute_value_id {
             Some(root_attribute_value_id) => {
@@ -255,26 +218,16 @@ impl AttributeView {
                     }
                 };
 
-            let properties = dbg!(properties
+            let properties = properties
                 .pointer(root_json_pointer)
-                .ok_or(AttributeValueError::NoValueForJsonPointer)?);
+                .ok_or(AttributeValueError::NoValueForJsonPointer)?;
             return Ok(Self {
-                value: match include_code {
-                    true => properties.clone(),
-                    false => PropertiesWithoutCode::drop_root_code_tree_if_applicable(
-                        properties.clone(),
-                    )?,
-                },
+                value: properties.clone(),
             });
         }
 
         Ok(Self {
-            value: match include_code {
-                true => properties.clone(),
-                false => {
-                    PropertiesWithoutCode::drop_root_code_tree_if_applicable(properties.clone())?
-                }
-            },
+            value: properties.clone(),
         })
     }
 

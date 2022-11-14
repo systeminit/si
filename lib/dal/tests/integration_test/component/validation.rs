@@ -174,12 +174,13 @@ async fn check_validations_for_component(ctx: &DalContext) {
             "si": {
                 "name": "hundo_gecs"
             },
+            "code": {},
             "domain": {
                 "the_tree_of_clues": "wrong song title",
                 "thousand_gecs": "wrongLyrics"
             }
         }], // actual
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties // expected
@@ -252,12 +253,13 @@ async fn check_validations_for_component(ctx: &DalContext) {
             "si": {
                 "name": "hundo_gecs"
             },
+            "code": {},
             "domain": {
                 "the_tree_of_clues": "toothless",
                 "thousand_gecs": "stupidHorse"
             }
         }], // actual
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties // expected
@@ -375,7 +377,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .await
     .expect("update attr value");
 
-    let properties = ComponentView::for_context(ctx, base_attribute_read_context, false)
+    let properties = ComponentView::for_context(ctx, base_attribute_read_context)
         .await
         .expect("cannot get component view")
         .properties;
@@ -385,6 +387,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
             "si": {
                 "name": "Danoth",
             },
+            "code": {},
             "domain": {
                 "Tamarian": "Shaka, when the walls fell",
             }
@@ -427,7 +430,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .await
     .expect("update attr value");
 
-    let properties = ComponentView::for_context(ctx, base_attribute_read_context, false)
+    let properties = ComponentView::for_context(ctx, base_attribute_read_context)
         .await
         .expect("cannot get component view")
         .properties;
@@ -437,6 +440,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
             "si": {
                 "name": "Danoth",
             },
+            "code": {},
             "domain": {
                 "Tamarian": "Temba, his arms open",
             }
@@ -495,6 +499,7 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
             "si": {
                 "name": "ksg"
             },
+            "code": {},
             "domain": {
                 "region": "us-east-1"
             }

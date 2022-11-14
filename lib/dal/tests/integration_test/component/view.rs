@@ -486,7 +486,6 @@ async fn only_string_props(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
-        false,
     )
     .await
     .expect("cannot get component view");
@@ -496,6 +495,7 @@ async fn only_string_props(ctx: &DalContext) {
                 "si": {
                     "name": "capoeira"
                 },
+                "code": {},
                 "domain": {
                     "bohemian_rhapsody": "Galileo",
                     "killer_queen": "woohoo"
@@ -599,7 +599,6 @@ async fn one_object_prop(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
-        false,
     )
     .await
     .expect("cannot get component view");
@@ -608,6 +607,7 @@ async fn one_object_prop(ctx: &DalContext) {
         component_view.properties,
         serde_json::json![{
             "si": { "name": "santos dumont" },
+            "code": {},
             "domain": {
                 "queen": {
                     "bohemian_rhapsody": "Galileo",
@@ -759,7 +759,6 @@ async fn nested_object_prop(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
-        false,
     )
     .await
     .expect("cannot get component view");
@@ -770,6 +769,7 @@ async fn nested_object_prop(ctx: &DalContext) {
                 "si": {
                     "name": "free ronaldinho"
                 },
+                "code": {},
                 "domain": {
                     "queen": {
                         "bohemian_rhapsody": "scaramouche",
@@ -864,7 +864,6 @@ async fn simple_array_of_strings(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
-        false,
     )
     .await
     .expect("cannot get component view");
@@ -875,6 +874,7 @@ async fn simple_array_of_strings(ctx: &DalContext) {
                 "si": {
                     "name": "tim maia"
                 },
+                "code": {},
                 "domain": {
                     "sammy_hagar": ["standing_hampton", "voa"]
                 }
@@ -1114,7 +1114,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
-        false,
     )
     .await
     .expect("cannot get component view");
@@ -1122,6 +1121,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {"name": "An Integralist Doesn't Run, It Flies"},
+            "code": {},
             "domain": {
                 "sammy_hagar": [
                     {
@@ -1226,7 +1226,6 @@ async fn simple_map(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
-        false,
     )
     .await
     .expect("cannot get component view");
@@ -1234,6 +1233,7 @@ async fn simple_map(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {"name": "E como isso afeta o Grêmio?"},
+            "code": {},
             "domain": {
                 "albums": {
                     "black_dahlia": "nocturnal",
@@ -1407,7 +1407,6 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
             prop_id: None,
             ..AttributeReadContext::default()
         },
-        false,
     )
     .await
     .expect("cannot get component view");
@@ -1415,6 +1414,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": { "name": "E como isso afeta o Grêmio?" },
+            "code": {},
             "domain": {
                 "sammy_hagar": [
                     {

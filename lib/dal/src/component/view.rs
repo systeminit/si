@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::attribute::value::view::PropertiesWithoutCode;
 use crate::{
     component::ComponentKind, func::binding_return_value::FuncBindingReturnValueId,
     AttributeReadContext, AttributeValue, AttributeValueError, Component, ComponentId, DalContext,
@@ -68,7 +67,6 @@ impl ComponentView {
     pub async fn for_context(
         ctx: &DalContext,
         context: AttributeReadContext,
-        include_code: bool,
     ) -> ComponentViewResult<ComponentView> {
         let component_id = match context.component_id() {
             Some(c) => c,
@@ -127,12 +125,7 @@ impl ComponentView {
         Ok(ComponentView {
             system,
             kind: *component.kind(),
-            properties: match include_code {
-                true => properties.clone(),
-                false => {
-                    PropertiesWithoutCode::drop_root_code_tree_if_applicable(properties.clone())?
-                }
-            },
+            properties: properties.clone(),
         })
     }
 

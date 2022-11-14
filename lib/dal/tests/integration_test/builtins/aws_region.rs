@@ -33,6 +33,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "domain": {
                 "region": "us-east-2"
             },
+            "code": {},
             "si": {
                 "name": "region"
             }
@@ -45,6 +46,12 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "awsResourceType": "instance",
                 "tags": {
                     "Name": "server",
+                },
+            },
+            "code": {
+                "si:generateAwsEc2JSON": {
+                    "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"server\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
+                    "format": "json",
                 },
             },
             "si": {
@@ -90,6 +97,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "domain": {
                 "region": "us-east-2"
             },
+            "code": {},
             "si": {
                 "name": "region"
             }
@@ -102,6 +110,12 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "awsResourceType": "instance",
                 "tags": {
                     "Name": "server",
+                },
+            },
+            "code": {
+                "si:generateAwsEc2JSON": {
+                    "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"server\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
+                    "format": "json",
                 },
             },
             "si": {
@@ -126,6 +140,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "domain": {
                 "region": "us-west-2"
             },
+            "code": {},
             "si": {
                 "name": "region"
             }
@@ -139,6 +154,12 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "region": "us-west-2",
                 "tags": {
                     "Name": "server",
+                },
+            },
+            "code": {
+                "si:generateAwsEc2JSON": {
+                    "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"server\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
+                    "format": "json",
                 },
             },
             "si": {
@@ -169,6 +190,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
             "si": {
                 "name": "region"
             },
+            "code": {},
             "domain": {
                 "region": "us-poop-1"
             }
@@ -223,6 +245,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
             "si": {
                 "name": "region"
             },
+            "code": {},
             "domain": {
                 "region": "us-east-1"
             }

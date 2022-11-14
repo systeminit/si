@@ -105,7 +105,6 @@ async fn set_code_prop_for_component(ctx: &DalContext) {
             component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         },
-        true,
     )
     .await
     .expect("could not generate component view");

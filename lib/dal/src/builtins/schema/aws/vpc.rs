@@ -287,12 +287,14 @@ async fn ingress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     // Code Generation
-    let code_generation_func_id = driver.get_func_id("si:generateAwsJSON").ok_or(
-        BuiltinsError::FuncNotFoundInMigrationCache("si:generateAwsJSON"),
-    )?;
+    let code_generation_func_name = "si:generateAwsIngressJSON";
+    let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
     CodeGenerationPrototype::new(
         ctx,
-        code_generation_func_id,
+        *code_generation_func.id(),
         None,
         CodeLanguage::Json,
         *schema_variant.id(),
@@ -833,12 +835,14 @@ async fn egress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     // Code Generation
-    let code_generation_func_id = driver.get_func_id("si:generateAwsJSON").ok_or(
-        BuiltinsError::FuncNotFoundInMigrationCache("si:generateAwsJSON"),
-    )?;
+    let code_generation_func_name = "si:generateAwsEgressJSON";
+    let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
     CodeGenerationPrototype::new(
         ctx,
-        code_generation_func_id,
+        *code_generation_func.id(),
         None,
         CodeLanguage::Json,
         *schema_variant.id(),
@@ -1254,12 +1258,14 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
     output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     // Code Generation
-    let code_generation_func_id = driver.get_func_id("si:generateAwsJSON").ok_or(
-        BuiltinsError::FuncNotFoundInMigrationCache("si:generateAwsJSON"),
-    )?;
+    let code_generation_func_name = "si:generateAwsSecurityGroupJSON";
+    let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
     CodeGenerationPrototype::new(
         ctx,
-        code_generation_func_id,
+        *code_generation_func.id(),
         None,
         CodeLanguage::Json,
         *schema_variant.id(),

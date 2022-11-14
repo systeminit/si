@@ -87,10 +87,9 @@ async fn qualification_view(ctx: &DalContext) {
             "data": {
                 "system": null,
                 "kind": "standard",
-                "properties": { "si": { "name": "mastodon" }, "domain": {} },
+                "properties": { "si": { "name": "mastodon" }, "domain": {}, "code": {} },
             },
             "parents": [],
-            "codes": []
         }),
     );
 }
@@ -324,18 +323,18 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     };
 
     // Ensure everything looks correct post connection.
-    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context, false)
+    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
         .await
         .expect("could not generate component view");
-    let noctua_component_view =
-        ComponentView::for_context(ctx, noctua_component_view_context, false)
-            .await
-            .expect("could not generate component view");
+    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
+        .await
+        .expect("could not generate component view");
     assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "ekwb",
             },
+            "code": {},
             "domain": {},
         }], // expected
         ekwb_component_view.properties // actual
@@ -345,6 +344,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             "si": {
                 "name": "noctua",
             },
+            "code": {},
             "domain": {}
         }], // expected
         noctua_component_view.properties // actual
@@ -370,18 +370,18 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         .expect("could not set resource field");
 
     // Ensure the value is propagated end-to-end.
-    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context, false)
+    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
         .await
         .expect("could not generate component view");
-    let noctua_component_view =
-        ComponentView::for_context(ctx, noctua_component_view_context, false)
-            .await
-            .expect("could not generate component view");
+    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
+        .await
+        .expect("could not generate component view");
     assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "ekwb",
             },
+            "code": {},
             "domain": {},
             "resource": "quantum"
         }], // expected
@@ -392,6 +392,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             "si": {
                 "name": "noctua",
             },
+            "code": {},
             "domain": {
                 "u12a": "quantum"
             }
@@ -407,18 +408,18 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     ctx.update_visibility(Visibility::new(new_change_set.pk, None));
 
     // Ensure the views are identical to HEAD.
-    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context, false)
+    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
         .await
         .expect("could not generate component view");
-    let noctua_component_view =
-        ComponentView::for_context(ctx, noctua_component_view_context, false)
-            .await
-            .expect("could not generate component view");
+    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
+        .await
+        .expect("could not generate component view");
     assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "ekwb",
             },
+            "code": {},
             "domain": {},
             "resource": "quantum"
         }], // expected
@@ -429,6 +430,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             "si": {
                 "name": "noctua",
             },
+            "code": {},
             "domain": {
                 "u12a": "quantum"
             }
