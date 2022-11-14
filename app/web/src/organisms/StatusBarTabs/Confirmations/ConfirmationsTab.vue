@@ -47,11 +47,7 @@ import { useFixesStore } from "@/store/fixes/fixes.store";
 defineProps<{ selected: boolean }>();
 
 const fixesStore = useFixesStore();
-const componentStats = computed(
-  () => fixesStore.confirmationStats,
-);
+const componentStats = computed(() => fixesStore.confirmationStats);
 
-const workspaceStatus = computed(
-  () => fixesStore.workspaceStatus,
-);
+const workspaceStatus = computed(() => fixesStore.workspaceStatus);
 </script>

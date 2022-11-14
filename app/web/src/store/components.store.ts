@@ -186,7 +186,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             const qualificationStatus =
               qualificationsStore.qualificationStatusByComponentId[componentId];
-            const confirmationStatus = fixesStore.statusByComponentId[componentId];
+            const confirmationStatus =
+              fixesStore.statusByComponentId[componentId];
             const changeStatus = this.componentChangeStatusById[componentId];
 
             const activityCounter = _.get(

@@ -59,8 +59,8 @@
             :code="JSON.stringify(selectedComponent.resource.data, null, 2)"
             class="dark:text-neutral-50 text-neutral-900"
           >
-	    <template #title>
-                <!--<HealthIcon :health="selectedComponent.resource.health" />-->
+            <template #title>
+              <!--<HealthIcon :health="selectedComponent.resource.health" />-->
             </template>
           </CodeViewer>
         </SiCollapsible>
@@ -77,7 +77,7 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-import HealthIcon from "@/molecules/HealthIcon.vue";
+// import HealthIcon from "@/molecules/HealthIcon.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { useComponentsStore } from "@/store/components.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
