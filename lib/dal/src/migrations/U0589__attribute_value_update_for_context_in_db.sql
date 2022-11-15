@@ -1063,7 +1063,7 @@ BEGIN
         ON avbtap.belongs_to_id = ap.id
             AND avbtap.object_id = given_attribute_value.id;
     IF NOT FOUND THEN
-        RAISE 'Unable to find AttributePrototype for AttributeValue(%), Tenancy(%), Visibility(%)', attribute_value.id,
+        RAISE 'Unable to find AttributePrototype for AttributeValue(%), Tenancy(%), Visibility(%)', given_attribute_value.id,
                                                                                                     this_read_tenancy,
                                                                                                     this_visibility;
     END IF;
