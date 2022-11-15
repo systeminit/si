@@ -48,6 +48,22 @@
         </div>
 
         <div
+          v-if="failedSubchecks.length"
+          class="flex flex-col my-2 p-2 border border-destructive-600 text-destructive-500 rounded"
+        >
+          <b>Qualification Failures:</b>
+          <ul>
+            <li
+              v-for="(subCheck, idx) in failedSubchecks"
+              :key="idx"
+              class="p-2"
+            >
+              {{ subCheck.description }}
+            </li>
+          </ul>
+        </div>
+
+        <div
           v-if="qualification.output?.length"
           class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
         >
@@ -66,7 +82,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, ref, toRef } from "vue";
 import _ from "lodash";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import StatusMessageBox from "@/molecules/StatusMessageBox.vue";
@@ -75,6 +91,15 @@ import Modal from "@/ui-lib/Modal.vue";
 const props = defineProps<{
   qualification: Qualification;
 }>();
+
+const qualification = toRef(props, "qualification");
+
+const failedSubchecks = computed(
+  () =>
+    qualification.value.result?.sub_checks.filter(
+      (subCheck) => subCheck.status === "Failure",
+    ) ?? [],
+);
 
 const qualificationStatus = computed(() => {
   if (_.isNil(props.qualification.result)) return "running";

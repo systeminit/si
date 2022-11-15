@@ -24,7 +24,7 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::SocketEdgeKind;
 use crate::standard_model::object_from_row;
-use crate::validation::ValidationConstructorError;
+use crate::validation::{ValidationConstructorError, ValidationError};
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
     edge::EdgeId,
@@ -887,12 +887,19 @@ impl Component {
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<QualificationView> {
-        let validation_errors = ValidationResolver::find_status(ctx, component_id, system_id)
-            .await?
-            .into_iter()
-            .flat_map(|s| s.errors)
-            .collect();
-        let qualification_view = QualificationView::new_for_validation_errors(validation_errors);
+        let mut prop_names_and_errors = Vec::<(String, ValidationError)>::new();
+        for status in ValidationResolver::find_status(ctx, component_id, system_id).await? {
+            let full_name = AttributeValue::find_prop_for_value(ctx, status.attribute_value_id)
+                .await?
+                .json_pointer(ctx)
+                .await?;
+
+            for error in status.errors {
+                prop_names_and_errors.push((full_name.clone(), error));
+            }
+        }
+        let qualification_view =
+            QualificationView::new_for_validation_errors(prop_names_and_errors);
         Ok(qualification_view)
     }
 
