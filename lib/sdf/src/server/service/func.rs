@@ -138,6 +138,10 @@ pub enum FuncError {
     ValidationPrototypeMissingSchemaVariant(SchemaVariantId),
     #[error("validation prototype schema is missing")]
     ValidationPrototypeMissingSchema,
+    #[error("component missing schema variant")]
+    ComponentMissingSchemaVariant(ComponentId),
+    #[error("schema variant missing schema")]
+    SchemaVariantMissingSchema(SchemaVariantId),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;

@@ -3,11 +3,13 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
     job::definition::{DependentValuesUpdate, Qualification},
-    AttributePrototype, Component, DalContext, Func, FuncBackendKind, FuncId, PrototypeListForFunc,
-    QualificationPrototype, QualificationPrototypeError, StandardModel, SystemId, Visibility,
-    WsEvent,
+    AttributePrototype, AttributeValue, Component, DalContext, Func, FuncBackendKind, FuncId,
+    PropId, PrototypeListForFunc, QualificationPrototype, QualificationPrototypeError,
+    SchemaVariant, StandardModel, SystemId, ValidationPrototype, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -70,6 +72,33 @@ async fn run_qualifications(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     Ok(())
 }
 
+async fn run_validations(ctx: &DalContext, func: &Func) -> FuncResult<()> {
+    for proto in ValidationPrototype::list_for_func(ctx, *func.id()).await? {
+        let schema_variant_id = proto.context().schema_variant_id();
+        if schema_variant_id.is_none() {
+            continue;
+        }
+        let components = Component::list_for_schema_variant(ctx, schema_variant_id).await?;
+        for component in components {
+            let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
+                .await?
+                .ok_or_else(|| FuncError::ComponentMissingSchemaVariant(*component.id()))?;
+
+            let schema = schema_variant
+                .schema(ctx)
+                .await?
+                .ok_or(FuncError::SchemaVariantMissingSchema(schema_variant_id))?;
+
+            let mut cache: HashMap<PropId, (Option<Value>, AttributeValue)> = HashMap::new();
+            component
+                .check_single_validation(ctx, &proto, &mut cache, schema_variant_id, *schema.id())
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
 pub async fn exec_func(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -82,11 +111,14 @@ pub async fn exec_func(
         .ok_or(FuncError::FuncNotFound)?;
 
     match func.backend_kind() {
+        FuncBackendKind::JsAttribute => {
+            update_values_for_func(&ctx, &func).await?;
+        }
         FuncBackendKind::JsQualification => {
             run_qualifications(&ctx, &func).await?;
         }
-        FuncBackendKind::JsAttribute => {
-            update_values_for_func(&ctx, &func).await?;
+        FuncBackendKind::JsValidation => {
+            run_validations(&ctx, &func).await?;
         }
         _ => {}
     }

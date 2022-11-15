@@ -36,6 +36,12 @@ macro_rules! pk {
             }
         }
 
+        impl<'a> From<&'a $name> for $name {
+            fn from(pk: &'a $name) -> Self {
+                *pk
+            }
+        }
+
         impl std::str::FromStr for $name {
             type Err = std::num::ParseIntError;
 
