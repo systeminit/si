@@ -69,10 +69,12 @@ pub struct ValidationResolver {
     id: ValidationResolverId,
     validation_prototype_id: ValidationPrototypeId,
     attribute_value_id: AttributeValueId,
-    func_id: FuncId,
-    func_binding_id: FuncBindingId,
+    /// The [`FuncId`] of the validation func that we're the resolver for.
+    validation_func_id: FuncId,
+    /// The [`FuncBindingId`] for the validation func itself.
+    validation_func_binding_id: FuncBindingId,
     /// The [`FuncBindingReturnValueId`] that represents the value at this specific position & context.
-    func_binding_return_value_id: FuncBindingReturnValueId,
+    attribute_value_func_binding_return_value_id: FuncBindingReturnValueId,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -123,18 +125,22 @@ impl ValidationResolver {
         Pk(ValidationPrototypeId),
         ValidationResolverResult
     );
-    standard_model_accessor!(func_id, Pk(FuncId), ValidationResolverResult);
-    standard_model_accessor!(func_binding_id, Pk(FuncBindingId), ValidationResolverResult);
+    standard_model_accessor!(validation_func_id, Pk(FuncId), ValidationResolverResult);
     standard_model_accessor!(
-        func_binding_return_value_id,
+        validation_func_binding_id,
+        Pk(FuncBindingId),
+        ValidationResolverResult
+    );
+    standard_model_accessor!(
+        attribute_value_func_binding_return_value_id,
         Pk(FuncBindingReturnValueId),
         ValidationResolverResult
     );
 
-    pub async fn find_for_attribute_value_and_validation_func_binding(
+    pub async fn find_for_attribute_value_and_validation_func(
         ctx: &DalContext,
-        attribute_value_id: &AttributeValueId,
-        func_binding_id: &FuncBindingId,
+        attribute_value_id: AttributeValueId,
+        func_id: FuncId,
     ) -> ValidationResolverResult<Vec<Self>> {
         let rows = ctx
             .txns()
@@ -144,8 +150,8 @@ impl ValidationResolver {
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
-                    attribute_value_id,
-                    func_binding_id,
+                    &attribute_value_id,
+                    &func_id,
                 ],
             )
             .await?;

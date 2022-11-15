@@ -3,8 +3,9 @@ use dal::{
     func::backend::validation::FuncBackendValidationArgs,
     validation::{Validation, ValidationError, ValidationErrorKind},
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentView, DalContext,
-    Func, FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind, StandardModel, SystemId,
-    ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
+    Func, FuncBackendKind, FuncBackendResponseType, PropId, PropKind, SchemaKind, StandardModel,
+    SystemId, ValidationPrototype, ValidationPrototypeContext, ValidationResolver,
+    ValidationStatus,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
@@ -12,6 +13,8 @@ use dal_test::{
     test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
+use serde_json::Value;
+use std::collections::HashMap;
 
 #[test]
 async fn check_validations_for_component(ctx: &DalContext) {
@@ -314,7 +317,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     builder.set_prop_id(*prop.id());
     builder.set_schema_id(*schema.id());
     builder.set_schema_variant_id(*schema_variant.id());
-    ValidationPrototype::new(
+    let validation_prototype = ValidationPrototype::new(
         ctx,
         *func.id(),
         serde_json::json!(null),
@@ -405,6 +408,43 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         link: None,
     }];
 
+    assert_eq!(darmok, status.errors);
+
+    // Change the function code, re-execute the function and ensure we get back just the
+    // latest validation
+    let js_validation_code = "function validate(value) { 
+        return { 
+            valid: value === 'Temba, his arms open', message: 'Darmok and Jalad on the ocean'
+        };
+    }";
+
+    func.set_code_plaintext(ctx, Some(js_validation_code))
+        .await
+        .expect("Update validation func code");
+    let mut cache: HashMap<PropId, (Option<Value>, AttributeValue)> = HashMap::new();
+    component
+        .check_single_validation(
+            ctx,
+            &validation_prototype,
+            &mut cache,
+            *schema_variant.id(),
+            *schema.id(),
+        )
+        .await
+        .expect("check single validation");
+
+    let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
+        .await
+        .expect("could not find status for validation(s) of a given component");
+
+    let status = get_validation_status(&validation_statuses, updated_av_id);
+
+    let darmok: Vec<ValidationError> = vec![ValidationError {
+        message: "Darmok and Jalad on the ocean".to_string(),
+        level: None,
+        kind: ValidationErrorKind::JsValidation,
+        link: None,
+    }];
     assert_eq!(darmok, status.errors);
 
     let av = AttributeValue::get_by_id(ctx, &updated_av_id)

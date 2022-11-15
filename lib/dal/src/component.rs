@@ -158,6 +158,8 @@ pub enum ComponentError {
     ValidationResolver(#[from] ValidationResolverError),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error("validation prototype does not match component schema variant: {0}")]
+    ValidationPrototypeMismatch(SchemaVariantId),
     #[error("qualification view error: {0}")]
     QualificationView(#[from] QualificationError),
     #[error("read tenancy error: {0}")]
@@ -408,6 +410,120 @@ impl Component {
         Ok(standard_model::object_option_from_row_option(row)?)
     }
 
+    pub async fn check_single_validation(
+        &self,
+        ctx: &DalContext,
+        validation_prototype: &ValidationPrototype,
+        value_cache: &mut HashMap<PropId, (Option<Value>, AttributeValue)>,
+        schema_variant_id: SchemaVariantId,
+        schema_id: SchemaId,
+    ) -> ComponentResult<()> {
+        let base_attribute_read_context = AttributeReadContext {
+            prop_id: None,
+            external_provider_id: Some(ExternalProviderId::NONE),
+            internal_provider_id: Some(InternalProviderId::NONE),
+            schema_id: Some(schema_id),
+            schema_variant_id: Some(schema_variant_id),
+            component_id: Some(self.id),
+            system_id: Some(SystemId::NONE),
+        };
+
+        let prop_id = validation_prototype.context().prop_id();
+
+        let (maybe_value, attribute_value) = match value_cache.get(&prop_id) {
+            Some((value, attribute_value)) => (value.to_owned(), attribute_value.clone()),
+            None => {
+                let attribute_read_context = AttributeReadContext {
+                    prop_id: Some(prop_id),
+                    ..base_attribute_read_context
+                };
+                let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
+                    .await?
+                    .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                        attribute_read_context,
+                    ))?;
+
+                let value = match FuncBindingReturnValue::get_by_id(
+                    ctx,
+                    &attribute_value.func_binding_return_value_id(),
+                )
+                .await?
+                {
+                    Some(func_binding_return_value) => func_binding_return_value.value().cloned(),
+                    None => None,
+                };
+
+                value_cache.insert(prop_id, (value.clone(), attribute_value.clone()));
+                (value, attribute_value)
+            }
+        };
+
+        let func = Func::get_by_id(ctx, &validation_prototype.func_id())
+            .await?
+            .ok_or_else(|| PropError::MissingFuncById(validation_prototype.func_id()))?;
+
+        let mutated_args = match func.backend_kind() {
+            FuncBackendKind::Validation => {
+                // Deserialize the args, update the "value", and serialize the mutated args.
+                let mut args = FuncBackendValidationArgs::deserialize(validation_prototype.args())?;
+                args.validation = args.validation.update_value(&maybe_value)?;
+
+                serde_json::to_value(args)?
+            }
+            FuncBackendKind::JsValidation => serde_json::to_value(FuncBackendJsValidationArgs {
+                value: maybe_value.unwrap_or(serde_json::json!(null)),
+            })?,
+            kind => {
+                return Err(ComponentError::InvalidFuncBackendKindForValidations(*kind));
+            }
+        };
+
+        // Now, we can load in the mutated args!
+        let (func_binding, _, _) =
+            FuncBinding::find_or_create_and_execute(ctx, mutated_args, *func.id()).await?;
+
+        let attribute_value_id = *attribute_value.id();
+
+        // Does a resolver already exist for this validation func and attribute value? If so, we
+        // need to make sure the attribute_value_func_binding_return_value_id matches the
+        // func_binding_return_value_id of the current attribute value, since it could be different
+        // *even if the value is the same*. We also need to be sure to create a resolver for each
+        // attribute_value_id, since the way func_bindings are cached means the validation func
+        // won't be created for the same validation func + value, despite running this on a
+        // completely different attribute value (or even prop).
+        match ValidationResolver::find_for_attribute_value_and_validation_func(
+            ctx,
+            attribute_value_id,
+            *func.id(),
+        )
+        .await?
+        .pop()
+        {
+            Some(mut existing_resolver) => {
+                existing_resolver
+                    .set_validation_func_binding_id(ctx, func_binding.id())
+                    .await?;
+                existing_resolver
+                    .set_attribute_value_func_binding_return_value_id(
+                        ctx,
+                        attribute_value.func_binding_return_value_id(),
+                    )
+                    .await?;
+            }
+            None => {
+                ValidationResolver::new(
+                    ctx,
+                    *validation_prototype.id(),
+                    attribute_value_id,
+                    *func_binding.id(),
+                )
+                .await?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Check validations for [`Self`].
     pub async fn check_validations(&self, ctx: &DalContext) -> ComponentResult<()> {
         let schema_variant = self
@@ -419,16 +535,6 @@ impl Component {
             .await?
             .ok_or(ComponentError::NoSchema(self.id))?;
 
-        let base_attribute_read_context = AttributeReadContext {
-            prop_id: None,
-            external_provider_id: Some(ExternalProviderId::NONE),
-            internal_provider_id: Some(InternalProviderId::NONE),
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            component_id: Some(self.id),
-            system_id: Some(SystemId::NONE),
-        };
-
         let validation_prototypes =
             ValidationPrototype::list_for_schema_variant(ctx, *schema_variant.id(), SystemId::NONE)
                 .await?;
@@ -438,104 +544,14 @@ impl Component {
         let mut cache: HashMap<PropId, (Option<Value>, AttributeValue)> = HashMap::new();
 
         for validation_prototype in validation_prototypes {
-            let prop_id = validation_prototype.context().prop_id();
-
-            // Grab the data necessary for assembling the func arguments. We'll check if it's in
-            // the cache first.
-            let (maybe_value, attribute_value) = match cache.get(&prop_id) {
-                Some((value, attribute_value)) => (value.to_owned(), attribute_value.clone()),
-                None => {
-                    let attribute_read_context = AttributeReadContext {
-                        prop_id: Some(prop_id),
-                        ..base_attribute_read_context
-                    };
-                    let attribute_value =
-                        AttributeValue::find_for_context(ctx, attribute_read_context)
-                            .await?
-                            .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                                attribute_read_context,
-                            ))?;
-
-                    let value = match FuncBindingReturnValue::get_by_id(
-                        ctx,
-                        &attribute_value.func_binding_return_value_id(),
-                    )
-                    .await?
-                    {
-                        Some(func_binding_return_value) => {
-                            func_binding_return_value.value().cloned()
-                        }
-                        None => None,
-                    };
-
-                    cache.insert(prop_id, (value.clone(), attribute_value.clone()));
-                    (value, attribute_value)
-                }
-            };
-
-            let func = Func::get_by_id(ctx, &validation_prototype.func_id())
-                .await?
-                .ok_or_else(|| PropError::MissingFuncById(validation_prototype.func_id()))?;
-
-            let mutated_args = match func.backend_kind() {
-                FuncBackendKind::Validation => {
-                    // Deserialize the args, update the "value", and serialize the mutated args.
-                    let mut args =
-                        FuncBackendValidationArgs::deserialize(validation_prototype.args())?;
-                    args.validation = args.validation.update_value(&maybe_value)?;
-
-                    serde_json::to_value(args)?
-                }
-                FuncBackendKind::JsValidation => {
-                    serde_json::to_value(FuncBackendJsValidationArgs {
-                        value: maybe_value.unwrap_or(serde_json::json!(null)),
-                    })?
-                }
-                kind => {
-                    return Err(ComponentError::InvalidFuncBackendKindForValidations(*kind));
-                }
-            };
-
-            // Now, we can load in the mutated args!
-            let (func_binding, _, _) =
-                FuncBinding::find_or_create_and_execute(ctx, mutated_args, *func.id()).await?;
-
-            let attribute_value_id = *attribute_value.id();
-
-            // Does a resolver already exist for this validation? If so, we need to make
-            // sure the func_binding_return_value_id matches the func_binding_return_value_id of
-            // the current attribute value, since it could be different *even if the value is
-            // the same* (it could have been set by a different function that returned the
-            // same value, for example). We also need to create a resolver for each
-            // attribute_value_id, since the way func_bindings are cached means the validation
-            // func won't be created for the same validation func + value, despite running
-            // this on a completely different attribute value (or even prop).
-            match ValidationResolver::find_for_attribute_value_and_validation_func_binding(
+            self.check_single_validation(
                 ctx,
-                &attribute_value_id,
-                func_binding.id(),
+                &validation_prototype,
+                &mut cache,
+                *schema_variant.id(),
+                *schema.id(),
             )
-            .await?
-            .pop()
-            {
-                Some(mut existing_resolver) => {
-                    existing_resolver
-                        .set_func_binding_return_value_id(
-                            ctx,
-                            attribute_value.func_binding_return_value_id(),
-                        )
-                        .await?;
-                }
-                None => {
-                    ValidationResolver::new(
-                        ctx,
-                        *validation_prototype.id(),
-                        attribute_value_id,
-                        *func_binding.id(),
-                    )
-                    .await?;
-                }
-            }
+            .await?;
         }
 
         Ok(())
@@ -1043,7 +1059,7 @@ impl Component {
             .pg_txn()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
-                &[ctx.visibility(), ctx.read_tenancy(), &schema_variant_id],
+                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
 
