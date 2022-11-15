@@ -146,24 +146,25 @@ pub struct QualificationView {
 }
 
 impl QualificationView {
-    pub fn new_for_validation_errors(validation_errors: Vec<ValidationError>) -> QualificationView {
-        let mut sub_checks: Vec<QualificationSubCheck> = Vec::new();
-        let mut success = true;
-        for validation_error in validation_errors {
-            let description = format!("field validation failed: {}", validation_error.message);
-            sub_checks.push(QualificationSubCheck {
-                description,
+    /// `validation_errors` is a Vec of the prop name being validated + the `ValidationError` object
+    pub fn new_for_validation_errors(
+        validation_errors: Vec<(String, ValidationError)>,
+    ) -> QualificationView {
+        let sub_checks: Vec<QualificationSubCheck> = validation_errors
+            .iter()
+            .map(|(prop_name, error)| QualificationSubCheck {
+                description: format!("validation failed for \"{}\": {}", prop_name, error.message),
                 status: QualificationSubCheckStatus::Failure,
-            });
-            success = false;
-        }
+            })
+            .collect();
+
         QualificationView {
             title: "All fields are valid".into(),
             output: vec![],
             description: None,
             link: None,
             result: Some(QualificationResult {
-                success,
+                success: sub_checks.is_empty(),
                 title: None,
                 link: None,
                 sub_checks,

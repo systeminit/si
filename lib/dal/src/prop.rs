@@ -283,6 +283,7 @@ impl Prop {
     }
 
     /// Returns the given [`Prop`] and all ancestor [`Props`](crate::Prop) back to the root.
+    /// Ancestor props are ordered by depth, starting from the root prop.
     pub async fn all_ancestor_props(ctx: &DalContext, prop_id: PropId) -> PropResult<Vec<Self>> {
         let rows = ctx
             .pg_txn()
@@ -292,6 +293,20 @@ impl Prop {
             )
             .await?;
         Ok(objects_from_rows(rows)?)
+    }
+
+    // Should JsonPointers be a type of their own?
+    pub async fn json_pointer(&self, ctx: &DalContext) -> PropResult<String> {
+        Ok([
+            "/".to_string(),
+            Prop::all_ancestor_props(ctx, *self.id())
+                .await?
+                .iter()
+                .map(|prop| prop.name().to_string())
+                .collect::<Vec<String>>()
+                .join("/"),
+        ]
+        .join(""))
     }
 
     pub async fn create_default_prototypes_and_values(

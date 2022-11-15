@@ -35,10 +35,7 @@ import {
   PropertyPath,
   PropertyEditorPropKind,
 } from "@/api/sdf/dal/property_editor";
-import {
-  ValidatorArray,
-  usePropertyEditorValidations,
-} from "@/utils/input_validations";
+import { usePropertyEditorValidations } from "@/utils/input_validations";
 import UnsetButton from "./UnsetButton.vue";
 
 const props = defineProps<{
