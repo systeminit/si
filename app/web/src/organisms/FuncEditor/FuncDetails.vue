@@ -57,14 +57,14 @@
                 v-model="editingFunc.handler"
                 title="Entrypoint"
                 required
-                placeholder="The name of the function that will be executed first..."
+                placeholder="The name of the function that will be executed..."
                 :disabled="!isDevMode && editingFunc.isBuiltin"
                 @blur="updateFunc"
               />
               <SiTextBox
                 id="description"
                 v-model="editingFunc.description"
-                placeholder="Provide a brief description of what this qualification validates here..."
+                placeholder="Provide a brief description of this function here..."
                 title="Description"
                 text-area
                 :disabled="!isDevMode && editingFunc.isBuiltin"

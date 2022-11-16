@@ -1,42 +1,27 @@
 <template>
-  <div v-show="isShown" class="flex flex-col content-center w-full">
-    <label
-      :for="fieldId"
-      class="block text-sm font-medium text-neutral-900 dark:text-neutral-50 whitespace-nowrap"
-    >
-      {{ props.name }} <span v-if="required">(required)</span>
-    </label>
-
-    <div class="flex items-center">
-      <SiComboBox
-        :id="fieldId"
-        v-model="currentValue"
-        class="flex-grow"
-        :options="props.options"
-        :title="props.name"
-        :doc-link="docLink"
-        :disabled="disabled"
-        :validations="validations"
-        always-validate
-        @change="setField"
-      />
-      <UnsetButton
-        v-if="!disabled"
-        class="mt-0"
-        :disabled="disableUnset"
-        @click="unsetField"
-      />
+  <div v-show="isShown" class="flex content-center w-full">
+    <div class="flex grow">
+      <div class="w-full">
+        <SiComboBox
+          :id="fieldId"
+          v-model="currentValue"
+          class="flex-grow"
+          :options="options"
+          :title="name"
+          :doc-link="docLink"
+          :disabled="disabled"
+          :validations="validations"
+          always-validate
+          @change="setField"
+        />
+      </div>
     </div>
 
-    <p v-if="docLink" class="mt-2 text-xs text-action-500">
-      <a :href="docLink" target="_blank" class="hover:underline">
-        Documentation
-      </a>
-    </p>
-
-    <p v-if="description" class="mt-2 text-xs text-neutral-300">
-      {{ description }}
-    </p>
+    <UnsetButton
+      v-if="!disabled"
+      :disabled="disableUnset"
+      @click="unsetField"
+    />
   </div>
 </template>
 
