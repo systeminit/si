@@ -130,5 +130,5 @@ services:
       - si-watchtower
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "${DOCKER_CONFIG:-~/.docker/config}:/config.json:ro"
-    command: --interval 30 --label-enable
+      - "${DOCKER_CONFIG:-~/.docker/config.json}:/config.json:ro"
+    command: --interval 10 --label-enable

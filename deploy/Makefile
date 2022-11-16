@@ -57,14 +57,13 @@ prod:
 			--profile si \
 			up --detach
 
-prod-service:
+staging:
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker-compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env-static.yml \
-			-f $(MAKEPATH)/docker-compose.pganalyze.yml \
-			-f $(MAKEPATH)/docker-compose.prod.yml \
-			--profile si \
+			-f $(MAKEPATH)/docker-compose.staging.yml \
+			--profile si-watchtower \
 			up
 
 web: init
