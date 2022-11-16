@@ -68,6 +68,7 @@ function darwin-bootstrap {
         make
         protobuf
         skopeo
+        jq
     )
 
     brew update
