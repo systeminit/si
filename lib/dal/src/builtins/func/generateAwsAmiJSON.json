@@ -2,9 +2,9 @@
   "kind": "JsCodeGeneration",
   "arguments": [],
   "response_type": "CodeGeneration",
-  "display_name": "si:generateAwsJSON",
+  "display_name": "si:generateAwsAmiJSON",
   "description": null,
   "link": null,
-  "code_file": "generateAwsJSON.js",
-  "code_entrypoint": "generateAwsJSON"
+  "code_file": "generateAwsAmiJSON.js",
+  "code_entrypoint": "generateJSON"
 }
