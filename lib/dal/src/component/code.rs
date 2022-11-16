@@ -193,7 +193,10 @@ impl Component {
             let prototype = CodeGenerationPrototype::find_for_prop(ctx, *child_prop.id()).await?;
             let output_format = *prototype.output_format();
 
-            if let Some(value) = func_binding_return_value.value() {
+            if let Some(value) = func_binding_return_value
+                .value()
+                .filter(|v| *v != &serde_json::Value::String(String::new()))
+            {
                 let code_generated = veritech_client::CodeGenerated::deserialize(value)?;
 
                 let lang = CodeLanguage::deserialize(serde_json::Value::String(

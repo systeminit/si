@@ -28,6 +28,12 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                     "name": "tail"
                 }
             },
+            "code": {
+                "si:generateYAML": {
+                    "code": "metadata:\n  name: tail\n",
+                    "format": "yaml",
+                },
+            },
             "si": {
                 "name": "tail"
             }
@@ -39,6 +45,12 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
             "domain": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
             },
             "si": {
                 "name": "head"
@@ -85,6 +97,12 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                     "name": "tail"
                 }
             },
+            "code": {
+                "si:generateYAML": {
+                    "code": "metadata:\n  name: tail\n",
+                    "format": "yaml",
+                },
+            },
             "si": {
                 "name": "tail"
             }
@@ -96,6 +114,12 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
             "domain": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
             },
             "si": {
                 "name": "head"
@@ -121,6 +145,12 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                     "name": "look-at-me-mom-i-updated"
                 }
             },
+            "code": {
+                "si:generateYAML": {
+                    "code": "metadata:\n  name: look-at-me-mom-i-updated\n",
+                    "format": "yaml",
+                },
+            },
             "si": {
                 "name": "look-at-me-mom-i-updated"
             }
@@ -142,6 +172,12 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                             "namespace": "look-at-me-mom-i-updated"
                         }
                     }
+                },
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\nspec:\n  template:\n    metadata:\n      namespace: look-at-me-mom-i-updated\nmetadata:\n  namespace: look-at-me-mom-i-updated\napiVersion: apps/v1\n",
+                    "format": "yaml",
                 },
             },
             "si": {

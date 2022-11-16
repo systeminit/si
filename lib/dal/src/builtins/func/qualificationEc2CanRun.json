@@ -1,5 +1,6 @@
 {
   "kind": "JsQualification",
+  "arguments": [],
   "response_type": "Qualification",
   "display_name": "Ec2 can run",
   "description": null,

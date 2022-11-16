@@ -48,10 +48,11 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
+                "code": {},
                 "domain": {},
             }
         ],
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties,
@@ -102,12 +103,13 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
+                "code": {},
                 "domain": {
                     "name_prop": "Miles",
                 },
             }
         ],
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties,
@@ -130,12 +132,13 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
+                "code": {},
                 "domain": {
                     "name_prop": "Iria",
                 },
             }
         ],
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties,
@@ -185,9 +188,10 @@ async fn insert_for_context_simple(ctx: &DalContext) {
             "si": {
                 "name": "Array Component",
             },
+            "code": {},
             "domain": {},
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties,
@@ -218,11 +222,12 @@ async fn insert_for_context_simple(ctx: &DalContext) {
             "si": {
                 "name": "Array Component",
             },
+            "code": {},
             "domain": {
                 "array_prop": [],
             },
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties,
@@ -293,7 +298,7 @@ async fn update_for_context_object(ctx: &DalContext) {
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
-    let component_view = ComponentView::for_context(ctx, read_context, false)
+    let component_view = ComponentView::for_context(ctx, read_context)
         .await
         .expect("cannot get component view");
 
@@ -303,6 +308,7 @@ async fn update_for_context_object(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
+                "code": {},
                 "domain": {},
             }
         ],
@@ -375,7 +381,7 @@ async fn update_for_context_object(ctx: &DalContext) {
     .await
     .expect("cannot update value");
 
-    let component_view = ComponentView::for_context(ctx, read_context, false)
+    let component_view = ComponentView::for_context(ctx, read_context)
         .await
         .expect("cannot get component view");
 
@@ -385,6 +391,7 @@ async fn update_for_context_object(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
+                "code": {},
                 "domain": {
                     "address": {
                         "streets": [
@@ -425,7 +432,7 @@ async fn update_for_context_object(ctx: &DalContext) {
     .await
     .expect("cannot update value");
 
-    let component_view = ComponentView::for_context(ctx, read_context, false)
+    let component_view = ComponentView::for_context(ctx, read_context)
         .await
         .expect("cannot get component view");
 
@@ -435,6 +442,7 @@ async fn update_for_context_object(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
+                "code": {},
                 "domain": {
                     "address": {
                         "streets": [
@@ -495,9 +503,10 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
             "si": {
                 "name": "Array Component",
             },
+            "code": {},
             "domain": {},
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties,
@@ -533,13 +542,14 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
             "si": {
                 "name": "Array Component",
             },
+            "code": {},
             "domain": {
                 "array_prop": [
                     "Component Element",
                 ],
             },
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties,
@@ -583,6 +593,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
             "si": {
                 "name": "Array Component",
             },
+            "code": {},
             "domain": {
                 "array_prop": [
                     "System Element",
@@ -590,7 +601,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
                 ],
             },
         }],
-        ComponentView::for_context(ctx, system_attribute_read_context, false)
+        ComponentView::for_context(ctx, system_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties,

@@ -463,12 +463,14 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     .await?;
 
     // Code Generation Prototype
-    let code_generation_func_id = driver.get_func_id("si:generateAwsJSON").ok_or(
-        BuiltinsError::FuncNotFoundInMigrationCache("si:generateAwsJSON"),
-    )?;
+    let code_generation_func_name = "si:generateAwsEc2JSON";
+    let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
     CodeGenerationPrototype::new(
         ctx,
-        code_generation_func_id,
+        *code_generation_func.id(),
         None,
         CodeLanguage::Json,
         *schema_variant.id(),
@@ -1140,12 +1142,14 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
     .await?;
 
     // Code Generation Prototype
-    let code_generation_func_id = driver.get_func_id("si:generateAwsJSON").ok_or(
-        BuiltinsError::FuncNotFoundInMigrationCache("si:generateAwsJSON"),
-    )?;
+    let code_generation_func_name = "si:generateAwsKeyPairJSON";
+    let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
     CodeGenerationPrototype::new(
         ctx,
-        code_generation_func_id,
+        *code_generation_func.id(),
         None,
         CodeLanguage::Json,
         *schema_variant.id(),

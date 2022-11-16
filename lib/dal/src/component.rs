@@ -1025,7 +1025,7 @@ impl Component {
             system_id: Some(system_id),
             ..AttributeReadContext::default()
         };
-        Ok(ComponentView::for_context(ctx, read_context, false).await?)
+        Ok(ComponentView::for_context(ctx, read_context).await?)
     }
 
     pub async fn veritech_qualification_check_component(
@@ -1043,15 +1043,6 @@ impl Component {
 
         let qualification_view = veritech_client::QualificationCheckComponent {
             data: Self::view(ctx, self.id, system_id).await?.into(),
-            codes: Self::list_code_generated(ctx, self.id)
-                .await?
-                .into_iter()
-                .flat_map(|view| {
-                    let format = view.language.to_string();
-                    view.code
-                        .map(|code| veritech_client::CodeGenerated { format, code })
-                })
-                .collect(),
             parents,
         };
         Ok(qualification_view)

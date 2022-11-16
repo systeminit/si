@@ -478,21 +478,25 @@ mod tests {
             handler: "check".to_string(),
             component: QualificationCheckComponent {
                 data: ComponentView {
-                    properties: serde_json::json!({"image": "systeminit/whiskers"}),
+                    properties: serde_json::json!({
+                        "image": "systeminit/whiskers",
+                        "code": {
+                            "si:generate": {
+                                "format": "yaml",
+                                "code": "generateName: asd\nname: kubernetes_deployment\napiVersion: apps/v1\nkind: Deployment\n",
+                            },
+                        }
+                    }),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
-                codes: vec![CodeGenerated {
-                    format: "yaml".to_owned(),
-                    code: "generateName: asd\nname: kubernetes_deployment\napiVersion: apps/v1\nkind: Deployment\n".to_owned()
-                }],
                 parents: Vec::new(),
             },
             code_base64: base64::encode(indoc! {r#"
                 async function check(component) {
                     const skopeoChild = await siExec.waitUntilEnd("skopeo", ["inspect", `docker://docker.io/${component.data.properties.image}`]);
 
-                    const code = component.codes[0];
+                    const code = component.data.properties.code["si:generate"];
                     const file = path.join(os.tmpdir(), "veritech-kubeval-test.yaml");
                     fs.writeFileSync(file, code.code);
 

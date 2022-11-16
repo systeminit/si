@@ -145,6 +145,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Ensure that our rendered data matches what was intended.
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "object": {
                     "destination": "11-nov-2022",
@@ -155,7 +156,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties // actual
@@ -218,6 +219,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Ensure that the shape has not changed after creating the provider and updating the prototype.
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "object": {
                     "destination": "11-nov-2022",
@@ -228,7 +230,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties // actual
@@ -250,6 +252,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Observe that both the source and destination fields were updated.
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "object": {
                     "destination": "h1-2023",
@@ -260,7 +263,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties // actual
@@ -282,6 +285,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Observe it again!
     assert_eq!(
         serde_json::json![{
+            "code": {},
             "domain": {
                 "object": {
                     "destination": "pain.",
@@ -292,7 +296,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context, false)
+        ComponentView::for_context(ctx, base_attribute_read_context)
             .await
             .expect("cannot get component view")
             .properties // actual

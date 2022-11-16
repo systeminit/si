@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{CodeGenerated, ComponentView};
+use crate::ComponentView;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -16,7 +16,6 @@ pub struct QualificationCheckRequest {
 pub struct QualificationCheckComponent {
     pub data: ComponentView,
     pub parents: Vec<ComponentView>,
-    pub codes: Vec<CodeGenerated>,
 }
 
 // Note: these map 1:1 to the DAL qualificationsubcheck data in the qualification view.

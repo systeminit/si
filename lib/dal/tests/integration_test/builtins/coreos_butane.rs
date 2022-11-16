@@ -76,6 +76,12 @@ async fn butane_is_valid_ignition(ctx: &DalContext) {
                     ]
                 }
             },
+            "code": {
+                "si:generateButaneIgnition": {
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"enabled\": true,\n        \"name\": \"whiskers.service\"\n      }\n    ]\n  }\n}",
+                   "format": "json",
+                },
+            },
             "si": {
                 "name": "butane"
             }
