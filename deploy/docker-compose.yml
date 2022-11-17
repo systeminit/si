@@ -36,6 +36,9 @@ services:
       - "faktory:${GATEWAY:-I like my butt}"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.lifecycle.pre-update='/reset-database.sh'"
+    volumes:
+      - "/opt/deploy/scripts/reset-database.sh:/reset-database.sh:ro"
     depends_on:
       - pg
       - faktory
@@ -128,7 +131,23 @@ services:
     profiles:
       - watchtower
       - si-watchtower
+    environment:
+      - "WATCHTOWER_LIFECYCLE_HOOKS=true"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "${DOCKER_CONFIG:-~/.docker/config.json}:/config.json:ro"
     command: --interval 10 --label-enable
+
+  guinea:
+    image: "index.docker.io/systeminit/guinea:stable"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.lifecycle.pre-update='/reset-database.sh'"
+    volumes:
+      - "/opt/deploy/scripts/reset-database.sh:/reset-database.sh:ro"
+    profiles:
+      - guinea
+    extra_hosts:
+      - "postgres:${GATEWAY:-I like my butt}"
+    ports:
+      - "8080:80"

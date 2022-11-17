@@ -31,6 +31,10 @@ storage:
       mode: 0755
       contents:
         local: deploy/scripts/gateway.sh
+    - path: /opt/deploy/scripts/reset-database.sh
+      mode: 0755
+      contents:
+        local: deploy/scripts/reset-database.sh
     - path: /opt/deploy/docker-compose.yml
       contents:
         local: deploy/docker-compose.yml
@@ -81,6 +85,7 @@ systemd:
 
         [Install]
         WantedBy=multi-user.target
+    # Note(victor): This is not vital but is necessary. I will not be taking questions at this time.
     - name: layer-vim.service
       enabled: true
       contents: |

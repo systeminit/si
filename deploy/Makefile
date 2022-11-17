@@ -66,6 +66,13 @@ staging:
 			--profile si-watchtower \
 			up
 
+guinea:
+	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
+		docker-compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			--profile guinea \
+			up guinea
+
 web: init
 	# REPOPATH=$(REPOPATH) $(MAKEPATH)/scripts/check-for-artifacts-before-mounting.sh
 	$(MAKEPATH)/scripts/generate-ci-yml.sh $(CI_FROM_REF) $(CI_TO_REF)
