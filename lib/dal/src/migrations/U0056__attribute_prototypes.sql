@@ -14,7 +14,6 @@ CREATE TABLE attribute_prototypes
     attribute_context_schema_id            bigint,
     attribute_context_schema_variant_id    bigint,
     attribute_context_component_id         bigint,
-    attribute_context_system_id            bigint,
     created_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
     func_id                                bigint                   NOT NULL,
@@ -55,7 +54,6 @@ BEGIN
                                       attribute_context_schema_id,
                                       attribute_context_schema_variant_id,
                                       attribute_context_component_id,
-                                      attribute_context_system_id,
                                       func_id,
                                       key)
     VALUES (this_tenancy_record.tenancy_universal,
@@ -70,7 +68,6 @@ BEGIN
             this_attribute_context_record.attribute_context_schema_id,
             this_attribute_context_record.attribute_context_schema_variant_id,
             this_attribute_context_record.attribute_context_component_id,
-            this_attribute_context_record.attribute_context_system_id,
             this_func_id,
             this_key)
     RETURNING * INTO this_new_row;
@@ -99,7 +96,6 @@ AS $$
         record_to_check.attribute_context_external_provider_id,
         record_to_check.attribute_context_schema_id,
         record_to_check.attribute_context_schema_variant_id,
-        record_to_check.attribute_context_component_id,
-        record_to_check.attribute_context_system_id
+        record_to_check.attribute_context_component_id
     )
 $$;

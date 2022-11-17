@@ -4,7 +4,6 @@ use thiserror::Error;
 use veritech_client::{QualificationSubCheck, QualificationSubCheckStatus};
 
 use crate::{
-    attribute::context::UNSET_ID_VALUE,
     component,
     func::{
         binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
@@ -13,7 +12,7 @@ use crate::{
     validation::ValidationError,
     ws_event::{WsEvent, WsPayload},
     Component, ComponentId, DalContext, QualificationPrototype, QualificationPrototypeId,
-    StandardModel, SystemId,
+    StandardModel,
 };
 
 const GET_SUMMARY: &str = include_str!("queries/qualifications_summary_for_tenancy.sql");
@@ -66,7 +65,6 @@ impl QualificationSummary {
                 match Component::list_validations_as_qualification_for_component_id(
                     ctx,
                     component_id,
-                    UNSET_ID_VALUE.into(),
                 )
                 .await?
                 .result
@@ -225,7 +223,6 @@ impl QualificationView {
 pub struct QualificationCheckId {
     prototype_id: QualificationPrototypeId,
     component_id: ComponentId,
-    system_id: SystemId,
 }
 
 impl WsEvent {
@@ -233,14 +230,12 @@ impl WsEvent {
         ctx: &DalContext,
         prototype_id: QualificationPrototypeId,
         component_id: ComponentId,
-        system_id: SystemId,
     ) -> Self {
         WsEvent::new(
             ctx,
             WsPayload::CheckedQualifications(QualificationCheckId {
                 prototype_id,
                 component_id,
-                system_id,
             }),
         )
     }

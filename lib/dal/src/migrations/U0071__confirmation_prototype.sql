@@ -17,15 +17,13 @@ CREATE TABLE confirmation_prototypes
     func_id                     bigint                   NOT NULL,
     component_id                bigint                   NOT NULL,
     schema_id                   bigint                   NOT NULL,
-    schema_variant_id           bigint                   NOT NULL,
-    system_id                   bigint                   NOT NULL
+    schema_variant_id           bigint                   NOT NULL
 );
 
 CREATE UNIQUE INDEX unique_confirmation_prototype
     ON confirmation_prototypes (component_id,
                                 schema_id,
                                 schema_variant_id,
-                                system_id,
                                 name,
                                 visibility_change_set_pk,
                                 (visibility_deleted_at IS NULL))
@@ -43,7 +41,6 @@ CREATE OR REPLACE FUNCTION confirmation_prototype_create_v1(
     this_component_id bigint,
     this_schema_id bigint,
     this_schema_variant_id bigint,
-    this_system_id bigint,
     OUT object json) AS
 $$
 DECLARE
@@ -64,8 +61,7 @@ BEGIN
                                          func_id,
                                          component_id,
                                          schema_id,
-                                         schema_variant_id,
-                                         system_id)
+                                         schema_variant_id)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
@@ -76,8 +72,7 @@ BEGIN
             this_func_id,
             this_component_id,
             this_schema_id,
-            this_schema_variant_id,
-            this_system_id)
+            this_schema_variant_id)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

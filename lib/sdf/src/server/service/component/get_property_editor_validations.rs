@@ -1,7 +1,6 @@
 use axum::extract::{Json, Query};
 use dal::{
-    property_editor::PropertyEditorValidations, Component, ComponentId, StandardModel, SystemId,
-    Visibility,
+    property_editor::PropertyEditorValidations, Component, ComponentId, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +11,6 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[serde(rename_all = "camelCase")]
 pub struct GetPropertyEditorValidationsRequest {
     pub component_id: ComponentId,
-    pub system_id: SystemId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -35,8 +33,7 @@ pub async fn get_property_editor_validations(
     }
 
     let prop_edit_validations =
-        PropertyEditorValidations::for_component(&ctx, request.component_id, request.system_id)
-            .await?;
+        PropertyEditorValidations::for_component(&ctx, request.component_id).await?;
 
     Ok(Json(prop_edit_validations))
 }

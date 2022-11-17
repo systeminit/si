@@ -1,7 +1,5 @@
 use axum::Json;
-use dal::{
-    job::definition::CodeGeneration, Component, ComponentId, StandardModel, SystemId, Visibility,
-};
+use dal::{job::definition::CodeGeneration, Component, ComponentId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -11,7 +9,6 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[serde(rename_all = "camelCase")]
 pub struct GenerateCodeRequest {
     pub component_id: ComponentId,
-    pub system_id: Option<SystemId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

@@ -11,11 +11,11 @@ use dal::{
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, DiagramKind,
-    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
-    Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
-    SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, System, User, Visibility,
-    Workspace, WriteTenancy, NO_CHANGE_SET_PK,
+    BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, EncryptedSecret, Func,
+    FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
+    Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId,
+    Secret, SecretKind, SecretObjectType, StandardModel, User, Visibility, Workspace, WriteTenancy,
+    NO_CHANGE_SET_PK,
 };
 use lazy_static::lazy_static;
 use names::{Generator, Name};
@@ -358,21 +358,6 @@ pub async fn create_schema_variant_with_root(
         .await
         .expect("Unable to add socket to variant");
 
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await
-    .expect("unable to create socket");
-    variant
-        .add_socket(ctx, system_socket.id())
-        .await
-        .expect("Unable to add socket to variant");
-
     (variant, root)
 }
 
@@ -420,11 +405,6 @@ pub async fn create_qualification_check(ctx: &DalContext) -> QualificationCheck 
     QualificationCheck::new(ctx, name)
         .await
         .expect("cannot create qualification check")
-}
-
-pub async fn create_system(ctx: &DalContext) -> System {
-    let name = generate_fake_name();
-    System::new(ctx, name).await.expect("cannot create system")
 }
 
 pub async fn create_prop(ctx: &DalContext) -> Prop {

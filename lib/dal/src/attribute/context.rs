@@ -10,7 +10,6 @@
 //! - [`SchemaId`]
 //! - [`SchemaVariantId`]
 //! - [`ComponentId`]
-//! - [`SystemId`]
 //!
 //! At the level of least "specificity", you can provider have a [`PropId`], an
 //! [`InternalProviderId`], or an [`ExternalProviderId`]. However, you can only provide one and only
@@ -29,7 +28,6 @@ use thiserror::Error;
 
 use crate::{
     ComponentId, ExternalProviderId, InternalProviderId, PropId, SchemaId, SchemaVariantId,
-    SystemId,
 };
 
 pub mod read;
@@ -70,8 +68,6 @@ pub struct AttributeContext {
     schema_variant_id: SchemaVariantId,
     #[serde(rename = "attribute_context_component_id")]
     component_id: ComponentId,
-    #[serde(rename = "attribute_context_system_id")]
-    system_id: SystemId,
 }
 
 impl From<AttributeContext> for AttributeContextBuilder {
@@ -83,7 +79,6 @@ impl From<AttributeContext> for AttributeContextBuilder {
             schema_id: from_context.schema_id(),
             schema_variant_id: from_context.schema_variant_id(),
             component_id: from_context.component_id(),
-            system_id: from_context.system_id(),
         }
     }
 }
@@ -109,9 +104,6 @@ impl From<AttributeReadContext> for AttributeContextBuilder {
         if let Some(component_id) = from_read_context.component_id {
             builder.set_component_id(component_id);
         }
-        if let Some(system_id) = from_read_context.system_id {
-            builder.set_system_id(system_id);
-        }
         builder
     }
 }
@@ -125,18 +117,8 @@ impl PartialOrd for AttributeContext {
     /// - [`None`]: "self" and "other" have different "least-specific" fields (e.g. "self" is
     ///   [`Prop`](crate::Prop)-specific and "other" is [`InternalProvider`](crate::InternalProvider)-specific.
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if !self.is_system_unset() {
-            return if !other.is_system_unset() {
-                Some(Ordering::Equal)
-            } else {
-                Some(Ordering::Greater)
-            };
-        }
-
         if !self.is_component_unset() {
-            return if !other.is_system_unset() {
-                Some(Ordering::Less)
-            } else if !other.is_component_unset() {
+            return if !other.is_component_unset() {
                 Some(Ordering::Equal)
             } else {
                 Some(Ordering::Greater)
@@ -250,18 +232,8 @@ impl AttributeContext {
         self.component_id == UNSET_ID_VALUE.into()
     }
 
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    pub fn is_system_unset(&self) -> bool {
-        self.system_id == UNSET_ID_VALUE.into()
-    }
-
-    /// Determines if the context is "least specific".
     pub fn is_least_specific(&self) -> bool {
-        self.system_id == UNSET_ID_VALUE.into()
-            && self.component_id == UNSET_ID_VALUE.into()
+        self.component_id == UNSET_ID_VALUE.into()
             && self.schema_variant_id == UNSET_ID_VALUE.into()
             && self.schema_id == UNSET_ID_VALUE.into()
     }
@@ -273,10 +245,7 @@ impl AttributeContext {
     /// the current [`AttributeContext`].
     pub fn less_specific(&self) -> AttributeContextResult<Self> {
         let mut builder = AttributeContextBuilder::from(*self);
-
-        if self.system_id() != UNSET_ID_VALUE.into() {
-            builder.unset_system_id();
-        } else if self.component_id() != UNSET_ID_VALUE.into() {
+        if self.component_id() != UNSET_ID_VALUE.into() {
             builder.unset_component_id();
         } else if self.schema_variant_id() != UNSET_ID_VALUE.into() {
             builder.unset_schema_variant_id();
@@ -370,7 +339,6 @@ pub struct AttributeContextBuilder {
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
     component_id: ComponentId,
-    system_id: SystemId,
 }
 
 /// Returns [`Self::new()`].
@@ -390,7 +358,6 @@ impl AttributeContextBuilder {
             schema_id: UNSET_ID_VALUE.into(),
             schema_variant_id: UNSET_ID_VALUE.into(),
             component_id: UNSET_ID_VALUE.into(),
-            system_id: UNSET_ID_VALUE.into(),
         }
     }
 
@@ -402,19 +369,14 @@ impl AttributeContextBuilder {
         let mut unset_prerequisite_fields = Vec::new();
 
         // Start with the second highest specificty and work our way down.
-        if self.component_id == UNSET_ID_VALUE.into() && self.system_id != UNSET_ID_VALUE.into() {
-            unset_prerequisite_fields.push("ComponentId");
-        }
         if self.schema_variant_id == UNSET_ID_VALUE.into()
-            && (self.component_id != UNSET_ID_VALUE.into()
-                || self.system_id != UNSET_ID_VALUE.into())
+            && self.component_id != UNSET_ID_VALUE.into()
         {
             unset_prerequisite_fields.push("SchemaVariantId");
         }
         if self.schema_id == UNSET_ID_VALUE.into()
             && (self.schema_variant_id != UNSET_ID_VALUE.into()
-                || self.component_id != UNSET_ID_VALUE.into()
-                || self.system_id != UNSET_ID_VALUE.into())
+                || self.component_id != UNSET_ID_VALUE.into())
         {
             unset_prerequisite_fields.push("SchemaId");
         }
@@ -452,7 +414,6 @@ impl AttributeContextBuilder {
             schema_id: self.schema_id,
             schema_variant_id: self.schema_variant_id,
             component_id: self.component_id,
-            system_id: self.system_id,
         })
     }
 
@@ -522,16 +483,6 @@ impl AttributeContextBuilder {
         self
     }
 
-    /// Sets the [`SystemId`] field. If [`UNSET_ID_VALUE`] is the ID passed in, then
-    /// [`Self::unset_system_id()`] is returned.
-    pub fn set_system_id(&mut self, system_id: SystemId) -> &mut Self {
-        if system_id == UNSET_ID_VALUE.into() {
-            return self.unset_system_id();
-        }
-        self.system_id = system_id;
-        self
-    }
-
     /// Unsets the [`PropId`].
     pub fn unset_prop_id(&mut self) -> &mut Self {
         self.prop_id = UNSET_ID_VALUE.into();
@@ -567,12 +518,6 @@ impl AttributeContextBuilder {
         self.component_id = UNSET_ID_VALUE.into();
         self
     }
-
-    /// Unsets the [`SystemId`].
-    pub fn unset_system_id(&mut self) -> &mut Self {
-        self.system_id = UNSET_ID_VALUE.into();
-        self
-    }
 }
 
 impl postgres_types::ToSql for AttributeContext {
@@ -606,7 +551,7 @@ impl postgres_types::ToSql for AttributeContext {
 }
 
 // NOTE(nick): there are only error permutations tests for fields that have at least two prerequisite
-// fields. Thus, SystemId, ComponentId, and SchemaVariantId have error permutations tests and SchemaId
+// fields. Thus ComponentId, and SchemaVariantId have error permutations tests and SchemaId
 // and PropId do not.
 
 // TODO(nick): for the aforementioned error permutations tests, when/if more "layers" are added, we will likely
@@ -627,26 +572,10 @@ mod tests {
             .set_schema_id(2.into())
             .set_schema_variant_id(3.into())
             .set_component_id(4.into())
-            .set_system_id(5.into())
             .to_context()
             .expect("cannot build attribute context");
 
         let new_context = context
-            .less_specific()
-            .expect("cannot create less specific context");
-
-        assert_eq!(
-            AttributeContextBuilder::new()
-                .set_prop_id(1.into())
-                .set_schema_id(2.into())
-                .set_schema_variant_id(3.into())
-                .set_component_id(4.into())
-                .to_context()
-                .expect("cannot create expected context"),
-            new_context,
-        );
-
-        let new_context = new_context
             .less_specific()
             .expect("cannot create less specific context");
 
@@ -710,7 +639,6 @@ mod tests {
         let schema_id: SchemaId = 1.into();
         let schema_variant_id: SchemaVariantId = 1.into();
         let component_id: ComponentId = 1.into();
-        let system_id: SystemId = 1.into();
 
         let mut builder = AttributeContextBuilder::new();
 
@@ -738,144 +666,8 @@ mod tests {
         builder.set_schema_variant_id(schema_variant_id);
         assert!(builder.to_context().is_ok(),);
 
-        // SystemId (FAIL) --> ComponentId (PASS)
-        builder.set_system_id(system_id);
-        assert!(builder.to_context().is_err());
-        builder.unset_system_id();
         builder.set_component_id(component_id);
         assert!(builder.to_context().is_ok());
-
-        // SystemId (PASS)
-        builder.set_system_id(system_id);
-        assert!(builder.to_context().is_ok(),);
-    }
-
-    #[test]
-    fn builder_system_id_error_permutations() {
-        let prop_id: PropId = 1.into();
-        let schema_id: SchemaId = 1.into();
-        let schema_variant_id: SchemaVariantId = 1.into();
-        let component_id: ComponentId = 1.into();
-        let system_id: SystemId = 1.into();
-
-        // ----------------
-        // Prerequisites: 0
-        // ----------------
-
-        // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        assert!(builder.to_context().is_err());
-
-        // ----------------
-        // Prerequisites: 1
-        // ----------------
-
-        // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_component_id(component_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_schema_variant_id(schema_variant_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_schema_id(schema_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_prop_id(prop_id);
-        assert!(builder.to_context().is_err());
-
-        // ----------------
-        // Prerequisites: 2
-        // ----------------
-
-        // ComponentId [x] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_component_id(component_id);
-        builder.set_schema_variant_id(schema_variant_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_component_id(component_id);
-        builder.set_schema_id(schema_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_component_id(component_id);
-        builder.set_prop_id(prop_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_schema_variant_id(schema_variant_id);
-        builder.set_schema_id(schema_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_schema_variant_id(schema_variant_id);
-        builder.set_prop_id(prop_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [x]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_schema_id(schema_id);
-        builder.set_prop_id(prop_id);
-        assert!(builder.to_context().is_err());
-
-        // ----------------
-        // Prerequisites: 3
-        // ----------------
-
-        // ComponentId [x] --> SchemaVariantId [x] --> SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_component_id(component_id);
-        builder.set_schema_variant_id(schema_variant_id);
-        builder.set_schema_id(schema_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [x]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_component_id(component_id);
-        builder.set_schema_id(schema_id);
-        builder.set_prop_id(prop_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [x] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_component_id(component_id);
-        builder.set_schema_variant_id(schema_variant_id);
-        builder.set_prop_id(prop_id);
-        assert!(builder.to_context().is_err());
-
-        // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [x] --> PropId [x]
-        let mut builder = AttributeContextBuilder::new();
-        builder.set_system_id(system_id);
-        builder.set_schema_variant_id(schema_variant_id);
-        builder.set_schema_id(schema_id);
-        builder.set_prop_id(prop_id);
-        assert!(builder.to_context().is_err());
     }
 
     #[test]

@@ -95,8 +95,7 @@ BEGIN
                                                             'attribute_context_internal_provider_id', internal_provider_id,
                                                             'attribute_context_schema_id',            attribute_value.attribute_context_schema_id,
                                                             'attribute_context_schema_variant_id',    attribute_value.attribute_context_schema_variant_id,
-                                                            'attribute_context_component_id',         attribute_value.attribute_context_component_id,
-                                                            'attribute_context_system_id',            attribute_value.attribute_context_system_id);
+                                                            'attribute_context_component_id',         attribute_value.attribute_context_component_id);
 
                 SELECT id
                 INTO tmp_record_id
@@ -141,8 +140,7 @@ BEGIN
                         'attribute_context_external_provider_id', -1,
                         'attribute_context_schema_id',            attribute_value.attribute_context_schema_id,
                         'attribute_context_schema_variant_id',    attribute_value.attribute_context_schema_variant_id,
-                        'attribute_context_component_id',         attribute_value.attribute_context_component_id,
-                        'attribute_context_system_id',            attribute_value.attribute_context_system_id
+                        'attribute_context_component_id',         attribute_value.attribute_context_component_id
                     );
                     -- TODO(jhelwig): This can, strictly speaking, find more AttributeValues that it considers
                     --                depending on this specific AttributeValue than there really are. The
@@ -181,8 +179,7 @@ BEGIN
                     'attribute_context_external_provider_id', NULL,
                     'attribute_context_schema_id',            attribute_value.attribute_context_schema_id,
                     'attribute_context_schema_variant_id',    attribute_value.attribute_context_schema_variant_id,
-                    'attribute_context_component_id',         attribute_value.attribute_context_component_id,
-                    'attribute_context_system_id',            attribute_value.attribute_context_system_id
+                    'attribute_context_component_id',         attribute_value.attribute_context_component_id
                 );
                 RAISE DEBUG 'attribute_value_affected_graph_v1: Looking for AttributeValues with AttributePrototypes that use InternalProvider(%) in at least AttributeContext(%)',
                     attribute_value.attribute_context_internal_provider_id,
@@ -235,12 +232,7 @@ BEGIN
                     'attribute_context_external_provider_id', -1,
                     'attribute_context_schema_id',            NULL,
                     'attribute_context_schema_variant_id',    NULL,
-                    'attribute_context_component_id',         NULL,
-                    'attribute_context_system_id',            CASE WHEN attribute_value.attribute_context_system_id = -1 THEN
-                                                                    NULL
-                                                                ELSE
-                                                                    attribute_value.attribute_context_system_id
-                                                                END
+                    'attribute_context_component_id',         NULL
                 );
 
                 -- TODO(jhelwig): This can, strictly speaking, find more AttributeValues that it considers

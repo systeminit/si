@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::validation::prototype::ValidationPrototypeResult;
 use crate::{
-    DalContext, Prop, PropId, PropKind, SchemaId, SchemaVariantId, StandardModel, SystemId,
+    DalContext, Prop, PropId, PropKind, SchemaId, SchemaVariantId, StandardModel,
     ValidationPrototypeError,
 };
 
@@ -15,7 +15,6 @@ pub struct ValidationPrototypeContextBuilder {
     prop_id: PropId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
 }
 
 impl ValidationPrototypeContextBuilder {
@@ -24,7 +23,6 @@ impl ValidationPrototypeContextBuilder {
             prop_id: PropId::NONE,
             schema_id: SchemaId::NONE,
             schema_variant_id: SchemaVariantId::NONE,
-            system_id: SystemId::NONE,
         }
     }
 
@@ -38,10 +36,6 @@ impl ValidationPrototypeContextBuilder {
 
     pub fn schema_variant_id(&self) -> SchemaVariantId {
         self.schema_variant_id
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
     }
 
     pub fn set_prop_id(&mut self, prop_id: PropId) -> &mut Self {
@@ -59,11 +53,6 @@ impl ValidationPrototypeContextBuilder {
         self
     }
 
-    pub fn set_system_id(&mut self, system_id: SystemId) -> &mut Self {
-        self.system_id = system_id;
-        self
-    }
-
     /// Try to convert [`Self`] into a [`ValidationPrototypeContext`].
     pub async fn to_context(
         &self,
@@ -72,12 +61,7 @@ impl ValidationPrototypeContextBuilder {
         let mut unset_prerequisite_fields = Vec::new();
 
         // Start with the second highest specific and work our way down.
-        if self.schema_variant_id == SchemaVariantId::NONE && self.system_id != SystemId::NONE {
-            unset_prerequisite_fields.push("SchemaVariantId");
-        }
-        if self.schema_id == SchemaId::NONE
-            && (self.schema_variant_id != SchemaVariantId::NONE || self.system_id != SystemId::NONE)
-        {
+        if self.schema_id == SchemaId::NONE && self.schema_variant_id != SchemaVariantId::NONE {
             unset_prerequisite_fields.push("SchemaId");
         }
 
@@ -110,7 +94,6 @@ impl ValidationPrototypeContextBuilder {
             prop_id: self.prop_id,
             schema_id: self.schema_id,
             schema_variant_id: self.schema_variant_id,
-            system_id: self.system_id,
         })
     }
 }
@@ -121,8 +104,7 @@ impl From<ValidationPrototypeContext> for ValidationPrototypeContextBuilder {
         builder
             .set_prop_id(context.prop_id)
             .set_schema_id(context.schema_id)
-            .set_schema_variant_id(context.schema_variant_id)
-            .set_system_id(context.system_id);
+            .set_schema_variant_id(context.schema_variant_id);
         builder
     }
 }
@@ -133,7 +115,6 @@ pub struct ValidationPrototypeContext {
     prop_id: PropId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
 }
 
 impl ValidationPrototypeContext {
@@ -157,10 +138,6 @@ impl ValidationPrototypeContext {
 
     pub fn schema_variant_id(&self) -> SchemaVariantId {
         self.schema_variant_id
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
     }
 }
 

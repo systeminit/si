@@ -9,8 +9,8 @@ use crate::{
     diagram::DiagramKind, generate_name, impl_standard_model, pk,
     schema::variant::SchemaVariantError, standard_model, standard_model_accessor,
     standard_model_belongs_to, Component, ComponentId, HistoryEventError, ReadTenancyError, Schema,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, System, SystemId, Timestamp,
-    Visibility, WriteTenancy,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -66,8 +66,6 @@ pk!(NodeId);
 pub enum NodeKind {
     /// The [`Node`](Node) created for a [`SchemaKind::Configuration`](crate::SchemaKind::Configuration).
     Configuration,
-    /// The [`Node`](Node) created for a [`SchemaKind::System`](crate::SchemaKind::System).
-    System,
 }
 
 /// A mathematical node that can be used to create [`Edges`](crate::Edge).
@@ -118,17 +116,6 @@ impl Node {
         model_table: "components",
         belongs_to_id: ComponentId,
         returns: Component,
-        result: NodeResult,
-    );
-
-    standard_model_belongs_to!(
-        lookup_fn: system,
-        set_fn: set_system,
-        unset_fn: unset_system,
-        table: "node_belongs_to_system",
-        model_table: "systems",
-        belongs_to_id: SystemId,
-        returns: System,
         result: NodeResult,
     );
 }

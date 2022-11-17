@@ -5,10 +5,6 @@
  * The input type is `Component`
  * The return type is `Qualification`
  *
- * interface System {
- *   name: string;
- * }
- *
  * // The properties are derived from the fields in the Attributes panel
  * interface Properties {
  *   si: unknown;
@@ -21,7 +17,6 @@
  * }
  *
  * interface Data {
- *   system: System | null;
  *   kind: Kind;
  *   properties: Properties;
  * }
@@ -42,8 +37,8 @@
  * }
  */
 async function qualification(component) {
-    return {
-        qualified: true,
-        message: 'Component qualified'
-    };
+  return {
+    qualified: true,
+    message: 'Component qualified'
+ };
 }

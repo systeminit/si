@@ -33,8 +33,7 @@ WHERE id IN (
             -1, -- ExternalProviderId
             NULL, -- SchemaId (handled by ComponentId)
             NULL, -- SchemaVariantId (handled by ComponentId)
-            $3, -- ComponentId
-            $4 -- SystemId
+            $3 -- ComponentId
         ),
         av
     )
@@ -43,7 +42,6 @@ WHERE id IN (
         av.attribute_context_schema_id DESC,
         av.attribute_context_schema_variant_id DESC,
         av.attribute_context_component_id DESC,
-        av.attribute_context_system_id DESC,
         av.tenancy_universal -- bools sort false first ascending.
 )
 

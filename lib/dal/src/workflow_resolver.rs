@@ -12,8 +12,8 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
     standard_model_accessor, ComponentId, FuncBinding, HistoryEventError, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WorkflowPrototypeId, WorkflowTree, WriteTenancy,
+    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WorkflowPrototypeId,
+    WorkflowTree, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -45,7 +45,6 @@ pub struct WorkflowResolverContext {
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
 }
 
 // Hrm - is this a universal resolver context? -- Adam
@@ -61,7 +60,6 @@ impl WorkflowResolverContext {
             component_id: ComponentId::NONE,
             schema_id: SchemaId::NONE,
             schema_variant_id: SchemaVariantId::NONE,
-            system_id: SystemId::NONE,
         }
     }
 
@@ -87,14 +85,6 @@ impl WorkflowResolverContext {
 
     pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
         self.schema_variant_id = schema_variant_id;
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    pub fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
     }
 }
 
@@ -140,16 +130,20 @@ impl WorkflowResolver {
         func_binding_id: FuncBindingId,
         context: WorkflowResolverContext,
     ) -> WorkflowResolverResult<Self> {
-        let row = ctx.txns().pg().query_one(
-                "SELECT object FROM workflow_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                &[ctx.write_tenancy(), ctx.visibility(),
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM workflow_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &workflow_prototype_id,
                     &func_id,
                     &func_binding_id,
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;
@@ -194,7 +188,6 @@ impl WorkflowResolver {
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;

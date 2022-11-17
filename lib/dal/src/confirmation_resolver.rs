@@ -10,7 +10,7 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many,
     ActionPrototype, ActionPrototypeId, ComponentId, ConfirmationPrototype,
     ConfirmationPrototypeId, HistoryEventError, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -35,7 +35,6 @@ pub struct ConfirmationResolverContext {
     pub component_id: ComponentId,
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
-    pub system_id: SystemId,
 }
 
 // Hrm - is this a universal resolver context? -- Adam
@@ -51,7 +50,6 @@ impl ConfirmationResolverContext {
             component_id: ComponentId::NONE,
             schema_id: SchemaId::NONE,
             schema_variant_id: SchemaVariantId::NONE,
-            system_id: SystemId::NONE,
         }
     }
 
@@ -77,14 +75,6 @@ impl ConfirmationResolverContext {
 
     pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
         self.schema_variant_id = schema_variant_id;
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    pub fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
     }
 }
 
@@ -136,8 +126,10 @@ impl ConfirmationResolver {
         context: ConfirmationResolverContext,
     ) -> ConfirmationResolverResult<Self> {
         let row = ctx.txns().pg().query_one(
-            "SELECT object FROM confirmation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
-            &[ctx.write_tenancy(), ctx.visibility(),
+            "SELECT object FROM confirmation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            &[
+                ctx.write_tenancy(),
+                ctx.visibility(),
                 &confirmation_prototype_id,
                 &success,
                 &message,
@@ -146,7 +138,6 @@ impl ConfirmationResolver {
                 &context.component_id(),
                 &context.schema_id(),
                 &context.schema_variant_id(),
-                &context.system_id(),
             ],
         )
             .await?;
@@ -179,7 +170,6 @@ impl ConfirmationResolver {
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;

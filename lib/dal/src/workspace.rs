@@ -7,8 +7,8 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, DalContext, HistoryEventError, Organization, OrganizationId,
-    StandardModel, StandardModelError, System, SystemResult, Timestamp, Visibility,
+    DalContext, HistoryEventError, Organization, OrganizationId, StandardModel, StandardModelError,
+    Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -79,13 +79,5 @@ impl Workspace {
         belongs_to_id: OrganizationId,
         returns: Organization,
         result: WorkspaceResult,
-    );
-
-    standard_model_has_many!(
-        lookup_fn: systems,
-        table: "system_belongs_to_workspace",
-        model_table: "systems",
-        returns: System,
-        result: SystemResult,
     );
 }

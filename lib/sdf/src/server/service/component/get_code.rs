@@ -1,5 +1,5 @@
 use axum::{extract::Query, Json};
-use dal::{CodeView, Component, ComponentId, SystemId, Visibility, WorkspaceId};
+use dal::{CodeView, Component, ComponentId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -9,7 +9,6 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[serde(rename_all = "camelCase")]
 pub struct GetCodeRequest {
     pub component_id: ComponentId,
-    pub system_id: Option<SystemId>,
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,

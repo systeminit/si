@@ -37,7 +37,6 @@ export const useComponentAttributesStore = () => {
   const visibilityParams = {
     visibility_change_set_pk: changeSetId,
     workspaceId,
-    systemId: -1, // obviously not right... but (some of) these endpoints require it
   };
 
   return addStoreHooks(

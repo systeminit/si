@@ -4,7 +4,7 @@ use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
 use crate::prototype_context::PrototypeContext;
-use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
+use crate::socket::SocketArity;
 use crate::validation::Validation;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
@@ -13,7 +13,7 @@ use crate::{
     BuiltinsResult, CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype,
     ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncBinding,
     FuncError, InternalProvider, PropKind, QualificationPrototype, QualificationPrototypeContext,
-    SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    SchemaError, SchemaKind, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 const INGRESS_EGRESS_DOCS_URL: &str =
@@ -225,18 +225,6 @@ async fn ingress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         Some(EC2_TAG_DOCS_URL.to_string()),
     )
     .await?;
-
-    // System Socket
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     let identity_func_item = driver
         .get_func_item("si:identity")
@@ -789,18 +777,6 @@ async fn egress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
     )
     .await?;
 
-    // System Socket
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
-
     let identity_func_item = driver
         .get_func_item("si:identity")
         .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
@@ -1203,18 +1179,6 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
     let identity_func_item = driver
         .get_func_item("si:identity")
         .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
-
     let (region_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,

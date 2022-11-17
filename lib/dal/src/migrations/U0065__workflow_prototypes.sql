@@ -17,8 +17,7 @@ CREATE TABLE workflow_prototypes
     link                        text,
     component_id                bigint                   NOT NULL,
     schema_id                   bigint                   NOT NULL,
-    schema_variant_id           bigint                   NOT NULL,
-    system_id                   bigint                   NOT NULL
+    schema_variant_id           bigint                   NOT NULL
 );
 SELECT standard_model_table_constraints_v1('workflow_prototypes');
 
@@ -33,7 +32,6 @@ CREATE OR REPLACE FUNCTION workflow_prototype_create_v1(
     this_component_id bigint,
     this_schema_id bigint,
     this_schema_variant_id bigint,
-    this_system_id bigint,
     this_title text,
     OUT object json) AS
 $$
@@ -56,8 +54,7 @@ BEGIN
                                           title,
                                           component_id,
                                           schema_id,
-                                          schema_variant_id,
-                                          system_id)
+                                          schema_variant_id)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
@@ -69,8 +66,7 @@ BEGIN
             this_title,
             this_component_id,
             this_schema_id,
-            this_schema_variant_id,
-            this_system_id)
+            this_schema_variant_id)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

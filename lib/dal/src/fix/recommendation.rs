@@ -5,7 +5,7 @@ use crate::action_prototype::ActionKind;
 use crate::fix::FixResult;
 use crate::{
     AttributeReadContext, Component, ComponentId, ConfirmationResolver, ConfirmationResolverId,
-    ConfirmationResolverTree, FixResolver, FixResolverContext, StandardModel, SystemId,
+    ConfirmationResolverTree, FixResolver, FixResolverContext, StandardModel,
 };
 use crate::{ComponentError, DalContext};
 
@@ -68,7 +68,6 @@ impl Recommendation {
                 component_id,
                 schema_id: *schema.id(),
                 schema_variant_id: *schema_variant.id(),
-                system_id: SystemId::NONE,
             };
             let fix = FixResolver::find_for_confirmation(ctx, *resolver.id(), context).await?;
 
@@ -85,7 +84,6 @@ impl Recommendation {
                         ctx,
                         AttributeReadContext {
                             component_id: Some(component_id),
-                            system_id: Some(SystemId::NONE),
                             ..AttributeReadContext::any()
                         },
                     )

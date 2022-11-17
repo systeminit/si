@@ -14,7 +14,6 @@ CREATE TABLE attribute_values
     attribute_context_schema_id            bigint                   NOT NULL,
     attribute_context_schema_variant_id    bigint                   NOT NULL,
     attribute_context_component_id         bigint                   NOT NULL,
-    attribute_context_system_id            bigint                   NOT NULL,
     created_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
     proxy_for_attribute_value_id           bigint,
@@ -43,7 +42,6 @@ CREATE INDEX ON attribute_values (attribute_context_external_provider_id);
 CREATE INDEX ON attribute_values (attribute_context_schema_id);
 CREATE INDEX ON attribute_values (attribute_context_schema_variant_id);
 CREATE INDEX ON attribute_values (attribute_context_component_id);
-CREATE INDEX ON attribute_values (attribute_context_system_id);
 CREATE INDEX ON attribute_values (proxy_for_attribute_value_id);
 
 CREATE OR REPLACE FUNCTION attribute_value_create_v1(
@@ -77,7 +75,6 @@ BEGIN
                                   attribute_context_schema_id,
                                   attribute_context_schema_variant_id,
                                   attribute_context_component_id,
-                                  attribute_context_system_id,
                                   func_binding_id,
                                   func_binding_return_value_id,
                                   key)
@@ -93,7 +90,6 @@ BEGIN
             this_attribute_context_record.attribute_context_schema_id,
             this_attribute_context_record.attribute_context_schema_variant_id,
             this_attribute_context_record.attribute_context_component_id,
-            this_attribute_context_record.attribute_context_system_id,
             this_func_binding_id,
             this_func_binding_return_value_id,
             this_key)
@@ -123,7 +119,6 @@ AS $$
         record_to_check.attribute_context_external_provider_id,
         record_to_check.attribute_context_schema_id,
         record_to_check.attribute_context_schema_variant_id,
-        record_to_check.attribute_context_component_id,
-        record_to_check.attribute_context_system_id
+        record_to_check.attribute_context_component_id
     )
 $$;

@@ -2,13 +2,12 @@ use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::component::ComponentKind;
 use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
-use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
     func::argument::FuncArgument, schema::SchemaUiMenu, socket::SocketArity, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
     BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
     ExternalProvider, Func, FuncError, InternalProvider, PropKind, QualificationPrototype,
-    SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    SchemaError, SchemaKind, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 mod kubernetes_deployment_spec;
@@ -102,17 +101,6 @@ async fn kubernetes_namespace(ctx: &DalContext, driver: &MigrationDriver) -> Bui
     )
     .await?;
     output_socket.set_color(ctx, Some(0x85c9a3)).await?;
-
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     schema_variant.finalize(ctx).await?;
 
@@ -307,17 +295,6 @@ async fn kubernetes_deployment(ctx: &DalContext, driver: &MigrationDriver) -> Bu
         )
         .await?;
     input_socket.set_color(ctx, Some(0x85c9a3)).await?;
-
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     let diagram_kind = schema
         .diagram_kind()

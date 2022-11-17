@@ -75,10 +75,6 @@ pub enum SocketEdgeKind {
     /// The kind used for [`Sockets`](crate::Socket) created during
     /// [`ExternalProvider::new_with_socket()`].
     ConfigurationOutput,
-    /// The kind used for [`Sockets`](crate::Socket) on configuration
-    /// [`SchemaVariant`](crate::SchemaVariant) for including configurations in a
-    /// [`System`](crate::System).
-    System,
 }
 
 impl ToLabelList for SocketEdgeKind {}

@@ -754,18 +754,15 @@ mod tests {
             component: ResolverFunctionComponent {
                 data: ComponentView {
                     properties: serde_json::json!({"salt": "n", "peppa": "pig"}),
-                    system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
                         properties: serde_json::json!({}),
-                        system: None,
                         kind: ComponentKind::Standard,
                     },
                     ComponentView {
                         properties: serde_json::json!({}),
-                        system: None,
                         kind: ComponentKind::Standard,
                     },
                 ],
@@ -845,18 +842,15 @@ mod tests {
             component: ResolverFunctionComponent {
                 data: ComponentView {
                     properties: serde_json::json!({"salt": "n", "peppa": "pig"}),
-                    system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
                         properties: serde_json::json!({}),
-                        system: None,
                         kind: ComponentKind::Standard,
                     },
                     ComponentView {
                         properties: serde_json::json!({}),
-                        system: None,
                         kind: ComponentKind::Standard,
                     },
                 ],
@@ -935,7 +929,6 @@ mod tests {
             component: QualificationCheckComponent {
                 data: ComponentView {
                     properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
-                    system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: Vec::new(),
@@ -1025,7 +1018,6 @@ mod tests {
             component: QualificationCheckComponent {
                 data: ComponentView {
                     properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
-                    system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: Vec::new(),
@@ -1113,7 +1105,6 @@ mod tests {
             handler: "checkit".to_string(),
             component: ComponentView {
                 properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
-                system: None,
                 kind: ComponentKind::Standard,
             },
             code_base64: base64::encode(
@@ -1199,7 +1190,6 @@ mod tests {
             handler: "checkit".to_string(),
             component: ComponentView {
                 properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
-                system: None,
                 kind: ComponentKind::Standard,
             },
             code_base64: base64::encode(
@@ -1281,7 +1271,6 @@ mod tests {
 
         let component = ComponentView {
             properties: serde_json::json!({ "si": { "name": "Ablublubé"}}),
-            system: None,
             kind: ComponentKind::Standard,
         };
         let req = CodeGenerationRequest {
@@ -1312,7 +1301,7 @@ mod tests {
                 assert_eq!(
                     serde_json::from_str::<serde_json::Value>(&output.message)
                         .expect("Unable to serialize output to json"),
-                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "system": null, "kind": "standard" })
+                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "kind": "standard" })
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -1370,7 +1359,6 @@ mod tests {
 
         let component = ComponentView {
             properties: serde_json::json!({ "si": { "name": "Ablublubé"}}),
-            system: None,
             kind: ComponentKind::Standard,
         };
         let req = CodeGenerationRequest {
@@ -1401,7 +1389,7 @@ mod tests {
                 assert_eq!(
                     serde_json::from_str::<serde_json::Value>(&output.message)
                         .expect("Unable to serialize output to json"),
-                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "system": null, "kind": "standard" })
+                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "kind": "standard" })
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),

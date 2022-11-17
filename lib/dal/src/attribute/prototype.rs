@@ -737,7 +737,6 @@ impl AttributePrototype {
                     &context.schema_id(),
                     &context.schema_variant_id(),
                     &context.component_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;

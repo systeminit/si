@@ -1,8 +1,8 @@
 use dal::{
-    generate_name, qualification_resolver::UNSET_ID_VALUE, AttributePrototypeArgument,
-    AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentView,
-    DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider, Prop, PropKind, Schema,
-    SchemaKind, SocketArity, StandardModel, Visibility, WorkspaceId,
+    generate_name, AttributePrototypeArgument, AttributeReadContext, AttributeValue, ChangeSet,
+    ChangeSetStatus, Component, ComponentView, DalContext, DiagramKind, Edge, ExternalProvider,
+    InternalProvider, Prop, PropKind, Schema, SchemaKind, SocketArity, StandardModel, Visibility,
+    WorkspaceId,
 };
 use dal_test::{
     helpers::setup_identity_func,
@@ -76,7 +76,7 @@ async fn qualification_view(ctx: &DalContext) {
             .expect("Unable to create component");
 
     let qualification_check_component = component
-        .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
+        .veritech_qualification_check_component(ctx)
         .await
         .expect("cannot create QualificationCheckComponent");
 
@@ -85,7 +85,6 @@ async fn qualification_view(ctx: &DalContext) {
             .expect("cannot serialize QualificationCheckComponent"),
         json!({
             "data": {
-                "system": null,
                 "kind": "standard",
                 "properties": { "si": { "name": "mastodon" }, "domain": {}, "code": {} },
             },
@@ -109,11 +108,11 @@ async fn list_qualifications(ctx: &DalContext) {
         .expect("cannot create `Docker Image` component");
 
     component
-        .check_qualifications(ctx, UNSET_ID_VALUE.into())
+        .check_qualifications(ctx)
         .await
         .expect("cannot check qualifications");
     let qualifications = component
-        .list_qualifications(ctx, UNSET_ID_VALUE.into())
+        .list_qualifications(ctx)
         .await
         .expect("cannot list qualifications");
     assert_eq!(qualifications.len(), 2);
@@ -132,13 +131,12 @@ async fn list_qualifications_by_component_id(ctx: &DalContext) {
         .expect("cannot create `Docker Image` component");
 
     component
-        .check_qualifications(ctx, UNSET_ID_VALUE.into())
+        .check_qualifications(ctx)
         .await
         .expect("cannot check qualifications");
-    let qualifications =
-        Component::list_qualifications_by_component_id(ctx, *component.id(), UNSET_ID_VALUE.into())
-            .await
-            .expect("cannot list qualifications");
+    let qualifications = Component::list_qualifications_by_component_id(ctx, *component.id())
+        .await
+        .expect("cannot list qualifications");
     assert_eq!(qualifications.len(), 2);
 }
 

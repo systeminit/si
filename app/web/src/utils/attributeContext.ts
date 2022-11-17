@@ -17,7 +17,6 @@ export function buildAttributeContext(
       attribute_context_schema_id: -1,
       attribute_context_schema_variant_id: -1,
       attribute_context_component_id: -1,
-      attribute_context_system_id: -1,
     };
   }
 
@@ -29,6 +28,5 @@ export function buildAttributeContext(
     attribute_context_schema_variant_id:
       componentIdentification.schemaVariantId,
     attribute_context_component_id: componentIdentification.componentId,
-    attribute_context_system_id: -1,
   };
 }

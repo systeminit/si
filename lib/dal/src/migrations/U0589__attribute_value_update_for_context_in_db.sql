@@ -7,7 +7,6 @@ CREATE OR REPLACE FUNCTION less_specific_attribute_context_v1(check_context     
                                                               reference_schema_id            bigint,
                                                               reference_schema_variant_id    bigint,
                                                               reference_component_id         bigint,
-                                                              reference_system_id            bigint,
                                                               OUT result bool
 )
 AS
@@ -34,17 +33,6 @@ BEGIN
         -- If the check_context is only specific to one of the triple that is
         -- the least level of specificity, then there is no possible way for
         -- the reference AttributeContext to be less specific than that.
-        result := FALSE;
-        RETURN;
-    END IF;
-
-    -- Check System level.
-    IF reference_system_id != -1 THEN
-        -- No matter what the "check" SystemId is, we need the "reference"
-        -- SystemId to be -1 to be able to pass this check, since having
-        -- both set to something other than -1 (whether or not they're set
-        -- to the same value) would mean that they are of equal specificity
-        -- levels (even though it could be diverging values).
         result := FALSE;
         RETURN;
     END IF;
@@ -157,8 +145,7 @@ AS $$
         'attribute_context_external_provider_id', source_av.attribute_context_external_provider_id,
         'attribute_context_schema_id',            source_av.attribute_context_schema_id,
         'attribute_context_schema_variant_id',    source_av.attribute_context_schema_variant_id,
-        'attribute_context_component_id',         source_av.attribute_context_component_id,
-        'attribute_context_system_id',            source_av.attribute_context_system_id
+        'attribute_context_component_id',         source_av.attribute_context_component_id
     )
 $$;
 
@@ -174,8 +161,7 @@ AS $$
         'attribute_context_external_provider_id', source_ap.attribute_context_external_provider_id,
         'attribute_context_schema_id',            source_ap.attribute_context_schema_id,
         'attribute_context_schema_variant_id',    source_ap.attribute_context_schema_variant_id,
-        'attribute_context_component_id',         source_ap.attribute_context_component_id,
-        'attribute_context_system_id',            source_ap.attribute_context_system_id
+        'attribute_context_component_id',         source_ap.attribute_context_component_id
     )
 $$;
 
@@ -191,8 +177,7 @@ AS $$
         'attribute_context_external_provider_id', source_jsonb -> 'attribute_context_external_provider_id',
         'attribute_context_schema_id',            source_jsonb -> 'attribute_context_schema_id',
         'attribute_context_schema_variant_id',    source_jsonb -> 'attribute_context_schema_variant_id',
-        'attribute_context_component_id',         source_jsonb -> 'attribute_context_component_id',
-        'attribute_context_system_id',            source_jsonb -> 'attribute_context_system_id'
+        'attribute_context_component_id',         source_jsonb -> 'attribute_context_component_id'
     )
 $$;
 
@@ -209,8 +194,7 @@ BEGIN
                                                  reference.attribute_context_external_provider_id,
                                                  reference.attribute_context_schema_id,
                                                  reference.attribute_context_schema_variant_id,
-                                                 reference.attribute_context_component_id,
-                                                 reference.attribute_context_system_id);
+                                                 reference.attribute_context_component_id);
 END;
 -- This is safe to be IMMUTABLE since for any given (check_context, reference) pair, this will always return
 -- the same result. Technically, we only care whether the attribute_context_* fields have changed, and not the
@@ -230,7 +214,6 @@ AS $$
     SELECT  this_context ->> 'attribute_context_schema_id'         = '-1'
         AND this_context ->> 'attribute_context_schema_variant_id' = '-1'
         AND this_context ->> 'attribute_context_component_id'      = '-1'
-        AND this_context ->> 'attribute_context_system_id'         = '-1'
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_value_set_parent_attribute_value_v1(this_write_tenancy             jsonb,
@@ -327,7 +310,6 @@ BEGIN
              attribute_context_schema_id DESC,
              attribute_context_schema_variant_id DESC,
              attribute_context_component_id DESC,
-             attribute_context_system_id DESC,
              -- bools sort false first ascending.
              av.tenancy_universal;
 END;
@@ -343,10 +325,7 @@ DECLARE
 BEGIN
     new_attribute_context_record := jsonb_populate_record(null::attribute_context_record_v1, this_attribute_context);
 
-    IF new_attribute_context_record.attribute_context_system_id != -1 THEN
-        -- Remove the SystemId part of the AttributeContext.
-        new_attribute_context_record.attribute_context_system_id := -1;
-    ELSIF new_attribute_context_record.attribute_context_component_id != -1 THEN
+    IF new_attribute_context_record.attribute_context_component_id != -1 THEN
         -- Remove the ComponentId part of the AttributeContext.
         new_attribute_context_record.attribute_context_component_id := -1;
     ELSIF new_attribute_context_record.attribute_context_schema_variant_id != -1 THEN
@@ -412,7 +391,6 @@ AS $$
         ap.attribute_context_schema_id DESC,
         ap.attribute_context_schema_variant_id DESC,
         ap.attribute_context_component_id DESC,
-        ap.attribute_context_system_id DESC,
         av.tenancy_universal -- bools sort false first ascending.
 $$;
 
@@ -658,8 +636,7 @@ $$
         (reference_context ->> 'attribute_context_external_provider_id')::bigint,
         (reference_context ->> 'attribute_context_schema_id')::bigint,
         (reference_context ->> 'attribute_context_schema_variant_id')::bigint,
-        (reference_context ->> 'attribute_context_component_id')::bigint,
-        (reference_context ->> 'attribute_context_system_id')::bigint
+        (reference_context ->> 'attribute_context_component_id')::bigint
     )
 $$;
 
@@ -699,7 +676,6 @@ AS $$
             attribute_context_schema_id DESC,
             attribute_context_schema_variant_id DESC,
             attribute_context_component_id DESC,
-            attribute_context_system_id DESC,
             av.tenancy_universal -- bools sort false first ascending.
 $$;
 
@@ -901,7 +877,6 @@ AS $$
                 attribute_context_schema_id DESC,
                 attribute_context_schema_variant_id DESC,
                 attribute_context_component_id DESC,
-                attribute_context_system_id DESC,
                 av.tenancy_universal -- bools sort false first ascending.
 $$;
 
@@ -2058,14 +2033,12 @@ CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(
     a_schema_id            text,
     a_schema_variant_id    text,
     a_component_id         text,
-    a_system_id            text,
     b_prop_id              text,
     b_internal_provider_id text,
     b_external_provider_id text,
     b_schema_id            text,
     b_schema_variant_id    text,
-    b_component_id         text,
-    b_system_id            text
+    b_component_id         text
 )
 RETURNS bool
 LANGUAGE sql
@@ -2077,7 +2050,6 @@ AS $$
         AND a_schema_id            = b_schema_id
         AND a_schema_variant_id    = b_schema_variant_id
         AND a_component_id         = b_component_id
-        AND a_system_id            = b_system_id
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(
@@ -2095,14 +2067,12 @@ AS $$
         record_a ->> 'attribute_context_schema_id',
         record_a ->> 'attribute_context_schema_variant_id',
         record_a ->> 'attribute_context_component_id',
-        record_a ->> 'attribute_context_system_id',
         record_b ->> 'attribute_context_prop_id',
         record_b ->> 'attribute_context_internal_provider_id',
         record_b ->> 'attribute_context_external_provider_id',
         record_b ->> 'attribute_context_schema_id',
         record_b ->> 'attribute_context_schema_variant_id',
-        record_b ->> 'attribute_context_component_id',
-        record_b ->> 'attribute_context_system_id'
+        record_b ->> 'attribute_context_component_id'
     )
 $$;
 
@@ -2345,7 +2315,6 @@ CREATE OR REPLACE FUNCTION attribute_context_build_from_parts_v1(this_prop_id   
                                                                  this_schema_id            bigint,
                                                                  this_schema_variant_id    bigint,
                                                                  this_component_id         bigint,
-                                                                 this_system_id            bigint,
                                                                  OUT new_attribute_context jsonb
 )
 AS
@@ -2356,8 +2325,7 @@ BEGIN
                                                 'attribute_context_external_provider_id', this_external_provider_id,
                                                 'attribute_context_schema_id',            this_schema_id,
                                                 'attribute_context_schema_variant_id',    this_schema_variant_id,
-                                                'attribute_context_component_id',         this_component_id,
-                                                'attribute_context_system_id',            this_system_id);
+                                                'attribute_context_component_id',         this_component_id);
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
@@ -2652,7 +2620,6 @@ CREATE OR REPLACE FUNCTION jhelwig_debug_attribute_values()
         context_schema_id            bigint,
         context_schema_variant_id    bigint,
         context_component_id         bigint,
-        context_system_id            bigint,
         proxy_for_attribute_value_id bigint,
         sealed_proxy                 bool,
         func_name                    text,
@@ -2676,7 +2643,6 @@ BEGIN
                      attribute_values.attribute_context_schema_id,
                      attribute_values.attribute_context_schema_variant_id,
                      attribute_values.attribute_context_component_id,
-                     attribute_values.attribute_context_system_id,
                      attribute_values.proxy_for_attribute_value_id,
                      attribute_values.sealed_proxy,
                      funcs.name,

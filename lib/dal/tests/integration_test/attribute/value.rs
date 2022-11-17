@@ -1,7 +1,7 @@
 use dal::{
     attribute::context::AttributeContextBuilder, component::view::ComponentView, generate_name,
     AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
-    Schema, SchemaKind, StandardModel, SystemId,
+    Schema, SchemaKind, StandardModel,
 };
 use dal_test::{
     test,
@@ -555,7 +555,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
             .properties,
     );
 
-    let component_array_value = AttributeValue::find_for_context(
+    let _component_array_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
             prop_id: Some(*array_prop.id()),
@@ -565,68 +565,6 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
     .await
     .expect("cannot get component array AttributeValue")
     .expect("component array AttributeValue not found");
-
-    let system_id: SystemId = 12_000.into();
-
-    let system_update_context = AttributeContextBuilder::from(update_context)
-        .set_system_id(system_id)
-        .to_context()
-        .expect("cannot build system write AttributeContext");
-
-    let _new_system_array_element_value_id = AttributeValue::insert_for_context(
-        ctx,
-        system_update_context,
-        *component_array_value.id(),
-        Some(serde_json::json!("System Element")),
-        None,
-    )
-    .await
-    .expect("cannot insert new system array element");
-
-    let system_attribute_read_context = AttributeReadContext {
-        system_id: Some(system_id),
-        ..base_attribute_read_context
-    };
-
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "Array Component",
-            },
-            "code": {},
-            "domain": {
-                "array_prop": [
-                    "System Element",
-                    "Component Element",
-                ],
-            },
-        }],
-        ComponentView::for_context(ctx, system_attribute_read_context)
-            .await
-            .expect("cannot get component view")
-            .properties,
-    );
-
-    let system_array_read_context = AttributeReadContext {
-        prop_id: Some(*array_prop.id()),
-        ..system_update_context.into()
-    };
-    let mut system_array_values = AttributeValue::list_for_context(ctx, system_array_read_context)
-        .await
-        .expect("cannot retrieve array AttributeValue");
-    assert_eq!(
-        system_array_values.len(),
-        1,
-        "Should only find a single AttributeValue for the array"
-    );
-    let system_array_value = system_array_values
-        .pop()
-        .expect("cannot get system array AttributeValue");
-    let system_array_context = AttributeContextBuilder::from(system_update_context)
-        .set_prop_id(*array_prop.id())
-        .to_context()
-        .expect("cannot create system array AttributeContext");
-    assert_eq!(system_array_context, system_array_value.context);
 }
 
 #[test]

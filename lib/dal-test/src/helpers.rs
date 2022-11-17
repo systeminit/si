@@ -7,8 +7,8 @@ use dal::{
     },
     BillingAccount, BillingAccountId, BillingAccountSignup, ChangeSet, Component, DalContext,
     DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor, JwtSecretKey, Node, Prop,
-    PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
-    System, User, Visibility, WorkspaceId,
+    PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, User,
+    Visibility,
 };
 use names::{Generator, Name};
 
@@ -170,18 +170,6 @@ pub async fn create_component_for_schema(ctx: &DalContext, schema_id: &SchemaId)
         .await
         .expect("cannot create component");
     component
-}
-
-pub async fn create_system(ctx: &DalContext) -> System {
-    let name = generate_fake_name();
-    System::new(ctx, name).await.expect("cannot create system")
-}
-
-pub async fn create_system_with_node(ctx: &DalContext, wid: &WorkspaceId) -> (System, Node) {
-    let name = generate_fake_name();
-    System::new_with_node(ctx, name, wid)
-        .await
-        .expect("cannot create system")
 }
 
 pub async fn find_schema_by_name(ctx: &DalContext, schema_name: impl AsRef<str>) -> Schema {

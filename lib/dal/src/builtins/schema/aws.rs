@@ -9,7 +9,7 @@ use crate::edit_field::widget::WidgetKind;
 use crate::property_editor::SelectWidgetOption;
 use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
-use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
+use crate::socket::SocketArity;
 use crate::validation::Validation;
 use crate::AttributeValueError;
 use crate::{
@@ -18,7 +18,7 @@ use crate::{
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult,
     CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype, ConfirmationPrototypeContext,
     DalContext, DiagramKind, ExternalProvider, Func, FuncError, InternalProvider, PropKind,
-    QualificationPrototype, SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype,
+    QualificationPrototype, SchemaError, SchemaKind, StandardModel, WorkflowPrototype,
     WorkflowPrototypeContext,
 };
 
@@ -145,17 +145,6 @@ async fn ami(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     .await?;
 
     // Sockets
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
-
     let identity_func_item = driver
         .get_func_item("si:identity")
         .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
@@ -480,17 +469,6 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     .await?;
 
     // Sockets
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
-
     let identity_func_item = driver
         .get_func_item("si:identity")
         .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
@@ -953,18 +931,6 @@ async fn region(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         )
         .await?;
 
-    // System Socket
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
-
     // Output Socket
     let identity_func_item = driver
         .get_func_item("si:identity")
@@ -1157,18 +1123,6 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         *schema_variant.id(),
     )
     .await?;
-
-    // System Socket
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     // Output Socket
     let identity_func_item = driver

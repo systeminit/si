@@ -1,6 +1,6 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{Component, ComponentId, StandardModel, SystemId, Visibility, WorkspaceId};
+use dal::{Component, ComponentId, StandardModel, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -9,7 +9,6 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetComponentsMetadataRequest {
-    pub system_id: Option<SystemId>,
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -37,8 +36,6 @@ pub async fn get_components_metadata(
 ) -> ComponentResult<Json<GetComponentsMetadataResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let system_id = request.system_id.unwrap_or(SystemId::NONE);
-
     let components = Component::list(&ctx).await?;
     let mut metadata = Vec::with_capacity(components.len());
 
@@ -50,21 +47,13 @@ pub async fn get_components_metadata(
             .ok_or(ComponentError::SchemaNotFound)?;
 
         let qualifications =
-            Component::list_qualifications_by_component_id(&ctx, *component.id(), system_id)
-                .await?;
+            Component::list_qualifications_by_component_id(&ctx, *component.id()).await?;
 
         let qualified = qualifications
             .into_iter()
             .map(|q| q.result.map(|r| r.success))
             .reduce(|q, acc| acc.and_then(|acc| q.map(|q| acc && q)))
             .and_then(|opt| opt);
-
-        /*let resource = if system_id.is_none() {
-            None
-        } else {
-            Component::get_resource_by_component_and_system(&ctx, *component.id(), system_id)
-                .await?
-        };*/
 
         metadata.push(ComponentMetadata {
             schema_name: schema.name().to_owned(),

@@ -1,6 +1,6 @@
 use dal::{
     confirmation_resolver::ConfirmationResolverContext, ActionPrototype, ConfirmationPrototype,
-    ConfirmationResolver, DalContext, FuncBindingId, FuncId, Schema, StandardModel, SystemId,
+    ConfirmationResolver, DalContext, FuncBindingId, FuncId, Schema, StandardModel,
 };
 use dal_test::{test, test_harness::create_component_for_schema};
 
@@ -13,7 +13,7 @@ async fn new(ctx: &DalContext) {
         .expect("unable to find schema");
     let component = create_component_for_schema(ctx, schema.id()).await;
 
-    let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
+    let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id())
         .await
         .expect("could not find for context")
         .pop()
@@ -24,7 +24,6 @@ async fn new(ctx: &DalContext) {
         "create",
         prototype.schema_id(),
         prototype.schema_variant_id(),
-        SystemId::NONE,
     )
     .await
     .expect("unable to find action")
@@ -66,7 +65,7 @@ async fn find_for_prototype(ctx: &DalContext) {
         .expect("unable to find schema");
     let component = create_component_for_schema(ctx, schema.id()).await;
 
-    let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
+    let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id())
         .await
         .expect("could not find for context")
         .pop()
@@ -84,7 +83,7 @@ async fn find_for_prototype(ctx: &DalContext) {
     );
 
     let resolver = prototype
-        .run(ctx, *component.id(), SystemId::NONE)
+        .run(ctx, *component.id())
         .await
         .expect("failed to run prototype");
     assert_eq!(

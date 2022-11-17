@@ -11,8 +11,8 @@ use crate::{
     standard_model_accessor, standard_model_has_many, Capability, CapabilityError, DalContext,
     Group, GroupError, HistoryActor, HistoryEventError, KeyPair, KeyPairError, NodeError,
     Organization, OrganizationError, ReadTenancy, ReadTenancyError, SchemaError, StandardModel,
-    StandardModelError, SystemError, Timestamp, User, UserError, Visibility, Workspace,
-    WorkspaceError, WriteTenancy,
+    StandardModelError, Timestamp, User, UserError, Visibility, Workspace, WorkspaceError,
+    WriteTenancy,
 };
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("./queries/billing_account_get_by_name.sql");
@@ -51,8 +51,6 @@ pub enum BillingAccountError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
-    #[error("system error: {0}")]
-    System(#[from] SystemError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("read tenancy error: {0}")]

@@ -14,12 +14,10 @@ CREATE TABLE nodes
 );
 SELECT standard_model_table_constraints_v1('nodes');
 SELECT belongs_to_table_create_v1('node_belongs_to_component', 'nodes', 'components');
-SELECT belongs_to_table_create_v1('node_belongs_to_system', 'nodes', 'systems');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('nodes', 'model', 'node', 'Node'),
-       ('node_belongs_to_component', 'belongs_to', 'node.component', 'Node <> Component'),
-       ('node_belongs_to_system', 'belongs_to', 'node.system', 'Node <> System');
+       ('node_belongs_to_component', 'belongs_to', 'node.component', 'Node <> Component');
 
 CREATE OR REPLACE FUNCTION node_create_v1(
     this_tenancy jsonb,

@@ -48,7 +48,6 @@ export type DiagramNodeKind = DiagramNodeKindComponent;
 
 export interface DiagramNodePosition {
   diagramKind: DiagramKind;
-  systemId?: number;
   x: number;
   y: number;
 }

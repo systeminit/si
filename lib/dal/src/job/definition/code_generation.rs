@@ -10,8 +10,7 @@ use crate::{
         definition::Qualifications,
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, Component, ComponentError, ComponentId, DalContext, StandardModel, SystemId,
-    Visibility,
+    AccessBuilder, Component, ComponentError, ComponentId, DalContext, StandardModel, Visibility,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -107,7 +106,7 @@ impl JobConsumer for CodeGeneration {
         component.generate_code(ctx, false).await?;
 
         // Some qualifications depend on code generation, so remember to generate the code first
-        ctx.enqueue_job(Qualifications::new(ctx, self.component_id, SystemId::NONE).await?)
+        ctx.enqueue_job(Qualifications::new(ctx, self.component_id).await?)
             .await;
 
         Ok(())

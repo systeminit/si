@@ -368,7 +368,6 @@ mod tests {
         );
 
         let secrets = ComponentView {
-            system: None,
             kind: ComponentKind::Credential,
             properties: serde_json::json!({
                 "secret": {
@@ -403,7 +402,6 @@ mod tests {
         );
 
         let json = ComponentView {
-            system: None,
             kind: ComponentKind::Credential,
             properties: serde_json::json!({
                 "secret": {
@@ -418,7 +416,6 @@ mod tests {
         .expect("Unable to decrypt component view");
 
         let decrypted_json = serde_json::json!({
-            "system": null,
             "kind": "credential",
             "properties": {
                 "secret": {

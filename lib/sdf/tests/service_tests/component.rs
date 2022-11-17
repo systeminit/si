@@ -156,7 +156,6 @@ async fn get_components_metadata() {
     let request = GetComponentsMetadataRequest {
         visibility,
         workspace_id: *nba.workspace.id(),
-        system_id: None,
     };
     let response: GetComponentsMetadataResponse = api_request_auth_query(
         app,

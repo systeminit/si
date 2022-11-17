@@ -1,8 +1,8 @@
 use axum::Json;
 use dal::{
     job::definition::DependentValuesUpdate, node::NodeId, socket::SocketId, AttributeReadContext,
-    AttributeValue, Connection, ExternalProvider, Node, StandardModel, SystemId, Visibility,
-    WorkspaceId, WsEvent,
+    AttributeValue, Connection, ExternalProvider, Node, StandardModel, Visibility, WorkspaceId,
+    WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -45,8 +45,6 @@ pub async fn create_connection(
     )
     .await?;
 
-    let system_id = SystemId::NONE;
-
     let node = Node::get_by_id(&ctx, &request.from_node_id)
         .await?
         .ok_or(DiagramError::NodeNotFound(request.from_node_id))?;
@@ -77,7 +75,6 @@ pub async fn create_connection(
         component_id: Some(*component.id()),
         schema_variant_id: Some(*schema_variant.id()),
         schema_id: Some(*schema.id()),
-        system_id: Some(system_id),
         external_provider_id: Some(*from_socket_external_provider.id()),
         ..Default::default()
     };

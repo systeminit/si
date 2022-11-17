@@ -23,8 +23,8 @@ pub use cyclone_core::{
     FunctionResultFailure, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
     QualificationCheckResultSuccess, QualificationSubCheck, QualificationSubCheckStatus,
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    SensitiveContainer, SystemView, ValidationRequest, ValidationResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    SensitiveContainer, ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 
 #[derive(Error, Debug)]
@@ -432,7 +432,6 @@ mod tests {
             component: ResolverFunctionComponent {
                 data: ComponentView {
                     properties: serde_json::json!({ "foo": "bar", "baz": "quux" }),
-                    system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: vec![],
@@ -487,7 +486,6 @@ mod tests {
                             },
                         }
                     }),
-                    system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: Vec::new(),
@@ -592,7 +590,6 @@ mod tests {
         request.execution_id = "9012".to_string();
         request.component.data = ComponentView {
             properties: serde_json::json!({"image": "abc"}),
-            system: None,
             kind: ComponentKind::Standard,
         };
 
@@ -633,7 +630,6 @@ mod tests {
             handler: "confirmItOut".to_string(),
             component: ComponentView {
                 properties: serde_json::json!({"pkg": "cider"}),
-                system: None,
                 kind: ComponentKind::Standard,
             },
             code_base64: base64::encode("function confirmItOut(component) { return { success: false, recommendedActions: ['vai te catar'] } }")
@@ -675,7 +671,6 @@ mod tests {
             handler: "generateItOut".to_string(),
             component: ComponentView {
                 properties: serde_json::json!({"pkg": "cider"}),
-                system: None,
                 kind: ComponentKind::Standard,
             },
             code_base64: base64::encode("function generateItOut(component) { return { format: 'yaml', code: YAML.stringify(component.properties) }; }"),

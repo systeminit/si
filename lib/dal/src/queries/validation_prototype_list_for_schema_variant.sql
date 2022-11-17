@@ -3,8 +3,8 @@ SELECT DISTINCT ON (validation_prototypes.id) validation_prototypes.id,
                                               validation_prototypes.visibility_deleted_at,
                                               row_to_json(validation_prototypes.*) AS object
 
-FROM validation_prototypes
-         INNER JOIN props
+FROM validation_prototypes_v1($1, $2) as validation_prototypes
+         INNER JOIN props_v1($1, $2) as props
                     ON props.id = validation_prototypes.prop_id
                         AND in_tenancy_and_visible_v1($1, $2, props)
                         AND props.id IN (
@@ -19,12 +19,6 @@ FROM validation_prototypes
                             )
                             SELECT prop_id
                             FROM recursive_props)
-
-WHERE in_tenancy_and_visible_v1($1, $2, validation_prototypes)
-  AND validation_prototypes.system_id = $4
-
 ORDER BY validation_prototypes.id,
          validation_prototypes.visibility_change_set_pk DESC,
          validation_prototypes.visibility_deleted_at DESC NULLS FIRST;
-
-

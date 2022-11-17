@@ -5,7 +5,7 @@ use dal::{
     job::definition::{DependentValuesUpdate, Qualification},
     AttributePrototype, AttributeValue, Component, DalContext, Func, FuncBackendKind, FuncId,
     PropId, PrototypeListForFunc, QualificationPrototype, QualificationPrototypeError,
-    SchemaVariant, StandardModel, SystemId, ValidationPrototype, Visibility, WsEvent,
+    SchemaVariant, StandardModel, ValidationPrototype, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -49,7 +49,7 @@ async fn run_qualifications(ctx: &DalContext, func: &Func) -> FuncResult<()> {
 
         if component_id.is_some() {
             ctx.enqueue_job(
-                Qualification::new(ctx, component_id, *proto.id(), SystemId::NONE)
+                Qualification::new(ctx, component_id, *proto.id())
                     .await
                     .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?,
             )
@@ -60,7 +60,7 @@ async fn run_qualifications(ctx: &DalContext, func: &Func) -> FuncResult<()> {
                 .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?
             {
                 ctx.enqueue_job(
-                    Qualification::new(ctx, *component.id(), *proto.id(), SystemId::NONE)
+                    Qualification::new(ctx, *component.id(), *proto.id())
                         .await
                         .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?,
                 )

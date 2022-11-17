@@ -10,9 +10,8 @@ use crate::{
     func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor,
     workflow_resolver::WorkflowResolverContext, AttributeReadContext, Component, ComponentId,
     ComponentView, DalContext, Func, FuncBinding, FuncBindingError, HistoryEventError, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WorkflowError, WorkflowResolver, WorkflowResolverError, WorkflowView, WriteTenancy, WsEvent,
-    WsEventError,
+    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WorkflowError,
+    WorkflowResolver, WorkflowResolverError, WorkflowView, WriteTenancy, WsEvent, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -58,7 +57,6 @@ pub struct WorkflowPrototypeContext {
     pub component_id: ComponentId,
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
-    pub system_id: SystemId,
 }
 
 // Hrm - is this a universal resolver context? -- Adam
@@ -74,7 +72,6 @@ impl WorkflowPrototypeContext {
             component_id: ComponentId::NONE,
             schema_id: SchemaId::NONE,
             schema_variant_id: SchemaVariantId::NONE,
-            system_id: SystemId::NONE,
         }
     }
 
@@ -101,14 +98,6 @@ impl WorkflowPrototypeContext {
     pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
         self.schema_variant_id = schema_variant_id;
     }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    pub fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
-    }
 }
 
 pk!(WorkflowPrototypePk);
@@ -128,7 +117,6 @@ pub struct WorkflowPrototype {
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -157,18 +145,22 @@ impl WorkflowPrototype {
         title: impl Into<String>,
     ) -> WorkflowPrototypeResult<Self> {
         let title = title.into();
-        let row = ctx.txns().pg().query_one(
-            "SELECT object FROM workflow_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-            &[ctx.write_tenancy(), ctx.visibility(),
-                &func_id,
-                &args,
-                &context.component_id(),
-                &context.schema_id(),
-                &context.schema_variant_id(),
-                &context.system_id(),
-                &title,
-            ],
-        )
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM workflow_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &func_id,
+                    &args,
+                    &context.component_id(),
+                    &context.schema_id(),
+                    &context.schema_variant_id(),
+                    &title,
+                ],
+            )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
@@ -186,8 +178,6 @@ impl WorkflowPrototype {
         WorkflowPrototypeResult
     );
     standard_model_accessor!(component_id, Pk(ComponentId), WorkflowPrototypeResult);
-
-    standard_model_accessor!(system_id, Pk(SystemId), WorkflowPrototypeResult);
 
     /// For the given [`WorkflowPrototype`](Self), find or create a
     /// [`WorkflowResolver`](crate::workflow_resolver::WorkflowResolver) corresponding to the
@@ -239,7 +229,6 @@ impl WorkflowPrototype {
         context.set_component_id(self.component_id);
         context.set_schema_id(self.schema_id);
         context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(self.system_id);
         let resolver = WorkflowResolver::find_for_prototype(ctx, self.id(), context.clone())
             .await?
             .pop();
@@ -300,7 +289,6 @@ impl WorkflowPrototype {
         component_id: ComponentId,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
-        system_id: SystemId,
     ) -> WorkflowPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
@@ -311,7 +299,6 @@ impl WorkflowPrototype {
                     ctx.read_tenancy(),
                     ctx.visibility(),
                     &component_id,
-                    &system_id,
                     &schema_variant_id,
                     &schema_id,
                 ],
@@ -326,7 +313,6 @@ impl WorkflowPrototype {
         context.set_component_id(self.component_id);
         context.set_schema_id(self.schema_id);
         context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(self.system_id);
 
         context
     }

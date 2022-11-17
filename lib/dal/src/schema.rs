@@ -102,8 +102,6 @@ pk!(SchemaId);
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SchemaKind {
-    /// Exclusive to [`System`](crate::System).
-    System,
     /// Low level model of a particular external domain (docker image, k8s deployment...).
     Configuration,
 }
@@ -112,7 +110,6 @@ impl From<SchemaKind> for NodeKind {
     fn from(kind: SchemaKind) -> Self {
         match kind {
             SchemaKind::Configuration => Self::Configuration,
-            SchemaKind::System => Self::System,
         }
     }
 }
@@ -293,7 +290,6 @@ impl Schema {
     pub fn diagram_kind(&self) -> Option<DiagramKind> {
         match self.kind {
             SchemaKind::Configuration => Some(DiagramKind::Configuration),
-            SchemaKind::System => None,
         }
     }
 }

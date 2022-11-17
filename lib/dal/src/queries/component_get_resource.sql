@@ -7,6 +7,5 @@ INNER JOIN func_binding_return_values_v1($1, $2) AS fbrv
     ON fbrv.id = fbrvbtfb.object_id
 WHERE
     rr.component_id = $3
-    AND (rr.system_id = $4 OR rr.system_id = -1)
 ORDER BY rr.id DESC,
          fbrv.id DESC
