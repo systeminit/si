@@ -13,26 +13,28 @@
       <template #panels>
         <TabPanel class="grow">
           <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
-            <VButton
+            <VButton2
+              class="--tone-success"
               :disabled="!isDevMode && editingFunc.isBuiltin"
-              button-rank="primary"
-              button-type="success"
               icon="save"
-              label="Execute"
               size="md"
+              loading-text="Executing"
+              label="Execute"
+              :request-status="execFuncReqStatus"
               @click="execFunc"
             />
 
-            <VButton
+            <VButton2
+              class="--tone-neutral"
               :disabled="
                 (!isDevMode && editingFunc.isBuiltin) ||
                 !editingFunc.isRevertible
               "
-              button-rank="tertiary"
-              button-type="neutral"
               icon="x"
+              size="md"
+              loading-text="Reverting"
               label="Revert"
-              size="sm"
+              :request-status="revertFuncReqStatus"
               @click="revertFunc"
             />
           </div>
@@ -162,7 +164,7 @@ import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import VButton from "@/molecules/VButton.vue";
+import VButton2 from "@/ui-lib/VButton2.vue";
 import { FuncBackendKind, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, nullEditingFunc } from "@/store/func/funcs.store";
 import QualificationDetails from "./QualificationDetails.vue";
@@ -198,10 +200,12 @@ const updateFunc = () => {
   );
 };
 
+const revertFuncReqStatus = funcStore.getRequestStatus("REVERT_FUNC");
 const revertFunc = async () => {
   funcStore.REVERT_FUNC(editingFunc.value.id);
 };
 
+const execFuncReqStatus = funcStore.getRequestStatus("EXEC_FUNC");
 const execFunc = () => {
   funcStore.EXEC_FUNC(editingFunc.value.id);
 };
