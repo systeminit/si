@@ -6,6 +6,15 @@ storage:
     - path: /etc/hostname
       contents:
         inline: staging-1
+    - path: /opt/dockersock.pp
+      mode: 0755
+      contents:
+        local: research/staging_host/dockersock.pp
+    # We need to disable SELINUX (or make a new policy) so that watchtower can get credentials to dockerhub
+    #    - path: /etc/selinux/config
+    #      mode: 0644
+    #      contents:
+    #        local: research/staging_host/selinux.conf
     - path: /usr/local/bin/docker-auth.sh
       mode: 0755
       contents:
@@ -22,6 +31,10 @@ storage:
       mode: 0755
       contents:
         local: deploy/scripts/gateway.sh
+    - path: /opt/deploy/scripts/reset-database.sh
+      mode: 0755
+      contents:
+        local: deploy/scripts/reset-database.sh
     - path: /opt/deploy/docker-compose.yml
       contents:
         local: deploy/docker-compose.yml
@@ -31,12 +44,27 @@ storage:
     - path: /opt/deploy/docker-compose.pganalyze.yml
       contents:
         local: deploy/docker-compose.pganalyze.yml
-    - path: /opt/deploy/docker-compose.prod.yml
+    - path: /opt/deploy/docker-compose.staging.yml
       contents:
-        local: deploy/docker-compose.prod.yml
+        local: deploy/docker-compose.staging.yml
 systemd:
   units:
-    # installing aws-cli as a layered package with rpm-ostree
+    - name: install-selinux-dockersock-policy.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install SELINUX Docker sock policy
+        Wants=network-online.target
+        After=network-online.target
+        
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        WorkingDirectory=/opt
+        ExecStart=semodule -i dockersock.pp
+
+        [Install]
+        WantedBy=multi-user.target
     - name: layer-awscli.service
       enabled: true
       contents: |
@@ -57,6 +85,28 @@ systemd:
 
         [Install]
         WantedBy=multi-user.target
+    # Note(victor): This is not vital but is necessary. I will not be taking questions at this time.
+    - name: layer-vim.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install Vim
+        Wants=network-online.target
+        After=network-online.target
+        
+        # We run before `zincati.service` to avoid conflicting rpm-ostree
+        # transactions. - https://docs.fedoraproject.org/en-US/fedora-coreos/os-extensions/
+        After=layer-awscli.service
+        Before=zincati.service
+
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/rpm-ostree install --apply-live --allow-inactive --idempotent vim
+
+        [Install]
+        WantedBy=multi-user.target
     - name: layer-make.service
       enabled: true
       contents: |
@@ -65,7 +115,7 @@ systemd:
         Wants=network-online.target
         After=network-online.target
         
-        After=layer-awscli.service
+        After=layer-vim.service
         Before=zincati.service
 
 
@@ -148,30 +198,8 @@ systemd:
         [Service]
         TimeoutStartSec=60s
         WorkingDirectory=/opt/deploy
-        ExecStart=make prod-service
+        ExecStartPre=-/usr/bin/docker-compose down
+        ExecStart=make staging
 
         [Install]
         WantedBy=multi-user.target
-#    - name: watchtower.service
-#      enabled: true
-#      contents: |
-#        [Unit]
-#        After=network-online.target
-#        Wants=network-online.target
-#
-#        After=deployment.service
-#        Requires=deployment.service
-#
-#
-#        [Service]
-#         ExecStartPre=-/usr/bin/docker kill whiskers1
-#         ExecStartPre=-/usr/bin/docker rm whiskers1
-#         ExecStart=/usr/bin/docker run --name watchtower \
-#           -v /var/run/docker.sock:/var/run/docker.sock docker.io/containrrr/watchtower \
-#           -v /root/.docker/config.json:/config.json \
-#           --interval 30 --label-enable \
-#           containrrr/watchtower
-#
-#        [Install]
-#        WantedBy=multi-user.target
-

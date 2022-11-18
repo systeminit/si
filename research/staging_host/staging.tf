@@ -17,7 +17,7 @@ data "local_file" "ignition" {
 
 resource "aws_instance" "staging-1" {
   ami                    = "ami-0e6f4ffb61e585c76"
-  instance_type          = "t3.medium"
+  instance_type          = "t3.large"
   subnet_id              = "subnet-07d580fee7a806230"
   vpc_security_group_ids = ["sg-0d0be672e4485feb4"]
   key_name               = "si_key"
