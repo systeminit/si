@@ -388,20 +388,16 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                 .filter(|g| g.func_id() == func_id)
                 .collect::<Vec<CodeGenerationPrototype>>();
 
-            let format = match prototypes.get(0) {
-                Some(prototype) => *prototype.output_format(),
-                None => CodeLanguage::Unknown,
-            };
-
             let mut schema_variant_ids = vec![];
             for prototype in prototypes {
                 schema_variant_ids.push(prototype.schema_variant_id());
             }
 
+            // FIXME(nick): fix the format return.
             Some(FuncAssociations::CodeGeneration {
                 schema_variant_ids,
                 component_ids: vec![],
-                format,
+                format: CodeLanguage::Unknown,
             })
         }
         FuncBackendKind::JsConfirmation => {

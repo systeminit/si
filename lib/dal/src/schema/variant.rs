@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -28,14 +29,14 @@ pub enum SchemaVariantError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("'/root/code' prop not found for schema variant: {0}")]
-    CodePropNotFound(SchemaVariantId),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("could not find immediate child ({0}) of root prop: {1}")]
+    ImmediateChildOfRootPropNotFound(&'static str, PropId),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
     #[error("missing a func in attribute update: {0} not found")]
@@ -122,6 +123,8 @@ impl SchemaVariant {
         Ok((object, root_prop))
     }
 
+    /// This _idempotent_ function "finalizes" a [`SchemaVariant`].
+    ///
     /// Once a [`SchemaVariant`] has had all of its [`Props`](crate::Prop) created, there are a few
     /// things that need to happen before it is usable:
     ///
@@ -132,7 +135,8 @@ impl SchemaVariant {
     ///   descendant of an Array or a Map.
     ///
     /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
-    /// [`SchemaVariant`]. This method should only be called once, as it is not fully idempotent.
+    /// [`SchemaVariant`]. It can be called multiple times while [`Props`](Prop) are being created,
+    /// but it must be called once after all [`Props`](Prop) have been created.
     pub async fn finalize(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
         Self::create_default_prototypes_and_values(ctx, self.id).await?;
         Self::create_implicit_internal_providers(ctx, self.id).await?;
@@ -174,7 +178,11 @@ impl SchemaVariant {
         let mut work_queue = vec![root_prop];
 
         while let Some(work) = work_queue.pop() {
-            InternalProvider::new_implicit(ctx, *work.id(), SchemaVariantId::NONE).await?;
+            let maybe_existing_implicit_internal_provider =
+                InternalProvider::find_for_prop(ctx, *work.id()).await?;
+            if maybe_existing_implicit_internal_provider.is_none() {
+                InternalProvider::new_implicit(ctx, *work.id(), SchemaVariantId::NONE).await?;
+            }
 
             // Only check for child props if the current prop is of kind object.
             if work.kind() == &PropKind::Object {
@@ -245,18 +253,51 @@ impl SchemaVariant {
         Ok(results)
     }
 
-    /// Find the "/root/code" [`Prop`](crate::Prop) for [`Self`](Self).
-    pub async fn code_prop(&self, ctx: &DalContext) -> SchemaVariantResult<Prop> {
-        // FIXME(nick): this is an inefficient solution that would be better suited by a database query.
-        // That query could just take in a "schema_variant_id" rather than requiring "self" too.
-        let root_prop = Prop::find_root_for_schema_variant(ctx, self.id)
+    /// Find the [`RootProp`](crate::RootProp) for a given [`SchemaVariant`].
+    pub async fn root_prop(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<RootProp> {
+        // FIXME(nick): this whole thing is an inefficient solution that would be better suited by a
+        // database query.
+        let root_prop = Prop::find_root_for_schema_variant(ctx, schema_variant_id)
             .await?
-            .ok_or(SchemaVariantError::RootPropNotFound(self.id))?;
+            .ok_or(SchemaVariantError::RootPropNotFound(schema_variant_id))?;
+        let root_prop_id = *root_prop.id();
+
+        let mut si_prop_id = None;
+        let mut domain_prop_id = None;
+        let mut resource_prop_id = None;
+        let mut code_prop_id = None;
+
         for maybe_code_prop in root_prop.child_props(ctx).await? {
-            if maybe_code_prop.name() == "code" {
-                return Ok(maybe_code_prop);
+            match maybe_code_prop.name() {
+                "si" => si_prop_id = Some(*maybe_code_prop.id()),
+                "domain" => domain_prop_id = Some(*maybe_code_prop.id()),
+                "resource" => resource_prop_id = Some(*maybe_code_prop.id()),
+                "code" => code_prop_id = Some(*maybe_code_prop.id()),
+                _ => debug!(
+                    "found unexpected, immediate child of root prop: {:?}",
+                    *maybe_code_prop.id()
+                ),
             }
         }
-        return Err(SchemaVariantError::CodePropNotFound(*self.id()));
+
+        Ok(RootProp {
+            prop_id: root_prop_id,
+            si_prop_id: si_prop_id.ok_or(SchemaVariantError::ImmediateChildOfRootPropNotFound(
+                "si",
+                root_prop_id,
+            ))?,
+            domain_prop_id: domain_prop_id.ok_or(
+                SchemaVariantError::ImmediateChildOfRootPropNotFound("domain", root_prop_id),
+            )?,
+            resource_prop_id: resource_prop_id.ok_or(
+                SchemaVariantError::ImmediateChildOfRootPropNotFound("resource", root_prop_id),
+            )?,
+            code_prop_id: code_prop_id.ok_or(
+                SchemaVariantError::ImmediateChildOfRootPropNotFound("code", root_prop_id),
+            )?,
+        })
     }
 }

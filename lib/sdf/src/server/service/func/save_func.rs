@@ -10,8 +10,8 @@ use dal::{
         associate_prototypes, HasPrototypeContext, PrototypeContextError, PrototypeContextField,
     },
     AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributeValue,
-    CodeGenerationPrototype, ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBinding,
-    FuncId, PrototypeListForFunc, QualificationPrototype, StandardModel, Visibility, WsEvent,
+    ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBinding, FuncId,
+    PrototypeListForFunc, QualificationPrototype, StandardModel, Visibility, WsEvent,
 };
 use dal::{SchemaVariant, ValidationPrototype};
 
@@ -395,7 +395,7 @@ pub async fn save_func<'a>(
             if let Some(FuncAssociations::CodeGeneration {
                 schema_variant_ids,
                 component_ids,
-                format,
+                format: _format,
             }) = request.associations
             {
                 associations.append(&mut schema_variant_ids.iter().map(|f| (*f).into()).collect());
@@ -403,16 +403,17 @@ pub async fn save_func<'a>(
                 // NOTE(nick): code gen prototypes only exist for schema variants.
                 associations.append(&mut component_ids.iter().map(|f| (*f).into()).collect());
 
-                let mut existing_prototypes = CodeGenerationPrototype::list(&ctx)
-                    .await?
-                    .into_iter()
-                    .filter(|g| g.func_id() == func_id_copy)
-                    .collect::<Vec<CodeGenerationPrototype>>();
-                for prototype in existing_prototypes.iter_mut() {
-                    if *prototype.output_format() != format {
-                        prototype.set_output_format(&ctx, format).await?;
-                    }
-                }
+                // FIXME(nick): this needs to be re-thought.
+                // let mut existing_prototypes = CodeGenerationPrototype::list(&ctx)
+                //     .await?
+                //     .into_iter()
+                //     .filter(|g| g.func_id() == func_id_copy)
+                //     .collect::<Vec<CodeGenerationPrototype>>();
+                // for prototype in existing_prototypes.iter_mut() {
+                //     if *prototype.output_format() != format {
+                //         prototype.set_output_format(&ctx, format).await?;
+                //     }
+                // }
 
                 // FIXME(nick): this isn't going to work (1/2).
                 // let create_prototype_closure =

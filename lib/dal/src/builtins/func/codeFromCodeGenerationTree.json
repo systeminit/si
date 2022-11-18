@@ -1,0 +1,14 @@
+{
+  "kind": "Json",
+  "arguments": [
+    {
+      "name": "tree",
+      "kind": "Object"
+    }
+  ],
+  "response_type": "String",
+  "display_name": "si:codeFromCodeGenerationTree",
+  "description": "Return the code string field from a code generation tree",
+  "code_file": "codeFromCodeGenerationTree.js",
+  "code_entrypoint": "codeFromCodeGenerationTree"
+}

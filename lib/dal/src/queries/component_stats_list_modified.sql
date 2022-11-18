@@ -42,4 +42,5 @@ WHERE in_tenancy_v1($1,
                     tenancy_workspace_ids)
 
 ORDER BY component_id DESC,
-         component_name DESC
+         component_name DESC,
+         components.tenancy_universal

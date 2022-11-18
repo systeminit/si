@@ -84,16 +84,6 @@
                 >{{ selectedComponent.displayName }} Code</span
               >
             </template>
-
-            <template #actionButtons>
-              <SiButtonIcon
-                tooltip-text="Re-generate code"
-                ignore-text-color
-                class="mr-4"
-                :icon="isCodeSyncing ? 'refresh-active' : 'refresh'"
-                @click="triggerCodeGen"
-              />
-            </template>
           </CodeViewer>
         </template>
       </TabPanel>
@@ -127,14 +117,13 @@
 
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
-import { computed, onBeforeMount, ref, watch } from "vue";
+import { computed, onBeforeMount } from "vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 // import HealthIcon from "@/molecules/HealthIcon.vue";
-import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { useComponentsStore } from "@/store/components.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import { useStatusStore } from "@/store/status.store";
@@ -162,20 +151,6 @@ const codeReqStatus = componentsStore.getRequestStatus(
   "FETCH_COMPONENT_CODE",
   selectedComponentId,
 );
-
-// we track this here since the update flow is a little weird
-// we may wnat to change the trigger code gen endpoint to just return the new code directly
-const isCodeSyncing = ref(false);
-watch(codeReqStatus, () => {
-  // stop spinner when no longer pending...
-  if (!codeReqStatus.value.isPending) isCodeSyncing.value = false;
-});
-
-function triggerCodeGen() {
-  if (!selectedComponentId.value) return;
-  isCodeSyncing.value = true;
-  componentsStore.TRIGGER_COMPONENT_CODE_GEN(selectedComponentId.value);
-}
 
 const statusStore = useStatusStore();
 const currentStatus = computed(

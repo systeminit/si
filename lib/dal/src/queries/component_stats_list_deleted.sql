@@ -17,4 +17,5 @@ WHERE visibility_deleted_at IS NOT NULL
                     tenancy_workspace_ids)
 
 ORDER BY component_id DESC,
-         component_name DESC
+         component_name DESC,
+         components.tenancy_universal

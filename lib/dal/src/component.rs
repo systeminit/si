@@ -10,6 +10,7 @@ use thiserror::Error;
 use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
+use crate::code_view::CodeViewError;
 use crate::func::backend::{
     js_qualification::FuncBackendJsQualificationArgs, js_validation::FuncBackendJsValidationArgs,
     validation::FuncBackendValidationArgs,
@@ -67,6 +68,8 @@ pub enum ComponentError {
     BadJsonPointer(String, String),
     #[error("code generation function returned unexpected format, expected {0:?}, got {1:?}")]
     CodeLanguageMismatch(CodeLanguage, CodeLanguage),
+    #[error(transparent)]
+    CodeView(#[from] CodeViewError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
     #[error(transparent)]
@@ -1142,7 +1145,7 @@ impl Component {
             .await?
             .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
 
-        let implicit_provider = InternalProvider::get_for_prop(ctx, *prop.id())
+        let implicit_provider = InternalProvider::find_for_prop(ctx, *prop.id())
             .await?
             .ok_or_else(|| ComponentError::InternalProviderNotFoundForProp(*prop.id()))?;
 

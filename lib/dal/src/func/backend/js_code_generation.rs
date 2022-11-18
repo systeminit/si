@@ -1,17 +1,16 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use veritech_client::{
-    CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult,
+    CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, ComponentKind,
+    ComponentView, FunctionResult,
 };
 
-use crate::{
-    func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext},
-    ComponentView,
-};
+use crate::func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsCodeGenerationArgs {
-    pub component: ComponentView,
+    /// The [`Value`](serde_json::Value) corresponding to "/root/domain" for a [`SchemaVariant](crate::SchemaVariant).
+    pub domain: serde_json::Value,
 }
 
 #[derive(Debug)]
@@ -31,13 +30,18 @@ impl FuncDispatch for FuncBackendJsCodeGeneration {
         handler: &str,
         args: Self::Args,
     ) -> Box<Self> {
+        let component = ComponentView {
+            kind: ComponentKind::Standard,
+            properties: args.domain,
+        };
+
         let request = CodeGenerationRequest {
             // Once we start tracking the state of these executions, then this id will be useful,
             // but for now it's passed along and back, and is opaue
             execution_id: "wagnermoura".to_string(),
             handler: handler.into(),
             code_base64: code_base64.into(),
-            component: args.component.into(),
+            component,
         };
 
         Box::new(Self { context, request })

@@ -4,8 +4,8 @@ use color_eyre::Result;
 use dal::{
     job::consumer::{JobConsumer, JobConsumerError},
     job::definition::{
-        CodeGeneration, Confirmation, Confirmations, DependentValuesUpdate, FixesJob,
-        Qualification, Qualifications, WorkflowRun,
+        Confirmation, Confirmations, DependentValuesUpdate, FixesJob, Qualification,
+        Qualifications, WorkflowRun,
     },
     CycloneKeyPair, DalContext, DalContextBuilder, FaktoryProcessor, JobFailure, JobFailureError,
     JobQueueProcessor, ServicesContext, TransactionsError,
@@ -295,7 +295,6 @@ async fn execute_job_fallible(
         Confirmations,
         Qualification,
         Qualifications,
-        CodeGeneration,
         DependentValuesUpdate,
         WorkflowRun,
         FixesJob,

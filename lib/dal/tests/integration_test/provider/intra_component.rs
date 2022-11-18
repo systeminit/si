@@ -196,7 +196,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
 
     // Now, update the "destination" field's corresponding prototype to use the identity function
     // and the source internal provider.
-    let source_internal_provider = InternalProvider::get_for_prop(ctx, *source_prop.id())
+    let source_internal_provider = InternalProvider::find_for_prop(ctx, *source_prop.id())
         .await
         .expect("could not get internal provider")
         .expect("internal provider not found");

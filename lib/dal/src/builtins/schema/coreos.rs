@@ -125,17 +125,25 @@ async fn butane(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
 
     // Code generation
     let code_generation_func_name = "si:generateButaneIgnition".to_owned();
-    let code_generation_func =
-        Func::find_by_attr(ctx, "name", &code_generation_func_name.to_owned())
+    let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name.clone())
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.clone()))?;
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
             .await?
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
-    CodeGenerationPrototype::new(
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    code_generation_func_name.clone(),
+                    "domain".to_string(),
+                )
+            })?;
+    let ignition_code_generation_prototype = CodeGenerationPrototype::new(
         ctx,
         *code_generation_func.id(),
-        None,
-        CodeLanguage::Json,
+        *code_generation_func_argument.id(),
         *schema_variant.id(),
+        CodeLanguage::Json,
     )
     .await?;
 
@@ -144,7 +152,7 @@ async fn butane(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         .get_func_item("si:identity")
         .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
-    let (_ec2_user_data_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+    let (user_data_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
         *schema_variant.id(),
@@ -249,6 +257,34 @@ async fn butane(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         *units_attribute_prototype.id(),
         *images_arg.id(),
         *docker_image_explicit_internal_provider.id(),
+    )
+    .await?;
+
+    // FIXME(nick,jacob): when setting a complex object, implicit internal providers of child props
+    // must be updated. Currently, that does not happen. Thus, code generation functions return
+    // strings for now (just the code) instead of the code _and_ the format. Moreover, we collect
+    // the value for the implicit internal provider for the code string prop instead of the object
+    // prop as a result.
+    let code_implicit_internal_provider =
+        InternalProvider::find_for_prop(ctx, ignition_code_generation_prototype.code_prop_id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                    ignition_code_generation_prototype.code_prop_id(),
+                )
+            })?;
+    let user_data_external_provider_attribute_prototype_id = *user_data_external_provider
+        .attribute_prototype_id()
+        .ok_or_else(|| {
+            BuiltinsError::MissingAttributePrototypeForExternalProvider(
+                *user_data_external_provider.id(),
+            )
+        })?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        user_data_external_provider_attribute_prototype_id,
+        identity_func_item.func_argument_id,
+        *code_implicit_internal_provider.id(),
     )
     .await?;
 

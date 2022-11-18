@@ -26,7 +26,7 @@ use crate::{
         FuncId,
     },
     impl_standard_model,
-    job::definition::{CodeGeneration, DependentValuesUpdate},
+    job::definition::DependentValuesUpdate,
     pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
@@ -839,10 +839,12 @@ impl AttributeValue {
         Ok(())
     }
 
-    /// Convenience method to determine if this `AttributeValue` is for the
-    /// implicit `InternalProvider` that represents the "snapshot" of the entire
-    /// `Component`. (Which means that the `Prop` that the `InternalProvider` is
-    /// sourcing its data from, does not have a parent `Prop`.)
+    /// Convenience method to determine if this [`AttributeValue`](Self) is for the implicit
+    /// [`InternalProvider`](crate::InternalProvider) that represents the "snapshot" of the entire
+    /// [`Component`](crate::Component). This means that the [`Prop`](crate::Prop) that the
+    /// [`InternalProvider`](crate::InternalProvider) is sourcing its data from does not have a
+    /// parent [`Prop`](crate::Prop).
+    #[allow(unused)]
     async fn is_for_internal_provider_of_root_prop(
         &mut self,
         ctx: &DalContext,
@@ -1110,19 +1112,6 @@ impl AttributeValue {
                 )
                 .await?;
             }
-        }
-
-        // Check if we just updated the `InternalProvider` for the root `Prop` of a
-        // `SchemaVariant`. If so, we need to enqueue a `CodeGeneration` job as we
-        // consider the associated `Component` to have been fully updated at this
-        // point.
-        if self.is_for_internal_provider_of_root_prop(ctx).await? {
-            ctx.enqueue_job(
-                CodeGeneration::new(ctx, self.context.component_id())
-                    .await
-                    .map_err(|e| AttributeValueError::Component(e.to_string()))?,
-            )
-            .await;
         }
 
         info!(

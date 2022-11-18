@@ -60,7 +60,7 @@ async function main() {
         await executeQualificationCheck(request);
         break;
       case FunctionKind.ResolverFunction:
-        executeResolverFunction(request);
+        await executeResolverFunction(request);
         break;
       case FunctionKind.WorkflowResolve:
         await executeWorkflowResolve(request);

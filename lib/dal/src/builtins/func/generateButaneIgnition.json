@@ -1,9 +1,14 @@
 {
-  "kind": "JsCodeGeneration",
-  "arguments": [],
-  "response_type": "CodeGeneration",
+  "kind": "Json",
+  "arguments": [
+    {
+      "name": "domain",
+      "kind": "Object"
+    }
+  ],
+  "response_type": "String",
   "display_name": "si:generateButaneIgnition",
-  "description": "Produce an Ignition JSON from a Butane component",
+  "description": "Produce Ignition JSON from a Butane component",
   "link": "https://docs.fedoraproject.org/en-US/fedora-coreos/producing-ign/",
   "code_file": "generateButaneIgnition.js",
   "code_entrypoint": "generateButaneIgnition"

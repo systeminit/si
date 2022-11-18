@@ -73,12 +73,21 @@ async fn kubernetes_namespace(ctx: &DalContext, driver: &MigrationDriver) -> Bui
     let code_generation_func_id = driver.get_func_id("si:generateYAML").ok_or(
         BuiltinsError::FuncNotFoundInMigrationCache("si:generateYAML"),
     )?;
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", code_generation_func_id)
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    "si:generateYAML".to_string(),
+                    "domain".to_string(),
+                )
+            })?;
     CodeGenerationPrototype::new(
         ctx,
         code_generation_func_id,
-        None,
-        CodeLanguage::Yaml,
+        *code_generation_func_argument.id(),
         *schema_variant.id(),
+        CodeLanguage::Yaml,
     )
     .await?;
 
@@ -131,7 +140,7 @@ async fn kubernetes_namespace(ctx: &DalContext, driver: &MigrationDriver) -> Bui
         .await?;
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
-    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+    let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
@@ -150,7 +159,7 @@ async fn kubernetes_namespace(ctx: &DalContext, driver: &MigrationDriver) -> Bui
             BuiltinsError::MissingAttributePrototypeForExternalProvider(*external_provider.id())
         })?;
     let metadata_name_implicit_internal_provider =
-        InternalProvider::get_for_prop(ctx, metadata_name_prop_id)
+        InternalProvider::find_for_prop(ctx, metadata_name_prop_id)
             .await?
             .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
                 metadata_name_prop_id,
@@ -255,12 +264,21 @@ async fn kubernetes_deployment(ctx: &DalContext, driver: &MigrationDriver) -> Bu
     let code_generation_func_id = driver.get_func_id("si:generateYAML").ok_or(
         BuiltinsError::FuncNotFoundInMigrationCache("si:generateYAML"),
     )?;
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", code_generation_func_id)
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    "si:generateYAML".to_string(),
+                    "domain".to_string(),
+                )
+            })?;
     CodeGenerationPrototype::new(
         ctx,
         code_generation_func_id,
-        None,
-        CodeLanguage::Yaml,
+        *code_generation_func_argument.id(),
         *schema_variant.id(),
+        CodeLanguage::Yaml,
     )
     .await?;
 

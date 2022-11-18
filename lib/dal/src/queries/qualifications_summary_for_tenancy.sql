@@ -34,6 +34,7 @@ FROM (
         qualification_prototypes.id,
         qualification_resolvers.id,
         qualification_prototypes.visibility_change_set_pk DESC,
-        qualification_resolvers.visibility_change_set_pk DESC
+        qualification_resolvers.visibility_change_set_pk DESC,
+        components.tenancy_universal
 ) as qualification_data
 GROUP BY component_id, component_name

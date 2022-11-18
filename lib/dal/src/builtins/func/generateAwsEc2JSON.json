@@ -1,10 +1,15 @@
 {
-  "kind": "JsCodeGeneration",
-  "arguments": [],
-  "response_type": "CodeGeneration",
+  "kind": "Json",
+  "arguments": [
+    {
+      "name": "domain",
+      "kind": "Object"
+    }
+  ],
+  "response_type": "String",
   "display_name": "si:generateAwsEc2JSON",
   "description": null,
   "link": null,
   "code_file": "generateAwsEc2JSON.js",
-  "code_entrypoint": "generateJSON"
+  "code_entrypoint": "generateAwsEc2JSON"
 }
