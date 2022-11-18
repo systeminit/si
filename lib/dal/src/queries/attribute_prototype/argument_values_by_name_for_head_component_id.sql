@@ -12,40 +12,29 @@ FROM (
         name AS argument_name,
         array_agg(CASE WHEN internal_provider_data.internal_provider_id IS NOT NULL THEN internal_provider_data.value ELSE external_provider_data.value END) AS values
     FROM (
-        SELECT DISTINCT ON (attribute_prototype_arguments.id)
-            attribute_prototype_arguments.attribute_prototype_id,
+        SELECT
+            apa.attribute_prototype_id,
             fa.name,
-            attribute_prototype_arguments.internal_provider_id,
-            attribute_prototype_arguments.external_provider_id,
-            attribute_prototype_arguments.tail_component_id
-        FROM attribute_prototype_arguments
+            apa.internal_provider_id,
+            apa.external_provider_id,
+            apa.tail_component_id
+        FROM attribute_prototype_arguments_v1($1, $2) AS apa
         INNER JOIN func_arguments_v1($1, $2) AS fa
-            ON attribute_prototype_arguments.func_argument_id = fa.id
+            ON apa.func_argument_id = fa.id
         WHERE
-            attribute_prototype_arguments.attribute_prototype_id = $3
-            AND CASE WHEN attribute_prototype_arguments.external_provider_id != -1
+            apa.attribute_prototype_id = $3
+            AND CASE WHEN apa.external_provider_id != -1
                 THEN
-                    attribute_prototype_arguments.head_component_id = $4
+                    apa.head_component_id = $4
                 ELSE
                     TRUE
             END
-        ORDER BY
-            attribute_prototype_arguments.id,
-            attribute_prototype_arguments.visibility_change_set_pk DESC,
-            attribute_prototype_arguments.visibility_deleted_at DESC NULLS FIRST
     ) AS prototype_argument_data
     -- Get the values for InternalProviders
     LEFT JOIN LATERAL (
         SELECT DISTINCT ON (attribute_context_internal_provider_id)
-            av.id,
             attribute_context_internal_provider_id AS internal_provider_id,
-            fbrv.value,
-            attribute_context_prop_id,
-            attribute_context_internal_provider_id,
-            attribute_context_external_provider_id,
-            attribute_context_schema_id,
-            attribute_context_schema_variant_id,
-            attribute_context_component_id
+            fbrv.value
         FROM attribute_values_v1($1, $2) AS av
         INNER JOIN func_binding_return_values_v1($1, $2) AS fbrv
             ON av.func_binding_return_value_id = fbrv.id
@@ -78,15 +67,8 @@ FROM (
     ) AS internal_provider_data ON prototype_argument_data.internal_provider_id = internal_provider_data.internal_provider_id
     LEFT JOIN LATERAL (
         SELECT DISTINCT ON (attribute_context_external_provider_id)
-            av.id,
             attribute_context_external_provider_id AS external_provider_id,
-            value,
-            attribute_context_prop_id,
-            attribute_context_internal_provider_id,
-            attribute_context_external_provider_id,
-            attribute_context_schema_id,
-            attribute_context_schema_variant_id,
-            attribute_context_component_id
+            value
         FROM attribute_values_v1($1, $2) AS av
         INNER JOIN func_binding_return_values_v1($1, $2) AS fbrv
             ON av.func_binding_return_value_id = fbrv.id
