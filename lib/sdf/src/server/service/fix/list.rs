@@ -2,8 +2,8 @@ use axum::{extract::Query, Json};
 use dal::fix::FixError as DalFixError;
 use dal::ComponentError as DalComponentError;
 use dal::{
-    Component, ComponentId, FixBatch, FixBatchId, FixCompletionStatus, FixId, StandardModel,
-    Visibility,
+    Component, ComponentId, FixBatch, FixBatchId, FixCompletionStatus, FixId, ResourceView,
+    StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -24,11 +24,12 @@ pub struct FixHistoryView {
     id: FixId,
     status: FixCompletionStatus,
     action: String,
+    schema_name: String,
     component_name: String,
     component_id: ComponentId,
     provider: Option<String>,
-    output: Option<String>,
     started_at: String,
+    resource: ResourceView,
     finished_at: String,
 }
 
@@ -58,6 +59,21 @@ pub async fn list(
         for fix in batch.fixes(&ctx).await? {
             let resolver = fix.confirmation_resolver(&ctx).await?;
             let prototype = resolver.confirmation_prototype(&ctx).await?;
+            let workflow_runner = match fix.workflow_runner(&ctx).await? {
+                Some(runner) => runner,
+                // Note: This should not be reachable, but it's not clear if we want to break the route if
+                // the assumption is incorrect or just hide the partially finished fix
+                None => continue,
+            };
+
+            // Technically WorkflowRunner returns a vec of resources, but we only handle one resource at a time
+            // It's a technical debt we haven't tackled yet, so let's assume it's only one resource
+            let resource = match workflow_runner.resources()?.pop() {
+                Some(resource) => resource,
+                // Note: at least one resource is required, but it's not clear if we want to break this route if
+                // the assumption is incorrect or just hide the fix
+                None => continue,
+            };
 
             let component = Component::get_by_id(&ctx, &fix.component_id())
                 .await?
@@ -72,10 +88,16 @@ pub async fn list(
                     .action()
                     .map(|a| a.to_string())
                     .ok_or_else(|| FixError::MissingAction(*fix.id()))?,
+                schema_name: component
+                    .schema(&ctx)
+                    .await?
+                    .ok_or_else(|| FixError::NoSchemaForComponent(*component.id()))?
+                    .name()
+                    .to_owned(),
                 component_name: component.name(&ctx).await?,
                 component_id: *component.id(),
                 provider: prototype.provider().map(ToOwned::to_owned),
-                output: fix.logs().map(|l| l.to_string()),
+                resource: ResourceView::new(resource),
                 started_at: fix
                     .started_at()
                     .map(|s| s.to_string())

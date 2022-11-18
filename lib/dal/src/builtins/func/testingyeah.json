@@ -2,6 +2,7 @@
   "kind": "JsQualification",
   "arguments": [],
   "response_type": "Qualification",
+  "hidden": true,
   "display_name": null,
   "description": null,
   "link": null,

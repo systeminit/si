@@ -41,8 +41,7 @@ export type WsEventPayloadMap = {
   // CommandOutput: { runId: number; output: string }
   // CommandReturn: {
   //   runId: number;
-  //   createdResources: Resource[];
-  //   updatedResources: Resource[];
+  //   resources: Resource[];
   //   output: string[];
   //   runnerState: WorkflowRunnerState;
   // };

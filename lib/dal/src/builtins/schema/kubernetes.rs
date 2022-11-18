@@ -7,7 +7,7 @@ use crate::{
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
     BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
     ExternalProvider, Func, FuncError, InternalProvider, PropKind, QualificationPrototype,
-    SchemaError, SchemaKind, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    SchemaError, SchemaKind, StandardModel,
 };
 
 mod kubernetes_deployment_spec;
@@ -171,17 +171,6 @@ async fn kubernetes_namespace(ctx: &DalContext, driver: &MigrationDriver) -> Bui
         *metadata_name_implicit_internal_provider.id(),
     )
     .await?;
-
-    let mut context = WorkflowPrototypeContext::new(); // workspace level
-    context.schema_id = *schema.id();
-    context.schema_variant_id = *schema_variant.id();
-    let title = "What Is Love";
-    let func_name = "si:whatIsLoveWorkflow";
-    let func = Func::find_by_attr(ctx, "name", &func_name)
-        .await?
-        .pop()
-        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-    WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
 
     Ok(())
 }

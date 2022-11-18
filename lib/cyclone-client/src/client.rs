@@ -1697,7 +1697,7 @@ mod tests {
                 r#"function workit() {
                     console.log('first');
                     console.log('second');
-                    return {};
+                    return { status: 'ok' };
                 }"#,
             ),
         };
@@ -1771,7 +1771,7 @@ mod tests {
                 r#"function workit() {
                     console.log('first');
                     console.log('second');
-                    return {};
+                    return { status: 'ok' };
                 }"#,
             ),
         };

@@ -10,7 +10,8 @@ use dal::fix::FixError as DalFixError;
 use dal::{
     ComponentError, ComponentId, ConfirmationPrototypeError, ConfirmationResolverError,
     ConfirmationResolverTreeError, FixBatchId, FixId, FixResolverError,
-    FuncBindingReturnValueError, StandardModelError, TransactionsError,
+    FuncBindingReturnValueError, StandardModelError, TransactionsError, UserError, UserId,
+    WorkflowRunnerError,
 };
 
 mod confirmations;
@@ -38,6 +39,10 @@ pub enum FixError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
     DalFix(#[from] DalFixError),
+    #[error(transparent)]
+    WorkflowRunner(#[from] WorkflowRunnerError),
+    #[error(transparent)]
+    User(#[from] UserError),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
     #[error("missing action for fix: {0}")]
@@ -54,6 +59,10 @@ pub enum FixError {
     NoSchemaForComponent(ComponentId),
     #[error("no schema variant found for component {0}")]
     NoSchemaVariantForComponent(ComponentId),
+    #[error("invalid user {0}")]
+    InvalidUser(UserId),
+    #[error("invalid user system init")]
+    InvalidUserSystemInit,
 }
 
 pub type FixResult<T> = std::result::Result<T, FixError>;

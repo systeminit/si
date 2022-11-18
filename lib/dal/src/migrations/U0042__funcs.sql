@@ -16,6 +16,7 @@ CREATE TABLE funcs
     display_name                text,
     description                 text,
     link                        text,
+    hidden                      bool                     NOT NULL DEFAULT FALSE,
     backend_kind                text                     NOT NULL,
     backend_response_type       text                     NOT NULL,
     handler                     text,

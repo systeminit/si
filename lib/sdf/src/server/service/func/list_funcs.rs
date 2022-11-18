@@ -48,6 +48,7 @@ pub async fn list_funcs(
     )
     .await?
     .iter()
+    .filter(|func| !func.hidden())
     .map(|func| ListedFuncView {
         id: func.id().to_owned(),
         handler: func.handler().map(|handler| handler.to_owned()),

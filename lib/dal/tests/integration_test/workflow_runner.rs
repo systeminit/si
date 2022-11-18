@@ -40,8 +40,6 @@ async fn new(ctx: &DalContext) {
         *func_binding.id(),
         workflow_runner_context,
         &[],
-        &[],
-        true,
     )
     .await
     .expect("cannot create new workflow runner");
@@ -80,8 +78,6 @@ async fn find_for_prototype(ctx: &DalContext) {
         *func_binding.id(),
         runner_context,
         &[],
-        &[],
-        true,
     )
     .await
     .expect("cannot create new workflow runner");
@@ -133,7 +129,7 @@ async fn fail(ctx: &DalContext) {
     .await
     .expect("cannot create new prototype");
 
-    let (_, state, _, _, _) = WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id(), true)
+    let (_, state, _, _) = WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id(), true)
         .await
         .expect("unable to run workflow");
     assert_eq!(
@@ -166,17 +162,19 @@ async fn run(ctx: &DalContext) {
         .resource(ctx)
         .await
         .expect("unable to fetch resource")
-        .is_null());
+        .value
+        .is_none());
 
-    let (_runner, state, _func_bindings, _, _) =
+    let (_runner, state, _func_bindings, _) =
         WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id(), true)
             .await
             .expect("unable to run workflow runner");
     assert_eq!(state.status(), WorkflowRunnerStatus::Success);
 
-    assert!(!component
+    assert!(component
         .resource(ctx)
         .await
         .expect("unable to fetch resource")
-        .is_null());
+        .value
+        .is_some());
 }

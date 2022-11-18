@@ -2,6 +2,7 @@
   "kind": "JsQualification",
   "response_type": "Qualification",
   "display_name": "Always true",
+  "hidden": true,
   "description": null,
   "link": null,
   "code_file": "qualificationAlwaysTrue.js",

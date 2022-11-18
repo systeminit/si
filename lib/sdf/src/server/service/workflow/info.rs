@@ -23,8 +23,7 @@ pub struct WorkflowRunInfoView {
     title: String,
     description: Option<String>,
     status: WorkflowRunnerStatus,
-    created_resources: Vec<ResourceView>,
-    updated_resources: Vec<ResourceView>,
+    resources: Vec<ResourceView>,
     #[serde(flatten)]
     timestamp: Timestamp,
     logs: Vec<String>,
@@ -65,8 +64,7 @@ pub async fn info(
         .await?
         .ok_or_else(|| WorkflowError::RunnerStateNotFound(*runner.id()))?;
 
-    let created_resources = runner.created_resources().await?;
-    let updated_resources = runner.updated_resources().await?;
+    let resources = runner.resources()?;
 
     let view = WorkflowRunInfoView {
         id: *runner.id(),
@@ -74,14 +72,7 @@ pub async fn info(
         description: prototype.description().map(ToString::to_string),
         status: runner_state.status(),
         timestamp: *runner.timestamp(),
-        created_resources: created_resources
-            .into_iter()
-            .map(ResourceView::new)
-            .collect(),
-        updated_resources: updated_resources
-            .into_iter()
-            .map(ResourceView::new)
-            .collect(),
+        resources: resources.into_iter().map(ResourceView::new).collect(),
         logs,
     };
 

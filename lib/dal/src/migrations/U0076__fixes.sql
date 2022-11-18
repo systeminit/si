@@ -12,7 +12,7 @@ CREATE TABLE fixes
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     confirmation_resolver_id    bigint                   NOT NULL,
     component_id                bigint                   NOT NULL,
-    logs                        text,
+    workflow_runner_id          bigint,
     action                      text,
     started_at                  text,
     finished_at                 text,

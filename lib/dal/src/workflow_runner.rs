@@ -123,8 +123,7 @@ pub struct WorkflowRunner {
     workflow_resolver_id: WorkflowResolverId,
     func_id: FuncId,
     func_binding_id: FuncBindingId,
-    created_resources: serde_json::Value,
-    updated_resources: serde_json::Value,
+    resources: serde_json::Value,
     #[serde(flatten)]
     context: WorkflowRunnerContext,
     #[serde(flatten)]
@@ -154,12 +153,10 @@ impl WorkflowRunner {
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         context: WorkflowRunnerContext,
-        created_resources: &[serde_json::Value],
-        updated_resources: &[serde_json::Value],
-        should_trigger_confirmations: bool,
+        resources: &[CommandRunResult],
     ) -> WorkflowRunnerResult<Self> {
         let row = ctx.txns().pg().query_one(
-            "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+            "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
             &[
                 ctx.write_tenancy(),
                 ctx.visibility(),
@@ -170,20 +167,12 @@ impl WorkflowRunner {
                 &context.component_id(),
                 &context.schema_id(),
                 &context.schema_variant_id(),
-                &serde_json::to_value(created_resources)?,
-                &serde_json::to_value(updated_resources)?,
+                &serde_json::to_value(resources)?,
             ],
         )
             .await?;
 
         let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
-
-        if should_trigger_confirmations
-            && (!created_resources.is_empty() || !updated_resources.is_empty())
-        {
-            ctx.enqueue_job(Confirmations::new(ctx)).await;
-        }
-
         Ok(object)
     }
 
@@ -200,8 +189,7 @@ impl WorkflowRunner {
         Self,
         WorkflowRunnerState,
         Vec<FuncBindingReturnValue>,
-        Vec<serde_json::Value>,
-        Vec<serde_json::Value>,
+        Vec<CommandRunResult>,
     )> {
         let prototype = WorkflowPrototype::get_by_id(ctx, &prototype_id)
             .await?
@@ -221,9 +209,13 @@ impl WorkflowRunner {
         // FIXME(nick): right now, there's nothing stopping a WorkflowTree from operating on
         // multiple Components. Therefore, we take in a "vec" of resources here even though we know
         // that there can only be one (or none) Resource for a given Component.
-        let (func_id, func_binding_id, created_resources, updated_resources) =
-            Self::process_successful_workflow_run(ctx, &func_binding_return_values, component_id)
-                .await?;
+        let (func_id, func_binding_id, resources) = Self::process_successful_workflow_run(
+            ctx,
+            &func_binding_return_values,
+            component_id,
+            should_trigger_confirmations,
+        )
+        .await?;
         let (workflow_runner_status, error_message) =
             Self::detect_failure_from_tree_execution(&func_binding_return_values);
 
@@ -241,9 +233,7 @@ impl WorkflowRunner {
             func_id,
             func_binding_id,
             context,
-            &created_resources,
-            &updated_resources,
-            should_trigger_confirmations,
+            &resources,
         )
         .await?;
 
@@ -257,13 +247,7 @@ impl WorkflowRunner {
         )
         .await?;
 
-        Ok((
-            runner,
-            runner_state,
-            func_binding_return_values,
-            created_resources,
-            updated_resources,
-        ))
+        Ok((runner, runner_state, func_binding_return_values, resources))
     }
 
     /// Greedy algorithm to find the first instance of failure in a list of given [`FuncBindingReturnValues`](Vec<FuncBindingReturnValue>)
@@ -273,6 +257,17 @@ impl WorkflowRunner {
     ) -> (WorkflowRunnerStatus, Option<String>) {
         for func_binding_return_value in func_binding_return_values {
             if let Some(value) = func_binding_return_value.value() {
+                if let Some((status, message)) =
+                    value.get("status").and_then(|s| s.as_str()).and_then(|s| {
+                        value
+                            .get("message")
+                            .and_then(|m| m.as_str().map(|m| (s, m)))
+                    })
+                {
+                    if status != "ok" {
+                        return (WorkflowRunnerStatus::Failure, Some(message.to_string()));
+                    }
+                }
                 if let Some(maybe_error) = value.get("error") {
                     if let Some(error) = maybe_error.as_str() {
                         return (WorkflowRunnerStatus::Failure, Some(error.to_string()));
@@ -289,12 +284,8 @@ impl WorkflowRunner {
         ctx: &DalContext,
         func_binding_return_values: &Vec<FuncBindingReturnValue>,
         component_id: ComponentId,
-    ) -> WorkflowRunnerResult<(
-        FuncId,
-        FuncBindingId,
-        Vec<serde_json::Value>,
-        Vec<serde_json::Value>,
-    )> {
+        should_trigger_confirmations: bool,
+    ) -> WorkflowRunnerResult<(FuncId, FuncBindingId, Vec<CommandRunResult>)> {
         let identity = Func::find_by_attr(ctx, "name", &"si:identity")
             .await?
             .pop()
@@ -307,8 +298,7 @@ impl WorkflowRunner {
         )
         .await?;
 
-        let mut created_resources = Vec::new();
-        let mut updated_resources = Vec::new();
+        let mut resources = Vec::new();
         let mut logs = Vec::new();
         for return_value in func_binding_return_values {
             for stream in return_value
@@ -320,21 +310,22 @@ impl WorkflowRunner {
             }
 
             if let Some(value) = return_value.value() {
-                let result = CommandRunResult::deserialize(value)?;
+                let mut result = CommandRunResult::deserialize(value)?;
+                result.logs = logs.iter().map(|l| l.message.clone()).collect();
                 let component = Component::get_by_id(ctx, &component_id)
                     .await?
                     .ok_or(WorkflowRunnerError::ComponentNotFound(component_id))?;
 
-                component
-                    .set_resource(ctx, result.value.clone())
+                if component
+                    .set_resource(ctx, result.clone())
                     .await
-                    .map_err(Box::new)?;
-
-                if result.created {
-                    created_resources.push(result.value);
-                } else {
-                    updated_resources.push(result.value);
+                    .map_err(Box::new)?
+                    && should_trigger_confirmations
+                {
+                    ctx.enqueue_job(Confirmations::new(ctx)).await;
                 }
+
+                resources.push(result);
             }
         }
         logs.sort_by_key(|log| log.timestamp);
@@ -351,12 +342,7 @@ impl WorkflowRunner {
             FuncExecution::get_by_pk(ctx, &func_binding_return_value.func_execution_pk()).await?;
         func_execution.set_output_stream(ctx, logs).await?;
 
-        Ok((
-            *identity.id(),
-            *func_binding.id(),
-            created_resources,
-            updated_resources,
-        ))
+        Ok((*identity.id(), *func_binding.id(), resources))
     }
 
     standard_model_accessor!(
@@ -391,12 +377,8 @@ impl WorkflowRunner {
         Ok(object)
     }
 
-    pub async fn created_resources(&self) -> WorkflowRunnerResult<Vec<serde_json::Value>> {
-        Ok(serde_json::from_value(self.created_resources.clone())?)
-    }
-
-    pub async fn updated_resources(&self) -> WorkflowRunnerResult<Vec<serde_json::Value>> {
-        Ok(serde_json::from_value(self.updated_resources.clone())?)
+    pub fn resources(&self) -> WorkflowRunnerResult<Vec<CommandRunResult>> {
+        Ok(serde_json::from_value(self.resources.clone())?)
     }
 }
 

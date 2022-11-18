@@ -1,6 +1,0 @@
-{
-  "kind": "JsCommand",
-  "response_type": "Command",
-  "code_file": "awsCreateTagsForKeyPairCommand.js",
-  "code_entrypoint": "createTagsForKeyPair"
-}

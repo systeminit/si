@@ -1,8 +1,8 @@
 use dal::{
-    generate_name, AttributePrototypeArgument, AttributeReadContext, AttributeValue, ChangeSet,
-    ChangeSetStatus, Component, ComponentView, DalContext, DiagramKind, Edge, ExternalProvider,
-    InternalProvider, Prop, PropKind, Schema, SchemaKind, SocketArity, StandardModel, Visibility,
-    WorkspaceId,
+    func::backend::js_command::CommandRunResult, generate_name, AttributePrototypeArgument,
+    AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentView,
+    DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider, Prop, PropKind, Schema,
+    SchemaKind, SocketArity, StandardModel, Visibility, WorkspaceId,
 };
 use dal_test::{
     helpers::setup_identity_func,
@@ -15,6 +15,7 @@ use dal_test::{
 };
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
+use veritech_client::ResourceStatus;
 
 mod code;
 mod validation;
@@ -363,7 +364,15 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
 
     // Update the resource field on HEAD for the tail end of the relationship.
     ekwb_component
-        .set_resource(ctx, serde_json::json!["quantum"])
+        .set_resource(
+            ctx,
+            CommandRunResult {
+                status: ResourceStatus::Ok,
+                value: Some(serde_json::json!["quantum"]),
+                logs: Default::default(),
+                message: Default::default(),
+            },
+        )
         .await
         .expect("could not set resource field");
 
@@ -381,7 +390,11 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             },
             "code": {},
             "domain": {},
-            "resource": "quantum"
+            "resource": {
+                "status": "ok",
+                "value": "quantum",
+                "logs": [],
+            }
         }], // expected
         ekwb_component_view.properties // actual
     );
@@ -392,7 +405,11 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             },
             "code": {},
             "domain": {
-                "u12a": "quantum"
+                "u12a": {
+                    "status": "ok",
+                    "value": "quantum",
+                    "logs": [],
+                }
             }
         }], // expected
         noctua_component_view.properties // actual
@@ -419,7 +436,11 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             },
             "code": {},
             "domain": {},
-            "resource": "quantum"
+            "resource": {
+                "status": "ok",
+                "value": "quantum",
+                "logs": [],
+            }
         }], // expected
         ekwb_component_view.properties // actual
     );
@@ -430,7 +451,11 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             },
             "code": {},
             "domain": {
-                "u12a": "quantum"
+                "u12a": {
+                    "status": "ok",
+                    "value": "quantum",
+                    "logs": [],
+                }
             }
         }], // expected
         noctua_component_view.properties // actual

@@ -1,6 +1,7 @@
 {
   "kind": "JsCommand",
   "response_type": "Command",
+  "hidden": true,
   "code_file": "failCommand.js",
   "code_entrypoint": "fail"
 }

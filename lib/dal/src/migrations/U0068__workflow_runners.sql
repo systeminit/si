@@ -17,8 +17,7 @@ CREATE TABLE workflow_runners
     component_id                bigint                   NOT NULL,
     schema_id                   bigint                   NOT NULL,
     schema_variant_id           bigint                   NOT NULL,
-    created_resources           jsonb                    NOT NULL,
-    updated_resources           jsonb                    NOT NULL
+    resources                   jsonb                    NOT NULL
 );
 SELECT standard_model_table_constraints_v1('workflow_runners');
 
@@ -35,8 +34,7 @@ CREATE OR REPLACE FUNCTION workflow_runner_create_v1(
     this_component_id bigint,
     this_schema_id bigint,
     this_schema_variant_id bigint,
-    this_created_resources jsonb,
-    this_updated_resources jsonb,
+    this_resources jsonb,
     OUT object json) AS
 $$
 DECLARE
@@ -60,8 +58,7 @@ BEGIN
                                   component_id,
                                   schema_id,
                                   schema_variant_id,
-                                  created_resources,
-                                  updated_resources)
+                                  resources)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
@@ -75,8 +72,7 @@ BEGIN
             this_component_id,
             this_schema_id,
             this_schema_variant_id,
-            this_created_resources,
-            this_updated_resources)
+            this_resources)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

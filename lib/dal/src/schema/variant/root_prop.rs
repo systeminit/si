@@ -55,10 +55,40 @@ impl RootProp {
             .set_parent_prop(ctx, *root_prop.id())
             .await?;
 
-        let mut resource_specific_prop = Prop::new(ctx, "resource", PropKind::String, None).await?;
+        let mut resource_specific_prop = Prop::new(ctx, "resource", PropKind::Object, None).await?;
         resource_specific_prop.set_hidden(ctx, true).await?;
         resource_specific_prop
             .set_parent_prop(ctx, *root_prop.id())
+            .await?;
+
+        let mut resource_status_prop = Prop::new(ctx, "status", PropKind::String, None).await?;
+        resource_status_prop.set_hidden(ctx, true).await?;
+        resource_status_prop
+            .set_parent_prop(ctx, *resource_specific_prop.id())
+            .await?;
+
+        let mut resource_message_prop = Prop::new(ctx, "message", PropKind::String, None).await?;
+        resource_message_prop.set_hidden(ctx, true).await?;
+        resource_message_prop
+            .set_parent_prop(ctx, *resource_specific_prop.id())
+            .await?;
+
+        let mut resource_logs_prop = Prop::new(ctx, "logs", PropKind::Array, None).await?;
+        resource_logs_prop.set_hidden(ctx, true).await?;
+        resource_logs_prop
+            .set_parent_prop(ctx, *resource_specific_prop.id())
+            .await?;
+
+        let mut resource_logs_log_prop = Prop::new(ctx, "log", PropKind::String, None).await?;
+        resource_logs_log_prop.set_hidden(ctx, true).await?;
+        resource_logs_log_prop
+            .set_parent_prop(ctx, *resource_logs_prop.id())
+            .await?;
+
+        let mut resource_value_prop = Prop::new(ctx, "value", PropKind::String, None).await?;
+        resource_value_prop.set_hidden(ctx, true).await?;
+        resource_value_prop
+            .set_parent_prop(ctx, *resource_specific_prop.id())
             .await?;
 
         let mut code_specific_prop = Prop::new(ctx, "code", PropKind::Object, None).await?;

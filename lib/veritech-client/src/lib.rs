@@ -23,8 +23,8 @@ pub use cyclone_core::{
     FunctionResultFailure, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
     QualificationCheckResultSuccess, QualificationSubCheck, QualificationSubCheckStatus,
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    SensitiveContainer, ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    ResourceStatus, SensitiveContainer, ValidationRequest, ValidationResultSuccess,
+    WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 
 #[derive(Error, Debug)]

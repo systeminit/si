@@ -18,16 +18,15 @@ async fn confirmation_to_action(ctx: &DalContext) {
         setup_confirmation_resolver_and_get_action_prototype(ctx).await;
 
     let run_id = rand::random();
-    let (_runner, runner_state, func_binding_return_values, _created_resources, _updated_resources) =
-        WorkflowRunner::run(
-            ctx,
-            run_id,
-            action_workflow_prototype_id,
-            payload.component_id,
-            true,
-        )
-        .await
-        .expect("could not perform workflow runner run");
+    let (_runner, runner_state, func_binding_return_values, _resources) = WorkflowRunner::run(
+        ctx,
+        run_id,
+        action_workflow_prototype_id,
+        payload.component_id,
+        true,
+    )
+    .await
+    .expect("could not perform workflow runner run");
     assert_eq!(runner_state.status(), WorkflowRunnerStatus::Success);
 
     let mut maybe_skopeo_output_name = None;
