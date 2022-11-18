@@ -1,8 +1,8 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    qualification::QualificationView, qualification_resolver::UNSET_ID_VALUE, Component,
-    ComponentId, StandardModel, Visibility, WorkspaceId,
+    qualification::QualificationView, Component, ComponentId, StandardModel, Visibility,
+    WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -34,12 +34,8 @@ pub async fn list_qualifications(
     if is_component_in_tenancy && !is_component_in_visibility {
         return Err(ComponentError::InvalidVisibility);
     }
-    let qualifications = Component::list_qualifications_by_component_id(
-        &ctx,
-        request.component_id,
-        UNSET_ID_VALUE.into(),
-    )
-    .await?;
+    let qualifications =
+        Component::list_qualifications_by_component_id(&ctx, request.component_id).await?;
 
     Ok(Json(qualifications))
 }

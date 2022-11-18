@@ -1,7 +1,7 @@
 use crate::{
     CodeGenerationPrototypeError, ComponentId, ConfirmationPrototypeError, DalContext, FuncError,
     FuncId, QualificationPrototypeError, ReadTenancyError, SchemaId, SchemaVariantId,
-    StandardModel, StandardModelError, SystemId, TransactionsError, WriteTenancyError,
+    StandardModel, StandardModelError, TransactionsError, WriteTenancyError,
 };
 use std::future::Future;
 use thiserror::Error;
@@ -50,9 +50,6 @@ pub trait PrototypeContext {
 
     fn schema_variant_id(&self) -> SchemaVariantId;
     fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId);
-
-    fn system_id(&self) -> SystemId;
-    fn set_system_id(&mut self, system_id: SystemId);
 }
 
 /// A helper trait for objects that have a [`PrototypeContext`](crate::prototype_context::PrototypeContext) associated with them.
@@ -69,9 +66,6 @@ where
         match context_field {
             PrototypeContextField::Schema(schema_id) => {
                 context.set_schema_id(schema_id);
-            }
-            PrototypeContextField::System(system_id) => {
-                context.set_system_id(system_id);
             }
             PrototypeContextField::SchemaVariant(schema_variant_id) => {
                 context.set_schema_variant_id(schema_variant_id);
@@ -90,7 +84,6 @@ pub enum PrototypeContextField {
     Component(ComponentId),
     Schema(SchemaId),
     SchemaVariant(SchemaVariantId),
-    System(SystemId),
 }
 
 impl From<ComponentId> for PrototypeContextField {
@@ -108,12 +101,6 @@ impl From<SchemaId> for PrototypeContextField {
 impl From<SchemaVariantId> for PrototypeContextField {
     fn from(schema_variant_id: SchemaVariantId) -> Self {
         PrototypeContextField::SchemaVariant(schema_variant_id)
-    }
-}
-
-impl From<SystemId> for PrototypeContextField {
-    fn from(system_id: SystemId) -> Self {
-        PrototypeContextField::System(system_id)
     }
 }
 

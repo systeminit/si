@@ -1,6 +1,5 @@
 use dal::{
     Component, ComponentId, DalContext, Edge, ExternalProvider, InternalProvider, StandardModel,
-    SystemId,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
@@ -246,11 +245,11 @@ async fn get_ignition_from_qualification_output(
         .expect("could not find component by id")
         .expect("component not found by id");
     component
-        .check_qualifications(ctx, SystemId::NONE)
+        .check_qualifications(ctx)
         .await
         .expect("cannot check qualifications");
     let qualifications = component
-        .list_qualifications(ctx, SystemId::NONE)
+        .list_qualifications(ctx)
         .await
         .expect("could not list qualifications");
     let mut filtered_stream_view_lines = qualifications

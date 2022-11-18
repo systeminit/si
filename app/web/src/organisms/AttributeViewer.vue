@@ -87,7 +87,6 @@ const getAttributeContext = (propId: number) => ({
   attribute_context_schema_variant_id:
     lastSelectedComponent.value.schemaVariantId,
   attribute_context_component_id: lastSelectedComponent.value.id,
-  attribute_context_system_id: -1,
 });
 
 const updateProperty = (event: UpdatedProperty) => {

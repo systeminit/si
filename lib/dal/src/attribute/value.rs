@@ -33,8 +33,8 @@ use crate::{
     AttributeContextError, AttributePrototypeArgumentError, ComponentId, DalContext, Func,
     FuncBackendKind, FuncBackendResponseType, FuncBinding, FuncError, HistoryEventError, IndexMap,
     InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind, ReadTenancyError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp,
-    TransactionsError, Visibility, WriteTenancy,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp, TransactionsError,
+    Visibility, WriteTenancy,
 };
 
 pub mod view;
@@ -202,8 +202,6 @@ pub struct FuncWithPrototypeContext {
     attribute_context_schema_variant_id: SchemaVariantId,
     #[serde(rename(serialize = "attributeContextComponentId"))]
     attribute_context_component_id: ComponentId,
-    #[serde(rename(serialize = "attributeContextSchemaId"))]
-    attribute_context_system_id: SystemId,
 }
 
 pub type AttributeValueResult<T> = Result<T, AttributeValueError>;

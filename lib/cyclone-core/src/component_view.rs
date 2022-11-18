@@ -14,16 +14,9 @@ impl Default for ComponentKind {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemView {
-    pub name: String,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentView {
-    pub system: Option<SystemView>,
     pub kind: ComponentKind,
     pub properties: Value,
 }
@@ -31,7 +24,6 @@ pub struct ComponentView {
 impl Default for ComponentView {
     fn default() -> Self {
         Self {
-            system: Default::default(),
             kind: Default::default(),
             properties: serde_json::json!({}),
         }

@@ -61,7 +61,6 @@ pub mod socket;
 pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
-pub mod system;
 pub mod timestamp;
 pub mod user;
 pub mod validation;
@@ -179,7 +178,6 @@ pub use secret::{
 };
 pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
-pub use system::{System, SystemError, SystemId, SystemPk, SystemResult};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserId, UserResult};
 pub use validation::prototype::{

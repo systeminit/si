@@ -5,7 +5,7 @@ use dal::{
     ActionPrototypeContext, BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext,
     ConfirmationResolverTree, DalContext, DiagramKind, Edge, ExternalProvider, Func,
     HasPrototypeContext, InternalProvider, Schema, SchemaError, SchemaKind, SchemaVariant, Socket,
-    StandardModel, SystemId, WorkflowPrototypeId,
+    StandardModel, WorkflowPrototypeId,
 };
 use dal_test::helpers::setup_identity_func;
 use dal_test::{helpers::create_component_and_node_for_schema, test};
@@ -169,37 +169,37 @@ async fn new(ctx: &DalContext) {
             // Creates in random order so we ensure there is no dependency on the creation order
             resolvers.push(
                 prototype
-                    .run(ctx, *third2.id(), SystemId::NONE)
+                    .run(ctx, *third2.id())
                     .await
                     .expect("unable to run prototype"),
             );
             resolvers.push(
                 prototype
-                    .run(ctx, *first.id(), SystemId::NONE)
+                    .run(ctx, *first.id())
                     .await
                     .expect("unable to run prototype"),
             );
             resolvers.push(
                 prototype
-                    .run(ctx, *second2.id(), SystemId::NONE)
+                    .run(ctx, *second2.id())
                     .await
                     .expect("unable to run prototype"),
             );
             resolvers.push(
                 prototype
-                    .run(ctx, *first2.id(), SystemId::NONE)
+                    .run(ctx, *first2.id())
                     .await
                     .expect("unable to run prototype"),
             );
             resolvers.push(
                 prototype
-                    .run(ctx, *third.id(), SystemId::NONE)
+                    .run(ctx, *third.id())
                     .await
                     .expect("unable to run prototype"),
             );
             resolvers.push(
                 prototype
-                    .run(ctx, *second.id(), SystemId::NONE)
+                    .run(ctx, *second.id())
                     .await
                     .expect("unable to run prototype"),
             );

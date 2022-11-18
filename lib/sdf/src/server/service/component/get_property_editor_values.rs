@@ -1,7 +1,7 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::property_editor::PropertyEditorValues;
-use dal::{AttributeReadContext, Component, ComponentId, StandardModel, SystemId, Visibility};
+use dal::{AttributeReadContext, Component, ComponentId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -11,7 +11,6 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[serde(rename_all = "camelCase")]
 pub struct GetPropertyEditorValuesRequest {
     pub component_id: ComponentId,
-    pub system_id: SystemId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -51,7 +50,6 @@ pub async fn get_property_editor_values(
         schema_variant_id: Some(schema_variant_id),
         component_id: Some(request.component_id),
         prop_id: None,
-        system_id: Some(request.system_id),
         ..AttributeReadContext::default()
     };
     let prop_edit_values = PropertyEditorValues::for_context(&ctx, context).await?;

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     AttributeContext, ComponentId, ExternalProviderId, InternalProviderId, PropId, SchemaId,
-    SchemaVariantId, SystemId,
+    SchemaVariantId,
 };
 
 pub const UNSET_ID_VALUE: i64 = -1;
@@ -25,7 +25,6 @@ pub const UNSET_ID_VALUE: i64 = -1;
 ///     schema_id: Some(1.into()),
 ///     schema_variant_id: Some(1.into()),
 ///     component_id: Some(1.into()),
-///     system_id: Some(UNSET_ID_VALUE.into()),
 /// };
 /// ```
 ///
@@ -47,8 +46,6 @@ pub struct AttributeReadContext {
     pub schema_variant_id: Option<SchemaVariantId>,
     #[serde(rename = "attribute_context_component_id")]
     pub component_id: Option<ComponentId>,
-    #[serde(rename = "attribute_context_system_id")]
-    pub system_id: Option<SystemId>,
 }
 
 impl Default for AttributeReadContext {
@@ -60,7 +57,6 @@ impl Default for AttributeReadContext {
             schema_id: Some(UNSET_ID_VALUE.into()),
             schema_variant_id: Some(UNSET_ID_VALUE.into()),
             component_id: Some(UNSET_ID_VALUE.into()),
-            system_id: Some(UNSET_ID_VALUE.into()),
         }
     }
 }
@@ -74,7 +70,6 @@ impl From<AttributeContext> for AttributeReadContext {
             schema_id: Some(from_context.schema_id()),
             schema_variant_id: Some(from_context.schema_variant_id()),
             component_id: Some(from_context.component_id()),
-            system_id: Some(from_context.system_id()),
         }
     }
 }
@@ -224,30 +219,6 @@ impl AttributeReadContext {
         }
     }
 
-    pub fn system_id(&self) -> Option<SystemId> {
-        self.system_id
-    }
-
-    pub fn has_system_id(&self) -> bool {
-        self.system_id.is_some()
-    }
-
-    pub fn has_set_system_id(&self) -> bool {
-        if let Some(system_id) = self.system_id {
-            system_id != UNSET_ID_VALUE.into()
-        } else {
-            false
-        }
-    }
-
-    pub fn has_unset_system_id(&self) -> bool {
-        if let Some(system_id) = self.system_id {
-            system_id == UNSET_ID_VALUE.into()
-        } else {
-            false
-        }
-    }
-
     pub fn any() -> Self {
         Self {
             prop_id: None,
@@ -256,7 +227,6 @@ impl AttributeReadContext {
             schema_id: None,
             schema_variant_id: None,
             component_id: None,
-            system_id: None,
         }
     }
 }

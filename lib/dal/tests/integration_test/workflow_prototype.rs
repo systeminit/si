@@ -1,7 +1,7 @@
 use dal::{
     func::binding::FuncBinding, workflow_prototype::WorkflowPrototypeContext, AttributeReadContext,
     ComponentId, ComponentView, DalContext, Func, Schema, SchemaId, SchemaVariantId, StandardModel,
-    SystemId, WorkflowPrototype,
+    WorkflowPrototype,
 };
 use dal_test::{test, test_harness::create_component_for_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -53,7 +53,6 @@ async fn find_for_context(ctx: &DalContext) {
         ComponentId::NONE,
         SchemaId::NONE,
         SchemaVariantId::NONE,
-        SystemId::NONE,
     )
     .await
     .expect("could not find for context");
@@ -116,7 +115,6 @@ async fn resolve(ctx: &DalContext) {
         schema_id: Some(*schema.id()),
         schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
-        system_id: Some(SystemId::NONE),
         ..AttributeReadContext::default()
     };
 

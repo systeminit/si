@@ -200,15 +200,13 @@ BEGIN
     base_attribute_context := jsonb_build_object(
         'attribute_context_schema_id',          attribute_context_schema_id,
         'attribute_context_schema_variant_id',  attribute_context_schema_variant_id,
-        'attribute_context_component_id',       attribute_context_component_id,
-        'attribute_context_system_id',          attribute_context_system_id
+        'attribute_context_component_id',       attribute_context_component_id
     )
     FROM (
         SELECT
             attribute_context_schema_id,
             attribute_context_schema_variant_id,
-            attribute_context_component_id,
-            attribute_context_system_id
+            attribute_context_component_id
         FROM attribute_values_v1(this_read_tenancy, this_visibility)
         WHERE id = this_attribute_value_id
     ) AS av;
@@ -289,7 +287,6 @@ BEGIN
                         attribute_context_schema_id DESC,
                         attribute_context_schema_variant_id DESC,
                         attribute_context_component_id DESC,
-                        attribute_context_system_id DESC,
                         -- bools sort false first ascending.
                         av.tenancy_universal;
                     IF exact_attribute_context_v1(tmp_attribute_context, attribute_context_from_record_v1(tmp_attribute_value)) THEN

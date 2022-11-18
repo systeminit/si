@@ -9,7 +9,7 @@ use dal::{
     validation::Validation,
     Component, DalContext, Func, FuncBackendKind, FuncBackendResponseType, Prop, PropKind,
     PrototypeListForFunc, QualificationPrototype, Schema, SchemaError, SchemaKind, SchemaVariant,
-    StandardModel, SystemId, ValidationPrototype, ValidationPrototypeContext,
+    StandardModel, ValidationPrototype, ValidationPrototypeContext,
 };
 use dal_test::test;
 
@@ -81,7 +81,6 @@ async fn find_for_component(ctx: &DalContext) {
         *component.id(),
         *schema.id(),
         *default_schema_variant_id,
-        SystemId::NONE,
     )
     .await
     .expect("could not create component qualification view");

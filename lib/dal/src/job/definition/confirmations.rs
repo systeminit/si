@@ -11,8 +11,8 @@ use crate::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, Component, ConfirmationPrototype, DalContext, StandardModel, SystemId,
-    Visibility, WsEvent,
+    AccessBuilder, Component, ConfirmationPrototype, DalContext, StandardModel, Visibility,
+    WsEvent,
 };
 
 #[derive(Clone, Debug, Serialize)]
@@ -78,31 +78,23 @@ impl JobConsumer for Confirmations {
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
-        let system_id = SystemId::NONE;
-
         for component in Component::list(ctx).await? {
             let prototypes =
-                ConfirmationPrototype::list_for_component(ctx, *component.id(), system_id).await?;
+                ConfirmationPrototype::list_for_component(ctx, *component.id()).await?;
             for prototype in prototypes {
-                prototype.prepare(ctx, *component.id(), system_id).await?;
+                prototype.prepare(ctx, *component.id()).await?;
 
                 WsEvent::confirmation_status_update(
                     ctx,
                     *component.id(),
-                    system_id,
                     *prototype.id(),
                     ConfirmationStatus::Running,
                     None,
                 )
                 .publish(ctx)
                 .await?;
-                ctx.enqueue_job(Confirmation::new(
-                    ctx,
-                    *component.id(),
-                    system_id,
-                    *prototype.id(),
-                ))
-                .await;
+                ctx.enqueue_job(Confirmation::new(ctx, *component.id(), *prototype.id()))
+                    .await;
             }
         }
         Ok(())

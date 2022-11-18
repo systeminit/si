@@ -13,9 +13,9 @@ use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::node::NodeId;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
-    AttributeReadContext, AttributeValue, ComponentError, ComponentId, DiagramKind,
-    ExternalProviderError, Func, HistoryEventError, InternalProviderError, ReadTenancyError,
-    SchemaId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
+    AttributeReadContext, AttributeValue, ComponentError, ComponentId, ExternalProviderError, Func,
+    HistoryEventError, InternalProviderError, ReadTenancyError, SchemaId, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
@@ -79,8 +79,6 @@ pub type EdgeResult<T> = Result<T, EdgeError>;
 pub enum VertexObjectKind {
     /// Used for [`Nodes`](crate::Node) of [`NodeKind::Configuration`](crate::NodeKind::Configuration).
     Configuration,
-    /// Used for [`Nodes`](crate::Node) of [`NodeKind::System`](crate::NodeKind::System).
-    System,
 }
 
 /// The kind of an [`Edge`](Edge). This provides the ability to categorize [`Edges`](Edge)
@@ -91,8 +89,6 @@ pub enum VertexObjectKind {
 pub enum EdgeKind {
     /// Used to connect a configuration to another configuration.
     Configuration,
-    /// Used to connect a configuration to a system.
-    System,
 }
 
 pk!(EdgeId);
@@ -279,30 +275,6 @@ impl Edge {
             .map(|row| row.get("tail_object_id"))
             .collect();
         Ok(objects)
-    }
-
-    pub async fn include_component_in_system(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        diagram_kind: DiagramKind,
-        system_id: SystemId,
-    ) -> EdgeResult<Self> {
-        let row = ctx
-            .txns()
-            .pg()
-            .query_one(
-                "SELECT object FROM edge_include_component_in_system_v1($1, $2, $3, $4, $5)",
-                &[
-                    &ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &component_id,
-                    &system_id,
-                    &(diagram_kind.to_string()),
-                ],
-            )
-            .await?;
-        let object = standard_model::finish_create_from_row(ctx, row).await?;
-        Ok(object)
     }
 
     /// This function should be only called by [`Self::new_for_connection()`] and integration tests.

@@ -17,4 +17,3 @@ INNER JOIN funcs_v1($1, $2) AS f
     ON f.id = qp.func_id
 WHERE
     qr.component_id = $3
-    AND (qr.system_id = $4 OR qr.system_id = -1);

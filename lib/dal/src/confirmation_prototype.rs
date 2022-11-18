@@ -12,8 +12,8 @@ use crate::{
     standard_model, standard_model_accessor, ActionPrototype, ActionPrototypeError, Component,
     ComponentError, ComponentId, ConfirmationResolver, ConfirmationResolverContext,
     ConfirmationResolverError, DalContext, FuncBinding, FuncBindingError, FuncBindingId,
-    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
-    Timestamp, Visibility, WriteTenancy,
+    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
+    Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -48,7 +48,6 @@ pub struct ConfirmationPrototypeContext {
     pub component_id: ComponentId,
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
-    pub system_id: SystemId,
 }
 
 // Hrm - is this a universal resolver context? -- Adam
@@ -81,14 +80,6 @@ impl PrototypeContext for ConfirmationPrototypeContext {
     fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
         self.schema_variant_id = schema_variant_id;
     }
-
-    fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
-    }
 }
 
 impl ConfirmationPrototypeContext {
@@ -97,7 +88,6 @@ impl ConfirmationPrototypeContext {
             component_id: ComponentId::NONE,
             schema_id: SchemaId::NONE,
             schema_variant_id: SchemaVariantId::NONE,
-            system_id: SystemId::NONE,
         }
     }
 }
@@ -119,7 +109,6 @@ pub struct ConfirmationPrototype {
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -143,7 +132,6 @@ impl HasPrototypeContext<ConfirmationPrototypeContext> for ConfirmationPrototype
         context.set_component_id(self.component_id);
         context.set_schema_id(self.schema_id);
         context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(self.system_id);
 
         context
     }
@@ -166,7 +154,7 @@ impl ConfirmationPrototype {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM confirmation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM confirmation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
@@ -175,7 +163,6 @@ impl ConfirmationPrototype {
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;
@@ -187,13 +174,11 @@ impl ConfirmationPrototype {
         &self,
         ctx: &DalContext,
         component_id: ComponentId,
-        system_id: SystemId,
     ) -> ConfirmationPrototypeResult<ConfirmationResolver> {
         let mut context = ConfirmationResolverContext::new();
         context.set_component_id(component_id);
         context.set_schema_id(self.schema_id);
         context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(system_id);
         if let Some(mut resolver) =
             ConfirmationResolver::find_for_prototype(ctx, self.id(), context.clone()).await?
         {
@@ -223,10 +208,9 @@ impl ConfirmationPrototype {
         &self,
         ctx: &DalContext,
         component_id: ComponentId,
-        system_id: SystemId,
     ) -> ConfirmationPrototypeResult<ConfirmationResolver> {
         let args = FuncBackendJsConfirmationArgs {
-            component: Component::view(ctx, component_id, system_id).await?.into(),
+            component: Component::view(ctx, component_id).await?.into(),
         };
 
         let json_args = serde_json::to_value(args)?;
@@ -246,7 +230,6 @@ impl ConfirmationPrototype {
                     &action_name,
                     self.schema_id,
                     self.schema_variant_id,
-                    system_id,
                 )
                 .await?;
                 if let Some(action) = action {
@@ -274,7 +257,6 @@ impl ConfirmationPrototype {
         context.set_component_id(component_id);
         context.set_schema_id(self.schema_id);
         context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(system_id);
         if let Some(mut resolver) =
             ConfirmationResolver::find_for_prototype(ctx, self.id(), context.clone()).await?
         {
@@ -324,13 +306,10 @@ impl ConfirmationPrototype {
     );
     standard_model_accessor!(component_id, Pk(ComponentId), ConfirmationPrototypeResult);
 
-    standard_model_accessor!(system_id, Pk(SystemId), ConfirmationPrototypeResult);
-
     #[allow(clippy::too_many_arguments)]
     pub async fn list_for_component(
         ctx: &DalContext,
         component_id: ComponentId,
-        system_id: SystemId,
     ) -> ConfirmationPrototypeResult<Vec<Self>> {
         let component = Component::get_by_id(ctx, &component_id)
             .await?
@@ -352,7 +331,6 @@ impl ConfirmationPrototype {
                     ctx.read_tenancy(),
                     ctx.visibility(),
                     &component_id,
-                    &system_id,
                     schema_variant.id(),
                     schema.id(),
                 ],

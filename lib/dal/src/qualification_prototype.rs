@@ -14,7 +14,7 @@ use crate::{
     standard_model::{self, objects_from_rows, TypeHint},
     standard_model_accessor, ComponentId, DalContext, HistoryEvent, HistoryEventError,
     PrototypeListForFuncError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
-    SystemId, Timestamp, Visibility, WriteTenancy,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -51,7 +51,6 @@ pub struct QualificationPrototypeContext {
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
 }
 
 // Hrm - is this a universal resolver context? -- Adam
@@ -84,14 +83,6 @@ impl PrototypeContext for QualificationPrototypeContext {
     fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
         self.schema_variant_id = schema_variant_id;
     }
-
-    fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
-    }
 }
 
 impl QualificationPrototypeContext {
@@ -100,7 +91,6 @@ impl QualificationPrototypeContext {
             component_id: ComponentId::NONE,
             schema_id: SchemaId::NONE,
             schema_variant_id: SchemaVariantId::NONE,
-            system_id: SystemId::NONE,
         }
     }
 }
@@ -118,7 +108,6 @@ pub struct QualificationPrototype {
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -142,7 +131,6 @@ impl HasPrototypeContext<QualificationPrototypeContext> for QualificationPrototy
         context.set_component_id(self.component_id);
         context.set_schema_id(self.schema_id);
         context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(self.system_id);
 
         context
     }
@@ -164,7 +152,7 @@ impl QualificationPrototype {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM qualification_prototype_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                "SELECT object FROM qualification_prototype_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
@@ -172,7 +160,6 @@ impl QualificationPrototype {
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;
@@ -188,8 +175,6 @@ impl QualificationPrototype {
         QualificationPrototypeResult
     );
     standard_model_accessor!(component_id, Pk(ComponentId), QualificationPrototypeResult);
-
-    standard_model_accessor!(system_id, Pk(SystemId), QualificationPrototypeResult);
 
     pub async fn set_id(
         &mut self,
@@ -227,7 +212,6 @@ impl QualificationPrototype {
         component_id: ComponentId,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
-        system_id: SystemId,
     ) -> QualificationPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
@@ -238,7 +222,6 @@ impl QualificationPrototype {
                     ctx.read_tenancy(),
                     ctx.visibility(),
                     &component_id,
-                    &system_id,
                     &schema_variant_id,
                     &schema_id,
                 ],

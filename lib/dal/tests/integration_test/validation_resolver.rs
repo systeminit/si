@@ -2,7 +2,7 @@ use dal::{
     func::{backend::validation::FuncBackendValidationArgs, binding::FuncBinding},
     validation::Validation,
     AttributeContext, AttributeValue, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    PropKind, SchemaKind, StandardModel, SystemId, ValidationPrototype, ValidationPrototypeContext,
+    PropKind, SchemaKind, StandardModel, ValidationPrototype, ValidationPrototypeContext,
     ValidationResolver,
 };
 use dal_test::{
@@ -12,8 +12,6 @@ use dal_test::{
         create_schema_variant_with_root,
     },
 };
-
-const UNSET_ID_VALUE: i64 = -1;
 
 #[test]
 async fn new(ctx: &DalContext) {
@@ -108,8 +106,6 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn find_errors(ctx: &DalContext) {
-    let unset_system_id: SystemId = UNSET_ID_VALUE.into();
-
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -242,10 +238,9 @@ async fn find_errors(ctx: &DalContext) {
     .await
     .expect("cannot create new validation resolver");
 
-    let mut validation_results =
-        ValidationResolver::find_status(ctx, *component.id(), unset_system_id)
-            .await
-            .expect("cannot find values");
+    let mut validation_results = ValidationResolver::find_status(ctx, *component.id())
+        .await
+        .expect("cannot find values");
     // Order of output from find_status above isn't stable. Order the
     // results by the AttributeValueId that they are for, so we have
     // something stable to compare against in the asserts below.

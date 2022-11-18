@@ -9,21 +9,18 @@ use crate::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, Component, ComponentError, ComponentId, DalContext, StandardModel, SystemId,
-    Visibility,
+    AccessBuilder, Component, ComponentError, ComponentId, DalContext, StandardModel, Visibility,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
 struct QualificationsArgs {
     component_id: ComponentId,
-    system_id: SystemId,
 }
 
 impl From<Qualifications> for QualificationsArgs {
     fn from(value: Qualifications) -> Self {
         Self {
             component_id: value.component_id,
-            system_id: value.system_id,
         }
     }
 }
@@ -31,32 +28,24 @@ impl From<Qualifications> for QualificationsArgs {
 #[derive(Clone, Debug, Serialize)]
 pub struct Qualifications {
     component_id: ComponentId,
-    system_id: SystemId,
     access_builder: AccessBuilder,
     visibility: Visibility,
     faktory_job: Option<FaktoryJobInfo>,
 }
 
 impl Qualifications {
-    pub async fn new(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        system_id: SystemId,
-    ) -> ComponentResult<Box<Self>> {
+    pub async fn new(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Box<Self>> {
         let component = Component::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
-        component
-            .prepare_qualifications_check(ctx, system_id)
-            .await?;
+        component.prepare_qualifications_check(ctx).await?;
 
         let access_builder = AccessBuilder::from(ctx.clone());
         let visibility = *ctx.visibility();
 
         Ok(Box::new(Self {
             component_id,
-            system_id,
             access_builder,
             visibility,
             faktory_job: None,
@@ -113,7 +102,7 @@ impl JobConsumer for Qualifications {
             .await?
             .ok_or(ComponentError::NotFound(self.component_id))?;
 
-        component.check_qualifications(ctx, self.system_id).await?;
+        component.check_qualifications(ctx).await?;
 
         Ok(())
     }
@@ -125,7 +114,7 @@ impl TryFrom<faktory_async::Job> for Qualifications {
     fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
-                r#"[{ "component_id": <ComponentId>, "system_id": [SystemId] }, <AccessBuilder>, <Visibility>]"#.to_string(),
+                r#"[{ "component_id": <ComponentId> }, <AccessBuilder>, <Visibility>]"#.to_string(),
                 job.args().to_vec(),
             ));
         }
@@ -137,7 +126,6 @@ impl TryFrom<faktory_async::Job> for Qualifications {
 
         Ok(Self {
             component_id: args.component_id,
-            system_id: args.system_id,
             access_builder,
             visibility,
             faktory_job: Some(faktory_job_info),

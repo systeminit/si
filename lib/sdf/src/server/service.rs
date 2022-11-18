@@ -9,7 +9,6 @@ pub mod schema;
 pub mod secret;
 pub mod session;
 pub mod signup;
-pub mod system;
 pub mod workflow;
 pub mod ws;
 

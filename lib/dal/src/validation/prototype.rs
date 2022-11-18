@@ -11,7 +11,7 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
     standard_model_accessor, DalContext, HistoryEventError, PropId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{PropKind, ValidationPrototypeContext};
 
@@ -89,7 +89,7 @@ impl ValidationPrototype {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM validation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM validation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
@@ -98,7 +98,6 @@ impl ValidationPrototype {
                     &context.prop_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;
@@ -119,14 +118,13 @@ impl ValidationPrototype {
     pub async fn list_for_prop(
         ctx: &DalContext,
         prop_id: PropId,
-        system_id: SystemId,
     ) -> ValidationPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .pg()
             .query(
                 LIST_FOR_PROP,
-                &[ctx.read_tenancy(), ctx.visibility(), &prop_id, &system_id],
+                &[ctx.read_tenancy(), ctx.visibility(), &prop_id],
             )
             .await?;
         let object = objects_from_rows(rows)?;
@@ -142,19 +140,13 @@ impl ValidationPrototype {
     pub async fn list_for_schema_variant(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-        system_id: SystemId,
     ) -> ValidationPrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .pg()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &schema_variant_id,
-                    &system_id,
-                ],
+                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
         let object = objects_from_rows(rows)?;

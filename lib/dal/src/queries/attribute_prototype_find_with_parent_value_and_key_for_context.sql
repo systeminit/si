@@ -17,8 +17,7 @@ WHERE
         attribute_prototypes.attribute_context_external_provider_id,
         attribute_prototypes.attribute_context_schema_id,
         attribute_prototypes.attribute_context_schema_variant_id,
-        attribute_prototypes.attribute_context_component_id,
-        attribute_prototypes.attribute_context_system_id
+        attribute_prototypes.attribute_context_component_id
     )
     AND CASE
             WHEN $4::bigint IS NULL THEN parent_attribute_values.id IS NULL
@@ -37,5 +36,4 @@ ORDER BY
     attribute_context_schema_id DESC,
     attribute_context_schema_variant_id DESC,
     attribute_context_component_id DESC,
-    attribute_context_system_id DESC,
     av.tenancy_universal -- bools sort false first ascending.

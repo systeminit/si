@@ -112,7 +112,6 @@ pub async fn list_schema_variants(
                             },
                         })
                     }
-                    SocketEdgeKind::System => continue,
                 },
             }
         }

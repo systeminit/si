@@ -11,8 +11,7 @@ use dal::{
     },
     AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributeValue,
     CodeGenerationPrototype, ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBinding,
-    FuncId, PrototypeListForFunc, QualificationPrototype, StandardModel, SystemId, Visibility,
-    WsEvent,
+    FuncId, PrototypeListForFunc, QualificationPrototype, StandardModel, Visibility, WsEvent,
 };
 use dal::{SchemaVariant, ValidationPrototype};
 
@@ -299,7 +298,6 @@ async fn save_validation_func_prototypes(
             .set_prop_id(proto_view.prop_id)
             .set_schema_variant_id(proto_view.schema_variant_id)
             .set_schema_id(schema_id)
-            .set_system_id(SystemId::NONE)
             .to_context(ctx)
             .await?;
 

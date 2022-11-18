@@ -5,7 +5,7 @@ use axum::Json;
 use dal::WsEvent;
 use dal::{
     generate_name, node_position::NodePositionView, Component, DiagramKind, NodePosition,
-    NodeTemplate, NodeView, Schema, SchemaId, StandardModel, SystemId, Visibility, WorkspaceId,
+    NodeTemplate, NodeView, Schema, SchemaId, StandardModel, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct CreateNodeRequest {
     pub schema_id: SchemaId,
-    pub system_id: Option<SystemId>,
     pub x: String,
     pub y: String,
     pub workspace_id: WorkspaceId,
@@ -61,7 +60,6 @@ pub async fn create_node(
         &ctx,
         *node.id(),
         diagram_kind,
-        request.system_id,
         request.x.clone(),
         request.y.clone(),
     )

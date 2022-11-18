@@ -2,14 +2,13 @@ use std::collections::HashMap;
 
 use crate::action_prototype::ActionKind;
 use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
-use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
     component::ComponentKind, edit_field::widget::*, prototype_context::PrototypeContext,
     qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu,
     socket::SocketArity, ActionPrototype, ActionPrototypeContext, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
     BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func,
-    InternalProvider, Prop, PropKind, QualificationPrototype, SchemaError, SchemaKind, Socket,
+    InternalProvider, Prop, PropKind, QualificationPrototype, SchemaError, SchemaKind,
     StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
@@ -58,17 +57,6 @@ async fn docker_hub_credential(ctx: &DalContext, driver: &MigrationDriver) -> Bu
     let identity_func_item = driver
         .get_func_item("si:identity")
         .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     let (_output_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -189,17 +177,6 @@ async fn docker_image(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRes
     )
     .await?;
     output_socket.set_color(ctx, Some(0xd61e8c)).await?;
-
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     // Qualification Prototype
     let qual_func_name = "si:qualificationDockerImageNameInspect".to_string();

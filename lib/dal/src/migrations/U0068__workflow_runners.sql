@@ -17,7 +17,6 @@ CREATE TABLE workflow_runners
     component_id                bigint                   NOT NULL,
     schema_id                   bigint                   NOT NULL,
     schema_variant_id           bigint                   NOT NULL,
-    system_id                   bigint                   NOT NULL,
     created_resources           jsonb                    NOT NULL,
     updated_resources           jsonb                    NOT NULL
 );
@@ -36,7 +35,6 @@ CREATE OR REPLACE FUNCTION workflow_runner_create_v1(
     this_component_id bigint,
     this_schema_id bigint,
     this_schema_variant_id bigint,
-    this_system_id bigint,
     this_created_resources jsonb,
     this_updated_resources jsonb,
     OUT object json) AS
@@ -50,21 +48,20 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO workflow_runners (tenancy_universal,
-                                         tenancy_billing_account_ids,
-                                         tenancy_organization_ids,
-                                         tenancy_workspace_ids,
-                                         visibility_change_set_pk,
-                                         visibility_deleted_at,
-                                         workflow_prototype_id,
-                                         workflow_resolver_id,
-                                         func_id,
-                                         func_binding_id,
-                                         component_id,
-                                         schema_id,
-                                         schema_variant_id,
-                                         system_id,
-				         created_resources,
-				         updated_resources)
+                                  tenancy_billing_account_ids,
+                                  tenancy_organization_ids,
+                                  tenancy_workspace_ids,
+                                  visibility_change_set_pk,
+                                  visibility_deleted_at,
+                                  workflow_prototype_id,
+                                  workflow_resolver_id,
+                                  func_id,
+                                  func_binding_id,
+                                  component_id,
+                                  schema_id,
+                                  schema_variant_id,
+                                  created_resources,
+                                  updated_resources)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
@@ -78,7 +75,6 @@ BEGIN
             this_component_id,
             this_schema_id,
             this_schema_variant_id,
-            this_system_id,
             this_created_resources,
             this_updated_resources)
     RETURNING * INTO this_new_row;

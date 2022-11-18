@@ -30,7 +30,7 @@ async fn new(ctx: &DalContext) {
 
     let args = FuncBackendJsQualificationArgs {
         component: component
-            .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
+            .veritech_qualification_check_component(ctx)
             .await
             .expect("could not create component qualification view"),
     };
@@ -86,7 +86,7 @@ async fn find_for_prototype(ctx: &DalContext) {
 
     let args = FuncBackendJsQualificationArgs {
         component: component
-            .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
+            .veritech_qualification_check_component(ctx)
             .await
             .expect("could not create component qualification view"),
     };

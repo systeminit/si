@@ -1,14 +1,11 @@
 use dal::{
     edge::{EdgeKind, VertexObjectKind},
     socket::SocketEdgeKind,
-    Component, DalContext, Edge, SchemaVariant, StandardModel, Visibility, WorkspaceId,
+    DalContext, Edge, SchemaVariant, StandardModel,
 };
 use dal_test::{
-    helpers::{
-        builtins::{Builtin, SchemaBuiltinsTestHarness},
-        create_system_with_node, find_schema_by_name,
-    },
-    test, DalContextHeadRef,
+    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
+    test,
 };
 
 #[test]
@@ -75,141 +72,4 @@ async fn new(ctx: &DalContext) {
         .expect("unable to find component's parents");
     assert_eq!(parents.len(), 1);
     assert_eq!(parents[0], credential_payload.component_id);
-}
-
-#[test]
-async fn include_component_in_system_on_head(
-    DalContextHeadRef(ctx): DalContextHeadRef<'_>,
-    wid: WorkspaceId,
-) {
-    let edge_kind = "system".to_string();
-    let (system, system_node) = create_system_with_node(ctx, &wid).await;
-
-    let schema = find_schema_by_name(ctx, "Docker Image").await;
-
-    let (first_component, first_component_node) =
-        Component::new_for_schema_with_node(ctx, "first", schema.id())
-            .await
-            .expect("cannot create component and node");
-
-    let edges = Edge::find_by_attr(ctx, "kind", &edge_kind)
-        .await
-        .expect("cannot retrieve edges from edit session");
-    assert_eq!(edges.len(), 0);
-
-    first_component
-        .add_to_system(ctx, *system.id())
-        .await
-        .expect("failed to add component to system");
-
-    let edges = Edge::find_by_attr(ctx, "kind", &edge_kind)
-        .await
-        .expect("cannot retrieve edges from edit session");
-    assert_eq!(edges.len(), 1);
-
-    let (second_component, second_component_node) =
-        Component::new_for_schema_with_node(ctx, "second", schema.id())
-            .await
-            .expect("cannot create component and node for service");
-
-    let edges = Edge::find_by_attr(ctx, "kind", &edge_kind)
-        .await
-        .expect("cannot retrieve edges from edit session");
-    assert_eq!(edges.len(), 1);
-
-    second_component
-        .add_to_system(ctx, *system.id())
-        .await
-        .expect("failed to add component to system");
-
-    let edges = Edge::find_by_attr(ctx, "kind", &edge_kind)
-        .await
-        .expect("cannot retrieve edges from edit session");
-    assert_eq!(edges.len(), 2);
-
-    assert_eq!(edges[0].head_node_id(), *first_component_node.id());
-    assert_eq!(
-        edges[0].head_object_kind(),
-        &VertexObjectKind::Configuration
-    );
-    assert_eq!(edges[0].tail_node_id(), *system_node.id());
-    assert_eq!(edges[0].tail_object_kind(), &VertexObjectKind::System);
-
-    assert_eq!(edges[1].head_node_id(), *second_component_node.id());
-    assert_eq!(
-        edges[1].head_object_kind(),
-        &VertexObjectKind::Configuration
-    );
-    assert_eq!(edges[1].tail_node_id(), *system_node.id());
-    assert_eq!(edges[1].tail_object_kind(), &VertexObjectKind::System);
-}
-
-#[test]
-async fn include_component_in_system_with_edit_sessions(ctx: &DalContext, wid: WorkspaceId) {
-    let edge_kind = "system".to_string();
-    let (system, system_node) = create_system_with_node(ctx, &wid).await;
-
-    let schema = find_schema_by_name(ctx, "Docker Image").await;
-
-    let (first_component, first_component_node) =
-        Component::new_for_schema_with_node(ctx, "first", schema.id())
-            .await
-            .expect("cannot create component and node");
-
-    let edges = Edge::find_by_attr(ctx, "kind", &edge_kind)
-        .await
-        .expect("cannot retrieve edges from edit session");
-    assert_eq!(edges.len(), 0);
-
-    first_component
-        .add_to_system(ctx, *system.id())
-        .await
-        .expect("failed to add component to system");
-
-    let edges = Edge::find_by_attr(ctx, "kind", &edge_kind)
-        .await
-        .expect("cannot retrieve edges from edit session");
-    assert_eq!(edges.len(), 1);
-
-    let (second_component, second_component_node) =
-        Component::new_for_schema_with_node(ctx, "second", schema.id())
-            .await
-            .expect("cannot create component and node for service");
-
-    let edges = Edge::find_by_attr(ctx, "kind", &edge_kind)
-        .await
-        .expect("cannot retrieve edges from edit session");
-    assert_eq!(edges.len(), 1);
-
-    second_component
-        .add_to_system(ctx, *system.id())
-        .await
-        .expect("failed to add component to system");
-
-    let edges = Edge::find_by_attr(ctx, "kind", &edge_kind)
-        .await
-        .expect("cannot retrieve edges from edit session");
-    assert_eq!(edges.len(), 2);
-
-    assert_eq!(edges[0].head_node_id(), *first_component_node.id());
-    assert_eq!(
-        edges[0].head_object_kind(),
-        &VertexObjectKind::Configuration
-    );
-    assert_eq!(edges[0].tail_node_id(), *system_node.id());
-    assert_eq!(edges[0].tail_object_kind(), &VertexObjectKind::System);
-
-    assert_eq!(edges[1].head_node_id(), *second_component_node.id());
-    assert_eq!(
-        edges[1].head_object_kind(),
-        &VertexObjectKind::Configuration
-    );
-    assert_eq!(edges[1].tail_node_id(), *system_node.id());
-    assert_eq!(edges[1].tail_object_kind(), &VertexObjectKind::System);
-
-    let head_ctx = ctx.clone_with_new_visibility(Visibility::new_head(false));
-    let edges = Edge::find_by_attr(&head_ctx, "kind", &edge_kind)
-        .await
-        .expect("cannot retrieve edges from HEAD");
-    assert_eq!(edges.len(), 0);
 }

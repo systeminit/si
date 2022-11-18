@@ -2,13 +2,13 @@ use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::component::ComponentKind;
 use crate::func::argument::FuncArgument;
 use crate::prototype_context::PrototypeContext;
-use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
+use crate::socket::SocketArity;
 use crate::{
     qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
     BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
     ExternalProvider, Func, FuncError, InternalProvider, PropKind, QualificationPrototype,
-    SchemaError, SchemaKind, Socket, StandardModel,
+    SchemaError, SchemaKind, StandardModel,
 };
 
 // Reference: https://getfedora.org/
@@ -172,17 +172,6 @@ async fn butane(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         )
         .await?;
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
-
-    let system_socket = Socket::new(
-        ctx,
-        "system",
-        SocketKind::Provider,
-        &SocketEdgeKind::System,
-        &SocketArity::Many,
-        &DiagramKind::Configuration,
-    )
-    .await?;
-    schema_variant.add_socket(ctx, system_socket.id()).await?;
 
     // Qualification Prototype
     let qual_func_name = "si:qualificationButaneIsValidIgnition".to_string();

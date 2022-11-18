@@ -1,7 +1,7 @@
 use dal::{
     func::backend::validation::FuncBackendValidationArgs, validation::Validation,
-    BillingAccountSignup, DalContext, Func, Prop, Schema, StandardModel, SystemId,
-    ValidationPrototype, ValidationPrototypeContext,
+    BillingAccountSignup, DalContext, Func, Prop, Schema, StandardModel, ValidationPrototype,
+    ValidationPrototypeContext,
 };
 use dal_test::{helpers::find_prop_and_parent_by_name, test};
 
@@ -55,8 +55,6 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
-    let unset_system_id: SystemId = SystemId::NONE;
-
     let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
         .await
         .expect("cannot find docker image")
@@ -120,7 +118,7 @@ async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
     .await
     .expect("cannot create new attribute prototype");
 
-    let validation_results = ValidationPrototype::list_for_prop(ctx, *prop.id(), unset_system_id)
+    let validation_results = ValidationPrototype::list_for_prop(ctx, *prop.id())
         .await
         .expect("cannot find values");
 

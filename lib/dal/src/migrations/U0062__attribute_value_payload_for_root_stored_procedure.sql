@@ -8,8 +8,7 @@ CREATE TYPE func_with_attribute_prototype_context AS (
     attribute_prototype_id bigint,
     attribute_context_schema_id bigint,
     attribute_context_schema_variant_id bigint,
-    attribute_context_component_id bigint,
-    attribute_context_system_id bigint
+    attribute_context_component_id bigint
 );
 CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_and_root_v1(
     this_tenancy jsonb,
@@ -50,8 +49,7 @@ BEGIN
                 ap.id,
                 ap.attribute_context_schema_id,
                 ap.attribute_context_schema_variant_id,
-                ap.attribute_context_component_id,
-                ap.attribute_context_system_id
+                ap.attribute_context_component_id
             ) AS func_with_attribute_prototype_context
         )) AS func_with_prototype_context
     FROM attribute_values_v1(this_tenancy, this_visibility) AS av
@@ -95,7 +93,6 @@ BEGIN
                     av.attribute_context_schema_id DESC,
                     av.attribute_context_schema_variant_id DESC,
                     av.attribute_context_component_id DESC,
-                    av.attribute_context_system_id DESC,
                     av.tenancy_universal -- bools sort false first ascending.
             ) AS av_ids;
         -- Exit the loop, since we haven't found any new child AttributeValues to return.
@@ -123,8 +120,7 @@ BEGIN
                         ap.id,
                         ap.attribute_context_schema_id,
                         ap.attribute_context_schema_variant_id,
-                        ap.attribute_context_component_id,
-                        ap.attribute_context_system_id
+                        ap.attribute_context_component_id
                     ) AS func_with_attribute_prototype_context
                 )) AS func_with_prototype_context
             FROM attribute_values_v1(this_tenancy, this_visibility) AS av
@@ -188,7 +184,6 @@ AS $$
         av.attribute_context_schema_id DESC,
         av.attribute_context_schema_variant_id DESC,
         av.attribute_context_component_id DESC,
-        av.attribute_context_system_id DESC,
         av.tenancy_universal -- bools sort false first ascending.
 $$;
 

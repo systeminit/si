@@ -10,8 +10,7 @@ CREATE TABLE node_positions
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    diagram_kind              text                     NOT NULL,
-    system_id                   bigint,
+    diagram_kind                text                     NOT NULL,
     x                           text                     NOT NULL,
     y                           text                     NOT NULL
 );
@@ -26,7 +25,6 @@ CREATE OR REPLACE FUNCTION node_position_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_diagram_kind text,
-    this_system_id bigint,
     this_x text,
     this_y text,
     OUT object json) AS
@@ -42,11 +40,11 @@ BEGIN
     INSERT INTO node_positions (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                                 tenancy_workspace_ids,
                                 visibility_change_set_pk, visibility_deleted_at,
-                                diagram_kind, system_id, x, y)
+                                diagram_kind, x, y)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at, this_diagram_kind, this_system_id,
+            this_visibility_record.visibility_deleted_at, this_diagram_kind,
             this_x, this_y)
     RETURNING * INTO this_new_row;
 

@@ -4,8 +4,7 @@ use dal::{
     validation::{Validation, ValidationError, ValidationErrorKind},
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentView, DalContext,
     Func, FuncBackendKind, FuncBackendResponseType, PropId, PropKind, SchemaKind, StandardModel,
-    SystemId, ValidationPrototype, ValidationPrototypeContext, ValidationResolver,
-    ValidationStatus,
+    ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
@@ -191,7 +190,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
 
     // Ensure that we see the exact expected validation statuses with the exact expected
     // validation errors.
-    let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
+    let validation_statuses = ValidationResolver::find_status(ctx, *component.id())
         .await
         .expect("could not find status for validation(s) of a given component");
     let (match_validation_status, prefix_validation_status) = (
@@ -269,7 +268,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
     );
 
     // Ensure we see the exact validation status with no errors.
-    let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
+    let validation_statuses = ValidationResolver::find_status(ctx, *component.id())
         .await
         .expect("could not find status for validation(s) of a given component");
     let (match_validation_status, prefix_validation_status) = (
@@ -398,7 +397,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         properties
     );
 
-    let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
+    let validation_statuses = ValidationResolver::find_status(ctx, *component.id())
         .await
         .expect("could not find status for validation(s) of a given component");
 
@@ -436,7 +435,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         .await
         .expect("check single validation");
 
-    let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
+    let validation_statuses = ValidationResolver::find_status(ctx, *component.id())
         .await
         .expect("could not find status for validation(s) of a given component");
 
@@ -488,7 +487,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         properties
     );
 
-    let validation_statuses = ValidationResolver::find_status(ctx, *component.id(), SystemId::NONE)
+    let validation_statuses = ValidationResolver::find_status(ctx, *component.id())
         .await
         .expect("could not find status for validation(s) of a given component");
 
@@ -549,10 +548,9 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
 
     // Ensure that we see exactly one expected validation status with exactly one expected
     // validation error.
-    let validation_statuses =
-        ValidationResolver::find_status(ctx, component_payload.component_id, SystemId::NONE)
-            .await
-            .expect("could not find status for validation(s) of a given component");
+    let validation_statuses = ValidationResolver::find_status(ctx, component_payload.component_id)
+        .await
+        .expect("could not find status for validation(s) of a given component");
 
     let mut expected_validation_status = None;
     for validation_status in &validation_statuses {

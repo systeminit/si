@@ -58,7 +58,7 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
     let diagram_kind = schema.diagram_kind().expect("no diagram kind for schema");
     assert_eq!(diagram_kind, DiagramKind::Configuration);
 
-    let position = NodePosition::new(ctx, *node.id(), diagram_kind, None, "0", "0")
+    let position = NodePosition::new(ctx, *node.id(), diagram_kind, "0", "0")
         .await
         .expect("could not create node position");
     let positions = vec![NodePositionView::from(position)];
@@ -159,7 +159,6 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
     let from_node_position = NodePosition::upsert_by_node_id(
         ctx,
         DiagramKind::Configuration,
-        None,
         from_docker_hub_credential.node_id,
         "123",
         "-10",
@@ -170,7 +169,6 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
     let to_node_position = NodePosition::upsert_by_node_id(
         ctx,
         DiagramKind::Configuration,
-        None,
         to_docker_image.node_id,
         "124",
         "-11",
@@ -188,9 +186,7 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
     .await
     .expect("could not create connection");
 
-    let diagram = Diagram::assemble(ctx, None)
-        .await
-        .expect("cannot find diagram");
+    let diagram = Diagram::assemble(ctx).await.expect("cannot find diagram");
 
     // Check the nodes.
     assert_eq!(diagram.nodes().len(), 2);

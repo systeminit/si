@@ -1448,7 +1448,6 @@ async fn cyclone_crypto_e2e(ctx: &DalContext) {
         component: veritech_client::ResolverFunctionComponent {
             data: veritech_client::ComponentView {
                 kind: veritech_client::ComponentKind::Credential,
-                system: None,
                 properties: serde_json::json!({
                     "secret": {
                         "name": "ufo",

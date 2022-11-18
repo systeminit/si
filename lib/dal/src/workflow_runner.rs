@@ -15,9 +15,9 @@ use crate::{
     job::definition::Confirmations,
     pk, standard_model, standard_model_accessor, Component, ComponentError, ComponentId, Func,
     FuncBinding, FuncBindingError, HistoryEventError, InternalProviderError, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WorkflowError, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
-    WorkflowResolverError, WorkflowResolverId, WriteTenancy, WsEventError,
+    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WorkflowError,
+    WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowResolverError,
+    WorkflowResolverId, WriteTenancy, WsEventError,
 };
 
 pub mod workflow_runner_state;
@@ -67,7 +67,6 @@ pub struct WorkflowRunnerContext {
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
 }
 
 // Hrm - is this a universal runner context? -- Adam
@@ -83,7 +82,6 @@ impl WorkflowRunnerContext {
             component_id: ComponentId::NONE,
             schema_id: SchemaId::NONE,
             schema_variant_id: SchemaVariantId::NONE,
-            system_id: SystemId::NONE,
         }
     }
 
@@ -109,14 +107,6 @@ impl WorkflowRunnerContext {
 
     pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
         self.schema_variant_id = schema_variant_id;
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    pub fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
     }
 }
 
@@ -169,7 +159,7 @@ impl WorkflowRunner {
         should_trigger_confirmations: bool,
     ) -> WorkflowRunnerResult<Self> {
         let row = ctx.txns().pg().query_one(
-            "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+            "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
             &[
                 ctx.write_tenancy(),
                 ctx.visibility(),
@@ -180,7 +170,6 @@ impl WorkflowRunner {
                 &context.component_id(),
                 &context.schema_id(),
                 &context.schema_variant_id(),
-                &context.system_id(),
                 &serde_json::to_value(created_resources)?,
                 &serde_json::to_value(updated_resources)?,
             ],
@@ -230,9 +219,8 @@ impl WorkflowRunner {
         let func_binding_return_values = tree.run(ctx, run_id).await?;
 
         // FIXME(nick): right now, there's nothing stopping a WorkflowTree from operating on
-        // multiple Components across multiple Systems. Therefore, we take in a "vec" of resources
-        // here even though we know that there can only be one (or none) Resource for a given
-        // Component and System.
+        // multiple Components. Therefore, we take in a "vec" of resources here even though we know
+        // that there can only be one (or none) Resource for a given Component.
         let (func_id, func_binding_id, created_resources, updated_resources) =
             Self::process_successful_workflow_run(ctx, &func_binding_return_values, component_id)
                 .await?;
@@ -243,7 +231,6 @@ impl WorkflowRunner {
         context.set_component_id(prototype.context().component_id);
         context.set_schema_id(prototype.context().schema_id);
         context.set_schema_variant_id(prototype.context().schema_variant_id);
-        context.set_system_id(prototype.context().system_id);
 
         // TODO(nick,wendy,paulo): create the runner independent of it being ran (either at the
         // beginning of this function or outside of it).
@@ -397,7 +384,6 @@ impl WorkflowRunner {
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;

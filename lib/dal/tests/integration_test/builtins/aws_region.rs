@@ -1,6 +1,6 @@
 use dal::{
     validation::ValidationErrorKind, DalContext, Edge, ExternalProvider, InternalProvider,
-    StandardModel, SystemId, ValidationResolver,
+    StandardModel, ValidationResolver,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
@@ -198,10 +198,9 @@ async fn aws_region_field_validation(ctx: &DalContext) {
         region_payload.component_view_properties(ctx).await // expected
     );
 
-    let validation_statuses =
-        ValidationResolver::find_status(ctx, region_payload.component_id, SystemId::NONE)
-            .await
-            .expect("could not find status for validation(s) of a given component");
+    let validation_statuses = ValidationResolver::find_status(ctx, region_payload.component_id)
+        .await
+        .expect("could not find status for validation(s) of a given component");
 
     let mut expected_validation_status = None;
     for validation_status in &validation_statuses {
@@ -254,10 +253,9 @@ async fn aws_region_field_validation(ctx: &DalContext) {
     );
 
     // TODO(nick): now, ensure we have the right value! Huzzah.
-    let validation_statuses =
-        ValidationResolver::find_status(ctx, region_payload.component_id, SystemId::NONE)
-            .await
-            .expect("could not find status for validation(s) of a given component");
+    let validation_statuses = ValidationResolver::find_status(ctx, region_payload.component_id)
+        .await
+        .expect("could not find status for validation(s) of a given component");
 
     let mut expected_validation_status = None;
     for validation_status in &validation_statuses {

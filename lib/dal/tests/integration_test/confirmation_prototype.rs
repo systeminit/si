@@ -1,6 +1,6 @@
 use dal::{
     confirmation_prototype::ConfirmationPrototypeContext, ConfirmationPrototype, DalContext, Func,
-    Schema, StandardModel, SystemId,
+    Schema, StandardModel,
 };
 use dal_test::{test, test_harness::create_component_for_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -42,16 +42,14 @@ async fn find_for_component(ctx: &DalContext) {
         component_id: *component.id(),
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
-        system_id: SystemId::NONE,
     };
     let new_prototype = ConfirmationPrototype::new(ctx, "A nice name", *func.id(), context)
         .await
         .expect("unable to create confirmation prototype");
 
-    let found_prototypes =
-        ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
-            .await
-            .expect("could not find for context");
+    let found_prototypes = ConfirmationPrototype::list_for_component(ctx, *component.id())
+        .await
+        .expect("could not find for context");
     // doesnt find builtins
     assert_eq!(found_prototypes.len(), 1);
     assert_eq!(new_prototype, found_prototypes[0]);
@@ -66,14 +64,14 @@ async fn run(ctx: &DalContext) {
         .expect("unable to find schema");
     let component = create_component_for_schema(ctx, schema.id()).await;
 
-    let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id(), SystemId::NONE)
+    let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id())
         .await
         .expect("could not find for context")
         .pop()
         .expect("unable to find for context");
 
     let resolver = prototype
-        .run(ctx, *component.id(), SystemId::NONE)
+        .run(ctx, *component.id())
         .await
         .expect("failed to run prototype");
     assert_eq!(resolver.success(), Some(&false));

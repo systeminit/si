@@ -12,14 +12,13 @@ use crate::{
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, ComponentId, ConfirmationPrototype, ConfirmationPrototypeError,
-    ConfirmationPrototypeId, DalContext, FixResolver, FixResolverContext, StandardModel, SystemId,
+    ConfirmationPrototypeId, DalContext, FixResolver, FixResolverContext, StandardModel,
     Visibility, WorkflowPrototypeId, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
 struct ConfirmationArgs {
     component_id: ComponentId,
-    system_id: SystemId,
     confirmation_prototype_id: ConfirmationPrototypeId,
 }
 
@@ -27,7 +26,6 @@ impl From<Confirmation> for ConfirmationArgs {
     fn from(value: Confirmation) -> Self {
         Self {
             component_id: value.component_id,
-            system_id: value.system_id,
             confirmation_prototype_id: value.confirmation_prototype_id,
         }
     }
@@ -39,7 +37,6 @@ pub struct Confirmation {
     visibility: Visibility,
     faktory_job: Option<FaktoryJobInfo>,
     component_id: ComponentId,
-    system_id: SystemId,
     confirmation_prototype_id: ConfirmationPrototypeId,
 }
 
@@ -47,7 +44,6 @@ impl Confirmation {
     pub fn new(
         ctx: &DalContext,
         component_id: ComponentId,
-        system_id: SystemId,
         confirmation_prototype_id: ConfirmationPrototypeId,
     ) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
@@ -58,7 +54,6 @@ impl Confirmation {
             visibility,
             faktory_job: None,
             component_id,
-            system_id,
             confirmation_prototype_id,
         })
     }
@@ -113,37 +108,34 @@ impl JobConsumer for Confirmation {
                 self.confirmation_prototype_id,
             ))?;
 
-        let (status, error_message) =
-            match prototype.run(ctx, self.component_id, self.system_id).await {
-                Ok(resolver) => {
-                    // Creates empty fix result slot
-                    let context = FixResolverContext {
-                        component_id: resolver.context().component_id,
-                        schema_id: resolver.context().schema_id,
-                        schema_variant_id: resolver.context().schema_variant_id,
-                        system_id: SystemId::NONE,
-                    };
-                    let _fix_resolver = FixResolver::upsert(
-                        ctx,
-                        WorkflowPrototypeId::NONE,
-                        *resolver.id(),
-                        None,
-                        context,
-                    )
-                    .await?;
-                    match resolver.success() {
-                        Some(true) => (ConfirmationStatus::Success, None),
-                        Some(false) => (ConfirmationStatus::Failure, None),
-                        None => unreachable!(),
-                    }
+        let (status, error_message) = match prototype.run(ctx, self.component_id).await {
+            Ok(resolver) => {
+                // Creates empty fix result slot
+                let context = FixResolverContext {
+                    component_id: resolver.context().component_id,
+                    schema_id: resolver.context().schema_id,
+                    schema_variant_id: resolver.context().schema_variant_id,
+                };
+                let _fix_resolver = FixResolver::upsert(
+                    ctx,
+                    WorkflowPrototypeId::NONE,
+                    *resolver.id(),
+                    None,
+                    context,
+                )
+                .await?;
+                match resolver.success() {
+                    Some(true) => (ConfirmationStatus::Success, None),
+                    Some(false) => (ConfirmationStatus::Failure, None),
+                    None => unreachable!(),
                 }
-                Err(e) => (ConfirmationStatus::Error, Some(format!("{e}"))),
-            };
+            }
+            Err(e) => (ConfirmationStatus::Error, Some(format!("{e}"))),
+        };
 
         WsEvent::confirmation_status_update(
             ctx,
             self.component_id,
-            self.system_id,
             *prototype.id(),
             status,
             error_message,
@@ -160,7 +152,7 @@ impl TryFrom<faktory_async::Job> for Confirmation {
     fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
-                r#"[{ component_id: ComponentId, system_id: SystemId, confirmation_prototype_id: ConfirmationPrototypeId }, <AccessBuilder>, <Visibility>]"#.to_string(),
+                r#"[{ component_id: ComponentId, confirmation_prototype_id: ConfirmationPrototypeId }, <AccessBuilder>, <Visibility>]"#.to_string(),
                 job.args().to_vec(),
             ));
         }
@@ -175,7 +167,6 @@ impl TryFrom<faktory_async::Job> for Confirmation {
             visibility,
             faktory_job: Some(faktory_job_info),
             component_id: args.component_id,
-            system_id: args.system_id,
             confirmation_prototype_id: args.confirmation_prototype_id,
         })
     }

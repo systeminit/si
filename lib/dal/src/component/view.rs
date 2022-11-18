@@ -7,7 +7,7 @@ use crate::{
     AttributeReadContext, AttributeValue, AttributeValueError, Component, ComponentId, DalContext,
     EncryptedSecret, ExternalProviderId, FuncBindingReturnValue, InternalProvider,
     InternalProviderError, Prop, PropError, PropId, SchemaVariantId, SecretError, SecretId,
-    StandardModel, StandardModelError, System,
+    StandardModel, StandardModelError,
 };
 
 type ComponentViewResult<T> = Result<T, ComponentViewError>;
@@ -48,7 +48,6 @@ pub enum ComponentViewError {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ComponentView {
-    pub system: Option<System>,
     pub kind: ComponentKind,
     pub properties: Value,
 }
@@ -56,7 +55,6 @@ pub struct ComponentView {
 impl Default for ComponentView {
     fn default() -> Self {
         Self {
-            system: Default::default(),
             kind: Default::default(),
             properties: serde_json::json!({}),
         }
@@ -80,12 +78,6 @@ impl ComponentView {
         let component = Component::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ComponentViewError::NotFound(component_id))?;
-
-        // Perhaps get_by_id should just do this? -- Adam
-        let system = match context.system_id() {
-            Some(system_id) => System::get_by_id(ctx, &system_id).await?,
-            None => None,
-        };
 
         let schema_variant_id = context
             .schema_variant_id()
@@ -123,7 +115,6 @@ impl ComponentView {
             .unwrap_or(&serde_json::Value::Null);
 
         Ok(ComponentView {
-            system,
             kind: *component.kind(),
             properties: properties.clone(),
         })
@@ -193,9 +184,6 @@ impl From<ComponentView> for veritech_client::ComponentView {
     fn from(view: ComponentView) -> Self {
         Self {
             // Filters internal data out, leaving only what is useful
-            system: view.system.map(|system| veritech_client::SystemView {
-                name: system.name().to_owned(),
-            }),
             kind: view.kind.into(),
             properties: view.properties,
         }

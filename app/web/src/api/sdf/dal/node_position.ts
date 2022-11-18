@@ -5,7 +5,6 @@ export interface NodePosition {
   pk: number;
   id: number;
   diagram_kind: number;
-  system_id?: number;
   x: string;
   y: string;
   tenancy: Tenancy;

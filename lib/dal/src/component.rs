@@ -27,7 +27,6 @@ use crate::standard_model::object_from_row;
 use crate::validation::{ValidationConstructorError, ValidationError};
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
-    edge::EdgeId,
     func::{FuncId, FuncMetadataView},
     impl_standard_model,
     node::NodeId,
@@ -40,8 +39,8 @@ use crate::{
     DalContext, Edge, EdgeError, ExternalProviderId, Func, FuncBackendKind, HistoryEventError,
     InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
     PropId, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
-    QualificationResolverError, ReadTenancyError, Schema, SchemaError, SchemaId, Socket, SocketId,
-    StandardModel, StandardModelError, SystemId, Timestamp, TransactionsError, ValidationPrototype,
+    QualificationResolverError, ReadTenancyError, Schema, SchemaError, SchemaId, Socket,
+    StandardModel, StandardModelError, Timestamp, TransactionsError, ValidationPrototype,
     ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
     WorkflowRunner, WorkflowRunnerError, WorkspaceError, WriteTenancy, WsPayload,
 };
@@ -128,8 +127,6 @@ pub enum ComponentError {
     NodeError(#[from] NodeError),
     #[error("component not found: {0}")]
     NotFound(ComponentId),
-    #[error("no system sockets found for component: {0}")]
-    NoSystemSocketsFound(ComponentId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("schema error: {0}")]
@@ -140,8 +137,6 @@ pub enum ComponentError {
     NoSchema(ComponentId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
-    #[error("unable to find system")]
-    SystemNotFound,
     #[error("missing a prop in attribute update: {0} not found")]
     MissingProp(PropId),
     #[error("missing a prop in attribute update: {0} not found")]
@@ -176,8 +171,6 @@ pub enum ComponentError {
     Organization(#[from] OrganizationError),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
-    #[error("need exactly one system socket for component ({0}), found: {1:?}")]
-    NeedOneSystemSocket(ComponentId, Vec<SocketId>),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -306,36 +299,6 @@ impl Component {
         Ok((component, node))
     }
 
-    #[instrument(skip_all)]
-    pub async fn add_to_system(
-        &self,
-        ctx: &DalContext,
-        system_id: SystemId,
-    ) -> ComponentResult<EdgeId> {
-        let system_sockets =
-            Self::list_sockets_for_kind(ctx, self.id, SocketEdgeKind::System).await?;
-
-        if system_sockets.len() != 1 {
-            let system_socket_ids: Vec<SocketId> = system_sockets.iter().map(|s| *s.id()).collect();
-            return Err(ComponentError::NeedOneSystemSocket(
-                self.id,
-                system_socket_ids,
-            ));
-        }
-
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-
-        let edge = Edge::include_component_in_system(ctx, self.id, diagram_kind, system_id).await?;
-
-        Ok(*edge.id())
-    }
-
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
 
     standard_model_belongs_to!(
@@ -425,7 +388,6 @@ impl Component {
             schema_id: Some(schema_id),
             schema_variant_id: Some(schema_variant_id),
             component_id: Some(self.id),
-            system_id: Some(SystemId::NONE),
         };
 
         let prop_id = validation_prototype.context().prop_id();
@@ -536,8 +498,7 @@ impl Component {
             .ok_or(ComponentError::NoSchema(self.id))?;
 
         let validation_prototypes =
-            ValidationPrototype::list_for_schema_variant(ctx, *schema_variant.id(), SystemId::NONE)
-                .await?;
+            ValidationPrototype::list_for_schema_variant(ctx, *schema_variant.id()).await?;
 
         // Cache data necessary for assembling func arguments. We do this since a prop can have
         // multiple validation prototypes within schema variant.
@@ -564,7 +525,6 @@ impl Component {
     pub async fn prepare_qualification_check(
         &self,
         ctx: &DalContext,
-        system_id: SystemId,
         qualification_prototype_id: QualificationPrototypeId,
     ) -> ComponentResult<()> {
         let prototype = QualificationPrototype::get_by_id(ctx, &qualification_prototype_id)
@@ -576,9 +536,7 @@ impl Component {
             .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
         let args = FuncBackendJsQualificationArgs {
-            component: self
-                .veritech_qualification_check_component(ctx, system_id)
-                .await?,
+            component: self.veritech_qualification_check_component(ctx).await?,
         };
 
         let json_args = serde_json::to_value(args)?;
@@ -620,7 +578,7 @@ impl Component {
             .await?;
         }
 
-        WsEvent::checked_qualifications(ctx, *prototype.id(), self.id, system_id)
+        WsEvent::checked_qualifications(ctx, *prototype.id(), self.id)
             .publish(ctx)
             .await?;
 
@@ -631,11 +589,7 @@ impl Component {
     /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) without a value and a
     /// [`QualificationResolver`](crate::QualificationResolver). The func is not executed yet; it's
     /// just a placeholder for some qualification that will be executed.
-    pub async fn prepare_qualifications_check(
-        &self,
-        ctx: &DalContext,
-        system_id: SystemId,
-    ) -> ComponentResult<()> {
+    pub async fn prepare_qualifications_check(&self, ctx: &DalContext) -> ComponentResult<()> {
         let schema = self
             .schema(ctx)
             .await?
@@ -650,7 +604,6 @@ impl Component {
             self.id,
             *schema.id(),
             *schema_variant.id(),
-            system_id,
         )
         .await?;
 
@@ -660,9 +613,7 @@ impl Component {
                 .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
             let args = FuncBackendJsQualificationArgs {
-                component: self
-                    .veritech_qualification_check_component(ctx, system_id)
-                    .await?,
+                component: self.veritech_qualification_check_component(ctx).await?,
             };
 
             let json_args = serde_json::to_value(args)?;
@@ -711,7 +662,7 @@ impl Component {
                 .await?;
             }
 
-            WsEvent::checked_qualifications(ctx, *prototype.id(), self.id, system_id)
+            WsEvent::checked_qualifications(ctx, *prototype.id(), self.id)
                 .publish(ctx)
                 .await?;
         }
@@ -722,7 +673,6 @@ impl Component {
     pub async fn check_qualification(
         &self,
         ctx: &DalContext,
-        system_id: SystemId,
         prototype_id: QualificationPrototypeId,
     ) -> ComponentResult<()> {
         let prototype = QualificationPrototype::get_by_id(ctx, &prototype_id)
@@ -734,9 +684,7 @@ impl Component {
             .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
         let args = FuncBackendJsQualificationArgs {
-            component: self
-                .veritech_qualification_check_component(ctx, system_id)
-                .await?,
+            component: self.veritech_qualification_check_component(ctx).await?,
         };
 
         let json_args = serde_json::to_value(args)?;
@@ -774,18 +722,14 @@ impl Component {
             .await?;
         }
 
-        WsEvent::checked_qualifications(ctx, *prototype.id(), self.id, system_id)
+        WsEvent::checked_qualifications(ctx, *prototype.id(), self.id)
             .publish(ctx)
             .await?;
 
         Ok(())
     }
 
-    pub async fn check_qualifications(
-        &self,
-        ctx: &DalContext,
-        system_id: SystemId,
-    ) -> ComponentResult<()> {
+    pub async fn check_qualifications(&self, ctx: &DalContext) -> ComponentResult<()> {
         let schema = self
             .schema(ctx)
             .await?
@@ -800,7 +744,6 @@ impl Component {
             self.id,
             *schema.id(),
             *schema_variant.id(),
-            system_id,
         )
         .await?;
 
@@ -810,9 +753,7 @@ impl Component {
                 .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
             let args = FuncBackendJsQualificationArgs {
-                component: self
-                    .veritech_qualification_check_component(ctx, system_id)
-                    .await?,
+                component: self.veritech_qualification_check_component(ctx).await?,
             };
 
             let json_args = serde_json::to_value(args)?;
@@ -857,7 +798,7 @@ impl Component {
                 .await?;
             }
 
-            WsEvent::checked_qualifications(ctx, *prototype.id(), self.id, system_id)
+            WsEvent::checked_qualifications(ctx, *prototype.id(), self.id)
                 .publish(ctx)
                 .await?;
         }
@@ -885,10 +826,9 @@ impl Component {
     pub async fn list_validations_as_qualification_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-        system_id: SystemId,
     ) -> ComponentResult<QualificationView> {
         let mut prop_names_and_errors = Vec::<(String, ValidationError)>::new();
-        for status in ValidationResolver::find_status(ctx, component_id, system_id).await? {
+        for status in ValidationResolver::find_status(ctx, component_id).await? {
             let full_name = AttributeValue::find_prop_for_value(ctx, status.attribute_value_id)
                 .await?
                 .json_pointer(ctx)
@@ -907,23 +847,20 @@ impl Component {
     pub async fn list_qualifications(
         &self,
         ctx: &DalContext,
-        system_id: SystemId,
     ) -> ComponentResult<Vec<QualificationView>> {
-        Self::list_qualifications_by_component_id(ctx, self.id, system_id).await
+        Self::list_qualifications_by_component_id(ctx, self.id).await
     }
 
     #[instrument(skip_all)]
     pub async fn list_qualifications_by_component_id(
         ctx: &DalContext,
         component_id: ComponentId,
-        system_id: SystemId,
     ) -> ComponentResult<Vec<QualificationView>> {
         let mut results: Vec<QualificationView> = Vec::new();
 
         // This is the "All Fields Valid" universal qualification
         let validation_qualification =
-            Self::list_validations_as_qualification_for_component_id(ctx, component_id, system_id)
-                .await?;
+            Self::list_validations_as_qualification_for_component_id(ctx, component_id).await?;
         results.push(validation_qualification);
 
         let rows = ctx
@@ -931,12 +868,7 @@ impl Component {
             .pg()
             .query(
                 LIST_QUALIFICATIONS,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &component_id,
-                    &system_id,
-                ],
+                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
         let no_qualification_results = rows.is_empty();
@@ -976,7 +908,6 @@ impl Component {
                 component_id,
                 *schema.id(),
                 *schema_variant.id(),
-                system_id,
             )
             .await?;
             for prototype in prototypes.into_iter() {
@@ -998,13 +929,12 @@ impl Component {
         &self,
         ctx: &DalContext,
     ) -> ComponentResult<ComponentView> {
-        Self::view(ctx, self.id, SystemId::NONE).await
+        Self::view(ctx, self.id).await
     }
 
     pub async fn view(
         ctx: &DalContext,
         component_id: ComponentId,
-        system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
         let component = Self::get_by_id(ctx, &component_id)
             .await?
@@ -1022,7 +952,6 @@ impl Component {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
-            system_id: Some(system_id),
             ..AttributeReadContext::default()
         };
         Ok(ComponentView::for_context(ctx, read_context).await?)
@@ -1031,18 +960,17 @@ impl Component {
     pub async fn veritech_qualification_check_component(
         &self,
         ctx: &DalContext,
-        system_id: SystemId,
     ) -> ComponentResult<veritech_client::QualificationCheckComponent> {
         let parent_ids = Edge::list_parents_for_component(ctx, self.id).await?;
 
         let mut parents = Vec::new();
         for id in parent_ids {
-            let view = Self::view(ctx, id, system_id).await?;
+            let view = Self::view(ctx, id).await?;
             parents.push(view.into());
         }
 
         let qualification_view = veritech_client::QualificationCheckComponent {
-            data: Self::view(ctx, self.id, system_id).await?.into(),
+            data: Self::view(ctx, self.id).await?.into(),
             parents,
         };
         Ok(qualification_view)
@@ -1178,7 +1106,6 @@ impl Component {
                 .await?
                 .ok_or(ComponentError::NoSchemaVariant(self.id))?;
 
-            // System will be unset since this method should only be used when creating a component.
             let read_context = AttributeReadContext {
                 prop_id: Some(*prop.id()),
                 schema_id: Some(*schema.id()),
@@ -1223,7 +1150,6 @@ impl Component {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(self.id),
-            system_id: Some(SystemId::NONE),
 
             internal_provider_id: Some(*implicit_provider.id()),
             prop_id: Some(PropId::NONE),
@@ -1270,12 +1196,7 @@ impl Component {
             .pg_txn()
             .query_one(
                 NAME_FROM_CONTEXT,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &component_id,
-                    &attribute_read_context.system_id(),
-                ],
+                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
         let value: serde_json::Value = row.try_get("component_name")?;
@@ -1287,7 +1208,6 @@ impl Component {
     pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
         let context = AttributeReadContext {
             component_id: Some(self.id),
-            system_id: Some(SystemId::NONE),
             ..AttributeReadContext::any()
         };
         Self::name_from_context(ctx, context).await
@@ -1407,7 +1327,6 @@ impl Component {
             action_name,
             *schema.id(),
             *schema_variant.id(),
-            SystemId::NONE,
         )
         .await?
         {
@@ -1420,7 +1339,7 @@ impl Component {
         let (_runner, _state, _func_binding_return_values, created_resources, updated_resources) =
             WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id, true).await?;
         if !created_resources.is_empty() || !updated_resources.is_empty() {
-            WsEvent::resource_refreshed(ctx, self.id, SystemId::NONE)
+            WsEvent::resource_refreshed(ctx, self.id)
                 .publish(ctx)
                 .await?;
         }
@@ -1444,21 +1363,13 @@ impl ResourceView {
 #[serde(rename_all = "camelCase")]
 pub struct ResourceRefreshId {
     component_id: ComponentId,
-    system_id: SystemId,
 }
 
 impl WsEvent {
-    pub fn resource_refreshed(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        system_id: SystemId,
-    ) -> Self {
+    pub fn resource_refreshed(ctx: &DalContext, component_id: ComponentId) -> Self {
         WsEvent::new(
             ctx,
-            WsPayload::ResourceRefreshed(ResourceRefreshId {
-                component_id,
-                system_id,
-            }),
+            WsPayload::ResourceRefreshed(ResourceRefreshId { component_id }),
         )
     }
 }

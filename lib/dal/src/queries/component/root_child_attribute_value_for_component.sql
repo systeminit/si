@@ -24,8 +24,7 @@ WHERE in_attribute_context_v1(
                       -1, -- ExternalProviderId
                       NULL, -- SchemaId (handled by ComponentId)
                       NULL, -- SchemaVariantId (handled by ComponentId)
-                      $4, -- ComponentId
-                      -1 -- SystemId (NOTE(nick,jacob): system is going away, we never set it)
+                      $4 -- ComponentId
                   ),
               av
           )
@@ -33,6 +32,5 @@ ORDER BY av.attribute_context_prop_id,
          av.attribute_context_schema_id DESC,
          av.attribute_context_schema_variant_id DESC,
          av.attribute_context_component_id DESC,
-         av.attribute_context_system_id DESC,
          av.tenancy_universal
 -- bools sort false first ascending.

@@ -2,7 +2,7 @@ use super::DiagramResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::node::NodeId;
-use dal::{DiagramKind, NodePosition, SystemId, Visibility, WsEvent};
+use dal::{DiagramKind, NodePosition, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -11,7 +11,6 @@ pub struct SetNodePositionRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
     pub node_id: NodeId,
-    pub system_id: Option<SystemId>,
     pub x: String,
     pub y: String,
 }
@@ -32,7 +31,6 @@ pub async fn set_node_position(
     let position = NodePosition::upsert_by_node_id(
         &ctx,
         DiagramKind::Configuration,
-        request.system_id,
         request.node_id,
         &request.x,
         &request.y,

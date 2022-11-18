@@ -10,8 +10,8 @@ use telemetry::prelude::*;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, DalContext,
-    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
-    Timestamp, Visibility, WorkflowPrototype, WorkflowPrototypeId, WriteTenancy,
+    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
+    Visibility, WorkflowPrototype, WorkflowPrototypeId, WriteTenancy,
 };
 
 const FIND_BY_NAME: &str = include_str!("./queries/action_prototype_find_by_name.sql");
@@ -49,7 +49,6 @@ pub struct ActionPrototypeContext {
     pub component_id: ComponentId,
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
-    pub system_id: SystemId,
 }
 
 // Describes how an action affects the world
@@ -76,7 +75,6 @@ impl ActionPrototypeContext {
             component_id: ComponentId::NONE,
             schema_id: SchemaId::NONE,
             schema_variant_id: SchemaVariantId::NONE,
-            system_id: SystemId::NONE,
         }
     }
 
@@ -86,27 +84,18 @@ impl ActionPrototypeContext {
                 component_id: ComponentId::NONE,
                 schema_id,
                 schema_variant_id: SchemaVariantId::NONE,
-                system_id: SystemId::NONE,
-            },
-            ActionPrototypeContextField::System(system_id) => ActionPrototypeContext {
-                component_id: ComponentId::NONE,
-                schema_id: SchemaId::NONE,
-                schema_variant_id: SchemaVariantId::NONE,
-                system_id,
             },
             ActionPrototypeContextField::SchemaVariant(schema_variant_id) => {
                 ActionPrototypeContext {
                     component_id: ComponentId::NONE,
                     schema_id: SchemaId::NONE,
                     schema_variant_id,
-                    system_id: SystemId::NONE,
                 }
             }
             ActionPrototypeContextField::Component(component_id) => ActionPrototypeContext {
                 component_id,
                 schema_id: SchemaId::NONE,
                 schema_variant_id: SchemaVariantId::NONE,
-                system_id: SystemId::NONE,
             },
         }
     }
@@ -134,14 +123,6 @@ impl ActionPrototypeContext {
     pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
         self.schema_variant_id = schema_variant_id;
     }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    pub fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
-    }
 }
 
 pk!(ActionPrototypePk);
@@ -159,7 +140,6 @@ pub struct ActionPrototype {
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -173,7 +153,6 @@ pub enum ActionPrototypeContextField {
     Component(ComponentId),
     Schema(SchemaId),
     SchemaVariant(SchemaVariantId),
-    System(SystemId),
 }
 
 impl From<ComponentId> for ActionPrototypeContextField {
@@ -191,12 +170,6 @@ impl From<SchemaId> for ActionPrototypeContextField {
 impl From<SchemaVariantId> for ActionPrototypeContextField {
     fn from(schema_variant_id: SchemaVariantId) -> Self {
         ActionPrototypeContextField::SchemaVariant(schema_variant_id)
-    }
-}
-
-impl From<SystemId> for ActionPrototypeContextField {
-    fn from(system_id: SystemId) -> Self {
-        ActionPrototypeContextField::System(system_id)
     }
 }
 
@@ -223,7 +196,7 @@ impl ActionPrototype {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM action_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "SELECT object FROM action_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
@@ -233,7 +206,6 @@ impl ActionPrototype {
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;
@@ -247,7 +219,6 @@ impl ActionPrototype {
         name: &str,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
-        system_id: SystemId,
     ) -> ActionPrototypeResult<Option<Self>> {
         let rows = ctx
             .txns()
@@ -258,7 +229,6 @@ impl ActionPrototype {
                     ctx.read_tenancy(),
                     ctx.visibility(),
                     &name,
-                    &system_id,
                     &schema_variant_id,
                     &schema_id,
                 ],
@@ -294,14 +264,12 @@ impl ActionPrototype {
 
     standard_model_accessor!(name, String, ActionPrototypeResult);
     standard_model_accessor!(kind, Enum(ActionKind), ActionPrototypeResult);
-    standard_model_accessor!(system_id, Pk(SystemId), ActionPrototypeResult);
 
     pub fn context(&self) -> ActionPrototypeContext {
         let mut context = ActionPrototypeContext::new();
         context.set_component_id(self.component_id);
         context.set_schema_id(self.schema_id);
         context.set_schema_variant_id(self.schema_variant_id);
-        context.set_system_id(self.system_id);
 
         context
     }

@@ -15,7 +15,7 @@ use crate::{
     impl_standard_model, pk,
     schema::variant::SchemaVariantError,
     standard_model, standard_model_accessor, AttributeReadContext, AttributeValueId, Component,
-    ComponentId, HistoryEventError, StandardModel, StandardModelError, SystemId, Timestamp,
+    ComponentId, HistoryEventError, StandardModel, StandardModelError, Timestamp,
     ValidationPrototype, ValidationPrototypeId, Visibility, WriteTenancy,
 };
 
@@ -163,7 +163,6 @@ impl ValidationResolver {
     pub async fn find_status(
         ctx: &DalContext,
         component_id: ComponentId,
-        system_id: SystemId,
     ) -> ValidationResolverResult<Vec<ValidationStatus>> {
         let schema_variant = Component::get_by_id(ctx, &component_id)
             .await
@@ -182,7 +181,6 @@ impl ValidationResolver {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(component_id),
-            system_id: Some(system_id),
             ..AttributeReadContext::default()
         };
         let rows = ctx

@@ -15,7 +15,7 @@ use crate::{
     edit_field::widget::WidgetKind, pk, schema::variant::SchemaVariantError, AttributeReadContext,
     AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
     LabelEntry, LabelList, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, Secret,
-    StandardModel, StandardModelError, SystemId, ValidationResolver, ValidationResolverError,
+    StandardModel, StandardModelError, ValidationResolver, ValidationResolverError,
 };
 
 const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
@@ -359,9 +359,8 @@ impl PropertyEditorValidations {
     pub async fn for_component(
         ctx: &DalContext,
         component_id: ComponentId,
-        system_id: SystemId,
     ) -> PropertyEditorResult<Self> {
-        let status = ValidationResolver::find_status(ctx, component_id, system_id).await?;
+        let status = ValidationResolver::find_status(ctx, component_id).await?;
 
         let mut validations = Vec::new();
         for stat in status {

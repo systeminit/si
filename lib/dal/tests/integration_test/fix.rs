@@ -3,8 +3,8 @@ use dal::{
     workflow_runner::workflow_runner_state::WorkflowRunnerStatus, ActionPrototype,
     ActionPrototypeContext, ConfirmationPrototype, ConfirmationPrototypeContext,
     ConfirmationResolver, ConfirmationResolverId, DalContext, Fix, FixBatch, FixCompletionStatus,
-    Func, StandardModel, SystemId, WorkflowPrototype, WorkflowPrototypeContext,
-    WorkflowPrototypeId, WorkflowRunner,
+    Func, StandardModel, WorkflowPrototype, WorkflowPrototypeContext, WorkflowPrototypeId,
+    WorkflowRunner,
 };
 use dal_test::helpers::component_payload::ComponentPayload;
 use dal_test::{
@@ -177,7 +177,7 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
     .expect("unable to create action prototype");
 
     let confirmation_resolver = confirmation_prototype
-        .run(ctx, payload.component_id, SystemId::NONE)
+        .run(ctx, payload.component_id)
         .await
         .expect("could not run confirmation prototype");
 
@@ -209,7 +209,6 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
         expected_action_name,
         payload.schema_id,
         payload.schema_variant_id,
-        SystemId::NONE,
     )
     .await
     .expect("could not find action prototype")

@@ -35,9 +35,7 @@ WHERE attribute_values.attribute_context_prop_id IN
                                       attribute_values.attribute_context_external_provider_id,
                                       attribute_values.attribute_context_schema_id,
                                       attribute_values.attribute_context_schema_variant_id,
-                                      attribute_values.attribute_context_component_id,
-                                      attribute_values.attribute_context_system_id)
-
+                                      attribute_values.attribute_context_component_id)
 ORDER BY validation_resolvers.id,
          visibility_change_set_pk DESC,
          visibility_deleted_at DESC NULLS FIRST;

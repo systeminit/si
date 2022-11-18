@@ -12,7 +12,7 @@ use crate::{
     },
     AccessBuilder, ActionPrototype, Component, ComponentId, ConfirmationResolverId, DalContext,
     Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, FixResolverContext,
-    StandardModel, SystemId, Visibility, WsEvent,
+    StandardModel, Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -156,7 +156,6 @@ impl JobConsumer for FixesJob {
             &fix_item.action,
             *schema.id(),
             *schema_variant.id(),
-            SystemId::NONE,
         )
         .await?
         .ok_or_else(|| {
@@ -187,7 +186,6 @@ impl JobConsumer for FixesJob {
             component_id: fix_item.component_id,
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
-            system_id: SystemId::NONE,
         };
         let _fix_resolver = FixResolver::upsert(
             ctx,
