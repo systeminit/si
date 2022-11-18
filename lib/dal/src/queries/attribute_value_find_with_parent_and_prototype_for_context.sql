@@ -15,15 +15,7 @@ LEFT JOIN attribute_values_v1($1, $2) AS parent_attribute_values
     ON parent_attribute_values.id = avbtav.belongs_to_id
 
 WHERE
-    exact_attribute_context_v1(
-        $3,
-        av.attribute_context_prop_id,
-        av.attribute_context_internal_provider_id,
-        av.attribute_context_external_provider_id,
-        av.attribute_context_schema_id,
-        av.attribute_context_schema_variant_id,
-        av.attribute_context_component_id
-    )
+    exact_attribute_context_v1($3, av)
     AND ap.id = $4
     AND CASE
         WHEN $5::bigint IS NULL THEN parent_attribute_values.id IS NULL
