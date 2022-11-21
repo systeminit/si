@@ -16,7 +16,10 @@ import {
   DiagramSchemaVariant,
   DiagramSchemaVariants,
 } from "@/api/sdf/dal/diagram";
-import { ComponentStats, ComponentStatus } from "@/api/sdf/dal/change_set";
+import {
+  ComponentStats,
+  ComponentChangeStatus,
+} from "@/api/sdf/dal/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import {
   ComponentDiff,
@@ -24,6 +27,7 @@ import {
 } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
+import { IconNames } from "@/ui-lib/icons/icon_set";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -41,8 +45,9 @@ type Component = {
   schemaId: number;
   schemaVariantId: number;
   schemaVariantName: string;
+  icon: IconNames;
   color: string;
-  changeStatus?: ComponentStatus;
+  changeStatus?: ComponentChangeStatus;
   // TODO: probably want to move this to a different store and not load it all the time
   resource: Resource;
 };
@@ -80,11 +85,12 @@ const confirmationStatusToIconMap: Record<
   running: { icon: "loader", tone: "info" },
 };
 
-const changeStatusToIconMap: Record<ComponentStatus, DiagramStatusIcon> = {
-  added: { icon: "plus-circle", tone: "success" },
-  deleted: { icon: "minus-circle", tone: "error" },
-  modified: { icon: "tilde-circle", tone: "warning" },
-};
+const changeStatusToIconMap: Record<ComponentChangeStatus, DiagramStatusIcon> =
+  {
+    added: { icon: "plus-circle", tone: "success" },
+    deleted: { icon: "minus-circle", tone: "error" },
+    modified: { icon: "tilde-circle", tone: "warning" },
+  };
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
@@ -117,7 +123,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ComponentId,
           ComponentIdentification
         >,
-        componentChangeStatusById: {} as Record<ComponentId, ComponentStatus>,
+        componentChangeStatusById: {} as Record<
+          ComponentId,
+          ComponentChangeStatus
+        >,
 
         componentCodeViewsById: {} as Record<ComponentId, CodeView[]>,
         componentDiffsById: {} as Record<ComponentId, ComponentDiff>,
@@ -143,6 +152,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           const diagramNodesById = _.keyBy(this.rawDiagramNodes, (n) => n.id);
           return _.mapValues(this.componentIdentificationsById, (ci) => {
             const diagramNode = diagramNodesById[ci.componentId];
+
+            // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
+            // and eventually can just assume the icon is `logo-${name}`
+            const typeIcon =
+              {
+                AWS: "logo-aws",
+                CoreOS: "logo-coreos",
+                Docker: "logo-docker",
+                Kubernetes: "logo-k8s",
+              }[diagramNode?.category || ""] || "logo-si"; // fallback to SI logo
+
             return {
               id: ci.componentId,
               displayName: diagramNode?.subtitle,
@@ -152,6 +172,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               schemaVariantName: ci.schemaVariantName,
               // TODO: probably want to move this into its own store
               resource: ci.resource,
+              icon: typeIcon,
               color: diagramNode?.color,
               changeStatus: this.componentChangeStatusById[ci.componentId],
             } as Component;
@@ -196,20 +217,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               0,
             );
 
-            // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
-            // and eventually can just assume the icon is `logo-${name}`
-            const typeIcon =
-              {
-                AWS: "logo-aws",
-                CoreOS: "logo-coreos",
-                Docker: "logo-docker",
-                Kubernetes: "logo-k8s",
-              }[node.category || ""] || "logo-si"; // fallback to SI logo
+            const component = this.componentsById[componentId];
 
             return {
               ...node,
               isLoading: activityCounter > 0,
-              typeIcon,
+              typeIcon: component?.icon || "logo-si",
               statusIcons: _.compact([
                 changeStatusToIconMap[changeStatus],
                 qualificationStatusToIconMap[qualificationStatus],
@@ -259,7 +272,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           );
         },
 
-        changeStatsSummary(): Record<ComponentStatus | "total", number> {
+        changeStatsSummary(): Record<ComponentChangeStatus | "total", number> {
           const allChanged = _.filter(
             this.allComponents,
             (c) => !!c.changeStatus,
@@ -271,6 +284,34 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             modified: grouped.modified?.length || 0,
             total: allChanged.length,
           };
+        },
+
+        getDependentComponents: (state) => (componentId: ComponentId) => {
+          // TODO: this is ugly... much of this logic is duplicated in GenericDiagram
+          // will refactor to make socket ids to be non unique and include node id directly (rather than rely on .split("-"))
+          // then will move related logic back into the store...
+
+          const connectedNodes: Record<ComponentId, ComponentId[]> = {};
+          _.each(state.diagramEdges, (edge) => {
+            const fromNodeId = parseInt(edge.fromSocketId.split("-")[0]);
+            const toNodeId = parseInt(edge.toSocketId.split("-")[0]);
+            connectedNodes[fromNodeId] ||= [];
+            connectedNodes[fromNodeId].push(toNodeId);
+          });
+
+          const connectedIds: ComponentId[] = [componentId];
+
+          function walkGraph(id: ComponentId) {
+            const nextIds = connectedNodes[id];
+            nextIds?.forEach((nid) => {
+              if (connectedIds.includes(nid)) return;
+              connectedIds.push(nid);
+              walkGraph(nid);
+            });
+          }
+          walkGraph(componentId);
+
+          return connectedIds;
         },
       },
       actions: {
@@ -350,7 +391,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 (acc, cs) => {
                   acc[cs.componentId] = cs.componentStatus;
                 },
-                {} as Record<ComponentId, ComponentStatus>,
+                {} as Record<ComponentId, ComponentChangeStatus>,
               );
             },
           });

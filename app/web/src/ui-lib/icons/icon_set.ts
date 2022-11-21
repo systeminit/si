@@ -60,6 +60,7 @@ import Bolt from "~icons/heroicons/bolt-20-solid";
 import Logout from "~icons/material-symbols/logout";
 import Cat from "~icons/fa6-solid/cat";
 import Filter from "~icons/heroicons/funnel-20-solid";
+import Menu from "~icons/heroicons-solid/menu-alt-1";
 
 import EmptyIcon from "@/assets/images/custom-icons/empty-icon.svg?raw";
 
@@ -115,6 +116,7 @@ export const ICONS = Object.freeze({
   lock: Lock,
   "lock-open": LockOpen,
   logout: Logout,
+  "menu": Menu,
   minus: Minus,
   "minus-circle": MinusCircle,
   moon: Moon,

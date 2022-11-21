@@ -2,6 +2,7 @@
 // used in the subscribe fn to limit valid event names and set callback payload type
 
 import { FixStatus } from "../fixes/fixes.store";
+import { GlobalUpdateStatus, ComponentUpdateStatus } from "../status.store";
 
 // TODO: a few of these use the same id objects (ex: componentId)
 // but in a few cases the changeset ID may have been accidentally left out?
@@ -56,5 +57,10 @@ export type WsEventPayloadMap = {
   FixBatchReturn: {
     id: number;
     status: FixStatus;
+  };
+
+  UpdateStatus: {
+    global: GlobalUpdateStatus;
+    components?: ComponentUpdateStatus[];
   };
 };

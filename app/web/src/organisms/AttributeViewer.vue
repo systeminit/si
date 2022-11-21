@@ -1,40 +1,37 @@
 <template>
   <div class="flex flex-col w-full">
-    <div class="flex flex-row items-center h-10 p-sm text-base align-middle">
-      <div class="text-lg whitespace-nowrap overflow-hidden text-ellipsis">
-        {{ lastSelectedComponent.schemaName }}
-      </div>
-      <!-- <div class="ml-2 flex" :aria-label="qualificationTooltip">
+    <!-- TODO(wendy) - do we still need this code? -->
+    <!-- <div class="flex flex-row items-center h-10 p-sm text-base align-middle">
+      <div class="ml-2 flex" :aria-label="qualificationTooltip">
         <Icon name="check-circle" :class="qualificationColorClass" />
       </div>
 
       <div class="ml-2 flex" :aria-label="resourceTooltip">
         <Icon name="component" :class="resourceIconColorClass" />
-      </div> -->
+      </div>
 
       <div
         class="flex flow-row items-center justify-end flex-grow h-full text-xs text-center"
       >
-        <!-- <SiLink
+        <SiLink
           v-if="componentMetadata?.schemaLink"
           :uri="componentMetadata.schemaLink"
           blank-target
           class="m-2 flex"
         >
           <SiButtonIcon tooltip-text="Go to documentation" icon="help-circle" />
-        </SiLink> -->
+        </SiLink>
 
-        <!-- <div
+        <div
           v-if="editCount"
           class="flex flex-row items-center"
           aria-label="Number of edit fields"
         >
           <Icon name="edit" class="text-warning-600" />
           <div class="ml-1 text-center">{{ editCount }}</div>
-        </div> -->
+        </div>
       </div>
-    </div>
-
+    </div> -->
     <PropertyEditor
       v-if="editorContext"
       :editor-context="editorContext"
@@ -43,6 +40,7 @@
       @add-to-map="addToMap"
       @create-attribute-func="onCreateAttributeFunc"
     />
+    <div v-else class="p-md text-center text-lg">Loading...</div>
   </div>
 </template>
 
