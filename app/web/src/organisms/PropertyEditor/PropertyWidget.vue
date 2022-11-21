@@ -3,70 +3,68 @@
     <!-- <div class="flex flex-row items-center w-full" @keyup.stop @keydown.stop> -->
     <WidgetHeader
       v-if="showArrayElementHeader"
-      :name="props.schemaProp.name"
+      :name="schemaProp.name"
       :path="path"
-      :collapsed-paths="props.collapsedPaths"
+      :collapsed-paths="collapsedPaths"
       @toggle-collapsed="setCollapsed($event)"
     />
     <WidgetHeader
-      v-if="
-        props.schemaProp.widgetKind.kind === 'header' && !showArrayElementHeader
-      "
-      :name="props.schemaProp.name"
+      v-if="schemaProp.widgetKind.kind === 'header' && !showArrayElementHeader"
+      :name="schemaProp.name"
       :path="path"
-      :collapsed-paths="props.collapsedPaths"
+      :collapsed-paths="collapsedPaths"
       @toggle-collapsed="setCollapsed($event)"
     />
     <WidgetArray
-      v-else-if="props.schemaProp.widgetKind.kind === 'array'"
-      :name="props.schemaProp.name"
+      v-else-if="schemaProp.widgetKind.kind === 'array'"
+      :name="schemaProp.name"
       :path="path"
-      :collapsed-paths="props.collapsedPaths"
+      :collapsed-paths="collapsedPaths"
       :disabled="disabled"
-      :prop-id="props.propValue.propId"
-      :value-id="props.propValue.id"
-      :array-length="props.arrayLength"
+      :prop-id="propValue.propId"
+      :value-id="propValue.id"
+      :array-length="arrayLength"
       @add-to-array="addToArray($event)"
       @toggle-collapsed="setCollapsed($event)"
     />
     <WidgetMap
-      v-else-if="props.schemaProp.widgetKind.kind === 'map'"
-      :name="props.schemaProp.name"
+      v-else-if="schemaProp.widgetKind.kind === 'map'"
+      :name="schemaProp.name"
       :path="path"
-      :collapsed-paths="props.collapsedPaths"
+      :collapsed-paths="collapsedPaths"
       :disabled="disabled"
-      :prop-id="props.propValue.propId"
-      :value-id="props.propValue.id"
-      :array-length="props.arrayLength"
+      :prop-id="propValue.propId"
+      :value-id="propValue.id"
+      :array-length="arrayLength"
       @add-to-map="addToMap($event)"
       @toggle-collapsed="setCollapsed($event)"
     />
     <!-- TODO(nick): until we use the "options" for select, let's just ignore them for now and force a text box  -->
     <WidgetTextBox
-      v-else-if="props.schemaProp.widgetKind.kind === 'text'"
-      :name="props.schemaProp.name"
+      v-else-if="schemaProp.widgetKind.kind === 'text'"
+      :name="schemaProp.name"
       :path="path"
-      :collapsed-paths="props.collapsedPaths"
-      :value="props.propValue.value"
-      :prop-id="props.propValue.propId"
-      :value-id="props.propValue.id"
-      :prop-kind="props.schemaProp.kind"
-      :doc-link="props.schemaProp.docLink"
+      :collapsed-paths="collapsedPaths"
+      :value="propValue.value"
+      :prop-id="propValue.propId"
+      :value-id="propValue.id"
+      :prop-kind="schemaProp.kind"
+      :doc-link="schemaProp.docLink"
       :validation="validation"
       :disabled="disabled"
-      :func="props.propValue.func"
+      :func="propValue.func"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
     <WidgetCheckBox
-      v-else-if="props.schemaProp.widgetKind.kind === 'checkbox'"
-      :name="props.schemaProp.name"
+      v-else-if="schemaProp.widgetKind.kind === 'checkbox'"
+      :name="schemaProp.name"
       :path="path"
-      :collapsed-paths="props.collapsedPaths"
-      :value="props.propValue.value"
-      :prop-id="props.propValue.propId"
-      :value-id="props.propValue.id"
-      :doc-link="props.schemaProp.docLink"
+      :collapsed-paths="collapsedPaths"
+      :value="propValue.value"
+      :prop-id="propValue.propId"
+      :value-id="propValue.id"
+      :doc-link="schemaProp.docLink"
       :validation="validation"
       :disabled="disabled"
       :class="INPUT_CLASSES"
@@ -74,32 +72,32 @@
     />
     <WidgetSelectBox
       v-else-if="
-        props.schemaProp.widgetKind.kind === 'secretSelect' ||
-        props.schemaProp.widgetKind.kind === 'select'
+        schemaProp.widgetKind.kind === 'secretSelect' ||
+        schemaProp.widgetKind.kind === 'select'
       "
-      :name="props.schemaProp.name"
-      :options="props.schemaProp.widgetKind.options || []"
+      :name="schemaProp.name"
+      :options="schemaProp.widgetKind.options || []"
       :path="path"
-      :collapsed-paths="props.collapsedPaths"
-      :value="props.propValue.value"
-      :prop-id="props.propValue.propId"
-      :value-id="props.propValue.id"
-      :doc-link="props.schemaProp.docLink"
+      :collapsed-paths="collapsedPaths"
+      :value="propValue.value"
+      :prop-id="propValue.propId"
+      :value-id="propValue.id"
+      :doc-link="schemaProp.docLink"
       :validation="validation"
       :disabled="disabled"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
     <WidgetComboBox
-      v-else-if="props.schemaProp.widgetKind.kind === 'comboBox'"
-      :name="props.schemaProp.name"
-      :options="props.schemaProp.widgetKind.options || []"
+      v-else-if="schemaProp.widgetKind.kind === 'comboBox'"
+      :name="schemaProp.name"
+      :options="schemaProp.widgetKind.options || []"
       :path="path"
-      :collapsed-paths="props.collapsedPaths"
-      :value="props.propValue.value"
-      :prop-id="props.propValue.propId"
-      :value-id="props.propValue.id"
-      :doc-link="props.schemaProp.docLink"
+      :collapsed-paths="collapsedPaths"
+      :value="propValue.value"
+      :prop-id="propValue.propId"
+      :value-id="propValue.id"
+      :doc-link="schemaProp.docLink"
       :validation="validation"
       :disabled="disabled"
       :class="INPUT_CLASSES"
@@ -110,21 +108,21 @@
 
     <!-- hiding fn button for now until we clean up this UI -->
     <!-- <WidgetFuncButton
-      v-if="!props.isFirstProp"
-      :func="props.propValue.func"
-      :value-id="props.propValue.id"
+      v-if="!isFirstProp"
+      :func="propValue.func"
+      :value-id="propValue.id"
       @create-attribute-func="onCreateAttributeFunc"
     /> -->
 
     <!--<div v-else>
       <div class="flex">
-        {{ props.path }}
+        {{ path }}
       </div>
       <div class="flex">
-        {{ props.schemaProp }}
+        {{ schemaProp }}
       </div>
       <div class="flex">
-        {{ props.propValue }}
+        {{ propValue }}
       </div>
     </div>
       -->
@@ -168,8 +166,6 @@ const props = defineProps<{
   arrayLength?: number;
   isFirstProp?: boolean;
 }>();
-
-const { validation } = toRefs(props);
 
 const emits = defineEmits<{
   (e: "toggleCollapsed", path: Array<string>): void;

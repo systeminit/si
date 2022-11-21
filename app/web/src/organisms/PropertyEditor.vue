@@ -6,14 +6,14 @@
       class="flex flex-col w-full"
     >
       <PropertyWidget
-        v-if="schemaForPropId(pv.propId)"
-        :schema-prop="schemaForPropId(pv.propId)!"
+        v-if="schemasByPropId[pv.propId]"
+        :schema-prop="schemasByPropId[pv.propId]"
         :prop-value="pv"
         :path="paths[pv.id]"
         :collapsed-paths="collapsed"
-        :validation="validationForValueId(pv.id)"
-        :array-index="arrayIndex[pv.id]"
-        :array-length="arrayLength[pv.propId]"
+        :validation="validationsByValueId[pv.id]"
+        :array-index="arrayIndicesByValueId[pv.id]"
+        :array-length="arrayLengthsByPropId[pv.propId]"
         :is-first-prop="index === 0"
         @toggle-collapsed="toggleCollapsed($event)"
         @updated-property="updatedProperty($event)"
@@ -26,7 +26,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, toRefs, watch } from "vue";
+import { ref, computed } from "vue";
 import _ from "lodash";
 import {
   // PropertyEditorPropKind,
@@ -64,41 +64,15 @@ const emits = defineEmits<{
   ): void;
 }>();
 
-const { editorContext } = toRefs(props);
+const values = computed(() => props.editorContext.values);
+const validations = computed(() => props.editorContext.validations);
 
-const schema = ref<PropertyEditorSchema>(props.editorContext.schema);
-const values = ref<PropertyEditorValues>(props.editorContext.values);
-const validations = ref<PropertyEditorValidation[]>(
-  props.editorContext.validations,
-);
-watch(
-  editorContext,
-  (newValue) => {
-    schema.value = newValue.schema;
-    values.value = newValue.values;
-    validations.value = newValue.validations;
-  },
-  { immediate: true },
-);
-
-const validationForValueId = (valueId: number) =>
-  validations.value.find((validation) => validation.valueId === valueId);
-
-const schemaForPropId = (propId: number) => {
-  const schemaForProp = schema.value.props[propId];
-  if (schemaForProp) return schemaForProp;
-
-  // // TODO: this isn't really the right way to show the error, but it's fine.
-  // return {
-  //   id: propId,
-  //   name: "error",
-  //   kind: PropertyEditorPropKind.String,
-  //   widgetKind: {
-  //     kind: "text",
-  //   } as PropertyEditorPropWidgetKindText,
-  // };
-  return null;
-};
+const schemasByPropId = computed(() => {
+  return props.editorContext.schema.props;
+});
+const validationsByValueId = computed(() => {
+  return _.keyBy(validations.value, (v) => v.valueId);
+});
 
 const collapsed = ref<Array<Array<string>>>([]);
 const toggleCollapsed = (path: string[]) => {
@@ -117,11 +91,11 @@ const toggleCollapsed = (path: string[]) => {
 
 const findParentProp = (propId: number) => {
   for (const [parentPropId, childPropIds] of Object.entries(
-    schema.value.childProps,
+    props.editorContext.schema.childProps,
   )) {
     for (const childProp of childPropIds) {
       if (childProp === propId) {
-        const parentProp = schema.value.props[parseInt(parentPropId, 10)];
+        const parentProp = schemasByPropId.value[parseInt(parentPropId, 10)];
         if (parentProp) {
           return parentProp;
         } else {
@@ -156,7 +130,7 @@ const pathPartForValueId = (valueId: number) => {
   if (!currentValue) {
     return { displayPathPart, triggerPathPart };
   }
-  const currentProp = schema.value.props[currentValue.propId];
+  const currentProp = schemasByPropId.value[currentValue.propId];
   const parentProp = findParentProp(currentValue.propId);
 
   if (currentValue && currentProp) {
@@ -294,7 +268,7 @@ const findArrayIndex = (valueId: number) => {
         index = x;
         const parentValue = values.value.values[parseInt(parentValueId, 10)];
         if (parentValue) {
-          parentProp = schema.value.props[parentValue.propId];
+          parentProp = schemasByPropId.value[parentValue.propId];
         }
         break;
       }
@@ -308,7 +282,7 @@ const findArrayIndex = (valueId: number) => {
 };
 
 const findArrayLength = (propId: number) => {
-  const prop = schema.value.props[propId];
+  const prop = schemasByPropId.value[propId];
   if (prop) {
     if (prop.kind === "array") {
       const arrayValue = _.find(values.value.values, ["propId", propId]);
@@ -330,7 +304,7 @@ const findArrayLength = (propId: number) => {
   }
 };
 
-const arrayIndex = computed(() => {
+const arrayIndicesByValueId = computed(() => {
   const result: { [valueId: number]: number } = {};
   for (const propValue of Object.values(values.value.values)) {
     const length = findArrayIndex(propValue.id);
@@ -342,9 +316,9 @@ const arrayIndex = computed(() => {
   return result;
 });
 
-const arrayLength = computed(() => {
+const arrayLengthsByPropId = computed(() => {
   const result: { [propId: number]: number } = {};
-  for (const propId in Object.keys(schema.value.props)) {
+  for (const propId in Object.keys(schemasByPropId.value)) {
     const length = findArrayLength(parseInt(propId, 10));
     if (!_.isUndefined(length)) {
       result[propId] = length;

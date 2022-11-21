@@ -1,12 +1,12 @@
 <template>
   <div>
     <label
-      v-if="props.title"
-      :for="props.id"
+      v-if="title"
+      :for="id"
       class="block text-sm font-medium"
       :class="titleClasses"
     >
-      {{ props.title }}
+      {{ title }}
       <span
         v-if="required && !formSettings.hideRequiredLabel"
         :class="formSettings.requiredLabelClasses"
@@ -16,7 +16,7 @@
 
     <div class="mt-1 w-full relative">
       <textarea
-        v-if="props.textArea"
+        v-if="textArea"
         :id="id"
         :type="type"
         :aria-required="required"
@@ -29,15 +29,15 @@
       />
       <input
         v-else
-        :id="props.id"
+        :id="id"
         v-model="inputValue"
-        :data-test="props.id"
-        :placeholder="props.placeholder"
+        :data-test="id"
+        :placeholder="placeholder"
         :type="type"
-        :name="props.id"
-        :autocomplete="props.id"
+        :name="id"
+        :autocomplete="id"
         :aria-invalid="inError"
-        :disabled="props.disabled"
+        :disabled="disabled"
         required
         class="appearance-none block w-full py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
         :class="textBoxClasses"
@@ -60,14 +60,14 @@
       </div>
     </div>
 
-    <p v-if="props.docLink" class="mt-2 text-xs text-action-500">
-      <a :href="props.docLink" target="_blank" class="hover:underline">
+    <p v-if="docLink" class="mt-2 text-xs text-action-500">
+      <a :href="docLink" target="_blank" class="hover:underline">
         Documentation
       </a>
     </p>
 
-    <p v-if="props.description" class="mt-2 text-xs text-neutral-300">
-      {{ props.description }}
+    <p v-if="description" class="mt-2 text-xs text-neutral-300">
+      {{ description }}
     </p>
 
     <SiValidation
@@ -112,7 +112,7 @@ const props = defineProps({
   loginMode: Boolean,
 });
 
-const { validations, alwaysValidate } = toRefs(props);
+const { alwaysValidate } = toRefs(props);
 
 const formSettings = useFormSettings();
 
