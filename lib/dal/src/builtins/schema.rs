@@ -1,5 +1,7 @@
-use serde_json::Value;
 use std::collections::HashMap;
+
+use serde_json::Value;
+
 use telemetry::prelude::*;
 
 use crate::attribute::context::AttributeContextBuilder;
@@ -22,6 +24,7 @@ use crate::{
 mod aws;
 mod coreos;
 mod docker;
+mod frame;
 mod kubernetes;
 
 pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
@@ -30,6 +33,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     kubernetes::migrate(ctx, &driver).await?;
     coreos::migrate(ctx, &driver).await?;
     aws::migrate(ctx, &driver).await?;
+    frame::migrate(ctx, &driver).await?;
     Ok(())
 }
 

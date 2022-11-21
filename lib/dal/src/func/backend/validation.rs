@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use std::str::FromStr;
@@ -63,6 +64,22 @@ impl FuncBackend for FuncBackendValidation {
                         link: None,
                         level: None,
                     }),
+                },
+                None => Some(value_must_be_present_error),
+            },
+            Validation::StringIsHexColor { value } => match value {
+                Some(value) => {
+                    let re = Regex::new(r"^#\d{6}$").unwrap();
+                    if re.is_match(value.as_str()) {
+                        None
+                    } else {
+                        Some(ValidationError {
+                            message: format!("value ({value}) is not a valid hex string"),
+                            kind: ValidationErrorKind::InvalidHexString,
+                            link: None,
+                            level: None,
+                        })
+                    }
                 },
                 None => Some(value_must_be_present_error),
             },
