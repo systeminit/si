@@ -29,6 +29,7 @@
   </SiPanel>
 
   <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
+    <GlobalStatusOverlay />
     <GenericDiagram
       v-if="diagramNodes"
       ref="diagramRef"
@@ -78,6 +79,7 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { useComponentsStore } from "@/store/components.store";
 import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+import { useStatusStore } from "@/store/status.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
@@ -89,6 +91,7 @@ import {
   RightClickElementEvent,
 } from "../GenericDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline.vue";
+import GlobalStatusOverlay from "../GlobalStatusOverlay.vue";
 
 const currentRoute = useRoute();
 
@@ -207,4 +210,6 @@ watch(
     }
   },
 );
+
+const statusStore = useStatusStore();
 </script>

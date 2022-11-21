@@ -14,6 +14,7 @@ import { AttributeContext } from "@/api/sdf/dal/attribute";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useComponentsStore } from "./components.store";
+import { useStatusStore } from "./status.store";
 
 export interface UpdatePropertyEditorValueArgs {
   attributeValueId: number;
@@ -186,6 +187,19 @@ export const useComponentAttributesStore = () => {
             params: {
               ...(isInsert ? updatePayload.insert : updatePayload.update),
               ...visibilityParams,
+            },
+            onSuccess() {
+              // TODO: remove all of this...
+              // TRIGGERING MOCK UPDATE STATUS FLOW
+              const componentsStore = useComponentsStore();
+              const statusStore = useStatusStore();
+
+              const updatedComponentIds =
+                componentsStore.getDependentComponents(
+                  componentsStore.selectedComponentId!,
+                );
+
+              statusStore.triggerMockUpdateFlow(updatedComponentIds);
             },
           });
         },

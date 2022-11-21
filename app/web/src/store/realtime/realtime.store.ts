@@ -156,15 +156,11 @@ export const useRealtimeStore = defineStore("realtime", () => {
     });
   }
 
-  socket.addEventListener("message", (messageEvent) => {
-    const messageEventData = JSON.parse(messageEvent.data);
-    const eventKind = messageEventData.payload.kind;
-    const eventData = messageEventData.payload.data;
-    const eventMetadata = _.omit(
-      messageEventData,
-      "payload",
-    ) as RealtimeEventMetadata;
-
+  function handleEvent(
+    eventKind: string,
+    eventData: any,
+    eventMetadata: RealtimeEventMetadata,
+  ) {
     console.log("WS message", eventKind, eventData);
 
     _.each(subscriptions, (sub) => {
@@ -175,15 +171,39 @@ export const useRealtimeStore = defineStore("realtime", () => {
         sub.callback(eventData, eventMetadata);
       }
     });
+  }
+
+  socket.addEventListener("message", (messageEvent) => {
+    const messageEventData = JSON.parse(messageEvent.data);
+    handleEvent(
+      messageEventData.payload.kind,
+      messageEventData.payload.data,
+      _.omit(messageEventData, "payload") as RealtimeEventMetadata,
+    );
   });
   socket.addEventListener("error", (errorEvent) => {
     console.log("ws error", errorEvent.error, errorEvent.message);
   });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function mockEvent<K extends keyof WsEventPayloadMap>(
+    eventKind: K,
+    eventData: WsEventPayloadMap[K],
+  ) {
+    handleEvent(eventKind, eventData, {
+      // TODO: this metadata is not currently used for anything... but need to make it more realistic if it is
+      version: 1,
+      billing_account_ids: [1],
+      history_actor: { User: 1 },
+    });
+  }
 
   return {
     connectionStatus,
     // subscriptions, // can expose here to show in devtools
     subscribe,
     unsubscribe,
+
+    mockEvent,
   };
 });
