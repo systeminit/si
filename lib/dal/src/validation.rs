@@ -72,6 +72,8 @@ pub enum Validation {
     },
     /// Validate that the "value" string is a valid [IpAddr](std::net::IpAddr).
     StringIsValidIpAddr { value: Option<String> },
+    /// Validate that the "value" string is a Hex Color.
+    StringIsHexColor { value: Option<String> },
 }
 
 impl Validation {
@@ -106,6 +108,9 @@ impl Validation {
                 display_expected,
             },
             Validation::StringIsValidIpAddr { value: _ } => Validation::StringIsValidIpAddr {
+                value: Self::value_as_string(value)?,
+            },
+            Validation::StringIsHexColor { value: _ } => Validation::StringIsHexColor {
                 value: Self::value_as_string(value)?,
             },
         };
@@ -143,6 +148,7 @@ impl Validation {
 pub enum ValidationErrorKind {
     IntegerNotInBetweenTwoIntegers,
     InvalidIpAddr,
+    InvalidHexString,
     StringDoesNotEqual,
     StringDoesNotHavePrefix,
     StringNotInStringArray,
@@ -154,6 +160,7 @@ impl ValidationErrorKind {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::IntegerNotInBetweenTwoIntegers => "IntegerNotInBetweenTwoIntegers",
+            Self::InvalidHexString => "InvalidHexString",
             Self::InvalidIpAddr => "InvalidIpAddr",
             Self::StringDoesNotEqual => "StringDoesNotEqual",
             Self::StringDoesNotHavePrefix => "StringDoesNotHavePrefix",
