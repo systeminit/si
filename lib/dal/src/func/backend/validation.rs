@@ -69,7 +69,7 @@ impl FuncBackend for FuncBackendValidation {
             },
             Validation::StringIsHexColor { value } => match value {
                 Some(value) => {
-                    let re = Regex::new(r"^#\d{6}$").unwrap();
+                    let re = Regex::new(r"^#[\dA-Fa-f]{6}$").unwrap();
                     if re.is_match(value.as_str()) {
                         None
                     } else {

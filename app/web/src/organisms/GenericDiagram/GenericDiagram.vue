@@ -47,8 +47,21 @@ overflow hidden */
         :zoom-level="zoomLevel"
       />
       <v-layer>
+        <DiagramFrame
+          v-for="frame in frames"
+          :key="frame.id"
+          :node="frame"
+          :temp-position="movedElementPositions[frame.id]"
+          :connected-edges="connectedEdgesByNodeIdBySocketId[frame.id]"
+          :draw-edge-state="drawEdgeState"
+          :is-hovered="elementIsHovered('node', frame.id)"
+          :is-selected="elementIsSelected('node', frame.id)"
+          @hover:start="(socketId) => onNodeHoverStart(frame.id, socketId)"
+          @hover:end="(socketId) => onNodeHoverEnd(frame.id, socketId)"
+          @resize="onNodeLayoutOrLocationChange(frame.id)"
+        />
         <DiagramNode
-          v-for="node in nodes"
+          v-for="node in nonFrameNodes"
           :key="node.id"
           :node="node"
           :temp-position="movedElementPositions[node.id]"
@@ -141,6 +154,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
 import tinycolor from "tinycolor2";
 import { useCustomFontsLoaded } from "@/composables/useFontLoaded";
+import DiagramFrame from "@/organisms/GenericDiagram/DiagramFrame.vue";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DeleteElementsEvent,
@@ -1231,4 +1245,13 @@ const openHelpModal = () => {
 const helpModalClose = () => {
   helpModalOpen.value = false;
 };
+
+// Nodes vs Frames
+const frames = computed(() => {
+  return props.nodes.filter((n) => n.category === "Frames");
+});
+
+const nonFrameNodes = computed(() => {
+  return props.nodes.filter((n) => n.category !== "Frames");
+});
 </script>

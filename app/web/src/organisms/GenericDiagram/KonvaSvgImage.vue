@@ -15,7 +15,6 @@ import {
   watch,
   onBeforeUnmount,
 } from "vue";
-import _ from "lodash";
 import Konva from "konva";
 
 const props = defineProps({
@@ -76,6 +75,7 @@ watchEffect(() => {
 // handle rotation with a Konva tween
 // NOTE - trying to be very mindful of memory leaks / cleaning up!
 let spinTween: Konva.Tween | undefined;
+
 function initSpin() {
   const node = konvaImageRef.value?.getNode();
 
@@ -101,12 +101,14 @@ function initSpin() {
   }
   spinTween.play();
 }
+
 function stopSpin() {
   if (!spinTween) return;
   konvaImageRef.value?.getNode().rotation(0);
   spinTween.destroy();
   spinTween = undefined;
 }
+
 onBeforeUnmount(stopSpin);
 
 watch(
