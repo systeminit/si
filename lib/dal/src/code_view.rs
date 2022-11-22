@@ -1,5 +1,14 @@
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum CodeViewError {
+    #[error("no code language found for string: {0}")]
+    NoCodeLanguageForString(String),
+}
+
+pub type CodeViewResult<T> = Result<T, CodeViewError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Display, AsRefStr, PartialEq, Eq, Copy)]
 #[serde(rename_all = "camelCase")]
@@ -9,6 +18,20 @@ pub enum CodeLanguage {
     Json,
     Unknown,
     Yaml,
+}
+
+impl TryFrom<String> for CodeLanguage {
+    type Error = CodeViewError;
+
+    fn try_from(value: String) -> CodeViewResult<Self> {
+        match value.to_lowercase().as_str() {
+            "diff" => Ok(Self::Diff),
+            "json" => Ok(Self::Json),
+            "yaml" => Ok(Self::Yaml),
+            "unknown" => Ok(Self::Unknown),
+            _ => Err(CodeViewError::NoCodeLanguageForString(value)),
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

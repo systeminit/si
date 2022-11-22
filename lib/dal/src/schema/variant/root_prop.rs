@@ -8,10 +8,10 @@ use crate::{
     DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, StandardModel,
 };
 
-/// Contains the si-specific [`PropId`](crate::Prop), the domain-specific [`PropId`](crate::Prop),
-/// and the root [`PropId`](crate::Prop) corresponding to a [`SchemaVariant`](crate::SchemaVariant).
-/// In addition, these correspond to the "root" [`Props`](crate::Prop) on the
-/// [`ComponentView`](crate::ComponentView) "properties" field.
+/// Contains the root [`PropId`](crate::Prop) and its immediate children for a
+/// [`SchemaVariant`](crate::SchemaVariant). These [`Props`](crate::Prop) are also those that
+/// correspond to the "root" [`Props`](crate::Prop) on the [`ComponentView`](crate::ComponentView)
+/// "properties" field.
 #[derive(Debug, Copy, Clone)]
 pub struct RootProp {
     /// The parent of the other [`Props`](crate::Prop) on [`self`](Self).
@@ -25,7 +25,7 @@ pub struct RootProp {
     pub resource_prop_id: PropId,
     /// Contains the tree of [`Props`](crate::Prop) corresponding to
     /// [`code generated`](crate::CodeGenerationPrototype) by populating the real world _model_.
-    pub code_prop: PropId,
+    pub code_prop_id: PropId,
 }
 
 impl RootProp {
@@ -156,7 +156,7 @@ impl RootProp {
             si_prop_id: *si_specific_prop.id(),
             domain_prop_id: *domain_specific_prop.id(),
             resource_prop_id: *resource_specific_prop.id(),
-            code_prop: *code_specific_prop.id(),
+            code_prop_id: *code_specific_prop.id(),
         })
     }
 }

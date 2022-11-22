@@ -1,4 +1,5 @@
 use dal::attribute::context::AttributeContextBuilder;
+use dal::func::argument::FuncArgument;
 use dal::{
     AttributeReadContext, AttributeValue, CodeGenerationPrototype, CodeLanguage, Component,
     ComponentView, DalContext, Func, PropKind, SchemaKind, StandardModel,
@@ -36,22 +37,21 @@ async fn set_code_prop_for_component(ctx: &DalContext) {
     let func = funcs
         .pop()
         .expect("Missing builtin function si:generateYAML");
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", *func.id())
+            .await
+            .expect("could not perform func argument find")
+            .expect("no func argument found");
 
-    let prototype = CodeGenerationPrototype::new(
+    CodeGenerationPrototype::new(
         ctx,
         *func.id(),
-        None,
-        CodeLanguage::Yaml,
+        *code_generation_func_argument.id(),
         *schema_variant.id(),
+        CodeLanguage::Yaml,
     )
     .await
     .expect("could not create code prototype");
-
-    // Ensure that getting the prototype works.
-    let found_prototype = CodeGenerationPrototype::find_for_prop(ctx, prototype.prop_id())
-        .await
-        .expect("could not perform output format for prop");
-    assert_eq!(found_prototype.id(), prototype.id());
 
     // Finalize the schema variant and create the component.
     schema_variant
@@ -133,6 +133,6 @@ async fn set_code_prop_for_component(ctx: &DalContext) {
         .expect("could not list code generated for component");
     let code_view = code_views.pop().expect("code views are empty");
     assert!(code_views.is_empty());
-    assert_eq!(code_view.language, CodeLanguage::Yaml);
-    assert_eq!(code_view.code, Some("poop: canoe\n".to_string()));
+    assert_eq!(CodeLanguage::Yaml, code_view.language);
+    assert_eq!(Some("poop: canoe\n".to_string()), code_view.code);
 }

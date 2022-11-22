@@ -275,17 +275,26 @@ async fn ingress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     // Code Generation
-    let code_generation_func_name = "si:generateAwsIngressJSON";
+    let code_generation_func_name = "si:generateAwsIngressJSON".to_string();
     let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    code_generation_func_name.clone(),
+                    "domain".to_string(),
+                )
+            })?;
     CodeGenerationPrototype::new(
         ctx,
         *code_generation_func.id(),
-        None,
-        CodeLanguage::Json,
+        *code_generation_func_argument.id(),
         *schema_variant.id(),
+        CodeLanguage::Json,
     )
     .await?;
 
@@ -377,7 +386,7 @@ async fn ingress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
 
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
-    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+    let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
@@ -811,17 +820,26 @@ async fn egress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     // Code Generation
-    let code_generation_func_name = "si:generateAwsEgressJSON";
+    let code_generation_func_name = "si:generateAwsEgressJSON".to_string();
     let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    code_generation_func_name.clone(),
+                    "domain".to_string(),
+                )
+            })?;
     CodeGenerationPrototype::new(
         ctx,
         *code_generation_func.id(),
-        None,
-        CodeLanguage::Json,
+        *code_generation_func_argument.id(),
         *schema_variant.id(),
+        CodeLanguage::Json,
     )
     .await?;
 
@@ -892,7 +910,7 @@ async fn egress(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
 
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
-    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+    let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
@@ -1222,17 +1240,26 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
     output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
     // Code Generation
-    let code_generation_func_name = "si:generateAwsSecurityGroupJSON";
+    let code_generation_func_name = "si:generateAwsSecurityGroupJSON".to_string();
     let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    code_generation_func_name.clone(),
+                    "domain".to_string(),
+                )
+            })?;
     CodeGenerationPrototype::new(
         ctx,
         *code_generation_func.id(),
-        None,
-        CodeLanguage::Json,
+        *code_generation_func_argument.id(),
         *schema_variant.id(),
+        CodeLanguage::Json,
     )
     .await?;
 
@@ -1295,7 +1322,7 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
 
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
-    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+    let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
@@ -1348,7 +1375,7 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
             })?;
 
     let security_group_id_internal_provider =
-        InternalProvider::get_for_prop(ctx, root_prop.resource_prop_id)
+        InternalProvider::find_for_prop(ctx, root_prop.resource_prop_id)
             .await?
             .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
                 root_prop.resource_prop_id,
@@ -1420,7 +1447,7 @@ async fn security_group(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsR
         .await?;
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
-    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+    let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())

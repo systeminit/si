@@ -130,17 +130,26 @@ async fn ami(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     .await?;
 
     // Code Generation
-    let code_generation_func_name = "si:generateAwsAmiJSON";
+    let code_generation_func_name = "si:generateAwsAmiJSON".to_string();
     let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    code_generation_func_name.clone(),
+                    "domain".to_string(),
+                )
+            })?;
     CodeGenerationPrototype::new(
         ctx,
         *code_generation_func.id(),
-        None,
-        CodeLanguage::Json,
+        *code_generation_func_argument.id(),
         *schema_variant.id(),
+        CodeLanguage::Json,
     )
     .await?;
 
@@ -203,7 +212,7 @@ async fn ami(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
             )
         })?;
     let image_id_implicit_internal_provider =
-        InternalProvider::get_for_prop(ctx, *image_id_prop.id())
+        InternalProvider::find_for_prop(ctx, *image_id_prop.id())
             .await?
             .ok_or_else(|| {
                 BuiltinsError::ImplicitInternalProviderNotFoundForProp(*image_id_prop.id())
@@ -454,17 +463,26 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
     .await?;
 
     // Code Generation Prototype
-    let code_generation_func_name = "si:generateAwsEc2JSON";
+    let code_generation_func_name = "si:generateAwsEc2JSON".to_string();
     let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    code_generation_func_name.clone(),
+                    "domain".to_string(),
+                )
+            })?;
     CodeGenerationPrototype::new(
         ctx,
         *code_generation_func.id(),
-        None,
-        CodeLanguage::Json,
+        *code_generation_func_argument.id(),
         *schema_variant.id(),
+        CodeLanguage::Json,
     )
     .await?;
 
@@ -607,7 +625,7 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
 
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
-    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+    let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
@@ -761,6 +779,7 @@ async fn ec2(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
         .await?;
     }
 
+    // Consume from the user data explicit internal provider into the user data prop.
     let user_data_attribute_value_read_context = AttributeReadContext {
         prop_id: Some(*user_data_prop.id()),
         ..base_attribute_read_context
@@ -961,7 +980,7 @@ async fn region(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
                 *region_external_provider.id(),
             )
         })?;
-    let region_implicit_internal_provider = InternalProvider::get_for_prop(ctx, *region_prop.id())
+    let region_implicit_internal_provider = InternalProvider::find_for_prop(ctx, *region_prop.id())
         .await?
         .ok_or_else(|| BuiltinsError::ImplicitInternalProviderNotFoundForProp(*region_prop.id()))?;
     AttributePrototypeArgument::new_for_intra_component(
@@ -1110,17 +1129,26 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
     .await?;
 
     // Code Generation Prototype
-    let code_generation_func_name = "si:generateAwsKeyPairJSON";
+    let code_generation_func_name = "si:generateAwsKeyPairJSON".to_string();
     let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
         .await?
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    code_generation_func_name.clone(),
+                    "domain".to_string(),
+                )
+            })?;
     CodeGenerationPrototype::new(
         ctx,
         *code_generation_func.id(),
-        None,
-        CodeLanguage::Json,
+        *code_generation_func_argument.id(),
         *schema_variant.id(),
+        CodeLanguage::Json,
     )
     .await?;
 
@@ -1191,7 +1219,7 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
                 *key_name_external_provider.id(),
             )
         })?;
-    let key_name_internal_provider = InternalProvider::get_for_prop(ctx, *key_name_prop.id())
+    let key_name_internal_provider = InternalProvider::find_for_prop(ctx, *key_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*key_name_prop.id())
@@ -1237,7 +1265,7 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
 
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
-    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+    let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
@@ -1322,7 +1350,7 @@ async fn keypair(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<(
         .await?;
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
-    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+    let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())

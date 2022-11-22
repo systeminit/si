@@ -1,7 +1,12 @@
 {
-  "kind": "JsCodeGeneration",
-  "arguments": [],
-  "response_type": "CodeGeneration",
+  "kind": "Json",
+  "arguments": [
+    {
+      "name": "domain",
+      "kind": "Object"
+    }
+  ],
+  "response_type": "String",
   "display_name": "si:generateYAML",
   "description": null,
   "link": null,

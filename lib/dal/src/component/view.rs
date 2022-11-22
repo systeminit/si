@@ -87,7 +87,7 @@ impl ComponentView {
             .await?
             .ok_or(ComponentViewError::NoRootProp(schema_variant_id))?;
 
-        let implicit_provider = InternalProvider::get_for_prop(ctx, *prop.id())
+        let implicit_provider = InternalProvider::find_for_prop(ctx, *prop.id())
             .await?
             .ok_or_else(|| ComponentViewError::NoInternalProvider(*prop.id()))?;
 

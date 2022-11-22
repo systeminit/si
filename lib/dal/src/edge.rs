@@ -8,14 +8,12 @@ use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::context::AttributeContextBuilder;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::node::NodeId;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
-    AttributeReadContext, AttributeValue, ComponentError, ComponentId, ExternalProviderError, Func,
-    HistoryEventError, InternalProviderError, ReadTenancyError, SchemaId, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    ComponentId, ExternalProviderError, Func, HistoryEventError, InternalProviderError,
+    ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
@@ -66,8 +64,6 @@ pub enum EdgeError {
     IdentityFuncNotFound,
     #[error("cannot find identity func argument")]
     IdentityFuncArgNotFound,
-    #[error("error during omega hack: {0}")]
-    OmegaHack(String),
 }
 
 pub type EdgeResult<T> = Result<T, EdgeError>;
@@ -210,25 +206,6 @@ impl Edge {
         )
         .await?;
 
-        // FIXME(nick): this is an omega hack. If a Butane component ("from"/"tail") is connected to
-        // an EC2 component ("to"/"head"), we need to fake the "User Data" field's value.
-        let head_schema = head_component
-            .schema(ctx)
-            .await
-            .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?
-            .ok_or_else(|| ComponentError::NoSchema(*head_component.id()))
-            .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?;
-        let tail_schema = tail_component
-            .schema(ctx)
-            .await
-            .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?
-            .ok_or_else(|| ComponentError::NoSchema(*tail_component.id()))
-            .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?;
-        if head_schema.name() == "EC2 Instance" && tail_schema.name() == "Butane" {
-            butane_to_ec2_user_data_omega_hack(ctx, *head_schema.id(), *head_component.id())
-                .await?;
-        }
-
         // NOTE(nick): a lot of hardcoded values here that'll likely need to be adjusted.
         let edge = Edge::new(
             ctx,
@@ -340,81 +317,4 @@ impl Edge {
         .await?;
         Ok(())
     }
-}
-
-// Reference: ( cd research/coreos/butane; make base64 )
-const DUMMY_IGNITION_USER_DATA: &str = "\
-ewogICJpZ25pdGlvbiI6IHsKICAgICJ2ZXJzaW9uIjogIjMuMy4wIgogIH0sCiAgInN5c3RlbWQi\
-OiB7CiAgICAidW5pdHMiOiBbCiAgICAgIHsKICAgICAgICAiY29udGVudHMiOiAiW1VuaXRdXG5E\
-ZXNjcmlwdGlvbj1XaGlza2Vyc1xuQWZ0ZXI9bmV0d29yay1vbmxpbmUudGFyZ2V0XG5XYW50cz1u\
-ZXR3b3JrLW9ubGluZS50YXJnZXRcblxuW1NlcnZpY2VdXG5UaW1lb3V0U3RhcnRTZWM9MFxuRXhl\
-Y1N0YXJ0UHJlPS0vYmluL3BvZG1hbiBraWxsIHdoaXNrZXJzMVxuRXhlY1N0YXJ0UHJlPS0vYmlu\
-L3BvZG1hbiBybSB3aGlza2VyczFcbkV4ZWNTdGFydFByZT0vYmluL3BvZG1hbiBwdWxsIGRvY2tl\
-ci5pby9zeXN0ZW1pbml0L3doaXNrZXJzXG5FeGVjU3RhcnQ9L2Jpbi9wb2RtYW4gcnVuIC0tbmFt\
-ZSB3aGlza2VyczEgLS1wdWJsaXNoIDgwOjgwIGRvY2tlci5pby9zeXN0ZW1pbml0L3doaXNrZXJz\
-XG5cbltJbnN0YWxsXVxuV2FudGVkQnk9bXVsdGktdXNlci50YXJnZXRcbiIsCiAgICAgICAgImVu\
-YWJsZWQiOiB0cnVlLAogICAgICAgICJuYW1lIjogIndoaXNrZXJzLnNlcnZpY2UiCiAgICAgIH0K\
-ICAgIF0KICB9Cn0K";
-
-// NOTE(nick): please kill this, someone.
-async fn butane_to_ec2_user_data_omega_hack(
-    ctx: &DalContext,
-    schema_id: SchemaId,
-    component_id: ComponentId,
-) -> EdgeResult<()> {
-    let head_component = Component::get_by_id(ctx, &component_id)
-        .await?
-        .ok_or(ComponentError::NotFound(component_id))
-        .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?;
-    let head_schema_variant = head_component
-        .schema_variant(ctx)
-        .await
-        .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?
-        .ok_or_else(|| ComponentError::NoSchemaVariant(*head_component.id()))
-        .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?;
-    let mut maybe_user_data_prop = None;
-    for prop in head_schema_variant
-        .all_props(ctx)
-        .await
-        .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?
-    {
-        if prop.name() == "UserData" {
-            maybe_user_data_prop = Some(prop);
-            break;
-        }
-    }
-    if let Some(user_data_prop) = maybe_user_data_prop {
-        let read_context = AttributeReadContext {
-            prop_id: Some(*user_data_prop.id()),
-            schema_id: Some(schema_id),
-            schema_variant_id: Some(*head_schema_variant.id()),
-            component_id: Some(component_id),
-            ..AttributeReadContext::default()
-        };
-        if let Some(attribute_value) = AttributeValue::find_for_context(ctx, read_context)
-            .await
-            .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?
-        {
-            if let Some(parent) = attribute_value
-                .parent_attribute_value(ctx)
-                .await
-                .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?
-            {
-                let context = AttributeContextBuilder::from(read_context)
-                    .to_context()
-                    .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?;
-                AttributeValue::update_for_context(
-                    ctx,
-                    *attribute_value.id(),
-                    Some(*parent.id()),
-                    context,
-                    Some(serde_json::json![DUMMY_IGNITION_USER_DATA]),
-                    None,
-                )
-                .await
-                .map_err(|e| EdgeError::OmegaHack(format!("{e}")))?;
-            }
-        }
-    }
-    Ok(())
 }

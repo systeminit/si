@@ -6,9 +6,9 @@ import fetch from "node-fetch";
 import _ from "lodash";
 import yaml from "js-yaml";
 
-import {FunctionKind} from "./function";
-import {makeConsole} from "./sandbox/console";
-import {makeExec} from "./sandbox/exec";
+import { FunctionKind } from "./function";
+import { makeConsole } from "./sandbox/console";
+import { makeExec } from "./sandbox/exec";
 
 export type Sandbox = Record<string, unknown>;
 
@@ -27,18 +27,23 @@ function commonSandbox(executionId: string): Sandbox {
   };
 }
 
-const resolverFunctionSandbox = {};
-
-const resourceSyncSandbox = {};
+function resolverFunctionSandbox(executionId: string): Sandbox {
+  return {
+    // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
+    YAML: { stringify: yaml.dump },
+    // definitely a risk
+    siExec: makeExec(executionId),
+  };
+}
 
 function codeGenerationSandbox(executionId: string) {
   return {
     // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
-    YAML: {stringify: yaml.dump},
+    YAML: { stringify: yaml.dump },
     // definitely a risk
     siExec: makeExec(executionId),
   };
-};
+}
 
 const confirmationSandbox = {};
 
@@ -80,7 +85,7 @@ export function createSandbox(
     case FunctionKind.ResolverFunction:
       return {
         ...commonSandbox(executionId),
-        ...resolverFunctionSandbox,
+        ...resolverFunctionSandbox(executionId),
       };
     case FunctionKind.Confirmation:
       return {
@@ -101,7 +106,7 @@ export function createSandbox(
       return {
         ...commonSandbox(executionId),
         ...validationSandbox,
-      }
+      };
     default:
       throw new UnknownSandboxKind(kind);
   }

@@ -74,7 +74,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         .await
         .expect("could not set func id on attribute prototype");
     let source_internal_provider =
-        InternalProvider::get_for_prop(ctx, esp_payload.get_prop_id("/root/domain/object/source"))
+        InternalProvider::find_for_prop(ctx, esp_payload.get_prop_id("/root/domain/object/source"))
             .await
             .expect("could not get internal provider")
             .expect("internal provider not found");
@@ -138,7 +138,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     )
     .await
     .expect("could not create external provider");
-    let esp_intermediate_internal_provider = InternalProvider::get_for_prop(
+    let esp_intermediate_internal_provider = InternalProvider::find_for_prop(
         ctx,
         esp_payload.get_prop_id("/root/domain/object/intermediate"),
     )
@@ -492,7 +492,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     )
     .await
     .expect("cannot create source external provider");
-    let source_internal_provider = InternalProvider::get_for_prop(ctx, *source_object_prop.id())
+    let source_internal_provider = InternalProvider::find_for_prop(ctx, *source_object_prop.id())
         .await
         .expect("cannot get source internal provider")
         .expect("source internal provider not found");

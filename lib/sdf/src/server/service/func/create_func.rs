@@ -171,8 +171,7 @@ async fn create_code_gen_func(ctx: &DalContext) -> FuncResult<Func> {
     func.set_handler(ctx, Some(DEFAULT_CODE_GENERATION_HANDLER))
         .await?;
 
-    CodeGenerationPrototype::new_temporary(ctx, *func.id(), None, DEFAULT_CODE_GENERATION_FORMAT)
-        .await?;
+    CodeGenerationPrototype::new_temporary(ctx, *func.id(), None).await?;
 
     Ok(func)
 }

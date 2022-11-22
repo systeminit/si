@@ -7,8 +7,6 @@ use crate::attribute::context::{AttributeContextBuilder, UNSET_ID_VALUE};
 use crate::func::backend::identity::FuncBackendIdentityArgs;
 use crate::func::binding::{FuncBindingError, FuncBindingId};
 use crate::func::binding_return_value::FuncBindingReturnValueId;
-
-use crate::job::definition::CodeGeneration;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 use crate::standard_model::object_option_from_row_option;
@@ -27,7 +25,7 @@ use crate::{Component, ComponentId};
 
 const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
     include_str!("../queries/internal_provider_find_explicit_for_schema_variant_and_name.sql");
-const GET_FOR_PROP: &str = include_str!("../queries/internal_provider_get_for_prop.sql");
+const FIND_FOR_PROP: &str = include_str!("../queries/internal_provider_find_for_prop.sql");
 const FIND_EXPLICIT_FOR_SOCKET: &str =
     include_str!("../queries/internal_provider_find_explicit_for_socket.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
@@ -84,6 +82,8 @@ pub enum InternalProviderError {
     MissingPropForImplicitEmit,
     #[error("not found for id: {0}")]
     NotFound(InternalProviderId),
+    #[error("internal provider not found for prop id: {0}")]
+    NotFoundForProp(PropId),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
     #[error("root prop not found for schema variant: {0}")]
@@ -461,14 +461,6 @@ impl InternalProvider {
                     .check_validations(ctx)
                     .await
                     .map_err(|e| InternalProviderError::Component(e.to_string()))?;
-
-                // Generate code if anything under "/root" has changed.
-                ctx.enqueue_job(
-                    CodeGeneration::new(ctx, emit_attribute_context.component_id())
-                        .await
-                        .map_err(|err| InternalProviderError::Component(err.to_string()))?,
-                )
-                .await;
             }
         }
 
@@ -575,16 +567,16 @@ impl InternalProvider {
             .to_context()?)
     }
 
-    /// Gets [`Self`] for a given [`PropId`](crate::Prop). This will only work for
+    /// Finds [`Self`] for a given [`PropId`](crate::Prop). This will only work for
     /// implicit [`InternalProviders`](Self).
-    pub async fn get_for_prop(
+    pub async fn find_for_prop(
         ctx: &DalContext,
         prop_id: PropId,
     ) -> InternalProviderResult<Option<Self>> {
         let row = ctx
             .pg_txn()
             .query_opt(
-                GET_FOR_PROP,
+                FIND_FOR_PROP,
                 &[ctx.read_tenancy(), ctx.visibility(), &prop_id],
             )
             .await?;

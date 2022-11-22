@@ -216,7 +216,7 @@ async fn docker_image(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRes
         .await?;
     let si_name_prop =
         BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
-    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+    let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
@@ -230,7 +230,7 @@ async fn docker_image(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRes
     .await?;
 
     // Connect "/root" to the external provider.
-    let root_implicit_internal_provider = InternalProvider::get_for_prop(ctx, root_prop.prop_id)
+    let root_implicit_internal_provider = InternalProvider::find_for_prop(ctx, root_prop.prop_id)
         .await?
         .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
             root_prop.prop_id,
@@ -251,7 +251,7 @@ async fn docker_image(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRes
 
     // Connect "/root/domain/ExposedPorts" to the external provider.
     let exposed_props_implicit_internal_provider =
-        InternalProvider::get_for_prop(ctx, *exposed_ports_prop.id())
+        InternalProvider::find_for_prop(ctx, *exposed_ports_prop.id())
             .await?
             .ok_or_else(|| {
                 BuiltinsError::ImplicitInternalProviderNotFoundForProp(*exposed_ports_prop.id())

@@ -451,18 +451,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
 
-        async TRIGGER_COMPONENT_CODE_GEN(componentId: ComponentId) {
-          return new ApiRequest<{ success: true }>({
-            method: "post",
-            url: "component/generate_code",
-            keyRequestStatusBy: componentId,
-            params: {
-              componentId,
-              ...visibilityParams,
-            },
-            // no onSuccess here - we just wait for websocket
-          });
-        },
         async FETCH_COMPONENT_CODE(componentId: ComponentId) {
           return new ApiRequest<{ codeViews: CodeView[] }>({
             url: "component/get_code",

@@ -217,7 +217,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     .await
     .expect("could not create external provider");
     let ekwb_resource_internal_provider =
-        InternalProvider::get_for_prop(ctx, ekwb_root_prop.resource_prop_id)
+        InternalProvider::find_for_prop(ctx, ekwb_root_prop.resource_prop_id)
             .await
             .expect("could not perform internal provider get for prop")
             .expect("internal provider not found for prop");

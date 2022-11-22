@@ -1,6 +1,6 @@
 import Debug from "debug";
 import _ from "lodash";
-import { VM, VMScript } from "vm2";
+import { VM } from "vm2";
 import { base64Decode } from "./base64";
 import {
   failureExecution,
@@ -10,7 +10,7 @@ import {
   ResultSuccess,
 } from "./function";
 import { createSandbox } from "./sandbox";
-import { createVm } from "./vm";
+import { createNodeVm } from "./vm";
 import { Component } from "./component";
 
 const debug = Debug("langJs:resolverFunction");
@@ -39,34 +39,46 @@ export interface ResolverFunctionResultFailure extends ResultFailure {
   unset?: never;
 }
 
-export function executeResolverFunction(
+export async function executeResolverFunction(
   request: ResolverFunctionRequest
-): void {
-  const code = base64Decode(request.codeBase64);
-  const compiledCode = new VMScript(
-    wrapCode(code, request.handler, request.component)
-  ).compile();
-  debug({ code: compiledCode.code });
+): Promise<void> {
+  let code = base64Decode(request.codeBase64);
+  debug({ code });
+
+  code = wrapCode(code, request.handler);
+  debug({ code });
+
   const sandbox = createSandbox(
     FunctionKind.ResolverFunction,
     request.executionId
   );
-  const vm = createVm(sandbox);
+  const vm = createNodeVm(sandbox);
 
-  const result = execute(vm, compiledCode, request.executionId);
-  debug({ result: JSON.stringify(result) });
+  const result = await execute(
+    vm,
+    code,
+    request.component,
+    request.executionId
+  );
+  debug({ result });
 
   console.log(JSON.stringify(result));
 }
 
-function execute(
+async function execute(
   vm: VM,
-  code: VMScript,
+  code: string,
+  component: ResolverComponent,
   executionId: string
-): ResolverFunctionResult {
-  let resolverFunctionResult;
+): Promise<ResolverFunctionResult> {
+  let resolverFunctionResult: Record<string, unknown>;
   try {
-    resolverFunctionResult = vm.run(code);
+    const runner = vm.run(code);
+    resolverFunctionResult = await new Promise((resolve) => {
+      runner(component.data.properties, (resolution: Record<string, unknown>) =>
+        resolve(resolution)
+      );
+    });
   } catch (err) {
     return failureExecution(err, executionId);
   }
@@ -110,10 +122,16 @@ function execute(
   }
 }
 
-function wrapCode(
-  code: string,
-  handle: string,
-  component: ResolverComponent
-): string {
-  return code + `\n${handle}(${JSON.stringify(component?.data?.properties)});\n`;
+// TODO(nick,paulo): re-add the catch branch.
+function wrapCode(code: string, handle: string): string {
+  const wrapped = `module.exports = function(component, callback) {
+    ${code}
+    const returnValue = ${handle}(component);
+    if (returnValue instanceof Promise) {
+      returnValue.then((data) => callback(data))
+    } else {
+      callback(returnValue);
+    }
+  };`;
+  return wrapped;
 }

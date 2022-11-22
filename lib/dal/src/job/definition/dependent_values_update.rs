@@ -100,6 +100,11 @@ impl JobConsumer for DependentValuesUpdate {
                 AttributeValueError::NotFound(self.attribute_value_id, *ctx.visibility())
             })?;
         let mut dependency_graph = source_attribute_value.dependent_value_graph(ctx).await?;
+
+        // NOTE(nick,jacob): uncomment this for debugging.
+        // Save printed output to a file and execute the following: "dot <file> -Tsvg -o <newfile>.svg"
+        // println!("{}", dependency_graph_to_dot(ctx, &dependency_graph).await?);
+
         // Remove the `AttributeValueId` from the list of values that are in the dependencies,
         // as we consider that one to have already been updated. This lets us check for
         // `AttributeValuesId`s where the list of *unsatisfied* dependencies is empty.
