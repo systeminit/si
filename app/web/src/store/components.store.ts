@@ -36,6 +36,7 @@ import {
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useFixesStore } from "./fixes/fixes.store";
+import { useStatusStore } from "./status.store";
 
 export type ComponentId = number;
 type Component = {
@@ -139,9 +140,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         selectedComponentId: null as ComponentId | null,
         lastSelectedComponentId: null as ComponentId | null,
 
-        /** number of operations being executed on component. Basically a semaphore `loading` state  */
-        activityCounterByComponentId: {} as Record<ComponentId, number>,
-
         // used by the diagram to track which schema is selected for insertion
         selectedInsertSchemaId: null as SchemaId | null,
       }),
@@ -199,6 +197,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         diagramNodes(): DiagramNodeDef[] {
           const qualificationsStore = useQualificationsStore();
           const fixesStore = useFixesStore();
+          const statusStore = useStatusStore();
 
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
@@ -211,17 +210,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               fixesStore.statusByComponentId[componentId];
             const changeStatus = this.componentChangeStatusById[componentId];
 
-            const activityCounter = _.get(
-              this.activityCounterByComponentId,
-              node.id,
-              0,
-            );
-
             const component = this.componentsById[componentId];
 
             return {
               ...node,
-              isLoading: activityCounter > 0,
+              isLoading:
+                !!statusStore.componentStatusById[componentId]?.isUpdating,
               typeIcon: component?.icon || "logo-si",
               statusIcons: _.compact([
                 changeStatusToIconMap[changeStatus],
@@ -502,24 +496,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               this.selectedComponentId = null;
             }
           }
-        },
-
-        increaseActivityCounterOnComponent(id: ComponentId) {
-          const activityCounter = this.activityCounterByComponentId;
-
-          activityCounter[id] = activityCounter[id] || 0;
-          activityCounter[id] += 1;
-        },
-
-        decreaseActivityCounterOnComponent(id: ComponentId) {
-          const activityCounter = this.activityCounterByComponentId;
-
-          if (_.isNil(activityCounter[id]) || activityCounter[id] <= 0)
-            throw new Error(
-              `Trying to decrease activityCounter on component(id: ${id}) that didn't have any activities`,
-            );
-
-          activityCounter[id] -= 1;
         },
       },
       onActivated() {
