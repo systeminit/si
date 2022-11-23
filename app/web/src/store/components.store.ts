@@ -303,6 +303,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               walkGraph(nid);
             });
           }
+
           walkGraph(componentId);
 
           return connectedIds;
@@ -437,6 +438,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               fromSocketId: from.socketId,
               toNodeId: to.componentId,
               toSocketId: to.socketId,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // TODO: store component details rather than waiting for re-fetch
+            },
+          });
+        },
+        async CONNECT_COMPONENT_TO_FRAME(fromNodeId: string, toNodeId: string) {
+          return new ApiRequest<{ node: DiagramNode }>({
+            method: "post",
+            url: "diagram/connect_component_to_frame",
+            params: {
+              fromNodeId: parseInt(fromNodeId),
+              toNodeId: parseInt(toNodeId),
               ...visibilityParams,
             },
             onSuccess: (response) => {

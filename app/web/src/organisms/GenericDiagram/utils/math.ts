@@ -1,4 +1,4 @@
-import { Vector2d } from "konva/lib/types";
+import { Vector2d, IRect } from "konva/lib/types";
 
 /** return distance between 2 points */
 export function vectorDistance(v1: Vector2d, v2: Vector2d) {
@@ -53,4 +53,21 @@ export function pointAlongLine(
     x: p1.x + (distanceFromP1 / distance) * (p2.x - p1.x),
     y: p1.y + (distanceFromP1 / distance) * (p2.y - p1.y),
   };
+}
+
+/**
+ * Returns whether a rect contains another one
+ */
+export function rectContainsAnother(object: IRect, container: IRect) {
+  const insideX =
+    object.x >= container.x &&
+    object.x + object.width <= container.x + container.width;
+
+  const insideY =
+    object.y >= container.y &&
+    object.y + object.height <= container.y + container.height;
+
+  const isInsideFrame = insideX && insideY;
+
+  return isInsideFrame;
 }

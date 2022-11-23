@@ -52,7 +52,7 @@ Content-Type: application/json
 workspaceid: 1
 
 {
-  "fromNodeId": 3,
+  "fromNodeId": 2,
   "toNodeId": 1,
   "visibility_change_set_pk": 1
 }
