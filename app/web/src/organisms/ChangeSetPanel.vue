@@ -24,6 +24,7 @@
             loading-text="Merging"
             label="Merge"
             :request-status="applyChangeSetReqStatus"
+            hover-glow
             @click="applyChangeSet"
           />
         </VormInput>
@@ -167,7 +168,6 @@ import Stack from "@/ui-lib/layout/Stack.vue";
 import Modal from "@/ui-lib/Modal.vue";
 import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 import Icon from "@/ui-lib/icons/Icon.vue";
-import promiseDelay from "@/utils/promise_delay";
 
 const wipeRef = ref();
 const mergeButtonRef = ref();
