@@ -10,8 +10,9 @@
     <div
       :class="
         clsx(
-          'bg-white border-neutral-300 border text-black text-center w-20 cursor-pointer mx-2 flex flex-col justify-center',
+          'bg-white border-neutral-300 border text-black',
           'dark:bg-black dark:text-white dark:border-black',
+          'w-20 mx-2 flex flex-col justify-center text-center cursor-pointer select-none',
         )
       "
       title="set zoom level"
