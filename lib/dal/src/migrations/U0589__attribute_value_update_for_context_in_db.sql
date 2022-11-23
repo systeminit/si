@@ -260,11 +260,14 @@ BEGIN
         this_attribute_value_id
     );
 
-    PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_value',
-                              this_write_tenancy,
-                              this_visibility,
-                              this_attribute_value_id,
-                              this_parent_attribute_value_id);
+    PERFORM set_belongs_to_v1(
+        'attribute_value_belongs_to_attribute_value',
+        this_read_tenancy,
+        this_write_tenancy,
+        this_visibility,
+        this_attribute_value_id,
+        this_parent_attribute_value_id
+    );
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -453,11 +456,14 @@ BEGIN
                 this_visibility,
                 proxy_attribute_value.id
             );
-            PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
-                                      this_write_tenancy,
-                                      this_visibility,
-                                      proxy_attribute_value.id,
-                                      this_prototype_id);
+            PERFORM set_belongs_to_v1(
+                'attribute_value_belongs_to_attribute_prototype',
+                this_read_tenancy,
+                this_write_tenancy,
+                this_visibility,
+                proxy_attribute_value.id,
+                this_prototype_id
+            );
         ELSE
             RAISE 'AttributeValue not found for AttributePrototype(%), parent AttributeValue(%) in Tenancy(%), Visibility(%)',
                   this_prototype_id,
@@ -513,18 +519,24 @@ BEGIN
                                    this_func_binding_id,
                                    this_func_binding_return_value_id,
                                    this_key) AS av;
-    PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
-                              this_write_tenancy,
-                              this_visibility,
-                              attribute_value_id,
-                              new_attribute_prototype_id);
+    PERFORM set_belongs_to_v1(
+        'attribute_value_belongs_to_attribute_prototype',
+        this_read_tenancy,
+        this_write_tenancy,
+        this_visibility,
+        attribute_value_id,
+        new_attribute_prototype_id
+    );
 
     IF this_parent_attribute_value_id IS NOT NULL THEN
-        PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_value',
-                                  this_write_tenancy,
-                                  this_visibility,
-                                  attribute_value_id,
-                                  this_parent_attribute_value_id);
+        PERFORM set_belongs_to_v1(
+            'attribute_value_belongs_to_attribute_value',
+            this_read_tenancy,
+            this_write_tenancy,
+            this_visibility,
+            attribute_value_id,
+            this_parent_attribute_value_id
+        );
     END IF;
 
     IF NOT attribute_context_is_least_specific_v1(this_attribute_context) THEN
@@ -586,11 +598,14 @@ BEGIN
                                 this_visibility,
                                 this_attribute_value_id);
 
-    PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
-                              this_write_tenancy,
-                              this_visibility,
-                              this_attribute_value_id,
-                              new_attribute_prototype_id);
+    PERFORM set_belongs_to_v1(
+        'attribute_value_belongs_to_attribute_prototype',
+        this_read_tenancy,
+        this_write_tenancy,
+        this_visibility,
+        this_attribute_value_id,
+        new_attribute_prototype_id
+    );
 
     PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_value',
                                 this_write_tenancy,
@@ -598,11 +613,14 @@ BEGIN
                                 this_attribute_value_id);
 
     IF this_parent_attribute_value_id IS NOT NULL THEN
-        PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_value',
-                                  this_write_tenancy,
-                                  this_visibility,
-                                  this_attribute_value_id,
-                                  this_parent_attribute_value_id);
+        PERFORM set_belongs_to_v1(
+            'attribute_value_belongs_to_attribute_value',
+            this_read_tenancy,
+            this_write_tenancy,
+            this_visibility,
+            this_attribute_value_id,
+            this_parent_attribute_value_id
+        );
     END IF;
 END;
 $$ LANGUAGE PLPGSQL;
@@ -916,11 +934,14 @@ BEGIN
                                         this_write_tenancy,
                                         this_visibility,
                                         original_child_value.id);
-            PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_value',
-                                      this_write_tenancy,
-                                      this_visibility,
-                                      original_child_value.id,
-                                      this_attribute_value_id);
+            PERFORM set_belongs_to_v1(
+                'attribute_value_belongs_to_attribute_value',
+                this_read_tenancy,
+                this_write_tenancy,
+                this_visibility,
+                original_child_value.id,
+                this_attribute_value_id
+            );
         ELSE
             -- Since there isn't already an `AttributeValue` to represent the one from a less-specific
             -- `AttributeContext`, we need to create a proxy `AttributeValue` in the desired `AttributeContext`
@@ -945,16 +966,22 @@ BEGIN
                                         this_write_tenancy,
                                         this_visibility,
                                         new_child_value.id);
-            PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
-                                      this_write_tenancy,
-                                      this_visibility,
-                                      new_child_value.id,
-                                      child_attribute_value_prototype.id);
-            PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_value',
-                                      this_write_tenancy,
-                                      this_visibility,
-                                      new_child_value.id,
-                                      this_attribute_value_id);
+            PERFORM set_belongs_to_v1(
+                'attribute_value_belongs_to_attribute_prototype',
+                this_read_tenancy,
+                this_write_tenancy,
+                this_visibility,
+                new_child_value.id,
+                child_attribute_value_prototype.id
+            );
+            PERFORM set_belongs_to_v1(
+                'attribute_value_belongs_to_attribute_value',
+                this_read_tenancy,
+                this_write_tenancy,
+                this_visibility,
+                new_child_value.id,
+                this_attribute_value_id
+            );
             PERFORM update_by_id_v1('attribute_values',
                                     'proxy_for_attribute_value_id',
                                     this_read_tenancy,
@@ -1110,11 +1137,14 @@ BEGIN
             END IF;
 
             IF maybe_parent_attribute_value_id IS NOT NULL THEN
-               PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_value',
-                                         this_write_tenancy,
-                                         this_visibility,
-                                         attribute_value_id,
-                                         maybe_parent_attribute_value_id);
+                PERFORM set_belongs_to_v1(
+                    'attribute_value_belongs_to_attribute_value',
+                    this_read_tenancy,
+                    this_write_tenancy,
+                    this_visibility,
+                    attribute_value_id,
+                    maybe_parent_attribute_value_id
+                );
             END IF;
 
             IF this_create_child_proxies THEN
@@ -1243,11 +1273,14 @@ BEGIN
                                 this_write_tenancy,
                                 this_visibility,
                                 attribute_value_id);
-    PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
-                              this_write_tenancy,
-                              this_visibility,
-                              attribute_value_id,
-                              attribute_prototype_id);
+    PERFORM set_belongs_to_v1(
+        'attribute_value_belongs_to_attribute_prototype',
+        this_read_tenancy,
+        this_write_tenancy,
+        this_visibility,
+        attribute_value_id,
+        attribute_prototype_id
+    );
 
     PERFORM update_by_id_v1('attribute_values',
                             'func_binding_return_value_id',
@@ -1537,11 +1570,14 @@ BEGIN
                                                                                 unset_func_binding_return_value_id,
                                                                                 field_context,
                                                                                 NULL));
-                PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_value',
-                                          this_write_tenancy,
-                                          this_visibility,
-                                          attribute_value.id,
-                                          this_parent_attribute_value_id);
+                PERFORM set_belongs_to_v1(
+                    'attribute_value_belongs_to_attribute_value',
+                    this_read_tenancy,
+                    this_write_tenancy,
+                    this_visibility,
+                    attribute_value.id,
+                    this_parent_attribute_value_id
+                );
                 PERFORM attribute_prototype_new_with_attribute_value_v1(this_write_tenancy,
                                                                         this_read_tenancy,
                                                                         this_visibility,
@@ -2554,11 +2590,14 @@ BEGIN
                                                                                      unset_func_binding_return_value_id,
                                                                                      unset_child_attribute_context,
                                                                                      NULL));
-                PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_value',
-                                          this_write_tenancy,
-                                          this_visibility,
-                                          prop_attribute_value.id,
-                                          (child_prop_info ->> 'parent_attribute_value_id')::bigint);
+                PERFORM set_belongs_to_v1(
+                    'attribute_value_belongs_to_attribute_value',
+                    this_read_tenancy,
+                    this_write_tenancy,
+                    this_visibility,
+                    prop_attribute_value.id,
+                    (child_prop_info ->> 'parent_attribute_value_id')::bigint
+                );
                 -- XXX: The Rust code was originally using `child_prop_info.parent_attribute_value_id` as BOTH
                 -- OF the last two arguments here, then setting prop_attribute_value's AttributePrototype to be
                 -- the newly created AttributePrototype. This seems wrong, so instead we're passing in
