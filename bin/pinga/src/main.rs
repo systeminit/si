@@ -52,6 +52,7 @@ async fn async_main() -> Result<()> {
     let config = TelemetryConfig::builder()
         .service_name("pinga")
         .service_namespace("si")
+        .log_env_var_prefix("SI")
         .app_modules(vec!["pinga"])
         .build()?;
     let telemetry = telemetry_application::init(config)?;
