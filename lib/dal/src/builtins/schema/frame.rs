@@ -2,8 +2,8 @@ use crate::builtins::schema::{BuiltinSchemaHelpers, MigrationDriver};
 use crate::component::ComponentKind;
 use crate::validation::Validation;
 use crate::{
-    schema::SchemaUiMenu, AttributeContext, BuiltinsResult, DalContext, PropKind, SchemaError,
-    SchemaKind, StandardModel,
+    schema::SchemaUiMenu, AttributeContext, BuiltinsError, BuiltinsResult, DalContext, DiagramKind,
+    InternalProvider, PropKind, SchemaError, SchemaKind, SocketArity, StandardModel,
 };
 
 const FRAME_NODE_COLOR: i64 = 0xFFFFFF;
@@ -49,6 +49,24 @@ async fn generic_frame(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRe
         None,
     )
     .await?;
+
+    // Sockets
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
+
+    let (_docker_hub_credential_explicit_internal_provider, _input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema_variant.id(),
+            "Frame",
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
 
     driver
         .create_validation(

@@ -8,14 +8,15 @@ use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
     DiagramError as DalDiagramError, DiagramKind, NodeError, NodeKind, NodeMenuError,
-    NodePositionError, ReadTenancyError, SchemaError as DalSchemaError, StandardModelError,
-    TransactionsError,
+    NodePositionError, ReadTenancyError, SchemaError as DalSchemaError, SchemaVariantId,
+    StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
 
 use crate::service::schema::SchemaError;
 
+mod connect_component_to_frame;
 pub mod create_connection;
 pub mod create_node;
 pub mod get_diagram;
@@ -46,6 +47,8 @@ pub enum DiagramError {
     Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
+    #[error("frame socket not found for schema variant id: {0}")]
+    FrameSocketNotFound(SchemaVariantId),
     #[error("component not found")]
     ComponentNotFound,
     #[error("node not found: {0}")]
@@ -126,6 +129,10 @@ pub fn routes() -> Router {
         .route(
             "/create_connection",
             post(create_connection::create_connection),
+        )
+        .route(
+            "/connect_component_to_frame",
+            post(connect_component_to_frame::connect_component_to_frame),
         )
         .route(
             "/list_schema_variants",

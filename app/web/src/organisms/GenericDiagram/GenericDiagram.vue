@@ -1166,6 +1166,10 @@ function onNodeLayoutOrLocationChange(nodeId: string) {
   // record new socket locations (used to render edges)
   _.each(nodesById.value[nodeId].sockets, (socket) => {
     const socketShape = kStage.find(`#socket-${socket.id}`)?.[0];
+    // This ensures that the diagram won't try to create edges to/from hidden sockets
+    if (!socketShape) {
+      return;
+    }
     socketsLocationInfo[socket.id] = {
       center: socketShape.getAbsolutePosition(kStage),
     };
@@ -1253,5 +1257,9 @@ const frames = computed(() => {
 
 const nonFrameNodes = computed(() => {
   return props.nodes.filter((n) => n.category !== "Frames");
+});
+
+const filteredEdges = computed(() => {
+  return props.edges.filter((f) => f.name);
 });
 </script>
