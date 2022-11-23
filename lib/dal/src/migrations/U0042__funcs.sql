@@ -196,11 +196,14 @@ BEGIN
         FROM func_binding_create_v1(this_write_tenancy, this_visibility, this_args, this_backend_kind, this_code_sha256)
         INTO object;
 
-        PERFORM set_belongs_to_v1('func_binding_belongs_to_func',
-                                  this_write_tenancy,
-                                  this_visibility,
-                                  (object ->> 'id')::bigint,
-                                  this_func_id);
+        PERFORM set_belongs_to_v1(
+            'func_binding_belongs_to_func',
+            this_read_tenancy,
+            this_write_tenancy,
+            this_visibility,
+            (object ->> 'id')::bigint,
+            this_func_id
+        );
     END IF;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

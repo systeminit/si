@@ -196,9 +196,10 @@ pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + S
     ctx.txns()
         .pg()
         .query_one(
-            "SELECT set_belongs_to_v1($1, $2, $3, $4, $5)",
+            "SELECT set_belongs_to_v1($1, $2, $3, $4, $5, $6)",
             &[
                 &table,
+                ctx.read_tenancy(),
                 ctx.write_tenancy(),
                 ctx.visibility(),
                 &object_id,

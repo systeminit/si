@@ -87,6 +87,7 @@ BEGIN
         );
         PERFORM set_belongs_to_v1(
             'attribute_value_belongs_to_attribute_prototype',
+            this_read_tenancy,
             this_write_tenancy,
             this_visibility,
             new_attribute_value_id,
@@ -430,6 +431,7 @@ BEGIN
                             );
                             PERFORM set_belongs_to_v1(
                                 'attribute_value_belongs_to_attribute_prototype',
+                                this_read_tenancy,
                                 this_write_tenancy,
                                 this_visibility,
                                 new_attribute_value_id,

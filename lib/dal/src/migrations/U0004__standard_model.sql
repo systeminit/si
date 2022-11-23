@@ -1025,19 +1025,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
-CREATE OR REPLACE FUNCTION set_belongs_to_v1(this_table_name text,
-                                             this_tenancy jsonb,
-                                             this_visibility jsonb,
-                                             this_object_id bigint,
-                                             this_belongs_to_id bigint
+CREATE OR REPLACE FUNCTION set_belongs_to_v1(
+    this_table_name text,
+    this_read_tenancy jsonb,
+    this_write_tenancy jsonb,
+    this_visibility jsonb,
+    this_object_id bigint,
+    this_belongs_to_id bigint
 ) RETURNS VOID AS
 $$
 DECLARE
     insert_query           text;
-    this_tenancy_record    tenancy_record_v1;
+    this_write_tenancy_record    tenancy_record_v1;
     this_visibility_record visibility_record_v1;
 BEGIN
-    this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
+    this_write_tenancy_record := tenancy_json_to_columns_v1(this_write_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     insert_query :=
@@ -1056,10 +1058,10 @@ BEGIN
                    this_table_name,
                    this_object_id,
                    this_belongs_to_id,
-                   this_tenancy_record.tenancy_universal,
-                   this_tenancy_record.tenancy_billing_account_ids,
-                   this_tenancy_record.tenancy_organization_ids,
-                   this_tenancy_record.tenancy_workspace_ids,
+                   this_write_tenancy_record.tenancy_universal,
+                   this_write_tenancy_record.tenancy_billing_account_ids,
+                   this_write_tenancy_record.tenancy_organization_ids,
+                   this_write_tenancy_record.tenancy_workspace_ids,
                    this_visibility_record.visibility_change_set_pk,
                    this_visibility_record.visibility_deleted_at
                 );
