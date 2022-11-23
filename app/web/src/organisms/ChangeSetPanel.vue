@@ -18,6 +18,7 @@
 
         <VormInput type="container">
           <VButton2
+            ref="mergeButtonRef"
             icon="git-merge"
             size="md"
             loading-text="Merging"
@@ -115,12 +116,47 @@
       </template>
     </Modal>
   </div>
+  <Teleport to="body">
+    <div
+      ref="wipeRef"
+      class="hidden bg-neutral-50 dark:bg-neutral-900 fixed z-80 rounded-full"
+    />
+    <div ref="fakeButtonRef" class="fixed hidden z-100">
+      <VButton2
+        icon="git-merge"
+        size="md"
+        loading-text="Merging"
+        label="Merge"
+        loading
+      />
+    </div>
+    <div
+      ref="wipeMessageRef"
+      class="hidden fixed z-90 top-1/2 left-1/2 translate-x-[-50%] translate-y-[-50%] gap-2 items-center"
+    >
+      <template v-if="!mergeDone">
+        <Icon name="loader" size="2xl" />
+        <span class="text-3xl italic">
+          Merging Change Set<template v-if="selectedChangeSetName">
+            "{{ selectedChangeSetName }}"
+          </template>
+        </span>
+      </template>
+      <template v-else>
+        <span class="text-3xl">Change Set Merged!</span>
+        <span class="text-md italic pt-sm">
+          Preparing your recommendations...
+        </span>
+      </template>
+    </div>
+  </Teleport>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import _ from "lodash";
 import { useRoute, useRouter } from "vue-router";
+import JSConfetti from "js-confetti";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
@@ -130,6 +166,13 @@ import Divider from "@/ui-lib/layout/Divider.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
 import Modal from "@/ui-lib/Modal.vue";
 import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
+import Icon from "@/ui-lib/icons/Icon.vue";
+import promiseDelay from "@/utils/promise_delay";
+
+const wipeRef = ref();
+const mergeButtonRef = ref();
+const fakeButtonRef = ref();
+const wipeMessageRef = ref();
 
 const workspacesStore = useWorkspacesStore();
 const selectedWorkspaceId = computed(() => workspacesStore.selectedWorkspaceId);
@@ -137,6 +180,9 @@ const selectedWorkspaceId = computed(() => workspacesStore.selectedWorkspaceId);
 const changeSetsStore = useChangeSetsStore();
 const openChangeSets = computed(() => changeSetsStore.openChangeSets);
 const selectedChangeSetId = computed(() => changeSetsStore.selectedChangeSetId);
+const selectedChangeSetName = computed(
+  () => changeSetsStore.selectedChangeSet?.name,
+);
 
 const changeSetDropdownOptions = computed(() =>
   _.map(openChangeSets.value, (cs) => ({ value: cs.id, label: cs.name })),
@@ -186,10 +232,101 @@ const createChangeSetReqStatus =
 const applyChangeSetReqStatus =
   changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
 
+// Code to make the wipe work!
+const merging = ref(false);
+const mergeDone = ref(false);
+const wipeSpeedStart = 1;
+const wipeSpeedAccel = 4;
+let wipeInterval: number;
+let wipeSpeedCurrent: number;
+let wipeSize: number;
+
+const wipe = async () => {
+  const wipeDiv = wipeRef.value;
+  const buttonEl = mergeButtonRef.value.$el;
+  const buttonRect = buttonEl.getBoundingClientRect();
+  const fakeButtonDiv = fakeButtonRef.value;
+  const wipeMessageDiv = wipeMessageRef.value;
+
+  // Setting up the fake button to go on top of the wipe
+  fakeButtonDiv.classList.remove("hidden");
+  fakeButtonDiv.style.top = `${buttonRect.top + buttonRect.height / 2}px`;
+  fakeButtonDiv.style.left = `${buttonRect.left + buttonRect.width / 2}px`;
+  fakeButtonDiv.style.transform = "translate(-50%, -50%)";
+
+  // Now setting up the wipe itself
+  mergeDone.value = false;
+  wipeMessageDiv.classList.add("hidden");
+  wipeDiv.classList.remove("hidden");
+  wipeDiv.style.top = `${buttonRect.top + buttonRect.height / 2}px`;
+  wipeDiv.style.left = `${buttonRect.left + buttonRect.width / 2}px`;
+
+  wipeSpeedCurrent = wipeSpeedStart;
+  wipeSize = 0;
+
+  return new Promise((resolve) => {
+    // code to grow the wipe to its full size
+    wipeInterval = window.setInterval(() => {
+      const wipeDiv = wipeRef.value;
+
+      wipeDiv.style.width = `${wipeSize}px`;
+      wipeDiv.style.height = `${wipeSize}px`;
+      wipeDiv.style.transform = "translate(-50%, -50%)";
+
+      wipeSize += wipeSpeedCurrent;
+      wipeSpeedCurrent += wipeSpeedAccel;
+
+      if (
+        wipeSize > window.innerWidth * 2.5 &&
+        wipeSize > window.innerHeight * 2.5
+      ) {
+        window.clearInterval(wipeInterval);
+        resolve(true);
+
+        fakeButtonDiv.classList.add("hidden");
+        wipeMessageDiv.classList.remove("hidden", "flex-col");
+        wipeMessageDiv.classList.add("flex", "flex-row");
+      }
+    }, 10);
+  });
+};
+
+let jsConfetti: JSConfetti;
+const confettis = [
+  {},
+  { emojis: ["🌈"] },
+  { emojis: ["⚡️"] },
+  { emojis: ["🤘", "🤘🏻", "🤘🏼", "🤘🏽", "🤘🏾", "🤘🏿"] },
+  { emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜"] },
+  { emojis: ["🍾", "🍷", "🍸", "🍹", "🍺", "🥂", "🍻"] },
+  { emojis: ["🏳️‍🌈", "🏳️‍⚧️"] },
+];
+onMounted(() => {
+  jsConfetti = new JSConfetti({
+    canvas:
+      (document.getElementById("confetti") as HTMLCanvasElement) || undefined,
+  });
+});
+
 // Saves the current edit session and then applies the current change set
 const applyChangeSet = async () => {
-  const applyReq = await changeSetsStore.APPLY_CHANGE_SET();
-  if (applyReq.result.success) await navigateToFixMode();
+  merging.value = true;
+
+  // Run both the wipe and the change set apply in parallel
+  const [, applyPromise] = await Promise.all([
+    wipe(),
+    changeSetsStore.APPLY_CHANGE_SET(),
+  ]);
+
+  // when both are done, check if the change set apply was successful
+  if (applyPromise.result.success) {
+    mergeDone.value = true;
+    const wipeMessageDiv = wipeMessageRef.value;
+    wipeMessageDiv.classList.remove("flex-row");
+    wipeMessageDiv.classList.add("flex-col");
+    await jsConfetti.addConfetti(_.sample(confettis));
+    await navigateToFixMode();
+  }
 };
 
 const switchToCreateMode = () => {

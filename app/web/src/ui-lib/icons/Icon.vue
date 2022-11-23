@@ -35,7 +35,7 @@ import clsx from "clsx";
 import { getToneTextColorClass, Tones } from "@/ui-lib/helpers/tones";
 import { getIconByName, IconNames } from "./icon_set";
 
-export type IconSizes = "xs" | "sm" | "md" | "lg" | "xl" | "full";
+export type IconSizes = "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "full";
 
 const props = defineProps({
   name: { type: String as PropType<IconNames>, required: true },
@@ -71,6 +71,7 @@ const sizeClasses = computed(
       md: "w-6 h-6",
       lg: "w-8 h-8",
       xl: "w-9 h-9",
+      "2xl": "w-12 h-12",
     }[props.size]),
 );
 
