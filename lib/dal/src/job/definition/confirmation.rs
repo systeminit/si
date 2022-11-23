@@ -3,6 +3,7 @@ use std::{collections::HashMap, convert::TryFrom};
 use async_trait::async_trait;
 use jwt_simple::prelude::Deserialize;
 use serde::Serialize;
+use telemetry::prelude::*;
 
 use crate::confirmation_status::ConfirmationStatus;
 
@@ -130,7 +131,10 @@ impl JobConsumer for Confirmation {
                     None => unreachable!(),
                 }
             }
-            Err(e) => (ConfirmationStatus::Error, Some(format!("{e}"))),
+            Err(e) => {
+                error!("Confirmation error: {e}");
+                (ConfirmationStatus::Error, Some(format!("{e}")))
+            }
         };
 
         WsEvent::confirmation_status_update(

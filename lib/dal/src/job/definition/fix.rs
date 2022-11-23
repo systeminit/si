@@ -132,6 +132,16 @@ impl JobConsumer for FixesJob {
         }
 
         if self.fixes.is_empty() {
+            // Mark the batch as completed.
+            let mut batch = FixBatch::get_by_id(ctx, &self.batch_id)
+                .await?
+                .ok_or(JobConsumerError::MissingFixBatch(self.batch_id))?;
+            let batch_completion_status = batch.stamp_finished(ctx).await?;
+            WsEvent::fix_batch_return(ctx, *batch.id(), batch_completion_status)
+                .publish(ctx)
+                .await?;
+
+            ctx.enqueue_job(Confirmations::new(ctx)).await;
             return Ok(());
         }
         let fix_item = &self.fixes[0];
@@ -168,7 +178,7 @@ impl JobConsumer for FixesJob {
             .await?
             .ok_or(FixError::MissingFix(fix_item.id))?;
         let run_id = rand::random();
-        let resource_got_updated = fix
+        let resources = fix
             .run(
                 ctx,
                 run_id,
@@ -196,17 +206,15 @@ impl JobConsumer for FixesJob {
         )
         .await?;
 
-        // TODO(nick): once the logs' type changes, to Vec<String>, remove this.
-        let logs = match fix.logs() {
-            Some(logs) => logs
-                .split('\n')
-                .map(|log| log.to_string())
-                .collect::<Vec<String>>(),
-            None => vec![],
-        };
+        let logs: Vec<_> = resources
+            .iter()
+            .flat_map(|r| &r.logs)
+            .flat_map(|l| l.split('\n'))
+            .map(|l| l.to_owned())
+            .collect();
 
         // Inline dependent values propagation so we can run consecutive fixes that depend on the /root/resource from the previous fix
-        if resource_got_updated {
+        if !resources.is_empty() {
             let attribute_value = Component::root_child_attribute_value_for_component(
                 ctx,
                 "resource",
@@ -231,25 +239,12 @@ impl JobConsumer for FixesJob {
         .publish(ctx)
         .await?;
 
-        if self.fixes.is_empty() {
-            // Mark the batch as completed.
-            let mut batch = FixBatch::get_by_id(ctx, &self.batch_id)
-                .await?
-                .ok_or(JobConsumerError::MissingFixBatch(self.batch_id))?;
-            let batch_completion_status = batch.stamp_finished(ctx).await?;
-            WsEvent::fix_batch_return(ctx, *batch.id(), batch_completion_status)
-                .publish(ctx)
-                .await?;
-
-            ctx.enqueue_job(Confirmations::new(ctx)).await;
-        } else {
-            ctx.enqueue_job(FixesJob::new_iteration(
-                ctx,
-                self.fixes.iter().skip(1).cloned().collect(),
-                self.batch_id,
-            ))
-            .await;
-        }
+        ctx.enqueue_job(FixesJob::new_iteration(
+            ctx,
+            self.fixes.iter().skip(1).cloned().collect(),
+            self.batch_id,
+        ))
+        .await;
 
         Ok(())
     }

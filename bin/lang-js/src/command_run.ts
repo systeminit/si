@@ -1,6 +1,7 @@
 import Debug from "debug";
 import { base64Decode } from "./base64";
 import { NodeVM } from "vm2";
+import _ from "lodash";
 import {
   failureExecution,
   FunctionKind,
@@ -23,6 +24,8 @@ export type CommandRunResult =
 
 export interface CommandRunResultSuccess extends ResultSuccess {
   value: unknown;
+  health: "ok" | "warning" | "error";
+  message?: string;
 }
 export type CommandRunResultFailure = ResultFailure;
 
@@ -61,12 +64,65 @@ async function execute(
       );
     });
 
+    if (
+      _.isUndefined(commandRunResult) ||
+      _.isNull(commandRunResult)
+    ) {
+      return {
+        protocol: "result",
+        status: "failure",
+        executionId,
+        error: {
+          kind: "InvalidReturnType",
+          message: "Return type must not be null or undefined",
+        },
+      };
+    }
+
+    if (!_.isString(commandRunResult["status"]) || !["ok", "warning", "error"].includes(commandRunResult["status"])) {
+      return {
+        protocol: "result",
+        status: "failure",
+        executionId,
+        error: {
+          kind: "WorkflowFieldWrongType",
+          message: 'The status field type must be either "ok", "warning" or "error"',
+        },
+      };
+    }
+
+    if (commandRunResult["status"] === "ok" && !_.isUndefined(commandRunResult["message"])) {
+      return {
+        protocol: "result",
+        status: "failure",
+        executionId,
+        error: {
+          kind: "WorkflowFieldWrongType",
+          message: 'The message field type must be undefined when status is "ok"',
+        },
+      };
+    }
+
+    if (commandRunResult["status"] !== "ok" && !_.isString(commandRunResult["message"])) {
+      return {
+        protocol: "result",
+        status: "failure",
+        executionId,
+        error: {
+          kind: "WorkflowFieldWrongType",
+          message: 'The message field type must be string when status is either "warning" or "error"',
+        },
+      };
+    }
+
     const result: CommandRunResultSuccess = {
       protocol: "result",
       status: "success",
       executionId,
-      error: commandRunResult?.error as string,
-      value: commandRunResult?.value,
+      error: commandRunResult.error as string | undefined,
+      value: commandRunResult.value,
+      health: commandRunResult.status as "ok" | "warning" | "error",
+      message: commandRunResult.message as string | undefined
     };
     return result;
   } catch (err) {
@@ -81,11 +137,10 @@ function wrapCode(code: string, handle: string): string {
     const returnValue = ${handle}(...arguments, callback);
     if (returnValue instanceof Promise) {
       returnValue.then((data) => callback(data))
-        .catch((err) => {
-          callback({
-            error: err.message,
-          })
-        });
+          .catch((err) => callback({
+            status: "error",
+	    message: err.message,
+	  }));
     } else {
       callback(returnValue);
     }

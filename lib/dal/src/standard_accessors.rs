@@ -642,6 +642,16 @@ macro_rules! standard_model_accessor {
         );
     };
 
+    ($column:ident, Option<Pk($value_type:ident)>, $result_type:ident $(,)?) => {
+        standard_model_accessor!(@get_column_as_option $column, $value_type);
+        standard_model_accessor!(@set_column_with_option
+            $column,
+            $value_type,
+            $crate::standard_model::TypeHint::BigInt,
+            $result_type,
+        );
+    };
+
     ($column:ident, Option<bool>, $result_type:ident $(,)?) => {
         standard_model_accessor!(@get_column_as_option $column, bool);
         standard_model_accessor!(@set_column_with_option

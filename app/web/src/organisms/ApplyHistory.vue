@@ -26,21 +26,55 @@
           >
             <template #label>
               <div class="flex flex-row items-center gap-2">
-                <span class="font-bold"
-                  >{{ fixBatch.fixes.length }} recommendation{{
-                    fixBatch.fixes.length > 1 ? "s" : ""
-                  }}
-                  applied</span
-                >
+                <span class="font-bold flex">
+                  <Icon
+                    v-if="['success', 'failure'].includes(fixBatch.status)"
+                    :name="
+                      fixBatch.status === 'success'
+                        ? 'check-square'
+                        : 'x-square'
+                    "
+                    :class="
+                      fixBatch.status === 'success'
+                        ? 'text-success-500'
+                        : 'text-destructive-500'
+                    "
+                    class="pr-2"
+                    size="lg"
+                    :title="`Status: ${fixBatch.status}`"
+                  />
+                  <span
+                    v-if="
+                      fixBatch.fixes.filter((f) => f.status === 'success')
+                        .length === fixBatch.fixes.length
+                    "
+                    class="mt-2"
+                    >All fixes succeeded</span
+                  >
+                  <span v-else class="mt-2"
+                    >{{
+                      fixBatch.fixes.filter((f) => f.status === "success")
+                        .length
+                    }}
+                    of {{ fixBatch.fixes.length }} fix{{
+                      fixBatch.fixes.length > 1 ? "es" : ""
+                    }}
+                    succeeded</span
+                  >
+                </span>
                 <span
                   :class="
                     clsx(
-                      'italic text-xs',
+                      'text-xs',
                       themeClasses('text-neutral-700', 'text-neutral-300'),
                     )
                   "
+                  class="mt-1"
                 >
-                  <!-- (<Timestamp :date="fixBatch.finishedAt" relative />) -->
+                  <Timestamp
+                    size="mini"
+                    :date="new Date(fixBatch.finishedAt.replace(' UTC', ''))"
+                  />
                 </span>
               </div>
             </template>
@@ -74,21 +108,26 @@
                   :default-open="false"
                 >
                   <template #label>
-                    <span
-                      :class="
-                        clsx(
-                          'text-xs',
-                          themeClasses('text-neutral-700', 'text-neutral-300'),
-                        )
+                    <HealthIcon
+                      :health="fix.resource.status"
+                      :message="
+                        [
+                          `${formatTitle(fix.action)} ${fix.schemaName}`,
+                          fix.resource.message ?? '',
+                        ].filter((f) => f.length > 0)
                       "
-                    >
-                      {{ fix.action }}
-                    </span>
+                      :view-details="fix.resource.logs"
+                      class="ml-3"
+                    />
                   </template>
                   <template #default>
                     <div class="p-2">
-                      <CodeViewer :code="fix.output">
-                        <template #title>{{ fix.action }}</template>
+                      <CodeViewer
+                        v-if="fix.resource.data"
+                        :code="JSON.stringify(fix.resource.data, null, 2)"
+                        class="dark:text-neutral-50 text-neutral-900"
+                      >
+                        <template #title> </template>
                       </CodeViewer>
                     </div>
                   </template>
@@ -112,10 +151,19 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { useFixesStore } from "@/store/fixes/fixes.store";
-// import Timestamp from "@/ui-lib/Timestamp.vue";
+import Timestamp from "@/ui-lib/Timestamp.vue";
+import HealthIcon from "@/molecules/HealthIcon.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 import CodeViewer from "./CodeViewer.vue";
 
 const fixesStore = useFixesStore();
 
 const fixBatches = computed(() => fixesStore.allFinishedFixBatches);
+
+const formatTitle = (title: string) => {
+  return title
+    .split(" ")
+    .map((t) => t[0].toUpperCase() + t.slice(1).toLowerCase())
+    .join(" ");
+};
 </script>

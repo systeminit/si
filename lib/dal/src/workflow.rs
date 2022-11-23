@@ -119,7 +119,7 @@ impl WorkflowView {
         assert_eq!(func.backend_kind(), &FuncBackendKind::JsWorkflow);
         let (func_binding, _) = FuncBinding::find_or_create(
             ctx,
-            serde_json::to_value(args)?,
+            serde_json::to_value(&args)?,
             *func.id(),
             *func.backend_kind(),
         )
@@ -513,8 +513,7 @@ pub struct CommandOutput {
 #[serde(rename_all = "camelCase")]
 pub struct CommandReturn {
     run_id: usize,
-    created_resources: Vec<ResourceView>,
-    updated_resources: Vec<ResourceView>,
+    resources: Vec<ResourceView>,
     runner_state: WorkflowRunnerState,
     output: Vec<String>,
 }
@@ -530,8 +529,7 @@ impl WsEvent {
     pub fn command_return(
         ctx: &DalContext,
         run_id: usize,
-        created_resources: Vec<ResourceView>,
-        updated_resources: Vec<ResourceView>,
+        resources: Vec<ResourceView>,
         runner_state: WorkflowRunnerState,
         output: Vec<String>,
     ) -> Self {
@@ -539,8 +537,7 @@ impl WsEvent {
             ctx,
             WsPayload::CommandReturn(CommandReturn {
                 run_id,
-                created_resources,
-                updated_resources,
+                resources,
                 runner_state,
                 output,
             }),

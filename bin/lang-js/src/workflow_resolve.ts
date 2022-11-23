@@ -1,6 +1,7 @@
 import Debug from "debug";
 import { base64Decode } from "./base64";
 import { NodeVM } from "vm2";
+import _ from "lodash";
 import {
   failureExecution,
   FunctionKind,
@@ -68,6 +69,47 @@ async function execute(
         (resolution: Record<string, unknown>) => resolve(resolution)
       );
     });
+
+    if (
+      _.isUndefined(workflowResolveResult) ||
+      _.isNull(workflowResolveResult)
+    ) {
+      return {
+        protocol: "result",
+        status: "failure",
+        executionId,
+        error: {
+          kind: "InvalidReturnType",
+          message: "Return type must not be null or undefined",
+        },
+      };
+    }
+
+    if (!_.isString(workflowResolveResult["name"])) {
+      return {
+        protocol: "result",
+        status: "failure",
+        executionId,
+        error: {
+          kind: "WorkflowFieldWrongType",
+          message: "The name field type must be string",
+        },
+      };
+    }
+
+    if (!_.isString(workflowResolveResult["kind"])) {
+      return {
+        protocol: "result",
+        status: "failure",
+        executionId,
+        error: {
+          kind: "WorkflowFieldWrongType",
+          message: "The kind field type must be string",
+        },
+      };
+    }
+
+    // TODO: validate steps and args
 
     const result: WorkflowResolveResultSuccess = {
       protocol: "result",

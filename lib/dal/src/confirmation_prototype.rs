@@ -11,9 +11,9 @@ use crate::{
     prototype_context::{HasPrototypeContext, PrototypeContext},
     standard_model, standard_model_accessor, ActionPrototype, ActionPrototypeError, Component,
     ComponentError, ComponentId, ConfirmationResolver, ConfirmationResolverContext,
-    ConfirmationResolverError, DalContext, FuncBinding, FuncBindingError, FuncBindingId,
-    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
-    Visibility, WriteTenancy,
+    ConfirmationResolverError, DalContext, Func, FuncBinding, FuncBindingError, FuncBindingId,
+    FuncError, HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -34,6 +34,8 @@ pub enum ConfirmationPrototypeError {
     ConfirmationResolver(#[from] ConfirmationResolverError),
     #[error(transparent)]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error(transparent)]
+    Func(#[from] FuncError),
 
     #[error("not found by id: {0}")]
     NotFound(ConfirmationPrototypeId),
@@ -214,8 +216,13 @@ impl ConfirmationPrototype {
         };
 
         let json_args = serde_json::to_value(args)?;
-        let (func_binding, func_binding_return_value, _created) =
-            FuncBinding::find_or_create_and_execute(ctx, json_args, self.func_id()).await?;
+        let func = Func::get_by_id(ctx, &self.func_id)
+            .await?
+            .ok_or(FuncError::NotFound(self.func_id))?;
+        let (func_binding, _) =
+            FuncBinding::find_or_create(ctx, json_args, self.func_id(), *func.backend_kind())
+                .await?;
+        let func_binding_return_value = func_binding.execute(ctx).await?;
 
         let (success, message, recommended_actions) = if let Some(mut value) =
             func_binding_return_value

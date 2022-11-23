@@ -1,4 +1,4 @@
-use cyclone_core::CommandRunResultSuccess;
+use cyclone_core::{CommandRunResultSuccess, ResourceStatus};
 use serde::{Deserialize, Serialize};
 
 /// This struct contains the lang-js server execution response. All fields without the
@@ -9,8 +9,9 @@ pub struct LangServerCommandRunResultSuccess {
     pub execution_id: String,
     #[serde(default)]
     pub value: Option<serde_json::Value>,
+    pub health: ResourceStatus,
     #[serde(default)]
-    pub created: Option<bool>,
+    pub message: Option<String>,
     // Collects the error if the function throws
     #[serde(default)]
     pub error: Option<String>,
@@ -21,8 +22,9 @@ impl From<LangServerCommandRunResultSuccess> for CommandRunResultSuccess {
         Self {
             execution_id: value.execution_id,
             error: value.error,
-            value: value.value.unwrap_or(serde_json::Value::Null),
-            created: value.created.unwrap_or(false),
+            status: value.health,
+            message: value.message,
+            value: value.value,
         }
     }
 }

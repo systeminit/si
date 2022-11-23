@@ -2,7 +2,9 @@ use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use telemetry::tracing::trace;
-use veritech_client::{CommandRunRequest, CommandRunResultSuccess, FunctionResult, OutputStream};
+use veritech_client::{
+    CommandRunRequest, CommandRunResultSuccess, FunctionResult, OutputStream, ResourceStatus,
+};
 
 use crate::func::backend::{
     ExtractPayload, FuncBackendError, FuncBackendResult, FuncDispatch, FuncDispatchContext,
@@ -71,11 +73,18 @@ impl FuncDispatch for FuncBackendJsCommand {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct CommandRunResult {
-    pub value: serde_json::Value,
-    pub created: bool,
-    pub error: Option<String>,
+    pub status: ResourceStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub value: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub message: Option<String>,
+    // Note: we might benefit from adding the metadata here, but it's unused and takes a lot of boilerplate in the root_prop definition
+    #[serde(default)]
+    pub logs: Vec<String>,
 }
 
 impl ExtractPayload for CommandRunResultSuccess {
@@ -84,8 +93,9 @@ impl ExtractPayload for CommandRunResultSuccess {
     fn extract(self) -> FuncBackendResult<Self::Payload> {
         Ok(CommandRunResult {
             value: self.value,
-            created: self.created,
-            error: self.error,
+            status: self.status,
+            message: self.message.or(self.error),
+            logs: Default::default(),
         })
     }
 }

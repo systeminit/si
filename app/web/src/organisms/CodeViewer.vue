@@ -26,6 +26,7 @@
           themeClasses('border-neutral-300', 'dark:border-neutral-600'),
         )
       "
+      class="mt-4"
     >
       <div
         ref="editorMountRef"

@@ -29,7 +29,7 @@ mod workflow_resolve;
 
 pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
 pub use code_generation::{CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess};
-pub use command_run::{CommandRunRequest, CommandRunResultSuccess};
+pub use command_run::{CommandRunRequest, CommandRunResultSuccess, ResourceStatus};
 pub use component_view::{ComponentKind, ComponentView};
 pub use confirmation::{ConfirmationRequest, ConfirmationResultSuccess};
 pub use encryption_key::{EncryptionKey, EncryptionKeyError};

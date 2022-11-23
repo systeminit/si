@@ -11,12 +11,12 @@ use thiserror::Error;
 use crate::fix::batch::FixBatchId;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    ActionPrototypeError, ComponentError, ComponentId, ConfirmationResolver,
-    ConfirmationResolverError, ConfirmationResolverId, ConfirmationResolverTreeError, DalContext,
-    FixResolverError, HistoryEventError, StandardModel, StandardModelError, Timestamp, Visibility,
-    WorkflowPrototypeId, WorkflowRunnerError, WorkflowRunnerStatus, WriteTenancy, WsEvent,
-    WsPayload,
+    func::backend::js_command::CommandRunResult, impl_standard_model, pk, standard_model,
+    standard_model_accessor, standard_model_belongs_to, ActionPrototypeError, ComponentError,
+    ComponentId, ConfirmationResolver, ConfirmationResolverError, ConfirmationResolverId,
+    ConfirmationResolverTreeError, DalContext, FixResolverError, HistoryEventError, StandardModel,
+    StandardModelError, Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError,
+    WorkflowRunnerId, WorkflowRunnerStatus, WriteTenancy, WsEvent, WsPayload,
 };
 use crate::{FixBatch, WorkflowRunner};
 
@@ -140,9 +140,8 @@ pub struct Fix {
     confirmation_resolver_id: ConfirmationResolverId,
     /// The [`Component`](crate::Component) being fixed.
     component_id: ComponentId,
-    // TODO(nick): convert to Vec<String> once it works with standard model accessor.
-    /// The logs generated during the fix.
-    logs: Option<String>,
+    /// The [`WorkflowRunner`](crate::WorkflowRunner) that got executed.
+    workflow_runner_id: Option<WorkflowRunnerId>,
     /// The name of the [`ActionPrototype`](crate::action_prototype::ActionPrototype) used.
     action: Option<String>,
 
@@ -210,7 +209,7 @@ impl Fix {
             ))
     }
 
-    standard_model_accessor!(logs, Option<String>, FixResult);
+    standard_model_accessor!(workflow_runner_id, Option<Pk(WorkflowRunnerId)>, FixResult);
     standard_model_accessor!(action, Option<String>, FixResult);
     standard_model_accessor!(started_at, Option<String>, FixResult);
     standard_model_accessor!(finished_at, Option<String>, FixResult);
@@ -261,7 +260,7 @@ impl Fix {
         action_workflow_prototype_id: WorkflowPrototypeId,
         action_name: String,
         should_trigger_confirmations: bool,
-    ) -> FixResult<bool> {
+    ) -> FixResult<Vec<CommandRunResult>> {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
         self.set_action(ctx, Some(action_name)).await?;
@@ -277,13 +276,8 @@ impl Fix {
         // Evaluate the workflow result.
         match runner_result {
             Ok(post_run_data) => {
-                let (
-                    _runner,
-                    runner_state,
-                    func_binding_return_values,
-                    created_resources,
-                    updated_resources,
-                ) = post_run_data;
+                let (runner, runner_state, _func_binding_return_values, resources) = post_run_data;
+                self.set_workflow_runner_id(ctx, Some(runner.id())).await?;
 
                 // Set the run as completed. Record the error message if it exists.
                 let completion_status =
@@ -295,30 +289,15 @@ impl Fix {
                 )
                 .await?;
 
-                // Gather and store the logs.
-                let mut logs = Vec::new();
-                for func_binding_return_value in func_binding_return_values {
-                    for stream in func_binding_return_value
-                        .get_output_stream(ctx)
-                        .await?
-                        .unwrap_or_default()
-                    {
-                        logs.push((stream.timestamp, stream.message));
-                    }
-                }
-                logs.sort_by_key(|(timestamp, _)| *timestamp);
-                let logs: Vec<String> = logs.into_iter().map(|(_, log)| log).collect();
-
-                // TODO(nick): change once logs' type is converted from Option<String> to Vec<String>.
-                self.set_logs(ctx, Some(logs.join("\n"))).await?;
-                Ok(!updated_resources.is_empty() || !created_resources.is_empty())
+                Ok(resources)
             }
             Err(e) => {
+                error!("Unable to run fix: {e}");
                 // If the workflow had an error, we can record an error completion status with
                 // the error as a message.
                 self.stamp_finished(ctx, FixCompletionStatus::Error, Some(format!("{:?}", e)))
                     .await?;
-                Ok(false)
+                Ok(Vec::new())
             }
         }
     }
@@ -354,6 +333,13 @@ impl Fix {
             self.set_started_at(ctx, Some(format!("{}", Utc::now())))
                 .await?;
             Ok(())
+        }
+    }
+
+    pub async fn workflow_runner(&self, ctx: &DalContext) -> FixResult<Option<WorkflowRunner>> {
+        match &self.workflow_runner_id {
+            Some(id) => Ok(WorkflowRunner::get_by_id(ctx, id).await?),
+            None => Ok(None),
         }
     }
 }

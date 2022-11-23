@@ -2,6 +2,7 @@
   "kind": "JsCommand",
   "arguments": [],
   "response_type": "Command",
+  "hidden": false,
   "display_name": "si:awsKeyPairCreateCommand",
   "description": null,
   "link": null,

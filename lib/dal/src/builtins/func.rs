@@ -26,6 +26,7 @@ struct FunctionMetadata {
     kind: FuncBackendKind,
     arguments: Option<Vec<FunctionMetadataArgument>>,
     response_type: FuncBackendResponseType,
+    hidden: Option<bool>,
     display_name: Option<String>,
     description: Option<String>,
     link: Option<String>,
@@ -72,6 +73,7 @@ impl FunctionMetadata {
             name: func_name.to_string(),
             kind: *f.backend_kind(),
             response_type: *f.backend_response_type(),
+            hidden: Some(f.hidden()),
             // TODO Convert FunctionMetadata fields to use &str and remove these maps
             display_name: f.display_name().map(|s| s.to_string()),
             description: f.description().map(|s| s.to_string()),
@@ -195,6 +197,10 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
             .set_link(ctx, func_metadata.link)
             .await
             .expect("cannot set func link");
+        new_func
+            .set_hidden(ctx, func_metadata.hidden.unwrap_or(false))
+            .await
+            .expect("cannot set func hidden");
 
         if let Some(arguments) = func_metadata.arguments {
             for arg in arguments {

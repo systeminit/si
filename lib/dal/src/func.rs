@@ -75,6 +75,7 @@ pub struct Func {
     display_name: Option<String>,
     description: Option<String>,
     link: Option<String>,
+    hidden: bool,
     backend_kind: FuncBackendKind,
     backend_response_type: FuncBackendResponseType,
     handler: Option<String>,
@@ -179,6 +180,7 @@ impl Func {
     standard_model_accessor!(display_name, Option<String>, FuncResult);
     standard_model_accessor!(description, Option<String>, FuncResult);
     standard_model_accessor!(link, Option<String>, FuncResult);
+    standard_model_accessor!(hidden, bool, FuncResult);
     standard_model_accessor!(backend_kind, Enum(FuncBackendKind), FuncResult);
     standard_model_accessor!(
         backend_response_type,

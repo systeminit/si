@@ -49,15 +49,43 @@
           class="py-2 pl-4 pr-3 cursor-pointer flex flex-row items-center leading-tight"
           @click="selectFix(fix.id)"
         >
-          <FixStatusIcon :status="fix.status" size="lg" />
           <span class="truncate mr-3 whitespace-nowrap">
-            {{ fix.action }}
+            <HealthIcon
+              :health="fix.resource.status"
+              :message="
+                [
+                  `${formatTitle(fix.action)} ${fix.schemaName}`,
+                  fix.resource.message ?? '',
+                ].filter((f) => f.length > 0)
+              "
+              :view-details="[]"
+              class="ml-3"
+            />
           </span>
         </div>
       </div>
       <div v-if="selectedFixInfo" class="bg-shade-100 grow p-4">
-        <CodeViewer :code="selectedFixInfo.output">
-          <template #title>{{ selectedFixInfo.action }}</template>
+        <CodeViewer
+          :code="
+            selectedFixInfo.resource.data
+              ? JSON.stringify(selectedFixInfo.resource.data, null, 2)
+              : ''
+          "
+          class="dark:text-neutral-50 text-neutral-900"
+        >
+          <template #title>
+            <HealthIcon
+              :health="selectedFixInfo.resource.status"
+              :message="[
+                `${formatTitle(selectedFixInfo.action)} ${
+                  selectedFixInfo.schemaName
+                }`,
+                selectedFixInfo.resource.message ?? '',
+              ].filter((f) => f.length > 0)"
+              :view-details="selectedFixInfo.resource.logs"
+              class="ml-3"
+            />
+          </template>
         </CodeViewer>
       </div>
       <div
@@ -85,6 +113,7 @@ import { ref, computed } from "vue";
 // import Timestamp from "@/ui-lib/Timestamp.vue";
 import { useFixesStore } from "@/store/fixes/fixes.store";
 import CodeViewer from "@/organisms/CodeViewer.vue";
+import HealthIcon from "@/molecules/HealthIcon.vue";
 import FixStatusIcon from "@/molecules/FixStatusIcon.vue";
 
 export interface SortOption {
@@ -109,9 +138,7 @@ const fixesStore = useFixesStore();
 const fixBatchesWithFixes = computed(() =>
   fixesStore.fixBatches.map((batch) => ({
     ...batch,
-    fixes: fixesStore
-      .fixesOnBatch(batch.id)
-      .filter((fix) => fix.status === "success"),
+    fixes: fixesStore.fixesOnBatch(batch.id),
   })),
 );
 const fixListDisplay = computed(() => {
@@ -132,4 +159,11 @@ const selectedFixInfo = computed(() => {
   }
   return null;
 });
+
+const formatTitle = (title: string) => {
+  return title
+    .split(" ")
+    .map((t) => t[0].toUpperCase() + t.slice(1).toLowerCase())
+    .join(" ");
+};
 </script>

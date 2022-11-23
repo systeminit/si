@@ -1,6 +1,11 @@
 {
   "kind": "JsConfirmation",
+  "arguments": [],
   "response_type": "Confirmation",
+  "hidden": false,
+  "display_name": "si:resourceExistsConfirmation",
+  "description": null,
+  "link": null,
   "code_file": "resourceExistsConfirmation.js",
   "code_entrypoint": "exists"
 }

@@ -1,6 +1,11 @@
 {
   "kind": "JsCommand",
+  "arguments": [],
   "response_type": "Command",
+  "display_name": "si:leroLeroByeCommand",
+  "hidden": true,
+  "description": null,
+  "link": null,
   "code_file": "leroLeroByeCommand.js",
   "code_entrypoint": "bye"
 }

@@ -1,6 +1,11 @@
 {
   "kind": "JsCommand",
+  "arguments": [],
   "response_type": "Command",
+  "display_name": "si:leroLeroQuestionCommand",
+  "hidden": true,
+  "description": null,
+  "link": null,
   "code_file": "leroLeroQuestionCommand.js",
   "code_entrypoint": "question"
 }

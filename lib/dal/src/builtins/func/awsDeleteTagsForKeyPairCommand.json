@@ -1,6 +1,0 @@
-{
-  "kind": "JsCommand",
-  "response_type": "Command",
-  "code_file": "awsDeleteTagsForKeyPairCommand.js",
-  "code_entrypoint": "deleteTagsForKeyPair"
-}

@@ -1,10 +1,13 @@
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use super::FixResult;
+use super::{FixError, FixResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::job::definition::{FixItem, FixesJob};
-use dal::{ComponentId, ConfirmationResolverId, Fix, FixBatch, StandardModel, Visibility};
+use dal::{
+    ComponentId, ConfirmationResolverId, Fix, FixBatch, HistoryActor, StandardModel, User,
+    Visibility,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -35,8 +38,13 @@ pub async fn run(
 ) -> FixResult<Json<FixesRunResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    // TODO(nick): use the logged-in user account information.
-    let batch = FixBatch::new(&ctx, "toddhoward@systeminit.com").await?;
+    let user = match ctx.history_actor() {
+        HistoryActor::User(user_id) => User::get_by_id(&ctx, user_id)
+            .await?
+            .ok_or(FixError::InvalidUser(*user_id))?,
+        HistoryActor::SystemInit => return Err(FixError::InvalidUserSystemInit),
+    };
+    let batch = FixBatch::new(&ctx, user.email()).await?;
     let mut fixes = Vec::with_capacity(request.list.len());
     for fix_run_request in request.list {
         let fix = Fix::new(

@@ -116,7 +116,7 @@ export const ICONS = Object.freeze({
   lock: Lock,
   "lock-open": LockOpen,
   logout: Logout,
-  "menu": Menu,
+  menu: Menu,
   minus: Minus,
   "minus-circle": MinusCircle,
   moon: Moon,

@@ -15,4 +15,13 @@ export enum ResourceStatus {
 
 export interface Resource {
   data: unknown;
+  status: ResourceHealth;
+  message: string | null;
+  logs: string[];
+}
+
+export interface OutputStream {
+  line: string;
+  stream: string;
+  level: string;
 }
