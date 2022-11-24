@@ -13,6 +13,7 @@ async fn main() -> Result<()> {
     let config = TelemetryConfig::builder()
         .service_name("cyclone")
         .service_namespace("si")
+        .log_env_var_prefix("SI")
         .app_modules(vec!["cyclone_cli", "cyclone"])
         .build()?;
     let telemetry = telemetry_application::init(config)?;
