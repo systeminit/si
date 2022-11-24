@@ -139,12 +139,9 @@ watch([diagramNodes, diagramEdges], () => {
 });
 
 async function onDrawEdge(e: DrawEdgeEvent) {
-  const [fromNodeId, fromSocketId] = e.fromSocketId.split("-");
-  const [toNodeId, toSocketId] = e.toSocketId.split("-");
-
   await componentsStore.CREATE_COMPONENT_CONNECTION(
-    { componentId: parseInt(fromNodeId), socketId: parseInt(fromSocketId) },
-    { componentId: parseInt(toNodeId), socketId: parseInt(toSocketId) },
+    { componentId: parseInt(e.fromNodeId), socketId: parseInt(e.fromSocketId) },
+    { componentId: parseInt(e.toNodeId), socketId: parseInt(e.toSocketId) },
   );
 }
 
@@ -167,7 +164,10 @@ function onDiagramMoveElement(e: MoveElementEvent) {
   // eventually we will want to send those to the backend for realtime multiplayer
   // But for now we just send off the final position
   if (!e.isFinal) return;
-  componentsStore.SET_COMPONENT_DIAGRAM_POSITION(parseInt(e.id), e.position);
+  componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
+    parseInt(e.element.id),
+    e.position,
+  );
 }
 
 function onDiagramUpdateSelection(newSelection: DiagramElementIdentifier[]) {
@@ -196,6 +196,8 @@ function onOutlineSelectComponent(id: number) {
 }
 
 function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
+  // TODO: make actually do something, probably also want to handle different types
+  if (rightClickEventInfo.element.diagramElementType !== "node") return;
   contextMenuRef.value?.open(rightClickEventInfo.e, true);
 }
 

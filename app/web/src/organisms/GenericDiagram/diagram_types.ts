@@ -12,10 +12,33 @@ export type Direction = "up" | "down" | "left" | "right";
 
 export type DiagramElementTypes = "node" | "socket" | "edge";
 
-export type DiagramElementIdentifier = {
-  diagramElementType: DiagramElementTypes;
-  id: string;
+// export type DiagramElementIdentifier = {
+//   diagramElementType: DiagramElementTypes;
+//   id: string;
+// };
+
+type DiagramId = string;
+export type DiagramNodeId = DiagramId;
+export type DiagramSocketId = DiagramId;
+
+export type DiagramNodeIdentifier = {
+  diagramElementType: "node";
+  id: DiagramNodeId;
 };
+export type DiagramSocketIdentifier = {
+  diagramElementType: "socket";
+  nodeId: DiagramNodeId;
+  id: DiagramSocketId;
+};
+export type DiagramEdgeIdentifier = {
+  diagramElementType: "edge";
+  id: DiagramSocketId;
+};
+
+export type DiagramElementIdentifier =
+  | DiagramNodeIdentifier
+  | DiagramSocketIdentifier
+  | DiagramEdgeIdentifier;
 
 export type DiagramStatusIcon = {
   /* name/id of icon (registered in diagram config) */
@@ -82,8 +105,10 @@ export type DiagramEdgeDef = {
   id: string;
   type?: string;
   name?: string;
-  fromSocketId: string;
-  toSocketId: string;
+  fromNodeId: DiagramNodeId;
+  fromSocketId: DiagramSocketId;
+  toNodeId: DiagramNodeId;
+  toSocketId: DiagramSocketId;
   isBidirectional?: boolean;
   // color
   // thickness
@@ -100,21 +125,22 @@ export type PendingInsertedElement = {
 
 export type DiagramDrawEdgeState = {
   active: boolean;
-  fromSocketId?: string;
-  toSocketId?: string;
-  targetSocketIds: string[];
+  fromSocket?: DiagramSocketIdentifier;
+  toSocket?: DiagramSocketIdentifier;
+  possibleTargetSockets: DiagramSocketIdentifier[];
 };
 
 // Event payloads - emitted by generic diagram //////////////////////////////////
 export type MoveElementEvent = {
-  id: string;
-  diagramElementType: DiagramElementTypes;
+  element: DiagramElementIdentifier;
   position: Vector2d;
   isFinal: boolean;
 };
 export type DrawEdgeEvent = {
-  fromSocketId: string;
-  toSocketId: string;
+  fromNodeId: DiagramNodeId;
+  fromSocketId: DiagramSocketId;
+  toNodeId: DiagramNodeId;
+  toSocketId: DiagramSocketId;
 };
 export type DeleteElementsEvent = {
   elements: DiagramElementIdentifier[];
@@ -126,8 +152,7 @@ export type InsertElementEvent = {
 };
 
 export type RightClickElementEvent = {
-  id: string;
-  diagramElementType: DiagramElementTypes;
+  element: DiagramElementIdentifier;
   e: MouseEvent;
 };
 

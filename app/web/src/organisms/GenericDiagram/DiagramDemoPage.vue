@@ -45,8 +45,6 @@
 import { reactive, ref, watch } from "vue";
 import _ from "lodash";
 import { colors } from "@/utils/design_token_values";
-import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
-import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
 import { useThemeContainer, ThemeValue } from "@/ui-lib/theme_tools";
 import GenericDiagram from "./GenericDiagram.vue";
 import {
@@ -69,15 +67,12 @@ useThemeContainer(theme.value);
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 
 const customDiagramConfig = {
-  icons: {
-    docker: DockerIconRaw,
-    kubernetes: KubernetesIconRaw,
-  },
+  icons: {},
 };
 
 const getSockets = (nodeId: string): DiagramSocketDef[] => [
   {
-    id: `${nodeId}/str-in-1`,
+    id: `str-in-1`,
     label: "string 1 input",
     nodeSide: "left",
     maxConnections: 1,
@@ -85,7 +80,7 @@ const getSockets = (nodeId: string): DiagramSocketDef[] => [
     direction: "input",
   },
   {
-    id: `${nodeId}/str-in-2`,
+    id: `str-in-2`,
     label: "string 2 input",
     nodeSide: "left",
     maxConnections: 1,
@@ -93,7 +88,7 @@ const getSockets = (nodeId: string): DiagramSocketDef[] => [
     direction: "input",
   },
   {
-    id: `${nodeId}/num-in-1`,
+    id: `num-in-1`,
     label: "number 1 input",
     nodeSide: "left",
     maxConnections: 1,
@@ -101,7 +96,7 @@ const getSockets = (nodeId: string): DiagramSocketDef[] => [
     direction: "input",
   },
   {
-    id: `${nodeId}/str-out`,
+    id: `str-out`,
     label: "cool string output",
     nodeSide: "right",
     maxConnections: null,
@@ -109,7 +104,7 @@ const getSockets = (nodeId: string): DiagramSocketDef[] => [
     direction: "output",
   },
   {
-    id: `${nodeId}/num-out`,
+    id: `num-out`,
     label: "amazing number output",
     nodeSide: "right",
     maxConnections: null,
@@ -127,7 +122,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     position: { x: 0, y: 0 },
     sockets: getSockets("n1"),
     color: colors.action[500],
-    typeIcon: "docker",
+    typeIcon: "logo-docker",
     isLoading: false,
   },
   {
@@ -138,7 +133,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     position: { x: 250, y: 0 },
     sockets: getSockets("n2"),
     color: "#A752DE",
-    typeIcon: "docker",
+    typeIcon: "logo-docker",
     isLoading: false,
   },
   {
@@ -149,13 +144,13 @@ const nodes = reactive<DiagramNodeDef[]>([
     position: { x: 250, y: 200 },
     sockets: getSockets("n3"),
     color: "#C23E7F",
-    typeIcon: "kubernetes",
+    typeIcon: "logo-k8s",
     statusIcons: [
       { icon: "check-square", tone: "success" },
       { icon: "alert-circle", tone: "warning" },
       { icon: "x-circle", tone: "error" },
       { icon: "loader", tone: "info" },
-      // { icon: "docker", tone: "neutral" },
+      // { icon: "logo-docker", tone: "neutral" },
     ],
     isLoading: false,
   },
@@ -167,7 +162,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     position: { x: 500, y: 0 },
     sockets: getSockets("n4"),
     color: "#5AACAD",
-    typeIcon: "kubernetes",
+    typeIcon: "logo-k8s",
     isLoading: false,
   },
   {
@@ -178,7 +173,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     position: { x: 500, y: 200 },
     sockets: getSockets("n4"),
     color: "#FF9900",
-    typeIcon: "kubernetes",
+    typeIcon: "logo-k8s",
     isLoading: true,
   },
 ]);
@@ -200,14 +195,16 @@ const edges = reactive<DiagramEdgeDef[]>([
 ]);
 
 function onNodeMove(e: MoveElementEvent) {
-  const movedNode = nodes.find((n) => n.id === e.id);
+  const movedNode = nodes.find((n) => n.id === e.element.id);
   if (!movedNode) return;
   movedNode.position = e.position;
 }
 
 function onDrawEdge(e: DrawEdgeEvent) {
   edges.push({
+    fromNodeId: e.fromNodeId,
     fromSocketId: e.fromSocketId,
+    toNodeId: e.toNodeId,
     toSocketId: e.toSocketId,
     id: `${e.fromSocketId}/${_.uniqueId()}`,
   });
@@ -235,7 +232,7 @@ function onInsert(e: InsertElementEvent) {
         type: "regular",
         position: e.position,
         sockets: getSockets(`n${newNodeId}`),
-        typeIcon: "docker",
+        typeIcon: "logo-docker",
         isLoading: false,
       });
 
