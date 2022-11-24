@@ -84,6 +84,8 @@ const props = defineProps({
   submit: { type: Boolean },
 
   rounded: { type: Boolean },
+
+  hoverGlow: Boolean,
 });
 
 const emit = defineEmits(["click"]);
@@ -202,6 +204,7 @@ const computedClasses = computed(() => ({
   ...(props.size && { [`--size-${props.size}`]: true }),
   ...(props.tone && { [`--tone-${props.tone}`]: true }),
   "--rounded": !!props.rounded,
+  hoverGlow: !!props.hoverGlow,
 }));
 </script>
 
@@ -413,6 +416,22 @@ const computedClasses = computed(() => ({
 
   &.--rounded {
     border-radius: 9999px;
+  }
+}
+
+.hoverGlow:hover {
+  animation: glow_yellow 1s ease-in-out infinite alternate;
+}
+
+@keyframes glow_yellow {
+  from {
+    box-shadow: 0 0 10px #ff0, 0 0 20px #ff0, 0 0 30px #dd0, 0 0 40px #cc0,
+      0 0 50px #cc0;
+  }
+
+  to {
+    box-shadow: 0 0 20px #ff0, 0 0 30px #ff0, 0 0 40px #ff0, 0 0 50px #ff0,
+      0 0 60px #ff0;
   }
 }
 </style>

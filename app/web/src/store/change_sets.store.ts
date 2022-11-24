@@ -127,8 +127,6 @@ export function useChangeSetsStore() {
       },
       onActivated() {
         if (!workspaceId) return;
-
-        console.log("ACTIVATE CHANGE SETS STORE", workspaceId);
         this.FETCH_CHANGE_SETS();
         const stopWatchSelectedChangeSet = watch(
           () => this.selectedChangeSet,
@@ -155,9 +153,12 @@ export function useChangeSetsStore() {
             eventType: "ChangeSetCancelled",
             callback: this.FETCH_CHANGE_SETS,
           },
+          // TODO(Theo/Wendy) - for multiplayer support, we should add code to react if the change set you are using is merged by someone else
           {
             eventType: "ChangeSetApplied",
-            callback: this.FETCH_CHANGE_SETS,
+            callback: (id) => {
+              this.changeSetsById[id].status = ChangeSetStatus.Applied;
+            },
           },
           {
             eventType: "ChangeSetWritten",

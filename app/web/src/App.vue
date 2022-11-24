@@ -1,6 +1,12 @@
 <template>
   <RealtimeConnectionStatus />
   <router-view :key="selectedWorkspace?.id" />
+  <Teleport to="body">
+    <canvas
+      id="confetti"
+      class="fixed w-full h-full top-0 left-0 pointer-events-none z-100"
+    ></canvas>
+  </Teleport>
 </template>
 
 <script lang="ts" setup>
