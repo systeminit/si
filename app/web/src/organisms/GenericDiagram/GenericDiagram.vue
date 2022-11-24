@@ -918,6 +918,39 @@ function onDragElementsMove() {
       draggedElementsPositionsPreDrag.value?.[i],
       delta,
     );
+
+    // we need to check that the component isn't being dragged outside the frame
+    // if it is, then we need to stop the move operation from happening at the
+    // frame border
+    const frameSocketId = el.sockets?.find(x => x.label === "Frame")?.id;
+    const frameEdge = props.edges?.find(x => x.fromSocketId === frameSocketId)
+
+    if (frameEdge !== undefined && frameSocketId !== undefined) {
+      const f = frameEdge.toSocketId.split("-")[0];
+      console.log(f)
+
+      const nodeBg = kStage.findOne(`#node-${el.id}--bg`).attrs;
+
+      const object = {
+        x: newPosition.x - nodeBg.width / 2,
+        y: newPosition.y,
+        width: nodeBg.width,
+        height: nodeBg.height,
+      };
+
+      const frameRoot = kStage.findOne(`#node-${f}`).attrs;
+      const frameBody = kStage.findOne(`#node-${f}--body`).attrs;
+      const container = {
+        x: frameRoot.x - frameBody.width / 2,
+        y: frameRoot.y + frameBody.y,
+        width: frameBody.width,
+        height: frameBody.height,
+      };
+
+      if (!rectContainsAnother(object, container)) {
+        return;
+      }
+    }
     // track the position locally, so we don't need to rely on parent to store the temporary position
     movedElementPositions[el.id] = newPosition;
     emit("move-element", {

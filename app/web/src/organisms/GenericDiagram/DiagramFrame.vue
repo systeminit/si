@@ -184,7 +184,8 @@ const groupRef = ref();
 
 const frameTitle = `${props.node.subtitle}: 0 `;
 
-const nodeWidth = computed(() => 240);
+// TODO(Paul) recalculate the frame width based on the number of components
+const nodeWidth = computed(() => 500);
 const halfWidth = computed(() => nodeWidth.value / 2);
 // TODO(Victor): this is wrong. headerWidth should be the smallest value between the actual text width and nodeWidth
 const headerWidth = computed(() => nodeWidth.value * 0.75);
@@ -207,8 +208,9 @@ function recalcHeaderHeight() {
 }
 
 const nodeHeaderHeight = computed(() => headerTextHeight.value);
+// TODO(Paul) calculate the frame height based on the number of components it contains
 const nodeBodyHeight = computed(() => {
-  return 240;
+  return 500;
 });
 const nodeHeight = computed(
   () =>
