@@ -45,3 +45,15 @@ workspaceid: 1
   "visibility_change_set_pk": 2
 }
 
+### Connect Component to frame
+POST http://localhost:8080/api/diagram/connect_component_to_frame
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+workspaceid: 1
+
+{
+  "fromNodeId": 2,
+  "toNodeId": 1,
+  "visibility_change_set_pk": 1
+}
+

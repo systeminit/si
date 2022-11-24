@@ -170,6 +170,7 @@ import {
   DiagramElementTypes,
   InsertElementEvent,
   RightClickElementEvent,
+  ComponentAttachedEvent,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramEdge from "./DiagramEdge.vue";
@@ -190,6 +191,7 @@ import {
   vectorDistance,
   vectorAdd,
   checkRectanglesOverlap,
+  rectContainsAnother,
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
@@ -230,6 +232,10 @@ const emit = defineEmits<{
   (e: "insert-element", insertInfo: InsertElementEvent): void;
   (e: "draw-edge", drawEdgeInfo: DrawEdgeEvent): void;
   (e: "right-click-element", elRightClickInfo: RightClickElementEvent): void;
+  (
+    e: "attached-component",
+    componentAttachedEvent: ComponentAttachedEvent,
+  ): void;
 }>();
 
 const showDebugBar = false;
@@ -823,6 +829,38 @@ function endDragElements() {
   // fire off final move event, might want to clean up how this is done...
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!movedElementPositions[el.id]) return;
+
+    const nodeRoot = kStage.findOne(`#node-${el.id}`).attrs;
+    const nodeBg = kStage.findOne(`#node-${el.id}--bg`).attrs;
+
+    const object = {
+      x: nodeRoot.x - nodeBg.width / 2,
+      y: nodeRoot.y,
+      width: nodeBg.width,
+      height: nodeBg.height,
+    };
+
+    const containers = frames.value.filter((f) => {
+      const frameRoot = kStage.findOne(`#node-${f.id}`).attrs;
+      const frameBody = kStage.findOne(`#node-${f.id}--body`).attrs;
+      const container = {
+        x: frameRoot.x - frameBody.width / 2,
+        y: frameRoot.y + frameBody.y,
+        width: frameBody.width,
+        height: frameBody.height,
+      };
+
+      return rectContainsAnother(object, container);
+    });
+
+    // TODO(victor): In the future, we should deal with the case of a component being dragged into more than one frame
+    if (containers.length === 1) {
+      emit("attached-component", {
+        frameId: containers[0].id,
+        componentId: el.id,
+      });
+    }
+
     emit("move-element", {
       id: el.id,
       diagramElementType: "node",
@@ -1166,6 +1204,10 @@ function onNodeLayoutOrLocationChange(nodeId: string) {
   // record new socket locations (used to render edges)
   _.each(nodesById.value[nodeId].sockets, (socket) => {
     const socketShape = kStage.find(`#socket-${socket.id}`)?.[0];
+    // This ensures that the diagram won't try to create edges to/from hidden sockets
+    if (!socketShape) {
+      return;
+    }
     socketsLocationInfo[socket.id] = {
       center: socketShape.getAbsolutePosition(kStage),
     };

@@ -199,10 +199,10 @@ impl BuiltinSchemaHelpers {
 /// the [`MigrationDriver`].
 #[derive(Copy, Clone)]
 pub struct FuncCacheItem {
-    func_id: FuncId,
-    func_binding_id: FuncBindingId,
-    func_binding_return_value_id: FuncBindingReturnValueId,
-    func_argument_id: FuncArgumentId,
+    pub func_id: FuncId,
+    pub func_binding_id: FuncBindingId,
+    pub func_binding_return_value_id: FuncBindingReturnValueId,
+    pub func_argument_id: FuncArgumentId,
 }
 
 /// A driver providing caches and helper methods for efficiently creating builtin

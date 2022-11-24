@@ -5,6 +5,7 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::builtins::MigrationDriver;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::internal::InternalProviderError;
 use crate::{
@@ -14,8 +15,9 @@ use crate::{
     socket::{Socket, SocketError, SocketId},
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many,
-    AttributeContextBuilderError, AttributePrototypeError, AttributeValueError, DalContext,
-    HistoryEventError, InternalProvider, Prop, PropError, PropId, PropKind, Schema, SchemaId,
+    AttributeContextBuilderError, AttributePrototypeError, AttributeValueError, BuiltinsError,
+    DalContext, DiagramKind, ExternalProvider, ExternalProviderError, HistoryEventError,
+    InternalProvider, Prop, PropError, PropId, PropKind, Schema, SchemaId, SocketArity,
     StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy, WsEventError,
 };
 
@@ -49,6 +51,10 @@ pub enum SchemaVariantError {
     NotFound(SchemaVariantId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error(transparent)]
+    ExternalProvider(#[from] ExternalProviderError),
+    #[error(transparent)]
+    Builtins(#[from] Box<BuiltinsError>),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("root prop not found for schema variant: {0}")]
@@ -119,6 +125,28 @@ impl SchemaVariant {
         let root_prop = RootProp::new(ctx, *object.id()).await?;
 
         object.set_schema(ctx, &schema_id).await?;
+
+        // Create frame socket
+        let driver = MigrationDriver::new(ctx).await.map_err(Box::new)?;
+
+        let identity_func_item = driver
+            .get_func_item("si:identity")
+            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))
+            .map_err(Box::new)?;
+
+        let (_output_provider, _output_socket) = ExternalProvider::new_with_socket(
+            ctx,
+            schema_id,
+            *object.id(),
+            "Frame",
+            None,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::One,
+            DiagramKind::Configuration,
+        )
+        .await?;
 
         Ok((object, root_prop))
     }

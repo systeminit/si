@@ -40,6 +40,7 @@
       :controls-disabled="changeSetPanelRef?.showDialog === undefined"
       @insert-element="onDiagramInsertElement"
       @move-element="onDiagramMoveElement"
+      @attached-component="onAttachedComponent"
       @draw-edge="onDrawEdge"
       @delete-elements="onDiagramDelete"
       @update:selection="onDiagramUpdateSelection"
@@ -61,7 +62,7 @@
       <template v-if="isViewMode">
         Select a single component to see more details
       </template>
-      <template v-else>Select a single component to edit it </template>
+      <template v-else>Select a single component to edit it</template>
     </div>
   </SiPanel>
 </template>
@@ -89,6 +90,7 @@ import {
   DiagramElementIdentifier,
   DeleteElementsEvent,
   RightClickElementEvent,
+  ComponentAttachedEvent,
 } from "../GenericDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline.vue";
 import GlobalStatusOverlay from "../GlobalStatusOverlay.vue";
@@ -210,6 +212,10 @@ watch(
     }
   },
 );
+
+function onAttachedComponent({ frameId, componentId }: ComponentAttachedEvent) {
+  componentsStore.CONNECT_COMPONENT_TO_FRAME(componentId, frameId);
+}
 
 const statusStore = useStatusStore();
 </script>

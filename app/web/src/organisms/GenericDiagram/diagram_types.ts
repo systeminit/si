@@ -130,3 +130,8 @@ export type RightClickElementEvent = {
   diagramElementType: DiagramElementTypes;
   e: MouseEvent;
 };
+
+export type ComponentAttachedEvent = {
+  frameId: string;
+  componentId: string;
+};
