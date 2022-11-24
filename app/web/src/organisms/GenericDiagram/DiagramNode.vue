@@ -114,6 +114,7 @@
       <DiagramNodeSocket
         v-for="(socket, i) in leftSockets"
         :key="socket.id"
+        :node-id="node.id"
         :socket="socket"
         :y="i * SOCKET_GAP"
         :connected-edges="connectedEdges[socket.id]"
@@ -137,6 +138,7 @@
       <DiagramNodeSocket
         v-for="(socket, i) in rightSockets"
         :key="socket.id"
+        :node-id="node.id"
         :socket="socket"
         :y="i * SOCKET_GAP"
         :connected-edges="connectedEdges[socket.id]"

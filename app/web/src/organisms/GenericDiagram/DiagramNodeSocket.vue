@@ -1,7 +1,7 @@
 <template>
   <v-circle
     :config="{
-      id: `socket-${socket.id}`,
+      id: `socket-${nodeId}-${socket.id}`,
       x,
       y,
       width: socketSize,
@@ -36,6 +36,7 @@
 </template>
 
 <script lang="ts" setup>
+import _ from "lodash";
 import { KonvaEventObject } from "konva/lib/Node";
 import { computed, PropType } from "vue";
 import tinycolor from "tinycolor2";
@@ -43,6 +44,7 @@ import { useTheme } from "@/ui-lib/theme_tools";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeDef,
+  DiagramNodeId,
   DiagramSocketDef,
 } from "./diagram_types";
 
@@ -51,6 +53,9 @@ import { SOCKET_SIZE, DIAGRAM_FONT_FAMILY } from "./diagram_constants";
 const { theme } = useTheme();
 
 const props = defineProps({
+  nodeId: {
+    type: String as PropType<DiagramNodeId>,
+  },
   socket: {
     type: Object as PropType<DiagramSocketDef>,
     required: true,
@@ -72,15 +77,23 @@ const props = defineProps({
 
 const emit = defineEmits(["hover:start", "hover:end"]);
 
+const socketIdentifier = computed(() => ({
+  diagramElementType: "socket",
+  nodeId: props.nodeId,
+  id: props.socket.id,
+}));
+
 const isConnected = computed(() => props.connectedEdges.length >= 1);
 
 const state = computed(() => {
   if (props.drawEdgeState.active) {
-    if (props.drawEdgeState.fromSocketId === props.socket.id)
+    if (_.isEqual(props.drawEdgeState.fromSocket, socketIdentifier.value))
       return "draw_edge_from";
-    if (props.drawEdgeState.toSocketId === props.socket.id)
+    if (_.isEqual(props.drawEdgeState.toSocket, socketIdentifier.value))
       return "draw_edge_to";
-    if (props.drawEdgeState.targetSocketIds?.includes(props.socket.id))
+    if (
+      _.find(props.drawEdgeState.possibleTargetSockets, socketIdentifier.value)
+    )
       return "draw_edge_enabled";
     return "draw_edge_disabled";
   }

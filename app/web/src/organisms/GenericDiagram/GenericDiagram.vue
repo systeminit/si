@@ -77,8 +77,12 @@ overflow hidden */
           v-for="edge in edges"
           :key="edge.id"
           :edge="edge"
-          :from-point="socketsLocationInfo[edge.fromSocketId]?.center"
-          :to-point="socketsLocationInfo[edge.toSocketId]?.center"
+          :from-point="
+            getSocketLocationInfo(getEdgeSocketIdentifier(edge, 'from'))?.center
+          "
+          :to-point="
+            getSocketLocationInfo(getEdgeSocketIdentifier(edge, 'to'))?.center
+          "
           :is-hovered="elementIsHovered('edge', edge.id)"
           :is-selected="elementIsSelected('edge', edge.id)"
           @hover:start="onEdgeHoverStart(edge.id)"
@@ -127,9 +131,13 @@ overflow hidden */
         />
         <!-- new edge being drawn -->
         <DiagramNewEdge
-          v-if="drawEdgeActive"
-          :from-point="socketsLocationInfo[drawEdgeFromSocketId!]?.center"
-          :to-point="drawEdgeToSocketId ? socketsLocationInfo[drawEdgeToSocketId!]?.center : gridPointerPos"
+          v-if="drawEdgeActive && drawEdgeFromSocket"
+          :from-point="getSocketLocationInfo(drawEdgeFromSocket)?.center"
+          :to-point="
+            drawEdgeToSocket
+              ? getSocketLocationInfo(drawEdgeToSocket)?.center
+              : gridPointerPos
+          "
         />
       </v-layer>
     </v-stage>
@@ -171,6 +179,10 @@ import {
   InsertElementEvent,
   RightClickElementEvent,
   ComponentAttachedEvent,
+  DiagramSocketIdentifier,
+  DiagramNodeId,
+  DiagramSocketId,
+  DiagramEdgeIdentifier,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramEdge from "./DiagramEdge.vue";
@@ -221,7 +233,7 @@ const props = defineProps({
   // TODO: split this into controls for specific features rather than single toggle
   readOnly: { type: Boolean },
 
-  controlsDisabled: { type: Boolean, default: true },
+  controlsDisabled: { type: Boolean },
 });
 
 const emit = defineEmits<{
@@ -525,13 +537,11 @@ function onRightClick(ke: KonvaEventObject<MouseEvent>) {
   if (props.controlsDisabled) return;
   const e = ke.evt;
   e.preventDefault(); // do not show browser right click menu
-  if (hoveredElement.value?.diagramElementType === "node") {
-    emit("right-click-element", {
-      id: hoveredElement.value.id,
-      diagramElementType: hoveredElement.value.diagramElementType,
-      e,
-    });
-  }
+  if (!hoveredElement.value) return;
+  emit("right-click-element", {
+    element: hoveredElement.value,
+    e,
+  });
 }
 
 function checkIfDragStarted(_e: MouseEvent) {
@@ -558,7 +568,7 @@ function checkIfDragStarted(_e: MouseEvent) {
     lastMouseDownDiagramElement.value.diagramElementType === "socket"
   ) {
     // begin drawing edge
-    beginDrawEdge(lastMouseDownDiagramElement.value.id);
+    beginDrawEdge(lastMouseDownDiagramElement.value);
   } else if (lastMouseDownDiagramElement.value.diagramElementType === "edge") {
     // not sure what dragging an edge means... maybe nothing?
     console.log("dragging edge ?");
@@ -594,7 +604,11 @@ const hoveredElement = ref<DiagramElementIdentifier>();
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
 function onNodeHoverStart(nodeId: string, socketId?: string) {
   if (socketId) {
-    hoveredElement.value = { diagramElementType: "socket", id: socketId };
+    hoveredElement.value = {
+      diagramElementType: "socket",
+      id: socketId,
+      nodeId,
+    };
   } else {
     hoveredElement.value = { diagramElementType: "node", id: nodeId };
   }
@@ -862,8 +876,7 @@ function endDragElements() {
     }
 
     emit("move-element", {
-      id: el.id,
-      diagramElementType: "node",
+      element: { id: el.id, diagramElementType: "node" },
       position: movedElementPositions[el.id],
       isFinal: true,
     });
@@ -908,8 +921,7 @@ function onDragElementsMove() {
     // track the position locally, so we don't need to rely on parent to store the temporary position
     movedElementPositions[el.id] = newPosition;
     emit("move-element", {
-      id: el.id,
-      diagramElementType: "node",
+      element: { id: el.id, diagramElementType: "node" },
       position: newPosition,
       isFinal: false,
     });
@@ -1009,8 +1021,7 @@ function alignSelection(direction: Direction) {
     };
     movedElementPositions[el.id] = newPosition;
     emit("move-element", {
-      id: el.id,
-      diagramElementType: "node",
+      element: { id: el.id, diagramElementType: "node" },
       position: newPosition,
       isFinal: true,
     });
@@ -1030,8 +1041,7 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
     const newPosition = vectorAdd(el.position, nudgeVector);
     movedElementPositions[el.id] = newPosition;
     emit("move-element", {
-      id: el.id,
-      diagramElementType: "node",
+      element: { id: el.id, diagramElementType: "node" },
       position: newPosition,
       isFinal: true,
     });
@@ -1041,86 +1051,103 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
 
 // DRAWING EDGES ///////////////////////////////////////////////////////////////////////
 const drawEdgeActive = ref(false);
-const drawEdgeFromSocketId = ref<string>();
-const drawEdgeToSocketId = ref<string>();
-const drawEdgeTargetSocketIds = computed(() => {
-  if (!drawEdgeActive.value || !drawEdgeFromSocketId.value) return [];
-  const fromSocket = allSocketsById.value[drawEdgeFromSocketId.value];
-  const fromSocketNodeId = socketIdToNodeIdLookup.value[fromSocket.id].id;
+const drawEdgeFromSocket = ref<DiagramSocketIdentifier>();
+const drawEdgeToSocket = ref<DiagramSocketIdentifier>();
+const drawEdgeTargetSockets = computed(() => {
+  if (!drawEdgeActive.value || !drawEdgeFromSocket.value) return [];
+  const fromSocketDef = getSocket(drawEdgeFromSocket.value);
+  const fromSocketNodeId = drawEdgeFromSocket.value.nodeId;
   const fromSocketExistingEdges =
-    connectedEdgesByNodeIdBySocketId.value[fromSocketNodeId]?.[fromSocket.id];
-  const alreadyConnectedSocketIds = _.map(fromSocketExistingEdges, (edge) => {
-    return edge.fromSocketId === fromSocket.id
-      ? edge.toSocketId
-      : edge.fromSocketId;
+    connectedEdgesByNodeIdBySocketId.value[fromSocketNodeId]?.[
+      fromSocketDef.id
+    ];
+
+  const alreadyConnectedSockets = _.map(fromSocketExistingEdges, (edge) => {
+    const edgeSocketFrom = getEdgeSocketIdentifier(edge, "from");
+    const edgeSocketTo = getEdgeSocketIdentifier(edge, "to");
+    return _.isEqual(edgeSocketFrom, drawEdgeFromSocket.value)
+      ? edgeSocketTo
+      : edgeSocketFrom;
   });
   // check each socket if it's a possible "to" target to create an edge
-  const possibleToSockets = _.filter(allSockets.value, (toSocket) => {
+  const possibleToSockets = _.filter(allSocketIdentifiers.value, (toSocket) => {
+    const toSocketDef = getSocket(toSocket);
+    const toSocketNodeId = toSocket.nodeId;
+
     // sockets cannot connect to other sockets on the same node (for now - may want to revisit this)
-    const toSocketNodeId = socketIdToNodeIdLookup.value[toSocket.id].id;
     if (fromSocketNodeId === toSocketNodeId) return false;
     // cannot connect to a socket that is already connected
-    if (alreadyConnectedSocketIds.includes(toSocket.id)) return false;
-    if (fromSocket.direction === "input" && toSocket.direction === "input")
+    if (_.find(alreadyConnectedSockets, toSocket)) return false;
+    if (
+      fromSocketDef.direction === "input" &&
+      toSocketDef.direction === "input"
+    )
       return false;
-    if (fromSocket.direction === "output" && toSocket.direction === "output")
+    if (
+      fromSocketDef.direction === "output" &&
+      toSocketDef.direction === "output"
+    )
       return false;
 
     // now check socket "types"
     // TODO: probably will rework this - maybe use same type, or use edge types?
-    return fromSocket.type === toSocket.type;
+    return fromSocketDef.type === toSocketDef.type;
   });
-  return _.map(possibleToSockets, (s) => s.id);
+  return possibleToSockets;
 });
 const drawEdgeState = computed(() => {
-  const state: DiagramDrawEdgeState = {
+  return {
     active: drawEdgeActive.value,
-    fromSocketId: drawEdgeFromSocketId.value,
-    toSocketId: drawEdgeToSocketId.value,
-    targetSocketIds: drawEdgeTargetSocketIds.value,
-  };
-  return state;
+    fromSocket: drawEdgeFromSocket.value,
+    toSocket: drawEdgeToSocket.value,
+    possibleTargetSockets: drawEdgeTargetSockets.value,
+  } as DiagramDrawEdgeState;
 });
 
-function beginDrawEdge(fromSocketId: string) {
+function beginDrawEdge(fromSocket: DiagramSocketIdentifier) {
   drawEdgeActive.value = true;
-  drawEdgeFromSocketId.value = fromSocketId;
+  drawEdgeFromSocket.value = fromSocket;
 }
 function onDrawEdgeMove() {
   if (!gridPointerPos.value) return;
   // look through the possible target sockets, and find distances to the pointer
   const socketPointerDistances = _.map(
-    drawEdgeTargetSocketIds.value,
-    (socketId: string) => ({
-      id: socketId,
+    drawEdgeTargetSockets.value,
+    (socket: DiagramSocketIdentifier) => ({
+      socket,
       pointerDistance: vectorDistance(
         gridPointerPos.value!,
-        socketsLocationInfo[socketId]?.center,
+        getSocketLocationInfo(socket)?.center,
       ),
     }),
   );
   const nearest = _.minBy(socketPointerDistances, (d) => d.pointerDistance);
   // give a little buffer so the pointer will magnet to nearby sockets
   if (nearest && nearest.pointerDistance < SOCKET_SIZE * 2) {
-    drawEdgeToSocketId.value = nearest.id;
+    drawEdgeToSocket.value = nearest.socket;
   } else {
-    drawEdgeToSocketId.value = undefined;
+    drawEdgeToSocket.value = undefined;
   }
 }
 async function endDrawEdge() {
   drawEdgeActive.value = false;
-  if (!drawEdgeFromSocketId.value || !drawEdgeToSocketId.value) return;
+  if (!drawEdgeFromSocket.value || !drawEdgeToSocket.value) return;
 
   // if the user dragged from an input to an output, we'll reverse the direction when we fire off the event
   const swapDirection =
-    allSocketsById.value[drawEdgeFromSocketId.value].direction === "input";
+    getSocket(drawEdgeFromSocket.value).direction === "input";
+  const adjustedFrom = swapDirection
+    ? drawEdgeToSocket.value
+    : drawEdgeFromSocket.value;
+  const adjustedTo = swapDirection
+    ? drawEdgeFromSocket.value
+    : drawEdgeToSocket.value;
+
   emit("draw-edge", {
-    fromSocketId: swapDirection
-      ? drawEdgeToSocketId.value
-      : drawEdgeFromSocketId.value,
-    toSocketId: swapDirection
-      ? drawEdgeFromSocketId.value
-      : drawEdgeToSocketId.value,
+    fromNodeId: adjustedFrom.nodeId,
+    fromSocketId: adjustedFrom.id,
+    toNodeId: adjustedTo.nodeId,
+    toSocketId: adjustedTo.id,
   });
 }
 // ELEMENT ADDITION
@@ -1189,7 +1216,13 @@ function deleteSelected() {
 type NodeLocationInfo = { topLeft: Vector2d; width: number; height: number };
 type SocketLocationInfo = { center: Vector2d };
 const nodesLocationInfo = reactive<Record<string, NodeLocationInfo>>({});
-const socketsLocationInfo = reactive<Record<string, SocketLocationInfo>>({});
+const socketsLocationInfo = reactive<
+  Record<DiagramNodeId, Record<DiagramSocketId, SocketLocationInfo>>
+>({});
+
+function getSocketLocationInfo(socket: DiagramSocketIdentifier) {
+  return socketsLocationInfo[socket.nodeId]?.[socket.id] || undefined;
+}
 
 function onNodeLayoutOrLocationChange(nodeId: string) {
   // record node location/dimensions (used when drawing selection box)
@@ -1203,12 +1236,11 @@ function onNodeLayoutOrLocationChange(nodeId: string) {
 
   // record new socket locations (used to render edges)
   _.each(nodesById.value[nodeId].sockets, (socket) => {
-    const socketShape = kStage.find(`#socket-${socket.id}`)?.[0];
+    const socketShape = kStage.find(`#socket-${nodeId}-${socket.id}`)?.[0];
     // This ensures that the diagram won't try to create edges to/from hidden sockets
-    if (!socketShape) {
-      return;
-    }
-    socketsLocationInfo[socket.id] = {
+    if (!socketShape) return;
+    socketsLocationInfo[nodeId] ||= {};
+    socketsLocationInfo[nodeId][socket.id] = {
       center: socketShape.getAbsolutePosition(kStage),
     };
   });
@@ -1241,10 +1273,22 @@ const connectedEdgesByNodeIdBySocketId = computed(() => {
   return lookup;
 });
 
-const allSockets = computed(() =>
-  _.flatMap(props.nodes, (n) => n.sockets || []),
+const allSocketIdentifiers = computed<DiagramSocketIdentifier[]>(() =>
+  _.flatMap(props.nodes, (n) =>
+    _.map(n.sockets, (s) => ({
+      diagramElementType: "socket",
+      nodeId: n.id,
+      id: s.id,
+    })),
+  ),
 );
-const allSocketsById = computed(() => _.keyBy(allSockets.value, (s) => s.id));
+
+const socketsLookup = computed(() => {
+  return _.mapValues(
+    _.keyBy(props.nodes, (n) => n.id),
+    (node) => _.keyBy(node.sockets, (s) => s.id),
+  );
+});
 
 function getElement(el: DiagramElementIdentifier) {
   if (el.diagramElementType === "node") {
@@ -1252,8 +1296,23 @@ function getElement(el: DiagramElementIdentifier) {
   } else if (el.diagramElementType === "edge") {
     return _.find(props.edges, (e) => e.id === el.id);
   } else if (el.diagramElementType === "socket") {
-    return _.find(allSockets.value, (s) => s.id === el.id);
+    return getSocket(el);
   }
+}
+
+function getSocket(socket: DiagramSocketIdentifier) {
+  return socketsLookup.value[socket.nodeId]?.[socket.id];
+}
+
+function getEdgeSocketIdentifier(
+  edgeDef: DiagramEdgeDef,
+  fromOrTo: "from" | "to",
+) {
+  return {
+    diagramElementType: "socket",
+    nodeId: fromOrTo === "from" ? edgeDef.fromNodeId : edgeDef.toNodeId,
+    id: fromOrTo === "from" ? edgeDef.fromSocketId : edgeDef.toSocketId,
+  } as DiagramSocketIdentifier;
 }
 
 function recenter() {

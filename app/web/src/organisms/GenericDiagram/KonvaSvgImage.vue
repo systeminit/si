@@ -1,6 +1,6 @@
 /* small helper to load SVG images and show them in konva - with the ability to
 change the fill color. NOTE - this only works if the SVG has the fill set to
-"currentColor" in it's source */
+"currentColor" in its source */
 
 <template>
   <v-image ref="konvaImageRef" :config="konvaConfig" />
@@ -64,7 +64,7 @@ watchEffect(() => {
   }
   const imgBase64Src = `data:image/svg+xml;base64, ${btoa(svgString)}`;
 
-  // have to initialize and actual image DOM element and pass it into the konva element when it loads
+  // have to initialize an actual image DOM element and pass it into the konva element when it loads
   const img = new window.Image();
   img.src = imgBase64Src;
   img.onload = () => {

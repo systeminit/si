@@ -282,13 +282,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         getDependentComponents: (state) => (componentId: ComponentId) => {
           // TODO: this is ugly... much of this logic is duplicated in GenericDiagram
-          // will refactor to make socket ids to be non unique and include node id directly (rather than rely on .split("-"))
-          // then will move related logic back into the store...
 
           const connectedNodes: Record<ComponentId, ComponentId[]> = {};
           _.each(state.diagramEdges, (edge) => {
-            const fromNodeId = parseInt(edge.fromSocketId.split("-")[0]);
-            const toNodeId = parseInt(edge.toSocketId.split("-")[0]);
+            const fromNodeId = parseInt(edge.fromNodeId);
+            const toNodeId = parseInt(edge.toNodeId);
             connectedNodes[fromNodeId] ||= [];
             connectedNodes[fromNodeId].push(toNodeId);
           });
