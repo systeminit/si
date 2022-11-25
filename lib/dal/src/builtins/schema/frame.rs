@@ -45,7 +45,7 @@ async fn generic_frame(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsRe
         "Color",
         PropKind::String,
         None,
-        Some(root_prop.domain_prop_id),
+        Some(root_prop.si_prop_id),
         None,
     )
     .await?;
