@@ -98,7 +98,7 @@
       :config="{
         id: `node-${node.id}--overlay`,
         x: -halfWidth,
-        y: nodeHeaderHeight,
+        y: nodeHeaderHeight + FRAME_HEADER_BOTTOM_MARGIN,
         opacity: 0,
         listening: false,
       }"

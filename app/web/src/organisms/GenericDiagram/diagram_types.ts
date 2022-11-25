@@ -148,6 +148,7 @@ export type DeleteElementsEvent = {
 export type InsertElementEvent = {
   diagramElementType: DiagramElementTypes;
   position: Vector2d;
+  parent?: string;
   onComplete: () => void;
 };
 
