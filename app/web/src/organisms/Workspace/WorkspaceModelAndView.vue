@@ -151,7 +151,10 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
 
   const schemaId = componentsStore.selectedInsertSchemaId;
   componentsStore.selectedInsertSchemaId = null;
-  await componentsStore.CREATE_COMPONENT(schemaId, e.position);
+
+  // TODO These ids should be number from the start.
+  const parentId = parseInt(e.parent ?? "-1");
+  await componentsStore.CREATE_COMPONENT(schemaId, e.position, parentId);
 
   // TODO: we actually want the new node ID so we can watch for it in the updated data
   // but the API currently doesn't have it right away :(

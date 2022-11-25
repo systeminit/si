@@ -409,12 +409,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-        async CREATE_COMPONENT(schemaId: number, position: Vector2d) {
+        async CREATE_COMPONENT(
+          schemaId: number,
+          position: Vector2d,
+          parentId?: number,
+        ) {
           return new ApiRequest<{ node: DiagramNode }>({
             method: "post",
             url: "diagram/create_node",
             params: {
               schemaId,
+              parentId,
               x: position.x.toString(),
               y: position.y.toString(),
               ...visibilityParams,

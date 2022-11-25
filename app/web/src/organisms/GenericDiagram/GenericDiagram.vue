@@ -869,14 +869,34 @@ function endDragElements() {
 
     // TODO(victor): In the future, we should deal with the case of a component being dragged into more than one frame
     if (containers.length === 1) {
-      emit("attached-component", {
-        frameId: containers[0].id,
-        componentId: el.id,
-      });
+      const container = containers[0];
+      const containerFrameSocket = container.sockets?.find(
+        (s) => s.direction === "input" && s.label === "Frame",
+      );
+      const componentFrameSocket = el.sockets?.find(
+        (s) => s.direction === "output" && s.label === "Frame",
+      );
+
+      const frameEdge = props.edges.find(
+        (e) =>
+          e.toSocketId === containerFrameSocket?.id &&
+          e.fromSocketId === componentFrameSocket?.id,
+      );
+
+      // Ensure not to try to reconnect to connected frames
+      if (!frameEdge) {
+        emit("attached-component", {
+          frameId: container.id,
+          componentId: el.id,
+        });
+      }
     }
 
-    const frameInputSocket = el.sockets?.find(x => x.label === "Frame" && x.direction === "input")?.id;
-    const nodeIdsConnectedToFrame = props.edges.filter(x => x.toSocketId === frameInputSocket)
+    const frameInputSocket = el.sockets?.find(
+      (x) => x.label === "Frame" && x.direction === "input",
+    )?.id;
+    const nodeIdsConnectedToFrame = props.edges
+      .filter((x) => x.toSocketId === frameInputSocket)
       .map((x) => x.fromSocketId.split("-")[0]);
 
     for (const nodeId of nodeIdsConnectedToFrame) {
@@ -934,11 +954,12 @@ function onDragElementsMove() {
     // we need to check that the component isn't being dragged outside the frame
     // if it is, then we need to stop the move operation from happening at the
     // frame border
-    const frameSocketId = el.sockets?.find(x => x.label === "Frame")?.id;
-    const frameEdge = props.edges?.find(x => x.fromSocketId === frameSocketId)
+    const frameSocketId = el.sockets?.find((x) => x.label === "Frame")?.id;
+    const frameEdge = props.edges?.find(
+      (x) => x.fromSocketId === frameSocketId,
+    );
     if (frameEdge !== undefined && frameSocketId !== undefined) {
       const f = frameEdge.toSocketId.split("-")[0];
-      console.log(f)
 
       const nodeBg = kStage.findOne(`#node-${el.id}--bg`).attrs;
 
@@ -963,12 +984,15 @@ function onDragElementsMove() {
       }
     }
 
-    const frameInputSocket = el.sockets?.find(x => x.label === "Frame" && x.direction === "input")?.id;
-    const nodeIdsConnectedToFrame = props.edges.filter(x => x.toSocketId === frameInputSocket)
+    const frameInputSocket = el.sockets?.find(
+      (x) => x.label === "Frame" && x.direction === "input",
+    )?.id;
+    const nodeIdsConnectedToFrame = props.edges
+      .filter((x) => x.toSocketId === frameInputSocket)
       .map((x) => x.fromSocketId.split("-")[0]);
 
     for (const nodeId of nodeIdsConnectedToFrame) {
-      const childPosition = props.nodes?.find(x => x.id === nodeId)?.position
+      const childPosition = props.nodes?.find((x) => x.id === nodeId)?.position;
       if (childPosition === undefined) {
         continue;
       }
@@ -1236,6 +1260,28 @@ function triggerInsertElement() {
     throw new Error("insert element mode must be active");
   if (!gridPointerPos.value)
     throw new Error("Cursor must be in grid to insert element");
+
+  let parentNode;
+  if (hoveredElement.value) {
+    console.log(hoveredElement.value.id);
+
+    const frame = props.nodes.find((n) => {
+      if (n.id === hoveredElement.value?.id) {
+        const socket = n.sockets?.find(
+          (s) => s.type === "Frame" && s.direction === "input",
+        );
+        if (socket) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (frame) {
+      parentNode = frame;
+    }
+  }
+
   const insertId = _.uniqueId("insert-diagram-el");
   pendingInsertedElements[insertId] = {
     diagramElementType: insertElementType.value,
@@ -1249,6 +1295,7 @@ function triggerInsertElement() {
   emit("insert-element", {
     diagramElementType: insertElementType.value,
     position: gridPointerPos.value,
+    parent: parentNode?.id,
     onComplete: () => {
       delete pendingInsertedElements[insertId];
     },
