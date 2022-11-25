@@ -12,7 +12,7 @@
   <v-line
     v-if="points"
     :config="{
-      id: `edge-${edge.id}`,
+      id: edge.uniqueKey,
       points,
       stroke: strokeColor,
       strokeWidth: isHovered ? 3 : 2,
@@ -31,12 +31,12 @@ import { computed, PropType } from "vue";
 import { colors } from "@/utils/design_token_values";
 import { useTheme } from "@/ui-lib/theme_tools";
 import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
-import { DiagramEdgeDef } from "./diagram_types";
+import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLine } from "./utils/math";
 
 const props = defineProps({
   edge: {
-    type: Object as PropType<DiagramEdgeDef>,
+    type: Object as PropType<DiagramEdgeData>,
     required: true,
   },
   fromPoint: {

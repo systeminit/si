@@ -1,7 +1,7 @@
 <template>
   <v-circle
     :config="{
-      id: `socket-${nodeId}-${socket.id}`,
+      id: socket.uniqueKey,
       x,
       y,
       width: socketSize,
@@ -16,13 +16,13 @@
   <v-text
     ref="socketLabelRef"
     :config="{
-      x: socket.nodeSide === 'left' ? 15 : -nodeWidth + 15,
+      x: socket.def.nodeSide === 'left' ? 15 : -nodeWidth + 15,
       y: y - SOCKET_SIZE / 2,
       verticalAlign: 'middle',
-      align: socket.nodeSide === 'left' ? 'left' : 'right',
+      align: socket.def.nodeSide === 'left' ? 'left' : 'right',
       height: SOCKET_SIZE,
       width: nodeWidth - 30,
-      text: socket.label,
+      text: socket.def.label,
       padding: 0,
       fill: colors.labelText,
       wrap: 'none',
@@ -43,9 +43,8 @@ import tinycolor from "tinycolor2";
 import { useTheme } from "@/ui-lib/theme_tools";
 import {
   DiagramDrawEdgeState,
-  DiagramEdgeDef,
-  DiagramNodeId,
-  DiagramSocketDef,
+  DiagramEdgeData,
+  DiagramSocketData,
 } from "./diagram_types";
 
 import { SOCKET_SIZE, DIAGRAM_FONT_FAMILY } from "./diagram_constants";
@@ -53,15 +52,12 @@ import { SOCKET_SIZE, DIAGRAM_FONT_FAMILY } from "./diagram_constants";
 const { theme } = useTheme();
 
 const props = defineProps({
-  nodeId: {
-    type: String as PropType<DiagramNodeId>,
-  },
   socket: {
-    type: Object as PropType<DiagramSocketDef>,
+    type: Object as PropType<DiagramSocketData>,
     required: true,
   },
   connectedEdges: {
-    type: Array as PropType<DiagramEdgeDef[]>,
+    type: Array as PropType<DiagramEdgeData[]>,
     default: () => [],
   },
   drawEdgeState: {
@@ -77,22 +73,18 @@ const props = defineProps({
 
 const emit = defineEmits(["hover:start", "hover:end"]);
 
-const socketIdentifier = computed(() => ({
-  diagramElementType: "socket",
-  nodeId: props.nodeId,
-  id: props.socket.id,
-}));
-
 const isConnected = computed(() => props.connectedEdges.length >= 1);
 
 const state = computed(() => {
   if (props.drawEdgeState.active) {
-    if (_.isEqual(props.drawEdgeState.fromSocket, socketIdentifier.value))
+    if (props.drawEdgeState.fromSocketKey === props.socket.uniqueKey)
       return "draw_edge_from";
-    if (_.isEqual(props.drawEdgeState.toSocket, socketIdentifier.value))
+    if (props.drawEdgeState.toSocketKey === props.socket.uniqueKey)
       return "draw_edge_to";
     if (
-      _.find(props.drawEdgeState.possibleTargetSockets, socketIdentifier.value)
+      props.drawEdgeState.possibleTargetSocketKeys.includes(
+        props.socket.uniqueKey,
+      )
     )
       return "draw_edge_enabled";
     return "draw_edge_disabled";

@@ -65,12 +65,8 @@ pub struct SocketView {
 impl SocketView {
     pub async fn list(
         ctx: &DalContext,
-        node: &Node,
         schema_variant: &SchemaVariant,
     ) -> DiagramResult<Vec<Self>> {
-        let node_id = *node.id();
-        let node_id: i64 = node_id.into();
-
         Ok(schema_variant
             .sockets(ctx)
             .await?
@@ -79,7 +75,7 @@ impl SocketView {
                 let socket_id = *socket.id();
                 let socket_id: i64 = socket_id.into();
                 Self {
-                    id: format!("{}-{}", node_id, socket_id),
+                    id: socket_id.to_string(),
                     label: socket.name().to_owned(),
                     ty: socket.name().to_owned(),
                     // Note: it's not clear if this mapping is correct, and there is no backend support for bidirectional sockets for now
@@ -164,7 +160,7 @@ impl DiagramNodeView {
             category,
             subtitle: Some(component.name(ctx).await?),
             content: None,
-            sockets: Some(SocketView::list(ctx, node, schema_variant).await?),
+            sockets: Some(SocketView::list(ctx, schema_variant).await?),
             position: GridPoint {
                 x: position.x().parse()?,
                 y: position.y().parse()?,

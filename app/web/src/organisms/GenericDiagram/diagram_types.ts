@@ -12,33 +12,91 @@ export type Direction = "up" | "down" | "left" | "right";
 
 export type DiagramElementTypes = "node" | "socket" | "edge";
 
-// export type DiagramElementIdentifier = {
-//   diagramElementType: DiagramElementTypes;
-//   id: string;
-// };
+export type DiagramElementUniqueKey = string;
 
-type DiagramId = string;
-export type DiagramNodeId = DiagramId;
-export type DiagramSocketId = DiagramId;
+export abstract class DiagramElementData {
+  abstract get uniqueKey(): DiagramElementUniqueKey;
+}
+export class DiagramNodeData extends DiagramElementData {
+  public sockets: DiagramSocketData[];
+  constructor(readonly def: DiagramNodeDef) {
+    super();
+    this.sockets =
+      def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
+  }
 
-export type DiagramNodeIdentifier = {
-  diagramElementType: "node";
-  id: DiagramNodeId;
-};
-export type DiagramSocketIdentifier = {
-  diagramElementType: "socket";
-  nodeId: DiagramNodeId;
-  id: DiagramSocketId;
-};
-export type DiagramEdgeIdentifier = {
-  diagramElementType: "edge";
-  id: DiagramSocketId;
-};
+  static generateUniqueKey(id: string | number) {
+    return `n-${id}`;
+  }
+  get uniqueKey() {
+    return DiagramNodeData.generateUniqueKey(this.def.id);
+  }
+}
+export class DiagramGroupData extends DiagramElementData {
+  constructor(readonly def: DiagramNodeDef) {
+    super();
+  }
 
-export type DiagramElementIdentifier =
-  | DiagramNodeIdentifier
-  | DiagramSocketIdentifier
-  | DiagramEdgeIdentifier;
+  static generateUniqueKey(id: string | number) {
+    return `g-${id}`;
+  }
+  get uniqueKey() {
+    return DiagramGroupData.generateUniqueKey(this.def.id);
+  }
+}
+export class DiagramSocketData extends DiagramElementData {
+  constructor(
+    readonly parent: DiagramNodeData | DiagramGroupData,
+    readonly def: DiagramSocketDef,
+  ) {
+    super();
+  }
+
+  // socket ids are only assumed to be unique within their parent
+  static generateUniqueKey(parentKey: string, id: string | number) {
+    return `${parentKey}--s-${id}`;
+  }
+  get uniqueKey() {
+    return DiagramSocketData.generateUniqueKey(
+      this.parent.uniqueKey,
+      this.def.id,
+    );
+  }
+}
+export class DiagramEdgeData extends DiagramElementData {
+  constructor(readonly def: DiagramEdgeDef) {
+    super();
+  }
+
+  static generateUniqueKey(id: string | number) {
+    return `e-${id}`;
+  }
+  get uniqueKey() {
+    return DiagramEdgeData.generateUniqueKey(this.def.id);
+  }
+
+  // helpers to get the unique key of the node and sockets this edge is connected to
+  get fromNodeKey() {
+    return DiagramNodeData.generateUniqueKey(this.def.fromNodeId);
+  }
+  get toNodeKey() {
+    return DiagramNodeData.generateUniqueKey(this.def.toNodeId);
+  }
+  get fromSocketKey() {
+    return DiagramSocketData.generateUniqueKey(
+      DiagramNodeData.generateUniqueKey(this.def.fromNodeId),
+      this.def.fromSocketId,
+    );
+  }
+  get toSocketKey() {
+    return DiagramSocketData.generateUniqueKey(
+      DiagramNodeData.generateUniqueKey(this.def.toNodeId),
+      this.def.toSocketId,
+    );
+  }
+}
+
+type DiagramElementId = string;
 
 export type DiagramStatusIcon = {
   /* name/id of icon (registered in diagram config) */
@@ -51,7 +109,7 @@ export type DiagramStatusIcon = {
 
 export type DiagramNodeDef = {
   /** unique id of the node */
-  id: string;
+  id: DiagramElementId;
   /** node type within the context of the diagram */
   type?: string | null;
   /** category of diagram node */
@@ -78,7 +136,7 @@ export type DiagramNodeDef = {
 
 export type DiagramSocketDef = {
   /** unique id of the socket - should be unique across all sockets */
-  id: string;
+  id: DiagramElementId;
   /** label displayed with the socket */
   label: string;
   /** type - will only connect to sockets of the same type */
@@ -102,13 +160,13 @@ export type DiagramContent = {
 };
 
 export type DiagramEdgeDef = {
-  id: string;
+  id: DiagramElementId;
   type?: string;
   name?: string;
-  fromNodeId: DiagramNodeId;
-  fromSocketId: DiagramSocketId;
-  toNodeId: DiagramNodeId;
-  toSocketId: DiagramSocketId;
+  fromNodeId: DiagramElementId;
+  fromSocketId: DiagramElementId;
+  toNodeId: DiagramElementId;
+  toSocketId: DiagramElementId;
   isBidirectional?: boolean;
   // color
   // thickness
@@ -125,25 +183,26 @@ export type PendingInsertedElement = {
 
 export type DiagramDrawEdgeState = {
   active: boolean;
-  fromSocket?: DiagramSocketIdentifier;
-  toSocket?: DiagramSocketIdentifier;
-  possibleTargetSockets: DiagramSocketIdentifier[];
+  fromSocketKey?: DiagramElementUniqueKey;
+  toSocketKey?: DiagramElementUniqueKey;
+  possibleTargetSocketKeys: DiagramElementUniqueKey[];
 };
 
 // Event payloads - emitted by generic diagram //////////////////////////////////
 export type MoveElementEvent = {
-  element: DiagramElementIdentifier;
+  element: DiagramElementData;
   position: Vector2d;
   isFinal: boolean;
 };
 export type DrawEdgeEvent = {
-  fromNodeId: DiagramNodeId;
-  fromSocketId: DiagramSocketId;
-  toNodeId: DiagramNodeId;
-  toSocketId: DiagramSocketId;
+  fromSocket: DiagramSocketData;
+  toSocket: DiagramSocketData;
+};
+export type SelectElementEvent = {
+  elements: DiagramElementData[];
 };
 export type DeleteElementsEvent = {
-  elements: DiagramElementIdentifier[];
+  elements: DiagramElementData[];
 };
 export type InsertElementEvent = {
   diagramElementType: DiagramElementTypes;
@@ -153,11 +212,11 @@ export type InsertElementEvent = {
 };
 
 export type RightClickElementEvent = {
-  element: DiagramElementIdentifier;
+  element: DiagramElementData;
   e: MouseEvent;
 };
 
-export type ComponentAttachedEvent = {
-  frameId: string;
-  componentId: string;
+export type GroupEvent = {
+  group: DiagramGroupData;
+  element: DiagramNodeData | DiagramGroupData;
 };

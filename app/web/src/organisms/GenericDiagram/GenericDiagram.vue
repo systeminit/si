@@ -47,46 +47,42 @@ overflow hidden */
         :zoom-level="zoomLevel"
       />
       <v-layer>
-        <DiagramFrame
+        <!-- <DiagramFrame
           v-for="frame in frames"
           :key="frame.id"
           :node="frame"
           :temp-position="movedElementPositions[frame.id]"
-          :connected-edges="connectedEdgesByNodeIdBySocketId[frame.id]"
+          :connected-edges="connectedEdgesByElementKey[frame.uniqueKey]"
           :draw-edge-state="drawEdgeState"
           :is-hovered="elementIsHovered('node', frame.id)"
           :is-selected="elementIsSelected('node', frame.id)"
           @hover:start="(socketId) => onNodeHoverStart(frame.id, socketId)"
           @hover:end="(socketId) => onNodeHoverEnd(frame.id, socketId)"
           @resize="onNodeLayoutOrLocationChange(frame.id)"
-        />
+        /> -->
         <DiagramNode
-          v-for="node in nonFrameNodes"
-          :key="node.id"
+          v-for="node in nodes"
+          :key="node.uniqueKey"
           :node="node"
-          :temp-position="movedElementPositions[node.id]"
-          :connected-edges="connectedEdgesByNodeIdBySocketId[node.id]"
+          :temp-position="movedElementPositions[node.uniqueKey]"
+          :connected-edges="connectedEdgesByElementKey[node.uniqueKey]"
           :draw-edge-state="drawEdgeState"
-          :is-hovered="elementIsHovered('node', node.id)"
-          :is-selected="elementIsSelected('node', node.id)"
-          @hover:start="(socketId) => onNodeHoverStart(node.id, socketId)"
-          @hover:end="(socketId) => onNodeHoverEnd(node.id, socketId)"
-          @resize="onNodeLayoutOrLocationChange(node.id)"
+          :is-hovered="elementIsHovered(node)"
+          :is-selected="elementIsSelected(node)"
+          @hover:start="(socket) => onElementHoverStart(socket || node)"
+          @hover:end="(socket) => onElementHoverEnd(socket || node)"
+          @resize="onNodeLayoutOrLocationChange(node)"
         />
         <DiagramEdge
           v-for="edge in edges"
-          :key="edge.id"
+          :key="edge.uniqueKey"
           :edge="edge"
-          :from-point="
-            getSocketLocationInfo(getEdgeSocketIdentifier(edge, 'from'))?.center
-          "
-          :to-point="
-            getSocketLocationInfo(getEdgeSocketIdentifier(edge, 'to'))?.center
-          "
-          :is-hovered="elementIsHovered('edge', edge.id)"
-          :is-selected="elementIsSelected('edge', edge.id)"
-          @hover:start="onEdgeHoverStart(edge.id)"
-          @hover:end="onEdgeHoverEnd(edge.id)"
+          :from-point="getSocketLocationInfo(edge.fromSocketKey)?.center"
+          :to-point="getSocketLocationInfo(edge.toSocketKey)?.center"
+          :is-hovered="elementIsHovered(edge)"
+          :is-selected="elementIsSelected(edge)"
+          @hover:start="onElementHoverStart(edge)"
+          @hover:end="onElementHoverEnd(edge)"
         />
         <!-- placeholders for new inserted elements still processing -->
         <template
@@ -131,12 +127,10 @@ overflow hidden */
         />
         <!-- new edge being drawn -->
         <DiagramNewEdge
-          v-if="drawEdgeActive && drawEdgeFromSocket"
-          :from-point="getSocketLocationInfo(drawEdgeFromSocket)?.center"
+          v-if="drawEdgeActive"
+          :from-point="getSocketLocationInfo(drawEdgeFromSocketKey)?.center"
           :to-point="
-            drawEdgeToSocket
-              ? getSocketLocationInfo(drawEdgeToSocket)?.center
-              : gridPointerPos
+            getSocketLocationInfo(drawEdgeToSocketKey)?.center || gridPointerPos
           "
         />
       </v-layer>
@@ -169,7 +163,6 @@ import {
   DiagramConfig,
   DiagramDrawEdgeState,
   DiagramEdgeDef,
-  DiagramElementIdentifier,
   DiagramNodeDef,
   DrawEdgeEvent,
   MoveElementEvent,
@@ -178,11 +171,14 @@ import {
   DiagramElementTypes,
   InsertElementEvent,
   RightClickElementEvent,
-  ComponentAttachedEvent,
-  DiagramSocketIdentifier,
-  DiagramNodeId,
-  DiagramSocketId,
-  DiagramEdgeIdentifier,
+  DiagramNodeData,
+  DiagramGroupData,
+  DiagramEdgeData,
+  DiagramSocketData,
+  DiagramElementData,
+  DiagramElementUniqueKey,
+  SelectElementEvent,
+  GroupEvent,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramEdge from "./DiagramEdge.vue";
@@ -238,16 +234,13 @@ const props = defineProps({
 
 const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;
-  (e: "update:selection", newSelection: DiagramElementIdentifier[]): void;
+  (e: "update:selection", newSelection: SelectElementEvent): void;
   (e: "move-element", nodeMoveInfo: MoveElementEvent): void;
   (e: "delete-elements", deleteInfo: DeleteElementsEvent): void;
   (e: "insert-element", insertInfo: InsertElementEvent): void;
   (e: "draw-edge", drawEdgeInfo: DrawEdgeEvent): void;
   (e: "right-click-element", elRightClickInfo: RightClickElementEvent): void;
-  (
-    e: "attached-component",
-    componentAttachedEvent: ComponentAttachedEvent,
-  ): void;
+  (e: "group-elements", groupEvent: GroupEvent): void;
 }>();
 
 const showDebugBar = false;
@@ -471,7 +464,12 @@ const mouseIsDown = ref(false);
 const dragThresholdBroken = ref(false);
 const lastMouseDownEvent = ref<MouseEvent>();
 const lastMouseDownContainerPointerPos = ref<Vector2d>();
-const lastMouseDownDiagramElement = ref<DiagramElementIdentifier>();
+const lastMouseDownElementKey = ref<DiagramElementUniqueKey>();
+const lastMouseDownElement = computed(() =>
+  lastMouseDownElementKey.value
+    ? allElementsByKey.value[lastMouseDownElementKey.value]
+    : undefined,
+);
 function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   if (props.controlsDisabled) return;
   // not sure why, but this is being called twice, once with the konva event, and once with the bare event
@@ -486,7 +484,7 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   // store the mouse event, as we may want to know modifier keys that were held on the original click
   lastMouseDownEvent.value = e;
   // track the originally clicked element, as the mouse may move off of it while beginning the drag
-  lastMouseDownDiagramElement.value = hoveredElement.value;
+  lastMouseDownElementKey.value = hoveredElementKey.value;
 
   // for drag to pan, we start dragging right away since the user has enabled it by holding the space bar
   // for all other interactions, we watch to see if the user drags past some small threshold to begin the "drag"
@@ -558,21 +556,22 @@ function checkIfDragStarted(_e: MouseEvent) {
   dragThresholdBroken.value = true;
 
   // determine what kind of drag this is and trigger it
-  if (!lastMouseDownDiagramElement.value) {
+  if (!lastMouseDownElement.value) {
     // begin drag to multi-select
     beginDragSelect();
   } else if (props.readOnly) {
     // TODO: add controls for each of these modes...
     return;
-  } else if (
-    lastMouseDownDiagramElement.value.diagramElementType === "socket"
-  ) {
+  } else if (lastMouseDownElement.value instanceof DiagramSocketData) {
     // begin drawing edge
-    beginDrawEdge(lastMouseDownDiagramElement.value);
-  } else if (lastMouseDownDiagramElement.value.diagramElementType === "edge") {
+    beginDrawEdge(lastMouseDownElement.value);
+  } else if (lastMouseDownElement.value instanceof DiagramEdgeData) {
     // not sure what dragging an edge means... maybe nothing?
     console.log("dragging edge ?");
-  } else if (lastMouseDownDiagramElement.value.diagramElementType === "node") {
+  } else if (
+    lastMouseDownElement.value instanceof DiagramNodeData ||
+    lastMouseDownElement.value instanceof DiagramGroupData
+  ) {
     // begin moving selected nodes (and eventually other movable things like groups / annotations, etc...)
     beginDragElements();
   }
@@ -584,10 +583,7 @@ const cursor = computed(() => {
   if (dragToPanArmed.value) return "grab";
   if (dragSelectActive.value) return "crosshair";
 
-  if (
-    !props.readOnly &&
-    hoveredElement.value?.diagramElementType === "socket"
-  ) {
+  if (!props.readOnly && hoveredElement.value instanceof DiagramSocketData) {
     return "cell";
   }
   if (drawEdgeActive.value) return "cell";
@@ -596,32 +592,24 @@ const cursor = computed(() => {
   return "auto";
 });
 
-// node hovering
+// hovering behaviour
 
-// we track these things separately rather than as a single general item because hovering a socket also means hovering over the node
-const hoveredElement = ref<DiagramElementIdentifier>();
+const hoveredElementKey = ref<string>();
+const hoveredElement = computed(() =>
+  hoveredElementKey.value
+    ? allElementsByKey.value[hoveredElementKey.value]
+    : undefined,
+);
 // same event and handler is used for both hovering nodes and sockets
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
-function onNodeHoverStart(nodeId: string, socketId?: string) {
-  if (socketId) {
-    hoveredElement.value = {
-      diagramElementType: "socket",
-      id: socketId,
-      nodeId,
-    };
-  } else {
-    hoveredElement.value = { diagramElementType: "node", id: nodeId };
-  }
+
+function onElementHoverStart(el: DiagramElementData, meta?: any) {
+  hoveredElementKey.value = el.uniqueKey;
 }
-function onNodeHoverEnd(_nodeId: string, _socketId?: string) {
-  hoveredElement.value = undefined;
+function onElementHoverEnd(el: DiagramElementData, meta?: any) {
+  hoveredElementKey.value = undefined;
 }
-function onEdgeHoverStart(edgeId: string) {
-  hoveredElement.value = { diagramElementType: "edge", id: edgeId };
-}
-function onEdgeHoverEnd(_edgeId: string) {
-  hoveredElement.value = undefined;
-}
+
 const disableHoverEvents = computed(() => {
   if (dragToPanArmed.value || dragToPanActive.value) return true;
   if (dragElementsActive.value) return true;
@@ -663,84 +651,84 @@ function endDragToPan() {
 }
 
 // ELEMENT SELECTION /////////////////////////////////////////////////////////////////////////////////
-const _rawSelection = ref<DiagramElementIdentifier[]>([]);
-const currentSelection = computed({
+const _rawSelectionKeys = ref<DiagramElementUniqueKey[]>([]);
+const currentSelectionKeys = computed({
   get() {
-    return _rawSelection.value;
+    return _rawSelectionKeys.value;
   },
   set(newSelection) {
-    const sortedDeduped = _.sortBy(_.uniq(newSelection), "id");
+    const sortedDeduped = _.sortBy(_.uniq(newSelection));
     // don't set the array if it's the same, helps us only care about actual changes
-    if (_.isEqual(currentSelection.value, sortedDeduped)) return;
-    _rawSelection.value = sortedDeduped;
+    if (_.isEqual(currentSelectionKeys.value, sortedDeduped)) return;
+    _rawSelectionKeys.value = sortedDeduped;
   },
 });
-function setSelection(
-  toSelect: DiagramElementIdentifier | DiagramElementIdentifier[],
+const currentSelectionElements = computed(() =>
+  _.map(currentSelectionKeys.value, (key) => allElementsByKey.value[key]),
+);
+
+function setSelectionByKey(
+  toSelect?: DiagramElementUniqueKey | DiagramElementUniqueKey[],
 ) {
-  currentSelection.value = _.isArray(toSelect) ? toSelect : [toSelect];
+  if (!toSelect) currentSelectionKeys.value = [];
+  else currentSelectionKeys.value = _.isArray(toSelect) ? toSelect : [toSelect];
 }
+
 // toggles selected items in the selection (used when shift clicking)
-function toggleSelected(
-  toToggle: DiagramElementIdentifier | DiagramElementIdentifier[],
+function toggleSelectedByKey(
+  toToggle: DiagramElementUniqueKey | DiagramElementUniqueKey[],
 ) {
-  const newval = _.xorBy(
-    currentSelection.value,
+  const newval = _.xor(
+    currentSelectionKeys.value,
     _.isArray(toToggle) ? toToggle : [toToggle],
-    // comparator helper - this is a bit weird but it's not a fn to compare 2 items, its a fn to create a value used in the comparison
-    (el) => `${el.diagramElementType}--${el.id}`,
   );
-  currentSelection.value = newval;
+  currentSelectionKeys.value = newval;
 }
 function clearSelection() {
-  currentSelection.value = [];
+  currentSelectionKeys.value = [];
 }
-watch(currentSelection, () => {
-  emit("update:selection", currentSelection.value);
+watch(currentSelectionKeys, () => {
+  emit("update:selection", { elements: currentSelectionElements.value });
 });
-function elementIsHovered(diagramElementType: string, id: string) {
-  return (
-    !disableHoverEvents.value &&
-    _.isEqual(hoveredElement.value, { diagramElementType, id })
-  );
+function elementIsHovered(el: DiagramElementData) {
+  return !disableHoverEvents.value && hoveredElementKey.value === el.uniqueKey;
 }
-function elementIsSelected(diagramElementType: string, id: string) {
+function elementIsSelected(el: DiagramElementData) {
   if (dragSelectActive.value) {
-    return !!_.find(dragSelectSelectionPreview.value, {
-      diagramElementType,
-      id,
-    });
+    return dragSelectPreviewKeys.value.includes(el.uniqueKey);
   } else {
-    return !!_.find(currentSelection.value, { diagramElementType, id });
+    return currentSelectionKeys.value.includes(el.uniqueKey);
   }
 }
 
 const handleSelectionOnMouseUp = ref(false);
 function handleMouseDownSelection() {
   handleSelectionOnMouseUp.value = false;
+
+  console.log(hoveredElement.value);
   // handle clicking nothing / background grid
-  if (!hoveredElement.value) {
+  if (!hoveredElementKey.value) {
     // we clear selection on mousedown unless shift is held
     // in which case it could be beginning of drag to select, so we handle on mouseup
-    if (!shiftKeyIsDown.value) clearSelection();
-    else handleSelectionOnMouseUp.value = true;
+    if (shiftKeyIsDown.value) handleSelectionOnMouseUp.value = true;
+    else clearSelection();
     return;
   }
 
   // nodes can be multi-selected, so we have some extra behaviour
   // TODO: other elements may also share this behaviour
-  if (hoveredElement.value.diagramElementType === "node") {
+  if (hoveredElement.value instanceof DiagramNodeData) {
     // when clicking on an element that is NOT currently selected, we act right away
     // but if the element IS selected, this could be beginning of dragging
     // so we handle selection on mouseup if the user never fully started to drag
-    if (!_.find(currentSelection.value, hoveredElement.value)) {
-      if (shiftKeyIsDown.value) toggleSelected(hoveredElement.value);
-      else setSelection(hoveredElement.value);
+    if (!currentSelectionKeys.value.includes(hoveredElementKey.value)) {
+      if (shiftKeyIsDown.value) toggleSelectedByKey(hoveredElementKey.value);
+      else setSelectionByKey(hoveredElementKey.value);
     } else {
       handleSelectionOnMouseUp.value = true;
     }
   } else {
-    setSelection(hoveredElement.value);
+    setSelectionByKey(hoveredElementKey.value);
   }
 }
 
@@ -749,24 +737,25 @@ function handleMouseDownSelection() {
 // NOTE - this only fires if the user never breaks the drag distance threshold
 function handleMouseUpSelection() {
   if (!handleSelectionOnMouseUp.value || dragThresholdBroken.value) return;
-  const clickedEl = lastMouseDownDiagramElement.value;
+  const clickedEl = lastMouseDownElement.value;
 
   if (!clickedEl) clearSelection();
-  else if (lastMouseDownEvent.value?.shiftKey) toggleSelected(clickedEl);
-  else setSelection(clickedEl);
+  else if (lastMouseDownEvent.value?.shiftKey)
+    toggleSelectedByKey(clickedEl.uniqueKey);
+  else setSelectionByKey(clickedEl.uniqueKey);
 }
 
 // DRAG SELECT BOX //////////////////////////////////////////////////////
 const dragSelectActive = ref(false);
 const dragSelectStartPos = ref<Vector2d>();
 const dragSelectEndPos = ref<Vector2d>();
-const dragSelectSelectionPreview = ref<DiagramElementIdentifier[]>([]);
+const dragSelectPreviewKeys = ref<DiagramElementUniqueKey[]>([]);
 const SELECTION_BOX_INNER_COLOR = tinycolor(SELECTION_COLOR)
   .setAlpha(0.4)
   .toRgbString();
 function beginDragSelect() {
   if (!containerPointerPos.value) return;
-  dragSelectSelectionPreview.value = [];
+  dragSelectPreviewKeys.value = [];
   dragSelectActive.value = true;
   // this triggers after the user breaks the dragging threshold, so we don't start at current position, but where they clicked
   dragSelectStartPos.value = convertContainerCoordsToGridCoords(
@@ -777,8 +766,8 @@ function beginDragSelect() {
 function onDragSelectMove() {
   dragSelectEndPos.value = gridPointerPos.value;
 
-  const selectedInBox: DiagramElementIdentifier[] = [];
-  _.each(nodesLocationInfo, (nodeLocation, nodeId) => {
+  const selectedInBoxKeys: DiagramElementUniqueKey[] = [];
+  _.each(nodesLocationInfo, (nodeLocation, nodeKey) => {
     const inSelectionBox = checkRectanglesOverlap(
       dragSelectStartPos.value!,
       dragSelectEndPos.value!,
@@ -788,133 +777,109 @@ function onDragSelectMove() {
         y: nodeLocation.topLeft.y + nodeLocation.height,
       },
     );
-    if (inSelectionBox)
-      selectedInBox.push({ diagramElementType: "node", id: nodeId });
+    if (inSelectionBox) selectedInBoxKeys.push(nodeKey);
   });
   // if holding shift key, we'll add/toggle the existing selection with what's in the box
   // NOTE - weird edge cases around what if you let go of shift after beginning the drag which we are ignoring
   if (lastMouseDownEvent.value?.shiftKey) {
-    dragSelectSelectionPreview.value = _.xorBy(
-      currentSelection.value,
-      selectedInBox,
-      // see note in toggleSelected()
-      (el) => `${el.diagramElementType}--${el.id}`,
+    dragSelectPreviewKeys.value = _.xorBy(
+      currentSelectionKeys.value,
+      selectedInBoxKeys,
     );
   } else {
-    dragSelectSelectionPreview.value = selectedInBox;
+    dragSelectPreviewKeys.value = selectedInBoxKeys;
   }
 }
 function endDragSelect(doSelection = true) {
   dragSelectActive.value = false;
-  if (doSelection) setSelection(dragSelectSelectionPreview.value);
+  if (doSelection) setSelectionByKey(dragSelectPreviewKeys.value);
 }
 
 // MOVING DIAGRAM ELEMENTS (nodes/groups/annotations/etc) ///////////////////////////////////////
-const movedElementPositions = reactive<Record<string, Vector2d>>({});
+const movedElementPositions = reactive<
+  Record<DiagramElementUniqueKey, Vector2d>
+>({});
 const dragElementsActive = ref(false);
-const currentSelectionMovableElements = computed(() => {
-  const draggableElIds = _.filter(
-    currentSelection.value,
-    (el) => el.diagramElementType === "node",
-  );
-  const draggableEls = _.compact(_.map(draggableElIds, getElement));
-  return draggableEls as DiagramNodeDef[];
-});
+const currentSelectionMovableElements = computed(
+  () =>
+    _.filter(
+      currentSelectionElements.value,
+      (el) => "position" in el.def,
+    ) as unknown as (DiagramNodeData | DiagramGroupData)[],
+);
 
 const draggedElementsPositionsPreDrag = ref<Vector2d[]>();
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 function beginDragElements() {
-  if (!lastMouseDownDiagramElement.value) return;
+  if (!lastMouseDownElement.value) return;
   dragElementsActive.value = true;
-  // TODO: better type here... wanting to use the helper which can return anything, but it will only be a "movable" element
-  // const draggedElement = getElement(
-  //   lastMouseDownDiagramElement.value,
-  // ) as DiagramNodeDef;
 
   totalScrolledDuringDrag.value = { x: 0, y: 0 };
 
   draggedElementsPositionsPreDrag.value = _.map(
     currentSelectionMovableElements.value,
-    (el) => movedElementPositions[el.id] || el.position!,
+    (el) => movedElementPositions[el.uniqueKey] || el.def.position,
   );
+  console.log(draggedElementsPositionsPreDrag.value);
 }
 function endDragElements() {
   dragElementsActive.value = false;
   // fire off final move event, might want to clean up how this is done...
   _.each(currentSelectionMovableElements.value, (el) => {
-    if (!movedElementPositions[el.id]) return;
+    if (!movedElementPositions[el.uniqueKey]) return;
 
-    const nodeRoot = kStage.findOne(`#node-${el.id}`).attrs;
-    const nodeBg = kStage.findOne(`#node-${el.id}--bg`).attrs;
+    // handle dragging items into a group
+    // TODO: turn this back on!
 
-    const object = {
-      x: nodeRoot.x - nodeBg.width / 2,
-      y: nodeRoot.y,
-      width: nodeBg.width,
-      height: nodeBg.height,
-    };
+    // const nodeRoot = kStage.findOne(`#${el.uniqueKey}}`).attrs;
+    // const nodeBg = kStage.findOne(`#${el.uniqueKey}--bg`).attrs;
 
-    const containers = frames.value.filter((f) => {
-      const frameRoot = kStage.findOne(`#node-${f.id}`).attrs;
-      const frameBody = kStage.findOne(`#node-${f.id}--body`).attrs;
-      const container = {
-        x: frameRoot.x - frameBody.width / 2,
-        y: frameRoot.y + frameBody.y,
-        width: frameBody.width,
-        height: frameBody.height,
-      };
+    // const object = {
+    //   x: nodeRoot.x - nodeBg.width / 2,
+    //   y: nodeRoot.y,
+    //   width: nodeBg.width,
+    //   height: nodeBg.height,
+    // };
 
-      return rectContainsAnother(object, container);
-    });
+    // // TODO(victor): In the future, we should deal with the case of a component being dragged into more than one frame
 
-    // TODO(victor): In the future, we should deal with the case of a component being dragged into more than one frame
-    if (containers.length === 1) {
-      const container = containers[0];
-      const containerFrameSocket = container.sockets?.find(
-        (s) => s.direction === "input" && s.label === "Frame",
-      );
-      const componentFrameSocket = el.sockets?.find(
-        (s) => s.direction === "output" && s.label === "Frame",
-      );
+    // const newContainingGroup = frames.value.filter((f) => {
+    //   const frameRoot = kStage.findOne(`#node-${f.id}`).attrs;
+    //   const frameBody = kStage.findOne(`#node-${f.id}--body`).attrs;
+    //   const container = {
+    //     x: frameRoot.x - frameBody.width / 2,
+    //     y: frameRoot.y + frameBody.y,
+    //     width: frameBody.width,
+    //     height: frameBody.height,
+    //   };
 
-      const frameEdge = props.edges.find(
-        (e) =>
-          e.toSocketId === containerFrameSocket?.id &&
-          e.fromSocketId === componentFrameSocket?.id,
-      );
+    //   return rectContainsAnother(object, container);
+    // });
 
-      // Ensure not to try to reconnect to connected frames
-      if (!frameEdge) {
-        emit("attached-component", {
-          frameId: container.id,
-          componentId: el.id,
-        });
-      }
-    }
+    // if (newContainingGroup) {
+    //   emit("group-element", {
+    //     group: newContainingGroup,
+    //     element: el,
+    //   });
+    // }
 
-    const frameInputSocket = el.sockets?.find(
-      (x) => x.label === "Frame" && x.direction === "input",
-    )?.id;
-    const nodeIdsConnectedToFrame = props.edges
-      .filter((x) => x.toSocketId === frameInputSocket)
-      .map((x) => x.fromSocketId.split("-")[0]);
+    // const frameInputSocket = el.sockets?.find(x => x.label === "Frame" && x.direction === "input")?.id;
+    // const nodeIdsConnectedToFrame = props.edges.filter(x => x.toSocketId === frameInputSocket)
+    //   .map((x) => x.fromSocketId.split("-")[0]);
 
-    for (const nodeId of nodeIdsConnectedToFrame) {
-      emit("move-element", {
-        element: { id: nodeId, diagramElementType: "node" },
-        position: movedElementPositions[nodeId],
-        isFinal: true,
-      });
-    }
+    // for (const nodeId of nodeIdsConnectedToFrame) {
+    //   emit("move-element", {
+    //     element: { id: nodeId, diagramElementType: "node" },
+    //     position: movedElementPositions[nodeId],
+    //     isFinal: true,
+    //   });
+    // }
 
     emit("move-element", {
-      element: { id: el.id, diagramElementType: "node" },
-      position: movedElementPositions[el.id],
+      element: el,
+      position: movedElementPositions[el.uniqueKey],
       isFinal: true,
     });
-
-    // TODO: probably should remove the temp position, but since the backend is super slow, we'll leave it for now
-    // delete movedElementPositions[el.id];
   });
 }
 
@@ -951,66 +916,67 @@ function onDragElementsMove() {
       delta,
     );
 
-    // we need to check that the component isn't being dragged outside the frame
-    // if it is, then we need to stop the move operation from happening at the
-    // frame border
-    const frameSocketId = el.sockets?.find((x) => x.label === "Frame")?.id;
-    const frameEdge = props.edges?.find(
-      (x) => x.fromSocketId === frameSocketId,
-    );
-    if (frameEdge !== undefined && frameSocketId !== undefined) {
-      const f = frameEdge.toSocketId.split("-")[0];
+    // // we need to check that the component isn't being dragged outside the frame
+    // // if it is, then we need to stop the move operation from happening at the
+    // // frame border
+    // const frameSocketId = el.sockets?.find((x) => x.label === "Frame")?.id;
+    // const frameEdge = props.edges?.find(
+    //   (x) => x.fromSocketId === frameSocketId,
+    // );
+    // if (frameEdge !== undefined && frameSocketId !== undefined) {
+    //   const f = frameEdge.toSocketId.split("-")[0];
+    //   console.log(f);
 
-      const nodeBg = kStage.findOne(`#node-${el.id}--bg`).attrs;
+    //   const nodeBg = kStage.findOne(`#node-${el.id}--bg`).attrs;
 
-      const object = {
-        x: newPosition.x - nodeBg.width / 2,
-        y: newPosition.y,
-        width: nodeBg.width,
-        height: nodeBg.height,
-      };
+    //   const object = {
+    //     x: newPosition.x - nodeBg.width / 2,
+    //     y: newPosition.y,
+    //     width: nodeBg.width,
+    //     height: nodeBg.height,
+    //   };
 
-      const frameRoot = kStage.findOne(`#node-${f}`).attrs;
-      const frameBody = kStage.findOne(`#node-${f}--body`).attrs;
-      const container = {
-        x: frameRoot.x - frameBody.width / 2,
-        y: frameRoot.y + frameBody.y,
-        width: frameBody.width,
-        height: frameBody.height,
-      };
+    //   const frameRoot = kStage.findOne(`#node-${f}`).attrs;
+    //   const frameBody = kStage.findOne(`#node-${f}--body`).attrs;
+    //   const container = {
+    //     x: frameRoot.x - frameBody.width / 2,
+    //     y: frameRoot.y + frameBody.y,
+    //     width: frameBody.width,
+    //     height: frameBody.height,
+    //   };
 
-      if (!rectContainsAnother(object, container)) {
-        return;
-      }
-    }
+    //   if (!rectContainsAnother(object, container)) {
+    //     return;
+    //   }
+    // }
 
-    const frameInputSocket = el.sockets?.find(
-      (x) => x.label === "Frame" && x.direction === "input",
-    )?.id;
-    const nodeIdsConnectedToFrame = props.edges
-      .filter((x) => x.toSocketId === frameInputSocket)
-      .map((x) => x.fromSocketId.split("-")[0]);
+    // const frameInputSocket = el.sockets?.find(
+    //   (x) => x.label === "Frame" && x.direction === "input",
+    // )?.id;
+    // const nodeIdsConnectedToFrame = props.edges
+    //   .filter((x) => x.toSocketId === frameInputSocket)
+    //   .map((x) => x.fromSocketId.split("-")[0]);
 
-    for (const nodeId of nodeIdsConnectedToFrame) {
-      const childPosition = props.nodes?.find((x) => x.id === nodeId)?.position;
-      if (childPosition === undefined) {
-        continue;
-      }
+    // for (const nodeId of nodeIdsConnectedToFrame) {
+    //   const childPosition = props.nodes?.find((x) => x.id === nodeId)?.position;
+    //   if (childPosition === undefined) {
+    //     continue;
+    //   }
 
-      const newChildPosition = vectorAdd(childPosition, delta);
-      // track the position locally, so we don't need to rely on parent to store the temporary position
-      movedElementPositions[nodeId] = newChildPosition;
-      emit("move-element", {
-        element: { id: nodeId, diagramElementType: "node" },
-        position: newChildPosition,
-        isFinal: false,
-      });
-    }
+    //   const newChildPosition = vectorAdd(childPosition, delta);
+    //   // track the position locally, so we don't need to rely on parent to store the temporary position
+    //   movedElementPositions[nodeId] = newChildPosition;
+    //   emit("move-element", {
+    //     element: { id: nodeId, diagramElementType: "node" },
+    //     position: newChildPosition,
+    //     isFinal: false,
+    //   });
+    // }
 
     // track the position locally, so we don't need to rely on parent to store the temporary position
-    movedElementPositions[el.id] = newPosition;
+    movedElementPositions[el.uniqueKey] = newPosition;
     emit("move-element", {
-      element: { id: el.id, diagramElementType: "node" },
+      element: el,
       position: newPosition,
       isFinal: false,
     });
@@ -1095,7 +1061,7 @@ function alignSelection(direction: Direction) {
   let alignedY: number | undefined;
   const positions = _.map(
     currentSelectionMovableElements.value,
-    (el) => el.position,
+    (el) => el.def.position,
   );
   const xPositions = _.map(positions, (p) => p.x);
   const yPositions = _.map(positions, (p) => p.y);
@@ -1105,12 +1071,12 @@ function alignSelection(direction: Direction) {
   else if (direction === "right") alignedX = _.max(xPositions);
   _.each(currentSelectionMovableElements.value, (el) => {
     const newPosition = {
-      x: alignedX === undefined ? el.position.x : alignedX,
-      y: alignedY === undefined ? el.position.y : alignedY,
+      x: alignedX === undefined ? el.def.position.x : alignedX,
+      y: alignedY === undefined ? el.def.position.y : alignedY,
     };
-    movedElementPositions[el.id] = newPosition;
+    movedElementPositions[el.uniqueKey] = newPosition;
     emit("move-element", {
-      element: { id: el.id, diagramElementType: "node" },
+      element: el,
       position: newPosition,
       isFinal: true,
     });
@@ -1127,10 +1093,10 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
     down: { x: 0, y: 1 * nudgeSize },
   }[direction];
   _.each(currentSelectionMovableElements.value, (el) => {
-    const newPosition = vectorAdd(el.position, nudgeVector);
-    movedElementPositions[el.id] = newPosition;
+    const newPosition = vectorAdd(el.def.position, nudgeVector);
+    movedElementPositions[el.uniqueKey] = newPosition;
     emit("move-element", {
-      element: { id: el.id, diagramElementType: "node" },
+      element: el,
       position: newPosition,
       isFinal: true,
     });
@@ -1140,82 +1106,74 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
 
 // DRAWING EDGES ///////////////////////////////////////////////////////////////////////
 const drawEdgeActive = ref(false);
-const drawEdgeFromSocket = ref<DiagramSocketIdentifier>();
-const drawEdgeToSocket = ref<DiagramSocketIdentifier>();
-const drawEdgeTargetSockets = computed(() => {
-  if (!drawEdgeActive.value || !drawEdgeFromSocket.value) return [];
-  const fromSocketDef = getSocket(drawEdgeFromSocket.value);
-  const fromSocketNodeId = drawEdgeFromSocket.value.nodeId;
-  const fromSocketExistingEdges =
-    connectedEdgesByNodeIdBySocketId.value[fromSocketNodeId]?.[
-      fromSocketDef.id
-    ];
+const drawEdgeFromSocketKey = ref<DiagramElementUniqueKey>();
+const drawEdgeFromSocket = computed(
+  () => getElementByKey(drawEdgeFromSocketKey.value) as DiagramSocketData,
+);
+const drawEdgeToSocketKey = ref<DiagramElementUniqueKey>();
+const drawEdgeToSocket = computed(
+  () => getElementByKey(drawEdgeToSocketKey.value) as DiagramSocketData,
+);
+const drawEdgePossibleTargetSocketKeys = computed(() => {
+  const fromSocket = drawEdgeFromSocket.value;
+  if (!drawEdgeActive.value || !fromSocket) return [];
 
-  const alreadyConnectedSockets = _.map(fromSocketExistingEdges, (edge) => {
-    const edgeSocketFrom = getEdgeSocketIdentifier(edge, "from");
-    const edgeSocketTo = getEdgeSocketIdentifier(edge, "to");
-    return _.isEqual(edgeSocketFrom, drawEdgeFromSocket.value)
-      ? edgeSocketTo
-      : edgeSocketFrom;
-  });
-  // check each socket if it's a possible "to" target to create an edge
-  const possibleToSockets = _.filter(allSocketIdentifiers.value, (toSocket) => {
-    const toSocketDef = getSocket(toSocket);
-    const toSocketNodeId = toSocket.nodeId;
-
-    // sockets cannot connect to other sockets on the same node (for now - may want to revisit this)
-    if (fromSocketNodeId === toSocketNodeId) return false;
+  const existingEdges = connectedEdgesByElementKey.value[fromSocket.uniqueKey];
+  const existingConnectedSocketKeys = _.map(existingEdges, (edge) =>
+    edge.fromSocketKey === fromSocket.uniqueKey
+      ? edge.toSocketKey
+      : edge.fromSocketKey,
+  );
+  const possibleSockets = _.filter(sockets.value, (possibleToSocket) => {
+    // cannot connect sockets to other sockets on same node (at least not currently)
+    if (possibleToSocket.parent === fromSocket.parent) return false;
     // cannot connect to a socket that is already connected
-    if (_.find(alreadyConnectedSockets, toSocket)) return false;
-    if (
-      fromSocketDef.direction === "input" &&
-      toSocketDef.direction === "input"
-    )
+    if (existingConnectedSocketKeys.includes(possibleToSocket.uniqueKey))
       return false;
-    if (
-      fromSocketDef.direction === "output" &&
-      toSocketDef.direction === "output"
-    )
+    // inputs must be connected to outputs (or bidirectional sockets)
+    if (fromSocket.def.direction === possibleToSocket.def.direction)
       return false;
 
     // now check socket "types"
     // TODO: probably will rework this - maybe use same type, or use edge types?
-    return fromSocketDef.type === toSocketDef.type;
+    return fromSocket.def.type === possibleToSocket.def.type;
   });
-  return possibleToSockets;
+  return _.map(possibleSockets, (s) => s.uniqueKey);
 });
+
 const drawEdgeState = computed(() => {
   return {
     active: drawEdgeActive.value,
-    fromSocket: drawEdgeFromSocket.value,
-    toSocket: drawEdgeToSocket.value,
-    possibleTargetSockets: drawEdgeTargetSockets.value,
+    fromSocketKey: drawEdgeFromSocketKey.value,
+    toSocketKey: drawEdgeToSocketKey.value,
+    possibleTargetSocketKeys: drawEdgePossibleTargetSocketKeys.value,
   } as DiagramDrawEdgeState;
 });
 
-function beginDrawEdge(fromSocket: DiagramSocketIdentifier) {
+function beginDrawEdge(fromSocket: DiagramSocketData) {
   drawEdgeActive.value = true;
-  drawEdgeFromSocket.value = fromSocket;
+  drawEdgeFromSocketKey.value = fromSocket.uniqueKey;
+  drawEdgeToSocketKey.value = undefined;
 }
 function onDrawEdgeMove() {
   if (!gridPointerPos.value) return;
   // look through the possible target sockets, and find distances to the pointer
   const socketPointerDistances = _.map(
-    drawEdgeTargetSockets.value,
-    (socket: DiagramSocketIdentifier) => ({
-      socket,
+    drawEdgePossibleTargetSocketKeys.value,
+    (socketKey) => ({
+      socketKey,
       pointerDistance: vectorDistance(
         gridPointerPos.value!,
-        getSocketLocationInfo(socket)?.center,
+        socketsLocationInfo[socketKey]?.center,
       ),
     }),
   );
   const nearest = _.minBy(socketPointerDistances, (d) => d.pointerDistance);
   // give a little buffer so the pointer will magnet to nearby sockets
   if (nearest && nearest.pointerDistance < SOCKET_SIZE * 2) {
-    drawEdgeToSocket.value = nearest.socket;
+    drawEdgeToSocketKey.value = nearest.socketKey;
   } else {
-    drawEdgeToSocket.value = undefined;
+    drawEdgeToSocketKey.value = undefined;
   }
 }
 async function endDrawEdge() {
@@ -1223,8 +1181,7 @@ async function endDrawEdge() {
   if (!drawEdgeFromSocket.value || !drawEdgeToSocket.value) return;
 
   // if the user dragged from an input to an output, we'll reverse the direction when we fire off the event
-  const swapDirection =
-    getSocket(drawEdgeFromSocket.value).direction === "input";
+  const swapDirection = drawEdgeFromSocket.value.def.direction === "input";
   const adjustedFrom = swapDirection
     ? drawEdgeToSocket.value
     : drawEdgeFromSocket.value;
@@ -1232,11 +1189,10 @@ async function endDrawEdge() {
     ? drawEdgeFromSocket.value
     : drawEdgeToSocket.value;
 
+  console.log(adjustedFrom, adjustedTo);
   emit("draw-edge", {
-    fromNodeId: adjustedFrom.nodeId,
-    fromSocketId: adjustedFrom.id,
-    toNodeId: adjustedTo.nodeId,
-    toSocketId: adjustedTo.id,
+    fromSocket: adjustedFrom,
+    toSocket: adjustedTo,
   });
 }
 // ELEMENT ADDITION
@@ -1263,10 +1219,10 @@ function triggerInsertElement() {
 
   let parentNode;
   if (hoveredElement.value) {
-    console.log(hoveredElement.value.id);
+    console.log(hoveredElement.value.def.id);
 
     const frame = props.nodes.find((n) => {
-      if (n.id === hoveredElement.value?.id) {
+      if (n.id === hoveredElement.value?.def.id) {
         const socket = n.sockets?.find(
           (s) => s.type === "Frame" && s.direction === "input",
         );
@@ -1305,127 +1261,100 @@ function triggerInsertElement() {
 
 // ELEMENT DELETION ////////////////////////////////////////////////////////////////////
 function deleteSelected() {
-  if (!currentSelection.value?.length) return;
-  const selected = currentSelection.value;
+  if (!currentSelectionElements.value?.length) return;
+  const selected = currentSelectionElements.value;
   // when deleting a node, we also have to delete any attached edges
   const additionalEdgesToDelete = _.flatMap(selected, (el) => {
-    if (el.diagramElementType !== "node") return [];
-    return _.flatMap(connectedEdgesByNodeIdBySocketId.value[el.id]);
+    if (el instanceof DiagramNodeData) return [];
+    return _.flatMap(connectedEdgesByElementKey.value[el.uniqueKey]);
   });
   // have to dedupe in case we are deleting both nodes connected to an edge
-  const uniqueEdgesToDelete = _.uniqBy(additionalEdgesToDelete, (e) => e.id);
-  const edgeEls: DiagramElementIdentifier[] = _.map(
-    uniqueEdgesToDelete,
-    (e) => ({
-      diagramElementType: "edge",
-      id: e.id,
-    }),
-  );
-  emit("delete-elements", { elements: [...selected, ...edgeEls] });
+  const uniqueEdgesToDelete = _.uniq(additionalEdgesToDelete);
+  emit("delete-elements", { elements: [...selected, ...uniqueEdgesToDelete] });
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////
 type NodeLocationInfo = { topLeft: Vector2d; width: number; height: number };
 type SocketLocationInfo = { center: Vector2d };
 const nodesLocationInfo = reactive<Record<string, NodeLocationInfo>>({});
-const socketsLocationInfo = reactive<
-  Record<DiagramNodeId, Record<DiagramSocketId, SocketLocationInfo>>
->({});
+const socketsLocationInfo = reactive<Record<string, SocketLocationInfo>>({});
 
-function getSocketLocationInfo(socket: DiagramSocketIdentifier) {
-  return socketsLocationInfo[socket.nodeId]?.[socket.id] || undefined;
+function getSocketLocationInfo(socketKey?: DiagramElementUniqueKey) {
+  if (!socketKey) return undefined;
+  console.log("get socket locaiton", socketKey, socketsLocationInfo[socketKey]);
+  return socketsLocationInfo[socketKey];
 }
 
-function onNodeLayoutOrLocationChange(nodeId: string) {
+function onNodeLayoutOrLocationChange(node: DiagramNodeData) {
   // record node location/dimensions (used when drawing selection box)
   // we find the background shape, because the parent group has no dimensions
-  const nodeBgShape = kStage.find(`#node-${nodeId}--bg`)?.[0];
-  nodesLocationInfo[nodeId] = {
+  const nodeBgShape = kStage.find(`#${node.uniqueKey}--bg`)?.[0];
+  nodesLocationInfo[node.uniqueKey] = {
     topLeft: nodeBgShape.getAbsolutePosition(kStage),
     width: nodeBgShape.width(),
     height: nodeBgShape.height(),
   };
 
   // record new socket locations (used to render edges)
-  _.each(nodesById.value[nodeId].sockets, (socket) => {
-    const socketShape = kStage.find(`#socket-${nodeId}-${socket.id}`)?.[0];
+  _.each(node.sockets, (socket) => {
+    const socketShape = kStage.find(`#${socket.uniqueKey}`)?.[0];
     // This ensures that the diagram won't try to create edges to/from hidden sockets
     if (!socketShape) return;
-    socketsLocationInfo[nodeId] ||= {};
-    socketsLocationInfo[nodeId][socket.id] = {
+    socketsLocationInfo[socket.uniqueKey] = {
       center: socketShape.getAbsolutePosition(kStage),
     };
   });
+  console.log(socketsLocationInfo);
 }
 
 // DIAGRAM CONTENTS HELPERS //////////////////////////////////////////////////
-const nodesById = computed(() => _.keyBy(props.nodes, (n) => n.id));
-const socketIdToNodeIdLookup = computed(() => {
-  const lookup: Record<string, DiagramNodeDef> = {};
-  _.each(props.nodes, (node) => {
-    _.each(node.sockets, (socket) => {
-      lookup[socket.id] = nodesById.value[node.id];
-    });
-  });
-  return lookup;
-});
 
-const connectedEdgesByNodeIdBySocketId = computed(() => {
-  const lookup: Record<string, Record<string, DiagramEdgeDef[]>> = {};
-  _.each(props.edges, (edge) => {
-    const fromNode = socketIdToNodeIdLookup.value[edge.fromSocketId];
-    const toNode = socketIdToNodeIdLookup.value[edge.toSocketId];
-    lookup[fromNode.id] ||= {};
-    lookup[fromNode.id][edge.fromSocketId] ||= [];
-    lookup[fromNode.id][edge.fromSocketId].push(edge);
-    lookup[toNode.id] ||= {};
-    lookup[toNode.id][edge.toSocketId] ||= [];
-    lookup[toNode.id][edge.toSocketId].push(edge);
-  });
-  return lookup;
-});
+// const nodes = ref([] as DiagramNode[]);
+// const sockets = ref([] as DiagramSocket[]);
+// const edges = ref([] as DiagramEdge[]);
 
-const allSocketIdentifiers = computed<DiagramSocketIdentifier[]>(() =>
-  _.flatMap(props.nodes, (n) =>
-    _.map(n.sockets, (s) => ({
-      diagramElementType: "socket",
-      nodeId: n.id,
-      id: s.id,
-    })),
+const nodes = computed(() =>
+  _.map(props.nodes, (nodeDef) => new DiagramNodeData(nodeDef)),
+);
+const groups = computed(() =>
+  // props.groups?
+  _.map([], (groupDef) => new DiagramGroupData(groupDef)),
+);
+const sockets = computed(() => _.flatMap(nodes.value, (node) => node.sockets));
+const edges = computed(() =>
+  _.map(props.edges, (edgeDef) => new DiagramEdgeData(edgeDef)),
+);
+
+// quick ways to look up specific element data from a unique key
+const nodesByKey = computed(() => _.keyBy(nodes.value, (e) => e.uniqueKey));
+const groupsByKey = computed(() => _.keyBy(groups.value, (e) => e.uniqueKey));
+const socketsByKey = computed(() => _.keyBy(sockets.value, (e) => e.uniqueKey));
+const edgesByKey = computed(() => _.keyBy(edges.value, (e) => e.uniqueKey));
+const allElementsByKey = computed(() =>
+  _.keyBy(
+    [...nodes.value, ...groups.value, ...sockets.value, ...edges.value],
+    (e) => e.uniqueKey,
   ),
 );
 
-const socketsLookup = computed(() => {
-  return _.mapValues(
-    _.keyBy(props.nodes, (n) => n.id),
-    (node) => _.keyBy(node.sockets, (s) => s.id),
-  );
+function getElementByKey(key?: DiagramElementUniqueKey) {
+  return key ? allElementsByKey.value[key] : undefined;
+}
+
+const connectedEdgesByElementKey = computed(() => {
+  const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
+  _.each(edgesByKey.value, (edge) => {
+    lookup[edge.fromNodeKey] ||= [];
+    lookup[edge.fromNodeKey].push(edge);
+    lookup[edge.toNodeKey] ||= [];
+    lookup[edge.toNodeKey].push(edge);
+    lookup[edge.fromSocketKey] ||= [];
+    lookup[edge.fromSocketKey].push(edge);
+    lookup[edge.toSocketKey] ||= [];
+    lookup[edge.toSocketKey].push(edge);
+  });
+  return lookup;
 });
-
-function getElement(el: DiagramElementIdentifier) {
-  if (el.diagramElementType === "node") {
-    return _.find(props.nodes, (n) => n.id === el.id);
-  } else if (el.diagramElementType === "edge") {
-    return _.find(props.edges, (e) => e.id === el.id);
-  } else if (el.diagramElementType === "socket") {
-    return getSocket(el);
-  }
-}
-
-function getSocket(socket: DiagramSocketIdentifier) {
-  return socketsLookup.value[socket.nodeId]?.[socket.id];
-}
-
-function getEdgeSocketIdentifier(
-  edgeDef: DiagramEdgeDef,
-  fromOrTo: "from" | "to",
-) {
-  return {
-    diagramElementType: "socket",
-    nodeId: fromOrTo === "from" ? edgeDef.fromNodeId : edgeDef.toNodeId,
-    id: fromOrTo === "from" ? edgeDef.fromSocketId : edgeDef.toSocketId,
-  } as DiagramSocketIdentifier;
-}
 
 function recenter() {
   gridOrigin.value = { x: 0, y: 0 };
@@ -1444,7 +1373,7 @@ useZoomLevelProvider(zoomLevel);
 defineExpose({
   setZoom,
   recenter,
-  setSelection,
+  setSelection: setSelectionByKey,
   clearSelection,
   beginInsertElement,
   endInsertElement,
