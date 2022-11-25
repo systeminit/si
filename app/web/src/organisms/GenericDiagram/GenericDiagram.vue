@@ -829,7 +829,7 @@ function beginDragElements() {
   // TODO: better type here... wanting to use the helper which can return anything, but it will only be a "movable" element
   // const draggedElement = getElement(
   //   lastMouseDownDiagramElement.value,
-  // ) as DiagramNodeDef; 
+  // ) as DiagramNodeDef;
 
   totalScrolledDuringDrag.value = { x: 0, y: 0 };
 

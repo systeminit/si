@@ -169,9 +169,14 @@ impl DiagramNodeView {
                 x: position.x().parse()?,
                 y: position.y().parse()?,
             },
-            color: schema_variant
-                .color()
-                .map(|color_int| format!("#{color_int:x}")),
+            color: component
+                .find_value_by_json_pointer::<String>(ctx, "/root/si/Color")
+                .await?
+                .or_else(|| {
+                    schema_variant
+                        .color()
+                        .map(|color_int| format!("#{color_int:x}"))
+                }),
         })
     }
 

@@ -182,7 +182,7 @@ const diagramConfig = useDiagramConfig();
 const titleTextRef = ref();
 const groupRef = ref();
 
-const frameTitle = `${props.node.subtitle}: 0 `;
+const frameTitle = computed(() => `${props.node.subtitle}: 0 `);
 
 // TODO(Paul) recalculate the frame width based on the number of components
 const nodeWidth = computed(() => 500);
