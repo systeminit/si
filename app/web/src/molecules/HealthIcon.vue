@@ -1,19 +1,19 @@
 <template>
-  <span class="flex flex-row whitespace-nowrap">
+  <span class="flex flex-row">
     <Icon
       :name="icon.name"
-      class="pr-2"
+      class="pr-2 mr-2"
       :class="icon.class"
       size="lg"
       :title="`Health: ${props.health}`"
     />
 
-    <span class="flex flex-col" :title="props.message.join('\n')">
+    <span class="flex flex-col w-full h-full break-words" :title="props.message.join('\n')">
       <strong v-for="(message, index) in props.message" :key="message" class="mt-1 ml-1">
         {{message}}
         <button
           v-if="index === 0 && details.length > 0"
-          class="underline text-action-400 ml-2"
+          class="underline text-action-400"
           @click="openModal"
         >
           View Details

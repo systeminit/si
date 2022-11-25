@@ -268,7 +268,7 @@ impl MigrationDriver {
         Ok(())
     }
 
-    /// Add a [`FuncCacheItem`] for a given [`Func`](crate::Func) name.
+    /// Add a `FuncCacheItem` for a given [`Func`](crate::Func) name.
     pub async fn add_func_item(
         &mut self,
         ctx: &DalContext,
@@ -311,7 +311,7 @@ impl MigrationDriver {
         Ok(())
     }
 
-    /// Get a [`FuncCacheItem`] (from the cache) for a given [`Func`](crate::Func) name.
+    /// Get a `FuncCacheItem` (from the cache) for a given [`Func`](crate::Func) name.
     pub fn get_func_item(&self, name: impl AsRef<str>) -> Option<FuncCacheItem> {
         self.func_item_cache.get(name.as_ref()).copied()
     }

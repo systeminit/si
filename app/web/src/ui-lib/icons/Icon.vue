@@ -13,7 +13,7 @@
 
 <template>
   <div
-    class="icon"
+    class="icon shrink-0"
     :class="
       clsx(
         'block',
