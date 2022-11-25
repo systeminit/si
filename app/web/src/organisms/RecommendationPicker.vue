@@ -27,7 +27,7 @@
             :disabled="
               selectedRecommendations.length < 1 ||
               fixesStore.populatingFixes ||
-              fixesStore.runningFixBatch !== undefined
+              (fixesStore.runningFixBatch !== undefined && fixesStore.completedFixesOnRunningBatch.length < fixesStore.fixesOnRunningBatch.length)
             "
             icon="tools"
             tone="action"

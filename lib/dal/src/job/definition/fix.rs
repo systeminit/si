@@ -132,17 +132,7 @@ impl JobConsumer for FixesJob {
         }
 
         if self.fixes.is_empty() {
-            // Mark the batch as completed.
-            let mut batch = FixBatch::get_by_id(ctx, &self.batch_id)
-                .await?
-                .ok_or(JobConsumerError::MissingFixBatch(self.batch_id))?;
-            let batch_completion_status = batch.stamp_finished(ctx).await?;
-            WsEvent::fix_batch_return(ctx, *batch.id(), batch_completion_status)
-                .publish(ctx)
-                .await?;
-
-            ctx.enqueue_job(Confirmations::new(ctx)).await;
-            return Ok(());
+            return finish_batch(ctx, self.batch_id).await;
         }
         let fix_item = &self.fixes[0];
 
@@ -239,12 +229,16 @@ impl JobConsumer for FixesJob {
         .publish(ctx)
         .await?;
 
-        ctx.enqueue_job(FixesJob::new_iteration(
-            ctx,
-            self.fixes.iter().skip(1).cloned().collect(),
-            self.batch_id,
-        ))
-        .await;
+        if self.fixes.len() == 1 {
+            finish_batch(ctx, self.batch_id).await?;
+        } else {
+            ctx.enqueue_job(FixesJob::new_iteration(
+                ctx,
+                self.fixes.iter().skip(1).cloned().collect(),
+                self.batch_id,
+            ))
+            .await;
+        }
 
         Ok(())
     }
@@ -276,4 +270,18 @@ impl TryFrom<faktory_async::Job> for FixesJob {
             faktory_job: Some(faktory_job_info),
         })
     }
+}
+
+async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()> {
+    // Mark the batch as completed.
+    let mut batch = FixBatch::get_by_id(ctx, &id)
+        .await?
+        .ok_or(JobConsumerError::MissingFixBatch(id))?;
+    let batch_completion_status = batch.stamp_finished(ctx).await?;
+    WsEvent::fix_batch_return(ctx, *batch.id(), batch_completion_status)
+        .publish(ctx)
+        .await?;
+
+    ctx.enqueue_job(Confirmations::new(ctx)).await;
+    Ok(())
 }

@@ -25,6 +25,7 @@ pub struct Recommendation {
     name: String,
     component_name: String,
     component_id: ComponentId,
+    schema_name: String,
     recommendation: String,
     recommendation_kind: ActionKind,
     status: RecommendationStatus,
@@ -80,6 +81,7 @@ impl Recommendation {
                 views.push(Recommendation {
                     id: *resolver.id(),
                     name: workflow_prototype.title().to_owned(),
+                    schema_name: schema.name().to_owned(),
                     component_name: Component::name_from_context(
                         ctx,
                         AttributeReadContext {

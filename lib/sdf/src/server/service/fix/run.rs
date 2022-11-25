@@ -5,8 +5,8 @@ use super::{FixError, FixResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::job::definition::{FixItem, FixesJob};
 use dal::{
-    ComponentId, ConfirmationResolverId, Fix, FixBatch, HistoryActor, StandardModel, User,
-    Visibility,
+    ComponentId, ConfirmationResolverId, Fix, FixBatch, FixBatchId, HistoryActor, StandardModel,
+    User, Visibility,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -28,7 +28,7 @@ pub struct FixesRunRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FixesRunResponse {
-    success: bool,
+    id: FixBatchId,
 }
 
 pub async fn run(
@@ -67,5 +67,5 @@ pub async fn run(
 
     ctx.commit().await?;
 
-    Ok(Json(FixesRunResponse { success: true }))
+    Ok(Json(FixesRunResponse { id: *batch.id() }))
 }

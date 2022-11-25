@@ -2,8 +2,8 @@ use axum::{extract::Query, Json};
 use dal::fix::FixError as DalFixError;
 use dal::ComponentError as DalComponentError;
 use dal::{
-    Component, ComponentId, FixBatch, FixBatchId, FixCompletionStatus, FixId, ResourceView,
-    StandardModel, Visibility,
+    Component, ComponentId, ConfirmationResolverId, FixBatch, FixBatchId, FixCompletionStatus,
+    FixId, ResourceView, StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +27,7 @@ pub struct FixHistoryView {
     schema_name: String,
     component_name: String,
     component_id: ComponentId,
+    resolver_id: ConfirmationResolverId,
     provider: Option<String>,
     started_at: String,
     resource: ResourceView,
@@ -94,6 +95,7 @@ pub async fn list(
                     .ok_or_else(|| FixError::NoSchemaForComponent(*component.id()))?
                     .name()
                     .to_owned(),
+                resolver_id: *resolver.id(),
                 component_name: component.name(&ctx).await?,
                 component_id: *component.id(),
                 provider: prototype.provider().map(ToOwned::to_owned),

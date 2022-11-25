@@ -4,13 +4,15 @@ import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ComponentId } from "@/store/components.store";
 import { ApiRequest } from "@/utils/pinia_api_tools";
-import { Resource } from "@/api/sdf/dal/resource";
+import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import { useRealtimeStore } from "../realtime/realtime.store";
+import { useAuthStore } from "../auth.store";
 
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 export type RecommendationKind = "create" | "other";
 
 export type ConfirmationId = number;
+export type ConfirmationResolverId = number;
 export type Confirmation = {
   id: ConfirmationId;
   title: string;
@@ -24,6 +26,7 @@ export type Recommendation = {
   name: string;
   componentName: string;
   componentId: ComponentId;
+  schemaName: string;
   recommendation: string;
   recommendationKind: RecommendationKind;
   status: FixStatus;
@@ -44,6 +47,7 @@ export type Fix = {
   schemaName: string;
   componentName: string;
   componentId: ComponentId;
+  resolverId: ConfirmationResolverId;
   provider?: string;
   resource: Resource;
   startedAt: string;
@@ -115,18 +119,18 @@ export const useFixesStore = () => {
         > {
           const map: Record<ComponentId, "success" | "failure" | "running"> =
             {};
-          for (const confirmation of this.confirmations) {
-            switch (confirmation.status) {
+          for (const fixes of this.fixesOnRunningBatch) {
+            switch (fixes.status) {
               case "success":
-                if (!map[confirmation.componentId])
-                  map[confirmation.componentId] = "success";
+                if (!map[fixes.componentId])
+                  map[fixes.componentId] = "success";
                 break;
               case "failure":
-                if (map[confirmation.componentId] !== "running")
-                  map[confirmation.componentId] = "failure";
+                if (map[fixes.componentId] !== "running")
+                  map[fixes.componentId] = "failure";
                 break;
               case "running":
-                map[confirmation.componentId] = "running";
+                map[fixes.componentId] = "running";
                 break;
               default:
                 break;
@@ -144,7 +148,7 @@ export const useFixesStore = () => {
           return _.keyBy(this.allRecommendations, (r) => r.componentId);
         },
         allFinishedFixBatches(): FixBatch[] {
-          return _.values(this.fixBatches);
+          return this.fixBatches.filter((f) => f.status !== "running" && f.status !== "unstarted");
         },
         fixesOnBatch() {
           return (fixBatchId: FixBatchId) => {
@@ -155,6 +159,12 @@ export const useFixesStore = () => {
             }
             return [];
           };
+        },
+        completedFixesOnRunningBatch(): Fix[] {
+          return _.filter(
+            this.fixesOnRunningBatch,
+            (fix) => !["running", "unstarted"].includes(fix.status)
+          );
         },
         fixesOnRunningBatch(): Fix[] {
           if (!this.runningFixBatch) return [];
@@ -182,7 +192,6 @@ export const useFixesStore = () => {
           });
         },
         async LOAD_RECOMMENDATIONS() {
-          this.runningFixBatch = undefined; // TODO: backend should tell us that
           return new ApiRequest<Array<Recommendation>>({
             url: "/fix/recommendations",
             params: { visibility_change_set_pk: -1 },
@@ -203,8 +212,8 @@ export const useFixesStore = () => {
         async EXECUTE_FIXES_FROM_RECOMMENDATIONS(
           recommendations: Array<Recommendation>,
         ) {
-          // TODO: have an actual FixBatch related to this run in the backend
-          this.runningFixBatch = -1;
+	  const authStore = useAuthStore();
+
           return new ApiRequest({
             method: "post",
             params: {
@@ -216,7 +225,41 @@ export const useFixesStore = () => {
               visibility_change_set_pk: -1,
             },
             url: "/fix/run",
-            onSuccess: (_response) => {},
+            onSuccess: (response) => {
+	      this.recommendations = this.recommendations.filter((r) => !!recommendations.find((rec) => rec.id === r.id)).map((r) => {
+                r.status = "running";
+                return r;
+	      });
+
+              this.runningFixBatch = response.id;
+              this.fixBatches = this.fixBatches.filter((b) => b.id !== response.id);
+              this.fixBatches.push({
+                id: response.id,
+                status: "running",
+                fixes: recommendations.map((r) => {
+		  return {
+                    id: r.id, 
+                    resolverId: r.id,
+                    status: "running" as FixStatus,
+                    action: r.recommendation,
+                    schemaName: r.schemaName,
+                    componentName: r.componentName,
+                    componentId: r.componentId,
+                    resource: {
+                      status: ResourceHealth.Ok as ResourceHealth,
+                      data: null,
+                      message: null,
+                      logs: [],
+                    },
+                    startedAt: `${new Date()}`,
+                    finishedAt: `${new Date()}`,
+                  };
+		}),
+                author: authStore.user?.email ?? "...",
+                startedAt: `${new Date()}`,
+                finishedAt: `${new Date()}`,
+              });
+            },
           });
         },
         updateRecommendation(recommendation: Recommendation) {
@@ -240,6 +283,8 @@ export const useFixesStore = () => {
           {
             eventType: "ConfirmationStatusUpdate",
             callback: (_update) => {
+              this.runningFixBatch = undefined;
+
               // we could be smarter with this
               this.LOAD_CONFIRMATIONS();
               this.LOAD_RECOMMENDATIONS();
@@ -257,12 +302,16 @@ export const useFixesStore = () => {
                 this.LOAD_FIX_BATCHES();
                 return;
               }
-              const fix = batch.fixes.find((f) => f.id === update.id);
+              const fix = batch.fixes.find((f) => f.resolverId === update.confirmationResolverId && f.action === update.action);
               if (!fix) {
                 this.LOAD_RECOMMENDATIONS();
                 this.LOAD_FIX_BATCHES();
                 return;
               }
+	      this.recommendations = this.recommendations.filter((r) => r.id === fix.id).map((r) => {
+                r.status = update.status;
+                return r;
+	      });
               if (update.status !== fix.status) {
                 fix.status = update.status;
                 fix.action = update.action;
@@ -277,9 +326,6 @@ export const useFixesStore = () => {
                 this.LOAD_RECOMMENDATIONS();
                 this.LOAD_FIX_BATCHES();
                 return;
-              }
-              if (update.status !== batch.status) {
-                batch.status = update.status;
               }
             },
           },
