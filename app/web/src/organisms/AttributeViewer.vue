@@ -35,6 +35,7 @@
     <PropertyEditor
       v-if="editorContext"
       :editor-context="editorContext"
+      :disabled="props.disabled"
       @updated-property="updateProperty"
       @add-to-array="addToArray"
       @add-to-map="addToMap"
@@ -62,6 +63,10 @@ import PropertyEditor from "./PropertyEditor.vue";
 
 const funcStore = useFuncStore();
 const routeToFunc = useRouteToFunc();
+
+const props = defineProps<{
+  disabled?: boolean;
+}>();
 
 const componentsStore = useComponentsStore();
 // Note(victor): This component will only be rendered if there's a selected component.

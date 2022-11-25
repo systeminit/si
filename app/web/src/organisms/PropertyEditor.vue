@@ -15,6 +15,7 @@
         :array-index="arrayIndicesByValueId[pv.id]"
         :array-length="arrayLengthsByPropId[pv.propId]"
         :is-first-prop="index === 0"
+	:disabled="props.disabled"
         @toggle-collapsed="toggleCollapsed($event)"
         @updated-property="updatedProperty($event)"
         @add-to-array="addToArray($event)"
@@ -50,6 +51,7 @@ export interface PropertyEditorContext {
 }
 const props = defineProps<{
   editorContext: PropertyEditorContext;
+  disabled?: boolean;
 }>();
 
 const emits = defineEmits<{

@@ -42,26 +42,28 @@
         >
           Fixes
         </span>
-        <div
-          v-for="fix in selectedFixBatchInfo.fixes"
-          :key="fix.id"
-          :class="fix.id === selectedFixId ? 'bg-action-500' : 'hover:bg-black'"
-          class="py-2 pl-4 pr-3 cursor-pointer flex flex-row items-center leading-tight"
-          @click="selectFix(fix.id)"
-        >
-          <span class="truncate mr-3 whitespace-nowrap">
-            <HealthIcon
-              :health="fix.resource.status"
-              :message="
-                [
-                  `${formatTitle(fix.action)} ${fix.schemaName}`,
-                  fix.resource.message ?? '',
-                ].filter((f) => f.length > 0)
-              "
-              :view-details="[]"
-              class="ml-3"
-            />
-          </span>
+	<div class="overflow-auto">
+          <div
+            v-for="fix in selectedFixBatchInfo.fixes"
+            :key="fix.id"
+            :class="fix.id === selectedFixId ? 'bg-action-500' : 'hover:bg-black'"
+            class="py-2 pl-4 pr-3 cursor-pointer flex flex-row items-center leading-tight"
+            @click="selectFix(fix.id)"
+          >
+            <span class="mr-3 w-full h-full">
+              <HealthIcon
+                :health="fix.resource.status"
+                :message="
+                  [
+                    `${formatTitle(fix.action)} ${fix.schemaName}`,
+                    fix.resource.message ?? '',
+                  ].filter((f) => f.length > 0)
+                "
+                :view-details="[]"
+                class="ml-3"
+              />
+            </span>
+          </div>
         </div>
       </div>
       <div v-if="selectedFixInfo" class="bg-shade-100 grow p-4">
