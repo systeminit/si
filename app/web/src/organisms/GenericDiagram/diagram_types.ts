@@ -110,6 +110,8 @@ export type DiagramStatusIcon = {
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: DiagramElementId;
+  /** parent frame (or whatever) id */
+  parentId?: DiagramElementId;
   /** node type within the context of the diagram */
   type?: string | null;
   /** category of diagram node */
@@ -218,5 +220,5 @@ export type RightClickElementEvent = {
 
 export type GroupEvent = {
   group: DiagramGroupData;
-  element: DiagramNodeData | DiagramGroupData;
+  elements: (DiagramNodeData | DiagramGroupData)[];
 };

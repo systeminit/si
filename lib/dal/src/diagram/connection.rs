@@ -101,7 +101,7 @@ impl From<Connection> for DiagramEdgeView {
             from_node_id: source_node_id.to_string(),
             from_socket_id: source_socket_id.to_string(),
             to_node_id: destination_node_id.to_string(),
-            to_socket_id: destination_socket_id.to_string(),            
+            to_socket_id: destination_socket_id.to_string(),
             is_bidirectional: Some(false),
         }
     }

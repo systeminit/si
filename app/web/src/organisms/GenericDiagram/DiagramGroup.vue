@@ -2,7 +2,7 @@
   <v-group
     ref="groupRef"
     :config="{
-      id: `node-${node.id}`,
+      id: group.uniqueKey,
       x: position.x,
       y: position.y,
     }"
@@ -26,7 +26,7 @@
     <!-- box background - also used by layout manager to figure out nodes location and size -->
     <v-rect
       :config="{
-        id: `node-${node.id}--bg`,
+        id: `${group.uniqueKey}--bg`,
         width: nodeWidth,
         height: nodeHeight,
         x: -halfWidth,
@@ -37,11 +37,11 @@
     <!--  Node Body  -->
     <v-rect
       :config="{
-        id: `node-${node.id}--body`,
+        id: `${group.uniqueKey}--body`,
         width: nodeWidth,
         height: nodeBodyHeight,
         x: -halfWidth,
-        y: nodeHeaderHeight + FRAME_HEADER_BOTTOM_MARGIN,
+        y: nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN,
         cornerRadius: CORNER_RADIUS,
         fill: colors.bodyBg,
         fillAfterStrokeEnabled: true,
@@ -80,10 +80,10 @@
         verticalAlign: 'top',
         align: 'left',
         width: headerWidth,
-        text: frameTitle,
+        text: `${group.def.subtitle}: 0`,
         padding: 6,
         fill: colors.headerText,
-        fontSize: FRAME_TITLE_FONT_SIZE,
+        fontSize: GROUP_TITLE_FONT_SIZE,
         fontStyle: 'bold',
         fontFamily: DIAGRAM_FONT_FAMILY,
         listening: false,
@@ -96,9 +96,8 @@
     <v-group
       ref="overlay"
       :config="{
-        id: `node-${node.id}--overlay`,
         x: -halfWidth,
-        y: nodeHeaderHeight + FRAME_HEADER_BOTTOM_MARGIN,
+        y: nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN,
         opacity: 0,
         listening: false,
       }"
@@ -139,8 +138,10 @@ import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
 import {
   DiagramDrawEdgeState,
+  DiagramEdgeData,
   DiagramEdgeDef,
-  DiagramNodeDef,
+  DiagramElementUniqueKey,
+  DiagramGroupData,
 } from "./diagram_types";
 
 import {
@@ -148,23 +149,19 @@ import {
   DEFAULT_NODE_COLOR,
   DIAGRAM_FONT_FAMILY,
   SELECTION_COLOR,
-  FRAME_HEADER_BOTTOM_MARGIN,
-  FRAME_TITLE_FONT_SIZE,
+  GROUP_HEADER_BOTTOM_MARGIN,
+  GROUP_TITLE_FONT_SIZE,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 
 const props = defineProps({
-  node: {
-    type: Object as PropType<DiagramNodeDef>,
+  group: {
+    type: Object as PropType<DiagramGroupData>,
     required: true,
   },
   tempPosition: {
     type: Object as PropType<Vector2d>,
-  },
-  connectedEdges: {
-    type: Object as PropType<Record<string, DiagramEdgeDef[]>>,
-    default: () => ({}),
   },
   drawEdgeState: {
     type: Object as PropType<DiagramDrawEdgeState>,
@@ -182,9 +179,7 @@ const diagramConfig = useDiagramConfig();
 const titleTextRef = ref();
 const groupRef = ref();
 
-const frameTitle = computed(() => `${props.node.subtitle}: 0 `);
-
-// TODO(Paul) recalculate the frame width based on the number of components
+// TODO(Paul) recalculate the group width based on the number of components
 const nodeWidth = computed(() => 500);
 const halfWidth = computed(() => nodeWidth.value / 2);
 // TODO(Victor): this is wrong. headerWidth should be the smallest value between the actual text width and nodeWidth
@@ -194,7 +189,7 @@ const overlayIconSize = computed(() => nodeWidth.value / 3);
 
 const headerTextHeight = ref(20);
 watch(
-  [nodeWidth, () => props.node.title, () => props.node.subtitle],
+  [nodeWidth, () => props.group.def.title, () => props.group.def.subtitle],
   () => {
     // we have to let the new header be drawn on the canvas before we can check the height
     nextTick(recalcHeaderHeight);
@@ -208,16 +203,16 @@ function recalcHeaderHeight() {
 }
 
 const nodeHeaderHeight = computed(() => headerTextHeight.value);
-// TODO(Paul) calculate the frame height based on the number of components it contains
+// TODO(Paul) calculate the group height based on the number of components it contains
 const nodeBodyHeight = computed(() => {
   return 500;
 });
 const nodeHeight = computed(
   () =>
-    nodeHeaderHeight.value + FRAME_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
+    nodeHeaderHeight.value + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
 );
 
-const position = computed(() => props.tempPosition || props.node.position);
+const position = computed(() => props.tempPosition || props.group.def.position);
 
 watch([nodeWidth, nodeHeight, position], () => {
   // we call on nextTick to let the component actually update itself on the stage first
@@ -226,7 +221,7 @@ watch([nodeWidth, nodeHeight, position], () => {
 });
 
 const colors = computed(() => {
-  const primaryColor = tinycolor(props.node.color || DEFAULT_NODE_COLOR);
+  const primaryColor = tinycolor(props.group.def.color || DEFAULT_NODE_COLOR);
   const headerText = primaryColor.isDark() ? "#FFF" : "#000";
 
   // body bg
@@ -244,7 +239,7 @@ const colors = computed(() => {
 });
 
 const overlay = ref();
-watch([() => props.node.isLoading, overlay], ([isLoading]) => {
+watch([() => props.group.def.isLoading, overlay], ([isLoading]) => {
   if (_.isNil(overlay)) return;
   const node = overlay.value.getNode();
 

@@ -177,7 +177,6 @@
     <v-group
       ref="overlay"
       :config="{
-        id: `${node.uniqueKey}--overlay`,
         x: -halfWidth,
         y: nodeHeaderHeight,
         opacity: 0,

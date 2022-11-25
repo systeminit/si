@@ -47,19 +47,18 @@ overflow hidden */
         :zoom-level="zoomLevel"
       />
       <v-layer>
-        <!-- <DiagramFrame
-          v-for="frame in frames"
-          :key="frame.id"
-          :node="frame"
-          :temp-position="movedElementPositions[frame.id]"
-          :connected-edges="connectedEdgesByElementKey[frame.uniqueKey]"
+        <DiagramGroup
+          v-for="group in groups"
+          :key="group.uniqueKey"
+          :group="group"
+          :temp-position="movedElementPositions[group.uniqueKey]"
           :draw-edge-state="drawEdgeState"
-          :is-hovered="elementIsHovered('node', frame.id)"
-          :is-selected="elementIsSelected('node', frame.id)"
-          @hover:start="(socketId) => onNodeHoverStart(frame.id, socketId)"
-          @hover:end="(socketId) => onNodeHoverEnd(frame.id, socketId)"
-          @resize="onNodeLayoutOrLocationChange(frame.id)"
-        /> -->
+          :is-hovered="elementIsHovered(group)"
+          :is-selected="elementIsSelected(group)"
+          @hover:start="(socket) => onElementHoverStart(socket || group)"
+          @hover:end="(socket) => onElementHoverEnd(socket || group)"
+          @resize="onNodeLayoutOrLocationChange(group)"
+        />
         <DiagramNode
           v-for="node in nodes"
           :key="node.uniqueKey"
@@ -156,7 +155,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
 import tinycolor from "tinycolor2";
 import { useCustomFontsLoaded } from "@/composables/useFontLoaded";
-import DiagramFrame from "@/organisms/GenericDiagram/DiagramFrame.vue";
+import DiagramGroup from "@/organisms/GenericDiagram/DiagramGroup.vue";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DeleteElementsEvent,
@@ -604,6 +603,7 @@ const hoveredElement = computed(() =>
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
 
 function onElementHoverStart(el: DiagramElementData, meta?: any) {
+  console.log("hover", el.uniqueKey);
   hoveredElementKey.value = el.uniqueKey;
 }
 function onElementHoverEnd(el: DiagramElementData, meta?: any) {
@@ -705,7 +705,6 @@ const handleSelectionOnMouseUp = ref(false);
 function handleMouseDownSelection() {
   handleSelectionOnMouseUp.value = false;
 
-  console.log(hoveredElement.value);
   // handle clicking nothing / background grid
   if (!hoveredElementKey.value) {
     // we clear selection on mousedown unless shift is held
@@ -717,7 +716,10 @@ function handleMouseDownSelection() {
 
   // nodes can be multi-selected, so we have some extra behaviour
   // TODO: other elements may also share this behaviour
-  if (hoveredElement.value instanceof DiagramNodeData) {
+  if (
+    hoveredElement.value instanceof DiagramNodeData ||
+    hoveredElement.value instanceof DiagramGroupData
+  ) {
     // when clicking on an element that is NOT currently selected, we act right away
     // but if the element IS selected, this could be beginning of dragging
     // so we handle selection on mouseup if the user never fully started to drag
@@ -820,7 +822,6 @@ function beginDragElements() {
     currentSelectionMovableElements.value,
     (el) => movedElementPositions[el.uniqueKey] || el.def.position,
   );
-  console.log(draggedElementsPositionsPreDrag.value);
 }
 function endDragElements() {
   dragElementsActive.value = false;
@@ -829,57 +830,61 @@ function endDragElements() {
     if (!movedElementPositions[el.uniqueKey]) return;
 
     // handle dragging items into a group
-    // TODO: turn this back on!
+    const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
+    const elPos = elShape.getAbsolutePosition(kStage);
 
-    // const nodeRoot = kStage.findOne(`#${el.uniqueKey}}`).attrs;
-    // const nodeBg = kStage.findOne(`#${el.uniqueKey}--bg`).attrs;
+    const elRect = {
+      x: elPos.x,
+      y: elPos.y,
+      width: elShape.width(),
+      height: elShape.height(),
+    };
 
-    // const object = {
-    //   x: nodeRoot.x - nodeBg.width / 2,
-    //   y: nodeRoot.y,
-    //   width: nodeBg.width,
-    //   height: nodeBg.height,
-    // };
+    // NOTE - only handles dragging into a single group
+    const newContainingGroup = groups.value?.find((group) => {
+      if (group.uniqueKey === el.uniqueKey) return false;
 
-    // // TODO(victor): In the future, we should deal with the case of a component being dragged into more than one frame
+      const groupShape = kStage.findOne(`#${group.uniqueKey}--bg`);
+      const groupPos = groupShape.getAbsolutePosition(kStage);
 
-    // const newContainingGroup = frames.value.filter((f) => {
-    //   const frameRoot = kStage.findOne(`#node-${f.id}`).attrs;
-    //   const frameBody = kStage.findOne(`#node-${f.id}--body`).attrs;
-    //   const container = {
-    //     x: frameRoot.x - frameBody.width / 2,
-    //     y: frameRoot.y + frameBody.y,
-    //     width: frameBody.width,
-    //     height: frameBody.height,
-    //   };
+      const groupRect = {
+        x: groupPos.x,
+        y: groupPos.y,
+        width: groupShape.width(),
+        height: groupShape.height(),
+      };
 
-    //   return rectContainsAnother(object, container);
-    // });
+      return rectContainsAnother(elRect, groupRect);
+    });
+    if (newContainingGroup && el.def.parentId !== newContainingGroup.def.id) {
+      emit("group-elements", {
+        group: newContainingGroup,
+        elements: [el],
+      });
+    }
 
-    // if (newContainingGroup) {
-    //   emit("group-element", {
-    //     group: newContainingGroup,
-    //     element: el,
-    //   });
-    // }
-
-    // const frameInputSocket = el.sockets?.find(x => x.label === "Frame" && x.direction === "input")?.id;
-    // const nodeIdsConnectedToFrame = props.edges.filter(x => x.toSocketId === frameInputSocket)
-    //   .map((x) => x.fromSocketId.split("-")[0]);
-
-    // for (const nodeId of nodeIdsConnectedToFrame) {
-    //   emit("move-element", {
-    //     element: { id: nodeId, diagramElementType: "node" },
-    //     position: movedElementPositions[nodeId],
-    //     isFinal: true,
-    //   });
-    // }
-
+    // move the element itself
     emit("move-element", {
       element: el,
       position: movedElementPositions[el.uniqueKey],
       isFinal: true,
     });
+
+    // move child elements inside of a group
+    if (el instanceof DiagramGroupData) {
+      // for now only dealing with nodes... will be fixed later
+      const childEls = _.filter(
+        nodes.value,
+        (n) => n.def.parentId === el.def.id,
+      );
+      _.each(childEls, (childEl) => {
+        emit("move-element", {
+          element: childEl,
+          position: movedElementPositions[childEl.uniqueKey],
+          isFinal: true,
+        });
+      });
+    }
   });
 }
 
@@ -916,62 +921,105 @@ function onDragElementsMove() {
       delta,
     );
 
-    // // we need to check that the component isn't being dragged outside the frame
-    // // if it is, then we need to stop the move operation from happening at the
-    // // frame border
-    // const frameSocketId = el.sockets?.find((x) => x.label === "Frame")?.id;
-    // const frameEdge = props.edges?.find(
-    //   (x) => x.fromSocketId === frameSocketId,
-    // );
-    // if (frameEdge !== undefined && frameSocketId !== undefined) {
-    //   const f = frameEdge.toSocketId.split("-")[0];
-    //   console.log(f);
+    // block moving components outside of their group
+    if (el.def.parentId) {
+      const parentGroup = getElementByKey(
+        DiagramGroupData.generateUniqueKey(el.def.parentId),
+      );
+      if (!parentGroup) throw new Error("parent group not found");
 
-    //   const nodeBg = kStage.findOne(`#node-${el.id}--bg`).attrs;
+      // we need to check that the component isn't being dragged outside the frame
+      // if it is, then we need to stop the move operation from happening at the
+      // frame border
 
-    //   const object = {
-    //     x: newPosition.x - nodeBg.width / 2,
-    //     y: newPosition.y,
-    //     width: nodeBg.width,
-    //     height: nodeBg.height,
-    //   };
+      const elAttrs = kStage.findOne(`#${el.uniqueKey}--bg`).attrs;
 
-    //   const frameRoot = kStage.findOne(`#node-${f}`).attrs;
-    //   const frameBody = kStage.findOne(`#node-${f}--body`).attrs;
-    //   const container = {
-    //     x: frameRoot.x - frameBody.width / 2,
-    //     y: frameRoot.y + frameBody.y,
-    //     width: frameBody.width,
-    //     height: frameBody.height,
-    //   };
+      const object = {
+        x: newPosition.x - elAttrs.width / 2,
+        y: newPosition.y,
+        width: elAttrs.width,
+        height: elAttrs.height,
+      };
 
-    //   if (!rectContainsAnother(object, container)) {
-    //     return;
-    //   }
-    // }
+      const groupRootAttrs = kStage.findOne(`#${parentGroup.uniqueKey}`).attrs;
+      const groupBodyAttrs = kStage.findOne(
+        `#${parentGroup.uniqueKey}--body`,
+      ).attrs;
+      const container = {
+        x: groupRootAttrs.x - groupBodyAttrs.width / 2,
+        y: groupRootAttrs.y + groupBodyAttrs.y,
+        width: groupBodyAttrs.width,
+        height: groupBodyAttrs.height,
+      };
 
-    // const frameInputSocket = el.sockets?.find(
-    //   (x) => x.label === "Frame" && x.direction === "input",
-    // )?.id;
-    // const nodeIdsConnectedToFrame = props.edges
-    //   .filter((x) => x.toSocketId === frameInputSocket)
-    //   .map((x) => x.fromSocketId.split("-")[0]);
+      if (!rectContainsAnother(object, container)) {
+        return;
+      }
+
+      // const groupShape = kStage.findOne(`#${parentGroup?.uniqueKey}--bg`);
+      // const groupPos = groupShape.getAbsolutePosition(kStage);
+      // const groupBounds = {
+      //   left: groupPos.x,
+      //   right: groupPos.x + groupShape.width(),
+      //   top: groupPos.y,
+      //   bottom: groupPos.y + groupShape.height(),
+      // };
+
+      // const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
+      // const elPos = elShape.getAbsolutePosition(kStage);
+      // const elBounds = {
+      //   left: elPos.x,
+      //   right: elPos.x + elShape.width(),
+      //   top: elPos.y,
+      //   bottom: elPos.y + elShape.height(),
+      // };
+
+      // if (elBounds.left <= groupBounds.left) {
+      //   newPosition.x = groupBounds.left + elShape.width() / 2 + 10;
+      //   // return;
+      // }
+      // if (elBounds.right >= groupBounds.right) {
+      //   newPosition.x = groupBounds.right - elShape.width() / 2 - 10;
+      //   // return;
+      // }
+      // if (elBounds.top <= groupBounds.top) {
+      //   newPosition.y = groupBounds.top + elShape.height() / 2 + 10;
+      //   // return;
+      // }
+      // if (elBounds.bottom >= groupBounds.bottom) {
+      //   newPosition.y = groupBounds.bottom - elShape.height() / 2 - 10;
+      //   // return;
+      // }
+    }
+
+    if (el instanceof DiagramGroupData) {
+      // for now only dealing with nodes... will be fixed later
+      const childEls = _.filter(
+        nodes.value,
+        (n) => n.def.parentId === el.def.id,
+      );
+
+      // TODO: currently we are using the initial position from the store, which could be
+      // incorrect temporarily if the user makes several moves quickly
+      // however we'll ignore this bug, because storing positions relative to the group will fix it
+
+      _.each(childEls, (childEl) => {
+        const newChildPosition = vectorAdd(childEl.def.position, delta);
+        // track the position locally, so we don't need to rely on parent to store the temporary position
+        movedElementPositions[childEl.uniqueKey] = newChildPosition;
+        emit("move-element", {
+          element: childEl,
+          position: newChildPosition,
+          isFinal: false,
+        });
+      });
+    }
 
     // for (const nodeId of nodeIdsConnectedToFrame) {
     //   const childPosition = props.nodes?.find((x) => x.id === nodeId)?.position;
     //   if (childPosition === undefined) {
     //     continue;
     //   }
-
-    //   const newChildPosition = vectorAdd(childPosition, delta);
-    //   // track the position locally, so we don't need to rely on parent to store the temporary position
-    //   movedElementPositions[nodeId] = newChildPosition;
-    //   emit("move-element", {
-    //     element: { id: nodeId, diagramElementType: "node" },
-    //     position: newChildPosition,
-    //     isFinal: false,
-    //   });
-    // }
 
     // track the position locally, so we don't need to rely on parent to store the temporary position
     movedElementPositions[el.uniqueKey] = newPosition;
@@ -1189,7 +1237,6 @@ async function endDrawEdge() {
     ? drawEdgeFromSocket.value
     : drawEdgeToSocket.value;
 
-  console.log(adjustedFrom, adjustedTo);
   emit("draw-edge", {
     fromSocket: adjustedFrom,
     toSocket: adjustedTo,
@@ -1217,25 +1264,9 @@ function triggerInsertElement() {
   if (!gridPointerPos.value)
     throw new Error("Cursor must be in grid to insert element");
 
-  let parentNode;
-  if (hoveredElement.value) {
-    console.log(hoveredElement.value.def.id);
-
-    const frame = props.nodes.find((n) => {
-      if (n.id === hoveredElement.value?.def.id) {
-        const socket = n.sockets?.find(
-          (s) => s.type === "Frame" && s.direction === "input",
-        );
-        if (socket) {
-          return true;
-        }
-      }
-      return false;
-    });
-
-    if (frame) {
-      parentNode = frame;
-    }
+  let parentGroupId;
+  if (hoveredElement.value instanceof DiagramGroupData) {
+    parentGroupId = hoveredElement.value.def.id;
   }
 
   const insertId = _.uniqueId("insert-diagram-el");
@@ -1251,7 +1282,7 @@ function triggerInsertElement() {
   emit("insert-element", {
     diagramElementType: insertElementType.value,
     position: gridPointerPos.value,
-    parent: parentNode?.id,
+    parent: parentGroupId,
     onComplete: () => {
       delete pendingInsertedElements[insertId];
     },
@@ -1281,30 +1312,30 @@ const socketsLocationInfo = reactive<Record<string, SocketLocationInfo>>({});
 
 function getSocketLocationInfo(socketKey?: DiagramElementUniqueKey) {
   if (!socketKey) return undefined;
-  console.log("get socket locaiton", socketKey, socketsLocationInfo[socketKey]);
   return socketsLocationInfo[socketKey];
 }
 
-function onNodeLayoutOrLocationChange(node: DiagramNodeData) {
+function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
   // record node location/dimensions (used when drawing selection box)
   // we find the background shape, because the parent group has no dimensions
-  const nodeBgShape = kStage.find(`#${node.uniqueKey}--bg`)?.[0];
-  nodesLocationInfo[node.uniqueKey] = {
+  const nodeBgShape = kStage.findOne(`#${el.uniqueKey}--bg`);
+  nodesLocationInfo[el.uniqueKey] = {
     topLeft: nodeBgShape.getAbsolutePosition(kStage),
     width: nodeBgShape.width(),
     height: nodeBgShape.height(),
   };
 
-  // record new socket locations (used to render edges)
-  _.each(node.sockets, (socket) => {
-    const socketShape = kStage.find(`#${socket.uniqueKey}`)?.[0];
-    // This ensures that the diagram won't try to create edges to/from hidden sockets
-    if (!socketShape) return;
-    socketsLocationInfo[socket.uniqueKey] = {
-      center: socketShape.getAbsolutePosition(kStage),
-    };
-  });
-  console.log(socketsLocationInfo);
+  if ("sockets" in el) {
+    // record new socket locations (used to render edges)
+    _.each(el.sockets, (socket) => {
+      const socketShape = kStage.findOne(`#${socket.uniqueKey}`);
+      // This ensures that the diagram won't try to create edges to/from hidden sockets
+      if (!socketShape) return;
+      socketsLocationInfo[socket.uniqueKey] = {
+        center: socketShape.getAbsolutePosition(kStage),
+      };
+    });
+  }
 }
 
 // DIAGRAM CONTENTS HELPERS //////////////////////////////////////////////////
@@ -1314,11 +1345,16 @@ function onNodeLayoutOrLocationChange(node: DiagramNodeData) {
 // const edges = ref([] as DiagramEdge[]);
 
 const nodes = computed(() =>
-  _.map(props.nodes, (nodeDef) => new DiagramNodeData(nodeDef)),
+  _.map(
+    _.filter(props.nodes, (n) => n.category !== "Frames"),
+    (nodeDef) => new DiagramNodeData(nodeDef),
+  ),
 );
 const groups = computed(() =>
-  // props.groups?
-  _.map([], (groupDef) => new DiagramGroupData(groupDef)),
+  _.map(
+    _.filter(props.nodes, (n) => n.category === "Frames"),
+    (groupDef) => new DiagramGroupData(groupDef),
+  ),
 );
 const sockets = computed(() => _.flatMap(nodes.value, (node) => node.sockets));
 const edges = computed(() =>
@@ -1387,13 +1423,4 @@ const openHelpModal = () => {
 const helpModalClose = () => {
   helpModalOpen.value = false;
 };
-
-// Nodes vs Frames
-const frames = computed(() => {
-  return props.nodes.filter((n) => n.category === "Frames");
-});
-
-const nonFrameNodes = computed(() => {
-  return props.nodes.filter((n) => n.category !== "Frames");
-});
 </script>

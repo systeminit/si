@@ -57,7 +57,11 @@
     :default-size="380"
     :min-size="300"
   >
-    <ComponentDetails v-if="selectedComponent" :key="selectedComponent.id" :disabled="isViewMode" />
+    <ComponentDetails
+      v-if="selectedComponent"
+      :key="selectedComponent.id"
+      :disabled="isViewMode"
+    />
     <div v-else class="p-4">
       <template v-if="isViewMode">
         Select a single component to see more details
@@ -162,8 +166,11 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   componentsStore.selectedInsertSchemaId = null;
 
   // TODO These ids should be number from the start.
-  const parentId = parseInt(e.parent ?? "-1");
-  await componentsStore.CREATE_COMPONENT(schemaId, e.position, parentId);
+  await componentsStore.CREATE_COMPONENT(
+    schemaId,
+    e.position,
+    e.parent ? parseInt(e.parent) : undefined,
+  );
 
   // TODO: we actually want the new node ID so we can watch for it in the updated data
   // but the API currently doesn't have it right away :(
@@ -196,7 +203,10 @@ function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
 
   const selectedElement = newSelection.elements[0];
   // we also dont support selecting things other than nodes outside the diagram
-  if (selectedElement instanceof DiagramNodeData) {
+  if (
+    selectedElement instanceof DiagramNodeData ||
+    selectedElement instanceof DiagramGroupData
+  ) {
     componentsStore.setSelectedComponentId(parseInt(selectedElement.def.id));
   } else {
     componentsStore.setSelectedComponentId(null);
@@ -224,7 +234,9 @@ watch(
   () => {
     if (selectedComponentId.value) {
       diagramRef.value?.setSelection(
-        DiagramNodeData.generateUniqueKey(selectedComponentId.value),
+        selectedComponent.value.isGroup
+          ? DiagramGroupData.generateUniqueKey(selectedComponentId.value)
+          : DiagramNodeData.generateUniqueKey(selectedComponentId.value),
       );
     } else {
       diagramRef.value?.clearSelection();
@@ -232,8 +244,10 @@ watch(
   },
 );
 
-function onGroupElements({ group, element }: GroupEvent) {
-  componentsStore.CONNECT_COMPONENT_TO_FRAME(element.def.id, group.def.id);
+function onGroupElements({ group, elements }: GroupEvent) {
+  for (const element of elements) {
+    componentsStore.CONNECT_COMPONENT_TO_FRAME(element.def.id, group.def.id);
+  }
 }
 
 const statusStore = useStatusStore();
