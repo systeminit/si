@@ -829,7 +829,7 @@ function beginDragElements() {
   // TODO: better type here... wanting to use the helper which can return anything, but it will only be a "movable" element
   // const draggedElement = getElement(
   //   lastMouseDownDiagramElement.value,
-  // ) as DiagramNodeDef;
+  // ) as DiagramNodeDef; 
 
   totalScrolledDuringDrag.value = { x: 0, y: 0 };
 
@@ -872,6 +872,18 @@ function endDragElements() {
       emit("attached-component", {
         frameId: containers[0].id,
         componentId: el.id,
+      });
+    }
+
+    const frameInputSocket = el.sockets?.find(x => x.label === "Frame" && x.direction === "input")?.id;
+    const nodeIdsConnectedToFrame = props.edges.filter(x => x.toSocketId === frameInputSocket)
+      .map((x) => x.fromSocketId.split("-")[0]);
+
+    for (const nodeId of nodeIdsConnectedToFrame) {
+      emit("move-element", {
+        element: { id: nodeId, diagramElementType: "node" },
+        position: movedElementPositions[nodeId],
+        isFinal: true,
       });
     }
 
@@ -924,7 +936,6 @@ function onDragElementsMove() {
     // frame border
     const frameSocketId = el.sockets?.find(x => x.label === "Frame")?.id;
     const frameEdge = props.edges?.find(x => x.fromSocketId === frameSocketId)
-
     if (frameEdge !== undefined && frameSocketId !== undefined) {
       const f = frameEdge.toSocketId.split("-")[0];
       console.log(f)
@@ -951,6 +962,27 @@ function onDragElementsMove() {
         return;
       }
     }
+
+    const frameInputSocket = el.sockets?.find(x => x.label === "Frame" && x.direction === "input")?.id;
+    const nodeIdsConnectedToFrame = props.edges.filter(x => x.toSocketId === frameInputSocket)
+      .map((x) => x.fromSocketId.split("-")[0]);
+
+    for (const nodeId of nodeIdsConnectedToFrame) {
+      const childPosition = props.nodes?.find(x => x.id === nodeId)?.position
+      if (childPosition === undefined) {
+        continue;
+      }
+
+      const newChildPosition = vectorAdd(childPosition, delta);
+      // track the position locally, so we don't need to rely on parent to store the temporary position
+      movedElementPositions[nodeId] = newChildPosition;
+      emit("move-element", {
+        element: { id: nodeId, diagramElementType: "node" },
+        position: newChildPosition,
+        isFinal: false,
+      });
+    }
+
     // track the position locally, so we don't need to rely on parent to store the temporary position
     movedElementPositions[el.id] = newPosition;
     emit("move-element", {
