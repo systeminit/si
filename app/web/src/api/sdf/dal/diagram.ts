@@ -50,6 +50,8 @@ export interface DiagramNodePosition {
   diagramKind: DiagramKind;
   x: number;
   y: number;
+  width?: number;
+  height?: number;
 }
 
 export interface DiagramNodeTemplate {

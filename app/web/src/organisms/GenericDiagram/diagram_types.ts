@@ -134,6 +134,7 @@ export type DiagramDrawEdgeState = {
 export type MoveElementEvent = {
   element: DiagramElementIdentifier;
   position: Vector2d;
+  size?: Vector2d;
   isFinal: boolean;
 };
 export type DrawEdgeEvent = {
