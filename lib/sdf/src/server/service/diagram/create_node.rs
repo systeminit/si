@@ -59,12 +59,34 @@ pub async fn create_node(
 
     let node_template = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;
 
+    let (width, height) = {
+        let sockets = component
+            .schema_variant(&ctx)
+            .await?
+            .ok_or(DiagramError::SchemaVariantNotFound)?
+            .sockets(&ctx)
+            .await?;
+
+        let mut size = (None, None);
+
+        for s in sockets {
+            if s.name() == "Frame" && *s.edge_kind() == SocketEdgeKind::ConfigurationInput {
+                size = (Some("500".to_string()), Some("500".to_string()));
+                break;
+            }
+        }
+
+        size
+    };
+
     let position = NodePosition::new(
         &ctx,
         *node.id(),
         diagram_kind,
         request.x.clone(),
         request.y.clone(),
+        width,
+        height,
     )
     .await?;
     let positions = vec![NodePositionView::from(position)];

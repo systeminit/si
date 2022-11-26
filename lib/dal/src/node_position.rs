@@ -36,6 +36,8 @@ pub struct NodePosition {
     diagram_kind: DiagramKind,
     x: String,
     y: String,
+    width: Option<String>,
+    height: Option<String>,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -63,18 +65,22 @@ impl NodePosition {
         diagram_kind: DiagramKind,
         x: impl AsRef<str>,
         y: impl AsRef<str>,
+        width: Option<impl AsRef<str>>,
+        height: Option<impl AsRef<str>>,
     ) -> NodePositionResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &diagram_kind.as_ref(),
                     &x.as_ref(),
                     &y.as_ref(),
+                    &width.as_ref().map(|w| w.as_ref()),
+                    &height.as_ref().map(|h| h.as_ref()),
                 ],
             )
             .await?;
@@ -102,22 +108,33 @@ impl NodePosition {
         node_id: NodeId,
         x: impl AsRef<str>,
         y: impl AsRef<str>,
+        width: Option<impl AsRef<str>>,
+        height: Option<impl AsRef<str>>,
     ) -> NodePositionResult<Self> {
         for mut position in Self::list_for_node(ctx, node_id).await? {
             // Modify and return the position if found.
             if position.diagram_kind == diagram_kind {
                 position.set_x(ctx, x.as_ref()).await?;
                 position.set_y(ctx, y.as_ref()).await?;
+                position
+                    .set_width(ctx, width.as_ref().map(|val| val.as_ref()))
+                    .await?;
+                position
+                    .set_height(ctx, height.as_ref().map(|val| val.as_ref()))
+                    .await?;
                 return Ok(position);
             }
         }
-        let obj = Self::new(ctx, node_id, diagram_kind, x, y).await?;
+
+        let obj = Self::new(ctx, node_id, diagram_kind, x, y, width, height).await?;
         Ok(obj)
     }
 
     standard_model_accessor!(diagram_kind, Enum(DiagramKind), NodePositionResult);
     standard_model_accessor!(x, String, NodePositionResult);
     standard_model_accessor!(y, String, NodePositionResult);
+    standard_model_accessor!(width, Option<String>, NodePositionResult);
+    standard_model_accessor!(height, Option<String>, NodePositionResult);
 
     standard_model_belongs_to!(
         lookup_fn: node,
@@ -139,6 +156,8 @@ pub struct NodePositionView {
     pub diagram_kind: DiagramKind,
     pub x: f64,
     pub y: f64,
+    pub width: Option<f64>,
+    pub height: Option<f64>,
 }
 
 impl From<NodePosition> for NodePositionView {
@@ -147,6 +166,16 @@ impl From<NodePosition> for NodePositionView {
             diagram_kind: pos.diagram_kind,
             x: pos.x.parse().expect("Node position.x was not a float"),
             y: pos.y.parse().expect("Node position.y was not a float"),
+            width: pos
+                .width
+                .map(|val| val.parse())
+                .transpose()
+                .expect("Node position.width was not a float"),
+            height: pos
+                .height
+                .map(|val| val.parse())
+                .transpose()
+                .expect("Node position.height was not a float"),
         }
     }
 }

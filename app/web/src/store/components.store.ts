@@ -408,6 +408,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         async SET_COMPONENT_DIAGRAM_POSITION(
           componentId: ComponentId,
           position: Vector2d,
+          size?: Vector2d,
         ) {
           return new ApiRequest<{ componentStats: ComponentStats }>({
             method: "post",
@@ -416,6 +417,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               nodeId: componentId,
               x: position.x.toString(),
               y: position.y.toString(),
+              width: size?.x.toString(),
+              height: size?.y.toString(),
               diagramKind: "configuration",
               ...visibilityParams,
             },
