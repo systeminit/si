@@ -59,10 +59,10 @@ pub async fn set_node_position(
                 size = (
                     request
                         .width
-                        .or(node_position.width().map(|v| v.to_string())),
+                        .or_else(|| node_position.width().map(|v| v.to_string())),
                     request
                         .height
-                        .or(node_position.height().map(|v| v.to_string())),
+                        .or_else(|| node_position.height().map(|v| v.to_string())),
                 );
                 break;
             }
