@@ -136,13 +136,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
-import {
-  DiagramDrawEdgeState,
-  DiagramEdgeData,
-  DiagramEdgeDef,
-  DiagramElementUniqueKey,
-  DiagramGroupData,
-} from "./diagram_types";
+import { DiagramDrawEdgeState, DiagramGroupData } from "./diagram_types";
 
 import {
   CORNER_RADIUS,

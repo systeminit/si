@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
 import async from "async";
-import { ApiRequest } from "@/utils/pinia_api_tools";
 
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 
@@ -9,7 +8,6 @@ import promiseDelay from "@/utils/promise_delay";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
-import { useWorkspacesStore } from "./workspaces.store";
 import { ComponentId } from "./components.store";
 
 // NOTE - some uncertainty around transition from update finished state ("5/5 update complete") back to idle ("Model is up to date")
@@ -51,9 +49,6 @@ export type ComponentUpdateStatus = {
 };
 
 export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
-  const workspacesStore = useWorkspacesStore();
-  const workspaceId = workspacesStore.selectedWorkspaceId;
-
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
   let changeSetId: ChangeSetId | null;
@@ -115,7 +110,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
           let stepsCountCurrent = 0;
           // kick these off in parallel, with an initial delay to make the steps happen in series-ish
           await async.each(componentIds, async (componentId) => {
-            await promiseDelay(i * 500);
+            await promiseDelay(i++ * 250);
             let componentStepsCountCurrent = 0;
             let componentComplete = false;
 

@@ -84,7 +84,6 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { useComponentsStore } from "@/store/components.store";
 import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
-import { useStatusStore } from "@/store/status.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
@@ -93,7 +92,6 @@ import {
   DrawEdgeEvent,
   DeleteElementsEvent,
   RightClickElementEvent,
-  DiagramElementData,
   DiagramNodeData,
   DiagramGroupData,
   GroupEvent,
@@ -249,6 +247,4 @@ function onGroupElements({ group, elements }: GroupEvent) {
     componentsStore.CONNECT_COMPONENT_TO_FRAME(element.def.id, group.def.id);
   }
 }
-
-const statusStore = useStatusStore();
 </script>

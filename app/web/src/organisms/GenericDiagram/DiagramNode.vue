@@ -220,7 +220,6 @@ import { useTheme } from "@/ui-lib/theme_tools";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
-  DiagramEdgeDef,
   DiagramElementUniqueKey,
   DiagramNodeData,
 } from "./diagram_types";

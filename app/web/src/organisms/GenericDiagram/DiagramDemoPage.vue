@@ -1,8 +1,6 @@
 /** TEMPORARY demo page - route accessible at /diagram */
 <template>
-  <div
-    class="bg-action-500 w-full h-full h-screen overflow-hidden flex flex-col"
-  >
+  <div class="bg-action-500 w-full h-screen overflow-hidden flex flex-col">
     <div class="text-white bg-black w-full h-10 z-10 flex space-x-10">
       <select v-model="zoom" class="text-black">
         <option
@@ -72,7 +70,7 @@ const customDiagramConfig = {
   icons: {},
 };
 
-const getSockets = (nodeId: string): DiagramSocketDef[] => [
+const getSockets = (_nodeId: string): DiagramSocketDef[] => [
   {
     id: `str-in-1`,
     label: "string 1 input",

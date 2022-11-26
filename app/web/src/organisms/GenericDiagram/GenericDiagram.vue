@@ -602,11 +602,11 @@ const hoveredElement = computed(() =>
 // same event and handler is used for both hovering nodes and sockets
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
 
-function onElementHoverStart(el: DiagramElementData, meta?: any) {
+function onElementHoverStart(el: DiagramElementData) {
   console.log("hover", el.uniqueKey);
   hoveredElementKey.value = el.uniqueKey;
 }
-function onElementHoverEnd(el: DiagramElementData, meta?: any) {
+function onElementHoverEnd(_el: DiagramElementData) {
   hoveredElementKey.value = undefined;
 }
 
@@ -1362,9 +1362,9 @@ const edges = computed(() =>
 );
 
 // quick ways to look up specific element data from a unique key
-const nodesByKey = computed(() => _.keyBy(nodes.value, (e) => e.uniqueKey));
-const groupsByKey = computed(() => _.keyBy(groups.value, (e) => e.uniqueKey));
-const socketsByKey = computed(() => _.keyBy(sockets.value, (e) => e.uniqueKey));
+// const nodesByKey = computed(() => _.keyBy(nodes.value, (e) => e.uniqueKey));
+// const groupsByKey = computed(() => _.keyBy(groups.value, (e) => e.uniqueKey));
+// const socketsByKey = computed(() => _.keyBy(sockets.value, (e) => e.uniqueKey));
 const edgesByKey = computed(() => _.keyBy(edges.value, (e) => e.uniqueKey));
 const allElementsByKey = computed(() =>
   _.keyBy(
