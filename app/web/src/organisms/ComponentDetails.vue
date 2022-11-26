@@ -9,7 +9,7 @@
         :style="{ color: selectedComponent.color }"
         class="shrink-0 m-xs"
       />
-  
+
       <!-- NOTE - added some padding here to prevent capsize/truncate/overflow issues from cutting off top/bottom of text -->
       <div
         class="flex flex-col grow gap-xs overflow-x-hidden p-xs"
@@ -27,7 +27,7 @@
         </div>
       </div>
     </div>
-  
+
     <div v-if="currentStatus" class="border-b dark:border-neutral-600 p-sm">
       <template v-if="currentStatus.isUpdating">
         <div class="flex flex-row items-center gap-xs">
@@ -56,7 +56,7 @@
         </div>
       </template>
     </div>
-  
+
     <div class="flex-grow relative">
       <SiTabGroup>
         <template #tabs>
@@ -64,20 +64,27 @@
           <SiTabHeader>Code</SiTabHeader>
           <SiTabHeader>Resource</SiTabHeader>
         </template>
-    
+
         <template #panels>
           <TabPanel class="w-full">
-            <AttributeViewer class="dark:text-neutral-50 text-neutral-900" :disabled="props.disabled" />
+            <AttributeViewer
+              class="dark:text-neutral-50 text-neutral-900"
+              :disabled="props.disabled"
+            />
           </TabPanel>
-    
+
           <TabPanel class="w-full h-full overflow-hidden">
             <template v-if="codeReqStatus.isPending"> Loading code...</template>
             <template v-else-if="codeReqStatus.isError">
               <ErrorMessage :request-status="codeReqStatus" />
             </template>
-            <template v-else-if="codeReqStatus.isSuccess && selectedComponentCode">
+            <template
+              v-else-if="codeReqStatus.isSuccess && selectedComponentCode"
+            >
               <CodeViewer
-                :code="selectedComponentCode[0]?.code || '# No code generated yet'"
+                :code="
+                  selectedComponentCode[0]?.code || '# No code generated yet'
+                "
                 class="dark:text-neutral-50 text-neutral-900"
               >
                 <template #title>
@@ -89,7 +96,7 @@
               </CodeViewer>
             </template>
           </TabPanel>
-    
+
           <TabPanel class="w-full h-full mt-3">
             <CodeViewer
               :code="
@@ -126,7 +133,6 @@ import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
 import CodeViewer from "@/organisms/CodeViewer.vue";
-import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import HealthIcon from "@/molecules/HealthIcon.vue";
 import { useComponentsStore } from "@/store/components.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
@@ -161,7 +167,9 @@ const codeReqStatus = componentsStore.getRequestStatus(
 );
 
 const statusStore = useStatusStore();
-const currentStatus = computed(
-  () => statusStore.componentStatusById[selectedComponentId.value!],
+const currentStatus = computed(() =>
+  selectedComponentId.value
+    ? statusStore.componentStatusById[selectedComponentId.value]
+    : undefined,
 );
 </script>

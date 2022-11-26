@@ -158,7 +158,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
 
   function handleEvent(
     eventKind: string,
-    eventData: any,
+    eventData: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     eventMetadata: RealtimeEventMetadata,
   ) {
     console.log("WS message", eventKind, eventData);

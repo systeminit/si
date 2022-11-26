@@ -20,8 +20,8 @@ export const NODE_PADDING_BOTTOM = 10; //
 // width/height of sockets
 export const SOCKET_SIZE = 15;
 
-export const FRAME_HEADER_BOTTOM_MARGIN = 14;
-export const FRAME_TITLE_FONT_SIZE = 14;
+export const GROUP_HEADER_BOTTOM_MARGIN = 14;
+export const GROUP_TITLE_FONT_SIZE = 14;
 
 // corner radius used on nodes (maybe other things later?)
 export const CORNER_RADIUS = 3;

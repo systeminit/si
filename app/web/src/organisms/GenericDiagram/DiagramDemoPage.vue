@@ -1,8 +1,6 @@
 /** TEMPORARY demo page - route accessible at /diagram */
 <template>
-  <div
-    class="bg-action-500 w-full h-full h-screen overflow-hidden flex flex-col"
-  >
+  <div class="bg-action-500 w-full h-screen overflow-hidden flex flex-col">
     <div class="text-white bg-black w-full h-10 z-10 flex space-x-10">
       <select v-model="zoom" class="text-black">
         <option
@@ -49,7 +47,9 @@ import { useThemeContainer, ThemeValue } from "@/ui-lib/theme_tools";
 import GenericDiagram from "./GenericDiagram.vue";
 import {
   DeleteElementsEvent,
+  DiagramEdgeData,
   DiagramEdgeDef,
+  DiagramNodeData,
   DiagramNodeDef,
   DiagramSocketDef,
   DrawEdgeEvent,
@@ -70,7 +70,7 @@ const customDiagramConfig = {
   icons: {},
 };
 
-const getSockets = (nodeId: string): DiagramSocketDef[] => [
+const getSockets = (_nodeId: string): DiagramSocketDef[] => [
   {
     id: `str-in-1`,
     label: "string 1 input",
@@ -195,27 +195,30 @@ const edges = reactive<DiagramEdgeDef[]>([
 ]);
 
 function onNodeMove(e: MoveElementEvent) {
-  const movedNode = nodes.find((n) => n.id === e.element.id);
-  if (!movedNode) return;
-  movedNode.position = e.position;
+  if (e.element instanceof DiagramNodeData) {
+    const nodeId = e.element.def.id;
+    const movedNode = nodes.find((n) => n.id === nodeId);
+    if (!movedNode) return;
+    movedNode.position = e.position;
+  }
 }
 
 function onDrawEdge(e: DrawEdgeEvent) {
   edges.push({
-    fromNodeId: e.fromNodeId,
-    fromSocketId: e.fromSocketId,
-    toNodeId: e.toNodeId,
-    toSocketId: e.toSocketId,
-    id: `${e.fromSocketId}/${_.uniqueId()}`,
+    fromNodeId: e.fromSocket.parent.def.id,
+    fromSocketId: e.fromSocket.def.id,
+    toNodeId: e.toSocket.parent.def.id,
+    toSocketId: e.toSocket.def.id,
+    id: `${e.fromSocket.def.id}/${_.uniqueId()}`,
   });
 }
 
 function onDelete(e: DeleteElementsEvent) {
   _.each(e.elements, (el) => {
-    if (el.diagramElementType === "node") {
-      nodes.splice(_.findIndex(nodes, { id: el.id }), 1);
-    } else if (el.diagramElementType === "edge") {
-      edges.splice(_.findIndex(edges, { id: el.id }), 1);
+    if (el instanceof DiagramNodeData) {
+      nodes.splice(_.findIndex(nodes, { id: el.def.id }), 1);
+    } else if (el instanceof DiagramEdgeData) {
+      edges.splice(_.findIndex(edges, { id: el.def.id }), 1);
     }
   });
 }

@@ -194,12 +194,14 @@ export const useComponentAttributesStore = () => {
               const componentsStore = useComponentsStore();
               const statusStore = useStatusStore();
 
-              const updatedComponentIds =
-                componentsStore.getDependentComponents(
-                  componentsStore.selectedComponentId!,
-                );
+              if (componentsStore.selectedComponentId) {
+                const updatedComponentIds =
+                  componentsStore.getDependentComponents(
+                    componentsStore.selectedComponentId,
+                  );
 
-              statusStore.triggerMockUpdateFlow(updatedComponentIds);
+                statusStore.triggerMockUpdateFlow(updatedComponentIds);
+              }
             },
           });
         },

@@ -52,7 +52,6 @@
 import clsx from "clsx";
 import { computed } from "vue";
 import ProgressBar from "@/atoms/ProgressBar.vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps({
   title: { type: String },

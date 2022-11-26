@@ -40,7 +40,7 @@
       :controls-disabled="changeSetPanelRef?.showDialog === undefined"
       @insert-element="onDiagramInsertElement"
       @move-element="onDiagramMoveElement"
-      @attached-component="onAttachedComponent"
+      @group-elements="onGroupElements"
       @draw-edge="onDrawEdge"
       @delete-elements="onDiagramDelete"
       @update:selection="onDiagramUpdateSelection"
@@ -57,7 +57,11 @@
     :default-size="380"
     :min-size="300"
   >
-    <ComponentDetails v-if="selectedComponent" :key="selectedComponent.id" :disabled="isViewMode" />
+    <ComponentDetails
+      v-if="selectedComponent"
+      :key="selectedComponent.id"
+      :disabled="isViewMode"
+    />
     <div v-else class="p-4">
       <template v-if="isViewMode">
         Select a single component to see more details
@@ -80,17 +84,18 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { useComponentsStore } from "@/store/components.store";
 import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
-import { useStatusStore } from "@/store/status.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
   InsertElementEvent,
   MoveElementEvent,
   DrawEdgeEvent,
-  DiagramElementIdentifier,
   DeleteElementsEvent,
   RightClickElementEvent,
-  ComponentAttachedEvent,
+  DiagramNodeData,
+  DiagramGroupData,
+  GroupEvent,
+  SelectElementEvent,
 } from "../GenericDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline.vue";
 import GlobalStatusOverlay from "../GlobalStatusOverlay.vue";
@@ -140,8 +145,14 @@ watch([diagramNodes, diagramEdges], () => {
 
 async function onDrawEdge(e: DrawEdgeEvent) {
   await componentsStore.CREATE_COMPONENT_CONNECTION(
-    { componentId: parseInt(e.fromNodeId), socketId: parseInt(e.fromSocketId) },
-    { componentId: parseInt(e.toNodeId), socketId: parseInt(e.toSocketId) },
+    {
+      componentId: parseInt(e.fromSocket.parent.def.id),
+      socketId: parseInt(e.fromSocket.def.id),
+    },
+    {
+      componentId: parseInt(e.toSocket.parent.def.id),
+      socketId: parseInt(e.toSocket.def.id),
+    },
   );
 }
 
@@ -153,8 +164,11 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   componentsStore.selectedInsertSchemaId = null;
 
   // TODO These ids should be number from the start.
-  const parentId = parseInt(e.parent ?? "-1");
-  await componentsStore.CREATE_COMPONENT(schemaId, e.position, parentId);
+  await componentsStore.CREATE_COMPONENT(
+    schemaId,
+    e.position,
+    e.parent ? parseInt(e.parent) : undefined,
+  );
 
   // TODO: we actually want the new node ID so we can watch for it in the updated data
   // but the API currently doesn't have it right away :(
@@ -167,26 +181,34 @@ function onDiagramMoveElement(e: MoveElementEvent) {
   // eventually we will want to send those to the backend for realtime multiplayer
   // But for now we just send off the final position
   if (!e.isFinal) return;
-  componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-    parseInt(e.element.id),
-    e.position,
-  );
+  if (
+    e.element instanceof DiagramNodeData ||
+    e.element instanceof DiagramGroupData
+  ) {
+    componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
+      parseInt(e.element.def.id),
+      e.position,
+    );
+  }
 }
 
-function onDiagramUpdateSelection(newSelection: DiagramElementIdentifier[]) {
+function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
   // for now, we dont support multiselect anywhere outside the diagram, so we just act like nothing is selected
-  if (newSelection.length !== 1) {
+  if (newSelection.elements.length !== 1) {
     componentsStore.setSelectedComponentId(null);
     return;
   }
 
-  const selectedElement = newSelection[0];
+  const selectedElement = newSelection.elements[0];
   // we also dont support selecting things other than nodes outside the diagram
-  if (selectedElement.diagramElementType !== "node") {
+  if (
+    selectedElement instanceof DiagramNodeData ||
+    selectedElement instanceof DiagramGroupData
+  ) {
+    componentsStore.setSelectedComponentId(parseInt(selectedElement.def.id));
+  } else {
     componentsStore.setSelectedComponentId(null);
-    return;
   }
-  componentsStore.setSelectedComponentId(parseInt(selectedElement.id));
 }
 
 function onDiagramDelete(_e: DeleteElementsEvent) {
@@ -200,27 +222,29 @@ function onOutlineSelectComponent(id: number) {
 
 function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
   // TODO: make actually do something, probably also want to handle different types
-  if (rightClickEventInfo.element.diagramElementType !== "node") return;
-  contextMenuRef.value?.open(rightClickEventInfo.e, true);
+  if (rightClickEventInfo.element instanceof DiagramNodeData) {
+    contextMenuRef.value?.open(rightClickEventInfo.e, true);
+  }
 }
 
 watch(
   () => selectedComponentId.value,
   () => {
     if (selectedComponentId.value) {
-      diagramRef.value?.setSelection({
-        diagramElementType: "node",
-        id: selectedComponentId.value.toString(),
-      });
+      diagramRef.value?.setSelection(
+        selectedComponent.value.isGroup
+          ? DiagramGroupData.generateUniqueKey(selectedComponentId.value)
+          : DiagramNodeData.generateUniqueKey(selectedComponentId.value),
+      );
     } else {
       diagramRef.value?.clearSelection();
     }
   },
 );
 
-function onAttachedComponent({ frameId, componentId }: ComponentAttachedEvent) {
-  componentsStore.CONNECT_COMPONENT_TO_FRAME(componentId, frameId);
+function onGroupElements({ group, elements }: GroupEvent) {
+  for (const element of elements) {
+    componentsStore.CONNECT_COMPONENT_TO_FRAME(element.def.id, group.def.id);
+  }
 }
-
-const statusStore = useStatusStore();
 </script>

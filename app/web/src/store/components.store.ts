@@ -41,6 +41,7 @@ import { useStatusStore } from "./status.store";
 export type ComponentId = number;
 type Component = {
   id: ComponentId;
+  isGroup: boolean;
   displayName: string;
   schemaName: string;
   schemaId: number;
@@ -163,6 +164,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             return {
               id: ci.componentId,
+              // TODO: return this info from the backend (and not in category)
+              isGroup: diagramNode?.category === "Frames",
               displayName: diagramNode?.subtitle,
               schemaId: ci.schemaId,
               schemaName: ci.schemaName,
@@ -212,8 +215,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             const component = this.componentsById[componentId];
 
+            const frameSocket = _.find(
+              node.sockets,
+              (s) => s.label === "Frame" && s.direction === "output",
+            );
+            const frameEdge = _.find(
+              this.diagramEdges,
+              (edge) =>
+                edge.fromNodeId === node.id &&
+                edge.fromSocketId === frameSocket?.id,
+            );
+
             return {
               ...node,
+              parentId: frameEdge ? frameEdge.toNodeId : undefined,
               isLoading:
                 !!statusStore.componentStatusById[componentId]?.isUpdating,
               typeIcon: component?.icon || "logo-si",

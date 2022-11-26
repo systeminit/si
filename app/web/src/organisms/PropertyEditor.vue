@@ -15,7 +15,7 @@
         :array-index="arrayIndicesByValueId[pv.id]"
         :array-length="arrayLengthsByPropId[pv.propId]"
         :is-first-prop="index === 0"
-	:disabled="props.disabled"
+        :disabled="props.disabled"
         @toggle-collapsed="toggleCollapsed($event)"
         @updated-property="updatedProperty($event)"
         @add-to-array="addToArray($event)"

@@ -2,7 +2,7 @@
   <v-group
     ref="groupRef"
     :config="{
-      id: `node-${node.id}`,
+      id: node.uniqueKey,
       x: position.x,
       y: position.y,
     }"
@@ -26,7 +26,7 @@
     <!-- box background - also used by layout manager to figure out nodes location and size -->
     <v-rect
       :config="{
-        id: `node-${node.id}--bg`,
+        id: `${node.uniqueKey}--bg`,
         width: nodeWidth,
         height: nodeHeight,
         x: -halfWidth,
@@ -59,8 +59,8 @@
 
     <!-- type icon -->
     <DiagramIcon
-      v-if="node.typeIcon"
-      :icon="node.typeIcon"
+      v-if="node.def.typeIcon"
+      :icon="node.def.typeIcon"
       :color="colors.headerText"
       :config="{
         x: -halfWidth + 2,
@@ -78,7 +78,7 @@
         y: 0,
         verticalAlign: 'top',
         align: 'center',
-        text: node.title,
+        text: node.def.title,
         width: nodeWidth - 24 - 24,
         padding: 6,
         fill: colors.headerText,
@@ -95,7 +95,7 @@
         y: nodeHeaderHeight,
         verticalAlign: 'top',
         align: 'center',
-        text: node.subtitle,
+        text: node.def.subtitle,
         width: nodeWidth,
         padding: 5,
         fill: colors.bodyText,
@@ -113,15 +113,14 @@
     >
       <DiagramNodeSocket
         v-for="(socket, i) in leftSockets"
-        :key="socket.id"
-        :node-id="node.id"
+        :key="socket.uniqueKey"
         :socket="socket"
         :y="i * SOCKET_GAP"
-        :connected-edges="connectedEdges[socket.id]"
+        :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
         :draw-edge-state="drawEdgeState"
         :node-width="nodeWidth"
-        @hover:start="emit('hover:start', socket.id)"
-        @hover:end="emit('hover:end', socket.id)"
+        @hover:start="emit('hover:start', socket)"
+        @hover:end="emit('hover:end', socket)"
       />
     </v-group>
 
@@ -137,23 +136,22 @@
     >
       <DiagramNodeSocket
         v-for="(socket, i) in rightSockets"
-        :key="socket.id"
-        :node-id="node.id"
+        :key="socket.uniqueKey"
         :socket="socket"
         :y="i * SOCKET_GAP"
-        :connected-edges="connectedEdges[socket.id]"
+        :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
         :draw-edge-state="drawEdgeState"
         :node-width="nodeWidth"
-        @hover:start="emit('hover:start', socket.id)"
-        @hover:end="emit('hover:end', socket.id)"
+        @hover:start="emit('hover:start', socket)"
+        @hover:end="emit('hover:end', socket)"
       />
     </v-group>
 
     <!-- status icons -->
     <v-group
-      v-if="node.statusIcons?.length"
+      v-if="node.def.statusIcons?.length"
       :config="{
-        x: halfWidth - node.statusIcons.length * 22 - 2,
+        x: halfWidth - node.def.statusIcons.length * 22 - 2,
         y:
           nodeHeaderHeight +
           subtitleTextHeight +
@@ -162,7 +160,7 @@
       }"
     >
       <DiagramIcon
-        v-for="(statusIcon, i) in node.statusIcons"
+        v-for="(statusIcon, i) in node.def.statusIcons"
         :key="`status-icon-${i}`"
         :icon="statusIcon.icon"
         :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
@@ -179,7 +177,6 @@
     <v-group
       ref="overlay"
       :config="{
-        id: `node-${node.id}--overlay`,
         x: -halfWidth,
         y: nodeHeaderHeight,
         opacity: 0,
@@ -222,8 +219,9 @@ import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
 import {
   DiagramDrawEdgeState,
-  DiagramEdgeDef,
-  DiagramNodeDef,
+  DiagramEdgeData,
+  DiagramElementUniqueKey,
+  DiagramNodeData,
 } from "./diagram_types";
 import DiagramNodeSocket from "./DiagramNodeSocket.vue";
 
@@ -242,14 +240,14 @@ import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 
 const props = defineProps({
   node: {
-    type: Object as PropType<DiagramNodeDef>,
+    type: Object as PropType<DiagramNodeData>,
     required: true,
   },
   tempPosition: {
     type: Object as PropType<Vector2d>,
   },
   connectedEdges: {
-    type: Object as PropType<Record<string, DiagramEdgeDef[]>>,
+    type: Object as PropType<DiagramEdgeData[]>,
     default: () => ({}),
   },
   drawEdgeState: {
@@ -265,16 +263,28 @@ const emit = defineEmits(["resize", "hover:start", "hover:end"]);
 const { theme } = useTheme();
 const diagramConfig = useDiagramConfig();
 
+// template refs
 const titleTextRef = ref();
 const subtitleTextRef = ref();
 const groupRef = ref();
 
 const leftSockets = computed(() =>
-  _.filter(props.node.sockets, (s) => s.nodeSide === "left"),
+  _.filter(props.node.sockets, (s) => s.def.nodeSide === "left"),
 );
 const rightSockets = computed(() =>
-  _.filter(props.node.sockets, (s) => s.nodeSide === "right"),
+  _.filter(props.node.sockets, (s) => s.def.nodeSide === "right"),
 );
+
+const connectedEdgesBySocketKey = computed(() => {
+  const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
+  _.each(props.connectedEdges, (edge) => {
+    lookup[edge.fromSocketKey] ||= [];
+    lookup[edge.fromSocketKey].push(edge);
+    lookup[edge.toSocketKey] ||= [];
+    lookup[edge.toSocketKey].push(edge);
+  });
+  return lookup;
+});
 
 const nodeWidth = computed(() => 180);
 const halfWidth = computed(() => nodeWidth.value / 2);
@@ -284,7 +294,7 @@ const overlayIconSize = computed(() => nodeWidth.value / 3);
 const headerTextHeight = ref(20);
 const subtitleTextHeight = ref(0);
 watch(
-  [nodeWidth, () => props.node.title, () => props.node.subtitle],
+  [nodeWidth, () => props.node.def.title, () => props.node.def.subtitle],
   () => {
     // we have to let the new header be drawn on the canvas before we can check the height
     nextTick(recalcHeaderHeight);
@@ -294,7 +304,7 @@ watch(
 function recalcHeaderHeight() {
   headerTextHeight.value =
     titleTextRef.value?.getNode()?.getSelfRect().height || 20;
-  subtitleTextHeight.value = props.node.subtitle
+  subtitleTextHeight.value = props.node.def.subtitle
     ? subtitleTextRef.value?.getNode()?.getSelfRect().height
     : 10;
 }
@@ -308,14 +318,14 @@ const nodeBodyHeight = computed(() => {
     SOCKET_SIZE / 2 +
     // TODO: this isnt right yet!
     NODE_PADDING_BOTTOM +
-    (props.node.statusIcons?.length ? 30 : 0)
+    (props.node.def.statusIcons?.length ? 30 : 0)
   );
 });
 const nodeHeight = computed(
   () => nodeHeaderHeight.value + nodeBodyHeight.value,
 );
 
-const position = computed(() => props.tempPosition || props.node.position);
+const position = computed(() => props.tempPosition || props.node.def.position);
 
 watch([nodeWidth, nodeHeight, position], () => {
   // we call on nextTick to let the component actually update itself on the stage first
@@ -324,7 +334,7 @@ watch([nodeWidth, nodeHeight, position], () => {
 });
 
 const colors = computed(() => {
-  const primaryColor = tinycolor(props.node.color || DEFAULT_NODE_COLOR);
+  const primaryColor = tinycolor(props.node.def.color || DEFAULT_NODE_COLOR);
   const headerText = primaryColor.isDark() ? "#FFF" : "#000";
 
   // body bg
@@ -342,7 +352,7 @@ const colors = computed(() => {
 });
 
 const overlay = ref();
-watch([() => props.node.isLoading, overlay], ([isLoading]) => {
+watch([() => props.node.def.isLoading, overlay], ([isLoading]) => {
   if (_.isNil(overlay)) return;
   const node = overlay.value.getNode();
 

@@ -42,11 +42,13 @@
         >
           Fixes
         </span>
-	<div class="overflow-auto">
+        <div class="overflow-auto">
           <div
             v-for="fix in selectedFixBatchInfo.fixes"
             :key="fix.id"
-            :class="fix.id === selectedFixId ? 'bg-action-500' : 'hover:bg-black'"
+            :class="
+              fix.id === selectedFixId ? 'bg-action-500' : 'hover:bg-black'
+            "
             class="py-2 pl-4 pr-3 cursor-pointer flex flex-row items-center leading-tight"
             @click="selectFix(fix.id)"
           >
@@ -78,12 +80,14 @@
           <template #title>
             <HealthIcon
               :health="selectedFixInfo.resource.status"
-              :message="[
-                `${formatTitle(selectedFixInfo.action)} ${
-                  selectedFixInfo.schemaName
-                }`,
-                selectedFixInfo.resource.message ?? '',
-              ].filter((f) => f.length > 0)"
+              :message="
+                [
+                  `${formatTitle(selectedFixInfo.action)} ${
+                    selectedFixInfo.schemaName
+                  }`,
+                  selectedFixInfo.resource.message ?? '',
+                ].filter((f) => f.length > 0)
+              "
               :view-details="selectedFixInfo.resource.logs"
               class="ml-3"
             />
@@ -116,7 +120,6 @@ import { ref, computed } from "vue";
 import { useFixesStore } from "@/store/fixes/fixes.store";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import HealthIcon from "@/molecules/HealthIcon.vue";
-import FixStatusIcon from "@/molecules/FixStatusIcon.vue";
 
 export interface SortOption {
   value: string;

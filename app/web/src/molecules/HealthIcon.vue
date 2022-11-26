@@ -5,12 +5,15 @@
       class="pr-2 mr-2"
       :class="icon.class"
       size="lg"
-      :title="`Health: ${props.health}`"
+      :title="`Health: ${health}`"
     />
 
-    <span class="flex flex-col w-full h-full break-words" :title="props.message.join('\n')">
-      <strong v-for="(message, index) in props.message" :key="message" class="mt-1 ml-1">
-        {{message}}
+    <span
+      class="flex flex-col w-full h-full break-words"
+      :title="message.join('\n')"
+    >
+      <strong v-for="(m, index) in message" :key="m" class="mt-1 ml-1">
+        {{ m }}
         <button
           v-if="index === 0 && details.length > 0"
           class="underline text-action-400"
@@ -19,29 +22,27 @@
           View Details
         </button>
       </strong>
-      <strong v-if="props.message.length === 0">Health {{ props.health }}</strong>
+      <strong v-if="message.length === 0">Health {{ health }}</strong>
     </span>
 
     <Modal size="2xl" :open="modalOpen" @close="closeModal">
       <template #title>
-        <span class="flex" :title="props.message.join('\n')">
+        <span class="flex" :title="message.join('\n')">
           <Icon
             :name="icon.name"
             class="pr-2"
             :class="icon.class"
             size="lg"
-            :title="`Health: ${props.health}`"
+            :title="`Health: ${health}`"
           />
 
           <span class="flex flex-col">
-            <p v-for="message in props.message" :key="message" class="mt-1 ml-1">
-              {{ message }}
+            <p v-for="m in message" :key="m" class="mt-1 ml-1">
+              {{ m }}
             </p>
-	  </span>
-          <p v-if="props.message.length === 0">
-            Health {{ props.health }}
-	  </p>
-	</span>
+          </span>
+          <p v-if="message.length === 0">Health {{ health }}</p>
+        </span>
       </template>
       <template #content>
         <div
@@ -82,17 +83,13 @@ const icon = computed(() => {
   switch (props.health) {
     case ResourceHealth.Ok:
       return { name: "check-square" as IconNames, class: "text-success-500" };
-      break;
     case ResourceHealth.Warning:
       return { name: "alert-square" as IconNames, class: "text-warning-500" };
-      break;
     case ResourceHealth.Error:
       return { name: "x-square" as IconNames, class: "text-destructive-500" };
-      break;
     case ResourceHealth.Unknown:
     default:
       return { name: "help-circle" as IconNames, class: "text-neutral-300" };
-      break;
   }
 });
 

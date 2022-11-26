@@ -74,7 +74,9 @@ pub struct DiagramEdgeView {
     #[serde(rename = "type")]
     ty: Option<String>,
     name: Option<String>,
+    from_node_id: String,
     from_socket_id: String,
+    to_node_id: String,
     to_socket_id: String,
     is_bidirectional: Option<bool>,
 }
@@ -96,8 +98,10 @@ impl From<Connection> for DiagramEdgeView {
             id: connection_id.to_string(),
             ty: None,
             name: None,
-            from_socket_id: format!("{}-{}", source_node_id, source_socket_id),
-            to_socket_id: format!("{}-{}", destination_node_id, destination_socket_id),
+            from_node_id: source_node_id.to_string(),
+            from_socket_id: source_socket_id.to_string(),
+            to_node_id: destination_node_id.to_string(),
+            to_socket_id: destination_socket_id.to_string(),
             is_bidirectional: Some(false),
         }
     }
