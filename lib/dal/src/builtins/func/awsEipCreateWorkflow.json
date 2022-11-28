@@ -1,0 +1,6 @@
+{
+  "kind": "JsWorkflow",
+  "response_type": "Workflow",
+  "code_file": "awsEipCreateWorkflow.js",
+  "code_entrypoint": "create"
+}

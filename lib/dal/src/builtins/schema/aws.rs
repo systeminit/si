@@ -49,6 +49,7 @@ pub async fn migrate(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResu
     ec2(ctx, driver).await?;
     region(ctx, driver).await?;
     keypair(ctx, driver).await?;
+    eip(ctx, driver).await?;
     vpc::migrate(ctx, driver).await?;
     Ok(())
 }
@@ -997,6 +998,349 @@ async fn region(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()
         .pop()
         .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
     let title = "Refresh Region";
+    let context = WorkflowPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    let workflow_prototype =
+        WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
+
+    let name = "refresh";
+    let context = ActionPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Other,
+        context,
+    )
+    .await?;
+
+    Ok(())
+}
+
+/// A [`Schema`](crate::Schema) migration for [`AWS EIP`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eip.html).
+async fn eip(ctx: &DalContext, driver: &MigrationDriver) -> BuiltinsResult<()> {
+    let (schema, schema_variant, root_prop) = match BuiltinSchemaHelpers::create_schema_and_variant(
+        ctx,
+        "Elastic IP",
+        SchemaKind::Configuration,
+        ComponentKind::Standard,
+        Some(AWS_NODE_COLOR),
+    )
+    .await?
+    {
+        Some(tuple) => tuple,
+        None => return Ok(()),
+    };
+
+    let mut attribute_context_builder = AttributeContext::builder();
+    attribute_context_builder
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id());
+
+    // Diagram and UI Menu
+    let diagram_kind = schema
+        .diagram_kind()
+        .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+    let ui_menu = SchemaUiMenu::new(ctx, "Elastic IP", "AWS", &diagram_kind).await?;
+    ui_menu.set_schema(ctx, schema.id()).await?;
+
+    // Prop: /root/domain/tags
+    let tags_map_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "tags",
+        PropKind::Map,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_TAG_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // Prop: /root/domain/tags/tag
+    let tags_map_item_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "tag",
+        PropKind::String,
+        None,
+        Some(*tags_map_prop.id()),
+        Some(EC2_TAG_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // Prop: /root/domain/awsResourceType
+    let aws_resource_type_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "awsResourceType",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(EC2_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // Prop: /root/domain/region
+    let region_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "region",
+        PropKind::String,
+        None,
+        Some(root_prop.domain_prop_id),
+        Some(AWS_REGIONS_DOCS_URL.to_string()),
+    )
+    .await?;
+
+    // Code Generation Prototype
+    let code_generation_func_name = "si:generateAwsEipJSON".to_string();
+    let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
+    let code_generation_func_argument =
+        FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    code_generation_func_name.clone(),
+                    "domain".to_string(),
+                )
+            })?;
+    CodeGenerationPrototype::new(
+        ctx,
+        *code_generation_func.id(),
+        *code_generation_func_argument.id(),
+        *schema_variant.id(),
+        CodeLanguage::Json,
+    )
+    .await?;
+
+    // Output Socket
+    let identity_func_item = driver
+        .get_func_item("si:identity")
+        .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
+    let (_allocation_id_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+        ctx,
+        *schema.id(),
+        *schema_variant.id(),
+        "Allocation ID",
+        None,
+        identity_func_item.func_id,
+        identity_func_item.func_binding_id,
+        identity_func_item.func_binding_return_value_id,
+        SocketArity::Many,
+        DiagramKind::Configuration,
+    )
+    .await?;
+    output_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    // Input Socket
+    // PAUL: There are currently no options to create a different type of EIP
+    // we may wat to allow passing in an address to specify coming from a pool
+    let (region_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema_variant.id(),
+            "Region",
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    // Qualifications
+    let qual_func_name = "si:qualificationEipCanCreate".to_string();
+    let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
+        .await?
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
+
+    let mut qual_prototype_context = QualificationPrototypeContext::new();
+    qual_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+
+    // Wrap it up.
+    schema_variant.finalize(ctx).await?;
+
+    // Set Defaults
+    BuiltinSchemaHelpers::set_default_value_for_prop(
+        ctx,
+        *aws_resource_type_prop.id(),
+        *schema.id(),
+        *schema_variant.id(),
+        serde_json::json!["eip"],
+    )
+    .await?;
+
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
+    let tags_map_attribute_read_context = AttributeReadContext {
+        prop_id: Some(*tags_map_prop.id()),
+        ..base_attribute_read_context
+    };
+    let tags_map_attribute_value =
+        AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                tags_map_attribute_read_context,
+            ))?;
+    let tags_map_item_attribute_context =
+        AttributeContextBuilder::from(base_attribute_read_context)
+            .set_prop_id(*tags_map_item_prop.id())
+            .to_context()?;
+    let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
+        ctx,
+        tags_map_item_attribute_context,
+        *tags_map_attribute_value.id(),
+        None,
+        Some("Name".to_string()),
+    )
+    .await?;
+
+    // Connect props to providers.
+    let si_name_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
+    let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+        })?;
+    let name_tags_item_attribute_value =
+        AttributeValue::get_by_id(ctx, &name_tags_item_attribute_value_id)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFound(
+                name_tags_item_attribute_value_id,
+            ))?;
+    let mut name_tags_item_attribute_prototype = name_tags_item_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    name_tags_item_attribute_prototype
+        .set_func_id(ctx, identity_func_item.func_id)
+        .await?;
+    let identity_arg =
+        FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_item.func_id)
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(
+                    "identity".to_string(),
+                    "identity".to_string(),
+                )
+            })?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *name_tags_item_attribute_prototype.id(),
+        *identity_arg.id(),
+        *si_name_internal_provider.id(),
+    )
+    .await?;
+
+    // Connect the "region" prop to the "Region" explicit internal provider.
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+    let region_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*region_prop.id()),
+        ..base_attribute_read_context
+    };
+    let region_attribute_value =
+        AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                region_attribute_value_read_context,
+            ))?;
+    let mut region_attribute_prototype = region_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    region_attribute_prototype
+        .set_func_id(ctx, identity_func_item.func_id)
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *region_attribute_prototype.id(),
+        identity_func_item.func_argument_id,
+        *region_explicit_internal_provider.id(),
+    )
+    .await?;
+
+    let func_name = "si:awsEipCreateWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let title = "Create Elastic IP";
+    let context = WorkflowPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    let workflow_prototype =
+        WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
+
+    let func_name = "si:resourceExistsConfirmation";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let context = ConfirmationPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    let mut confirmation_prototype =
+        ConfirmationPrototype::new(ctx, "Elastic IP Exists?", *func.id(), context).await?;
+    confirmation_prototype
+        .set_provider(ctx, Some("AWS".to_owned()))
+        .await?;
+    confirmation_prototype
+        .set_success_description(ctx, Some("Elastic IP exists!".to_owned()))
+        .await?;
+    confirmation_prototype
+        .set_failure_description(
+            ctx,
+            Some(
+                "This Elastic IP has not been created yet. Please run the fix above to create it!"
+                    .to_owned(),
+            ),
+        )
+        .await?;
+
+    let name = "create";
+    let context = ActionPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *schema_variant.id(),
+        ..Default::default()
+    };
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        name,
+        ActionKind::Create,
+        context,
+    )
+    .await?;
+
+    let func_name = "si:awsEipRefreshWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let title = "Refresh Elastic IP Resource";
     let context = WorkflowPrototypeContext {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
