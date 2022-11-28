@@ -139,6 +139,8 @@ module.exports = {
     "no-autofix/no-unreachable": 1,
     // useful while debugging and commenting things out, otherwise gets automatically changed from let to const
     "no-autofix/prefer-const": process.env.STRICT_LINT ? "error" : "warn",
+
+    "prettier/prettier": process.env.STRICT_LINT ? "error" : "warn",
   },
 
   overrides: [

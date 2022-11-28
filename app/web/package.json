@@ -11,7 +11,7 @@
     "watch": "npm run build:watch",
     "lint": "eslint src --ext .ts,.js,.vue",
     "lint:fix": "npm run lint -- --fix",
-    "lint:strict": "STRICT_LINT=1 npm run lint -- --max-warnings 0",
+    "lint:strict": "STRICT_LINT=1 npm run lint",
     "lint:summary": "npm run lint -- --format summary-chart",
     "fmt": "npm run lint:fix",
     "fmt:check": "npm run lint",
