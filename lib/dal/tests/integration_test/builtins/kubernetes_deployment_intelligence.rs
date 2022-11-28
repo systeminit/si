@@ -6,8 +6,9 @@ use dal_test::{
 
 use pretty_assertions_sorted::assert_eq;
 
-// Oh yeah, it's big brain time.
-#[ignore]
+/// This test simulates a usability study test from June 2021 that showcased the
+/// [`providers`](dal::provider) and [`attribute`](dal::attribute) work with extended
+/// "intelligence" functionality across multiple [`Components`](dal::Component).
 #[test]
 async fn kubernetes_deployment_intelligence(octx: DalContext) {
     let ctx = &octx;
@@ -106,12 +107,13 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     // Ensure setup worked.
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "fedora"
+            },
+            "code": {},
             "domain": {
                 "image": "fedora"
             },
-            "si": {
-                "name": "fedora"
-            }
         }], // expected
         fedora_docker_image_payload
             .component_view_properties(ctx)
@@ -119,12 +121,13 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "alpine"
+            },
+            "code": {},
             "domain": {
                 "image": "alpine"
             },
-            "si": {
-                "name": "alpine"
-            }
         }], // expected
         alpine_docker_image_payload
             .component_view_properties(ctx)
@@ -132,26 +135,38 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "namespace"
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "metadata:\n  name: squidward-system\n",
+                    "format": "yaml",
+                },
+            },
             "domain": {
                 "metadata": {
                     "name": "squidward-system"
                 }
             },
-            "si": {
-                "name": "namespace"
-            }
         }], // expected
         namespace_payload.component_view_properties(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "apiVersion": "apps/v1",
-                "kind": "Deployment",
-            },
             "si": {
                 "name": "spongebob"
-            }
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
+            },
+            "domain": {
+                "kind": "Deployment",
+                "apiVersion": "apps/v1",
+            },
         }], // expected
         spongebob_deployment_payload
             .component_view_properties(ctx)
@@ -159,13 +174,19 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "apiVersion": "apps/v1",
-                "kind": "Deployment",
-            },
             "si": {
                 "name": "patrick"
-            }
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
+            },
+            "domain": {
+                "kind": "Deployment",
+                "apiVersion": "apps/v1",
+            },
         }], // expected
         patrick_deployment_payload
             .component_view_properties(ctx)
@@ -195,12 +216,13 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     // Check that the update worked.
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "fedora-updated"
+            },
+            "code": {},
             "domain": {
                 "image": "fedora-updated"
             },
-            "si": {
-                "name": "fedora-updated"
-            }
         }], // expected
         fedora_docker_image_payload
             .component_view_properties(ctx)
@@ -208,12 +230,13 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "alpine"
+            },
+            "code": {},
             "domain": {
                 "image": "alpine"
             },
-            "si": {
-                "name": "alpine"
-            }
         }], // expected
         alpine_docker_image_payload
             .component_view_properties(ctx)
@@ -221,39 +244,51 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "namespace"
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "metadata:\n  name: squidward-system\n",
+                    "format": "yaml",
+                },
+            },
             "domain": {
                 "metadata": {
                     "name": "squidward-system"
                 }
             },
-            "si": {
-                "name": "namespace"
-            }
         }], // expected
         namespace_payload.component_view_properties(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "spongebob"
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\nspec:\n  template:\n    spec:\n      containers:\n        - name: fedora-updated\n          image: fedora-updated\n          ports: []\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
+            },
             "domain": {
-                "apiVersion": "apps/v1",
                 "kind": "Deployment",
                 "spec": {
                     "template": {
                         "spec": {
                             "containers": [
                                 {
-                                    "image": "fedora-updated",
                                     "name": "fedora-updated",
+                                    "image": "fedora-updated",
                                     "ports": [],
                                 },
                             ],
                         },
                     }
                 },
+                "apiVersion": "apps/v1",
             },
-            "si": {
-                "name": "spongebob"
-            }
         }], // expected
         spongebob_deployment_payload
             .component_view_properties(ctx)
@@ -261,13 +296,19 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "apiVersion": "apps/v1",
-                "kind": "Deployment",
-            },
             "si": {
                 "name": "patrick"
-            }
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
+            },
+            "domain": {
+                "kind": "Deployment",
+                "apiVersion": "apps/v1",
+            },
         }], // expected
         patrick_deployment_payload
             .component_view_properties(ctx)
@@ -334,12 +375,13 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     // Observed that it worked.
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "fedora-updated-twice"
+            },
+            "code": {},
             "domain": {
                 "image": "fedora-updated-twice"
             },
-            "si": {
-                "name": "fedora-updated-twice"
-            }
         }], // expected
         fedora_docker_image_payload
             .component_view_properties(ctx)
@@ -347,12 +389,13 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "alpine-updated"
+            },
+            "code": {},
             "domain": {
                 "image": "alpine-updated"
             },
-            "si": {
-                "name": "alpine-updated"
-            }
         }], // expected
         alpine_docker_image_payload
             .component_view_properties(ctx)
@@ -360,50 +403,62 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "namespace"
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "metadata:\n  name: squidward-system-updated\n",
+                    "format": "yaml",
+                },
+            },
             "domain": {
                 "metadata": {
                     "name": "squidward-system-updated"
                 }
             },
-            "si": {
-                "name": "namespace"
-            }
         }], // expected
         namespace_payload.component_view_properties(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "apiVersion": "apps/v1",
-                "kind": "Deployment",
-                "metadata": {
-                    "namespace": "squidward-system-updated"
+            "si": {
+                "name": "spongebob"
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\nspec:\n  template:\n    spec:\n      containers:\n        - name: fedora-updated-twice\n          image: fedora-updated-twice\n          ports: []\n        - name: alpine-updated\n          image: alpine-updated\n          ports: []\n    metadata:\n      namespace: squidward-system-updated\nmetadata:\n  namespace: squidward-system-updated\napiVersion: apps/v1\n",
+                    "format": "yaml",
                 },
+            },
+            "domain": {
+                "kind": "Deployment",
                 "spec": {
                     "template": {
-                        "metadata": {
-                            "namespace": "squidward-system-updated"
-                        },
                         "spec": {
                             "containers": [
                                 {
-                                    "image": "fedora-updated-twice",
                                     "name": "fedora-updated-twice",
+                                    "image": "fedora-updated-twice",
                                     "ports": [],
                                 },
                                 {
-                                    "image": "alpine-updated",
                                     "name": "alpine-updated",
+                                    "image": "alpine-updated",
                                     "ports": [],
                                 },
                             ],
                         },
+                        "metadata": {
+                            "namespace": "squidward-system-updated",
+                        },
                     }
                 },
+                "metadata": {
+                    "namespace": "squidward-system-updated",
+                },
+                "apiVersion": "apps/v1",
             },
-            "si": {
-                "name": "spongebob"
-            }
         }], // expected
         spongebob_deployment_payload
             .component_view_properties(ctx)
@@ -411,26 +466,32 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "patrick"
+            },
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\nspec:\n  template:\n    spec:\n      containers:\n        - name: fedora-updated-twice\n          image: fedora-updated-twice\n          ports: []\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
+            },
             "domain": {
-                "apiVersion": "apps/v1",
                 "kind": "Deployment",
                 "spec": {
                     "template": {
                         "spec": {
                             "containers": [
                                 {
-                                    "image": "fedora-updated-twice",
                                     "name": "fedora-updated-twice",
+                                    "image": "fedora-updated-twice",
                                     "ports": [],
                                 },
                             ],
                         },
                     }
                 },
+                "apiVersion": "apps/v1",
             },
-            "si": {
-                "name": "patrick"
-            }
         }], // expected
         patrick_deployment_payload
             .component_view_properties(ctx)
