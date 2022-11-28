@@ -42,7 +42,9 @@ default--check-format: node_modules
 .PHONY: default--check-format
 
 ## check: Checks all linting, formatting, & other rules
-default--check: check-type check-format
+default--check: node_modules
+	$(call header,$@)
+	npm run check
 .PHONY: default--check
 
 ## fix-lint: Updates code with linting fixes for the package (may modify sources)
