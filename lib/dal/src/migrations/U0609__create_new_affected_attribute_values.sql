@@ -79,12 +79,6 @@ BEGIN
             attribute_value.id,
             false
         );
-        PERFORM unset_belongs_to_v1(
-            'attribute_value_belongs_to_attribute_prototype',
-            this_write_tenancy,
-            this_visibility,
-            new_attribute_value_id
-        );
         PERFORM set_belongs_to_v1(
             'attribute_value_belongs_to_attribute_prototype',
             this_read_tenancy,
@@ -423,12 +417,6 @@ BEGIN
                                 attribute_prototype.id;
                             -- We need to make sure the new AttributeValue is associated with the correct AttributePrototype
                             -- so that we can find it when we go through to update affected AttributeValues.
-                            PERFORM unset_belongs_to_v1(
-                                'attribute_value_belongs_to_attribute_prototype',
-                                this_write_tenancy,
-                                this_visibility,
-                                new_attribute_value_id
-                            );
                             PERFORM set_belongs_to_v1(
                                 'attribute_value_belongs_to_attribute_prototype',
                                 this_read_tenancy,

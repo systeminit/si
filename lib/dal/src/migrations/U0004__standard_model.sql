@@ -1035,12 +1035,38 @@ CREATE OR REPLACE FUNCTION set_belongs_to_v1(
 ) RETURNS VOID AS
 $$
 DECLARE
-    insert_query           text;
-    this_write_tenancy_record    tenancy_record_v1;
-    this_visibility_record visibility_record_v1;
+    insert_query              text;
+    this_write_tenancy_record tenancy_record_v1;
+    this_visibility_record    visibility_record_v1;
+    this_existing_record_id   bigint;
 BEGIN
     this_write_tenancy_record := tenancy_json_to_columns_v1(this_write_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
+
+    SELECT id
+    INTO this_existing_record_id
+    FROM find_by_attr_v1(
+        this_table_name,
+        this_read_tenancy,
+        this_visibility,
+        'object_id',
+        this_object_id::text
+    );
+
+    IF this_existing_record_id IS NOT NULL THEN
+        -- Since there is an existing relation record for the object we're interested in,
+        -- we need to update that record, rather than create a new relation record.
+        PERFORM update_by_id_v1(
+            this_table_name,
+            'belongs_to_id',
+            this_read_tenancy,
+            this_write_tenancy,
+            this_visibility,
+            this_existing_record_id,
+            this_belongs_to_id
+        );
+        RETURN;
+    END IF;
 
     insert_query :=
             format(' INSERT INTO %1$I (object_id, belongs_to_id, tenancy_universal, '

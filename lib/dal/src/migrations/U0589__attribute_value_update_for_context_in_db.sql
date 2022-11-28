@@ -253,13 +253,6 @@ BEGIN
               this_visibility;
     END IF;
 
-    PERFORM unset_belongs_to_v1(
-        'attribute_value_belongs_to_attribute_value',
-        this_write_tenancy,
-        this_visibility,
-        this_attribute_value_id
-    );
-
     PERFORM set_belongs_to_v1(
         'attribute_value_belongs_to_attribute_value',
         this_read_tenancy,
@@ -450,12 +443,6 @@ BEGIN
                                     this_visibility,
                                     proxy_attribute_value.id,
                                     proxy_target.id);
-            PERFORM unset_belongs_to_v1(
-                'attribute_value_belongs_to_attribute_prototype',
-                this_write_tenancy,
-                this_visibility,
-                proxy_attribute_value.id
-            );
             PERFORM set_belongs_to_v1(
                 'attribute_value_belongs_to_attribute_prototype',
                 this_read_tenancy,
@@ -593,11 +580,6 @@ BEGIN
                                        this_func_id,
                                        this_key) AS ap;
 
-    PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
-                                this_write_tenancy,
-                                this_visibility,
-                                this_attribute_value_id);
-
     PERFORM set_belongs_to_v1(
         'attribute_value_belongs_to_attribute_prototype',
         this_read_tenancy,
@@ -607,11 +589,6 @@ BEGIN
         new_attribute_prototype_id
     );
 
-    PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_value',
-                                this_write_tenancy,
-                                this_visibility,
-                                this_attribute_value_id);
-
     IF this_parent_attribute_value_id IS NOT NULL THEN
         PERFORM set_belongs_to_v1(
             'attribute_value_belongs_to_attribute_value',
@@ -620,6 +597,13 @@ BEGIN
             this_visibility,
             this_attribute_value_id,
             this_parent_attribute_value_id
+        );
+    ELSE
+        PERFORM unset_belongs_to_v1(
+            'attribute_value_belongs_to_attribute_value',
+            this_write_tenancy,
+            this_visibility,
+            this_attribute_value_id
         );
     END IF;
 END;
@@ -930,10 +914,6 @@ BEGIN
             -- `AttributeContext`, but its parent was from a less-specific `AttributeContext`. Since it now has
             -- an appropriate parent `AttributeValue` within the desired `AttributeContext`, we need to have it
             -- under that parent instead of the old one.
-            PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_value',
-                                        this_write_tenancy,
-                                        this_visibility,
-                                        original_child_value.id);
             PERFORM set_belongs_to_v1(
                 'attribute_value_belongs_to_attribute_value',
                 this_read_tenancy,
@@ -962,10 +942,6 @@ BEGIN
                 ON avbtap.belongs_to_id = ap.id
                     AND avbtap.object_id = original_child_value.id;
 
-            PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
-                                        this_write_tenancy,
-                                        this_visibility,
-                                        new_child_value.id);
             PERFORM set_belongs_to_v1(
                 'attribute_value_belongs_to_attribute_prototype',
                 this_read_tenancy,
@@ -1269,10 +1245,6 @@ BEGIN
               attribute_value_id;
     END IF;
 
-    PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
-                                this_write_tenancy,
-                                this_visibility,
-                                attribute_value_id);
     PERFORM set_belongs_to_v1(
         'attribute_value_belongs_to_attribute_prototype',
         this_read_tenancy,
