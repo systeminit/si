@@ -16,7 +16,7 @@
         width: nodeWidth + 8,
         height: nodeHeight + 8,
         x: -halfWidth - 4,
-        y: -4,
+        y: -4 - nodeHeaderHeight - GROUP_HEADER_BOTTOM_MARGIN,
         cornerRadius: CORNER_RADIUS + 3,
         stroke: SELECTION_COLOR,
         strokeWidth: isSelected ? 5 : 2,
@@ -24,7 +24,7 @@
       }"
     />
     <!-- box background - also used by layout manager to figure out nodes location and size -->
-    <v-rect
+    <!-- <v-rect
       :config="{
         id: `${group.uniqueKey}--bg`,
         width: nodeWidth,
@@ -32,16 +32,16 @@
         x: -halfWidth,
         y: 0,
       }"
-    />
+    /> -->
 
     <!--  Node Body  -->
     <v-rect
       :config="{
-        id: `${group.uniqueKey}--body`,
+        id: `${group.uniqueKey}--bg`,
         width: nodeWidth,
         height: nodeBodyHeight,
         x: -halfWidth,
-        y: nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN,
+        y: 0,
         cornerRadius: CORNER_RADIUS,
         fill: colors.bodyBg,
         fillAfterStrokeEnabled: true,
@@ -56,41 +56,50 @@
       }"
     />
 
-    <!-- header background -->
-    <!--  TODO check with mark what this width should be   -->
-    <v-rect
+    <!-- header -->
+    <v-group
       :config="{
-        cornerRadius: CORNER_RADIUS,
-        fill: colors.headerBg,
         x: -halfWidth,
-        y: 0,
-        width: headerWidth,
-        height: headerTextHeight,
+        y: -nodeHeaderHeight - GROUP_HEADER_BOTTOM_MARGIN,
         listening: false,
       }"
-    />
+    >
+      <!-- header background -->
+      <!--  TODO check with mark what this width should be   -->
+      <v-rect
+        :config="{
+          cornerRadius: CORNER_RADIUS,
+          fill: colors.headerBg,
+          x: 0,
+          y: 0,
+          width: headerWidth,
+          height: headerTextHeight,
+          listening: false,
+        }"
+      />
 
-    <!-- header text -->
-    <!--  TODO fix font size   -->
-    <v-text
-      ref="titleTextRef"
-      :config="{
-        x: -halfWidth,
-        y: 0,
-        verticalAlign: 'top',
-        align: 'left',
-        width: headerWidth,
-        text: `${group.def.subtitle}: 0`,
-        padding: 6,
-        fill: colors.headerText,
-        fontSize: GROUP_TITLE_FONT_SIZE,
-        fontStyle: 'bold',
-        fontFamily: DIAGRAM_FONT_FAMILY,
-        listening: false,
-        wrap: 'none',
-        ellipsis: true,
-      }"
-    />
+      <!-- header text -->
+      <!--  TODO fix font size   -->
+      <v-text
+        ref="titleTextRef"
+        :config="{
+          x: 0,
+          y: 0,
+          verticalAlign: 'top',
+          align: 'left',
+          width: headerWidth,
+          text: `${group.def.subtitle}: 0`,
+          padding: 6,
+          fill: colors.headerText,
+          fontSize: GROUP_TITLE_FONT_SIZE,
+          fontStyle: 'bold',
+          fontFamily: DIAGRAM_FONT_FAMILY,
+          listening: false,
+          wrap: 'none',
+          ellipsis: true,
+        }"
+      />
+    </v-group>
 
     <!--  spinner overlay  -->
     <v-group

@@ -915,7 +915,8 @@ const currentSelectionMovableElements = computed(
     ) as unknown as (DiagramNodeData | DiagramGroupData)[],
 );
 
-const draggedElementsPositionsPreDrag = ref<Vector2d[]>();
+const draggedElementsPositionsPreDrag =
+  ref<Record<DiagramElementUniqueKey, Vector2d>>();
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
 function beginDragElements() {
@@ -924,9 +925,9 @@ function beginDragElements() {
 
   totalScrolledDuringDrag.value = { x: 0, y: 0 };
 
-  draggedElementsPositionsPreDrag.value = _.map(
-    currentSelectionMovableElements.value,
-    (el) => movedElementPositions[el.uniqueKey] || el.def.position,
+  draggedElementsPositionsPreDrag.value = _.mapValues(
+    allElementsByKey.value,
+    (el) => movedElementPositions[el.uniqueKey] || _.get(el.def, "position"),
   );
 }
 function endDragElements() {
@@ -1021,9 +1022,9 @@ function onDragElementsMove() {
   }
 
   _.each(currentSelectionMovableElements.value, (el, i) => {
-    if (!draggedElementsPositionsPreDrag.value?.[i]) return;
+    if (!draggedElementsPositionsPreDrag.value?.[el.uniqueKey]) return;
     const newPosition = vectorAdd(
-      draggedElementsPositionsPreDrag.value?.[i],
+      draggedElementsPositionsPreDrag.value?.[el.uniqueKey],
       delta,
     );
 
@@ -1034,68 +1035,36 @@ function onDragElementsMove() {
       );
       if (!parentGroup) throw new Error("parent group not found");
 
-      // we need to check that the component isn't being dragged outside the frame
-      // if it is, then we need to stop the move operation from happening at the
-      // frame border
-
-      const elAttrs = kStage.findOne(`#${el.uniqueKey}--bg`).attrs;
-
-      const object = {
-        x: newPosition.x - elAttrs.width / 2,
-        y: newPosition.y,
-        width: elAttrs.width,
-        height: elAttrs.height,
+      const groupShape = kStage.findOne(`#${parentGroup?.uniqueKey}--bg`);
+      const groupPos = groupShape.getAbsolutePosition(kStage);
+      const groupBounds = {
+        left: groupPos.x,
+        right: groupPos.x + groupShape.width(),
+        top: groupPos.y,
+        bottom: groupPos.y + groupShape.height(),
       };
 
-      const groupRootAttrs = kStage.findOne(`#${parentGroup.uniqueKey}`).attrs;
-      const groupBodyAttrs = kStage.findOne(
-        `#${parentGroup.uniqueKey}--body`,
-      ).attrs;
-      const container = {
-        x: groupRootAttrs.x - groupBodyAttrs.width / 2,
-        y: groupRootAttrs.y + groupBodyAttrs.y,
-        width: groupBodyAttrs.width,
-        height: groupBodyAttrs.height,
-      };
-
-      if (!rectContainsAnother(object, container)) {
-        return;
-      }
-
-      // const groupShape = kStage.findOne(`#${parentGroup?.uniqueKey}--bg`);
-      // const groupPos = groupShape.getAbsolutePosition(kStage);
-      // const groupBounds = {
-      //   left: groupPos.x,
-      //   right: groupPos.x + groupShape.width(),
-      //   top: groupPos.y,
-      //   bottom: groupPos.y + groupShape.height(),
-      // };
-
-      // const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
+      const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
       // const elPos = elShape.getAbsolutePosition(kStage);
-      // const elBounds = {
-      //   left: elPos.x,
-      //   right: elPos.x + elShape.width(),
-      //   top: elPos.y,
-      //   bottom: elPos.y + elShape.height(),
-      // };
+      const newElBounds = {
+        left: newPosition.x - elShape.width() / 2,
+        right: newPosition.x + elShape.width() / 2,
+        top: newPosition.y,
+        bottom: newPosition.y + elShape.height(),
+      };
 
-      // if (elBounds.left <= groupBounds.left) {
-      //   newPosition.x = groupBounds.left + elShape.width() / 2 + 10;
-      //   // return;
-      // }
-      // if (elBounds.right >= groupBounds.right) {
-      //   newPosition.x = groupBounds.right - elShape.width() / 2 - 10;
-      //   // return;
-      // }
-      // if (elBounds.top <= groupBounds.top) {
-      //   newPosition.y = groupBounds.top + elShape.height() / 2 + 10;
-      //   // return;
-      // }
-      // if (elBounds.bottom >= groupBounds.bottom) {
-      //   newPosition.y = groupBounds.bottom - elShape.height() / 2 - 10;
-      //   // return;
-      // }
+      if (newElBounds.left <= groupBounds.left) {
+        newPosition.x = groupBounds.left + elShape.width() / 2 + 10;
+      }
+      if (newElBounds.right >= groupBounds.right) {
+        newPosition.x = groupBounds.right - elShape.width() / 2 - 10;
+      }
+      if (newElBounds.top <= groupBounds.top) {
+        newPosition.y = groupBounds.top + 10;
+      }
+      if (newElBounds.bottom >= groupBounds.bottom) {
+        newPosition.y = groupBounds.bottom - elShape.height() - 10;
+      }
     }
 
     if (el instanceof DiagramGroupData) {
@@ -1105,12 +1074,13 @@ function onDragElementsMove() {
         (n) => n.def.parentId === el.def.id,
       );
 
-      // TODO: currently we are using the initial position from the store, which could be
-      // incorrect temporarily if the user makes several moves quickly
-      // however we'll ignore this bug, because storing positions relative to the group will fix it
-
+      // TODO: this should get simplified once we are storing positions relative to their group parent
       _.each(childEls, (childEl) => {
-        const newChildPosition = vectorAdd(childEl.def.position, delta);
+        if (!draggedElementsPositionsPreDrag.value?.[childEl.uniqueKey]) return;
+        const newChildPosition = vectorAdd(
+          draggedElementsPositionsPreDrag.value[childEl.uniqueKey],
+          delta,
+        );
         // track the position locally, so we don't need to rely on parent to store the temporary position
         movedElementPositions[childEl.uniqueKey] = newChildPosition;
         emit("move-element", {
@@ -1120,12 +1090,6 @@ function onDragElementsMove() {
         });
       });
     }
-
-    // for (const nodeId of nodeIdsConnectedToFrame) {
-    //   const childPosition = props.nodes?.find((x) => x.id === nodeId)?.position;
-    //   if (childPosition === undefined) {
-    //     continue;
-    //   }
 
     // track the position locally, so we don't need to rely on parent to store the temporary position
     movedElementPositions[el.uniqueKey] = newPosition;
