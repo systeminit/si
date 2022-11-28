@@ -210,22 +210,29 @@ async fn set_belongs_to(ctx: &DalContext) {
     .await
     .expect("cannot set billing account for key pair");
 
-    // You cannot replace the existing belongs to relationship by calling it again with a new id
-    match standard_model::set_belongs_to(
+    let found_billing_account = key_pair
+        .billing_account(ctx)
+        .await
+        .expect("cannot retrieve billing account from key pair")
+        .expect("cannot find billing account for key pair");
+    assert_eq!(first_billing_account.id(), found_billing_account.id());
+
+    // You can replace the existing belongs to relationship by calling it again with a new id
+    standard_model::set_belongs_to(
         ctx,
         "key_pair_belongs_to_billing_account",
         key_pair.id(),
         second_billing_account.id(),
     )
     .await
-    {
-        Err(err) => {
-            assert!(err
-                .to_string()
-                .contains("duplicate key value violates unique constraint "));
-        }
-        Ok(_) => panic!("set belongs to twice should fail"),
-    };
+    .expect("cannot update billing account for key pair");
+
+    let found_billing_account = key_pair
+        .billing_account(ctx)
+        .await
+        .expect("cannot retrieve billing account from key pair")
+        .expect("cannot find billing account for key pair");
+    assert_eq!(second_billing_account.id(), found_billing_account.id());
 }
 
 #[test]
