@@ -28,7 +28,6 @@ mod workflow;
 
 // Expose the "persist" function for creating and editing builtin funcs while in dev mode.
 pub use func::persist as func_persist;
-pub use schema::MigrationDriver;
 
 #[derive(Error, Debug)]
 pub enum BuiltinsError {

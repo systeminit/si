@@ -1,46 +1,72 @@
+use serde::{Deserialize, Serialize};
+
 use crate::action_prototype::ActionKind;
 use crate::builtins::schema::aws::{AWS_NODE_COLOR, EC2_DOCS_URL, EC2_TAG_DOCS_URL};
 use crate::builtins::schema::MigrationDriver;
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
+use crate::edit_field::widget::WidgetKind;
+use crate::property_editor::SelectWidgetOption;
 use crate::prototype_context::PrototypeContext;
+use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::SocketArity;
 use crate::validation::Validation;
+use crate::AttributeValueError;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributeContext,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype,
-    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncBinding,
-    FuncError, InternalProvider, PropKind, QualificationPrototype, QualificationPrototypeContext,
-    SchemaError, SchemaKind, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult,
+    CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype, ConfirmationPrototypeContext,
+    DalContext, DiagramKind, ExternalProvider, Func, FuncError, InternalProvider, PropKind,
+    QualificationPrototype, SchemaError, SchemaKind, StandardModel, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 
-// VPC documentation URLs
-const INGRESS_EGRESS_DOCS_URL: &str =
-    "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html";
-const SECURITY_GROUP_DOCS_URL: &str =
-    "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html";
+// Core documentation URLs
+const AMI_DOCS_URL: &str =
+    "https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html";
 const AWS_REGIONS_DOCS_URL: &str =
     "https://docs.aws.amazon.com/general/latest/gr/rande.html#region-names-codes";
+const EC2_INSTANCE_TYPES_URL: &str =
+    "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html";
+const KEY_PAIR_DOCS_URL: &str =
+    "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html";
 
 // Datasets
-const INGRESS_EGRESS_PROTOCOLS: &[&str; 3] = &["tcp", "udp", "icmp"];
+const REGIONS_JSON_STR: &str = include_str!("../data/aws_regions.json");
+const INSTANCE_TYPES_JSON_STR: &str = include_str!("../data/aws_instance_types.json");
+
+#[derive(Deserialize, Serialize, Debug)]
+struct AwsRegion {
+    name: String,
+    code: String,
+}
+
+impl From<&AwsRegion> for SelectWidgetOption {
+    fn from(region: &AwsRegion) -> Self {
+        Self {
+            label: format!("{} - {}", region.code, region.name),
+            value: region.code.clone(),
+        }
+    }
+}
 
 impl MigrationDriver {
-    pub async fn migrate_aws_vpc(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        self.migrate_ingress(ctx).await?;
-        self.migrate_egress(ctx).await?;
-        self.migrate_security_group(ctx).await?;
+    pub async fn migrate_aws_core(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+        self.migrate_ami(ctx).await?;
+        self.migrate_ec2(ctx).await?;
+        self.migrate_region(ctx).await?;
+        self.migrate_eip(ctx).await?;
+        self.migrate_keypair(ctx).await?;
         Ok(())
     }
 
-    /// A [`Schema`](crate::Schema) migration for [`AWS Ingress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
-    async fn migrate_ingress(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    /// A [`Schema`](crate::Schema) migration for [`AWS AMI`](https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html).
+    async fn migrate_ami(&self, ctx: &DalContext) -> BuiltinsResult<()> {
         let (schema, schema_variant, root_prop) = match self
             .create_schema_and_variant(
                 ctx,
-                "Ingress",
+                "AMI",
                 SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
@@ -60,143 +86,33 @@ impl MigrationDriver {
         let diagram_kind = schema
             .diagram_kind()
             .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Ingress", "AWS", &diagram_kind).await?;
+        let ui_menu = SchemaUiMenu::new(ctx, "AMI", "AWS", &diagram_kind).await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
-        // Prop Creation
-        let group_id_prop = self
+        // Prop and validation creation
+        let image_id_prop = self
             .create_prop(
                 ctx,
-                "GroupId",
+                "ImageId",
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(AMI_DOCS_URL.to_string()),
             )
             .await?;
 
-        let ip_permissions_prop = self
-            .create_prop(
-                ctx,
-                "IpPermissions",
-                PropKind::Array,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
+        self.create_validation(
+            ctx,
+            Validation::StringHasPrefix {
+                value: None,
+                expected: "ami-".to_string(),
+            },
+            *image_id_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
 
-        let ip_permission_prop = self
-            .create_prop(
-                ctx,
-                "IpPermission",
-                PropKind::Object,
-                None,
-                Some(*ip_permissions_prop.id()),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let _protocol_prop = self
-            .create_prop(
-                ctx,
-                "IpProtocol",
-                PropKind::String,
-                None,
-                Some(*ip_permission_prop.id()),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        // TODO(victor): Re add validations when they start working for objects inside arrays
-        // let expected = INGRESS_EGRESS_PROTOCOLS
-        //     .iter()
-        //     .map(|p| p.to_string())
-        //     .collect::<Vec<String>>();
-        // self.create_validation(
-        //     ctx,
-        //     Validation::StringInStringArray {
-        //         value: None,
-        //         expected,
-        //         display_expected: true,
-        //     },
-        //     *protocol_prop.id(),
-        //     *schema.id(),
-        //     *schema_variant.id(),
-        // )
-        // .await?;
-
-        let _to_port_prop = self
-            .create_prop(
-                ctx,
-                "ToPort",
-                PropKind::Integer,
-                None,
-                Some(*ip_permission_prop.id()),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        // TODO(victor): Re add validations when they start working for objects inside arrays
-        // self.create_validation(
-        //     ctx,
-        //     Validation::IntegerIsBetweenTwoIntegers {
-        //         value: None,
-        //         lower_bound: -1,
-        //         upper_bound: 65537,
-        //     },
-        //     *to_port_prop.id(),
-        //     *schema.id(),
-        //     *schema_variant.id(),
-        // )
-        // .await?;
-        //
-        let _from_port_prop = self
-            .create_prop(
-                ctx,
-                "FromPort",
-                PropKind::Integer,
-                None,
-                Some(*ip_permission_prop.id()),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        // TODO(victor): Re add validations when they start working for objects inside arrays
-        // self.create_validation(
-        //     ctx,
-        //     Validation::IntegerIsBetweenTwoIntegers {
-        //         value: None,
-        //         lower_bound: -1,
-        //         upper_bound: 65537,
-        //     },
-        //     *from_port_prop.id(),
-        //     *schema.id(),
-        //     *schema_variant.id(),
-        // )
-        // .await?;
-        //
-        let _cidr_prop = self
-            .create_prop(
-                ctx,
-                "CidrIp",
-                PropKind::String,
-                None,
-                Some(*ip_permission_prop.id()),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        // TODO(victor): Re add validations when they start working for objects inside arrays
-        // self.create_validation(
-        //     ctx,
-        //     Validation::StringIsValidIpAddr { value: None },
-        //     *cidr_prop.id(),
-        //     *schema.id(),
-        //     *schema_variant.id(),
-        // )
-        // .await?;
-        //
         let region_prop = self
             .create_prop(
                 ctx,
@@ -208,89 +124,8 @@ impl MigrationDriver {
             )
             .await?;
 
-        let aws_resource_type_prop = self
-            .create_prop(
-                ctx,
-                "awsResourceType",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let tags_map_prop = self
-            .create_prop(
-                ctx,
-                "tags",
-                PropKind::Map,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(EC2_TAG_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let tags_map_item_prop = self
-            .create_prop(
-                ctx,
-                "tag",
-                PropKind::String,
-                None,
-                Some(*tags_map_prop.id()),
-                Some(EC2_TAG_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let identity_func_item = self
-            .get_func_item("si:identity")
-            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-
-        // Input Socket
-        let (group_id_internal_provider, mut input_socket) =
-            InternalProvider::new_explicit_with_socket(
-                ctx,
-                *schema_variant.id(),
-                "Security Group ID",
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
-
-        // Input Socket
-        let (exposed_ports_internal_provider, mut input_socket) =
-            InternalProvider::new_explicit_with_socket(
-                ctx,
-                *schema_variant.id(),
-                "Exposed Ports",
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
-
-        let (region_explicit_internal_provider, mut input_socket) =
-            InternalProvider::new_explicit_with_socket(
-                ctx,
-                *schema_variant.id(),
-                "Region",
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
-
         // Code Generation
-        let code_generation_func_name = "si:generateAwsIngressJSON".to_string();
+        let code_generation_func_name = "si:generateAwsAmiJSON".to_string();
         let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
             .await?
             .pop()
@@ -313,8 +148,427 @@ impl MigrationDriver {
         )
         .await?;
 
+        // Sockets
+        let identity_func_item = self
+            .get_func_item("si:identity")
+            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
+
+        let (image_id_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "Image ID",
+            None,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+        let (region_explicit_internal_provider, mut input_socket) =
+            InternalProvider::new_explicit_with_socket(
+                ctx,
+                *schema_variant.id(),
+                "Region",
+                identity_func_item.func_id,
+                identity_func_item.func_binding_id,
+                identity_func_item.func_binding_return_value_id,
+                SocketArity::Many,
+                DiagramKind::Configuration,
+            )
+            .await?;
+        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
         // Qualifications
-        let qual_func_name = "si:qualificationIngressCanCreate".to_string();
+        let qual_func_name = "si:qualificationAmiExists".to_string();
+
+        let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
+            .await?
+            .pop()
+            .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
+
+        let mut qual_prototype_context = QualificationPrototypeContext::new();
+        qual_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+        QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+
+        // Wrap it up.
+        schema_variant.finalize(ctx).await?;
+
+        // Connect the props to providers.
+        let external_provider_attribute_prototype_id = image_id_external_provider
+            .attribute_prototype_id()
+            .ok_or_else(|| {
+                BuiltinsError::MissingAttributePrototypeForExternalProvider(
+                    *image_id_external_provider.id(),
+                )
+            })?;
+        let image_id_implicit_internal_provider =
+            InternalProvider::find_for_prop(ctx, *image_id_prop.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::ImplicitInternalProviderNotFoundForProp(*image_id_prop.id())
+                })?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *external_provider_attribute_prototype_id,
+            identity_func_item.func_argument_id,
+            *image_id_implicit_internal_provider.id(),
+        )
+        .await?;
+
+        let base_attribute_read_context = AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            ..AttributeReadContext::default()
+        };
+        let region_attribute_value_read_context = AttributeReadContext {
+            prop_id: Some(*region_prop.id()),
+            ..base_attribute_read_context
+        };
+        let region_attribute_value =
+            AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    region_attribute_value_read_context,
+                ))?;
+        let mut region_attribute_prototype = region_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+        region_attribute_prototype
+            .set_func_id(ctx, identity_func_item.func_id)
+            .await?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *region_attribute_prototype.id(),
+            identity_func_item.func_argument_id,
+            *region_explicit_internal_provider.id(),
+        )
+        .await?;
+
+        let func_name = "si:awsAmiRefreshWorkflow";
+        let func = Func::find_by_attr(ctx, "name", &func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+        let title = "Refresh AMI";
+        let context = WorkflowPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            ..Default::default()
+        };
+        let workflow_prototype =
+            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
+                .await?;
+
+        let name = "refresh";
+        let context = ActionPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            ..Default::default()
+        };
+        ActionPrototype::new(
+            ctx,
+            *workflow_prototype.id(),
+            name,
+            ActionKind::Other,
+            context,
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// A [`Schema`](crate::Schema) migration for [`AWS EC2`](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html).
+    async fn migrate_ec2(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+        let (schema, schema_variant, root_prop) = match self
+            .create_schema_and_variant(
+                ctx,
+                "EC2 Instance",
+                SchemaKind::Configuration,
+                ComponentKind::Standard,
+                Some(AWS_NODE_COLOR),
+            )
+            .await?
+        {
+            Some(tuple) => tuple,
+            None => return Ok(()),
+        };
+
+        let mut attribute_context_builder = AttributeContext::builder();
+        attribute_context_builder
+            .set_schema_id(*schema.id())
+            .set_schema_variant_id(*schema_variant.id());
+
+        // Diagram and UI Menu
+        let diagram_kind = schema
+            .diagram_kind()
+            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+        let ui_menu = SchemaUiMenu::new(ctx, "EC2 Instance", "AWS", &diagram_kind).await?;
+        ui_menu.set_schema(ctx, schema.id()).await?;
+
+        // Prop: /root/domain/ImageId
+        let image_id_prop = self
+            .create_prop(
+                ctx,
+                "ImageId",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        self.create_validation(
+            ctx,
+            Validation::StringHasPrefix {
+                value: None,
+                expected: "ami-".to_string(),
+            },
+            *image_id_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
+
+        let expected_instance_types: Vec<String> = serde_json::from_str(INSTANCE_TYPES_JSON_STR)?;
+        let instance_types_option_list: Vec<SelectWidgetOption> = expected_instance_types
+            .iter()
+            .map(|instance_type| SelectWidgetOption {
+                label: instance_type.to_string(),
+                value: instance_type.to_string(),
+            })
+            .collect();
+        let instance_types_option_list_json = serde_json::to_value(instance_types_option_list)?;
+
+        // Prop: /root/domain/InstanceType
+        let instance_type_prop = self
+            .create_prop(
+                ctx,
+                "InstanceType",
+                PropKind::String,
+                Some((WidgetKind::ComboBox, instance_types_option_list_json)),
+                Some(root_prop.domain_prop_id),
+                Some(EC2_INSTANCE_TYPES_URL.to_string()),
+            )
+            .await?;
+
+        self.create_validation(
+            ctx,
+            Validation::StringInStringArray {
+                value: None,
+                expected: expected_instance_types,
+                display_expected: false,
+            },
+            *instance_type_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+        )
+        .await?;
+
+        // Prop: /root/domain/KeyName
+        let key_name_prop = self
+            .create_prop(
+                ctx,
+                "KeyName",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/SecurityGroupIds
+        let security_groups_prop = self
+            .create_prop(
+                ctx,
+                "SecurityGroupIds",
+                PropKind::Array,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/SecurityGroupIds/SecurityGroupId
+        let _security_group_id_prop = self
+            .create_prop(
+                ctx,
+                "Security Group ID",
+                PropKind::String,
+                None,
+                Some(*security_groups_prop.id()),
+                Some(EC2_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/tags
+        let tags_map_prop = self
+            .create_prop(
+                ctx,
+                "tags",
+                PropKind::Map,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_TAG_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // TODO(victor): Make one item of the list have key `Name` and value equal to /root/si/name
+        // Prop: /root/domain/tags/tag
+        let tags_map_item_prop = self
+            .create_prop(
+                ctx,
+                "tag",
+                PropKind::String,
+                None,
+                Some(*tags_map_prop.id()),
+                Some(EC2_TAG_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/UserData
+        let user_data_prop = self
+            .create_prop(
+                ctx,
+                "UserData",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/awsResourceType
+        let aws_resource_type_prop = self
+            .create_prop(
+                ctx,
+                "awsResourceType",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/region
+        let region_prop = self
+            .create_prop(
+                ctx,
+                "region",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(AWS_REGIONS_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Code Generation Prototype
+        let code_generation_func_name = "si:generateAwsEc2JSON".to_string();
+        let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
+        let code_generation_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        code_generation_func_name.clone(),
+                        "domain".to_string(),
+                    )
+                })?;
+        CodeGenerationPrototype::new(
+            ctx,
+            *code_generation_func.id(),
+            *code_generation_func_argument.id(),
+            *schema_variant.id(),
+            CodeLanguage::Json,
+        )
+        .await?;
+
+        // Sockets
+        let identity_func_item = self
+            .get_func_item("si:identity")
+            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
+
+        let (image_id_explicit_internal_provider, mut input_socket) =
+            InternalProvider::new_explicit_with_socket(
+                ctx,
+                *schema_variant.id(),
+                "Image ID",
+                identity_func_item.func_id,
+                identity_func_item.func_binding_id,
+                identity_func_item.func_binding_return_value_id,
+                SocketArity::Many,
+                DiagramKind::Configuration,
+            )
+            .await?;
+        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+        let (security_group_ids_explicit_internal_provider, mut input_socket) =
+            InternalProvider::new_explicit_with_socket(
+                ctx,
+                *schema_variant.id(),
+                "Security Group ID",
+                identity_func_item.func_id,
+                identity_func_item.func_binding_id,
+                identity_func_item.func_binding_return_value_id,
+                SocketArity::Many,
+                DiagramKind::Configuration,
+            )
+            .await?;
+        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+        let (keyname_explicit_internal_provider, mut input_socket) =
+            InternalProvider::new_explicit_with_socket(
+                ctx,
+                *schema_variant.id(),
+                "Key Name",
+                identity_func_item.func_id,
+                identity_func_item.func_binding_id,
+                identity_func_item.func_binding_return_value_id,
+                SocketArity::Many,
+                DiagramKind::Configuration,
+            )
+            .await?;
+        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+        let (region_explicit_internal_provider, mut input_socket) =
+            InternalProvider::new_explicit_with_socket(
+                ctx,
+                *schema_variant.id(),
+                "Region",
+                identity_func_item.func_id,
+                identity_func_item.func_binding_id,
+                identity_func_item.func_binding_return_value_id,
+                SocketArity::Many,
+                DiagramKind::Configuration,
+            )
+            .await?; // TODO(wendy) - Can an EC2 instance have multiple regions? Idk!
+        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+        let (user_data_explicit_internal_provider, mut input_socket) =
+            InternalProvider::new_explicit_with_socket(
+                ctx,
+                *schema_variant.id(),
+                "User Data",
+                identity_func_item.func_id,
+                identity_func_item.func_binding_id,
+                identity_func_item.func_binding_return_value_id,
+                SocketArity::Many,
+                DiagramKind::Configuration,
+            )
+            .await?;
+        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+        // Qualifications
+        let qual_func_name = "si:qualificationEc2CanRun".to_string();
+
         let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
             .await?
             .pop()
@@ -334,45 +588,19 @@ impl MigrationDriver {
             *aws_resource_type_prop.id(),
             *schema.id(),
             *schema_variant.id(),
-            serde_json::json!["security-group-rule"],
+            serde_json::json!["instance"],
         )
         .await?;
 
-        // TODO(victor): Re add defaults values when they start working for objects inside arrays
-        // self.set_default_value_for_prop(
-        //     ctx,
-        //     *ip_permissions_prop.id(),
-        //     *schema.id(),
-        //     *schema_variant.id(),
-        //     serde_json::json![[]],
-        // )
-        // .await?;
-        // self.set_default_value_for_prop(
-        //     ctx,
-        //     *ip_permission_prop.id(),
-        //     *schema.id(),
-        //     *schema_variant.id(),
-        //     serde_json::json![{}],
-        // )
-        // .await?;
-
-        // info!("pre");
-        // self.set_default_value_for_prop(
-        //     ctx,
-        //     *protocol_prop.id(),
-        //     *schema.id(),
-        //     *schema_variant.id(),
-        //     serde_json::json!["tcp"],
-        // )
-        // .await?;
-        // info!("post");
-
-        // Bind sockets to providers
         let base_attribute_read_context = AttributeReadContext {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
             ..AttributeReadContext::default()
         };
+
+        // Note(victor): The code below is commented out because it breaks some tests. We should come back to this someday.
+        // Create a default item in the map. We will need this to connect
+        // "/root/si/name" to the item's value.
 
         let tags_map_attribute_read_context = AttributeReadContext {
             prop_id: Some(*tags_map_prop.id()),
@@ -397,7 +625,8 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Connect props to providers.
+        // Note(victor): The code below connects si/name to a tag in the tags list.
+        // It's commented out because it breaks some tests
 
         let si_name_prop = self
             .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
@@ -437,14 +666,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Bind sockets to providers
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
-        // region from input socket
+        // Connect props to providers.
         let region_attribute_value_read_context = AttributeReadContext {
             prop_id: Some(*region_prop.id()),
             ..base_attribute_read_context
@@ -470,81 +692,132 @@ impl MigrationDriver {
         )
         .await?;
 
-        // security group id from input socket
-        {
-            let read_ctx = AttributeReadContext {
-                prop_id: Some(*group_id_prop.id()),
-                ..base_attribute_read_context
-            };
-            let attribute_value = AttributeValue::find_for_context(ctx, read_ctx)
+        let image_id_attribute_value_read_context = AttributeReadContext {
+            prop_id: Some(*image_id_prop.id()),
+            ..base_attribute_read_context
+        };
+        let image_id_attribute_value =
+            AttributeValue::find_for_context(ctx, image_id_attribute_value_read_context)
                 .await?
-                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(read_ctx))?;
-            let mut attribute_prototype = attribute_value
-                .attribute_prototype(ctx)
-                .await?
-                .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-            attribute_prototype
-                .set_func_id(ctx, identity_func_item.func_id)
-                .await?;
-            AttributePrototypeArgument::new_for_intra_component(
-                ctx,
-                *attribute_prototype.id(),
-                identity_func_item.func_argument_id,
-                *group_id_internal_provider.id(),
-            )
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    image_id_attribute_value_read_context,
+                ))?;
+        let mut image_id_attribute_prototype = image_id_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+        image_id_attribute_prototype
+            .set_func_id(ctx, identity_func_item.func_id)
             .await?;
-        }
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *image_id_attribute_prototype.id(),
+            identity_func_item.func_argument_id,
+            *image_id_explicit_internal_provider.id(),
+        )
+        .await?;
 
-        // Exposed Ports from input socket
+        let keyname_attribute_value_read_context = AttributeReadContext {
+            prop_id: Some(*key_name_prop.id()),
+            ..base_attribute_read_context
+        };
+        let keyname_attribute_value =
+            AttributeValue::find_for_context(ctx, keyname_attribute_value_read_context)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    keyname_attribute_value_read_context,
+                ))?;
+        let mut keyname_attribute_prototype = keyname_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+        keyname_attribute_prototype
+            .set_func_id(ctx, identity_func_item.func_id)
+            .await?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *keyname_attribute_prototype.id(),
+            identity_func_item.func_argument_id,
+            *keyname_explicit_internal_provider.id(),
+        )
+        .await?;
+
+        // Security Group Ids from input socket
         {
-            let transformation_func_name = "si:dockerPortsToAwsIngressPorts".to_string();
+            let transformation_func_name = "si:normalizeToArray".to_string();
             let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
                 .await?
                 .pop()
                 .ok_or_else(|| FuncError::NotFoundByName(transformation_func_name.clone()))?;
-            let arg_name = "ExposedPorts";
-            let arg = FuncArgument::find_by_name_for_func(ctx, arg_name, *transformation_func.id())
+            let arg = FuncArgument::find_by_name_for_func(ctx, "value", *transformation_func.id())
                 .await?
                 .ok_or_else(|| {
                     BuiltinsError::BuiltinMissingFuncArgument(
                         transformation_func_name.clone(),
-                        arg_name.to_string(),
+                        "value".to_string(),
                     )
                 })?;
 
-            let read_ctx = AttributeReadContext {
-                prop_id: Some(*ip_permissions_prop.id()),
+            let security_group_id_attribute_value_read_context = AttributeReadContext {
+                prop_id: Some(*security_groups_prop.id()),
                 ..base_attribute_read_context
             };
-
-            let attribute_value = AttributeValue::find_for_context(ctx, read_ctx)
-                .await?
-                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(read_ctx))?;
-
-            let mut attribute_prototype = attribute_value
+            let security_group_id_attribute_value = AttributeValue::find_for_context(
+                ctx,
+                security_group_id_attribute_value_read_context,
+            )
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                security_group_id_attribute_value_read_context,
+            ))?;
+            let mut security_group_id_attribute_prototype = security_group_id_attribute_value
                 .attribute_prototype(ctx)
                 .await?
                 .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-
-            attribute_prototype
+            security_group_id_attribute_prototype
                 .set_func_id(ctx, *transformation_func.id())
                 .await?;
-
             AttributePrototypeArgument::new_for_intra_component(
                 ctx,
-                *attribute_prototype.id(),
+                *security_group_id_attribute_prototype.id(),
                 *arg.id(),
-                *exposed_ports_internal_provider.id(),
+                *security_group_ids_explicit_internal_provider.id(),
             )
             .await?;
         }
 
-        let func_name = "si:awsIngressCreateWorkflow";
+        // Consume from the user data explicit internal provider into the user data prop.
+        let user_data_attribute_value_read_context = AttributeReadContext {
+            prop_id: Some(*user_data_prop.id()),
+            ..base_attribute_read_context
+        };
+        let user_data_attribute_value =
+            AttributeValue::find_for_context(ctx, user_data_attribute_value_read_context)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    user_data_attribute_value_read_context,
+                ))?;
+        let mut user_data_attribute_prototype = user_data_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+        user_data_attribute_prototype
+            .set_func_id(ctx, identity_func_item.func_id)
+            .await?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *user_data_attribute_prototype.id(),
+            identity_func_item.func_argument_id,
+            *user_data_explicit_internal_provider.id(),
+        )
+        .await?;
+
+        let func_name = "si:awsEc2CreateWorkflow";
         let func = Func::find_by_attr(ctx, "name", &func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-        let title = "Create Ingress";
+        let title = "Create EC2 Instance";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
@@ -565,22 +838,14 @@ impl MigrationDriver {
             ..Default::default()
         };
         let mut confirmation_prototype =
-            ConfirmationPrototype::new(ctx, "Ingress Exists?", *func.id(), context).await?;
+            ConfirmationPrototype::new(ctx, "EC2 Instance Exists?", *func.id(), context).await?;
         confirmation_prototype
             .set_provider(ctx, Some("AWS".to_owned()))
             .await?;
         confirmation_prototype
-            .set_success_description(ctx, Some("Ingress exists!".to_owned()))
+            .set_success_description(ctx, Some("EC2 instance exists!".to_owned()))
             .await?;
-        confirmation_prototype
-            .set_failure_description(
-                ctx,
-                Some(
-                    "This Ingress rule has not been created yet. Please run the fix above to create it!"
-                        .to_owned(),
-                ),
-            )
-            .await?;
+        confirmation_prototype.set_failure_description(ctx, Some("This EC2 instance has not been created yet. Please run the fix above to create it!".to_owned())).await?;
 
         let name = "create";
         let context = ActionPrototypeContext {
@@ -597,12 +862,12 @@ impl MigrationDriver {
         )
         .await?;
 
-        let func_name = "si:awsIngressRefreshWorkflow";
+        let func_name = "si:awsEc2RefreshWorkflow";
         let func = Func::find_by_attr(ctx, "name", &func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-        let title = "Refresh Ingress's Resource";
+        let title = "Refresh EC2 Instance's Resource";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
@@ -630,12 +895,12 @@ impl MigrationDriver {
         Ok(())
     }
 
-    /// A [`Schema`](crate::Schema) migration for [`AWS Egress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
-    async fn migrate_egress(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    /// A [`Schema`](crate::Schema) migration for [`AWS Region`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html).
+    async fn migrate_region(&self, ctx: &DalContext) -> BuiltinsResult<()> {
         let (schema, schema_variant, root_prop) = match self
             .create_schema_and_variant(
                 ctx,
-                "Egress",
+                "Region",
                 SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
@@ -655,35 +920,32 @@ impl MigrationDriver {
         let diagram_kind = schema
             .diagram_kind()
             .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Egress", "AWS", &diagram_kind).await?;
+        let ui_menu = SchemaUiMenu::new(ctx, "Region", "AWS", &diagram_kind).await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop Creation
-        let group_id_prop = self
-            .create_prop(
-                ctx,
-                "GroupId",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let protocol_prop = self
-            .create_prop(
-                ctx,
-                "IpProtocol",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let expected = INGRESS_EGRESS_PROTOCOLS
+        let regions_json: Vec<AwsRegion> = serde_json::from_str(REGIONS_JSON_STR)?;
+        let regions_dropdown_options = regions_json
             .iter()
-            .map(|p| p.to_string())
+            .map(SelectWidgetOption::from)
+            .collect::<Vec<SelectWidgetOption>>();
+        let regions_dropdown_options_json = serde_json::to_value(regions_dropdown_options)?;
+
+        let region_prop = self
+            .create_prop(
+                ctx,
+                "region",
+                PropKind::String,
+                Some((WidgetKind::ComboBox, regions_dropdown_options_json)),
+                Some(root_prop.domain_prop_id),
+                Some(AWS_REGIONS_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Validation Creation
+        let expected = regions_json
+            .iter()
+            .map(|r| r.code.clone())
             .collect::<Vec<String>>();
         self.create_validation(
             ctx,
@@ -692,407 +954,62 @@ impl MigrationDriver {
                 expected,
                 display_expected: true,
             },
-            *protocol_prop.id(),
+            *region_prop.id(),
             *schema.id(),
             *schema_variant.id(),
         )
         .await?;
 
-        let from_port_prop = self
-            .create_prop(
-                ctx,
-                "FromPort",
-                PropKind::Integer,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        self.create_validation(
-            ctx,
-            Validation::IntegerIsBetweenTwoIntegers {
-                value: None,
-                lower_bound: -1,
-                upper_bound: 65537,
-            },
-            *from_port_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
-
-        let to_port_prop = self
-            .create_prop(
-                ctx,
-                "ToPort",
-                PropKind::Integer,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        self.create_validation(
-            ctx,
-            Validation::IntegerIsBetweenTwoIntegers {
-                value: None,
-                lower_bound: -1,
-                upper_bound: 65537,
-            },
-            *to_port_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
-
-        let cidr_prop = self
-            .create_prop(
-                ctx,
-                "CidrIp",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        self.create_validation(
-            ctx,
-            Validation::StringIsValidIpAddr { value: None },
-            *cidr_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
-
-        let region_prop = self
-            .create_prop(
-                ctx,
-                "region",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(AWS_REGIONS_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let aws_resource_type_prop = self
-            .create_prop(
-                ctx,
-                "awsResourceType",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let tags_map_prop = self
-            .create_prop(
-                ctx,
-                "tags",
-                PropKind::Map,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(EC2_TAG_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let tags_map_item_prop = self
-            .create_prop(
-                ctx,
-                "tag",
-                PropKind::String,
-                None,
-                Some(*tags_map_prop.id()),
-                Some(EC2_TAG_DOCS_URL.to_string()),
-            )
-            .await?;
-
+        // Output Socket
         let identity_func_item = self
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-
-        // Input Socket
-        let (group_id_internal_provider, mut input_socket) =
-            InternalProvider::new_explicit_with_socket(
-                ctx,
-                *schema_variant.id(),
-                "Security Group ID",
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
-
-        let (region_explicit_internal_provider, mut input_socket) =
-            InternalProvider::new_explicit_with_socket(
-                ctx,
-                *schema_variant.id(),
-                "Region",
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
-
-        // Code Generation
-        let code_generation_func_name = "si:generateAwsEgressJSON".to_string();
-        let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
-        let code_generation_func_argument =
-            FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
-                .await?
-                .ok_or_else(|| {
-                    BuiltinsError::BuiltinMissingFuncArgument(
-                        code_generation_func_name.clone(),
-                        "domain".to_string(),
-                    )
-                })?;
-        CodeGenerationPrototype::new(
+        let (region_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
             ctx,
-            *code_generation_func.id(),
-            *code_generation_func_argument.id(),
+            *schema.id(),
             *schema_variant.id(),
-            CodeLanguage::Json,
+            "Region",
+            None,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
         )
         .await?;
-
-        // Qualifications
-        let qual_func_name = "si:qualificationEgressCanCreate".to_string();
-        let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
-            .await?
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
-
-        let mut qual_prototype_context = QualificationPrototypeContext::new();
-        qual_prototype_context.set_schema_variant_id(*schema_variant.id());
-
-        QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Wrap it up.
         schema_variant.finalize(ctx).await?;
 
-        // Set Defaults
-        self.set_default_value_for_prop(
-            ctx,
-            *aws_resource_type_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-            serde_json::json!["security-group-rule"],
-        )
-        .await?;
-        self.set_default_value_for_prop(
-            ctx,
-            *protocol_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-            serde_json::json!["tcp"],
-        )
-        .await?;
-
-        // Bind sockets to providers
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
-        let tags_map_attribute_read_context = AttributeReadContext {
-            prop_id: Some(*tags_map_prop.id()),
-            ..base_attribute_read_context
-        };
-        let tags_map_attribute_value =
-            AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
-                .await?
-                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                    tags_map_attribute_read_context,
-                ))?;
-        let tags_map_item_attribute_context =
-            AttributeContextBuilder::from(base_attribute_read_context)
-                .set_prop_id(*tags_map_item_prop.id())
-                .to_context()?;
-        let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
-            ctx,
-            tags_map_item_attribute_context,
-            *tags_map_attribute_value.id(),
-            None,
-            Some("Name".to_string()),
-        )
-        .await?;
-
-        // Connect props to providers.
-
-        let si_name_prop = self
-            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
-            .await?;
-        let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
-            .await?
+        // Connect the "/root/domain/region" prop to the external provider.
+        let external_provider_attribute_prototype_id = region_external_provider
+            .attribute_prototype_id()
             .ok_or_else(|| {
-                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+                BuiltinsError::MissingAttributePrototypeForExternalProvider(
+                    *region_external_provider.id(),
+                )
             })?;
-        let name_tags_item_attribute_value =
-            AttributeValue::get_by_id(ctx, &name_tags_item_attribute_value_id)
-                .await?
-                .ok_or(BuiltinsError::AttributeValueNotFound(
-                    name_tags_item_attribute_value_id,
-                ))?;
-        let mut name_tags_item_attribute_prototype = name_tags_item_attribute_value
-            .attribute_prototype(ctx)
-            .await?
-            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-        name_tags_item_attribute_prototype
-            .set_func_id(ctx, identity_func_item.func_id)
-            .await?;
-        let identity_arg =
-            FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_item.func_id)
+        let region_implicit_internal_provider =
+            InternalProvider::find_for_prop(ctx, *region_prop.id())
                 .await?
                 .ok_or_else(|| {
-                    BuiltinsError::BuiltinMissingFuncArgument(
-                        "identity".to_string(),
-                        "identity".to_string(),
-                    )
+                    BuiltinsError::ImplicitInternalProviderNotFoundForProp(*region_prop.id())
                 })?;
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
-            *name_tags_item_attribute_prototype.id(),
-            *identity_arg.id(),
-            *si_name_internal_provider.id(),
-        )
-        .await?;
-
-        // Bind sockets to providers
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
-        // region from input socket
-        let region_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*region_prop.id()),
-            ..base_attribute_read_context
-        };
-        let region_attribute_value =
-            AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
-                .await?
-                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                    region_attribute_value_read_context,
-                ))?;
-        let mut region_attribute_prototype = region_attribute_value
-            .attribute_prototype(ctx)
-            .await?
-            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-        region_attribute_prototype
-            .set_func_id(ctx, identity_func_item.func_id)
-            .await?;
-        AttributePrototypeArgument::new_for_intra_component(
-            ctx,
-            *region_attribute_prototype.id(),
+            *external_provider_attribute_prototype_id,
             identity_func_item.func_argument_id,
-            *region_explicit_internal_provider.id(),
+            *region_implicit_internal_provider.id(),
         )
         .await?;
 
-        // security group id from input socket
-        let group_id_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*group_id_prop.id()),
-            ..base_attribute_read_context
-        };
-        let group_id_attribute_value =
-            AttributeValue::find_for_context(ctx, group_id_attribute_value_read_context)
-                .await?
-                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                    group_id_attribute_value_read_context,
-                ))?;
-        let mut group_id_attribute_prototype = group_id_attribute_value
-            .attribute_prototype(ctx)
-            .await?
-            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-        group_id_attribute_prototype
-            .set_func_id(ctx, identity_func_item.func_id)
-            .await?;
-        AttributePrototypeArgument::new_for_intra_component(
-            ctx,
-            *group_id_attribute_prototype.id(),
-            identity_func_item.func_argument_id,
-            *group_id_internal_provider.id(),
-        )
-        .await?;
-
-        let func_name = "si:awsEgressCreateWorkflow";
+        let func_name = "si:awsRegionRefreshWorkflow";
         let func = Func::find_by_attr(ctx, "name", &func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-        let title = "Create Egress";
-        let context = WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let workflow_prototype =
-            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
-                .await?;
-
-        let func_name = "si:resourceExistsConfirmation";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-        let context = ConfirmationPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let mut confirmation_prototype =
-            ConfirmationPrototype::new(ctx, "Egress Exists?", *func.id(), context).await?;
-        confirmation_prototype
-            .set_provider(ctx, Some("AWS".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_success_description(ctx, Some("Egress exists!".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_failure_description(
-                ctx,
-                Some(
-                    "This Egress rule has not been created yet. Please run the fix above to create it!"
-                        .to_owned(),
-                ),
-            )
-            .await?;
-
-        let name = "create";
-        let context = ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        ActionPrototype::new(
-            ctx,
-            *workflow_prototype.id(),
-            name,
-            ActionKind::Create,
-            context,
-        )
-        .await?;
-
-        let func_name = "si:awsEgressRefreshWorkflow";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-        let title = "Refresh Egress's Resource";
+        let title = "Refresh Region";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
@@ -1120,12 +1037,12 @@ impl MigrationDriver {
         Ok(())
     }
 
-    /// A [`Schema`](crate::Schema) migration for [`AWS Security Group`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
-    async fn migrate_security_group(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    /// A [`Schema`](crate::Schema) migration for [`AWS EIP`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eip.html).
+    async fn migrate_eip(&self, ctx: &DalContext) -> BuiltinsResult<()> {
         let (schema, schema_variant, root_prop) = match self
             .create_schema_and_variant(
                 ctx,
-                "Security Group",
+                "Elastic IP",
                 SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
@@ -1145,55 +1062,10 @@ impl MigrationDriver {
         let diagram_kind = schema
             .diagram_kind()
             .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        SchemaUiMenu::new(ctx, "Security Group", "AWS", &diagram_kind)
-            .await?
-            .set_schema(ctx, schema.id())
-            .await?;
+        let ui_menu = SchemaUiMenu::new(ctx, "Elastic IP", "AWS", &diagram_kind).await?;
+        ui_menu.set_schema(ctx, schema.id()).await?;
 
-        // Prop Creation
-        self.create_prop(
-            ctx,
-            "Description",
-            PropKind::String,
-            None,
-            Some(root_prop.domain_prop_id),
-            Some(SECURITY_GROUP_DOCS_URL.to_string()),
-        )
-        .await?;
-
-        let group_name_prop = self
-            .create_prop(
-                ctx,
-                "GroupName",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(SECURITY_GROUP_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let _vpc_id_prop = self
-            .create_prop(
-                ctx,
-                "VpcId",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(SECURITY_GROUP_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        let region_prop = self
-            .create_prop(
-                ctx,
-                "region",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(AWS_REGIONS_DOCS_URL.to_string()),
-            )
-            .await?;
-
+        // Prop: /root/domain/tags
         let tags_map_prop = self
             .create_prop(
                 ctx,
@@ -1205,6 +1077,7 @@ impl MigrationDriver {
             )
             .await?;
 
+        // Prop: /root/domain/tags/tag
         let tags_map_item_prop = self
             .create_prop(
                 ctx,
@@ -1216,6 +1089,7 @@ impl MigrationDriver {
             )
             .await?;
 
+        // Prop: /root/domain/awsResourceType
         let aws_resource_type_prop = self
             .create_prop(
                 ctx,
@@ -1227,54 +1101,20 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Socket Creation
-        let identity_func_item = self
-            .get_func_item("si:identity")
-            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-        let (region_explicit_internal_provider, mut input_socket) =
-            InternalProvider::new_explicit_with_socket(
+        // Prop: /root/domain/region
+        let region_prop = self
+            .create_prop(
                 ctx,
-                *schema_variant.id(),
-                "Region",
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
-
-        let func_name = "si:awsSecurityGroupIdFromResource";
-        let aws_security_group_id_from_resource_func = Func::find_by_attr(ctx, "name", &func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-        let (func_binding, func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
-            ctx,
-            serde_json::json!({}),
-            *aws_security_group_id_from_resource_func.id(),
-        )
-        .await?;
-
-        let (security_group_id_external_provider, mut output_socket) =
-            ExternalProvider::new_with_socket(
-                ctx,
-                *schema.id(),
-                *schema_variant.id(),
-                "Security Group ID",
+                "region",
+                PropKind::String,
                 None,
-                *aws_security_group_id_from_resource_func.id(),
-                *func_binding.id(),
-                *func_binding_return_value.id(),
-                SocketArity::Many,
-                DiagramKind::Configuration,
+                Some(root_prop.domain_prop_id),
+                Some(AWS_REGIONS_DOCS_URL.to_string()),
             )
             .await?;
-        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        // Code Generation
-        let code_generation_func_name = "si:generateAwsSecurityGroupJSON".to_string();
+        // Code Generation Prototype
+        let code_generation_func_name = "si:generateAwsEipJSON".to_string();
         let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
             .await?
             .pop()
@@ -1297,8 +1137,45 @@ impl MigrationDriver {
         )
         .await?;
 
+        // Output Socket
+        let identity_func_item = self
+            .get_func_item("si:identity")
+            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
+        let (_allocation_id_external_provider, mut output_socket) =
+            ExternalProvider::new_with_socket(
+                ctx,
+                *schema.id(),
+                *schema_variant.id(),
+                "Allocation ID",
+                None,
+                identity_func_item.func_id,
+                identity_func_item.func_binding_id,
+                identity_func_item.func_binding_return_value_id,
+                SocketArity::Many,
+                DiagramKind::Configuration,
+            )
+            .await?;
+        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+        // Input Socket
+        // PAUL: There are currently no options to create a different type of EIP
+        // we may wat to allow passing in an address to specify coming from a pool
+        let (region_explicit_internal_provider, mut input_socket) =
+            InternalProvider::new_explicit_with_socket(
+                ctx,
+                *schema_variant.id(),
+                "Region",
+                identity_func_item.func_id,
+                identity_func_item.func_binding_id,
+                identity_func_item.func_binding_return_value_id,
+                SocketArity::Many,
+                DiagramKind::Configuration,
+            )
+            .await?;
+        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
         // Qualifications
-        let qual_func_name = "si:qualificationSecurityGroupCanCreate".to_string();
+        let qual_func_name = "si:qualificationEipCanCreate".to_string();
         let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
             .await?
             .pop()
@@ -1309,7 +1186,7 @@ impl MigrationDriver {
 
         QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
-        // Wrap it up!
+        // Wrap it up.
         schema_variant.finalize(ctx).await?;
 
         // Set Defaults
@@ -1318,11 +1195,416 @@ impl MigrationDriver {
             *aws_resource_type_prop.id(),
             *schema.id(),
             *schema_variant.id(),
-            serde_json::json!["security-group"],
+            serde_json::json!["eip"],
         )
         .await?;
 
-        // Bind sockets to providers
+        let base_attribute_read_context = AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            ..AttributeReadContext::default()
+        };
+
+        let tags_map_attribute_read_context = AttributeReadContext {
+            prop_id: Some(*tags_map_prop.id()),
+            ..base_attribute_read_context
+        };
+        let tags_map_attribute_value =
+            AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    tags_map_attribute_read_context,
+                ))?;
+        let tags_map_item_attribute_context =
+            AttributeContextBuilder::from(base_attribute_read_context)
+                .set_prop_id(*tags_map_item_prop.id())
+                .to_context()?;
+        let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
+            ctx,
+            tags_map_item_attribute_context,
+            *tags_map_attribute_value.id(),
+            None,
+            Some("Name".to_string()),
+        )
+        .await?;
+
+        // Connect props to providers.
+        let si_name_prop = self
+            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
+            .await?;
+        let si_name_internal_provider = InternalProvider::find_for_prop(ctx, *si_name_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+            })?;
+        let name_tags_item_attribute_value =
+            AttributeValue::get_by_id(ctx, &name_tags_item_attribute_value_id)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFound(
+                    name_tags_item_attribute_value_id,
+                ))?;
+        let mut name_tags_item_attribute_prototype = name_tags_item_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+        name_tags_item_attribute_prototype
+            .set_func_id(ctx, identity_func_item.func_id)
+            .await?;
+        let identity_arg =
+            FuncArgument::find_by_name_for_func(ctx, "identity", identity_func_item.func_id)
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        "identity".to_string(),
+                        "identity".to_string(),
+                    )
+                })?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *name_tags_item_attribute_prototype.id(),
+            *identity_arg.id(),
+            *si_name_internal_provider.id(),
+        )
+        .await?;
+
+        // Connect the "region" prop to the "Region" explicit internal provider.
+        let base_attribute_read_context = AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            ..AttributeReadContext::default()
+        };
+        let region_attribute_value_read_context = AttributeReadContext {
+            prop_id: Some(*region_prop.id()),
+            ..base_attribute_read_context
+        };
+        let region_attribute_value =
+            AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    region_attribute_value_read_context,
+                ))?;
+        let mut region_attribute_prototype = region_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+        region_attribute_prototype
+            .set_func_id(ctx, identity_func_item.func_id)
+            .await?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *region_attribute_prototype.id(),
+            identity_func_item.func_argument_id,
+            *region_explicit_internal_provider.id(),
+        )
+        .await?;
+
+        let func_name = "si:awsEipCreateWorkflow";
+        let func = Func::find_by_attr(ctx, "name", &func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+        let title = "Create Elastic IP";
+        let context = WorkflowPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            ..Default::default()
+        };
+        let workflow_prototype =
+            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
+                .await?;
+
+        let func_name = "si:resourceExistsConfirmation";
+        let func = Func::find_by_attr(ctx, "name", &func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+        let context = ConfirmationPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            ..Default::default()
+        };
+        let mut confirmation_prototype =
+            ConfirmationPrototype::new(ctx, "Elastic IP Exists?", *func.id(), context).await?;
+        confirmation_prototype
+            .set_provider(ctx, Some("AWS".to_owned()))
+            .await?;
+        confirmation_prototype
+            .set_success_description(ctx, Some("Elastic IP exists!".to_owned()))
+            .await?;
+        confirmation_prototype
+            .set_failure_description(
+                ctx,
+                Some(
+                    "This Elastic IP has not been created yet. Please run the fix above to create it!"
+                        .to_owned(),
+                ),
+            )
+            .await?;
+
+        let name = "create";
+        let context = ActionPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            ..Default::default()
+        };
+        ActionPrototype::new(
+            ctx,
+            *workflow_prototype.id(),
+            name,
+            ActionKind::Create,
+            context,
+        )
+        .await?;
+
+        let func_name = "si:awsEipRefreshWorkflow";
+        let func = Func::find_by_attr(ctx, "name", &func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+        let title = "Refresh Elastic IP Resource";
+        let context = WorkflowPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            ..Default::default()
+        };
+        let workflow_prototype =
+            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
+                .await?;
+
+        let name = "refresh";
+        let context = ActionPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            ..Default::default()
+        };
+        ActionPrototype::new(
+            ctx,
+            *workflow_prototype.id(),
+            name,
+            ActionKind::Other,
+            context,
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// A [`Schema`](crate::Schema) migration for [`AWS Key Pair`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html).
+    async fn migrate_keypair(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+        let (schema, schema_variant, root_prop) = match self
+            .create_schema_and_variant(
+                ctx,
+                "Key Pair",
+                SchemaKind::Configuration,
+                ComponentKind::Standard,
+                Some(AWS_NODE_COLOR),
+            )
+            .await?
+        {
+            Some(tuple) => tuple,
+            None => return Ok(()),
+        };
+
+        let mut attribute_context_builder = AttributeContext::builder();
+        attribute_context_builder
+            .set_schema_id(*schema.id())
+            .set_schema_variant_id(*schema_variant.id());
+
+        // Diagram and UI Menu
+        let diagram_kind = schema
+            .diagram_kind()
+            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+        let ui_menu = SchemaUiMenu::new(ctx, "Key Pair", "AWS", &diagram_kind).await?;
+        ui_menu.set_schema(ctx, schema.id()).await?;
+
+        // Prop: /root/domain/KeyName
+        let key_name_prop = self
+            .create_prop(
+                ctx,
+                "KeyName",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(KEY_PAIR_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/KeyType
+        let _key_type_prop = self
+            .create_prop(
+                ctx,
+                "KeyType",
+                PropKind::String,
+                Some((
+                    WidgetKind::Select,
+                    serde_json::json!([
+                        {
+                            "label": "rsa",
+                            "value": "rsa",
+                        },
+                        {
+                            "label": "ed25519",
+                            "value": "ed25519",
+                        },
+                    ]),
+                )),
+                Some(root_prop.domain_prop_id),
+                Some(KEY_PAIR_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/tags
+        let tags_map_prop = self
+            .create_prop(
+                ctx,
+                "tags",
+                PropKind::Map,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_TAG_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/tags/tag
+        let tags_map_item_prop = self
+            .create_prop(
+                ctx,
+                "tag",
+                PropKind::String,
+                None,
+                Some(*tags_map_prop.id()),
+                Some(EC2_TAG_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/awsResourceType
+        let aws_resource_type_prop = self
+            .create_prop(
+                ctx,
+                "awsResourceType",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(EC2_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Prop: /root/domain/region
+        let region_prop = self
+            .create_prop(
+                ctx,
+                "region",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(AWS_REGIONS_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        // Code Generation Prototype
+        let code_generation_func_name = "si:generateAwsKeyPairJSON".to_string();
+        let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
+        let code_generation_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        code_generation_func_name.clone(),
+                        "domain".to_string(),
+                    )
+                })?;
+        CodeGenerationPrototype::new(
+            ctx,
+            *code_generation_func.id(),
+            *code_generation_func_argument.id(),
+            *schema_variant.id(),
+            CodeLanguage::Json,
+        )
+        .await?;
+
+        // Output Socket
+        let identity_func_item = self
+            .get_func_item("si:identity")
+            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
+        let (key_name_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "Key Name",
+            None,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+        // Input Socket
+        let (region_explicit_internal_provider, mut input_socket) =
+            InternalProvider::new_explicit_with_socket(
+                ctx,
+                *schema_variant.id(),
+                "Region",
+                identity_func_item.func_id,
+                identity_func_item.func_binding_id,
+                identity_func_item.func_binding_return_value_id,
+                SocketArity::Many,
+                DiagramKind::Configuration,
+            )
+            .await?; // TODO(wendy) - Can a key pair have multiple regions? Idk!
+        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+        // Qualifications
+        let qual_func_name = "si:qualificationKeyPairCanCreate".to_string();
+        let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
+            .await?
+            .pop()
+            .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
+
+        let mut qual_prototype_context = QualificationPrototypeContext::new();
+        qual_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+        QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+
+        // Wrap it up.
+        schema_variant.finalize(ctx).await?;
+
+        // Set Defaults
+        self.set_default_value_for_prop(
+            ctx,
+            *aws_resource_type_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
+            serde_json::json!["key-pair"],
+        )
+        .await?;
+
+        // Connect the "/root/domain/key id" prop to the external provider.
+        let external_provider_attribute_prototype_id = key_name_external_provider
+            .attribute_prototype_id()
+            .ok_or_else(|| {
+                BuiltinsError::MissingAttributePrototypeForExternalProvider(
+                    *key_name_external_provider.id(),
+                )
+            })?;
+        let key_name_internal_provider = InternalProvider::find_for_prop(ctx, *key_name_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*key_name_prop.id())
+            })?;
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *external_provider_attribute_prototype_id,
+            identity_func_item.func_argument_id,
+            *key_name_internal_provider.id(),
+        )
+        .await?;
+
         let base_attribute_read_context = AttributeReadContext {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
@@ -1392,52 +1674,12 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Socket Binding
+        // Connect the "region" prop to the "Region" explicit internal provider.
         let base_attribute_read_context = AttributeReadContext {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
             ..AttributeReadContext::default()
         };
-
-        // security_group_id to output socket
-        let security_group_id_external_provider_attribute_prototype_id =
-            security_group_id_external_provider
-                .attribute_prototype_id()
-                .ok_or_else(|| {
-                    BuiltinsError::MissingAttributePrototypeForExternalProvider(
-                        *security_group_id_external_provider.id(),
-                    )
-                })?;
-
-        let security_group_id_internal_provider =
-            InternalProvider::find_for_prop(ctx, root_prop.resource_prop_id)
-                .await?
-                .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
-                    root_prop.resource_prop_id,
-                ))?;
-
-        let func_argument = FuncArgument::find_by_name_for_func(
-            ctx,
-            "resource",
-            *aws_security_group_id_from_resource_func.id(),
-        )
-        .await?
-        .ok_or_else(|| {
-            BuiltinsError::BuiltinMissingFuncArgument(
-                "si:awsSecurityGroupIdFromResource".to_owned(),
-                "resource".to_owned(),
-            )
-        })?;
-
-        AttributePrototypeArgument::new_for_intra_component(
-            ctx,
-            *security_group_id_external_provider_attribute_prototype_id,
-            *func_argument.id(),
-            *security_group_id_internal_provider.id(),
-        )
-        .await?;
-
-        // region from input socket
         let region_attribute_value_read_context = AttributeReadContext {
             prop_id: Some(*region_prop.id()),
             ..base_attribute_read_context
@@ -1463,21 +1705,21 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Make GroupName take the value of /root/si/name
-        let group_name_attribute_value = AttributeValue::find_for_context(
+        // Connect the "/root/si/name" field to the "/root/domain/KeyName" field.
+        let key_name_attribute_value = AttributeValue::find_for_context(
             ctx,
             AttributeReadContext {
-                prop_id: Some(*group_name_prop.id()),
+                prop_id: Some(*key_name_prop.id()),
                 ..base_attribute_read_context
             },
         )
         .await?
         .ok_or(AttributeValueError::Missing)?;
-        let mut group_name_attribute_proto = group_name_attribute_value
+        let mut key_name_attribute_prototype = key_name_attribute_value
             .attribute_prototype(ctx)
             .await?
             .ok_or(AttributeValueError::MissingAttributePrototype)?;
-        group_name_attribute_proto
+        key_name_attribute_prototype
             .set_func_id(ctx, identity_func_item.func_id)
             .await?;
         let si_name_prop = self
@@ -1490,18 +1732,18 @@ impl MigrationDriver {
             })?;
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
-            *group_name_attribute_proto.id(),
+            *key_name_attribute_prototype.id(),
             identity_func_item.func_argument_id,
             *si_name_internal_provider.id(),
         )
         .await?;
 
-        let func_name = "si:awsSecurityGroupCreateWorkflow";
+        let func_name = "si:awsKeyPairCreateWorkflow";
         let func = Func::find_by_attr(ctx, "name", &func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-        let title = "Create Security Group";
+        let title = "Create Key Pair";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
@@ -1522,14 +1764,22 @@ impl MigrationDriver {
             ..Default::default()
         };
         let mut confirmation_prototype =
-            ConfirmationPrototype::new(ctx, "Security Group Exists?", *func.id(), context).await?;
+            ConfirmationPrototype::new(ctx, "Key Pair Exists?", *func.id(), context).await?;
         confirmation_prototype
             .set_provider(ctx, Some("AWS".to_owned()))
             .await?;
         confirmation_prototype
-            .set_success_description(ctx, Some("Security Group exists!".to_owned()))
+            .set_success_description(ctx, Some("Key Pair exists!".to_owned()))
             .await?;
-        confirmation_prototype.set_failure_description(ctx, Some("This Security Group has not been created yet. Please run the fix above to create it!".to_owned())).await?;
+        confirmation_prototype
+            .set_failure_description(
+                ctx,
+                Some(
+                    "This Key Pair has not been created yet. Please run the fix above to create it!"
+                        .to_owned(),
+                ),
+            )
+            .await?;
 
         let name = "create";
         let context = ActionPrototypeContext {
@@ -1546,12 +1796,12 @@ impl MigrationDriver {
         )
         .await?;
 
-        let func_name = "si:awsSecurityGroupRefreshWorkflow";
+        let func_name = "si:awsKeyPairRefreshWorkflow";
         let func = Func::find_by_attr(ctx, "name", &func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-        let title = "Refresh Security Group's Resource";
+        let title = "Refresh Key Pair Resource";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
