@@ -30,7 +30,6 @@ impl Component {
             .await?
             .ok_or(ComponentError::NoSchemaVariant(component_id))?;
         let base_read_context = AttributeReadContext {
-            prop_id: None,
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(component_id),
@@ -43,7 +42,7 @@ impl Component {
         for code_generation_prototype in
             CodeGenerationPrototype::list_for_schema_variant(ctx, *schema_variant.id()).await?
         {
-            // Get the code and format.
+            // Get the raw value for the code generated object via the prop tree for the prototype.
             let tree_internal_provider =
                 InternalProvider::find_for_prop(ctx, code_generation_prototype.tree_prop_id())
                     .await?
@@ -67,6 +66,8 @@ impl Component {
             )
             .await?
             .ok_or(FuncBindingReturnValueError::Missing)?;
+
+            // Deserialize the value into the code generated object defined by the veritech client.
             let code_generated = match tree_func_binding_return_value.value() {
                 Some(value) => Some(CodeGenerated::deserialize(value)?),
                 None => None,

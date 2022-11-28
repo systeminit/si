@@ -53,19 +53,19 @@ impl BuiltinSchemaHelpers {
         node_color: Option<i64>,
     ) -> BuiltinsResult<Option<(Schema, SchemaVariant, RootProp)>> {
         let name = name.as_ref();
-        info!("migrating {name} schema");
 
         // NOTE(nick): There's one issue here. If the schema kind has changed, then this check will be
         // inaccurate. As a result, we will be unable to re-create the schema without manual intervention.
         // This should be fine since this code should likely only last as long as default schemas need to
         // be created... which is hopefully not long.... hopefully...
-
         let default_schema_exists = !Schema::find_by_attr(ctx, "name", &name.to_string())
             .await?
             .is_empty();
         if default_schema_exists {
+            info!("skipping {name} schema (already migrated)");
             return Ok(None);
         }
+        info!("migrating {name} schema");
 
         let mut schema = Schema::new(ctx, name, &kind, &component_kind).await?;
         let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
