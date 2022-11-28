@@ -110,12 +110,12 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
         match builtin_path.extension() {
             Some(extension) => {
                 if extension != std::ffi::OsStr::new("json") {
-                    debug!("Skipping {:?}: Not a json file", builtin_path);
+                    debug!("skipping {:?}: not a json file", builtin_path);
                     continue;
                 }
             }
             None => {
-                warn!("Skipping {:?}: No file extension", builtin_path);
+                warn!("skipping {:?}: no file extension", builtin_path);
                 continue;
             }
         };
@@ -137,7 +137,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
         let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
         if !existing_func.is_empty() {
-            warn!("Skipping {:?}: Function already exists", func_metadata.name);
+            warn!("skipping {:?}: func already exists", &func_name);
             continue;
         }
 
