@@ -599,6 +599,8 @@ const cursor = computed(() => {
   if (drawEdgeActive.value) return "cell";
   if (dragElementsActive.value) return "move";
   if (insertElementActive.value) return "copy"; // not sure about this...
+  if (componentHoverAction.value === "resize" || resizeElementActive.value)
+    return "nwse-resize";
   return "auto";
 });
 
@@ -640,6 +642,7 @@ const disableHoverEvents = computed(() => {
   if (dragElementsActive.value) return true;
   if (dragSelectActive.value) return true;
   if (drawEdgeActive.value) return true;
+  if (resizeElementActive.value) return true;
   // TODO: other states will  disable hovers, like drawing an edge, or dragging a selection box
   return false;
 });

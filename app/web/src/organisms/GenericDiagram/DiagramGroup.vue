@@ -47,6 +47,7 @@
         fillAfterStrokeEnabled: true,
         stroke: colors.headerBg,
         strokeWidth: 3,
+        hitStrokeWidth: 0,
         dash: [8, 8],
         shadowColor: 'black',
         shadowBlur: 8,
@@ -135,18 +136,32 @@
     </v-group>
 
     <!-- resize handle -->
-    <DiagramIcon
-      icon="resize"
-      color="#FFF"
+    <v-group
       :config="{
-        width: RESIZE_HANDLE_SIZE,
-        height: RESIZE_HANDLE_SIZE,
-        x: nodeWidth / 2 - RESIZE_HANDLE_SIZE,
-        y: nodeHeight - RESIZE_HANDLE_SIZE,
+        x: size.width / 2 - RESIZE_HANDLE_SIZE,
+        y: size.height - RESIZE_HANDLE_SIZE,
+        hitStrokeWidth: 0,
       }"
-      @mouseover="onMouseOver('resize-handle', $event)"
-      @mouseout="onMouseOut"
-    />
+    >
+      <DiagramIcon
+        icon="resize"
+        color="#FFF"
+        :config="{
+          width: RESIZE_HANDLE_SIZE,
+          height: RESIZE_HANDLE_SIZE,
+        }"
+      />
+      <v-rect
+        :config="{
+          width: RESIZE_HANDLE_SIZE + 20,
+          height: RESIZE_HANDLE_SIZE + 20,
+          x: 2,
+          y: 2,
+        }"
+        @mouseover="onMouseOver('resize-handle', $event)"
+        @mouseout="onMouseOut"
+      />
+    </v-group>
   </v-group>
 </template>
 
