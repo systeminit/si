@@ -1,0 +1,11 @@
+{
+  "kind": "JsCommand",
+  "arguments": [],
+  "response_type": "Command",
+  "hidden": false,
+  "display_name": "si:awsEipRefreshCommand",
+  "description": null,
+  "link": null,
+  "code_file": "awsEipRefreshCommand.js",
+  "code_entrypoint": "refresh"
+}
