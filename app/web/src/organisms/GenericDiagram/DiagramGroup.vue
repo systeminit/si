@@ -6,7 +6,7 @@
       x: position.x,
       y: position.y,
     }"
-    @mouseover="onMouseOver('group')"
+    @mouseover="onMouseOver('group', $event)"
     @mouseout="onMouseOut"
   >
     <!-- selection box outline -->
@@ -124,28 +124,21 @@
         }"
       />
     </v-group>
+
+    <!-- resize handle -->
+    <DiagramIcon
+      icon="resize"
+      color="#FFF"
+      :config="{
+        width: RESIZE_HANDLE_SIZE,
+        height: RESIZE_HANDLE_SIZE,
+        x: nodeWidth / 2 - RESIZE_HANDLE_SIZE,
+        y: nodeHeight - RESIZE_HANDLE_SIZE,
+      }"
+      @mouseover="onMouseOver('resize-handle', $event)"
+      @mouseout="onMouseOut"
+    />
   </v-group>
-  <DiagramIcon
-    icon="resize"
-    :color="'#FFF'"
-    :config="{
-      width: 40,
-      height: 40,
-      x: position.x + nodeWidth / 2 - 40,
-      y: position.y + nodeHeight - GROUP_HEADER_BOTTOM_MARGIN - 26,
-    }"
-  />
-  <v-rect
-    :config="{
-      width: 40,
-      height: 40,
-      x: position.x + nodeWidth / 2 - 40,
-      y: position.y + nodeHeight - GROUP_HEADER_BOTTOM_MARGIN - 26,
-      cornerRadius: CORNER_RADIUS,
-    }"
-    @mouseover="onMouseOver('resize-handle')"
-    @mouseout="onMouseOut"
-  />
 </template>
 
 <script lang="ts" setup>
@@ -170,6 +163,7 @@ import {
   SELECTION_COLOR,
   GROUP_HEADER_BOTTOM_MARGIN,
   GROUP_TITLE_FONT_SIZE,
+  RESIZE_HANDLE_SIZE,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
@@ -274,7 +268,11 @@ watch([() => props.group.def.isLoading, overlay], ([isLoading]) => {
   transition.play();
 });
 
-function onMouseOver(target: "group" | "resize-handle") {
+function onMouseOver(
+  target: "group" | "resize-handle",
+  evt: KonvaEventObject<MouseEvent>,
+) {
+  evt.cancelBubble = true;
   emit("hover:start", target);
 }
 
