@@ -962,17 +962,11 @@ impl AttributeValue {
                         )
                     })?;
             if internal_provider.is_internal_consumer() {
-                let prop_attribute_context = AttributeContextBuilder::from(self.context)
-                    .set_prop_id(*internal_provider.prop_id())
-                    .unset_internal_provider_id()
-                    .unset_external_provider_id()
-                    .to_context()?;
-
                 // We don't care about the AttributeValue that comes back from implicit_emit, since we should already be
                 // operating on an AttributeValue that has the correct AttributeContext, which means that a new one should
                 // not need to be created.
                 internal_provider
-                    .implicit_emit(ctx, prop_attribute_context)
+                    .implicit_emit(ctx, self)
                     .await
                     .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
 
