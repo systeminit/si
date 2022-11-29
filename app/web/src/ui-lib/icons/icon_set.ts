@@ -3,6 +3,8 @@
 // browse available icons at https://icones.js.org/ (or https://iconify.design/icon-sets/)
 import Loader from "~icons/gg/spinner";
 
+import Resize from "~icons/mdi/resize-bottom-right";
+
 import Check from "~icons/heroicons/check-20-solid";
 import CheckCircle from "~icons/heroicons/check-circle-20-solid";
 import CheckSquare from "@/assets/images/custom-icons/check-square.svg?raw";
@@ -127,6 +129,7 @@ export const ICONS = Object.freeze({
   "plus-circle": PlusCircle,
   refresh: Refresh,
   "refresh-active": Refresh,
+  resize: Resize,
   save: Save,
   search: Search,
   selector: Selector,

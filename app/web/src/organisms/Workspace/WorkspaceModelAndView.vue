@@ -40,6 +40,7 @@
       :controls-disabled="changeSetPanelRef?.showDialog === undefined"
       @insert-element="onDiagramInsertElement"
       @move-element="onDiagramMoveElement"
+      @resize-element="onDiagramResizeElement"
       @group-elements="onGroupElements"
       @draw-edge="onDrawEdge"
       @delete-elements="onDiagramDelete"
@@ -96,6 +97,7 @@ import {
   DiagramGroupData,
   GroupEvent,
   SelectElementEvent,
+  ResizeElementEvent,
 } from "../GenericDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline.vue";
 import GlobalStatusOverlay from "../GlobalStatusOverlay.vue";
@@ -174,6 +176,17 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   // but the API currently doesn't have it right away :(
   const newNodeId = +new Date();
   insertCallbacks[newNodeId] = e.onComplete;
+}
+
+function onDiagramResizeElement(e: ResizeElementEvent) {
+  if (!e.isFinal) return;
+  if (e.element instanceof DiagramGroupData) {
+    componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
+      parseInt(e.element.def.id),
+      e.position,
+      e.size,
+    );
+  }
 }
 
 function onDiagramMoveElement(e: MoveElementEvent) {

@@ -117,6 +117,22 @@ impl GridPoint {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct Size2D {
+    width: isize,
+    height: isize,
+}
+
+impl Size2D {
+    pub fn width(&self) -> isize {
+        self.width
+    }
+    pub fn height(&self) -> isize {
+        self.height
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct DiagramNodeView {
     id: String,
     #[serde(rename = "type")]
@@ -127,6 +143,7 @@ pub struct DiagramNodeView {
     content: Option<String>,
     sockets: Option<Vec<SocketView>>,
     position: GridPoint,
+    size: Option<Size2D>,
     color: Option<String>,
 }
 
@@ -153,6 +170,15 @@ impl DiagramNodeView {
                 .await?
                 .map(|um| um.category().to_string());
 
+        let size = if let (Some(w), Some(h)) = (position.width(), position.height()) {
+            Some(Size2D {
+                height: h.parse()?,
+                width: w.parse()?,
+            })
+        } else {
+            None
+        };
+
         Ok(Self {
             id: node.id().to_string(),
             ty: None,
@@ -165,6 +191,7 @@ impl DiagramNodeView {
                 x: position.x().parse()?,
                 y: position.y().parse()?,
             },
+            size,
             color: component
                 .find_value_by_json_pointer::<String>(ctx, "/root/si/Color")
                 .await?
@@ -182,5 +209,9 @@ impl DiagramNodeView {
 
     pub fn position(&self) -> &GridPoint {
         &self.position
+    }
+
+    pub fn size(&self) -> &Option<Size2D> {
+        &self.size
     }
 }

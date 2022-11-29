@@ -52,10 +52,11 @@ overflow hidden */
           :key="group.uniqueKey"
           :group="group"
           :temp-position="movedElementPositions[group.uniqueKey]"
+          :temp-size="resizedElementSizes[group.uniqueKey]"
           :draw-edge-state="drawEdgeState"
           :is-hovered="elementIsHovered(group)"
           :is-selected="elementIsSelected(group)"
-          @hover:start="(socket) => onElementHoverStart(socket || group)"
+          @hover:start="(target) => onGroupHoverStart(group, target)"
           @hover:end="(socket) => onElementHoverEnd(socket || group)"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
@@ -178,6 +179,8 @@ import {
   DiagramElementUniqueKey,
   SelectElementEvent,
   GroupEvent,
+  Size2D,
+  ResizeElementEvent,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramEdge from "./DiagramEdge.vue";
@@ -193,6 +196,7 @@ import {
   SELECTION_COLOR,
   MAX_ZOOM,
   MIN_ZOOM,
+  NODE_WIDTH,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -235,6 +239,7 @@ const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;
   (e: "update:selection", newSelection: SelectElementEvent): void;
   (e: "move-element", nodeMoveInfo: MoveElementEvent): void;
+  (e: "resize-element", nodeResizeInfo: ResizeElementEvent): void;
   (e: "delete-elements", deleteInfo: DeleteElementsEvent): void;
   (e: "insert-element", insertInfo: InsertElementEvent): void;
   (e: "draw-edge", drawEdgeInfo: DrawEdgeEvent): void;
@@ -501,6 +506,7 @@ function onMouseUp(e: MouseEvent) {
   else if (dragElementsActive.value) endDragElements();
   else if (dragSelectActive.value) endDragSelect();
   else if (drawEdgeActive.value) endDrawEdge();
+  else if (resizeElementActive.value) endResizeElement();
   // we'll handle insert on mouseup too in case the user dragged the element from the asset palette and then let go in the canvas
   // TODO: probably change this - its a bit hacky...
   else if (insertElementActive.value && pointerIsWithinGrid.value)
@@ -519,6 +525,7 @@ function onMouseMove(e: MouseEvent) {
   else if (dragElementsActive.value) onDragElementsMove();
   else if (dragSelectActive.value) onDragSelectMove();
   else if (drawEdgeActive.value) onDrawEdgeMove();
+  else if (resizeElementActive.value) onResizeMove();
   else {
     if (
       mouseIsDown.value &&
@@ -571,8 +578,12 @@ function checkIfDragStarted(_e: MouseEvent) {
     lastMouseDownElement.value instanceof DiagramNodeData ||
     lastMouseDownElement.value instanceof DiagramGroupData
   ) {
-    // begin moving selected nodes (and eventually other movable things like groups / annotations, etc...)
-    beginDragElements();
+    if (componentHoverAction.value === "resize") {
+      beginResizeElement();
+    } else {
+      // begin moving selected nodes (and eventually other movable things like groups / annotations, etc...)
+      beginDragElements();
+    }
   }
 }
 
@@ -593,6 +604,7 @@ const cursor = computed(() => {
 
 // hovering behaviour
 
+const componentHoverAction = ref<"move" | "resize" | undefined>();
 const hoveredElementKey = ref<string>();
 const hoveredElement = computed(() =>
   hoveredElementKey.value
@@ -602,11 +614,24 @@ const hoveredElement = computed(() =>
 // same event and handler is used for both hovering nodes and sockets
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
 
+function onGroupHoverStart(
+  el: DiagramElementData,
+  target: "group" | "resize-handle",
+) {
+  if (target === "resize-handle") componentHoverAction.value = "resize";
+
+  onElementHoverStart(el);
+}
+
 function onElementHoverStart(el: DiagramElementData) {
   console.log("hover", el.uniqueKey);
+
+  if (!componentHoverAction.value) componentHoverAction.value = "move";
+
   hoveredElementKey.value = el.uniqueKey;
 }
 function onElementHoverEnd(_el: DiagramElementData) {
+  componentHoverAction.value = undefined;
   hoveredElementKey.value = undefined;
 }
 
@@ -797,6 +822,86 @@ function endDragSelect(doSelection = true) {
   if (doSelection) setSelectionByKey(dragSelectPreviewKeys.value);
 }
 
+// RESIZING DIAGRAM ELEMENTS (groups) ///////////////////////////////////////
+const resizeElementActive = ref(false);
+const resizedElementSizes = reactive<Record<DiagramElementUniqueKey, Size2D>>(
+  {},
+);
+const resizedElementSizesPreResize = reactive<
+  Record<DiagramElementUniqueKey, Size2D>
+>({});
+const lastResizedElement = ref<DiagramGroupData>();
+
+function beginResizeElement() {
+  if (!hoveredElement.value) return;
+
+  const node = hoveredElement.value.def as DiagramNodeDef;
+
+  if (!node.size) return;
+  if (!(hoveredElement.value instanceof DiagramGroupData)) return;
+
+  resizeElementActive.value = true;
+  lastResizedElement.value = hoveredElement.value;
+  resizedElementSizesPreResize[hoveredElement.value.uniqueKey] =
+    resizedElementSizes[lastResizedElement.value.uniqueKey] || node.size;
+}
+function endResizeElement() {
+  if (!lastResizedElement.value) return;
+  const newNodeSize = resizedElementSizes[lastResizedElement.value.uniqueKey];
+
+  emit("resize-element", {
+    element: lastResizedElement.value,
+    position: lastResizedElement.value.def.position,
+    size: newNodeSize,
+    isFinal: true,
+  });
+
+  resizeElementActive.value = false;
+  lastResizedElement.value = undefined;
+}
+function onResizeMove() {
+  if (!lastResizedElement.value) return;
+
+  const node = lastResizedElement.value.def as DiagramNodeDef;
+
+  if (!node.size) return;
+  if (!containerPointerPos.value) return;
+  if (!lastMouseDownContainerPointerPos.value) return;
+  const delta: Vector2d = {
+    x: Math.round(
+      (containerPointerPos.value.x -
+        lastMouseDownContainerPointerPos.value.x +
+        totalScrolledDuringDrag.value.x) /
+        zoomLevel.value,
+    ),
+    y: Math.round(
+      (containerPointerPos.value.y -
+        lastMouseDownContainerPointerPos.value.y +
+        totalScrolledDuringDrag.value.y) /
+        zoomLevel.value,
+    ),
+  };
+
+  const presentSize =
+    resizedElementSizesPreResize[lastResizedElement.value.uniqueKey] ||
+    node.size;
+
+  const newWidth = presentSize.width + delta.x * 2; // This is *2 because the coordinates system has x=0 on the center
+  const newHeight = presentSize.height + delta.y;
+  const newNodeSize = {
+    width: Math.max(newWidth, NODE_WIDTH + 20 * 2),
+    height: Math.max(newHeight, NODE_WIDTH + 20 * 2),
+  };
+
+  resizedElementSizes[lastResizedElement.value.uniqueKey] = newNodeSize;
+  emit("resize-element", {
+    element: lastResizedElement.value,
+    position: lastResizedElement.value.def.position,
+    size: newNodeSize,
+    isFinal: false,
+  });
+}
+
 // MOVING DIAGRAM ELEMENTS (nodes/groups/annotations/etc) ///////////////////////////////////////
 const movedElementPositions = reactive<
   Record<DiagramElementUniqueKey, Vector2d>
@@ -812,6 +917,7 @@ const currentSelectionMovableElements = computed(
 
 const draggedElementsPositionsPreDrag = ref<Vector2d[]>();
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
+
 function beginDragElements() {
   if (!lastMouseDownElement.value) return;
   dragElementsActive.value = true;

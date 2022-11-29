@@ -234,6 +234,7 @@ import {
   DIAGRAM_FONT_FAMILY,
   SELECTION_COLOR,
   SOCKET_SIZE,
+  NODE_WIDTH,
 } from "./diagram_constants";
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
@@ -286,7 +287,7 @@ const connectedEdgesBySocketKey = computed(() => {
   return lookup;
 });
 
-const nodeWidth = computed(() => 180);
+const nodeWidth = computed(() => NODE_WIDTH);
 const halfWidth = computed(() => nodeWidth.value / 2);
 
 const overlayIconSize = computed(() => nodeWidth.value / 3);

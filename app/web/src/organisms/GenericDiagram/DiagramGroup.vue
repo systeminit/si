@@ -6,7 +6,7 @@
       x: position.x,
       y: position.y,
     }"
-    @mouseover="onMouseOver"
+    @mouseover="onMouseOver('group')"
     @mouseout="onMouseOut"
   >
     <!-- selection box outline -->
@@ -125,6 +125,27 @@
       />
     </v-group>
   </v-group>
+  <DiagramIcon
+    icon="resize"
+    :color="'#FFF'"
+    :config="{
+      width: 40,
+      height: 40,
+      x: position.x + nodeWidth / 2 - 40,
+      y: position.y + nodeHeight - GROUP_HEADER_BOTTOM_MARGIN - 26,
+    }"
+  />
+  <v-rect
+    :config="{
+      width: 40,
+      height: 40,
+      x: position.x + nodeWidth / 2 - 40,
+      y: position.y + nodeHeight - GROUP_HEADER_BOTTOM_MARGIN - 26,
+      cornerRadius: CORNER_RADIUS,
+    }"
+    @mouseover="onMouseOver('resize-handle')"
+    @mouseout="onMouseOut"
+  />
 </template>
 
 <script lang="ts" setup>
@@ -136,7 +157,11 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
-import { DiagramDrawEdgeState, DiagramGroupData } from "./diagram_types";
+import {
+  DiagramDrawEdgeState,
+  DiagramGroupData,
+  Size2D,
+} from "./diagram_types";
 
 import {
   CORNER_RADIUS,
@@ -157,6 +182,9 @@ const props = defineProps({
   tempPosition: {
     type: Object as PropType<Vector2d>,
   },
+  tempSize: {
+    type: Object as PropType<Size2D>,
+  },
   drawEdgeState: {
     type: Object as PropType<DiagramDrawEdgeState>,
     default: () => ({}),
@@ -173,8 +201,11 @@ const diagramConfig = useDiagramConfig();
 const titleTextRef = ref();
 const groupRef = ref();
 
-// TODO(Paul) recalculate the group width based on the number of components
-const nodeWidth = computed(() => 500);
+const size = computed(
+  () => props.tempSize || props.group.def.size || { width: 500, height: 500 },
+);
+
+const nodeWidth = computed(() => size.value.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
 // TODO(Victor): this is wrong. headerWidth should be the smallest value between the actual text width and nodeWidth
 const headerWidth = computed(() => nodeWidth.value * 0.75);
@@ -197,10 +228,7 @@ function recalcHeaderHeight() {
 }
 
 const nodeHeaderHeight = computed(() => headerTextHeight.value);
-// TODO(Paul) calculate the group height based on the number of components it contains
-const nodeBodyHeight = computed(() => {
-  return 500;
-});
+const nodeBodyHeight = computed(() => size.value.height);
 const nodeHeight = computed(
   () =>
     nodeHeaderHeight.value + GROUP_HEADER_BOTTOM_MARGIN + nodeBodyHeight.value,
@@ -246,8 +274,8 @@ watch([() => props.group.def.isLoading, overlay], ([isLoading]) => {
   transition.play();
 });
 
-function onMouseOver(_e: KonvaEventObject<MouseEvent>) {
-  emit("hover:start");
+function onMouseOver(target: "group" | "resize-handle") {
+  emit("hover:start", target);
 }
 
 function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
