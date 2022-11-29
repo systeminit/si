@@ -15,7 +15,7 @@
     "lint:summary": "npm run lint -- --format summary-chart",
     "fmt": "npm run lint:fix",
     "fmt:check": "npm run lint",
-    "check": "npm run fmt:check && npm run build:check",
+    "check": "npm run lint:strict && npm run build:check",
     "dev": "npm run start",
     "start": "vite",
     "serve": "vite preview --port 8081",
