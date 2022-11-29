@@ -122,8 +122,7 @@ export const useFixesStore = () => {
           for (const fixes of this.fixesOnRunningBatch) {
             switch (fixes.status) {
               case "success":
-                if (!map[fixes.componentId])
-                  map[fixes.componentId] = "success";
+                if (!map[fixes.componentId]) map[fixes.componentId] = "success";
                 break;
               case "failure":
                 if (map[fixes.componentId] !== "running")
@@ -148,7 +147,9 @@ export const useFixesStore = () => {
           return _.keyBy(this.allRecommendations, (r) => r.componentId);
         },
         allFinishedFixBatches(): FixBatch[] {
-          return this.fixBatches.filter((f) => f.status !== "running" && f.status !== "unstarted");
+          return this.fixBatches.filter(
+            (f) => f.status !== "running" && f.status !== "unstarted",
+          );
         },
         fixesOnBatch() {
           return (fixBatchId: FixBatchId) => {
@@ -163,7 +164,7 @@ export const useFixesStore = () => {
         completedFixesOnRunningBatch(): Fix[] {
           return _.filter(
             this.fixesOnRunningBatch,
-            (fix) => !["running", "unstarted"].includes(fix.status)
+            (fix) => !["running", "unstarted"].includes(fix.status),
           );
         },
         fixesOnRunningBatch(): Fix[] {
@@ -212,7 +213,7 @@ export const useFixesStore = () => {
         async EXECUTE_FIXES_FROM_RECOMMENDATIONS(
           recommendations: Array<Recommendation>,
         ) {
-	  const authStore = useAuthStore();
+          const authStore = useAuthStore();
 
           return new ApiRequest({
             method: "post",
@@ -226,19 +227,23 @@ export const useFixesStore = () => {
             },
             url: "/fix/run",
             onSuccess: (response) => {
-	      this.recommendations = this.recommendations.filter((r) => !!recommendations.find((rec) => rec.id === r.id)).map((r) => {
-                r.status = "running";
-                return r;
-	      });
+              this.recommendations = this.recommendations
+                .filter((r) => !!recommendations.find((rec) => rec.id === r.id))
+                .map((r) => {
+                  r.status = "running";
+                  return r;
+                });
 
               this.runningFixBatch = response.id;
-              this.fixBatches = this.fixBatches.filter((b) => b.id !== response.id);
+              this.fixBatches = this.fixBatches.filter(
+                (b) => b.id !== response.id,
+              );
               this.fixBatches.push({
                 id: response.id,
                 status: "running",
                 fixes: recommendations.map((r) => {
-		  return {
-                    id: r.id, 
+                  return {
+                    id: r.id,
                     resolverId: r.id,
                     status: "running" as FixStatus,
                     action: r.recommendation,
@@ -254,7 +259,7 @@ export const useFixesStore = () => {
                     startedAt: `${new Date()}`,
                     finishedAt: `${new Date()}`,
                   };
-		}),
+                }),
                 author: authStore.user?.email ?? "...",
                 startedAt: `${new Date()}`,
                 finishedAt: `${new Date()}`,
@@ -302,16 +307,22 @@ export const useFixesStore = () => {
                 this.LOAD_FIX_BATCHES();
                 return;
               }
-              const fix = batch.fixes.find((f) => f.resolverId === update.confirmationResolverId && f.action === update.action);
+              const fix = batch.fixes.find(
+                (f) =>
+                  f.resolverId === update.confirmationResolverId &&
+                  f.action === update.action,
+              );
               if (!fix) {
                 this.LOAD_RECOMMENDATIONS();
                 this.LOAD_FIX_BATCHES();
                 return;
               }
-	      this.recommendations = this.recommendations.filter((r) => r.id === fix.id).map((r) => {
-                r.status = update.status;
-                return r;
-	      });
+              this.recommendations = this.recommendations
+                .filter((r) => r.id === fix.id)
+                .map((r) => {
+                  r.status = update.status;
+                  return r;
+                });
               if (update.status !== fix.status) {
                 fix.status = update.status;
                 fix.action = update.action;
