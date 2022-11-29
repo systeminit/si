@@ -18,7 +18,7 @@ use crate::{
     AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
     CodeGenerationPrototypeError, ConfirmationPrototypeError, DalContext, ExternalProviderId,
     FuncError, PropError, PropId, PropKind, QualificationPrototypeError, SchemaError,
-    StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
+    SchemaVariantId, StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
 };
 
 // Private builtins modules.
@@ -105,6 +105,10 @@ pub enum BuiltinsError {
     FuncMetadata(String),
     #[error("builtin {0} missing func argument {0}")]
     BuiltinMissingFuncArgument(String, String),
+    #[error("prop cache not found: {0}")]
+    PropCacheNotFound(SchemaVariantId),
+    #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
+    PropNotFoundInCache(&'static str, PropId),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
