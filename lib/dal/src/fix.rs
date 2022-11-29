@@ -351,7 +351,7 @@ pub struct FixReturn {
     batch_id: FixBatchId,
     confirmation_resolver_id: ConfirmationResolverId,
     action: String,
-    completion_status: FixCompletionStatus,
+    status: FixCompletionStatus,
     output: Vec<String>,
 }
 
@@ -362,7 +362,7 @@ impl WsEvent {
         batch_id: FixBatchId,
         confirmation_resolver_id: ConfirmationResolverId,
         action: String,
-        completion_status: FixCompletionStatus,
+        status: FixCompletionStatus,
         output: Vec<String>,
     ) -> Self {
         WsEvent::new(
@@ -372,7 +372,7 @@ impl WsEvent {
                 batch_id,
                 confirmation_resolver_id,
                 action,
-                completion_status,
+                status,
                 output,
             }),
         )

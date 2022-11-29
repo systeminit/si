@@ -2,8 +2,8 @@
   <ProgressBarOverlay
     :title="fixState.summary"
     :detail="fixState.highlightedSummary"
-    :done-items="fixState.executed"
-    :total-items="fixState.total"
+    :done-count="fixState.executed"
+    :total-count="fixState.total"
     :bar-label="fixState.mode === 'syncing' ? 'Synced' : 'Applied'"
   />
 </template>
@@ -23,16 +23,14 @@ const _execFixesReqStatus = fixesStore.getRequestStatus(
 const fixState = computed(() => {
   if (fixesStore.runningFixBatch) {
     const total = fixesStore.fixesOnRunningBatch.length;
-    const executed = fixesStore.fixesOnRunningBatch.length;
-    console.log(total);
-    console.log(executed);
+    const executed = fixesStore.completedFixesOnRunningBatch.length;
 
     return {
       mode: "fixing",
       executed,
       total,
       summary:
-        total === executed
+        total > 0 && total === executed
           ? "Recommendations applied!"
           : "Applying recommendations...",
       highlightedSummary: "",

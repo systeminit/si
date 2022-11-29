@@ -141,7 +141,7 @@ const selectFix = (id: number) => {
 };
 const fixesStore = useFixesStore();
 const fixBatchesWithFixes = computed(() =>
-  fixesStore.fixBatches.map((batch) => ({
+  fixesStore.allFinishedFixBatches.map((batch) => ({
     ...batch,
     fixes: fixesStore.fixesOnBatch(batch.id),
   })),

@@ -10,10 +10,14 @@
 
     <span
       class="flex flex-col w-full h-full break-words"
-      :title="message.join('\n')"
+      :title="props.message.join('\n')"
     >
-      <strong v-for="(m, index) in message" :key="m" class="mt-1 ml-1">
-        {{ m }}
+      <strong
+        v-for="(message, index) in props.message"
+        :key="message"
+        class="mt-1 ml-1"
+      >
+        {{ message }}
         <button
           v-if="index === 0 && details.length > 0"
           class="underline text-action-400"
@@ -22,7 +26,9 @@
           View Details
         </button>
       </strong>
-      <strong v-if="message.length === 0">Health {{ health }}</strong>
+      <strong v-if="props.message.length === 0"
+        >Health {{ props.health }}</strong
+      >
     </span>
 
     <Modal size="2xl" :open="modalOpen" @close="closeModal">
@@ -37,11 +43,15 @@
           />
 
           <span class="flex flex-col">
-            <p v-for="m in message" :key="m" class="mt-1 ml-1">
-              {{ m }}
+            <p
+              v-for="message in props.message"
+              :key="message"
+              class="mt-1 ml-1"
+            >
+              {{ message }}
             </p>
           </span>
-          <p v-if="message.length === 0">Health {{ health }}</p>
+          <p v-if="props.message.length === 0">Health {{ props.health }}</p>
         </span>
       </template>
       <template #content>
