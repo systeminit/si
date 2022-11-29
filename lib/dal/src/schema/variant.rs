@@ -5,7 +5,6 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::builtins::MigrationDriver;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::internal::InternalProviderError;
 use crate::{
@@ -16,9 +15,10 @@ use crate::{
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many,
     AttributeContextBuilderError, AttributePrototypeError, AttributeValueError, BuiltinsError,
-    DalContext, DiagramKind, ExternalProvider, ExternalProviderError, HistoryEventError,
-    InternalProvider, Prop, PropError, PropId, PropKind, Schema, SchemaId, SocketArity,
-    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy, WsEventError,
+    DalContext, DiagramKind, ExternalProvider, ExternalProviderError, Func, FuncBinding, FuncError,
+    HistoryEventError, InternalProvider, Prop, PropError, PropId, PropKind, Schema, SchemaId,
+    SocketArity, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    WsEventError,
 };
 
 pub mod root_prop;
@@ -31,6 +31,8 @@ pub enum SchemaVariantError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
@@ -127,12 +129,18 @@ impl SchemaVariant {
         object.set_schema(ctx, &schema_id).await?;
 
         // Create frame socket
-        let driver = MigrationDriver::new(ctx).await.map_err(Box::new)?;
-
-        let identity_func_item = driver
-            .get_func_item("si:identity")
-            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))
-            .map_err(Box::new)?;
+        let identity_func_name = "si:identity".to_string();
+        let identity_func = Func::find_by_attr(ctx, "name", &identity_func_name)
+            .await?
+            .pop()
+            .ok_or(FuncError::NotFoundByName(identity_func_name))?;
+        let (identity_func_binding, identity_func_binding_return_value, _) =
+            FuncBinding::find_or_create_and_execute(
+                ctx,
+                serde_json::json![{ "identity": null }],
+                *identity_func.id(),
+            )
+            .await?;
 
         let (_output_provider, _output_socket) = ExternalProvider::new_with_socket(
             ctx,
@@ -140,9 +148,9 @@ impl SchemaVariant {
             *object.id(),
             "Frame",
             None,
-            identity_func_item.func_id,
-            identity_func_item.func_binding_id,
-            identity_func_item.func_binding_return_value_id,
+            *identity_func.id(),
+            *identity_func_binding.id(),
+            *identity_func_binding_return_value.id(),
             SocketArity::One,
             DiagramKind::Configuration,
         )
