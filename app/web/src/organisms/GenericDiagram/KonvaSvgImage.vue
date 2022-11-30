@@ -37,8 +37,8 @@ const konvaConfig = computed(() => {
     ...props.config,
     image: imageEl.value,
     offset: { x: offsetX, y: offsetY },
-    x: props.config.x + offsetX,
-    y: props.config.y + offsetY,
+    x: (props.config.x || 0) + offsetX,
+    y: (props.config.y || 0) + offsetY,
   };
 });
 

@@ -8,6 +8,7 @@ export type DiagramConfig = {
 };
 
 export type GridPoint = { x: number; y: number };
+export type Size2D = { width: number; height: number };
 export type Direction = "up" | "down" | "left" | "right";
 
 export type DiagramElementTypes = "node" | "socket" | "edge";
@@ -17,8 +18,10 @@ export type DiagramElementUniqueKey = string;
 export abstract class DiagramElementData {
   abstract get uniqueKey(): DiagramElementUniqueKey;
 }
+
 export class DiagramNodeData extends DiagramElementData {
   public sockets: DiagramSocketData[];
+
   constructor(readonly def: DiagramNodeDef) {
     super();
     this.sockets =
@@ -28,10 +31,12 @@ export class DiagramNodeData extends DiagramElementData {
   static generateUniqueKey(id: string | number) {
     return `n-${id}`;
   }
+
   get uniqueKey() {
     return DiagramNodeData.generateUniqueKey(this.def.id);
   }
 }
+
 export class DiagramGroupData extends DiagramElementData {
   constructor(readonly def: DiagramNodeDef) {
     super();
@@ -40,10 +45,12 @@ export class DiagramGroupData extends DiagramElementData {
   static generateUniqueKey(id: string | number) {
     return `g-${id}`;
   }
+
   get uniqueKey() {
     return DiagramGroupData.generateUniqueKey(this.def.id);
   }
 }
+
 export class DiagramSocketData extends DiagramElementData {
   constructor(
     readonly parent: DiagramNodeData | DiagramGroupData,
@@ -56,6 +63,7 @@ export class DiagramSocketData extends DiagramElementData {
   static generateUniqueKey(parentKey: string, id: string | number) {
     return `${parentKey}--s-${id}`;
   }
+
   get uniqueKey() {
     return DiagramSocketData.generateUniqueKey(
       this.parent.uniqueKey,
@@ -63,6 +71,7 @@ export class DiagramSocketData extends DiagramElementData {
     );
   }
 }
+
 export class DiagramEdgeData extends DiagramElementData {
   constructor(readonly def: DiagramEdgeDef) {
     super();
@@ -71,6 +80,7 @@ export class DiagramEdgeData extends DiagramElementData {
   static generateUniqueKey(id: string | number) {
     return `e-${id}`;
   }
+
   get uniqueKey() {
     return DiagramEdgeData.generateUniqueKey(this.def.id);
   }
@@ -79,15 +89,18 @@ export class DiagramEdgeData extends DiagramElementData {
   get fromNodeKey() {
     return DiagramNodeData.generateUniqueKey(this.def.fromNodeId);
   }
+
   get toNodeKey() {
     return DiagramNodeData.generateUniqueKey(this.def.toNodeId);
   }
+
   get fromSocketKey() {
     return DiagramSocketData.generateUniqueKey(
       DiagramNodeData.generateUniqueKey(this.def.fromNodeId),
       this.def.fromSocketId,
     );
   }
+
   get toSocketKey() {
     return DiagramSocketData.generateUniqueKey(
       DiagramNodeData.generateUniqueKey(this.def.toNodeId),
@@ -126,6 +139,8 @@ export type DiagramNodeDef = {
   sockets?: DiagramSocketDef[];
   /** x,y placement of the node on the diagram */
   position: GridPoint;
+  /** Size of element on diagram (for manually  resizable components) */
+  size?: Size2D;
   /** single hex color to use for node theme */
   color?: string | null;
   /** icon (name/slug) used to help convey node type */
@@ -191,6 +206,12 @@ export type DiagramDrawEdgeState = {
 };
 
 // Event payloads - emitted by generic diagram //////////////////////////////////
+export type ResizeElementEvent = {
+  element: DiagramElementData;
+  position: Vector2d;
+  size: Size2D;
+  isFinal: boolean;
+};
 export type MoveElementEvent = {
   element: DiagramElementData;
   position: Vector2d;

@@ -9,6 +9,7 @@ import {
   DiagramEdgeDef,
   DiagramNodeDef,
   DiagramStatusIcon,
+  Size2D,
 } from "@/organisms/GenericDiagram/diagram_types";
 import { MenuItem } from "@/api/sdf/dal/menu";
 import {
@@ -408,7 +409,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         async SET_COMPONENT_DIAGRAM_POSITION(
           componentId: ComponentId,
           position: Vector2d,
-          size?: Vector2d,
+          size?: Size2D,
         ) {
           return new ApiRequest<{ componentStats: ComponentStats }>({
             method: "post",
@@ -417,8 +418,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               nodeId: componentId,
               x: position.x.toString(),
               y: position.y.toString(),
-              width: size?.x.toString(),
-              height: size?.y.toString(),
+              width: size?.width.toString(),
+              height: size?.height.toString(),
               diagramKind: "configuration",
               ...visibilityParams,
             },

@@ -12,6 +12,11 @@ export const DRAG_DISTANCE_THRESHOLD = 5;
 // if dragging to the edge of the screen, within this area (pixels) will trigger scrolling in that direction
 export const DRAG_EDGE_TRIGGER_SCROLL_WIDTH = 15;
 
+// Default Width for Node
+export const NODE_WIDTH = 180;
+
+export const RESIZE_HANDLE_SIZE = 40;
+
 // spacing between sockets
 export const SOCKET_GAP = 22;
 // spacing above/below sockets within the node
