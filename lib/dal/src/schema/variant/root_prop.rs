@@ -23,8 +23,7 @@ pub struct RootProp {
     /// Contains the tree of [`Props`](crate::Prop) corresponding to the real world _resource_.
     /// All information needed to populate the _model_ should be derived from this tree.
     pub resource_prop_id: PropId,
-    /// Contains the tree of [`Props`](crate::Prop) corresponding to
-    /// [`code generated`](crate::CodeGenerationPrototype) by populating the real world _model_.
+    /// Contains the tree of [`Props`](crate::Prop) corresponding to code generation [`Funcs`](crate::Func).
     pub code_prop_id: PropId,
 }
 

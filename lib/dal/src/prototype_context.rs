@@ -1,7 +1,7 @@
 use crate::{
-    CodeGenerationPrototypeError, ComponentId, ConfirmationPrototypeError, DalContext, FuncError,
-    FuncId, QualificationPrototypeError, ReadTenancyError, SchemaId, SchemaVariantId,
-    StandardModel, StandardModelError, TransactionsError, WriteTenancyError,
+    ComponentId, ConfirmationPrototypeError, DalContext, FuncError, FuncId,
+    QualificationPrototypeError, ReadTenancyError, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, TransactionsError, WriteTenancyError,
 };
 use std::future::Future;
 use thiserror::Error;
@@ -23,8 +23,6 @@ pub enum PrototypeContextError {
     #[error(transparent)]
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error(transparent)]
-    CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
-    #[error(transparent)]
     ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error(transparent)]
     Func(#[from] FuncError),
@@ -32,8 +30,6 @@ pub enum PrototypeContextError {
     SerdeJson(#[from] serde_json::Error),
     #[error("func {0} not found")]
     FuncNotFound(FuncId),
-    #[error("prototype context field ({0:?}) is invalid for code gen, need schema variant id")]
-    InvalidForCodeGen(PrototypeContextField),
 }
 
 pub type PrototypeContextResult<T> = Result<T, PrototypeContextError>;

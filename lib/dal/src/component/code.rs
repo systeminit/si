@@ -6,11 +6,11 @@ use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
 use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
-use crate::Component;
 use crate::{
-    AttributeReadContext, CodeGenerationPrototype, CodeLanguage, CodeView, ComponentError,
-    ComponentId, DalContext, InternalProvider, InternalProviderError, StandardModel,
+    AttributeReadContext, CodeLanguage, CodeView, ComponentError, ComponentId, DalContext,
+    InternalProvider, InternalProviderError, StandardModel,
 };
+use crate::{Component, Prop, PropError, SchemaVariant};
 
 impl Component {
     #[instrument(skip_all)]
@@ -36,20 +36,21 @@ impl Component {
             ..AttributeReadContext::default()
         };
 
-        // Assemble a code view for each prototype (corresponding to all direct props underneath
-        // "/root/code".
+        // Prepare to assemble code views and access the "/root/code" prop tree.
         let mut code_views: Vec<CodeView> = Vec::new();
-        for code_generation_prototype in
-            CodeGenerationPrototype::list_for_schema_variant(ctx, *schema_variant.id()).await?
-        {
-            // Get the raw value for the code generated object via the prop tree for the prototype.
+        let root_prop = SchemaVariant::root_prop(ctx, *schema_variant.id()).await?;
+        let code_prop = Prop::get_by_id(ctx, &root_prop.code_prop_id)
+            .await?
+            .ok_or_else(|| PropError::NotFound(root_prop.code_prop_id, *ctx.visibility()))?;
+
+        // Assemble a code view for each code generation tree prop.
+        for code_generation_tree_prop in code_prop.child_props(ctx).await? {
+            // Get the raw value for the code generated object via the prop tree.
             let tree_internal_provider =
-                InternalProvider::find_for_prop(ctx, code_generation_prototype.tree_prop_id())
+                InternalProvider::find_for_prop(ctx, *code_generation_tree_prop.id())
                     .await?
                     .ok_or_else(|| {
-                        InternalProviderError::NotFoundForProp(
-                            code_generation_prototype.tree_prop_id(),
-                        )
+                        InternalProviderError::NotFoundForProp(*code_generation_tree_prop.id())
                     })?;
             let tree_read_context = AttributeReadContext {
                 internal_provider_id: Some(*tree_internal_provider.id()),

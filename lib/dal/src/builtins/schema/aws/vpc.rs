@@ -10,10 +10,10 @@ use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype,
-    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncBinding,
-    FuncError, InternalProvider, PropKind, QualificationPrototype, QualificationPrototypeContext,
-    SchemaError, SchemaKind, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    BuiltinsResult, CodeLanguage, ConfirmationPrototype, ConfirmationPrototypeContext, DalContext,
+    DiagramKind, ExternalProvider, Func, FuncBinding, FuncError, InternalProvider, PropKind,
+    QualificationPrototype, QualificationPrototypeContext, SchemaError, SchemaKind, SchemaVariant,
+    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 // VPC documentation URLs
@@ -305,7 +305,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        CodeGenerationPrototype::new(
+        SchemaVariant::add_code_generation(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
@@ -860,7 +860,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        CodeGenerationPrototype::new(
+        SchemaVariant::add_code_generation(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
@@ -1291,7 +1291,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        CodeGenerationPrototype::new(
+        SchemaVariant::add_code_generation(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),

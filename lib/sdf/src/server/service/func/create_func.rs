@@ -5,9 +5,9 @@ use axum::Json;
 use dal::{
     generate_name, job::definition::DependentValuesUpdate, prototype_context::HasPrototypeContext,
     qualification_prototype::QualificationPrototypeContext, AttributeValue, AttributeValueId,
-    CodeGenerationPrototype, CodeLanguage, ComponentId, ConfirmationPrototype, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, FuncId,
-    QualificationPrototype, SchemaId, SchemaVariantId, StandardModel, Visibility, WsEvent,
+    CodeLanguage, ComponentId, ConfirmationPrototype, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncBindingReturnValue, FuncId, QualificationPrototype, SchemaId,
+    SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -171,8 +171,7 @@ async fn create_code_gen_func(ctx: &DalContext) -> FuncResult<Func> {
     func.set_handler(ctx, Some(DEFAULT_CODE_GENERATION_HANDLER))
         .await?;
 
-    CodeGenerationPrototype::new_temporary(ctx, *func.id(), None).await?;
-
+    // NOTE(nick): do nothing since everything is moving under the prop tree.
     Ok(func)
 }
 

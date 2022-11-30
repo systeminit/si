@@ -17,7 +17,6 @@ pub mod billing_account;
 pub mod builtins;
 pub mod capability;
 pub mod change_set;
-pub mod code_generation_prototype;
 pub mod code_view;
 pub mod component;
 pub mod confirmation_prototype;
@@ -100,9 +99,6 @@ pub use billing_account::{
 pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO_CHANGE_SET_PK};
-pub use code_generation_prototype::{
-    CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationPrototypeId,
-};
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{Component, ComponentError, ComponentId, ComponentView, ResourceView};
 pub use confirmation_prototype::{

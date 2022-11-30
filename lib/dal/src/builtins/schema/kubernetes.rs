@@ -5,9 +5,9 @@ use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::{
     func::argument::FuncArgument, schema::SchemaUiMenu, socket::SocketArity, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
-    ExternalProvider, Func, FuncError, InternalProvider, PropKind, QualificationPrototype,
-    SchemaError, SchemaKind, StandardModel,
+    BuiltinsError, BuiltinsResult, CodeLanguage, DalContext, DiagramKind, ExternalProvider, Func,
+    FuncError, InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind,
+    SchemaVariant, StandardModel,
 };
 
 mod kubernetes_deployment_spec;
@@ -72,7 +72,7 @@ impl MigrationDriver {
             .create_kubernetes_metadata_prop(ctx, true, root_prop.domain_prop_id)
             .await?;
 
-        // Code Generation Prototype
+        // Add code generation
         let code_generation_func_id = self.get_func_id("si:generateYAML").ok_or(
             BuiltinsError::FuncNotFoundInMigrationCache("si:generateYAML"),
         )?;
@@ -85,7 +85,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        CodeGenerationPrototype::new(
+        SchemaVariant::add_code_generation(
             ctx,
             code_generation_func_id,
             *code_generation_func_argument.id(),
@@ -259,7 +259,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Code Generation Prototype
+        // Add code generation
         let code_generation_func_id = self.get_func_id("si:generateYAML").ok_or(
             BuiltinsError::FuncNotFoundInMigrationCache("si:generateYAML"),
         )?;
@@ -272,7 +272,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        CodeGenerationPrototype::new(
+        SchemaVariant::add_code_generation(
             ctx,
             code_generation_func_id,
             *code_generation_func_argument.id(),

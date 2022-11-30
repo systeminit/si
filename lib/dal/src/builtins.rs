@@ -16,9 +16,9 @@ use crate::socket::SocketError;
 use crate::{
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
-    CodeGenerationPrototypeError, ConfirmationPrototypeError, DalContext, ExternalProviderId,
-    FuncError, PropError, PropId, PropKind, QualificationPrototypeError, SchemaError,
-    SchemaVariantId, StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
+    ConfirmationPrototypeError, DalContext, ExternalProviderId, FuncError, PropError, PropId,
+    PropKind, QualificationPrototypeError, SchemaError, SchemaVariantId, StandardModelError,
+    ValidationPrototypeError, WorkflowPrototypeError,
 };
 
 // Private builtins modules.
@@ -45,8 +45,6 @@ pub enum BuiltinsError {
     AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("no parent found for attribute value: {0}")]
     AttributeValueDoesNotHaveParent(AttributeValueId),
-    #[error("code generation prototype error: {0}")]
-    CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]
