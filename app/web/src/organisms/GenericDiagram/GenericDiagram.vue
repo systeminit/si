@@ -153,7 +153,7 @@ import {
 import { Stage as KonvaStage } from "konva/lib/Stage";
 import _ from "lodash";
 import { KonvaEventObject } from "konva/lib/Node";
-import { Vector2d } from "konva/lib/types";
+import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
 import { useCustomFontsLoaded } from "@/composables/useFontLoaded";
 import DiagramGroup from "@/organisms/GenericDiagram/DiagramGroup.vue";
@@ -197,6 +197,7 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   NODE_WIDTH,
+  GROUP_INTERNAL_PADDING,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -825,86 +826,6 @@ function endDragSelect(doSelection = true) {
   if (doSelection) setSelectionByKey(dragSelectPreviewKeys.value);
 }
 
-// RESIZING DIAGRAM ELEMENTS (groups) ///////////////////////////////////////
-const resizeElementActive = ref(false);
-const resizedElementSizes = reactive<Record<DiagramElementUniqueKey, Size2D>>(
-  {},
-);
-const resizedElementSizesPreResize = reactive<
-  Record<DiagramElementUniqueKey, Size2D>
->({});
-const lastResizedElement = ref<DiagramGroupData>();
-
-function beginResizeElement() {
-  if (!hoveredElement.value) return;
-
-  const node = hoveredElement.value.def as DiagramNodeDef;
-
-  if (!node.size) return;
-  if (!(hoveredElement.value instanceof DiagramGroupData)) return;
-
-  resizeElementActive.value = true;
-  lastResizedElement.value = hoveredElement.value;
-  resizedElementSizesPreResize[hoveredElement.value.uniqueKey] =
-    resizedElementSizes[lastResizedElement.value.uniqueKey] || node.size;
-}
-function endResizeElement() {
-  if (!lastResizedElement.value) return;
-  const newNodeSize = resizedElementSizes[lastResizedElement.value.uniqueKey];
-
-  emit("resize-element", {
-    element: lastResizedElement.value,
-    position: lastResizedElement.value.def.position,
-    size: newNodeSize,
-    isFinal: true,
-  });
-
-  resizeElementActive.value = false;
-  lastResizedElement.value = undefined;
-}
-function onResizeMove() {
-  if (!lastResizedElement.value) return;
-
-  const node = lastResizedElement.value.def as DiagramNodeDef;
-
-  if (!node.size) return;
-  if (!containerPointerPos.value) return;
-  if (!lastMouseDownContainerPointerPos.value) return;
-  const delta: Vector2d = {
-    x: Math.round(
-      (containerPointerPos.value.x -
-        lastMouseDownContainerPointerPos.value.x +
-        totalScrolledDuringDrag.value.x) /
-        zoomLevel.value,
-    ),
-    y: Math.round(
-      (containerPointerPos.value.y -
-        lastMouseDownContainerPointerPos.value.y +
-        totalScrolledDuringDrag.value.y) /
-        zoomLevel.value,
-    ),
-  };
-
-  const presentSize =
-    resizedElementSizesPreResize[lastResizedElement.value.uniqueKey] ||
-    node.size;
-
-  const newWidth = presentSize.width + delta.x * 2; // This is *2 because the coordinates system has x=0 on the center
-  const newHeight = presentSize.height + delta.y;
-  const newNodeSize = {
-    width: Math.max(newWidth, NODE_WIDTH + 20 * 2),
-    height: Math.max(newHeight, NODE_WIDTH + 20 * 2),
-  };
-
-  resizedElementSizes[lastResizedElement.value.uniqueKey] = newNodeSize;
-  emit("resize-element", {
-    element: lastResizedElement.value,
-    position: lastResizedElement.value.def.position,
-    size: newNodeSize,
-    isFinal: false,
-  });
-}
-
 // MOVING DIAGRAM ELEMENTS (nodes/groups/annotations/etc) ///////////////////////////////////////
 const movedElementPositions = reactive<
   Record<DiagramElementUniqueKey, Vector2d>
@@ -1041,10 +962,10 @@ function onDragElementsMove() {
       const groupShape = kStage.findOne(`#${parentGroup?.uniqueKey}--bg`);
       const groupPos = groupShape.getAbsolutePosition(kStage);
       const groupBounds = {
-        left: groupPos.x,
-        right: groupPos.x + groupShape.width(),
-        top: groupPos.y,
-        bottom: groupPos.y + groupShape.height(),
+        left: groupPos.x + GROUP_INTERNAL_PADDING,
+        right: groupPos.x + groupShape.width() - GROUP_INTERNAL_PADDING,
+        top: groupPos.y + GROUP_INTERNAL_PADDING,
+        bottom: groupPos.y + groupShape.height() - GROUP_INTERNAL_PADDING,
       };
 
       const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
@@ -1223,6 +1144,166 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
     });
   });
   // TODO: if nudging out of the viewport, pan to give more space
+}
+
+// RESIZING DIAGRAM ELEMENTS (groups) ///////////////////////////////////////
+const resizeElementActive = ref(false);
+const resizedElementSizes = reactive<Record<DiagramElementUniqueKey, Size2D>>(
+  {},
+);
+const resizedElementSizesPreResize = reactive<
+  Record<DiagramElementUniqueKey, Size2D>
+>({});
+const lastResizedElement = ref<DiagramGroupData>();
+
+const frameBoundingBoxes = ref<Record<string, IRect>>({});
+
+watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
+  if (!kStage) return;
+
+  const boxDictionary: Record<string, IRect> = {};
+
+  for (const group of groups.value) {
+    const children = props.edges
+      .filter(
+        (e) =>
+          e.toNodeId === group.def.id &&
+          sockets.value.find((s) => s.def.id === e.fromSocketId)?.def.type ===
+            "Frame",
+      )
+      .map((edge) => nodes.value.find((n) => n.def.id === edge.fromNodeId));
+
+    let top;
+    let bottom;
+    let left;
+    let right;
+    for (const child of children) {
+      if (!child) continue;
+      const elShape = kStage.findOne(`#${child.uniqueKey}--bg`);
+      if (!elShape) continue;
+
+      const position =
+        movedElementPositions[child.uniqueKey] ?? child.def.position;
+
+      const geometry = {
+        x: position.x,
+        y: position.y,
+        width: elShape.width(),
+        height: elShape.height(),
+      };
+
+      if (!top || geometry.y < top) top = geometry.y;
+
+      const thisLeft = geometry.x - geometry.width / 2;
+      if (!left || thisLeft < left) left = thisLeft;
+
+      const thisRight = geometry.x + geometry.width / 2;
+      if (!right || thisRight > right) right = thisRight;
+
+      const thisBottom = geometry.y + geometry.height;
+      if (!bottom || thisBottom > bottom) bottom = thisBottom;
+    }
+
+    if (
+      left === undefined ||
+      right === undefined ||
+      top === undefined ||
+      bottom === undefined
+    )
+      continue;
+
+    boxDictionary[group.uniqueKey] = {
+      x: left - GROUP_INTERNAL_PADDING,
+      y: top - GROUP_INTERNAL_PADDING,
+      width: right - left + GROUP_INTERNAL_PADDING * 2,
+      height: bottom - top + GROUP_INTERNAL_PADDING * 2,
+    };
+  }
+
+  frameBoundingBoxes.value = boxDictionary;
+});
+
+function beginResizeElement() {
+  if (!hoveredElement.value) return;
+
+  const node = hoveredElement.value.def as DiagramNodeDef;
+
+  if (!node.size) return;
+  if (!(hoveredElement.value instanceof DiagramGroupData)) return;
+
+  resizeElementActive.value = true;
+  lastResizedElement.value = hoveredElement.value;
+  resizedElementSizesPreResize[hoveredElement.value.uniqueKey] =
+    resizedElementSizes[lastResizedElement.value.uniqueKey] || node.size;
+}
+function endResizeElement() {
+  if (!lastResizedElement.value) return;
+  const newNodeSize = resizedElementSizes[lastResizedElement.value.uniqueKey];
+
+  emit("resize-element", {
+    element: lastResizedElement.value,
+    position: lastResizedElement.value.def.position,
+    size: newNodeSize,
+    isFinal: true,
+  });
+
+  resizeElementActive.value = false;
+  lastResizedElement.value = undefined;
+}
+function onResizeMove() {
+  if (!lastResizedElement.value) return;
+
+  const node = lastResizedElement.value.def as DiagramNodeDef;
+
+  if (!node.size) return;
+  if (!containerPointerPos.value) return;
+  if (!lastMouseDownContainerPointerPos.value) return;
+  const delta: Vector2d = {
+    x: Math.round(
+      (containerPointerPos.value.x -
+        lastMouseDownContainerPointerPos.value.x +
+        totalScrolledDuringDrag.value.x) /
+        zoomLevel.value,
+    ),
+    y: Math.round(
+      (containerPointerPos.value.y -
+        lastMouseDownContainerPointerPos.value.y +
+        totalScrolledDuringDrag.value.y) /
+        zoomLevel.value,
+    ),
+  };
+
+  const presentSize =
+    resizedElementSizesPreResize[lastResizedElement.value.uniqueKey] ||
+    node.size;
+
+  const newWidth = presentSize.width + delta.x * 2; // This is *2 because the coordinates system has x=0 on the center
+  const newHeight = presentSize.height + delta.y;
+  const newNodeSize = {
+    width: Math.max(newWidth, NODE_WIDTH + 20 * 2),
+    height: Math.max(newHeight, NODE_WIDTH + 20 * 2),
+  };
+
+  const contentsBox =
+    frameBoundingBoxes.value[lastResizedElement.value.uniqueKey];
+
+  if (contentsBox) {
+    const newNodeRect = {
+      ...lastResizedElement.value.def.position,
+      ...newNodeSize,
+      x: lastResizedElement.value.def.position.x - newNodeSize.width / 2,
+    };
+
+    if (!rectContainsAnother(contentsBox, newNodeRect)) return;
+  }
+
+  resizedElementSizes[lastResizedElement.value.uniqueKey] = newNodeSize;
+  emit("resize-element", {
+    element: lastResizedElement.value,
+    position: lastResizedElement.value.def.position,
+    size: newNodeSize,
+    isFinal: false,
+  });
 }
 
 // DRAWING EDGES ///////////////////////////////////////////////////////////////////////

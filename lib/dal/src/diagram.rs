@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use std::num::ParseIntError;
+use std::num::{ParseFloatError, ParseIntError};
 use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 
@@ -34,6 +34,8 @@ pub enum DiagramError {
     InternalProvider(#[from] InternalProviderError),
     #[error(transparent)]
     ParseInt(#[from] ParseIntError),
+    #[error(transparent)]
+    ParseFloat(#[from] ParseFloatError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("position not found")]
