@@ -21,6 +21,10 @@ CREATE TABLE internal_providers
 CREATE UNIQUE INDEX unique_implicit_internal_providers
     ON internal_providers (prop_id,
                            schema_variant_id,
+                           tenancy_universal,
+                           tenancy_billing_account_ids,
+                           tenancy_organization_ids,
+                           tenancy_workspace_ids,
                            visibility_change_set_pk,
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
@@ -29,6 +33,10 @@ CREATE UNIQUE INDEX unique_implicit_internal_providers
 CREATE UNIQUE INDEX unique_explicit_internal_providers
     ON internal_providers (name,
                            schema_variant_id,
+                           tenancy_universal,
+                           tenancy_billing_account_ids,
+                           tenancy_organization_ids,
+                           tenancy_workspace_ids,
                            visibility_change_set_pk,
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL

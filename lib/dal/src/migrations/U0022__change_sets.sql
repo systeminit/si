@@ -103,7 +103,14 @@ BEGIN
 
             query := format('INSERT INTO %1$I (%2$s) ' ||
                             'SELECT %2$s FROM %1$I WHERE %1$I.visibility_change_set_pk = %3$L' ||
-                            'ON CONFLICT (id, visibility_change_set_pk, (visibility_deleted_at IS NULL))  WHERE visibility_deleted_at IS NULL ' ||
+                            'ON CONFLICT (id,
+				          tenancy_universal,
+					  tenancy_billing_account_ids,
+					  tenancy_organization_ids,
+					  tenancy_workspace_ids,
+				          visibility_change_set_pk,
+					  (visibility_deleted_at IS NULL))
+				WHERE visibility_deleted_at IS NULL ' ||
                             'DO UPDATE SET updated_at = now(), %4$s ' ||
                             'RETURNING pk, id, tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids, tenancy_workspace_ids',
                             this_table_name, insert_column_names, this_change_set_pk, update_set_names);

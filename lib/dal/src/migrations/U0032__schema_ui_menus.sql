@@ -19,6 +19,10 @@ CREATE UNIQUE INDEX unique_schema_ui_menus
     ON schema_ui_menus (name,
                         category,
                         diagram_kind,
+                        tenancy_universal,
+                        tenancy_billing_account_ids,
+                        tenancy_organization_ids,
+                        tenancy_workspace_ids,
                         visibility_change_set_pk,
                         (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL;

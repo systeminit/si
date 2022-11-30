@@ -13,6 +13,11 @@ CREATE TABLE billing_accounts
     name                        text                     NOT NULL,
     description                 text
 );
+CREATE UNIQUE INDEX unique_billing_account_name_live ON billing_accounts (
+	name,
+	visibility_change_set_pk,
+	(visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
 SELECT standard_model_table_constraints_v1('billing_accounts');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)

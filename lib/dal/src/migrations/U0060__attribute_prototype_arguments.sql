@@ -22,6 +22,10 @@ CREATE UNIQUE INDEX intra_component_argument
     ON attribute_prototype_arguments (attribute_prototype_id,
                                       func_argument_id,
                                       internal_provider_id,
+                                      tenancy_universal,
+                                      tenancy_billing_account_ids,
+                                      tenancy_organization_ids,
+                                      tenancy_workspace_ids,
                                       visibility_change_set_pk,
                                       (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
@@ -35,6 +39,10 @@ CREATE UNIQUE INDEX inter_component_argument
                                       external_provider_id,
                                       tail_component_id,
                                       head_component_id,
+                                      tenancy_universal,
+                                      tenancy_billing_account_ids,
+                                      tenancy_organization_ids,
+                                      tenancy_workspace_ids,
                                       visibility_change_set_pk,
                                       (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
