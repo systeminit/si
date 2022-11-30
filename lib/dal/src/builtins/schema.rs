@@ -8,6 +8,7 @@ use crate::attribute::context::AttributeContextBuilder;
 use crate::edit_field::widget::WidgetKind;
 use crate::func::argument::{FuncArgument, FuncArgumentId};
 use crate::func::backend::validation::FuncBackendValidationArgs;
+use crate::schema::variant::definition::{PropCache, SchemaVariantDefinition};
 use crate::schema::RootProp;
 use crate::validation::Validation;
 use crate::{
@@ -173,7 +174,8 @@ impl MigrationDriver {
         kind: SchemaKind,
         component_kind: ComponentKind,
         node_color: Option<i64>,
-    ) -> BuiltinsResult<Option<(Schema, SchemaVariant, RootProp)>> {
+        definition: Option<SchemaVariantDefinition>,
+    ) -> BuiltinsResult<Option<(Schema, SchemaVariant, RootProp, Option<PropCache>)>> {
         let name = name.as_ref();
 
         // NOTE(nick): There's one issue here. If the schema kind has changed, then this check will be
@@ -189,16 +191,29 @@ impl MigrationDriver {
         }
         info!("migrating {name} schema");
 
+        // NOTE(nick): D.R.Y. not desired, but feel free to do so.
         let mut schema = Schema::new(ctx, name, &kind, &component_kind).await?;
-        let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-        if node_color.is_some() {
-            schema_variant.set_color(ctx, node_color).await?;
+        if let Some(definition) = definition {
+            let (mut schema_variant, root_prop, prop_cache) =
+                SchemaVariant::new_with_definition(ctx, *schema.id(), definition).await?;
+            if node_color.is_some() {
+                schema_variant.set_color(ctx, node_color).await?;
+            }
+            schema
+                .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+                .await?;
+            Ok(Some((schema, schema_variant, root_prop, Some(prop_cache))))
+        } else {
+            let (mut schema_variant, root_prop) =
+                SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+            if node_color.is_some() {
+                schema_variant.set_color(ctx, node_color).await?;
+            }
+            schema
+                .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+                .await?;
+            Ok(Some((schema, schema_variant, root_prop, None)))
         }
-        schema
-            .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-            .await?;
-
-        Ok(Some((schema, schema_variant, root_prop)))
     }
 
     /// Creates a [`Prop`](crate::Prop) with some common settings.

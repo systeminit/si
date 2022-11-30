@@ -2,18 +2,21 @@ use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
 use crate::func::argument::FuncArgument;
 use crate::prototype_context::PrototypeContext;
+use crate::schema::variant::definition::SchemaVariantDefinition;
 use crate::socket::SocketArity;
 use crate::{
     qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
     BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
-    ExternalProvider, Func, FuncError, InternalProvider, PropKind, QualificationPrototype,
-    SchemaError, SchemaKind, StandardModel,
+    ExternalProvider, Func, FuncError, InternalProvider, QualificationPrototype, SchemaError,
+    SchemaKind, StandardModel,
 };
+
+// Definitions
+const BUTANE_DEFINITION: &str = include_str!("definitions/coreos/butane.json");
 
 // Reference: https://getfedora.org/
 const COREOS_NODE_COLOR: i64 = 0xE26B70;
-const BUTANE_DOCS_FCOS_1_4_URL: &str = "https://coreos.github.io/butane/config-fcos-v1_4/";
 
 impl MigrationDriver {
     pub async fn migrate_coreos(&self, ctx: &DalContext) -> BuiltinsResult<()> {
@@ -23,13 +26,16 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).
     async fn migrate_butane(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop) = match self
+        let definition: SchemaVariantDefinition = serde_json::from_str(BUTANE_DEFINITION)?;
+
+        let (schema, schema_variant, root_prop, maybe_prop_cache) = match self
             .create_schema_and_variant(
                 ctx,
                 "Butane",
                 SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(COREOS_NODE_COLOR),
+                Some(definition),
             )
             .await?
         {
@@ -48,90 +54,6 @@ impl MigrationDriver {
             .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
         let ui_menu = SchemaUiMenu::new(ctx, "Butane", "CoreOS", &diagram_kind).await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
-
-        // Prop creation
-        let variant_prop = self
-            .create_prop(
-                ctx,
-                "variant",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
-            )
-            .await?;
-        let version_prop = self
-            .create_prop(
-                ctx,
-                "version",
-                PropKind::String,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
-            )
-            .await?;
-        let systemd_prop = self
-            .create_prop(
-                ctx,
-                "systemd",
-                PropKind::Object,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
-            )
-            .await?;
-        let units_prop = self
-            .create_prop(
-                ctx,
-                "units",
-                PropKind::Array,
-                None,
-                Some(*systemd_prop.id()),
-                Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
-            )
-            .await?;
-        let unit_prop = self
-            .create_prop(
-                ctx,
-                "unit",
-                PropKind::Object,
-                None,
-                Some(*units_prop.id()),
-                Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
-            )
-            .await?;
-        {
-            let _units_name_prop = self
-                .create_prop(
-                    ctx,
-                    "name",
-                    PropKind::String,
-                    None,
-                    Some(*unit_prop.id()),
-                    Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
-                )
-                .await?;
-            let _units_enabled_prop = self
-                .create_prop(
-                    ctx,
-                    "enabled",
-                    PropKind::Boolean,
-                    None,
-                    Some(*unit_prop.id()),
-                    Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
-                )
-                .await?;
-            let _units_contents_prop = self
-                .create_prop(
-                    ctx,
-                    "contents",
-                    PropKind::String,
-                    None,
-                    Some(*unit_prop.id()),
-                    Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
-                )
-                .await?;
-        }
 
         // Code generation
         let code_generation_func_name = "si:generateButaneIgnition".to_owned();
@@ -205,10 +127,35 @@ impl MigrationDriver {
         // Wrap it up.
         schema_variant.finalize(ctx).await?;
 
+        // Collect the props we need.
+        let prop_cache = maybe_prop_cache
+            .ok_or_else(|| BuiltinsError::PropCacheNotFound(*schema_variant.id()))?;
+        let variant_prop_id = *prop_cache
+            .get(&("variant".to_string(), root_prop.domain_prop_id))
+            .ok_or(BuiltinsError::PropNotFoundInCache(
+                "variant",
+                root_prop.domain_prop_id,
+            ))?;
+        let version_prop_id = *prop_cache
+            .get(&("version".to_string(), root_prop.domain_prop_id))
+            .ok_or(BuiltinsError::PropNotFoundInCache(
+                "version",
+                root_prop.domain_prop_id,
+            ))?;
+        let systemd_prop_id = *prop_cache
+            .get(&("systemd".to_string(), root_prop.domain_prop_id))
+            .ok_or(BuiltinsError::PropNotFoundInCache(
+                "systemd",
+                root_prop.domain_prop_id,
+            ))?;
+        let units_prop_id = *prop_cache
+            .get(&("units".to_string(), systemd_prop_id))
+            .ok_or(BuiltinsError::PropNotFoundInCache("units", systemd_prop_id))?;
+
         // Set default values after finalization.
         self.set_default_value_for_prop(
             ctx,
-            *variant_prop.id(),
+            variant_prop_id,
             *schema.id(),
             *schema_variant.id(),
             serde_json::json!["fcos"],
@@ -216,7 +163,7 @@ impl MigrationDriver {
         .await?;
         self.set_default_value_for_prop(
             ctx,
-            *version_prop.id(),
+            version_prop_id,
             *schema.id(),
             *schema_variant.id(),
             serde_json::json!["1.4.0"],
@@ -234,7 +181,7 @@ impl MigrationDriver {
         // "/root/domain/systemd/units/" field. We need to use the appropriate function with and name
         // the argument "images".
         let units_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*units_prop.id()),
+            prop_id: Some(units_prop_id),
             ..base_attribute_read_context
         };
         let units_attribute_value =

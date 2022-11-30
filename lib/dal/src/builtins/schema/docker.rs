@@ -23,13 +23,14 @@ impl MigrationDriver {
     }
 
     async fn migrate_docker_hub_credential(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop) = match self
+        let (schema, schema_variant, root_prop, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Docker Hub Credential",
                 SchemaKind::Configuration,
                 ComponentKind::Credential,
                 Some(DOCKER_NODE_COLOR),
+                None,
             )
             .await?
         {
@@ -88,13 +89,14 @@ impl MigrationDriver {
     }
 
     async fn migrate_docker_image(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop) = match self
+        let (schema, schema_variant, root_prop, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Docker Image",
                 SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(DOCKER_NODE_COLOR),
+                None,
             )
             .await?
         {

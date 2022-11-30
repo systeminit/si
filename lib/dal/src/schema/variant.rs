@@ -21,6 +21,7 @@ use crate::{
     WsEventError,
 };
 
+pub mod definition;
 pub mod root_prop;
 
 #[derive(Error, Debug)]
@@ -73,6 +74,26 @@ pub enum SchemaVariantError {
     WsEvent(#[from] WsEventError),
     #[error("std error: {0}")]
     Std(#[from] Box<dyn std::error::Error + Sync + Send + 'static>),
+
+    // Errors related to definitions.
+    #[error("cannot use doc link and doc link ref for prop definition name: ({0})")]
+    MultipleDocLinksProvided(String),
+    #[error("link not found in doc links map for doc link ref: {0}")]
+    LinkNotFoundForDocLinkRef(String),
+    #[error("cannot provide entry for object with name: ({0})")]
+    FoundEntryForObject(String),
+    #[error("must provide children for object with name: ({0})")]
+    MissingChildrenForObject(String),
+    #[error("cannot provide children for array with name: ({0})")]
+    FoundChildrenForArray(String),
+    #[error("must provide entry for array with name: ({0})")]
+    MissingEntryForArray(String),
+    #[error("cannot provide children for primitive with name: ({0})")]
+    FoundChildrenForPrimitive(String),
+    #[error("cannot provide entry for primitive with name: ({0})")]
+    FoundEntryForPrimitive(String),
+    #[error("can neither provide children nor entry for primitive with name: ({0})")]
+    FoundChildrenAndEntryForPrimitive(String),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
