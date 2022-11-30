@@ -15,11 +15,10 @@ use crate::{
     component::ComponentKind, func::binding::FuncBindingError, impl_standard_model, node::NodeKind,
     pk, schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
-    AttributePrototypeError, AttributeValueError, BillingAccount, BillingAccountId,
-    CodeGenerationPrototypeError, Component, DalContext, DiagramKind, FuncError, HistoryEventError,
-    Organization, OrganizationId, PropError, QualificationPrototypeError, ReadTenancyError,
-    StandardModel, StandardModelError, Timestamp, ValidationPrototypeError, Visibility, Workspace,
-    WorkspaceId, WsEventError,
+    AttributePrototypeError, AttributeValueError, BillingAccount, BillingAccountId, Component,
+    DalContext, DiagramKind, FuncError, HistoryEventError, Organization, OrganizationId, PropError,
+    QualificationPrototypeError, ReadTenancyError, StandardModel, StandardModelError, Timestamp,
+    ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
 pub use ui_menu::SchemaUiMenu;
@@ -37,8 +36,6 @@ pub enum SchemaError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("AttributeValue error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("code generation prototype error: {0}")]
-    CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] ExternalProviderError),
     #[error("func error: {0}")]

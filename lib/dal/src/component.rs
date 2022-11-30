@@ -38,10 +38,10 @@ use crate::{
     qualification::QualificationError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototype, ActionPrototypeError, AttributeContext, AttributeContextBuilderError,
-    AttributeContextError, AttributeReadContext, CodeGenerationPrototypeError, CodeLanguage,
-    DalContext, Edge, EdgeError, ExternalProviderId, Func, FuncBackendKind, HistoryEventError,
-    InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
-    PropId, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    AttributeContextError, AttributeReadContext, CodeLanguage, DalContext, Edge, EdgeError,
+    ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider,
+    InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError, PropId,
+    QualificationPrototype, QualificationPrototypeError, QualificationResolver,
     QualificationResolverError, ReadTenancyError, Schema, SchemaError, SchemaId, Socket,
     StandardModel, StandardModelError, Timestamp, TransactionsError, ValidationPrototype,
     ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
@@ -108,8 +108,6 @@ pub enum ComponentError {
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("qualification resolver error: {0}")]
     QualificationResolver(#[from] QualificationResolverError),
-    #[error("code generation prototype error: {0}")]
-    CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("unable to find code generated")]
     CodeGeneratedNotFound,
     #[error("qualification prototype not found")]

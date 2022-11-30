@@ -7,9 +7,9 @@ use crate::socket::SocketArity;
 use crate::{
     qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu, AttributeContext,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
-    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind,
-    ExternalProvider, Func, FuncError, InternalProvider, QualificationPrototype, SchemaError,
-    SchemaKind, StandardModel,
+    BuiltinsResult, CodeLanguage, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
+    InternalProvider, QualificationPrototype, SchemaError, SchemaKind, SchemaVariant,
+    StandardModel,
 };
 
 // Definitions
@@ -71,7 +71,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        let ignition_code_generation_prototype = CodeGenerationPrototype::new(
+        let ignition_code_generation_leaf = SchemaVariant::add_code_generation(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
@@ -209,11 +209,11 @@ impl MigrationDriver {
         // the value for the implicit internal provider for the code string prop instead of the object
         // prop as a result.
         let code_implicit_internal_provider =
-            InternalProvider::find_for_prop(ctx, ignition_code_generation_prototype.code_prop_id())
+            InternalProvider::find_for_prop(ctx, ignition_code_generation_leaf.code_prop_id())
                 .await?
                 .ok_or_else(|| {
                     BuiltinsError::ImplicitInternalProviderNotFoundForProp(
-                        ignition_code_generation_prototype.code_prop_id(),
+                        ignition_code_generation_leaf.code_prop_id(),
                     )
                 })?;
         let user_data_external_provider_attribute_prototype_id = *user_data_external_provider

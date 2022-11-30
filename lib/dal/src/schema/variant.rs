@@ -14,14 +14,15 @@ use crate::{
     socket::{Socket, SocketError, SocketId},
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many,
-    AttributeContextBuilderError, AttributePrototypeError, AttributeValueError, BuiltinsError,
-    DalContext, DiagramKind, ExternalProvider, ExternalProviderError, Func, FuncBinding, FuncError,
-    HistoryEventError, InternalProvider, Prop, PropError, PropId, PropKind, Schema, SchemaId,
-    SocketArity, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
-    WsEventError,
+    AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
+    AttributeValueError, BuiltinsError, DalContext, DiagramKind, ExternalProvider,
+    ExternalProviderError, Func, FuncBinding, FuncError, HistoryEventError, InternalProvider, Prop,
+    PropError, PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy, WsEventError,
 };
 
 pub mod definition;
+pub mod leaves;
 pub mod root_prop;
 
 #[derive(Error, Debug)]
@@ -30,6 +31,8 @@ pub enum SchemaVariantError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("func error: {0}")]
@@ -74,6 +77,8 @@ pub enum SchemaVariantError {
     WsEvent(#[from] WsEventError),
     #[error("std error: {0}")]
     Std(#[from] Box<dyn std::error::Error + Sync + Send + 'static>),
+    #[error("must provide valid schema variant, found unset schema variant id")]
+    InvalidSchemaVariant,
 
     // Errors related to definitions.
     #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]

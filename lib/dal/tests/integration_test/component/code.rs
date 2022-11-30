@@ -1,8 +1,8 @@
 use dal::attribute::context::AttributeContextBuilder;
 use dal::func::argument::FuncArgument;
 use dal::{
-    AttributeReadContext, AttributeValue, CodeGenerationPrototype, CodeLanguage, Component,
-    ComponentView, DalContext, Func, PropKind, SchemaKind, StandardModel,
+    AttributeReadContext, AttributeValue, CodeLanguage, Component, ComponentView, DalContext, Func,
+    PropKind, SchemaKind, SchemaVariant, StandardModel,
 };
 use dal_test::test;
 use dal_test::test_harness::{
@@ -43,7 +43,7 @@ async fn set_code_prop_for_component(ctx: &DalContext) {
             .expect("could not perform func argument find")
             .expect("no func argument found");
 
-    CodeGenerationPrototype::new(
+    SchemaVariant::add_code_generation(
         ctx,
         *func.id(),
         *code_generation_func_argument.id(),
@@ -51,7 +51,7 @@ async fn set_code_prop_for_component(ctx: &DalContext) {
         CodeLanguage::Yaml,
     )
     .await
-    .expect("could not create code prototype");
+    .expect("could not add code generation");
 
     // Finalize the schema variant and create the component.
     schema_variant

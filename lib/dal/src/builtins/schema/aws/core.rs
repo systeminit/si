@@ -11,16 +11,15 @@ use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::socket::SocketArity;
 use crate::validation::Validation;
-use crate::AttributeValueError;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributeContext,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult,
-    CodeGenerationPrototype, CodeLanguage, ConfirmationPrototype, ConfirmationPrototypeContext,
-    DalContext, DiagramKind, ExternalProvider, Func, FuncError, InternalProvider, PropKind,
-    QualificationPrototype, SchemaError, SchemaKind, StandardModel, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult, CodeLanguage,
+    ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider,
+    Func, FuncError, InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind,
+    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
+use crate::{AttributeValueError, SchemaVariant};
 
 // Core documentation URLs
 const AMI_DOCS_URL: &str =
@@ -140,7 +139,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        CodeGenerationPrototype::new(
+        SchemaVariant::add_code_generation(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
@@ -469,7 +468,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Code Generation Prototype
+        // Add code generation
         let code_generation_func_name = "si:generateAwsEc2JSON".to_string();
         let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
             .await?
@@ -484,7 +483,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        CodeGenerationPrototype::new(
+        SchemaVariant::add_code_generation(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
@@ -1117,7 +1116,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Code Generation Prototype
+        // Add code generation
         let code_generation_func_name = "si:generateAwsEipJSON".to_string();
         let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
             .await?
@@ -1132,7 +1131,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        CodeGenerationPrototype::new(
+        SchemaVariant::add_code_generation(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
@@ -1506,7 +1505,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Code Generation Prototype
+        // Add code generation
         let code_generation_func_name = "si:generateAwsKeyPairJSON".to_string();
         let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
             .await?
@@ -1521,7 +1520,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        CodeGenerationPrototype::new(
+        SchemaVariant::add_code_generation(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),

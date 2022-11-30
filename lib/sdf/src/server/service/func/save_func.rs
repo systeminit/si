@@ -14,6 +14,7 @@ use dal::{
     PrototypeListForFunc, QualificationPrototype, StandardModel, Visibility, WsEvent,
 };
 use dal::{SchemaVariant, ValidationPrototype};
+use telemetry::prelude::info;
 
 use super::ValidationPrototypeView;
 use super::{
@@ -389,60 +390,8 @@ pub async fn save_func<'a>(
             };
         }
         FuncBackendKind::JsCodeGeneration => {
-            // FIXME(nick): this likely will not work as intended since code generation prototypes
-            // and resolvers no longer exist.
-            let mut associations: Vec<PrototypeContextField> = vec![];
-            if let Some(FuncAssociations::CodeGeneration {
-                schema_variant_ids,
-                component_ids,
-                format: _format,
-            }) = request.associations
-            {
-                associations.append(&mut schema_variant_ids.iter().map(|f| (*f).into()).collect());
-
-                // NOTE(nick): code gen prototypes only exist for schema variants.
-                associations.append(&mut component_ids.iter().map(|f| (*f).into()).collect());
-
-                // FIXME(nick): this needs to be re-thought.
-                // let mut existing_prototypes = CodeGenerationPrototype::list(&ctx)
-                //     .await?
-                //     .into_iter()
-                //     .filter(|g| g.func_id() == func_id_copy)
-                //     .collect::<Vec<CodeGenerationPrototype>>();
-                // for prototype in existing_prototypes.iter_mut() {
-                //     if *prototype.output_format() != format {
-                //         prototype.set_output_format(&ctx, format).await?;
-                //     }
-                // }
-
-                // FIXME(nick): this isn't going to work (1/2).
-                // let create_prototype_closure =
-                //     move |ctx: DalContext, context_field: PrototypeContextField| async move {
-                //         match context_field {
-                //             PrototypeContextField::SchemaVariant(schema_variant_id) => {
-                //                 CodeGenerationPrototype::new(
-                //                     &ctx,
-                //                     func_id_copy,
-                //                     None,
-                //                     format,
-                //                     schema_variant_id,
-                //                 )
-                //                 .await?;
-                //                 Ok(())
-                //             }
-                //             _ => Err(PrototypeContextError::InvalidForCodeGen(context_field)),
-                //         }
-                //     };
-
-                // FIXME(nick): this isn't going to work (2/2).
-                // associate_prototypes(
-                //     &ctx,
-                //     &existing_protos,
-                //     &associations,
-                //     Box::new(create_prototype_closure),
-                // )
-                // .await?;
-            };
+            // NOTE(nick): do nothing since everything is moving under the prop tree.
+            info!("JsCodeGeneration is currently unsupported for func authoring");
         }
         FuncBackendKind::JsConfirmation => {
             let mut associations: Vec<PrototypeContextField> = vec![];

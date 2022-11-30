@@ -20,18 +20,18 @@ use dal::{
     schema::variant::SchemaVariantError,
     AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
-    AttributeValueError, CodeGenerationPrototype, CodeGenerationPrototypeError, CodeLanguage,
-    ComponentError, ComponentId, ConfirmationPrototype, ConfirmationPrototypeError, DalContext,
-    Func, FuncBackendKind, FuncBindingError, FuncId, InternalProviderError, InternalProviderId,
-    Prop, PropError, PropId, PrototypeListForFunc, PrototypeListForFuncError,
-    QualificationPrototype, QualificationPrototypeError, ReadTenancyError, SchemaVariant,
-    SchemaVariantId, StandardModel, StandardModelError, TransactionsError, Visibility,
-    WriteTenancyError, WsEventError,
+    AttributeValueError, CodeLanguage, ComponentError, ComponentId, ConfirmationPrototype,
+    ConfirmationPrototypeError, DalContext, Func, FuncBackendKind, FuncBindingError, FuncId,
+    InternalProviderError, InternalProviderId, Prop, PropError, PropId, PrototypeListForFunc,
+    PrototypeListForFuncError, QualificationPrototype, QualificationPrototypeError,
+    ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    TransactionsError, Visibility, WriteTenancyError, WsEventError,
 };
 use dal::{
     func::argument::FuncArgument, ValidationPrototype, ValidationPrototypeError,
     ValidationPrototypeId,
 };
+use telemetry::prelude::info;
 
 pub mod create_func;
 pub mod exec_func;
@@ -89,8 +89,6 @@ pub enum FuncError {
     PropTree(#[from] PropTreeError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
-    #[error("code generation prototype error: {0}")]
-    CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("prototype context error: {0}")]
     PrototypeContext(#[from] PrototypeContextError),
     #[error("prototype list for func error: {0}")]
@@ -381,24 +379,9 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             })
         }
         FuncBackendKind::JsCodeGeneration => {
-            let func_id = *func.id();
-            let prototypes = CodeGenerationPrototype::list(ctx)
-                .await?
-                .into_iter()
-                .filter(|g| g.func_id() == func_id)
-                .collect::<Vec<CodeGenerationPrototype>>();
-
-            let mut schema_variant_ids = vec![];
-            for prototype in prototypes {
-                schema_variant_ids.push(prototype.schema_variant_id());
-            }
-
-            // FIXME(nick): fix the format return.
-            Some(FuncAssociations::CodeGeneration {
-                schema_variant_ids,
-                component_ids: vec![],
-                format: CodeLanguage::Unknown,
-            })
+            // NOTE(nick): do nothing since everything is moving under the prop tree.
+            info!("JsCodeGeneration is currently unsupported for func authoring");
+            None
         }
         FuncBackendKind::JsConfirmation => {
             let protos = ConfirmationPrototype::list_for_func(ctx, *func.id()).await?;
