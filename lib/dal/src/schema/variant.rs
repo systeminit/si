@@ -76,6 +76,8 @@ pub enum SchemaVariantError {
     Std(#[from] Box<dyn std::error::Error + Sync + Send + 'static>),
 
     // Errors related to definitions.
+    #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
+    PropNotFoundInCache(String, PropId),
     #[error("cannot use doc link and doc link ref for prop definition name: ({0})")]
     MultipleDocLinksProvided(String),
     #[error("link not found in doc links map for doc link ref: {0}")]
