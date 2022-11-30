@@ -992,15 +992,15 @@ function onDragElementsMove() {
     }
 
     if (el instanceof DiagramGroupData) {
-      // for now only dealing with nodes... will be fixed later
-      const childEls = _.filter(
-        nodes.value,
-        (n) => n.def.parentId === el.def.id,
+      const childEls = _.concat(
+        _.filter(nodes.value, (n) => n.def.parentId === el.def.id),
+        _.filter(groups.value, (n) => n.def.parentId === el.def.id),
       );
 
       // TODO: this should get simplified once we are storing positions relative to their group parent
       _.each(childEls, (childEl) => {
         if (!draggedElementsPositionsPreDrag.value?.[childEl.uniqueKey]) return;
+
         const newChildPosition = vectorAdd(
           draggedElementsPositionsPreDrag.value[childEl.uniqueKey],
           delta,
