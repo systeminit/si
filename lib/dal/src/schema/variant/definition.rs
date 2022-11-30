@@ -14,7 +14,40 @@ use crate::{DalContext, Prop, PropId, PropKind, RootProp, SchemaId, SchemaVarian
 ///
 /// It is recommended to start with the [`RootProp`](crate::RootProp) in order to descend into the
 /// cache.
-pub type PropCache = HashMap<(String, PropId), PropId>;
+pub struct PropCache(HashMap<(String, PropId), PropId>);
+
+impl PropCache {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    /// Attempts to retrieve the [`PropId`](crate::Prop) value for a given [`Prop`](crate::Prop)
+    /// name and parent [`PropId`](crate::Prop) key tuple. An error is returned if nothing is found.
+    pub fn get(
+        &self,
+        prop_name: impl AsRef<str>,
+        parent_prop_id: PropId,
+    ) -> SchemaVariantResult<PropId> {
+        // NOTE(nick): the string handling could probably be better here.
+        let prop_name = prop_name.as_ref().to_string();
+        let prop_id = *self.0.get(&(prop_name.clone(), parent_prop_id)).ok_or(
+            SchemaVariantError::PropNotFoundInCache(prop_name, parent_prop_id),
+        )?;
+        Ok(prop_id)
+    }
+
+    /// Insert the [`PropId`](crate::Prop) into [`self`](Self). The returned `option` from the
+    /// underlying method is ignored.
+    pub fn insert(&mut self, key: (String, PropId), value: PropId) {
+        self.0.insert(key, value);
+    }
+}
+
+impl Default for PropCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// The definition for a [`SchemaVariant`](crate::SchemaVariant)'s [`Prop`](crate::Prop) tree (and
 /// more in the future).
@@ -149,7 +182,7 @@ impl SchemaVariant {
                     ));
                 }
             },
-            PropKind::Map => todo!("maps not yet implemented simply because nick didn't need them yet and didn't want an untested solutionz"),
+            PropKind::Map => todo!("maps not yet implemented simply because nick didn't need them yet and didn't want an untested solution"),
             _ => match (definition.entry.is_some(), definition.children.is_empty()) {
                 (true, false) => {
                     return Err(SchemaVariantError::FoundChildrenAndEntryForPrimitive(

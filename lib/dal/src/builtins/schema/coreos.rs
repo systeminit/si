@@ -130,27 +130,10 @@ impl MigrationDriver {
         // Collect the props we need.
         let prop_cache = maybe_prop_cache
             .ok_or_else(|| BuiltinsError::PropCacheNotFound(*schema_variant.id()))?;
-        let variant_prop_id = *prop_cache
-            .get(&("variant".to_string(), root_prop.domain_prop_id))
-            .ok_or(BuiltinsError::PropNotFoundInCache(
-                "variant",
-                root_prop.domain_prop_id,
-            ))?;
-        let version_prop_id = *prop_cache
-            .get(&("version".to_string(), root_prop.domain_prop_id))
-            .ok_or(BuiltinsError::PropNotFoundInCache(
-                "version",
-                root_prop.domain_prop_id,
-            ))?;
-        let systemd_prop_id = *prop_cache
-            .get(&("systemd".to_string(), root_prop.domain_prop_id))
-            .ok_or(BuiltinsError::PropNotFoundInCache(
-                "systemd",
-                root_prop.domain_prop_id,
-            ))?;
-        let units_prop_id = *prop_cache
-            .get(&("units".to_string(), systemd_prop_id))
-            .ok_or(BuiltinsError::PropNotFoundInCache("units", systemd_prop_id))?;
+        let variant_prop_id = prop_cache.get("variant", root_prop.domain_prop_id)?;
+        let version_prop_id = prop_cache.get("version", root_prop.domain_prop_id)?;
+        let systemd_prop_id = prop_cache.get("systemd", root_prop.domain_prop_id)?;
+        let units_prop_id = prop_cache.get("units", systemd_prop_id)?;
 
         // Set default values after finalization.
         self.set_default_value_for_prop(

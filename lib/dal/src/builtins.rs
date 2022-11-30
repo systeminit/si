@@ -107,8 +107,6 @@ pub enum BuiltinsError {
     BuiltinMissingFuncArgument(String, String),
     #[error("prop cache not found: {0}")]
     PropCacheNotFound(SchemaVariantId),
-    #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
-    PropNotFoundInCache(&'static str, PropId),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
