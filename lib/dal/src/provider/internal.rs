@@ -340,22 +340,11 @@ impl InternalProvider {
     pub async fn implicit_emit(
         &self,
         ctx: &DalContext,
-        consume_attribute_context: AttributeContext,
-    ) -> InternalProviderResult<AttributeValue> {
+        target_attribute_value: &mut AttributeValue,
+    ) -> InternalProviderResult<()> {
         if !self.is_internal_consumer() {
             return Err(InternalProviderError::ImplicitEmitForExplicitProviderNotAllowed);
         }
-        if !consume_attribute_context.is_least_specific_field_kind_prop()? {
-            return Err(InternalProviderError::MissingPropForImplicitEmit);
-        }
-
-        // Update or create the emit attribute value using the newly generated func binding return
-        // value. For its context, we use the provided context and replace the least specific field
-        // with our own InternalProviderId.
-        let emit_attribute_context = AttributeContextBuilder::from(consume_attribute_context)
-            .unset_prop_id()
-            .set_internal_provider_id(self.id)
-            .to_context()?;
 
         // Get the func from our attribute prototype.
         let attribute_prototype_id = self
@@ -371,9 +360,15 @@ impl InternalProvider {
             .await?
             .ok_or(InternalProviderError::FuncNotFound(func_id))?;
 
-        // Generate the func binding and func binding return value required for either updating
-        // or creating a new attribute value to "emit".
-        let found_attribute_value =
+        // Generate the AttributeContext that we should be sourcing our argument from.
+        let consume_attribute_context =
+            AttributeContextBuilder::from(target_attribute_value.context)
+                .unset_internal_provider_id()
+                .unset_external_provider_id()
+                .set_prop_id(self.prop_id)
+                .to_context()?;
+
+        let source_attribute_value =
             AttributeValue::find_for_context(ctx, consume_attribute_context.into())
                 .await?
                 .ok_or(InternalProviderError::AttributeValueNotFoundForContext(
@@ -387,7 +382,7 @@ impl InternalProvider {
         let found_attribute_view = AttributeView::new(
             ctx,
             found_attribute_view_context,
-            Some(*found_attribute_value.id()),
+            Some(*source_attribute_value.id()),
         )
         .await?;
         let (func_binding, func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
@@ -399,64 +394,30 @@ impl InternalProvider {
         )
         .await?;
 
-        // We never want to mutate an emitted AttributeValue in the universal tenancy and we want
-        // to ensure the found AttributeValue's context _exactly_ matches the one assembled. In
-        // either case, just create a new one!
-        let maybe_new_emit_attribute_value = if let Some(mut emit_attribute_value) =
-            AttributeValue::find_for_context(ctx, emit_attribute_context.into()).await?
-        {
-            // TODO(nick): we will likely want to replace the "universal" tenancy check with an
-            // "is compatible" tenancy check.
-            if emit_attribute_value.context == emit_attribute_context
-                && (!emit_attribute_value.tenancy().universal() || ctx.write_tenancy().universal())
-            {
-                emit_attribute_value
-                    .set_func_binding_id(ctx, *func_binding.id())
-                    .await?;
-                emit_attribute_value
-                    .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
-                    .await?;
+        target_attribute_value
+            .set_func_binding_id(ctx, *func_binding.id())
+            .await?;
+        target_attribute_value
+            .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
+            .await?;
 
-                Some(emit_attribute_value)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-        let new_emit_attribute_value = match maybe_new_emit_attribute_value {
-            None => {
-                let new_emit_attribute_value = AttributeValue::new(
-                    ctx,
-                    *func_binding.id(),
-                    *func_binding_return_value.id(),
-                    emit_attribute_context,
-                    Option::<String>::None,
-                )
-                .await?;
-                new_emit_attribute_value
-                    .set_attribute_prototype(ctx, attribute_prototype.id())
-                    .await?;
-
-                new_emit_attribute_value
-            }
-            Some(av) => av,
-        };
-
-        if emit_attribute_context.component_id().is_some() && self.prop_id().is_some() {
+        if target_attribute_value.context.component_id().is_some() && self.prop_id().is_some() {
             let provider_prop = Prop::get_by_id(ctx, self.prop_id())
                 .await?
                 .ok_or_else(|| InternalProviderError::PropNotFound(*self.prop_id()))?;
 
+            // NOTE(jhelwig): This whole block will go away once Qualifications/Validations become part of the Prop tree.
+            //
             // The Root Prop won't have a parent Prop.
             if provider_prop.parent_prop(ctx).await?.is_none() {
-                let component = Component::get_by_id(ctx, &emit_attribute_context.component_id())
-                    .await?
-                    .ok_or_else(|| {
-                        InternalProviderError::ComponentNotFound(
-                            emit_attribute_context.component_id(),
-                        )
-                    })?;
+                let component =
+                    Component::get_by_id(ctx, &target_attribute_value.context.component_id())
+                        .await?
+                        .ok_or_else(|| {
+                            InternalProviderError::ComponentNotFound(
+                                target_attribute_value.context.component_id(),
+                            )
+                        })?;
                 component
                     .check_validations(ctx)
                     .await
@@ -471,7 +432,7 @@ impl InternalProvider {
             }
         }
 
-        Ok(new_emit_attribute_value)
+        Ok(())
     }
 
     /// Find all [`Self`] for a given [`SchemaVariant`](crate::SchemaVariant).
