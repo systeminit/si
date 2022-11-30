@@ -1,5 +1,6 @@
-use std::time::Duration;
+use std::{panic::AssertUnwindSafe, time::Duration};
 
+use futures::future::FutureExt;
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgPoolError};
 use telemetry::prelude::*;
@@ -56,58 +57,51 @@ impl ResourceScheduler {
         });
     }
 
+    #[instrument(name = "resource_scheduler.run", skip_all, level = "debug")]
+    async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
+        info!("Refresh resources");
+        let components = self.components().await?;
+
+        for component in components {
+            // First we're building a ctx with universal head, then updating it with a
+            // workspace head request context
+
+            let builder = self.services_context.clone().into_builder();
+            let mut ctx = builder.build_default().await?;
+
+            let read_tenancy = component.tenancy().clone_into_read_tenancy(&ctx).await?;
+            ctx.update_tenancies(read_tenancy, component.tenancy().clone());
+
+            component.act(&ctx, "refresh").await?;
+            ctx.commit().await?;
+        }
+        Ok(())
+    }
+
     /// The internal task spawned by `start`. No more frequently than every 30
     /// seconds, it will iterate over all the components on head in the database and
     /// schedule them to refresh.
     #[instrument(name = "resource_scheduler.start_task", skip_all, level = "debug")]
     async fn start_task(&self) {
         let mut interval = time::interval(Duration::from_secs(30));
-        'schedule: loop {
+        loop {
             interval.tick().await;
-            let components = match self.components().await {
-                Ok(r) => r,
-                Err(error) => {
-                    error!(
-                        ?error,
-                        "Failed to fetch components; aborting scheduled interval check"
-                    );
-                    continue 'schedule;
-                }
-            };
-
-            'refresh: for component in components {
-                let builder = self.services_context.clone().into_builder();
-                // First we're building a ctx with universal head, then updating it with a
-                // workspace head request context
-
-                let mut ctx = match builder.build_default().await {
-                    Ok(ctx) => ctx,
-                    Err(err) => {
-                        error!("Unable to build dal context: {:?}", err);
-                        continue 'refresh;
+            match AssertUnwindSafe(self.run()).catch_unwind().await {
+                Ok(Ok(())) => {}
+                Ok(Err(err)) => error!("{err}"),
+                Err(any) => {
+                    // Note: Technically panics can be of any form, but most should be &str or String
+                    match any.downcast::<String>() {
+                        Ok(msg) => error!("panic: {msg}"),
+                        Err(any) => match any.downcast::<&str>() {
+                            Ok(msg) => error!("panic: {msg}"),
+                            Err(any) => {
+                                let id = any.type_id();
+                                error!("panic message downcast failed of {id:?}",);
+                            }
+                        },
                     }
-                };
-
-                let read_tenancy = match component.tenancy().clone_into_read_tenancy(&ctx).await {
-                    Ok(tenancy) => tenancy,
-                    Err(err) => {
-                        error!(
-                            "Unable to update dal context for workspace tenanices: {:?}",
-                            err
-                        );
-                        continue 'refresh;
-                    }
-                };
-                ctx.update_tenancies(read_tenancy, component.tenancy().clone());
-
-                if let Err(error) = component.act(&ctx, "refresh").await {
-                    error!(?error, "Failed to refresh resource, moving to the next.");
-                    continue 'refresh;
                 }
-                if let Err(err) = ctx.commit().await {
-                    error!("Unable to commit transactions: {:?}", err);
-                    continue 'refresh;
-                };
             }
         }
     }

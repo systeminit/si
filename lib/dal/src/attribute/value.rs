@@ -1087,9 +1087,16 @@ impl AttributeValue {
                 }
                 None => None,
             };
-            func_binding_return_value
-                .set_value(ctx, processed_value)
-                .await?;
+
+            // This check prevents writing to a func_binding_return_value that has already been processed
+            // The reason we need that is because sometimes we get a fbrv that was processed at the universal
+            // tenancy, so it tries to write to universal tenancy and fails. This happens mostly to identity
+            // with "" as args.
+            if func_binding_return_value.value() != processed_value.as_ref() {
+                func_binding_return_value
+                    .set_value(ctx, processed_value)
+                    .await?;
+            }
         };
         // The value will be different from the unprocessed value if we updated it above
         // for an Array/Map/Value. If they are different from each other, then we know

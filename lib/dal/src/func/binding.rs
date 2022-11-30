@@ -113,11 +113,6 @@ impl FuncBinding {
         func_id: FuncId,
         backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<Self> {
-        let mut octx = ctx.clone();
-        let write_tenancy = octx.write_tenancy().clone().into_universal();
-        octx.update_write_tenancy(write_tenancy);
-        let ctx = &octx;
-
         let func = Func::get_by_id(ctx, &func_id)
             .await?
             .ok_or(FuncBindingError::FuncNotFound(FuncBindingPk::NONE))?;
@@ -148,11 +143,6 @@ impl FuncBinding {
         func_id: FuncId,
         backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<(Self, bool)> {
-        let mut octx = ctx.clone();
-        let write_tenancy = octx.write_tenancy().clone().into_universal();
-        octx.update_write_tenancy(write_tenancy);
-        let ctx = &octx;
-
         let row = ctx
             .txns()
             .pg()
@@ -198,36 +188,15 @@ impl FuncBinding {
         let (func_binding, created_func_binding) =
             Self::find_or_create(ctx, args, func_id, func.backend_kind).await?;
 
-        let func_binding_return_value: FuncBindingReturnValue = if created_func_binding {
-            FuncBindingReturnValue::new(
-                ctx,
-                value.clone(),
-                value,
-                func_id,
-                *func_binding.id(),
-                FuncExecutionPk::NONE,
-            )
-            .await?
-        } else {
-            // If the func binding was not newly created, let's try to find a func binding
-            // return value first.
-            let maybe_func_binding_return_value =
-                FuncBindingReturnValue::get_by_func_binding_id(ctx, *func_binding.id()).await?;
-            if let Some(func_binding_return_value) = maybe_func_binding_return_value {
-                // If we found one, return it!
-                func_binding_return_value
-            } else {
-                FuncBindingReturnValue::new(
-                    ctx,
-                    value.clone(),
-                    value,
-                    func_id,
-                    *func_binding.id(),
-                    FuncExecutionPk::NONE,
-                )
-                .await?
-            }
-        };
+        let func_binding_return_value = FuncBindingReturnValue::upsert(
+            ctx,
+            value.clone(),
+            value,
+            func_id,
+            *func_binding.id(),
+            FuncExecutionPk::NONE,
+        )
+        .await?;
 
         Ok((
             func_binding,
@@ -411,15 +380,6 @@ impl FuncBinding {
         FuncDispatchContext,
         mpsc::Receiver<OutputStream>,
     )> {
-        // NOTE: This is probably a bug in how we relate to function execution. This
-        // fixes an issue where we need to have all the function return values, at the very
-        // least, be in in the universal tenancy in order to look up values that are
-        // identical. To be fixed later.
-        let mut octx = ctx.clone();
-        let write_tenancy = octx.write_tenancy().clone().into_universal();
-        octx.update_write_tenancy(write_tenancy);
-        let ctx = &octx;
-
         let func: Func = self
             .func(ctx)
             .await?

@@ -10,7 +10,7 @@ use veritech_client::ResourceStatus;
 
 use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
-use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
+use crate::attribute::value::AttributeValueError;
 use crate::code_view::CodeViewError;
 use crate::func::backend::{
     js_qualification::FuncBackendJsQualificationArgs, js_validation::FuncBackendJsValidationArgs,
@@ -543,20 +543,14 @@ impl Component {
         };
 
         let json_args = serde_json::to_value(args)?;
-        let (func_binding, _created) =
-            FuncBinding::find_or_create(ctx, json_args, prototype.func_id(), *func.backend_kind())
-                .await?;
-
-        // Empty func binding return value means the function is still being executed
-        let _func_binding_return_value = FuncBindingReturnValue::upsert(
-            ctx,
-            None,
-            None,
-            prototype.func_id(),
-            *func_binding.id(),
-            UNSET_ID_VALUE.into(),
-        )
-        .await?;
+        let (func_binding, _func_binding_return_value, _created) =
+            FuncBinding::find_or_create_with_existing_value(
+                ctx,
+                json_args,
+                None,
+                prototype.func_id(),
+            )
+            .await?;
 
         let mut existing_resolvers =
             QualificationResolver::find_for_prototype_and_component(ctx, prototype.id(), self.id())
@@ -620,24 +614,14 @@ impl Component {
             };
 
             let json_args = serde_json::to_value(args)?;
-            let (func_binding, _created) = FuncBinding::find_or_create(
-                ctx,
-                json_args,
-                prototype.func_id(),
-                *func.backend_kind(),
-            )
-            .await?;
-
-            // Empty func binding return value means the function is still being executed
-            let _func_binding_return_value = FuncBindingReturnValue::upsert(
-                ctx,
-                None,
-                None,
-                prototype.func_id(),
-                *func_binding.id(),
-                UNSET_ID_VALUE.into(),
-            )
-            .await?;
+            let (func_binding, _func_binding_return_value, _created) =
+                FuncBinding::find_or_create_with_existing_value(
+                    ctx,
+                    json_args,
+                    None,
+                    prototype.func_id(),
+                )
+                .await?;
 
             let mut existing_resolvers = QualificationResolver::find_for_prototype_and_component(
                 ctx,
