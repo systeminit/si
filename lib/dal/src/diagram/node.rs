@@ -179,6 +179,9 @@ impl DiagramNodeView {
             None
         };
 
+        let x = position.x().parse::<f64>()?;
+        let y = position.y().parse::<f64>()?;
+
         Ok(Self {
             id: node.id().to_string(),
             ty: None,
@@ -188,8 +191,8 @@ impl DiagramNodeView {
             content: None,
             sockets: Some(SocketView::list(ctx, schema_variant).await?),
             position: GridPoint {
-                x: position.x().parse()?,
-                y: position.y().parse()?,
+                x: x.round() as isize,
+                y: y.round() as isize,
             },
             size,
             color: component
