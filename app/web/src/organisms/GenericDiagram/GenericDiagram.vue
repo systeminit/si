@@ -992,9 +992,31 @@ function onDragElementsMove() {
     }
 
     if (el instanceof DiagramGroupData) {
+      const includedGroups: DiagramNodeData[] & DiagramGroupData[] = [];
+      const queue = [el];
+      while (queue.length > 0) {
+        const parent = queue.shift();
+        const x = _.filter(
+          groups.value,
+          (n) => n.def.parentId === parent?.def.id,
+        );
+        _.each(x, (childGroup) => {
+          queue.push(childGroup);
+          includedGroups.push(childGroup);
+        });
+      }
+
+      const nodeChildrenOfGroups = _.filter(
+        nodes.value,
+        (n) =>
+          _.find(includedGroups, (g) => g.def.id === n.def.parentId) !==
+          undefined,
+      );
+
       const childEls = _.concat(
         _.filter(nodes.value, (n) => n.def.parentId === el.def.id),
-        _.filter(groups.value, (n) => n.def.parentId === el.def.id),
+        includedGroups,
+        nodeChildrenOfGroups,
       );
 
       // TODO: this should get simplified once we are storing positions relative to their group parent
