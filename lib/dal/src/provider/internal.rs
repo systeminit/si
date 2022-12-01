@@ -1,3 +1,72 @@
+//! This module contains the concept of implicit and explicit [`InternalProviders`](InternalProvider).
+//!
+//! ## What are implicit [`InternalProviders`](InternalProvider)?
+//!
+//! Implicit [`InternalProviders`](InternalProvider) are created for every [`Prop`](crate::Prop) in
+//! a [`SchemaVariant`](crate::SchemaVariant) that is not a descendant of a [`map`](crate::PropKind::Map)
+//! or an [`array`](crate::PropKind::Array). They reflect the [`view`](crate::AttributeView) of the
+//! [`Prop`](crate::Prop) (which includes its descendants) and can be used for
+//! intra-[`SchemaVariant`](crate::SchemaVariant) connections.
+//!
+//! ## What are explicit [`InternalProviders`](InternalProvider)?
+//!
+//! Explicit [`InternalProviders`](InternalProvider) _consume_ values from external
+//! [`SchemaVariants`](crate::SchemaVariant), pass them through a transformation [`function`](crate::Func)
+//! (usually `si:identity`), and then _expose_ the resulting value within the
+//! [`SchemaVariant`](crate::SchemaVariant) that it belongs to.
+//!
+//! One way to think of explicit [`InternalProviders`](InternalProvider) is as "inverted"
+//! [`ExternalProviders`](crate::ExternalProvider). [`ExternalProviders`](crate::ExternalProvider)
+//! _consume_ values from within the [`SchemaVariant`](crate::SchemaVariant) that they belong to,
+//! pass them through a transformation [`function`](crate::Func) (usually `si:identity`), and then
+//! _expose_ the resulting value to external [`SchemaVariants`](crate::SchemaVariant).
+//!
+//! ## Why the labels "implicit" and "explicit"?
+//!
+//! The labels originate from the direct and indirect actions of how they are created.
+//!
+//! [`InternalProviders`](InternalProvider) that _internally consume_ are "implicitly" created when
+//! assembling a [`Prop`](crate::Prop) tree for a [`SchemaVariant`](crate::SchemaVariant). They are
+//! not "explicitly" created since you get them automatically when
+//! [`finalizing`](crate::SchemaVariant::finalize()) a [`SchemaVariant`](crate::SchemaVariant).
+//! Conversely, [`InternalProviders`](InternalProvider) for external consumption are "explicitly"
+//! created alongside [`Sockets`](crate::Socket) for a [`SchemaVariant`](crate::SchemaVariant).
+//!
+//! ## Why do implicit [`InternalProviders`](InternalProvider) exist? Can we not just use the values for the [`Props`](crate::Prop) themselves?
+//!
+//! This was touched on a bit in the "implicit" section, but let's expand on it.
+//!
+//! [`AttributeValues`](crate::AttributeValue) whose least specific field is a [`Prop`](crate::Prop)
+//! in a [`SchemaVariant`](crate::SchemaVariant) contain the value for _solely_ the [`Prop`](crate::Prop)
+//! itself. If the [`Prop`](crate::Prop) is an [`object`](crate::PropKind::Object), then you'll likely
+//! want to show the value for that [`Prop`](crate::Prop) and its child [`Props`](crate::Prop).
+//!
+//! ```json
+//! {
+//!   "data": {
+//!     "name": "canoe",
+//!     "region": "us-poop-1"
+//!   }
+//! }
+//! ```
+//!
+//! In the above case, the "data" [`object`](crate::PropKind::Object) [`Prop`](crate::Prop) has two
+//! child [`Props`](crate::Prop) of kind [`string`](crate::PropKind::String). If we want to use
+//! this entire [`view`](crate::AttributeView), we need an [`AttributeValue`](crate::AttributeValue)
+//! for it. What [`AttributeValue`](crate::AttributeValue) contains the view? The
+//! [`AttributeValue`](crate::AttributeValue) whose least specific field is the implicit
+//! [`InternalProvider`] for the "data" [`Prop`](crate::Prop) (which lives in a
+//! [`SchemaVariant`](crate::SchemaVariant)).
+//!
+//! In addition to the two different [`AttributeValues`](crate::AttributeValue), having implicit
+//! [`InternalProviders`](Self) help minimize the number of things that
+//! [`AttributePrototypeArguments`](crate::AttributePrototypeArgument) can reference. Need to use
+//! a section of the [`Prop`](crate::Prop) tree for a [`SchemaVariant`](crate::SchemaVariant)? No
+//! problem, just specify once [`InternalProviderId`](InternalProvider).
+//!
+//! This design also lets us cache the view of a [`Prop`](crate::Prop) and its children rather
+//! than directly observing the real time values frequently.
+
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use telemetry::prelude::*;
