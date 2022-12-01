@@ -19,6 +19,16 @@ CREATE TABLE workflow_prototypes
     schema_id                   bigint                   NOT NULL,
     schema_variant_id           bigint                   NOT NULL
 );
+CREATE UNIQUE INDEX unique_workflow_prototypes_for_schema_variants
+    ON workflow_prototypes (func_id,
+                            schema_variant_id,
+                            tenancy_universal,
+                            tenancy_billing_account_ids,
+                            tenancy_organization_ids,
+                            tenancy_workspace_ids,
+                            visibility_change_set_pk,
+                            (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
 SELECT standard_model_table_constraints_v1('workflow_prototypes');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)

@@ -20,6 +20,10 @@ CREATE TABLE func_arguments
 CREATE UNIQUE INDEX func_argument_name
     ON func_arguments (func_id,
                        name,
+                       tenancy_universal,
+                       tenancy_billing_account_ids,
+                       tenancy_organization_ids,
+                       tenancy_workspace_ids,
                        visibility_change_set_pk,
                        (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL;

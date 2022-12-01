@@ -19,6 +19,10 @@ CREATE TABLE workflow_runner_states
 
 CREATE UNIQUE INDEX unique_workflow_runner_states
     ON workflow_runner_states (workflow_runner_id,
+                               tenancy_universal,
+                               tenancy_billing_account_ids,
+                               tenancy_organization_ids,
+                               tenancy_workspace_ids,
                                visibility_change_set_pk,
                                (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL;

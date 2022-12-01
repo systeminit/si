@@ -14,12 +14,18 @@ CREATE TABLE validation_resolvers
     attribute_value_id                           bigint                   NOT NULL,
     validation_func_id                           bigint                   NOT NULL,
     validation_func_binding_id                   bigint                   NOT NULL,
-    attribute_value_func_binding_return_value_id bigint                   NOT NULL,
-    CONSTRAINT one_resolver_per_func_and_value unique (tenancy_universal, tenancy_billing_account_ids,
-                                                       tenancy_organization_ids, tenancy_workspace_ids,
-                                                       visibility_change_set_pk, visibility_deleted_at,
-                                                       validation_func_id, attribute_value_id)
+    attribute_value_func_binding_return_value_id bigint                   NOT NULL
 );
+CREATE UNIQUE INDEX unique_validation_resolver_value_live ON validation_resolvers (
+	validation_func_binding_id,
+	attribute_value_id,
+	tenancy_universal,
+	tenancy_billing_account_ids,
+	tenancy_organization_ids,
+	tenancy_workspace_ids,
+	visibility_change_set_pk,
+	(visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
 SELECT standard_model_table_constraints_v1('validation_resolvers');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)

@@ -24,6 +24,10 @@ CREATE TABLE fixes
 -- CREATE UNIQUE INDEX unique_fixes
 --     ON fixes (confirmation_resolver_id,
 --               component_id,
+--               tenancy_universal,
+--               tenancy_billing_account_ids,
+--               tenancy_organization_ids,
+--               tenancy_workspace_ids,
 --               visibility_change_set_pk,
 --               (visibility_deleted_at IS NULL))
 --     WHERE visibility_deleted_at IS NULL;

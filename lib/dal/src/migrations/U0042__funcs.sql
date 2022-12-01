@@ -21,10 +21,17 @@ CREATE TABLE funcs
     backend_response_type       text                     NOT NULL,
     handler                     text,
     code_base64                 text,
-    code_sha256                 text GENERATED ALWAYS AS (COALESCE(ENCODE(DIGEST(code_base64, 'sha256'), 'hex'), '0')) STORED,
-    CONSTRAINT unique_name unique (name, tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
-                                   tenancy_workspace_ids, visibility_change_set_pk, visibility_deleted_at)
+    code_sha256                 text GENERATED ALWAYS AS (COALESCE(ENCODE(DIGEST(code_base64, 'sha256'), 'hex'), '0')) STORED
 );
+CREATE UNIQUE INDEX unique_func_name_live ON funcs (
+	name,
+	tenancy_universal,
+	tenancy_billing_account_ids,
+	tenancy_organization_ids,
+	tenancy_workspace_ids,
+	visibility_change_set_pk,
+	(visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
 SELECT standard_model_table_constraints_v1('funcs');
 
 CREATE TABLE func_bindings
@@ -72,10 +79,8 @@ VALUES ('funcs', 'model', 'func', 'Func'),
        ('func_bindings', 'model', 'func_binding', 'Func Binding'),
        ('func_binding_belongs_to_func', 'belongs_to', 'func_binding.func', 'Func Binding <> Func'),
        ('func_binding_return_values', 'model', 'func_binding_return_value', 'Func Binding Return Value'),
-       ('func_binding_return_value_belongs_to_func', 'belongs_to', 'func_binding_return_value.func',
-        'Func Binding Return Value <> Func'),
-       ('func_binding_return_value_belongs_to_func_binding', 'belongs_to', 'func_binding_return_value.func_binding',
-        'Func Binding Return Value <> Func Binding')
+       ('func_binding_return_value_belongs_to_func', 'belongs_to', 'func_binding_return_value.func', 'Func Binding Return Value <> Func'),
+       ('func_binding_return_value_belongs_to_func_binding', 'belongs_to', 'func_binding_return_value.func_binding', 'Func Binding Return Value <> Func Binding')
 ;
 
 CREATE OR REPLACE FUNCTION func_create_v1(

@@ -21,6 +21,10 @@ CREATE UNIQUE INDEX unique_external_providers
     ON external_providers (name,
                            schema_id,
                            schema_variant_id,
+                           tenancy_universal,
+                           tenancy_billing_account_ids,
+                           tenancy_organization_ids,
+                           tenancy_workspace_ids,
                            visibility_change_set_pk,
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL;
