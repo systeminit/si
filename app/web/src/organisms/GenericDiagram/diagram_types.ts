@@ -149,6 +149,8 @@ export type DiagramNodeDef = {
   statusIcons?: DiagramStatusIcon[];
   /** if true, node shows the `loading` overlay */
   isLoading: boolean;
+  /** the list of childIds related to the node */
+  childIds?: DiagramElementId[];
 };
 
 export type DiagramSocketDef = {
