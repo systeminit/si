@@ -1,7 +1,12 @@
+use dal::func::argument::{FuncArgument, FuncArgumentKind};
+use dal::job::definition::DependentValuesUpdate;
 use dal::{
-    schema::RootProp, AttributeContext, AttributeReadContext, AttributeValue, Component,
-    ComponentView, DalContext, Prop, PropKind, Schema, SchemaKind, SchemaVariant, StandardModel,
+    schema::RootProp, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, Component, ComponentView, DalContext, DiagramKind, ExternalProvider, Func,
+    FuncBackendKind, FuncBackendResponseType, InternalProvider, Prop, PropKind, Schema, SchemaKind,
+    SchemaVariant, SocketArity, StandardModel,
 };
+use dal_test::helpers::setup_identity_func;
 use dal_test::{
     test,
     test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
@@ -1475,4 +1480,314 @@ async fn cyclone_crypto_e2e(ctx: &DalContext) {
         }
         veritech_client::FunctionResult::Failure(err) => panic!("Veritech run failed: {:?}", err),
     }
+}
+
+#[test]
+async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
+    // Create and setup the schema and schema variant.
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+        .await
+        .expect("cannot set default schema variant");
+    let ragnarok_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "ragnarok").await;
+    ragnarok_prop
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
+        .await
+        .expect("cannot set parent");
+    let kratos_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "kratos").await;
+    kratos_prop
+        .set_parent_prop(ctx, *ragnarok_prop.id())
+        .await
+        .expect("cannot set parent");
+    let atreus_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "atreus").await;
+    atreus_prop
+        .set_parent_prop(ctx, *ragnarok_prop.id())
+        .await
+        .expect("cannot set parent");
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("cannot finalize schema variant");
+
+    // Create the func for the object prop.
+    let mut func = Func::new(
+        ctx,
+        "test:complexObject",
+        FuncBackendKind::Json,
+        FuncBackendResponseType::PropObject,
+    )
+    .await
+    .expect("could not create func");
+    let code = "function complex(_args) { 
+        return { 
+            kratos: \"poop\",
+            atreus: \"canoe\"
+        };
+    }";
+    func.set_code_plaintext(ctx, Some(code))
+        .await
+        .expect("set code");
+    func.set_handler(ctx, Some("complex"))
+        .await
+        .expect("set handler");
+
+    // Assign the func for the object prop.
+    let ragnarok_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*ragnarok_prop.id()),
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            ..AttributeReadContext::default()
+        },
+    )
+    .await
+    .expect("could not perform find for context")
+    .expect("attribute value not found");
+    let mut ragnarok_attribute_prototype = ragnarok_attribute_value
+        .attribute_prototype(ctx)
+        .await
+        .expect("could not perform get attribute prototype for attribute value")
+        .expect("could not find attribute prototype for attribute value");
+    ragnarok_attribute_prototype
+        .set_func_id(ctx, *func.id())
+        .await
+        .expect("could not set func id");
+
+    // Execute the function and update the values that depend on it.
+    let mut attribute_value_for_prototype = ragnarok_attribute_prototype
+        .attribute_values(ctx)
+        .await
+        .expect("could not perform get attribute values for prototype")
+        .pop()
+        .expect("attribute values empty");
+    attribute_value_for_prototype
+        .update_from_prototype_function(ctx)
+        .await
+        .expect("could not update from prototype function");
+    ctx.enqueue_job(DependentValuesUpdate::new(
+        ctx,
+        *attribute_value_for_prototype.id(),
+    ))
+    .await;
+
+    // Collect the internal providers.
+    let ragnarok_provider = InternalProvider::find_for_prop(ctx, *ragnarok_prop.id())
+        .await
+        .expect("could not perform find for prop")
+        .expect("no internal provider for prop");
+    let kratos_provider = InternalProvider::find_for_prop(ctx, *kratos_prop.id())
+        .await
+        .expect("could not perform find for prop")
+        .expect("no internal provider for prop");
+    let atreus_provider = InternalProvider::find_for_prop(ctx, *atreus_prop.id())
+        .await
+        .expect("could not perform find for prop")
+        .expect("no internal provider for prop");
+
+    // Add the external provider.
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
+        setup_identity_func(ctx).await;
+    let (external_provider, _output_socket) = ExternalProvider::new_with_socket(
+        ctx,
+        *schema.id(),
+        *schema_variant.id(),
+        "kratos",
+        None,
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        SocketArity::Many,
+        DiagramKind::Configuration,
+    )
+    .await
+    .expect("could not create external provider");
+    let external_provider_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            external_provider_id: Some(*external_provider.id()),
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            ..AttributeReadContext::default()
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let mut external_provider_attribute_prototype = external_provider_attribute_value
+        .attribute_prototype(ctx)
+        .await
+        .expect("could not perform get attribute prototype for attribute value")
+        .expect("could not find attribute prototype for attribute value");
+
+    // Create and set the func to take off a string field.
+    // Create the func for the object prop.
+    let mut transformation_func = Func::new(
+        ctx,
+        "test:getKratos",
+        FuncBackendKind::Json,
+        FuncBackendResponseType::String,
+    )
+    .await
+    .expect("could not create func");
+    let code = "function getKratos(input) {
+        return input.ragnarok.kratos ?? \"\";
+    }";
+    transformation_func
+        .set_code_plaintext(ctx, Some(code))
+        .await
+        .expect("set code");
+    transformation_func
+        .set_handler(ctx, Some("getKratos"))
+        .await
+        .expect("set handler");
+    external_provider_attribute_prototype
+        .set_func_id(ctx, *transformation_func.id())
+        .await
+        .unwrap();
+    let transformation_func_argument = FuncArgument::new(
+        ctx,
+        "ragnarok",
+        FuncArgumentKind::Object,
+        None,
+        *transformation_func.id(),
+    )
+    .await
+    .expect("could not create func argument");
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *external_provider_attribute_prototype.id(),
+        *transformation_func_argument.id(),
+        *ragnarok_provider.id(),
+    )
+    .await
+    .expect("could not create attribute prototype argument");
+
+    // Now that everything is set up, create the component.
+    let (component, _) =
+        Component::new_for_schema_variant_with_node(ctx, "god-of-war", schema_variant.id())
+            .await
+            .expect("unable to create component");
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        component_id: Some(*component.id()),
+        ..AttributeReadContext::default()
+    };
+
+    // Let's check that everything worked.
+    let component_view = ComponentView::for_context(ctx, base_attribute_read_context)
+        .await
+        .expect("cannot get component view");
+    assert_eq!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "god-of-war"
+                },
+                "code": {},
+                "domain": {
+                    "ragnarok": {
+                        "kratos": "poop",
+                        "atreus": "canoe"
+                    }
+                }
+            }
+        ],
+        component_view.properties,
+    );
+
+    // Investigate...
+    // let ragnarok_provider = InternalProvider::find_for_prop(ctx, *ragnarok_prop.id())
+    //     .await
+    //     .expect("could not perform find for prop")
+    //     .expect("no internal provider for prop");
+    // let kratos_provider = InternalProvider::find_for_prop(ctx, *kratos_prop.id())
+    //     .await
+    //     .expect("could not perform find for prop")
+    //     .expect("no internal provider for prop");
+    // let atreus_provider = InternalProvider::find_for_prop(ctx, *atreus_prop.id())
+    //     .await
+    //     .expect("could not perform find for prop")
+    //     .expect("no internal provider for prop");
+
+    dbg!("===== PROVIDERS =====");
+    dump_value(
+        ctx,
+        "ragnarok provider",
+        AttributeReadContext {
+            internal_provider_id: Some(*ragnarok_provider.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await;
+    dump_value(
+        ctx,
+        "kratos provider",
+        AttributeReadContext {
+            internal_provider_id: Some(*kratos_provider.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await;
+    dump_value(
+        ctx,
+        "atreus provider",
+        AttributeReadContext {
+            internal_provider_id: Some(*atreus_provider.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await;
+
+    dbg!("===== PROPS =====");
+    dump_value(
+        ctx,
+        "ragnarok prop",
+        AttributeReadContext {
+            prop_id: Some(*ragnarok_prop.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await;
+    dump_value(
+        ctx,
+        "kratos prop",
+        AttributeReadContext {
+            prop_id: Some(*kratos_prop.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await;
+    dump_value(
+        ctx,
+        "atreus prop",
+        AttributeReadContext {
+            prop_id: Some(*atreus_prop.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await;
+
+    // Now, let's try some "intelligence".
+    dump_value(
+        ctx,
+        "external provider",
+        AttributeReadContext {
+            external_provider_id: Some(*external_provider.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await;
+}
+
+async fn dump_value(ctx: &DalContext, label: &str, read_context: AttributeReadContext) {
+    let av = AttributeValue::find_for_context(ctx, read_context)
+        .await
+        .unwrap()
+        .unwrap();
+    let value = av.get_value(ctx).await.unwrap();
+    dbg!(label, *av.id(), av.context, value);
 }
