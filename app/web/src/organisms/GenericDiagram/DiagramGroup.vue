@@ -62,7 +62,6 @@
       :config="{
         x: -halfWidth,
         y: -nodeHeaderHeight - GROUP_HEADER_BOTTOM_MARGIN,
-        listening: false,
       }"
     >
       <!-- header background -->
@@ -75,7 +74,6 @@
           y: 0,
           width: headerWidth,
           height: headerTextHeight,
-          listening: false,
         }"
       />
 
@@ -89,7 +87,7 @@
           verticalAlign: 'top',
           align: 'left',
           width: headerWidth,
-          text: `${group.def.subtitle}: 0`,
+          text: `${group.def.subtitle}: ${group.def.childIds?.length ?? 0}`,
           padding: 6,
           fill: colors.headerText,
           fontSize: GROUP_TITLE_FONT_SIZE,

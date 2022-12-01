@@ -838,6 +838,9 @@ const currentSelectionMovableElements = computed(
       (el) => "position" in el.def,
     ) as unknown as (DiagramNodeData | DiagramGroupData)[],
 );
+const movedElementParent = reactive<Record<DiagramElementUniqueKey, string>>(
+  {},
+);
 
 const draggedElementsPositionsPreDrag =
   ref<Record<DiagramElementUniqueKey, Vector2d>>();
@@ -860,38 +863,47 @@ function endDragElements() {
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!movedElementPositions[el.uniqueKey]) return;
 
-    // handle dragging items into a group
-    const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
-    const elPos = elShape.getAbsolutePosition(kStage);
+    const parentId =
+      movedElementParent[el.uniqueKey] || el.def.parentId || undefined;
+    if (parentId === undefined) {
+      // handle dragging items into a group
+      const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
+      const elPos = elShape.getAbsolutePosition(kStage);
 
-    const elRect = {
-      x: elPos.x,
-      y: elPos.y,
-      width: elShape.width(),
-      height: elShape.height(),
-    };
-
-    // NOTE - only handles dragging into a single group
-    const newContainingGroup = groups.value?.find((group) => {
-      if (group.uniqueKey === el.uniqueKey) return false;
-
-      const groupShape = kStage.findOne(`#${group.uniqueKey}--bg`);
-      const groupPos = groupShape.getAbsolutePosition(kStage);
-
-      const groupRect = {
-        x: groupPos.x,
-        y: groupPos.y,
-        width: groupShape.width(),
-        height: groupShape.height(),
+      const elRect = {
+        x: elPos.x,
+        y: elPos.y,
+        width: elShape.width(),
+        height: elShape.height(),
       };
 
-      return rectContainsAnother(elRect, groupRect);
-    });
-    if (newContainingGroup && el.def.parentId !== newContainingGroup.def.id) {
-      emit("group-elements", {
-        group: newContainingGroup,
-        elements: [el],
+      const groupOrderedByZIndex = _.sortBy(groups.value, (g) => {
+        const groupShape = kStage.findOne(`#${g.uniqueKey}--bg`);
+        return -(groupShape?.getAbsoluteZIndex() ?? -Infinity);
       });
+
+      const newContainingGroup = groupOrderedByZIndex.find((group) => {
+        if (group.uniqueKey === el.uniqueKey) return false;
+
+        const groupShape = kStage.findOne(`#${group.uniqueKey}--bg`);
+        const groupPos = groupShape.getAbsolutePosition(kStage);
+
+        const groupRect = {
+          x: groupPos.x,
+          y: groupPos.y,
+          width: groupShape.width(),
+          height: groupShape.height(),
+        };
+
+        return rectContainsAnother(elRect, groupRect);
+      });
+      if (newContainingGroup && el.def.parentId !== newContainingGroup.def.id) {
+        emit("group-elements", {
+          group: newContainingGroup,
+          elements: [el],
+        });
+        movedElementParent[el.uniqueKey] = newContainingGroup.def.id;
+      }
     }
 
     // move the element itself

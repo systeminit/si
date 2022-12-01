@@ -216,20 +216,31 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             const component = this.componentsById[componentId];
 
-            const frameSocket = _.find(
+            const socketToFrame = _.find(
               node.sockets,
               (s) => s.label === "Frame" && s.direction === "output",
+            );
+            const socketFromChildren = _.find(
+              node.sockets,
+              (s) => s.label === "Frame" && s.direction === "input",
             );
             const frameEdge = _.find(
               this.diagramEdges,
               (edge) =>
                 edge.fromNodeId === node.id &&
-                edge.fromSocketId === frameSocket?.id,
+                edge.fromSocketId === socketToFrame?.id,
             );
+            const frameChildIds = _.filter(this.diagramEdges, (s) => {
+              return (
+                s.toSocketId === socketFromChildren?.id &&
+                s.toNodeId === node.id
+              );
+            }).map((i) => i.fromNodeId);
 
             return {
               ...node,
               parentId: frameEdge ? frameEdge.toNodeId : undefined,
+              childIds: socketFromChildren ? frameChildIds : undefined,
               isLoading:
                 !!statusStore.componentStatusById[componentId]?.isUpdating,
               typeIcon: component?.icon || "logo-si",
