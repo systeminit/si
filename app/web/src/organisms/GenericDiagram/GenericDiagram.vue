@@ -872,8 +872,12 @@ function endDragElements() {
         height: elShape.height(),
       };
 
-      // NOTE - only handles dragging into a single group
-      const newContainingGroup = groups.value?.find((group) => {
+      const groupOrderedByZIndex = _.sortBy(groups.value, (g) => {
+        const groupShape = kStage.findOne(`#${g.uniqueKey}--bg`);
+        return -(groupShape?.getAbsoluteZIndex() ?? -Infinity)
+      });
+
+      const newContainingGroup = groupOrderedByZIndex.find((group) => {
         if (group.uniqueKey === el.uniqueKey) return false;
 
         const groupShape = kStage.findOne(`#${group.uniqueKey}--bg`);
