@@ -62,7 +62,6 @@
       :config="{
         x: -halfWidth,
         y: -nodeHeaderHeight - GROUP_HEADER_BOTTOM_MARGIN,
-        listening: false,
       }"
     >
       <!-- header background -->
@@ -75,7 +74,6 @@
           y: 0,
           width: headerWidth,
           height: headerTextHeight,
-          listening: false,
         }"
       />
 
