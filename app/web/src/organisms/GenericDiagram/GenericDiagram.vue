@@ -990,16 +990,16 @@ function onDragElementsMove() {
       };
 
       if (newElBounds.left <= groupBounds.left) {
-        newPosition.x = groupBounds.left + elShape.width() / 2 + 10;
+        newPosition.x = groupBounds.left + elShape.width() / 2;
       }
       if (newElBounds.right >= groupBounds.right) {
-        newPosition.x = groupBounds.right - elShape.width() / 2 - 10;
+        newPosition.x = groupBounds.right - elShape.width() / 2;
       }
       if (newElBounds.top <= groupBounds.top) {
-        newPosition.y = groupBounds.top + 10;
+        newPosition.y = groupBounds.top;
       }
       if (newElBounds.bottom >= groupBounds.bottom) {
-        newPosition.y = groupBounds.bottom - elShape.height() - 10;
+        newPosition.y = groupBounds.bottom - elShape.height();
       }
     }
 
@@ -1198,20 +1198,17 @@ watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
   const boxDictionary: Record<string, IRect> = {};
 
   for (const group of groups.value) {
-    const children = props.edges
-      .filter(
-        (e) =>
-          e.toNodeId === group.def.id &&
-          sockets.value.find((s) => s.def.id === e.fromSocketId)?.def.type ===
-            "Frame",
-      )
-      .map((edge) => nodes.value.find((n) => n.def.id === edge.fromNodeId));
+    const childIds = group.def.childIds;
+    if (!childIds) continue;
 
     let top;
     let bottom;
     let left;
     let right;
-    for (const child of children) {
+    for (const childId of childIds) {
+      const child = _.concat(groups.value, nodes.value).find(
+        (c) => c.def.id === childId,
+      );
       if (!child) continue;
       const elShape = kStage.findOne(`#${child.uniqueKey}--bg`);
       if (!elShape) continue;
@@ -1257,6 +1254,8 @@ watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
   frameBoundingBoxes.value = boxDictionary;
 });
 
+const resizePositionCache = reactive<Record<string, Vector2d>>({});
+
 function beginResizeElement() {
   if (!hoveredElement.value) return;
 
@@ -1269,6 +1268,10 @@ function beginResizeElement() {
   lastResizedElement.value = hoveredElement.value;
   resizedElementSizesPreResize[hoveredElement.value.uniqueKey] =
     resizedElementSizes[lastResizedElement.value.uniqueKey] || node.size;
+
+  resizePositionCache[hoveredElement.value.uniqueKey] =
+    movedElementPositions[hoveredElement.value.uniqueKey] ||
+    hoveredElement.value.def.position;
 }
 function endResizeElement() {
   if (!lastResizedElement.value) return;
@@ -1318,6 +1321,7 @@ function onResizeMove() {
     height: Math.max(newHeight, NODE_WIDTH + 20 * 2),
   };
 
+  // Make sure the frame doesn't shrink to be smaller than it's children
   const contentsBox =
     frameBoundingBoxes.value[lastResizedElement.value.uniqueKey];
 
@@ -1328,7 +1332,51 @@ function onResizeMove() {
       x: lastResizedElement.value.def.position.x - newNodeSize.width / 2,
     };
 
+    // TODO(victor,paul) Instead of returning, force correct size to make ux smoother
     if (!rectContainsAnother(contentsBox, newNodeRect)) return;
+  }
+
+  // Make sure the frame doesn't get larger than parent
+  const parentId =
+    movedElementParent[lastResizedElement.value.uniqueKey] || node.parentId;
+
+  if (parentId) {
+    const parent = groups.value.find((g) => g.def.id === parentId);
+    const parentShape = kStage.findOne(`#${parent?.uniqueKey}--bg`);
+    const nodePosition =
+      resizePositionCache[lastResizedElement.value.uniqueKey];
+    if (parent && parentShape) {
+      const newNodeRect = {
+        ...nodePosition,
+        ...newNodeSize,
+        x: nodePosition.x - newNodeSize.width / 2,
+      };
+
+      const position =
+        movedElementPositions[parent.uniqueKey] ?? parent.def.position;
+
+      const parentContentRect = {
+        x: position.x - parentShape.width() / 2 + GROUP_INTERNAL_PADDING,
+        y: position.y + GROUP_INTERNAL_PADDING,
+        width: parentShape.width() - GROUP_INTERNAL_PADDING * 2,
+        height: parentShape.height() - GROUP_INTERNAL_PADDING * 2,
+      };
+
+      const bottom = parentContentRect.y + parentContentRect.height;
+      if (bottom < newNodeRect.y + newNodeRect.height) {
+        newNodeSize.height = bottom - newNodeRect.y;
+      }
+
+      const nodeXCenter = nodePosition.x;
+      const left = parentContentRect.x;
+      const right = parentContentRect.x + parentContentRect.width;
+
+      if (newNodeRect.x < left || newNodeRect.x + newNodeRect.width > right) {
+        const rightSize = (right - nodeXCenter) * 2;
+        const leftSize = (nodeXCenter - left) * 2;
+        newNodeSize.width = Math.min(rightSize, leftSize);
+      }
+    }
   }
 
   resizedElementSizes[lastResizedElement.value.uniqueKey] = newNodeSize;
