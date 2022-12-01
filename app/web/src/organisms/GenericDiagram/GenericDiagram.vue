@@ -838,6 +838,9 @@ const currentSelectionMovableElements = computed(
       (el) => "position" in el.def,
     ) as unknown as (DiagramNodeData | DiagramGroupData)[],
 );
+const movedElementParent = reactive<Record<DiagramElementUniqueKey, string>>(
+  {},
+);
 
 const draggedElementsPositionsPreDrag =
   ref<Record<DiagramElementUniqueKey, Vector2d>>();
@@ -860,7 +863,9 @@ function endDragElements() {
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!movedElementPositions[el.uniqueKey]) return;
 
-    if (el.def.parentId === undefined) {
+    const parentId =
+      movedElementParent[el.uniqueKey] || el.def.parentId || undefined;
+    if (parentId === undefined) {
       // handle dragging items into a group
       const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
       const elPos = elShape.getAbsolutePosition(kStage);
@@ -874,7 +879,7 @@ function endDragElements() {
 
       const groupOrderedByZIndex = _.sortBy(groups.value, (g) => {
         const groupShape = kStage.findOne(`#${g.uniqueKey}--bg`);
-        return -(groupShape?.getAbsoluteZIndex() ?? -Infinity)
+        return -(groupShape?.getAbsoluteZIndex() ?? -Infinity);
       });
 
       const newContainingGroup = groupOrderedByZIndex.find((group) => {
@@ -897,6 +902,7 @@ function endDragElements() {
           group: newContainingGroup,
           elements: [el],
         });
+        movedElementParent[el.uniqueKey] = newContainingGroup.def.id;
       }
     }
 
