@@ -1,11 +1,17 @@
 use dal::{
     attribute::context::AttributeContextBuilder,
-    func::{argument::FuncArgument, binding::FuncBinding},
+    func::{
+        argument::{FuncArgument, FuncArgumentKind},
+        binding::FuncBinding,
+    },
+    job::definition::DependentValuesUpdate,
     provider::internal::InternalProvider,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component, ComponentView,
-    DalContext, Func, PropKind, SchemaKind, StandardModel,
+    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
+    ComponentView, DalContext, DiagramKind, ExternalProvider, Func, FuncBackendKind,
+    FuncBackendResponseType, PropKind, SchemaKind, SocketArity, StandardModel,
 };
 use dal_test::{
+    helpers::setup_identity_func,
     test,
     test_harness::{
         create_prop_of_kind_and_set_parent_with_name, create_schema,
@@ -304,4 +310,237 @@ async fn intra_component_identity_update(ctx: &DalContext) {
 
     // TODO(nick): add daisy chaining where one field updates another, which in turn, updates
     // another and other kinds of complex updating.
+}
+
+#[test]
+async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContext) {
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+        .await
+        .expect("cannot set default schema variant");
+    let freya_prop = create_prop_of_kind_and_set_parent_with_name(
+        ctx,
+        PropKind::String,
+        "freya",
+        root_prop.domain_prop_id,
+    )
+    .await;
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
+        setup_identity_func(ctx).await;
+    let (external_provider, _output_socket) = ExternalProvider::new_with_socket(
+        ctx,
+        *schema.id(),
+        *schema_variant.id(),
+        "freya",
+        None,
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        SocketArity::Many,
+        DiagramKind::Configuration,
+    )
+    .await
+    .expect("could not create external provider");
+
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("cannot finalize schema variant");
+
+    let freya_provider = InternalProvider::find_for_prop(ctx, *freya_prop.id())
+        .await
+        .expect("could not execute find for prop for freya")
+        .expect("did not find internal provider for freya prop");
+    let external_provider_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            external_provider_id: Some(*external_provider.id()),
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            ..AttributeReadContext::default()
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
+
+    let mut external_provider_attribute_prototype = external_provider_attribute_value
+        .attribute_prototype(ctx)
+        .await
+        .expect("could not perform get attribute prototype for attribute value")
+        .expect("could not find attribute prototype for attribute value");
+
+    // Create and set the func to transform the string field.
+    let mut transformation_func = Func::new(
+        ctx,
+        "test:toUpper",
+        FuncBackendKind::JsAttribute,
+        FuncBackendResponseType::String,
+    )
+    .await
+    .expect("could not create func");
+    let code = "function toUpper(input) {
+        return input.freya.toUpperCase();
+    }";
+    transformation_func
+        .set_code_plaintext(ctx, Some(code))
+        .await
+        .expect("set code");
+    transformation_func
+        .set_handler(ctx, Some("toUpper"))
+        .await
+        .expect("set handler");
+    external_provider_attribute_prototype
+        .set_func_id(ctx, *transformation_func.id())
+        .await
+        .expect("set function on attribute prototype for external provider");
+    let transformation_func_argument = FuncArgument::new(
+        ctx,
+        "freya",
+        FuncArgumentKind::Object,
+        None,
+        *transformation_func.id(),
+    )
+    .await
+    .expect("could not create func argument");
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *external_provider_attribute_prototype.id(),
+        *transformation_func_argument.id(),
+        *freya_provider.id(),
+    )
+    .await
+    .expect("could not create attribute prototype argument");
+
+    let (component, _) =
+        Component::new_for_schema_variant_with_node(ctx, "valkyrie-queen", schema_variant.id())
+            .await
+            .expect("unable to create component");
+
+    let mut base_attribute_context = AttributeContext::builder();
+    base_attribute_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id());
+
+    let domain_context = base_attribute_context
+        .clone()
+        .set_prop_id(root_prop.domain_prop_id)
+        .to_context()
+        .expect("cannot create domain context");
+
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
+        .await
+        .expect("cannot get domain av")
+        .expect("domain av not found");
+
+    let freya_context = base_attribute_context
+        .clone()
+        .set_prop_id(*freya_prop.id())
+        .to_context()
+        .expect("cannot create freya write context");
+
+    let freya_value = AttributeValue::find_for_context(ctx, freya_context.into())
+        .await
+        .expect("cannot get freya av")
+        .expect("freya av not found");
+
+    let (_, freya_value_id) = AttributeValue::update_for_context(
+        ctx,
+        *freya_value.id(),
+        Some(*domain_value.id()),
+        freya_context,
+        Some(serde_json::to_value("for asgard").expect("create json string")),
+        None,
+    )
+    .await
+    .expect("run update for context");
+
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        component_id: Some(*component.id()),
+        ..AttributeReadContext::default()
+    };
+
+    let external_provider_av = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            external_provider_id: Some(*external_provider.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await
+    .expect("could not run find for external provider av")
+    .expect("no external provider av");
+
+    assert_eq!(
+        Some(serde_json::json!["FOR ASGARD"]),
+        external_provider_av
+            .get_value(ctx)
+            .await
+            .expect("get value for external provider av")
+    );
+
+    // Now let's update it via a func and ensure the transformation func also runs
+    let mut func = Func::new(
+        ctx,
+        "test:odin",
+        FuncBackendKind::JsAttribute,
+        FuncBackendResponseType::String,
+    )
+    .await
+    .expect("could not create func");
+    let code = "function odin(_args) { 
+        return 'odin';
+    }";
+    func.set_code_plaintext(ctx, Some(code))
+        .await
+        .expect("set code");
+    func.set_handler(ctx, Some("odin"))
+        .await
+        .expect("set handler");
+
+    let mut freya_value = AttributeValue::get_by_id(ctx, &freya_value_id)
+        .await
+        .expect("get freya value by id")
+        .expect("freya value by id not found");
+
+    let mut freya_prototype = freya_value
+        .attribute_prototype(ctx)
+        .await
+        .expect("get prototype for freya value")
+        .expect("prototype for freya value not found");
+
+    freya_prototype
+        .set_func_id(ctx, *func.id())
+        .await
+        .expect("set attribute prototype func");
+    freya_value
+        .update_from_prototype_function(ctx)
+        .await
+        .expect("update from proto func");
+    ctx.enqueue_job(DependentValuesUpdate::new(ctx, *freya_value.id()))
+        .await;
+
+    let external_provider_av = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            external_provider_id: Some(*external_provider.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await
+    .expect("could not run find for external provider av")
+    .expect("no external provider av");
+
+    assert_eq!(
+        Some(serde_json::json!["ODIN"]),
+        external_provider_av
+            .get_value(ctx)
+            .await
+            .expect("get value for external provider av")
+    );
 }
