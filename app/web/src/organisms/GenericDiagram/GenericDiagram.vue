@@ -860,38 +860,40 @@ function endDragElements() {
   _.each(currentSelectionMovableElements.value, (el) => {
     if (!movedElementPositions[el.uniqueKey]) return;
 
-    // handle dragging items into a group
-    const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
-    const elPos = elShape.getAbsolutePosition(kStage);
+    if (el.def.parentId === undefined) {
+      // handle dragging items into a group
+      const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
+      const elPos = elShape.getAbsolutePosition(kStage);
 
-    const elRect = {
-      x: elPos.x,
-      y: elPos.y,
-      width: elShape.width(),
-      height: elShape.height(),
-    };
-
-    // NOTE - only handles dragging into a single group
-    const newContainingGroup = groups.value?.find((group) => {
-      if (group.uniqueKey === el.uniqueKey) return false;
-
-      const groupShape = kStage.findOne(`#${group.uniqueKey}--bg`);
-      const groupPos = groupShape.getAbsolutePosition(kStage);
-
-      const groupRect = {
-        x: groupPos.x,
-        y: groupPos.y,
-        width: groupShape.width(),
-        height: groupShape.height(),
+      const elRect = {
+        x: elPos.x,
+        y: elPos.y,
+        width: elShape.width(),
+        height: elShape.height(),
       };
 
-      return rectContainsAnother(elRect, groupRect);
-    });
-    if (newContainingGroup && el.def.parentId !== newContainingGroup.def.id) {
-      emit("group-elements", {
-        group: newContainingGroup,
-        elements: [el],
+      // NOTE - only handles dragging into a single group
+      const newContainingGroup = groups.value?.find((group) => {
+        if (group.uniqueKey === el.uniqueKey) return false;
+
+        const groupShape = kStage.findOne(`#${group.uniqueKey}--bg`);
+        const groupPos = groupShape.getAbsolutePosition(kStage);
+
+        const groupRect = {
+          x: groupPos.x,
+          y: groupPos.y,
+          width: groupShape.width(),
+          height: groupShape.height(),
+        };
+
+        return rectContainsAnother(elRect, groupRect);
       });
+      if (newContainingGroup && el.def.parentId !== newContainingGroup.def.id) {
+        emit("group-elements", {
+          group: newContainingGroup,
+          elements: [el],
+        });
+      }
     }
 
     // move the element itself

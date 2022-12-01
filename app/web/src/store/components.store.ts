@@ -224,7 +224,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               node.sockets,
               (s) => s.label === "Frame" && s.direction === "input",
             );
-            console.log(socketFromChildren);
             const frameEdge = _.find(
               this.diagramEdges,
               (edge) =>
