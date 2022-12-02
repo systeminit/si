@@ -627,7 +627,7 @@ function onGroupHoverStart(
 }
 
 function onElementHoverStart(el: DiagramElementData) {
-  console.log("hover", el.uniqueKey);
+  // console.log("hover", el.uniqueKey);
 
   if (!componentHoverAction.value) componentHoverAction.value = "move";
 
@@ -1321,19 +1321,43 @@ function onResizeMove() {
     height: Math.max(newHeight, NODE_WIDTH + 20 * 2),
   };
 
+  // Get the correctly cached position for the element being resized
+  const nodePosition = resizePositionCache[lastResizedElement.value.uniqueKey];
+
   // Make sure the frame doesn't shrink to be smaller than it's children
   const contentsBox =
     frameBoundingBoxes.value[lastResizedElement.value.uniqueKey];
 
   if (contentsBox) {
+    // Resized element with top-left corner xy coordinates instead of top-center
     const newNodeRect = {
-      ...lastResizedElement.value.def.position,
+      ...nodePosition,
       ...newNodeSize,
-      x: lastResizedElement.value.def.position.x - newNodeSize.width / 2,
+      x: nodePosition.x - newNodeSize.width / 2,
     };
 
-    // TODO(victor,paul) Instead of returning, force correct size to make ux smoother
-    if (!rectContainsAnother(contentsBox, newNodeRect)) return;
+    // if resized was going to get smaller than children bounding box, set it to minimum necessary dimensions
+    const contentBottomY = contentsBox.y + contentsBox.height;
+    const minimumAcceptedHeight = contentBottomY - newNodeRect.y;
+    newNodeSize.height = Math.round(
+      Math.max(newNodeSize.height, minimumAcceptedHeight),
+    );
+
+    const contentRightX = contentsBox.x + contentsBox.width;
+    const minimumSizeFromTheRight =
+      contentRightX - (newNodeRect.x + newNodeRect.width / 2);
+
+    const contentLeftX = contentsBox.x;
+    const minimumSizeFromTheLeft =
+      newNodeRect.x + newNodeRect.width / 2 - contentLeftX;
+
+    // Since we resize from the center, we need to limit the operation from left and right at once
+    const minimumAcceptedWidth =
+      Math.max(minimumSizeFromTheLeft, minimumSizeFromTheRight) * 2;
+
+    newNodeSize.width = Math.round(
+      Math.max(newNodeSize.width, minimumAcceptedWidth),
+    );
   }
 
   // Make sure the frame doesn't get larger than parent
@@ -1341,17 +1365,16 @@ function onResizeMove() {
     movedElementParent[lastResizedElement.value.uniqueKey] || node.parentId;
 
   if (parentId) {
+    // Resized element with top-left corner xy coordinates instead of top-center (recalculated in case nodeNewSize changed)
+    const newNodeRect = {
+      ...nodePosition,
+      ...newNodeSize,
+      x: nodePosition.x - newNodeSize.width / 2,
+    };
+
     const parent = groups.value.find((g) => g.def.id === parentId);
     const parentShape = kStage.findOne(`#${parent?.uniqueKey}--bg`);
-    const nodePosition =
-      resizePositionCache[lastResizedElement.value.uniqueKey];
     if (parent && parentShape) {
-      const newNodeRect = {
-        ...nodePosition,
-        ...newNodeSize,
-        x: nodePosition.x - newNodeSize.width / 2,
-      };
-
       const position =
         movedElementPositions[parent.uniqueKey] ?? parent.def.position;
 
