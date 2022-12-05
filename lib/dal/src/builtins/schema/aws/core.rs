@@ -13,11 +13,11 @@ use crate::socket::SocketArity;
 use crate::validation::Validation;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
-    schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributeContext,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsResult, CodeLanguage,
-    ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider,
-    Func, FuncError, InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind,
-    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
+    AttributeReadContext, AttributeValue, BuiltinsResult, CodeLanguage, ConfirmationPrototype,
+    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
+    InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{AttributeValueError, SchemaVariant};
 
@@ -76,11 +76,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
 
         // Diagram and UI Menu
         let diagram_kind = schema
@@ -220,15 +215,8 @@ impl MigrationDriver {
         )
         .await?;
 
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-        let region_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*region_prop.id()),
-            ..base_attribute_read_context
-        };
+        let region_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*region_prop.id());
         let region_attribute_value =
             AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
                 .await?
@@ -299,11 +287,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
 
         // Diagram and UI Menu
         let diagram_kind = schema
@@ -587,36 +570,25 @@ impl MigrationDriver {
         self.set_default_value_for_prop(
             ctx,
             *aws_resource_type_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
             serde_json::json!["instance"],
         )
         .await?;
-
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
 
         // Note(victor): The code below is commented out because it breaks some tests. We should come back to this someday.
         // Create a default item in the map. We will need this to connect
         // "/root/si/name" to the item's value.
 
-        let tags_map_attribute_read_context = AttributeReadContext {
-            prop_id: Some(*tags_map_prop.id()),
-            ..base_attribute_read_context
-        };
+        let tags_map_attribute_read_context =
+            AttributeReadContext::default_with_prop(*tags_map_prop.id());
         let tags_map_attribute_value =
             AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
                 .await?
                 .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
                     tags_map_attribute_read_context,
                 ))?;
-        let tags_map_item_attribute_context =
-            AttributeContextBuilder::from(base_attribute_read_context)
-                .set_prop_id(*tags_map_item_prop.id())
-                .to_context()?;
+        let tags_map_item_attribute_context = AttributeContextBuilder::new()
+            .set_prop_id(*tags_map_item_prop.id())
+            .to_context()?;
         let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
             ctx,
             tags_map_item_attribute_context,
@@ -668,10 +640,8 @@ impl MigrationDriver {
         .await?;
 
         // Connect props to providers.
-        let region_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*region_prop.id()),
-            ..base_attribute_read_context
-        };
+        let region_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*region_prop.id());
         let region_attribute_value =
             AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
                 .await?
@@ -693,10 +663,8 @@ impl MigrationDriver {
         )
         .await?;
 
-        let image_id_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*image_id_prop.id()),
-            ..base_attribute_read_context
-        };
+        let image_id_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*image_id_prop.id());
         let image_id_attribute_value =
             AttributeValue::find_for_context(ctx, image_id_attribute_value_read_context)
                 .await?
@@ -718,10 +686,8 @@ impl MigrationDriver {
         )
         .await?;
 
-        let keyname_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*key_name_prop.id()),
-            ..base_attribute_read_context
-        };
+        let keyname_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*key_name_prop.id());
         let keyname_attribute_value =
             AttributeValue::find_for_context(ctx, keyname_attribute_value_read_context)
                 .await?
@@ -759,10 +725,8 @@ impl MigrationDriver {
                     )
                 })?;
 
-            let security_group_id_attribute_value_read_context = AttributeReadContext {
-                prop_id: Some(*security_groups_prop.id()),
-                ..base_attribute_read_context
-            };
+            let security_group_id_attribute_value_read_context =
+                AttributeReadContext::default_with_prop(*security_groups_prop.id());
             let security_group_id_attribute_value = AttributeValue::find_for_context(
                 ctx,
                 security_group_id_attribute_value_read_context,
@@ -788,10 +752,8 @@ impl MigrationDriver {
         }
 
         // Consume from the user data explicit internal provider into the user data prop.
-        let user_data_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*user_data_prop.id()),
-            ..base_attribute_read_context
-        };
+        let user_data_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*user_data_prop.id());
         let user_data_attribute_value =
             AttributeValue::find_for_context(ctx, user_data_attribute_value_read_context)
                 .await?
@@ -912,11 +874,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
 
         // Diagram and UI Menu
         let diagram_kind = schema
@@ -1056,11 +1013,6 @@ impl MigrationDriver {
             None => return Ok(()),
         };
 
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
-
         // Diagram and UI Menu
         let diagram_kind = schema
             .diagram_kind()
@@ -1196,32 +1148,21 @@ impl MigrationDriver {
         self.set_default_value_for_prop(
             ctx,
             *aws_resource_type_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
             serde_json::json!["eip"],
         )
         .await?;
 
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
-        let tags_map_attribute_read_context = AttributeReadContext {
-            prop_id: Some(*tags_map_prop.id()),
-            ..base_attribute_read_context
-        };
+        let tags_map_attribute_read_context =
+            AttributeReadContext::default_with_prop(*tags_map_prop.id());
         let tags_map_attribute_value =
             AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
                 .await?
                 .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
                     tags_map_attribute_read_context,
                 ))?;
-        let tags_map_item_attribute_context =
-            AttributeContextBuilder::from(base_attribute_read_context)
-                .set_prop_id(*tags_map_item_prop.id())
-                .to_context()?;
+        let tags_map_item_attribute_context = AttributeContextBuilder::new()
+            .set_prop_id(*tags_map_item_prop.id())
+            .to_context()?;
         let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
             ctx,
             tags_map_item_attribute_context,
@@ -1271,15 +1212,8 @@ impl MigrationDriver {
         .await?;
 
         // Connect the "region" prop to the "Region" explicit internal provider.
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-        let region_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*region_prop.id()),
-            ..base_attribute_read_context
-        };
+        let region_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*region_prop.id());
         let region_attribute_value =
             AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
                 .await?
@@ -1408,11 +1342,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
 
         // Diagram and UI Menu
         let diagram_kind = schema
@@ -1582,8 +1511,6 @@ impl MigrationDriver {
         self.set_default_value_for_prop(
             ctx,
             *aws_resource_type_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
             serde_json::json!["key-pair"],
         )
         .await?;
@@ -1609,26 +1536,17 @@ impl MigrationDriver {
         )
         .await?;
 
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
-        let tags_map_attribute_read_context = AttributeReadContext {
-            prop_id: Some(*tags_map_prop.id()),
-            ..base_attribute_read_context
-        };
+        let tags_map_attribute_read_context =
+            AttributeReadContext::default_with_prop(*tags_map_prop.id());
         let tags_map_attribute_value =
             AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
                 .await?
                 .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
                     tags_map_attribute_read_context,
                 ))?;
-        let tags_map_item_attribute_context =
-            AttributeContextBuilder::from(base_attribute_read_context)
-                .set_prop_id(*tags_map_item_prop.id())
-                .to_context()?;
+        let tags_map_item_attribute_context = AttributeContextBuilder::new()
+            .set_prop_id(*tags_map_item_prop.id())
+            .to_context()?;
         let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
             ctx,
             tags_map_item_attribute_context,
@@ -1679,15 +1597,8 @@ impl MigrationDriver {
         .await?;
 
         // Connect the "region" prop to the "Region" explicit internal provider.
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-        let region_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*region_prop.id()),
-            ..base_attribute_read_context
-        };
+        let region_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*region_prop.id());
         let region_attribute_value =
             AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
                 .await?
@@ -1712,10 +1623,7 @@ impl MigrationDriver {
         // Connect the "/root/si/name" field to the "/root/domain/KeyName" field.
         let key_name_attribute_value = AttributeValue::find_for_context(
             ctx,
-            AttributeReadContext {
-                prop_id: Some(*key_name_prop.id()),
-                ..base_attribute_read_context
-            },
+            AttributeReadContext::default_with_prop(*key_name_prop.id()),
         )
         .await?
         .ok_or(AttributeValueError::Missing)?;

@@ -3,8 +3,6 @@ CREATE TYPE attribute_context_record_v1 AS
     attribute_context_prop_id              bigint,
     attribute_context_internal_provider_id bigint,
     attribute_context_external_provider_id bigint,
-    attribute_context_schema_id            bigint,
-    attribute_context_schema_variant_id    bigint,
     attribute_context_component_id         bigint
 );
 
@@ -18,8 +16,6 @@ BEGIN
                                             attribute_context_prop_id bigint,
                                             attribute_context_internal_provider_id bigint,
                                             attribute_context_external_provider_id bigint,
-                                            attribute_context_schema_id bigint,
-                                            attribute_context_schema_variant_id bigint,
                                             attribute_context_component_id bigint
         )
     INTO result;
@@ -27,185 +23,114 @@ END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION in_attribute_context_v1(
-    check_context             jsonb,
-    this_prop_id              bigint,
+    check_context jsonb,
+    this_prop_id bigint,
     this_internal_provider_id bigint,
     this_external_provider_id bigint,
-    this_schema_id            bigint,
-    this_schema_variant_id    bigint,
-    this_component_id         bigint
+    this_component_id bigint
 )
-RETURNS bool
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-CALLED ON NULL INPUT
-AS $$
+    RETURNS bool
+    LANGUAGE sql
+    IMMUTABLE
+    PARALLEL SAFE
+    CALLED ON NULL INPUT
+AS
+$$
 SELECT
     -- All levels set
     (
         -- Least specific level check
-        (
-            -- PropId set
             (
-                CASE WHEN check_context -> 'attribute_context_prop_id' IS NULL OR check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_prop_id')::bigint = this_prop_id
+                -- PropId set
+                    (
+                            CASE
+                                WHEN check_context -> 'attribute_context_prop_id' IS NULL OR
+                                     check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
+                                ELSE (check_context -> 'attribute_context_prop_id')::bigint = this_prop_id
+                                END
+                            AND this_internal_provider_id = -1
+                            AND this_external_provider_id = -1
+                        )
+                    -- InternalProviderId set
+                    OR (
+                                this_prop_id = -1
+                            AND CASE
+                                    WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR
+                                         check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb
+                                        THEN TRUE
+                                    ELSE (check_context -> 'attribute_context_internal_provider_id')::bigint =
+                                         this_internal_provider_id
+                                    END
+                            AND this_external_provider_id = -1
+                        )
+                    -- ExternalProviderId set
+                    OR (
+                                this_prop_id = -1
+                            AND this_internal_provider_id = -1
+                            AND CASE
+                                    WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR
+                                         check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb
+                                        THEN TRUE
+                                    ELSE (check_context -> 'attribute_context_external_provider_id')::bigint =
+                                         this_external_provider_id
+                                    END
+                        )
+                )
+            -- Component check
+            AND CASE
+                    WHEN check_context -> 'attribute_context_component_id' IS NULL OR
+                         check_context -> 'attribute_context_component_id' = 'null'::jsonb THEN TRUE
+                    ELSE (check_context -> 'attribute_context_component_id')::bigint = this_component_id
                 END
-                AND this_internal_provider_id = -1
-                AND this_external_provider_id = -1
-            )
-            -- InternalProviderId set
-            OR (
-                this_prop_id = -1
-                AND CASE WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_internal_provider_id')::bigint = this_internal_provider_id
-                END
-                AND this_external_provider_id = -1
-            )
-            -- ExternalProviderId set
-            OR (
-                this_prop_id = -1
-                AND this_internal_provider_id = -1
-                AND CASE WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_external_provider_id')::bigint = this_external_provider_id
-                END
-            )
         )
-        -- Schema check
-        AND CASE WHEN check_context -> 'attribute_context_schema_id' IS NULL OR check_context -> 'attribute_context_schema_id' = 'null'::jsonb THEN TRUE
-            ELSE (check_context -> 'attribute_context_schema_id')::bigint = this_schema_id
-        END
-        -- SchemaVariant check
-        AND CASE WHEN check_context -> 'attribute_context_schema_variant_id' IS NULL OR check_context -> 'attribute_context_schema_variant_id' = 'null'::jsonb THEN TRUE
-            ELSE (check_context -> 'attribute_context_schema_variant_id')::bigint = this_schema_variant_id
-        END
-        -- Component check
-        AND CASE WHEN check_context -> 'attribute_context_component_id' IS NULL OR check_context -> 'attribute_context_component_id' = 'null'::jsonb THEN TRUE
-            ELSE (check_context -> 'attribute_context_component_id')::bigint = this_component_id
-        END
-    )
-    -- ComponentId not set
-    OR (
+        -- ComponentId not set
+        OR (
         -- Least specific level check
-        (
-            -- PropId set
             (
-                CASE WHEN check_context -> 'attribute_context_prop_id' IS NULL OR check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_prop_id')::bigint = this_prop_id
-                END
-                AND this_internal_provider_id = -1
-                AND this_external_provider_id = -1
-            )
-            -- InternalProviderId set
-            OR (
-                this_prop_id = -1
-                AND CASE WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_internal_provider_id')::bigint = this_internal_provider_id
-                END
-                AND this_external_provider_id = -1
-            )
-            -- ExternalProviderId set
-            OR (
-                this_prop_id = -1
-                AND this_internal_provider_id = -1
-                AND CASE WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_external_provider_id')::bigint = this_external_provider_id
-                END
-            )
+                -- PropId set
+                    (
+                            CASE
+                                WHEN check_context -> 'attribute_context_prop_id' IS NULL OR
+                                     check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
+                                ELSE (check_context -> 'attribute_context_prop_id')::bigint = this_prop_id
+                                END
+                            AND this_internal_provider_id = -1
+                            AND this_external_provider_id = -1
+                        )
+                    -- InternalProviderId set
+                    OR (
+                                this_prop_id = -1
+                            AND CASE
+                                    WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR
+                                         check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb
+                                        THEN TRUE
+                                    ELSE (check_context -> 'attribute_context_internal_provider_id')::bigint =
+                                         this_internal_provider_id
+                                    END
+                            AND this_external_provider_id = -1
+                        )
+                    -- ExternalProviderId set
+                    OR (
+                                this_prop_id = -1
+                            AND this_internal_provider_id = -1
+                            AND CASE
+                                    WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR
+                                         check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb
+                                        THEN TRUE
+                                    ELSE (check_context -> 'attribute_context_external_provider_id')::bigint =
+                                         this_external_provider_id
+                                    END
+                        )
+                )
+            -- Component check
+            AND this_component_id = -1
         )
-        -- Schema check
-        AND CASE WHEN check_context -> 'attribute_context_schema_id' IS NULL OR check_context -> 'attribute_context_schema_id' = 'null'::jsonb THEN TRUE
-            ELSE (check_context -> 'attribute_context_schema_id')::bigint = this_schema_id
-        END
-        -- SchemaVariant check
-        AND CASE WHEN check_context -> 'attribute_context_schema_variant_id' IS NULL OR check_context -> 'attribute_context_schema_variant_id' = 'null'::jsonb THEN TRUE
-            ELSE (check_context -> 'attribute_context_schema_variant_id')::bigint = this_schema_variant_id
-        END
-        -- Component check
-        AND this_component_id = -1
-    )
-    -- ComponentId, and SchemaVariantId not set
-    OR (
-        -- Least specific level check
-        (
-            -- PropId set
-            (
-                CASE WHEN check_context -> 'attribute_context_prop_id' IS NULL OR check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_prop_id')::bigint = this_prop_id
-                END
-                AND this_internal_provider_id = -1
-                AND this_external_provider_id = -1
-            )
-            -- InternalProviderId set
-            OR (
-                this_prop_id = -1
-                AND CASE WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_internal_provider_id')::bigint = this_internal_provider_id
-                END
-                AND this_external_provider_id = -1
-            )
-            -- ExternalProviderId set
-            OR (
-                this_prop_id = -1
-                AND this_internal_provider_id = -1
-                AND CASE WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_external_provider_id')::bigint = this_external_provider_id
-                END
-            )
-        )
-        -- Schema check
-        AND CASE WHEN check_context -> 'attribute_context_schema_id' IS NULL OR check_context -> 'attribute_context_schema_id' = 'null'::jsonb THEN TRUE
-            ELSE (check_context -> 'attribute_context_schema_id')::bigint = this_schema_id
-        END
-        -- SchemaVariant check
-        AND this_schema_variant_id = -1
-        -- Component check
-        AND this_component_id = -1
-    )
-    -- ComponentId, SchemaVariantId, SchemaId not set
-    OR (
-        -- Least specific level check
-        (
-            -- PropId set
-            (
-                CASE WHEN check_context -> 'attribute_context_prop_id' IS NULL OR check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_prop_id')::bigint = this_prop_id
-                END
-                AND this_internal_provider_id = -1
-                AND this_external_provider_id = -1
-            )
-            -- InternalProviderId set
-            OR (
-                this_prop_id = -1
-                AND CASE WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_internal_provider_id')::bigint = this_internal_provider_id
-                END
-                AND this_external_provider_id = -1
-            )
-            -- ExternalProviderId set
-            OR (
-                this_prop_id = -1
-                AND this_internal_provider_id = -1
-                AND CASE WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_external_provider_id')::bigint = this_external_provider_id
-                END
-            )
-        )
-        -- Schema check
-        AND this_schema_id = -1
-        -- SchemaVariant check
-        AND this_schema_variant_id = -1
-        -- Component check
-        AND this_component_id = -1
-    )
 $$;
 
 CREATE OR REPLACE FUNCTION exact_attribute_context_v1(check_context jsonb,
                                                       this_prop_id bigint,
                                                       this_internal_provider_id bigint,
                                                       this_external_provider_id bigint,
-                                                      this_schema_id bigint,
-                                                      this_schema_variant_id bigint,
                                                       this_component_id bigint,
                                                       OUT result bool
 )
@@ -217,17 +142,13 @@ DECLARE
     internal_provider_check    bool;
     external_provider_check    bool;
     least_specific_level_check bool;
-    schema_check               bool;
-    schema_variant_check       bool;
     component_check            bool;
 BEGIN
-    RAISE DEBUG 'exact_attribute_context: % vs: p:% i:% e:% s:% v:% c:%',
+    RAISE DEBUG 'exact_attribute_context: % vs: p:% i:% e:% c:%',
         check_context,
         this_prop_id,
         this_internal_provider_id,
         this_external_provider_id,
-        this_schema_id,
-        this_schema_variant_id,
         this_component_id;
 
     check_context_record := attribute_context_json_to_columns_v1(check_context);
@@ -244,31 +165,27 @@ BEGIN
                                    WHEN check_context_record.attribute_context_internal_provider_id IS NULL THEN
                                        TRUE
                                    ELSE
-                                       check_context_record.attribute_context_internal_provider_id = this_internal_provider_id
-                               END;
+                                           check_context_record.attribute_context_internal_provider_id =
+                                           this_internal_provider_id
+        END;
     RAISE DEBUG 'internal_provider_check: %', internal_provider_check;
 
     external_provider_check := CASE
                                    WHEN check_context_record.attribute_context_external_provider_id IS NULL THEN
                                        TRUE
                                    ELSE
-                                       check_context_record.attribute_context_external_provider_id = this_external_provider_id
-                               END;
+                                           check_context_record.attribute_context_external_provider_id =
+                                           this_external_provider_id
+        END;
     RAISE DEBUG 'external_provider_check: %', external_provider_check;
 
     least_specific_level_check := prop_check OR internal_provider_check OR external_provider_check;
-
-    schema_check := (check_context_record.attribute_context_schema_id = this_schema_id);
-    RAISE DEBUG 'schema_check: %', schema_check;
-
-    schema_variant_check := (check_context_record.attribute_context_schema_variant_id = this_schema_variant_id);
-    RAISE DEBUG 'schema_variant_check: %', schema_variant_check;
 
     component_check := (check_context_record.attribute_context_component_id = this_component_id);
     RAISE DEBUG 'component_check: %', component_check;
 
     result :=
-            (least_specific_level_check AND schema_check AND schema_variant_check AND component_check);
+            (least_specific_level_check AND component_check);
     RAISE DEBUG 'exact_attribute_context check result: %', result;
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
@@ -284,8 +201,6 @@ BEGIN
                                          reference.attribute_context_prop_id,
                                          reference.attribute_context_internal_provider_id,
                                          reference.attribute_context_external_provider_id,
-                                         reference.attribute_context_schema_id,
-                                         reference.attribute_context_schema_variant_id,
                                          reference.attribute_context_component_id);
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
@@ -294,8 +209,6 @@ CREATE OR REPLACE FUNCTION exact_attribute_read_context_v1(check_context jsonb,
                                                            this_prop_id bigint,
                                                            this_internal_provider_id bigint,
                                                            this_external_provider_id bigint,
-                                                           this_schema_id bigint,
-                                                           this_schema_variant_id bigint,
                                                            this_component_id bigint,
                                                            OUT result bool
 )
@@ -307,17 +220,13 @@ DECLARE
     internal_provider_check    bool;
     external_provider_check    bool;
     least_specific_level_check bool;
-    schema_check               bool;
-    schema_variant_check       bool;
     component_check            bool;
 BEGIN
-    RAISE DEBUG 'exact_attribute_read_context: % vs: p:% i:% e:% s:% v:% c:%',
+    RAISE DEBUG 'exact_attribute_read_context: % vs: p:% i:% e:% c:%',
         check_context,
         this_prop_id,
         this_internal_provider_id,
         this_external_provider_id,
-        this_schema_id,
-        this_schema_variant_id,
         this_component_id;
 
     check_context_record := attribute_context_json_to_columns_v1(check_context);
@@ -351,22 +260,6 @@ BEGIN
     least_specific_level_check := (prop_check AND this_internal_provider_id = -1 AND this_external_provider_id = -1) OR
                                   (this_prop_id = -1 AND internal_provider_check AND this_external_provider_id = -1) OR
                                   (this_prop_id = -1 AND this_internal_provider_id = -1 AND external_provider_check);
-    schema_check := CASE
-                        WHEN check_context_record.attribute_context_schema_id IS NULL THEN
-                            TRUE
-                        ELSE
-                            check_context_record.attribute_context_schema_id = this_schema_id
-        END;
-    RAISE DEBUG 'schema_check: %', schema_check;
-
-    schema_variant_check := CASE
-                                WHEN check_context_record.attribute_context_schema_id IS NULL THEN
-                                    TRUE
-                                ELSE
-                                        check_context_record.attribute_context_schema_variant_id =
-                                        this_schema_variant_id
-        END;
-    RAISE DEBUG 'schema_variant_check: %', schema_variant_check;
 
     component_check := CASE
                            WHEN check_context_record.attribute_context_component_id IS NULL THEN
@@ -377,7 +270,7 @@ BEGIN
     RAISE DEBUG 'component_check: %', component_check;
 
     result :=
-            (least_specific_level_check AND schema_check AND schema_variant_check AND component_check);
+            (least_specific_level_check AND component_check);
     RAISE DEBUG 'in_attribute_context check result: %', result;
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
@@ -393,8 +286,6 @@ BEGIN
                                               reference.attribute_context_prop_id,
                                               reference.attribute_context_internal_provider_id,
                                               reference.attribute_context_external_provider_id,
-                                              reference.attribute_context_schema_id,
-                                              reference.attribute_context_schema_variant_id,
                                               reference.attribute_context_component_id);
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
@@ -405,8 +296,6 @@ CREATE OR REPLACE FUNCTION exact_or_more_attribute_read_context_v1(
     this_prop_id bigint,
     this_internal_provider_id bigint,
     this_external_provider_id bigint,
-    this_schema_id bigint,
-    this_schema_variant_id bigint,
     this_component_id bigint,
     OUT result bool
 )
@@ -419,35 +308,23 @@ DECLARE
     external_provider_check               bool;
     least_specific_level_check            bool;
     least_specific_level_is_most_specific bool;
-    schema_check                          bool;
-    schema_is_most_specific               bool;
-    schema_variant_check                  bool;
-    schema_variant_is_most_specific       bool;
     component_check                       bool;
     component_is_most_specific            bool;
 BEGIN
-    RAISE DEBUG 'exact_or_more_attribute_read_context: % vs: p:% i:% e:% s:% v:% c:%',
+    RAISE DEBUG 'exact_or_more_attribute_read_context: % vs: p:% i:% e:% c:%',
         check_context,
         this_prop_id,
         this_internal_provider_id,
         this_external_provider_id,
-        this_schema_id,
-        this_schema_variant_id,
         this_component_id;
 
     check_context_record := attribute_context_json_to_columns_v1(check_context);
 
     component_is_most_specific := FALSE;
-    schema_variant_is_most_specific := FALSE;
-    schema_is_most_specific := FALSE;
     least_specific_level_is_most_specific := FALSE;
 
     IF check_context_record.attribute_context_component_id != -1 THEN
         component_is_most_specific := TRUE;
-    ELSIF check_context_record.attribute_context_schema_variant_id != -1 THEN
-        schema_variant_is_most_specific := TRUE;
-    ELSIF check_context_record.attribute_context_schema_id != -1 THEN
-        schema_is_most_specific := TRUE;
     ELSIF (check_context_record.attribute_context_prop_id != -1 OR
            check_context_record.attribute_context_internal_provider_id != -1 OR
            check_context_record.attribute_context_external_provider_id != -1) THEN
@@ -482,23 +359,6 @@ BEGIN
 
     least_specific_level_check := (prop_check AND internal_provider_check AND external_provider_check);
 
-    schema_check := CASE
-                        WHEN check_context_record.attribute_context_schema_id IS NULL THEN
-                            TRUE
-                        ELSE
-                            check_context_record.attribute_context_schema_id = this_schema_id
-        END;
-    RAISE DEBUG 'schema_check: %', schema_check;
-
-    schema_variant_check := CASE
-                                WHEN check_context_record.attribute_context_schema_id IS NULL THEN
-                                    TRUE
-                                ELSE
-                                        check_context_record.attribute_context_schema_variant_id =
-                                        this_schema_variant_id
-        END;
-    RAISE DEBUG 'schema_variant_check: %', schema_variant_check;
-
     component_check := CASE
                            WHEN check_context_record.attribute_context_component_id IS NULL THEN
                                TRUE
@@ -507,27 +367,13 @@ BEGIN
         END;
     RAISE DEBUG 'component_check: %', component_check;
 
-    result := (least_specific_level_check AND schema_check AND schema_variant_check AND component_check) OR
+    result := (least_specific_level_check AND component_check) OR
               CASE
                   WHEN
                       component_is_most_specific THEN (least_specific_level_check AND
-                                                       schema_check AND
-                                                       schema_variant_check AND
                                                        component_check)
                   WHEN
-                      schema_variant_is_most_specific THEN (least_specific_level_check AND
-                                                            schema_check AND
-                                                            schema_variant_check AND
-                                                            this_component_id != -1)
-                  WHEN
-                      schema_is_most_specific THEN (least_specific_level_check AND
-                                                    schema_check AND
-                                                    this_schema_variant_id != -1 AND
-                                                    this_component_id != -1)
-                  WHEN
                       least_specific_level_is_most_specific THEN (least_specific_level_check AND
-                                                                  this_schema_id != -1 AND
-                                                                  this_schema_variant_id != -1 AND
                                                                   this_component_id != -1)
                   ELSE
                       FALSE
@@ -547,8 +393,6 @@ BEGIN
                                                       reference.attribute_context_prop_id,
                                                       reference.attribute_context_internal_provider_id,
                                                       reference.attribute_context_external_provider_id,
-                                                      reference.attribute_context_schema_id,
-                                                      reference.attribute_context_schema_variant_id,
                                                       reference.attribute_context_component_id);
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;

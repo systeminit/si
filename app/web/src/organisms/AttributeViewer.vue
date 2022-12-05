@@ -86,9 +86,6 @@ const getAttributeContext = (propId: number) => ({
   attribute_context_prop_id: propId,
   attribute_context_internal_provider_id: -1,
   attribute_context_external_provider_id: -1,
-  attribute_context_schema_id: lastSelectedComponent.value.schemaId,
-  attribute_context_schema_variant_id:
-    lastSelectedComponent.value.schemaVariantId,
   attribute_context_component_id: lastSelectedComponent.value.id,
 });
 

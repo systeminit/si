@@ -11,8 +11,6 @@ CREATE TABLE attribute_prototypes
     attribute_context_prop_id              bigint,
     attribute_context_internal_provider_id bigint,
     attribute_context_external_provider_id bigint,
-    attribute_context_schema_id            bigint,
-    attribute_context_schema_variant_id    bigint,
     attribute_context_component_id         bigint,
     created_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -51,8 +49,6 @@ BEGIN
                                       attribute_context_prop_id,
                                       attribute_context_internal_provider_id,
                                       attribute_context_external_provider_id,
-                                      attribute_context_schema_id,
-                                      attribute_context_schema_variant_id,
                                       attribute_context_component_id,
                                       func_id,
                                       key)
@@ -65,8 +61,6 @@ BEGIN
             this_attribute_context_record.attribute_context_prop_id,
             this_attribute_context_record.attribute_context_internal_provider_id,
             this_attribute_context_record.attribute_context_external_provider_id,
-            this_attribute_context_record.attribute_context_schema_id,
-            this_attribute_context_record.attribute_context_schema_variant_id,
             this_attribute_context_record.attribute_context_component_id,
             this_func_id,
             this_key)
@@ -80,22 +74,21 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 -- take arguments of ROWTYPE, so we need to make a specific version
 -- of this function for every table we want to use it with.
 CREATE OR REPLACE FUNCTION in_attribute_context_v1(
-    check_context   jsonb,
+    check_context jsonb,
     record_to_check attribute_prototypes
 )
-RETURNS bool
-LANGUAGE sql
-IMMUTABLE
-PARALLEL SAFE
-CALLED ON NULL INPUT
-AS $$
-    SELECT in_attribute_context_v1(
-        check_context,
-        record_to_check.attribute_context_prop_id,
-        record_to_check.attribute_context_internal_provider_id,
-        record_to_check.attribute_context_external_provider_id,
-        record_to_check.attribute_context_schema_id,
-        record_to_check.attribute_context_schema_variant_id,
-        record_to_check.attribute_context_component_id
-    )
+    RETURNS bool
+    LANGUAGE sql
+    IMMUTABLE
+    PARALLEL SAFE
+    CALLED ON NULL INPUT
+AS
+$$
+SELECT in_attribute_context_v1(
+               check_context,
+               record_to_check.attribute_context_prop_id,
+               record_to_check.attribute_context_internal_provider_id,
+               record_to_check.attribute_context_external_provider_id,
+               record_to_check.attribute_context_component_id
+           )
 $$;

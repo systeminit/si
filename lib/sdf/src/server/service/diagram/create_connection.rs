@@ -59,7 +59,7 @@ pub async fn create_connection(
         .await?
         .ok_or(DiagramError::SchemaVariantNotFound)?;
 
-    let schema = schema_variant
+    let _schema = schema_variant
         .schema(&ctx)
         .await?
         .ok_or(DiagramError::SchemaNotFound)?;
@@ -72,10 +72,8 @@ pub async fn create_connection(
             ))?;
 
     let attribute_value_context = AttributeReadContext {
-        component_id: Some(*component.id()),
-        schema_variant_id: Some(*schema_variant.id()),
-        schema_id: Some(*schema.id()),
         external_provider_id: Some(*from_socket_external_provider.id()),
+        component_id: Some(*component.id()),
         ..Default::default()
     };
     let attribute_value = AttributeValue::find_for_context(&ctx, attribute_value_context)

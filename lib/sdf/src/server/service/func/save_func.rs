@@ -132,7 +132,7 @@ async fn save_attr_func_prototypes(
 ) -> FuncResult<()> {
     let mut id_set = HashSet::new();
     for proto_view in prototypes {
-        let context = proto_view.into_context(ctx).await?;
+        let context = proto_view.to_attribute_context()?;
 
         let (mut existing_value_proto, need_to_create) =
             match AttributePrototype::find_for_context(ctx, context)

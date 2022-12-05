@@ -734,8 +734,6 @@ impl AttributePrototype {
                     &context.prop_id(),
                     &context.internal_provider_id(),
                     &context.external_provider_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
                     &context.component_id(),
                 ],
             )

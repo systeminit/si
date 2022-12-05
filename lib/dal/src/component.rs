@@ -10,7 +10,7 @@ use veritech_client::ResourceStatus;
 
 use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
-use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
+use crate::attribute::value::AttributeValueError;
 use crate::code_view::CodeViewError;
 use crate::func::backend::{
     js_qualification::FuncBackendJsQualificationArgs, js_validation::FuncBackendJsValidationArgs,
@@ -20,6 +20,7 @@ use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::{
     FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
 };
+use crate::func::execution::FuncExecutionPk;
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
@@ -381,15 +382,11 @@ impl Component {
         ctx: &DalContext,
         validation_prototype: &ValidationPrototype,
         value_cache: &mut HashMap<PropId, (Option<Value>, AttributeValue)>,
-        schema_variant_id: SchemaVariantId,
-        schema_id: SchemaId,
     ) -> ComponentResult<()> {
         let base_attribute_read_context = AttributeReadContext {
             prop_id: None,
             external_provider_id: Some(ExternalProviderId::NONE),
             internal_provider_id: Some(InternalProviderId::NONE),
-            schema_id: Some(schema_id),
-            schema_variant_id: Some(schema_variant_id),
             component_id: Some(self.id),
         };
 
@@ -495,10 +492,6 @@ impl Component {
             .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
 
         let validation_prototypes =
             ValidationPrototype::list_for_schema_variant(ctx, *schema_variant.id()).await?;
@@ -508,14 +501,8 @@ impl Component {
         let mut cache: HashMap<PropId, (Option<Value>, AttributeValue)> = HashMap::new();
 
         for validation_prototype in validation_prototypes {
-            self.check_single_validation(
-                ctx,
-                &validation_prototype,
-                &mut cache,
-                *schema_variant.id(),
-                *schema.id(),
-            )
-            .await?;
+            self.check_single_validation(ctx, &validation_prototype, &mut cache)
+                .await?;
         }
 
         Ok(())
@@ -554,7 +541,7 @@ impl Component {
             None,
             prototype.func_id(),
             *func_binding.id(),
-            UNSET_ID_VALUE.into(),
+            FuncExecutionPk::NONE,
         )
         .await?;
 
@@ -635,7 +622,7 @@ impl Component {
                 None,
                 prototype.func_id(),
                 *func_binding.id(),
-                UNSET_ID_VALUE.into(),
+                FuncExecutionPk::NONE,
             )
             .await?;
 
@@ -942,18 +929,8 @@ impl Component {
         let component = Self::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
-        let schema = component
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(component.id))?;
-        let schema_variant = component
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(component.id))?;
         let read_context = AttributeReadContext {
             prop_id: None,
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         };
@@ -1017,19 +994,8 @@ impl Component {
             .await?
             .ok_or(AttributeValueError::Missing)?;
 
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
-
         let attribute_context = AttributeContext::builder()
             .set_component_id(self.id)
-            .set_schema_variant_id(*schema_variant.id())
-            .set_schema_id(*schema.id())
             .set_prop_id(attribute_value.context.prop_id())
             .to_context()?;
 
@@ -1100,19 +1066,8 @@ impl Component {
         json_pointer: &str,
     ) -> ComponentResult<Option<AttributeValue>> {
         if let Some(prop) = self.find_prop_by_json_pointer(ctx, json_pointer).await? {
-            let schema = self
-                .schema(ctx)
-                .await?
-                .ok_or(ComponentError::NoSchema(self.id))?;
-            let schema_variant = self
-                .schema_variant(ctx)
-                .await?
-                .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-
             let read_context = AttributeReadContext {
                 prop_id: Some(*prop.id()),
-                schema_id: Some(*schema.id()),
-                schema_variant_id: Some(*schema_variant.id()),
                 component_id: Some(self.id),
                 ..AttributeReadContext::default()
             };
@@ -1133,10 +1088,6 @@ impl Component {
         ctx: &DalContext,
         json_pointer: &str,
     ) -> ComponentResult<Option<T>> {
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
         let schema_variant = self
             .schema_variant(ctx)
             .await?
@@ -1150,13 +1101,9 @@ impl Component {
             .ok_or_else(|| ComponentError::InternalProviderNotFoundForProp(*prop.id()))?;
 
         let value_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            component_id: Some(self.id),
-
             internal_provider_id: Some(*implicit_provider.id()),
-            prop_id: Some(PropId::NONE),
-            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(self.id),
+            ..AttributeReadContext::default()
         };
 
         let attribute_value = AttributeValue::find_for_context(ctx, value_context)
@@ -1251,22 +1198,10 @@ impl Component {
             .await?
             .ok_or_else(|| ComponentError::InternalProviderNotFoundForProp(*prop.id()))?;
 
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-
         let value_context = AttributeReadContext {
             internal_provider_id: Some(*implicit_provider.id()),
-            prop_id: Some(PropId::NONE),
-            external_provider_id: Some(ExternalProviderId::NONE),
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(self.id),
+            ..AttributeReadContext::default()
         };
 
         let attribute_value = AttributeValue::find_for_context(ctx, value_context)
@@ -1323,19 +1258,8 @@ impl Component {
             .await?
             .ok_or_else(|| AttributeValueError::ParentNotFound(*resource_attribute_value.id()))?;
 
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-
         let update_attribute_context =
             AttributeContextBuilder::from(resource_attribute_value.context)
-                .set_schema_id(*schema.id())
-                .set_schema_variant_id(*schema_variant.id())
                 .set_component_id(self.id)
                 .to_context()?;
 

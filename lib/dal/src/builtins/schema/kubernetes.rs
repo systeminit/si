@@ -3,7 +3,7 @@ use crate::component::ComponentKind;
 use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::{
-    func::argument::FuncArgument, schema::SchemaUiMenu, socket::SocketArity, AttributeContext,
+    func::argument::FuncArgument, schema::SchemaUiMenu, socket::SocketArity,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
     BuiltinsError, BuiltinsResult, CodeLanguage, DalContext, DiagramKind, ExternalProvider, Func,
     FuncError, InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind,
@@ -56,11 +56,6 @@ impl MigrationDriver {
         };
 
         schema_variant.set_link(ctx, Some("https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/".to_owned())).await?;
-
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
 
         let diagram_kind = schema
             .diagram_kind()
@@ -117,21 +112,13 @@ impl MigrationDriver {
         schema_variant.finalize(ctx).await?;
 
         // Connect the "/root/si/name" field to the "/root/domain/metadata/name" field.
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
         let metadata_name_prop = self
             .find_child_prop_by_name(ctx, *metadata_prop.id(), "name")
             .await?;
         let metadata_name_prop_id = *metadata_name_prop.id();
         let metadata_name_attribute_value = AttributeValue::find_for_context(
             ctx,
-            AttributeReadContext {
-                prop_id: Some(metadata_name_prop_id),
-                ..base_attribute_read_context
-            },
+            AttributeReadContext::default_with_prop(metadata_name_prop_id),
         )
         .await?
         .ok_or(AttributeValueError::Missing)?;
@@ -322,37 +309,17 @@ impl MigrationDriver {
         schema_variant.finalize(ctx).await?;
 
         // Set default values after finalization.
-        self.set_default_value_for_prop(
-            ctx,
-            *api_version_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-            serde_json::json!["apps/v1"],
-        )
-        .await?;
-        self.set_default_value_for_prop(
-            ctx,
-            *kind_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-            serde_json::json!["Deployment"],
-        )
-        .await?;
-
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
+        self.set_default_value_for_prop(ctx, *api_version_prop.id(), serde_json::json!["apps/v1"])
+            .await?;
+        self.set_default_value_for_prop(ctx, *kind_prop.id(), serde_json::json!["Deployment"])
+            .await?;
 
         // Connect the "domain namespace" prop to the "kubernetes_namespace" explicit internal provider.
         let domain_namespace_prop = self
             .find_child_prop_by_name(ctx, *metadata_prop.id(), "namespace")
             .await?;
-        let domain_namespace_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*domain_namespace_prop.id()),
-            ..base_attribute_read_context
-        };
+        let domain_namespace_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*domain_namespace_prop.id());
         let domain_namespace_attribute_value =
             AttributeValue::find_for_context(ctx, domain_namespace_attribute_value_read_context)
                 .await?
@@ -384,10 +351,8 @@ impl MigrationDriver {
         let template_namespace_prop = self
             .find_child_prop_by_name(ctx, *template_metadata_prop.id(), "namespace")
             .await?;
-        let template_namespace_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*template_namespace_prop.id()),
-            ..base_attribute_read_context
-        };
+        let template_namespace_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*template_namespace_prop.id());
         let template_namespace_attribute_value =
             AttributeValue::find_for_context(ctx, template_namespace_attribute_value_read_context)
                 .await?
@@ -417,10 +382,8 @@ impl MigrationDriver {
         let containers_prop = self
             .find_child_prop_by_name(ctx, *template_spec_prop.id(), "containers")
             .await?;
-        let containers_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*containers_prop.id()),
-            ..base_attribute_read_context
-        };
+        let containers_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*containers_prop.id());
         let containers_attribute_value =
             AttributeValue::find_for_context(ctx, containers_attribute_value_read_context)
                 .await?

@@ -5,7 +5,7 @@ use crate::prototype_context::PrototypeContext;
 use crate::schema::variant::definition::SchemaVariantDefinition;
 use crate::socket::SocketArity;
 use crate::{
-    qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu, AttributeContext,
+    qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
     BuiltinsResult, CodeLanguage, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
     InternalProvider, QualificationPrototype, SchemaError, SchemaKind, SchemaVariant,
@@ -42,11 +42,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
 
         // Diagram and UI Menu
         let diagram_kind = schema
@@ -136,37 +131,16 @@ impl MigrationDriver {
         let units_prop_id = prop_cache.get("units", systemd_prop_id)?;
 
         // Set default values after finalization.
-        self.set_default_value_for_prop(
-            ctx,
-            variant_prop_id,
-            *schema.id(),
-            *schema_variant.id(),
-            serde_json::json!["fcos"],
-        )
-        .await?;
-        self.set_default_value_for_prop(
-            ctx,
-            version_prop_id,
-            *schema.id(),
-            *schema_variant.id(),
-            serde_json::json!["1.4.0"],
-        )
-        .await?;
-
-        // Add the ability to use docker image as an input.
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
+        self.set_default_value_for_prop(ctx, variant_prop_id, serde_json::json!["fcos"])
+            .await?;
+        self.set_default_value_for_prop(ctx, version_prop_id, serde_json::json!["1.4.0"])
+            .await?;
 
         // Enable connections from the "Container Image" explicit internal provider to the
         // "/root/domain/systemd/units/" field. We need to use the appropriate function with and name
         // the argument "images".
-        let units_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(units_prop_id),
-            ..base_attribute_read_context
-        };
+        let units_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(units_prop_id);
         let units_attribute_value =
             AttributeValue::find_for_context(ctx, units_attribute_value_read_context)
                 .await?

@@ -358,8 +358,6 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
         node_id: *node.id(),
         base_attribute_read_context: AttributeReadContext {
             prop_id: None,
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         },
@@ -422,8 +420,6 @@ async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
     // This context can also be used for generating component views.
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
@@ -549,8 +545,6 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         ctx,
         AttributeReadContext {
             prop_id: Some(*destination_object_prop.id()),
-            schema_id: Some(*destination_schema.id()),
-            schema_variant_id: Some(*destination_schema_variant.id()),
             ..AttributeReadContext::default()
         },
     )
@@ -594,8 +588,6 @@ async fn with_deep_data_structure(ctx: &DalContext) {
 
     let source_attribute_read_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*source_schema.id()),
-        schema_variant_id: Some(*source_schema_variant.id()),
         component_id: Some(*source_component.id()),
         ..AttributeReadContext::default()
     };
@@ -623,8 +615,6 @@ async fn with_deep_data_structure(ctx: &DalContext) {
 
     let destination_attribute_read_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*destination_schema.id()),
-        schema_variant_id: Some(*destination_schema_variant.id()),
         component_id: Some(*destination_component.id()),
         ..AttributeReadContext::default()
     };
@@ -693,8 +683,6 @@ async fn with_deep_data_structure(ctx: &DalContext) {
 
     let source_foo_update_context = AttributeContext::builder()
         .set_prop_id(*source_foo_prop.id())
-        .set_schema_id(*source_schema.id())
-        .set_schema_variant_id(*source_schema_variant.id())
         .set_component_id(*source_component.id())
         .to_context()
         .expect("could not create source foo update context");
@@ -777,8 +765,6 @@ async fn with_deep_data_structure(ctx: &DalContext) {
 
     let source_bar_update_context = AttributeContext::builder()
         .set_prop_id(*source_bar_prop.id())
-        .set_schema_id(*source_schema.id())
-        .set_schema_variant_id(*source_schema_variant.id())
         .set_component_id(*source_component.id())
         .to_context()
         .expect("could not create source foo update context");

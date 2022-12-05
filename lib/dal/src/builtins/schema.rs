@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
 use serde_json::Value;
-
+use std::collections::HashMap;
 use telemetry::prelude::*;
 
 use crate::attribute::context::AttributeContextBuilder;
@@ -273,8 +271,6 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         prop_id: PropId,
-        schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
         value: Value,
     ) -> BuiltinsResult<()> {
         let prop = Prop::get_by_id(ctx, &prop_id)
@@ -282,20 +278,12 @@ impl MigrationDriver {
             .ok_or(BuiltinsError::PropNotFound(prop_id))?;
         match prop.kind() {
             PropKind::String | PropKind::Boolean | PropKind::Integer => {
-                // Every other field must be set to unset (-1) and cannot be "any".
-                let base_attribute_read_context = AttributeReadContext {
-                    prop_id: Some(prop_id),
-                    schema_id: Some(schema_id),
-                    schema_variant_id: Some(schema_variant_id),
-                    ..AttributeReadContext::default()
-                };
-
-                let attribute_value =
-                    AttributeValue::find_for_context(ctx, base_attribute_read_context)
-                        .await?
-                        .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                            base_attribute_read_context,
-                        ))?;
+                let attribute_read_context = AttributeReadContext::default_with_prop(prop_id);
+                let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
+                    .await?
+                    .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                        attribute_read_context,
+                    ))?;
                 let parent_attribute_value = attribute_value
                     .parent_attribute_value(ctx)
                     .await?
@@ -317,8 +305,7 @@ impl MigrationDriver {
                     ));
                 }
 
-                let context =
-                    AttributeContextBuilder::from(base_attribute_read_context).to_context()?;
+                let context = AttributeContextBuilder::from(attribute_read_context).to_context()?;
                 AttributeValue::update_for_context(
                     ctx,
                     *attribute_value.id(),

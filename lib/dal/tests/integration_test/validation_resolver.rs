@@ -80,8 +80,6 @@ async fn new(ctx: &DalContext) {
     let context = AttributeContext::builder()
         .set_prop_id(*prop.id())
         .set_component_id(*component.id())
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
         .to_context()
         .expect("unable to build attribute context");
     let attribute_value = AttributeValue::new(
@@ -188,8 +186,6 @@ async fn find_errors(ctx: &DalContext) {
     let context = AttributeContext::builder()
         .set_prop_id(*prop.id())
         .set_component_id(*component.id())
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
         .to_context()
         .expect("unable to build attribute context");
     let attribute_value = AttributeValue::new(

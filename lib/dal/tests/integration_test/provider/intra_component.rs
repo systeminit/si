@@ -67,8 +67,6 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // This context can also be used for generating component views.
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
@@ -357,8 +355,6 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         ctx,
         AttributeReadContext {
             external_provider_id: Some(*external_provider.id()),
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             ..AttributeReadContext::default()
         },
     )
@@ -420,10 +416,7 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
             .expect("unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
-    base_attribute_context
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id());
+    base_attribute_context.set_component_id(*component.id());
 
     let domain_context = base_attribute_context
         .clone()
@@ -459,8 +452,6 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
     .expect("run update for context");
 
     let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };

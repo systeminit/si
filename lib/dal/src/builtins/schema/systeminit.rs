@@ -2,8 +2,8 @@ use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
 use crate::validation::Validation;
 use crate::{
-    schema::SchemaUiMenu, AttributeContext, BuiltinsError, BuiltinsResult, DalContext, DiagramKind,
-    InternalProvider, PropKind, SchemaError, SchemaKind, SocketArity, StandardModel,
+    schema::SchemaUiMenu, BuiltinsError, BuiltinsResult, DalContext, DiagramKind, InternalProvider,
+    PropKind, SchemaError, SchemaKind, SocketArity, StandardModel,
 };
 
 const FRAME_NODE_COLOR: i64 = 0xFFFFFF;
@@ -29,11 +29,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
 
         // Diagram and UI Menu
         let diagram_kind = schema
