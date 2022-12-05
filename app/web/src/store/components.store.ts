@@ -44,6 +44,8 @@ type Component = {
   id: ComponentId;
   isGroup: boolean;
   displayName: string;
+  parentId?: string;
+  childIds?: string[];
   schemaName: string;
   schemaId: number;
   schemaVariantId: number;
@@ -163,10 +165,33 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 Kubernetes: "logo-k8s",
               }[diagramNode?.category || ""] || "logo-si"; // fallback to SI logo
 
+            const socketToFrame = _.find(
+              diagramNode?.sockets,
+              (s) => s.label === "Frame" && s.direction === "output",
+            );
+            const socketFromChildren = _.find(
+              diagramNode?.sockets,
+              (s) => s.label === "Frame" && s.direction === "input",
+            );
+            const frameEdge = _.find(
+              this.diagramEdges,
+              (edge) =>
+                edge.fromNodeId === diagramNode?.id &&
+                edge.fromSocketId === socketToFrame?.id,
+            );
+            const frameChildIds = _.filter(this.diagramEdges, (s) => {
+              return (
+                s.toSocketId === socketFromChildren?.id &&
+                s.toNodeId === diagramNode?.id
+              );
+            }).map((i) => i.fromNodeId);
+
             return {
               id: ci.componentId,
               // TODO: return this info from the backend (and not in category)
-              isGroup: diagramNode?.category === "Frames",
+              isGroup: socketFromChildren !== undefined,
+              parentId: frameEdge?.toNodeId,
+              childIds: socketFromChildren ? frameChildIds : undefined,
               displayName: diagramNode?.subtitle,
               schemaId: ci.schemaId,
               schemaName: ci.schemaName,
@@ -216,31 +241,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
             const component = this.componentsById[componentId];
 
-            const socketToFrame = _.find(
-              node.sockets,
-              (s) => s.label === "Frame" && s.direction === "output",
-            );
-            const socketFromChildren = _.find(
-              node.sockets,
-              (s) => s.label === "Frame" && s.direction === "input",
-            );
-            const frameEdge = _.find(
-              this.diagramEdges,
-              (edge) =>
-                edge.fromNodeId === node.id &&
-                edge.fromSocketId === socketToFrame?.id,
-            );
-            const frameChildIds = _.filter(this.diagramEdges, (s) => {
-              return (
-                s.toSocketId === socketFromChildren?.id &&
-                s.toNodeId === node.id
-              );
-            }).map((i) => i.fromNodeId);
-
             return {
               ...node,
-              parentId: frameEdge ? frameEdge.toNodeId : undefined,
-              childIds: socketFromChildren ? frameChildIds : undefined,
+              parentId: component.parentId,
+              childIds: component.childIds,
               isLoading:
                 !!statusStore.componentStatusById[componentId]?.isUpdating,
               typeIcon: component?.icon || "logo-si",

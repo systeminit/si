@@ -879,7 +879,7 @@ impl MigrationDriver {
         let diagram_kind = schema
             .diagram_kind()
             .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Region", "AWS", &diagram_kind).await?;
+        let ui_menu = SchemaUiMenu::new(ctx, "Region Frame", "AWS", &diagram_kind).await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop Creation
@@ -916,6 +916,24 @@ impl MigrationDriver {
             *region_prop.id(),
             *schema.id(),
             *schema_variant.id(),
+        )
+        .await?;
+
+        // Sockets
+        let identity_func_item = self
+            .get_func_item("si:identity")
+            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
+
+        // Input Socket
+        let (_frame_internal_provider, _input_socket) = InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema_variant.id(),
+            "Frame",
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
         )
         .await?;
 
