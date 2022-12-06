@@ -105,7 +105,7 @@
       ref="overlay"
       :config="{
         x: -halfWidth,
-        y: nodeHeaderHeight + GROUP_HEADER_BOTTOM_MARGIN,
+        y: 0,
         opacity: 0,
         listening: false,
       }"

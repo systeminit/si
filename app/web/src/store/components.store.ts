@@ -482,13 +482,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-        async CONNECT_COMPONENT_TO_FRAME(fromNodeId: string, toNodeId: string) {
+        async CONNECT_COMPONENT_TO_FRAME(
+          childNodeId: string,
+          parentNodeId: string,
+        ) {
           return new ApiRequest<{ node: DiagramNode }>({
             method: "post",
             url: "diagram/connect_component_to_frame",
             params: {
-              fromNodeId: parseInt(fromNodeId),
-              toNodeId: parseInt(toNodeId),
+              childNodeId: parseInt(childNodeId),
+              parentNodeId: parseInt(parentNodeId),
               ...visibilityParams,
             },
             onSuccess: (response) => {

@@ -12,16 +12,16 @@ use super::{DiagramError, DiagramResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateConnectionRequest {
-    pub from_node_id: NodeId,
-    pub to_node_id: NodeId,
+pub struct CreateFrameConnectionRequest {
+    pub child_node_id: NodeId,
+    pub parent_node_id: NodeId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateConnectionResponse {
+pub struct CreateFrameConnectionResponse {
     pub connection: Connection,
 }
 
@@ -30,15 +30,15 @@ pub struct CreateConnectionResponse {
 pub async fn connect_component_to_frame(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Json(request): Json<CreateConnectionRequest>,
-) -> DiagramResult<Json<CreateConnectionResponse>> {
+    Json(request): Json<CreateFrameConnectionRequest>,
+) -> DiagramResult<Json<CreateFrameConnectionResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     // Connect children to parent through frame edge
     let from_socket_id = {
-        let from_node = Node::get_by_id(&ctx, &request.from_node_id)
+        let from_node = Node::get_by_id(&ctx, &request.child_node_id)
             .await?
-            .ok_or(DiagramError::NodeNotFound(request.from_node_id))?;
+            .ok_or(DiagramError::NodeNotFound(request.child_node_id))?;
 
         let from_component = from_node
             .component(&ctx)
@@ -72,9 +72,9 @@ pub async fn connect_component_to_frame(
     };
 
     let to_socket_id = {
-        let node = Node::get_by_id(&ctx, &request.to_node_id)
+        let node = Node::get_by_id(&ctx, &request.parent_node_id)
             .await?
-            .ok_or(DiagramError::NodeNotFound(request.to_node_id))?;
+            .ok_or(DiagramError::NodeNotFound(request.parent_node_id))?;
 
         let component = node
             .component(&ctx)
@@ -109,18 +109,18 @@ pub async fn connect_component_to_frame(
 
     let connection = Connection::new(
         &ctx,
-        request.from_node_id,
+        request.child_node_id,
         from_socket_id,
-        request.to_node_id,
+        request.parent_node_id,
         to_socket_id,
     )
     .await?;
 
     // Create all valid connections between parent output and child inputs
     {
-        let parent_node = Node::get_by_id(&ctx, &request.to_node_id)
+        let parent_node = Node::get_by_id(&ctx, &request.parent_node_id)
             .await?
-            .ok_or(DiagramError::NodeNotFound(request.to_node_id))?;
+            .ok_or(DiagramError::NodeNotFound(request.parent_node_id))?;
 
         let parent_component = parent_node
             .component(&ctx)
@@ -134,9 +134,9 @@ pub async fn connect_component_to_frame(
 
         let parent_sockets = parent_schema_variant.sockets(&ctx).await?;
 
-        let child_node = Node::get_by_id(&ctx, &request.from_node_id)
+        let child_node = Node::get_by_id(&ctx, &request.child_node_id)
             .await?
-            .ok_or(DiagramError::NodeNotFound(request.from_node_id))?;
+            .ok_or(DiagramError::NodeNotFound(request.child_node_id))?;
 
         let child_component = child_node
             .component(&ctx)
@@ -159,9 +159,9 @@ pub async fn connect_component_to_frame(
                         {
                             Connection::new(
                                 &ctx,
-                                request.to_node_id,
+                                request.parent_node_id,
                                 *parent_socket.id(),
-                                request.from_node_id,
+                                request.child_node_id,
                                 *child_socket.id(),
                             )
                             .await?;
@@ -198,5 +198,5 @@ pub async fn connect_component_to_frame(
 
     ctx.commit().await?;
 
-    Ok(Json(CreateConnectionResponse { connection }))
+    Ok(Json(CreateFrameConnectionResponse { connection }))
 }

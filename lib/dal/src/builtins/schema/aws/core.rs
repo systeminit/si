@@ -402,7 +402,6 @@ impl MigrationDriver {
             )
             .await?;
 
-        // TODO(victor): Make one item of the list have key `Name` and value equal to /root/si/name
         // Prop: /root/domain/tags/tag
         let tags_map_item_prop = self
             .create_prop(
@@ -574,7 +573,6 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Note(victor): The code below is commented out because it breaks some tests. We should come back to this someday.
         // Create a default item in the map. We will need this to connect
         // "/root/si/name" to the item's value.
 
@@ -598,8 +596,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Note(victor): The code below connects si/name to a tag in the tags list.
-        // It's commented out because it breaks some tests
+        // Connect si/name to a tag in the tags list.
 
         let si_name_prop = self
             .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
