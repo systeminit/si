@@ -227,12 +227,12 @@ export const useFixesStore = () => {
             },
             url: "/fix/run",
             onSuccess: (response) => {
-              this.recommendations = this.recommendations
-                .filter((r) => !!recommendations.find((rec) => rec.id === r.id))
-                .map((r) => {
+              this.recommendations = this.recommendations.map((r) => {
+                if (recommendations.find((rec) => rec.id === r.id)) {
                   r.status = "running";
-                  return r;
-                });
+                }
+                return r;
+              });
 
               this.runningFixBatch = response.id;
               this.fixBatches = this.fixBatches.filter(
@@ -317,12 +317,12 @@ export const useFixesStore = () => {
                 this.LOAD_FIX_BATCHES();
                 return;
               }
-              this.recommendations = this.recommendations
-                .filter((r) => r.id === fix.id)
-                .map((r) => {
+              this.recommendations = this.recommendations.map((r) => {
+                if (r.id === fix.id) {
                   r.status = update.status;
-                  return r;
-                });
+                }
+                return r;
+              });
               if (update.status !== fix.status) {
                 fix.status = update.status;
                 fix.action = update.action;

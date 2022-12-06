@@ -74,6 +74,31 @@ BEGIN
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
 
+CREATE OR REPLACE FUNCTION find_by_attr_null_v1(this_table_text text, this_tenancy jsonb, this_visibility jsonb,
+                                                this_attr_name text)
+    RETURNS TABLE
+            (
+                id                       bigint,
+                visibility_change_set_pk bigint,
+                object                   json
+            )
+AS
+$$
+DECLARE
+    this_table regclass;
+BEGIN
+    this_table := this_table_text::regclass;
+    RETURN QUERY EXECUTE format('SELECT '
+                                '   table_alias.id, '
+                                '   table_alias.visibility_change_set_pk, '
+                                '   row_to_json(table_alias.*) AS object '
+                                ' FROM %1$I_v1(%2$L, %3$L) AS table_alias '
+                                ' WHERE table_alias.%4$I IS NULL '
+                                ' ORDER BY id, visibility_change_set_pk DESC '
+        , this_table, this_tenancy, this_visibility, this_attr_name);
+END ;
+$$ LANGUAGE PLPGSQL STABLE;
+
 CREATE OR REPLACE FUNCTION find_by_attr_in_v1(this_table_text text, this_tenancy jsonb, this_visibility jsonb,
                                               this_attr_name text, this_value text[])
     RETURNS TABLE

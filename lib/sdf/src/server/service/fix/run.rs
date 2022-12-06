@@ -52,6 +52,7 @@ pub async fn run(
             *batch.id(),
             fix_run_request.id,
             fix_run_request.component_id,
+            &fix_run_request.action_name,
         )
         .await?;
         fixes.push(FixItem {

@@ -63,6 +63,7 @@ async fn confirmation_to_fix(ctx: &DalContext) {
         *batch.id(),
         confirmation_resolver_id,
         payload.component_id,
+        &action_name,
     )
     .await
     .expect("could not create fix");
@@ -80,7 +81,7 @@ async fn confirmation_to_fix(ctx: &DalContext) {
     assert!(batch.completion_status().is_none());
 
     let run_id = rand::random();
-    fix.run(ctx, run_id, action_workflow_prototype_id, action_name, true)
+    fix.run(ctx, run_id, action_workflow_prototype_id, true)
         .await
         .expect("could not run fix");
     assert!(fix.started_at().is_some());

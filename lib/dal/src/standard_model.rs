@@ -102,6 +102,23 @@ pub async fn find_by_attr<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 }
 
 #[instrument(skip(ctx))]
+pub async fn find_by_attr_null<OBJECT: DeserializeOwned>(
+    ctx: &DalContext,
+    table: &str,
+    attr_name: &str,
+) -> StandardModelResult<Vec<OBJECT>> {
+    let txns = ctx.txns();
+    let rows = txns
+        .pg()
+        .query(
+            "SELECT * FROM find_by_attr_null_v1($1, $2, $3, $4)",
+            &[&table, ctx.read_tenancy(), ctx.visibility(), &attr_name],
+        )
+        .await?;
+    objects_from_rows(rows)
+}
+
+#[instrument(skip(ctx))]
 pub async fn find_by_attr_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
@@ -565,6 +582,16 @@ pub trait StandardModel {
     {
         let objects =
             crate::standard_model::find_by_attr(ctx, Self::table_name(), attr_name, value).await?;
+        Ok(objects)
+    }
+
+    #[instrument(skip_all)]
+    async fn find_by_attr_null(ctx: &DalContext, attr_name: &str) -> StandardModelResult<Vec<Self>>
+    where
+        Self: Sized + DeserializeOwned,
+    {
+        let objects =
+            crate::standard_model::find_by_attr_null(ctx, Self::table_name(), attr_name).await?;
         Ok(objects)
     }
 

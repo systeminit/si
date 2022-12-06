@@ -45,8 +45,6 @@ pub enum FixError {
     User(#[from] UserError),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
-    #[error("missing action for fix: {0}")]
-    MissingAction(FixId),
     #[error("missing finished timestamp for fix: {0}")]
     MissingFinishedTimestampForFix(FixId),
     #[error("missing finished timestamp for fix batch: {0}")]

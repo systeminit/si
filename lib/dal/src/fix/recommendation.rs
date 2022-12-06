@@ -5,7 +5,7 @@ use crate::action_prototype::ActionKind;
 use crate::fix::FixResult;
 use crate::{
     AttributeReadContext, Component, ComponentId, ConfirmationResolver, ConfirmationResolverId,
-    ConfirmationResolverTree, FixResolver, FixResolverContext, StandardModel,
+    ConfirmationResolverTree, Fix, FixResolver, FixResolverContext, StandardModel,
 };
 use crate::{ComponentError, DalContext};
 
@@ -37,6 +37,8 @@ pub struct Recommendation {
 impl Recommendation {
     pub async fn list(ctx: &DalContext) -> FixResult<Vec<Recommendation>> {
         let resolvers = ConfirmationResolver::list(ctx).await?;
+
+        let running = Fix::find_by_attr_null(ctx, "finished_at").await?;
 
         // Sorted resolvers
         let resolvers = ConfirmationResolverTree::build(ctx, resolvers)
@@ -90,7 +92,11 @@ impl Recommendation {
                     component_id,
                     recommendation: action.name().to_owned(),
                     recommendation_kind: action.kind().to_owned(),
-                    status: if resolver.success().is_none() {
+                    status: if resolver.success().is_none()
+                        || running.iter().any(|r| {
+                            r.confirmation_resolver_id() == *resolver.id()
+                                && r.action() == action.name()
+                        }) {
                         RecommendationStatus::Running
                     } else {
                         match fix.as_ref().and_then(FixResolver::success) {
