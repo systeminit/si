@@ -243,18 +243,26 @@ async fn find_errors(ctx: &DalContext) {
     validation_results
         .sort_by(|a, b| i64::from(a.attribute_value_id).cmp(&i64::from(b.attribute_value_id)));
 
-    // There are two results, because the first one is showing that the
-    // "directly on the prop" AttributeValue does not have any
-    // validation errors.
-    assert_eq!(2, validation_results.len());
-    assert_eq!(0, validation_results[0].errors.len());
-    assert_eq!(2, validation_results[1].errors.len());
-    assert_eq!(
-        "value () does not match expected (amon amarth)",
-        validation_results[1].errors[0].message,
-    );
-    assert_eq!(
-        "value (not twisty monkey) does not match expected (twisty monkey)",
-        validation_results[1].errors[1].message,
-    );
+    let mut got_results = false;
+    for result in &validation_results {
+        let av = AttributeValue::get_by_id(ctx, &result.attribute_value_id)
+            .await
+            .unwrap()
+            .unwrap();
+        if av.context.prop_id() == *prop.id() {
+            assert_eq!(2, result.errors.len());
+            assert_eq!(
+                "value () does not match expected (amon amarth)",
+                &result.errors[0].message,
+            );
+            assert_eq!(
+                "value (not twisty monkey) does not match expected (twisty monkey)",
+                &result.errors[1].message,
+            );
+            got_results = true;
+        } else {
+            assert_eq!(0, result.errors.len());
+        }
+    }
+    assert!(got_results, "got expected results");
 }

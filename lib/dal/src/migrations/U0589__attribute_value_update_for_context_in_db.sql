@@ -2137,25 +2137,10 @@ BEGIN
         'si:unset'
     );
 
-    -- FIXME(nick,jacob): old desired behavior: reuse objects from a lesser specific context to a more specific context because
-    -- there was nothing specific to objects. Now, we need an index map (like maps and arrays) which we would use to
-    -- order the fields of the object.
-    --
-    -- There may be an object that has a func connected to it which means that it may have different unprocessed value
-    -- depending on the context.
-
     -- If the AttributeValue is already set, there might not be anything for us to do.
     IF
         -- The AttributeValue must already be set to something other than "unset"
-        func_id != unset_func_id
-            AND (
-                -- PropKind::Object can be re-used in any AttributeContext.
-                -- FIXME(nick): we need to remove this prop kind check and fix whatever happens afterwards.
-                -- See above "fixme".
-                    prop.kind = 'object'
-                -- Anything else needs to be in the exact AttributeContext to be re-usable.
-                OR exact_attribute_context_v1(this_attribute_context, attribute_value)
-            )
+        func_id != unset_func_id AND exact_attribute_context_v1(this_attribute_context, attribute_value)
     THEN
         RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1: Re-using AttributeValue(%) for PropKind(%)',
             attribute_value.id,
