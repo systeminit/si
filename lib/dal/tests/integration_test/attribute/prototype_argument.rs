@@ -70,8 +70,6 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
         .expect("failed to execute func binding");
     let context = AttributeContext::builder()
         .set_prop_id(*name_prop.id())
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
         .to_context()
         .expect("cannot create context");
 

@@ -72,7 +72,7 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::context::{AttributeContextBuilder, UNSET_ID_VALUE};
+use crate::attribute::context::AttributeContextBuilder;
 use crate::func::backend::identity::FuncBackendIdentityArgs;
 use crate::func::binding::{FuncBindingError, FuncBindingId};
 use crate::func::binding_return_value::FuncBindingReturnValueId;
@@ -198,8 +198,7 @@ pub struct InternalProvider {
     timestamp: Timestamp,
 
     /// Indicates which [`Prop`](crate::Prop) this provider belongs to. This will be
-    /// [`UNSET_ID_VALUE`](crate::attribute::context::UNSET_ID_VALUE) if [`Self`] is "explicit". If
-    /// [`Self`] is "implicit", this will always be a "set" id.
+    /// unset if [`Self`] is "explicit". If [`Self`] is "implicit", this will always be a "set" id.
     prop_id: PropId,
     /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
     schema_variant_id: SchemaVariantId,
@@ -300,7 +299,8 @@ impl InternalProvider {
         diagram_kind: DiagramKind,
     ) -> InternalProviderResult<(Self, Socket)> {
         let name = name.as_ref();
-        let prop_id: PropId = UNSET_ID_VALUE.into();
+        let prop_id = PropId::NONE;
+
         let row = ctx
             .txns()
             .pg()
@@ -394,7 +394,7 @@ impl InternalProvider {
 
     /// If the [`PropId`](crate::Prop) field is not unset, then [`Self`] is an internal consumer.
     pub fn is_internal_consumer(&self) -> bool {
-        self.prop_id != UNSET_ID_VALUE.into()
+        self.prop_id != PropId::NONE
     }
 
     /// Consume with a provided [`AttributeContext`](crate::AttributeContext) and return the

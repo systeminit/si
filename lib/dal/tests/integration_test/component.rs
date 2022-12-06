@@ -248,12 +248,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     .expect("could not create explicit internal provider");
     let u12a_attribute_value = AttributeValue::find_for_context(
         ctx,
-        AttributeReadContext {
-            prop_id: Some(*u12a_prop.id()),
-            schema_id: Some(*noctua_schema.id()),
-            schema_variant_id: Some(*noctua_schema_variant.id()),
-            ..AttributeReadContext::default()
-        },
+        AttributeReadContext::default_with_prop(*u12a_prop.id()),
     )
     .await
     .expect("could not perform attribute value find for context")
@@ -308,15 +303,11 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     // Cache the read contexts for generating views for our components.
     let ekwb_component_view_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*ekwb_schema.id()),
-        schema_variant_id: Some(*ekwb_schema_variant.id()),
         component_id: Some(*ekwb_component.id()),
         ..AttributeReadContext::default()
     };
     let noctua_component_view_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*noctua_schema.id()),
-        schema_variant_id: Some(*noctua_schema_variant.id()),
         component_id: Some(*noctua_component.id()),
         ..AttributeReadContext::default()
     };

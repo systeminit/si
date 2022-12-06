@@ -67,8 +67,6 @@ async fn set_code_prop_for_component(ctx: &DalContext) {
     // Set a value on the prop to check if our code generation works as intended.
     let read_context = AttributeReadContext {
         prop_id: Some(*poop_prop.id()),
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
@@ -100,8 +98,6 @@ async fn set_code_prop_for_component(ctx: &DalContext) {
         ctx,
         AttributeReadContext {
             prop_id: None,
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         },

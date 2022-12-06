@@ -104,16 +104,10 @@ async fn resolve(ctx: &DalContext) {
         .expect("unable to find docker image schema")
         .pop()
         .expect("unable to find docker image");
-    let schema_variant = schema
-        .default_variant(ctx)
-        .await
-        .expect("unable to find default schema variant");
     let component = create_component_for_schema(ctx, schema.id()).await;
 
     let context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };

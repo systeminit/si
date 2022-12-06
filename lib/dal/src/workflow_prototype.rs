@@ -212,8 +212,6 @@ impl WorkflowPrototype {
 
             let context = AttributeReadContext {
                 prop_id: None,
-                schema_id: Some(*schema.id()),
-                schema_variant_id: Some(*schema_variant.id()),
                 component_id: Some(*component.id()),
                 ..AttributeReadContext::default()
             };

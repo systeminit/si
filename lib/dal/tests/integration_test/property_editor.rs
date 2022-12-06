@@ -40,10 +40,8 @@ async fn property_editor_value(ctx: &DalContext) {
     let property_editor_values = PropertyEditorValues::for_context(
         ctx,
         AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant_id),
-            component_id: Some(*component.id()),
             prop_id: None,
+            component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         },
     )

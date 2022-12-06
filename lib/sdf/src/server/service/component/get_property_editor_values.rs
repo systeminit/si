@@ -32,24 +32,9 @@ pub async fn get_property_editor_values(
         return Err(ComponentError::InvalidVisibility);
     }
 
-    let component = Component::get_by_id(&ctx, &request.component_id)
-        .await?
-        .ok_or(ComponentError::ComponentNotFound)?;
-    let schema_id = *component
-        .schema(&ctx)
-        .await?
-        .ok_or(ComponentError::SchemaNotFound)?
-        .id();
-    let schema_variant_id = *component
-        .schema_variant(&ctx)
-        .await?
-        .ok_or(ComponentError::SchemaVariantNotFound)?
-        .id();
     let context = AttributeReadContext {
-        schema_id: Some(schema_id),
-        schema_variant_id: Some(schema_variant_id),
-        component_id: Some(request.component_id),
         prop_id: None,
+        component_id: Some(request.component_id),
         ..AttributeReadContext::default()
     };
     let prop_edit_values = PropertyEditorValues::for_context(&ctx, context).await?;

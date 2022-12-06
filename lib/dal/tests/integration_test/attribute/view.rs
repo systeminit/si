@@ -18,12 +18,6 @@ async fn schema_variant_specific(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let base_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
-        ..AttributeReadContext::default()
-    };
-
     let name_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "name").await;
     name_prop
         .set_parent_prop(ctx, root_prop.domain_prop_id)
@@ -40,7 +34,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
         None,
         AttributeReadContext {
             prop_id: Some(root_prop.prop_id),
-            ..base_context
+            ..AttributeReadContext::default()
         },
     )
     .await
@@ -51,7 +45,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
         ctx,
         AttributeReadContext {
             prop_id: None,
-            ..base_context
+            ..AttributeReadContext::default()
         },
         Some(*root_attribute_value.id()),
     )
@@ -73,7 +67,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
         ctx,
         AttributeReadContext {
             prop_id: Some(root_prop.domain_prop_id),
-            ..base_context
+            ..AttributeReadContext::default()
         },
     )
     .await
@@ -84,14 +78,14 @@ async fn schema_variant_specific(ctx: &DalContext) {
         ctx,
         AttributeReadContext {
             prop_id: Some(*name_prop.id()),
-            ..base_context
+            ..AttributeReadContext::default()
         },
     )
     .await
     .expect("cannot find attribute value")
     .expect("attribute value not found");
 
-    let update_context = AttributeContextBuilder::from(base_context)
+    let update_context = AttributeContextBuilder::from(AttributeReadContext::default())
         .set_prop_id(*name_prop.id())
         .to_context()
         .expect("could not convert builder to attribute context");
@@ -111,7 +105,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
         ctx,
         AttributeReadContext {
             prop_id: None,
-            ..base_context
+            ..AttributeReadContext::default()
         },
         Some(*root_attribute_value.id()),
     )
@@ -136,7 +130,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
         ctx,
         AttributeReadContext {
             prop_id: None,
-            ..base_context
+            ..AttributeReadContext::default()
         },
         Some(updated_name_attribute_value_id),
     )
