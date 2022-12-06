@@ -420,7 +420,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
 
 #[test]
 async fn only_string_props(ctx: &DalContext) {
-    let (schema, schema_variant, bohemian_prop, killer_prop, root_prop) =
+    let (_schema, schema_variant, bohemian_prop, killer_prop, root_prop) =
         create_schema_with_string_props(ctx).await;
     let (component, _) =
         Component::new_for_schema_variant_with_node(ctx, "capoeira", schema_variant.id())
@@ -428,10 +428,7 @@ async fn only_string_props(ctx: &DalContext) {
             .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
-    base_attribute_context
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id());
+    base_attribute_context.set_component_id(*component.id());
 
     let domain_context = base_attribute_context
         .clone()
@@ -486,8 +483,6 @@ async fn only_string_props(ctx: &DalContext) {
     let component_view = ComponentView::for_context(
         ctx,
         AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
@@ -513,7 +508,7 @@ async fn only_string_props(ctx: &DalContext) {
 
 #[test]
 async fn one_object_prop(ctx: &DalContext) {
-    let (schema, schema_variant, queen_prop, killer_prop, bohemian_prop, root_prop) =
+    let (_schema, schema_variant, queen_prop, killer_prop, bohemian_prop, root_prop) =
         create_schema_with_object_and_string_prop(ctx).await;
     let (component, _) =
         Component::new_for_schema_variant_with_node(ctx, "santos dumont", schema_variant.id())
@@ -521,10 +516,7 @@ async fn one_object_prop(ctx: &DalContext) {
             .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
-    base_attribute_context
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id());
+    base_attribute_context.set_component_id(*component.id());
 
     let domain_context = base_attribute_context
         .clone()
@@ -599,8 +591,6 @@ async fn one_object_prop(ctx: &DalContext) {
     let component_view = ComponentView::for_context(
         ctx,
         AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
@@ -626,7 +616,7 @@ async fn one_object_prop(ctx: &DalContext) {
 #[test]
 async fn nested_object_prop(ctx: &DalContext) {
     let (
-        schema,
+        _schema,
         schema_variant,
         queen_prop,
         bohemian_prop,
@@ -641,10 +631,7 @@ async fn nested_object_prop(ctx: &DalContext) {
             .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
-    base_attribute_context
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id());
+    base_attribute_context.set_component_id(*component.id());
 
     let domain_context = base_attribute_context
         .clone()
@@ -759,8 +746,6 @@ async fn nested_object_prop(ctx: &DalContext) {
     let component_view = ComponentView::for_context(
         ctx,
         AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
@@ -792,7 +777,7 @@ async fn nested_object_prop(ctx: &DalContext) {
 
 #[test]
 async fn simple_array_of_strings(ctx: &DalContext) {
-    let (schema, schema_variant, sammy_prop, album_prop, root_prop) =
+    let (_schema, schema_variant, sammy_prop, album_prop, root_prop) =
         create_schema_with_array_of_string_props(ctx).await;
 
     let (component, _) =
@@ -801,10 +786,7 @@ async fn simple_array_of_strings(ctx: &DalContext) {
             .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
-    base_attribute_context
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id());
+    base_attribute_context.set_component_id(*component.id());
 
     let domain_context = base_attribute_context
         .clone()
@@ -864,8 +846,6 @@ async fn simple_array_of_strings(ctx: &DalContext) {
     let component_view = ComponentView::for_context(
         ctx,
         AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
@@ -892,7 +872,7 @@ async fn simple_array_of_strings(ctx: &DalContext) {
 #[test]
 async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
     let (
-        schema,
+        _schema,
         schema_variant,
         sammy_prop,
         album_object_prop,
@@ -909,10 +889,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
     .await
     .expect("Unable to create component");
 
-    let mut unset_attribute_context = AttributeContext::builder();
-    unset_attribute_context
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id());
+    let unset_attribute_context = AttributeContext::builder();
     let mut base_attribute_context = unset_attribute_context;
     base_attribute_context.set_component_id(*component.id());
 
@@ -1114,8 +1091,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
     let component_view = ComponentView::for_context(
         ctx,
         AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
@@ -1152,7 +1127,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
 
 #[test]
 async fn simple_map(ctx: &DalContext) {
-    let (schema, schema_variant, album_prop, album_item_prop, root_prop) =
+    let (_schema, schema_variant, album_prop, album_item_prop, root_prop) =
         create_simple_map(ctx).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
         ctx,
@@ -1163,10 +1138,7 @@ async fn simple_map(ctx: &DalContext) {
     .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
-    base_attribute_context
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id());
+    base_attribute_context.set_component_id(*component.id());
 
     let domain_context = base_attribute_context
         .clone()
@@ -1226,8 +1198,6 @@ async fn simple_map(ctx: &DalContext) {
     let component_view = ComponentView::for_context(
         ctx,
         AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
@@ -1253,7 +1223,7 @@ async fn simple_map(ctx: &DalContext) {
 #[test]
 async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
     let (
-        schema,
+        _schema,
         schema_variant,
         sammy_prop,
         album_object_prop,
@@ -1272,10 +1242,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
     .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
-    base_attribute_context
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id());
+    base_attribute_context.set_component_id(*component.id());
 
     let domain_context = base_attribute_context
         .clone()
@@ -1406,10 +1373,8 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
     let component_view = ComponentView::for_context(
         ctx,
         AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            component_id: Some(*component.id()),
             prop_id: None,
+            component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         },
     )
@@ -1548,12 +1513,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
 
     let external_provider_attribute_value = AttributeValue::find_for_context(
         ctx,
-        AttributeReadContext {
-            external_provider_id: Some(*external_provider.id()),
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        },
+        AttributeReadContext::default_with_external_provider(*external_provider.id()),
     )
     .await
     .unwrap()
@@ -1631,12 +1591,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
     // Assign the func for the object prop.
     let ragnarok_attribute_value = AttributeValue::find_for_context(
         ctx,
-        AttributeReadContext {
-            prop_id: Some(*ragnarok_prop.id()),
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        },
+        AttributeReadContext::default_with_prop(*ragnarok_prop.id()),
     )
     .await
     .expect("could not perform find for context")
@@ -1675,8 +1630,6 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
             .await
             .expect("unable to create component");
     let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };

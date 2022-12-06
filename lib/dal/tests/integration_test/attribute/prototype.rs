@@ -62,8 +62,6 @@ async fn new_attribute_prototype(ctx: &DalContext) {
 
     let context = AttributeContext::builder()
         .set_prop_id(*first_prop.id())
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*default_variant.id())
         .set_component_id(*component.id())
         .to_context()
         .expect("cannot create context");
@@ -83,17 +81,12 @@ async fn new_attribute_prototype(ctx: &DalContext) {
 #[test]
 async fn list_for_context_with_a_hash(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-
-    let mut base_prototype_context = AttributeContext::builder();
-    base_prototype_context
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id());
+    let base_prototype_context = AttributeContext::builder();
 
     // {
     //   albums: [
@@ -392,8 +385,6 @@ async fn remove_component_specific(ctx: &DalContext) {
 
     let read_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
@@ -416,8 +407,6 @@ async fn remove_component_specific(ctx: &DalContext) {
 
     let context = AttributeContextBuilder::new()
         .set_prop_id(*prop.id())
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
         .set_component_id(*component.id())
         .to_context()
         .expect("could not build context");

@@ -44,6 +44,8 @@ pub enum ComponentViewError {
     NoInternalProvider(PropId),
     #[error("no attribute value found for context {0:?}")]
     NoAttributeValue(AttributeReadContext),
+    #[error("component error: {0}")]
+    Component(String),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -78,14 +80,15 @@ impl ComponentView {
         let component = Component::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ComponentViewError::NotFound(component_id))?;
-
-        let schema_variant_id = context
-            .schema_variant_id()
+        let schema_variant = component
+            .schema_variant(ctx)
+            .await
+            .map_err(|e| ComponentViewError::Component(e.to_string()))?
             .ok_or_else(|| ComponentViewError::NoSchemaVariant(*component.id()))?;
 
-        let prop = Prop::find_root_for_schema_variant(ctx, schema_variant_id)
+        let prop = Prop::find_root_for_schema_variant(ctx, *schema_variant.id())
             .await?
-            .ok_or(ComponentViewError::NoRootProp(schema_variant_id))?;
+            .ok_or_else(|| ComponentViewError::NoRootProp(*schema_variant.id()))?;
 
         let implicit_provider = InternalProvider::find_for_prop(ctx, *prop.id())
             .await?

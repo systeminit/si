@@ -99,8 +99,6 @@ async fn check_validations_for_component(ctx: &DalContext) {
             .expect("could not create component");
 
     let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
@@ -341,8 +339,6 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
             .expect("could not create component");
 
     let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
@@ -425,13 +421,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         .expect("Update validation func code");
     let mut cache: HashMap<PropId, (Option<Value>, AttributeValue)> = HashMap::new();
     component
-        .check_single_validation(
-            ctx,
-            &validation_prototype,
-            &mut cache,
-            *schema_variant.id(),
-            *schema.id(),
-        )
+        .check_single_validation(ctx, &validation_prototype, &mut cache)
         .await
         .expect("check single validation");
 
@@ -559,14 +549,6 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
             .await
             .expect("could not get attribute value by id")
             .expect("attribute value not found by id");
-        assert_eq!(
-            attribute_value.context.schema_id(),
-            component_payload.schema_id
-        );
-        assert_eq!(
-            attribute_value.context.schema_variant_id(),
-            component_payload.schema_variant_id
-        );
         assert_eq!(
             attribute_value.context.component_id(),
             component_payload.component_id

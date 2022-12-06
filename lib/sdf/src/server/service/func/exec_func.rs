@@ -5,7 +5,7 @@ use dal::{
     job::definition::{DependentValuesUpdate, Qualification},
     AttributePrototype, AttributeValue, Component, DalContext, Func, FuncBackendKind, FuncId,
     PropId, PrototypeListForFunc, QualificationPrototype, QualificationPrototypeError,
-    SchemaVariant, StandardModel, ValidationPrototype, Visibility, WsEvent,
+    StandardModel, ValidationPrototype, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -80,18 +80,9 @@ async fn run_validations(ctx: &DalContext, func: &Func) -> FuncResult<()> {
         }
         let components = Component::list_for_schema_variant(ctx, schema_variant_id).await?;
         for component in components {
-            let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
-                .await?
-                .ok_or_else(|| FuncError::ComponentMissingSchemaVariant(*component.id()))?;
-
-            let schema = schema_variant
-                .schema(ctx)
-                .await?
-                .ok_or(FuncError::SchemaVariantMissingSchema(schema_variant_id))?;
-
             let mut cache: HashMap<PropId, (Option<Value>, AttributeValue)> = HashMap::new();
             component
-                .check_single_validation(ctx, &proto, &mut cache, schema_variant_id, *schema.id())
+                .check_single_validation(ctx, &proto, &mut cache)
                 .await?;
         }
     }

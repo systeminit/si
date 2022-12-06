@@ -4,10 +4,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
-use crate::service::func::get_func::GetFuncResponse;
 use dal::{
     attribute::context::AttributeContextBuilder,
     attribute::context::AttributeContextBuilderError,
@@ -22,16 +18,20 @@ use dal::{
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
     AttributeValueError, CodeLanguage, ComponentError, ComponentId, ConfirmationPrototype,
     ConfirmationPrototypeError, DalContext, Func, FuncBackendKind, FuncBindingError, FuncId,
-    InternalProviderError, InternalProviderId, Prop, PropError, PropId, PrototypeListForFunc,
+    InternalProviderError, InternalProviderId, PropError, PropId, PrototypeListForFunc,
     PrototypeListForFuncError, QualificationPrototype, QualificationPrototypeError,
-    ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
-    TransactionsError, Visibility, WriteTenancyError, WsEventError,
+    ReadTenancyError, SchemaVariantId, StandardModel, StandardModelError, TransactionsError,
+    Visibility, WriteTenancyError, WsEventError,
 };
 use dal::{
     func::argument::FuncArgument, ValidationPrototype, ValidationPrototypeError,
     ValidationPrototypeId,
 };
+use serde::{Deserialize, Serialize};
 use telemetry::prelude::info;
+use thiserror::Error;
+
+use crate::service::func::get_func::GetFuncResponse;
 
 pub mod create_func;
 pub mod exec_func;
@@ -168,40 +168,23 @@ pub struct AttributePrototypeArgumentView {
 #[serde(rename_all = "camelCase")]
 pub struct AttributePrototypeView {
     id: AttributePrototypeId,
-    schema_variant_id: SchemaVariantId,
     component_id: Option<ComponentId>,
     prop_id: PropId,
     prototype_arguments: Vec<AttributePrototypeArgumentView>,
 }
 
 impl AttributePrototypeView {
-    pub async fn into_context(&self, ctx: &DalContext) -> FuncResult<AttributeContext> {
+    pub fn to_attribute_context(&self) -> FuncResult<AttributeContext> {
         Ok(match self.component_id {
             // Attribute contexts which set the defaults for a schema variant, have *only* the prop
             // set on the context
             None | Some(ComponentId::NONE) => AttributeContextBuilder::new()
                 .set_prop_id(self.prop_id)
                 .to_context()?,
-
-            Some(component_id) => {
-                let component_id = dbg!(component_id);
-                // NOTE: Builder requires schema and schema variant id but we should only need prop
-                // + component!
-                let schema_id = *SchemaVariant::get_by_id(ctx, &self.schema_variant_id)
-                    .await?
-                    .ok_or(FuncError::AttributePrototypeMissingSchemaVariant(self.id))?
-                    .schema(ctx)
-                    .await?
-                    .ok_or(FuncError::AttributePrototypeMissingSchema(self.id))?
-                    .id();
-
-                AttributeContextBuilder::new()
-                    .set_prop_id(self.prop_id)
-                    .set_schema_id(schema_id)
-                    .set_schema_variant_id(self.schema_variant_id)
-                    .set_component_id(component_id)
-                    .to_context()?
-            }
+            Some(component_id) => AttributeContextBuilder::new()
+                .set_prop_id(self.prop_id)
+                .set_component_id(component_id)
+                .to_context()?,
         })
     }
 }
@@ -278,37 +261,6 @@ async fn prototype_view_for_prototype(
         None
     };
 
-    let schema_variant_id = if proto.context.schema_variant_id().is_none() {
-        let mut prop = Some(
-            Prop::get_by_id(ctx, &prop_id)
-                .await?
-                .ok_or_else(|| FuncError::AttributePrototypeMissingProp(*proto.id(), prop_id))?,
-        );
-
-        let schema_variant_id = loop {
-            match prop {
-                Some(the_prop) => match the_prop.schema_variants(ctx).await?.pop() {
-                    Some(schema_variant) => break Some(*schema_variant.id()),
-                    None => {
-                        prop = the_prop.parent_prop(ctx).await?;
-                    }
-                },
-                None => break None,
-            };
-        };
-
-        match schema_variant_id {
-            Some(schema_variant_id) => schema_variant_id,
-            None => {
-                return Err(FuncError::AttributePrototypeMissingSchemaVariant(
-                    *proto.id(),
-                ));
-            }
-        }
-    } else {
-        proto.context.schema_variant_id()
-    };
-
     let prototype_arguments =
         FuncArgument::list_for_func_with_prototype_arguments(ctx, func_id, *proto.id())
             .await?
@@ -328,7 +280,6 @@ async fn prototype_view_for_prototype(
         id: *proto.id(),
         prop_id,
         component_id,
-        schema_variant_id,
         prototype_arguments,
     })
 }

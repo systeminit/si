@@ -31,8 +31,6 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         ctx,
         AttributeReadContext {
             prop_id: None,
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant_id),
             component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         },
@@ -82,8 +80,6 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         ctx,
         AttributeReadContext {
             prop_id: None,
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant_id),
             component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         },

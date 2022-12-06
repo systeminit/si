@@ -160,8 +160,5 @@ export interface FuncWithPrototypeContext {
   backendKind: FuncBackendKind;
   isBuiltin: boolean;
   attributePrototypeId: number;
-  attributeContextSchemaId: number;
-  attributeContextSchemaVariantId: number;
   attributeContextComponentId: number;
-  attributeContextSystemId: number;
 }

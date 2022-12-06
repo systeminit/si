@@ -133,8 +133,6 @@ impl SchemaBuiltinsTestHarness {
             node_id: *node.id(),
             base_attribute_read_context: AttributeReadContext {
                 prop_id: None,
-                schema_id: Some(schema_id),
-                schema_variant_id: Some(schema_variant_id),
                 component_id: Some(*component.id()),
                 ..AttributeReadContext::default()
             },

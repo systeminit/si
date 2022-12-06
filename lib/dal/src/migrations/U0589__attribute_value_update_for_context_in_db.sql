@@ -25,10 +25,6 @@ BEGIN
 
     IF check_context_record.attribute_context_component_id != -1 THEN
         check_is_component_specific := TRUE;
-    ELSIF check_context_record.attribute_context_schema_variant_id != -1 THEN
-        check_is_schema_variant_specific := TRUE;
-    ELSIF check_context_record.attribute_context_schema_id != -1 THEN
-        check_is_schema_specific := TRUE;
     ELSE
         -- If the check_context is only specific to one of the triple that is
         -- the least level of specificity, then there is no possible way for
@@ -63,57 +59,6 @@ BEGIN
     --   * Component is not the most specific, and "check" is the same
     --     "reference".
 
-    -- Check SchemaVariant level.
-    IF check_is_schema_variant_specific
-       AND reference_schema_variant_id != -1 THEN
-        -- If the SchemaVariantId is the most specific part of the
-        -- "check" AttributeContext, then "reference" needs to have
-        -- -1 to be less specific.
-        result := FALSE;
-        RETURN;
-    ELSIF NOT check_is_component_specific
-          AND check_context_record.attribute_context_schema_variant_id != reference_schema_variant_id THEN
-        -- If the SchemaVariant isn't the most specific field, then
-        -- the SchemaVariantId must be the same between "check" and
-        -- "reference":
-        --   * If Component, or System is the most specific piece,
-        --     then the SchemaVariantId must be the same on both.
-        --   * If something less specific than SchemaVariant is the
-        --     most specific piece, then both "check" and "reference"
-        --     must have -1.
-        result := FALSE;
-        RETURN;
-    END IF;
-    -- The only options left should all mean that the SchemaVariantId
-    -- on the "reference" is acceptable:
-    --   * SchemaVariant is the most specific, and "reference" is
-    --     set to -1.
-    --   * SchemaVariant is not the most specific, and "check" is
-    --     the same as "reference".
-
-    -- Check Schema level.
-    IF check_is_schema_specific
-       AND reference_schema_id != -1 THEN
-        -- If the Schema is the most specific part of the "check" AttributeContext,
-        -- then "reference" needs to have -1 to be less specific.
-        result := FALSE;
-        RETURN;
-    ELSIF NOT check_is_schema_specific
-          AND check_context_record.attribute_context_schema_id != reference_schema_id THEN
-        -- If the Schema isn't the most specific filed, then the SchemaId must be
-        -- the same between "check" and "reference":
-        --   * If SchemaVariant, Component, or System is the most specific piece,
-        --     then SchemaId must be the same on both.
-        --   * If Internal/External/Prop is the most specific piece, then both
-        --     "check" and "reference" must have -1.
-        result := FALSE;
-        RETURN;
-    END IF;
-    -- The only options left should all mean that the SchemaId on the
-    -- "reference" is acceptable:
-    --   * Schema is the most specific and the "reference" is set to -1.
-    --   * Schema is not the most specific, and "check" is the same as "reference".
-
     -- Check the least specific "triple"
     IF check_context_record.attribute_context_external_provider_id != reference_external_provider_id
        OR check_context_record.attribute_context_internal_provider_id != reference_internal_provider_id
@@ -143,8 +88,6 @@ AS $$
         'attribute_context_prop_id',              source_av.attribute_context_prop_id,
         'attribute_context_internal_provider_id', source_av.attribute_context_internal_provider_id,
         'attribute_context_external_provider_id', source_av.attribute_context_external_provider_id,
-        'attribute_context_schema_id',            source_av.attribute_context_schema_id,
-        'attribute_context_schema_variant_id',    source_av.attribute_context_schema_variant_id,
         'attribute_context_component_id',         source_av.attribute_context_component_id
     )
 $$;
@@ -159,8 +102,6 @@ AS $$
         'attribute_context_prop_id',              source_ap.attribute_context_prop_id,
         'attribute_context_internal_provider_id', source_ap.attribute_context_internal_provider_id,
         'attribute_context_external_provider_id', source_ap.attribute_context_external_provider_id,
-        'attribute_context_schema_id',            source_ap.attribute_context_schema_id,
-        'attribute_context_schema_variant_id',    source_ap.attribute_context_schema_variant_id,
         'attribute_context_component_id',         source_ap.attribute_context_component_id
     )
 $$;
@@ -175,8 +116,6 @@ AS $$
         'attribute_context_prop_id',              source_jsonb -> 'attribute_context_prop_id',
         'attribute_context_internal_provider_id', source_jsonb -> 'attribute_context_internal_provider_id',
         'attribute_context_external_provider_id', source_jsonb -> 'attribute_context_external_provider_id',
-        'attribute_context_schema_id',            source_jsonb -> 'attribute_context_schema_id',
-        'attribute_context_schema_variant_id',    source_jsonb -> 'attribute_context_schema_variant_id',
         'attribute_context_component_id',         source_jsonb -> 'attribute_context_component_id'
     )
 $$;
@@ -192,8 +131,6 @@ BEGIN
                                                  reference.attribute_context_prop_id,
                                                  reference.attribute_context_internal_provider_id,
                                                  reference.attribute_context_external_provider_id,
-                                                 reference.attribute_context_schema_id,
-                                                 reference.attribute_context_schema_variant_id,
                                                  reference.attribute_context_component_id);
 END;
 -- This is safe to be IMMUTABLE since for any given (check_context, reference) pair, this will always return
@@ -211,9 +148,7 @@ AS $$
     -- Even though these fields are numeric, when we extract their values we either get a jsonb, or text. We'd
     -- have to further use jsonb_typeof(...)  to make sure it's actually a 'number' before doing a conversion,
     -- but checking against a string is good enough for now.
-    SELECT  this_context ->> 'attribute_context_schema_id'         = '-1'
-        AND this_context ->> 'attribute_context_schema_variant_id' = '-1'
-        AND this_context ->> 'attribute_context_component_id'      = '-1'
+    SELECT  this_context ->> 'attribute_context_component_id'      = '-1'
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_value_set_parent_attribute_value_v1(this_write_tenancy             jsonb,
@@ -303,8 +238,6 @@ BEGIN
              visibility_deleted_at DESC NULLS FIRST,
              attribute_context_internal_provider_id DESC,
              attribute_context_external_provider_id DESC,
-             attribute_context_schema_id DESC,
-             attribute_context_schema_variant_id DESC,
              attribute_context_component_id DESC,
              -- bools sort false first ascending.
              av.tenancy_universal;
@@ -324,12 +257,6 @@ BEGIN
     IF new_attribute_context_record.attribute_context_component_id != -1 THEN
         -- Remove the ComponentId part of the AttributeContext.
         new_attribute_context_record.attribute_context_component_id := -1;
-    ELSIF new_attribute_context_record.attribute_context_schema_variant_id != -1 THEN
-        -- Remove the SchemaVariantId part of the AttributeContext.
-        new_attribute_context_record.attribute_context_schema_variant_id := -1;
-    ELSIF new_attribute_context_record.attribute_context_schema_id != -1 THEN
-        -- Remove the SchemaId part of the AttributeContext.
-        new_attribute_context_record.attribute_context_schema_id := -1;
     END IF;
     -- We don't try to remove the PropId/InternalProviderId/ExternalProviderId as there is nothing less
     -- specific than that part of the AttributeContext. (Those three form a triple that is the least specific
@@ -384,8 +311,6 @@ AS $$
         COALESCE(ap.key, ''),
         ap.attribute_context_internal_provider_id DESC,
         ap.attribute_context_external_provider_id DESC,
-        ap.attribute_context_schema_id DESC,
-        ap.attribute_context_schema_variant_id DESC,
         ap.attribute_context_component_id DESC,
         av.tenancy_universal -- bools sort false first ascending.
 $$;
@@ -636,8 +561,6 @@ $$
         (reference_context ->> 'attribute_context_prop_id')::bigint,
         (reference_context ->> 'attribute_context_internal_provider_id')::bigint,
         (reference_context ->> 'attribute_context_external_provider_id')::bigint,
-        (reference_context ->> 'attribute_context_schema_id')::bigint,
-        (reference_context ->> 'attribute_context_schema_variant_id')::bigint,
         (reference_context ->> 'attribute_context_component_id')::bigint
     )
 $$;
@@ -675,8 +598,6 @@ AS $$
             attribute_context_internal_provider_id DESC,
             attribute_context_external_provider_id DESC,
             COALESCE(key, ''),
-            attribute_context_schema_id DESC,
-            attribute_context_schema_variant_id DESC,
             attribute_context_component_id DESC,
             av.tenancy_universal -- bools sort false first ascending.
 $$;
@@ -876,8 +797,6 @@ AS $$
                 COALESCE(key, ''),
                 attribute_context_internal_provider_id DESC,
                 attribute_context_external_provider_id DESC,
-                attribute_context_schema_id DESC,
-                attribute_context_schema_variant_id DESC,
                 attribute_context_component_id DESC,
                 av.tenancy_universal -- bools sort false first ascending.
 $$;
@@ -2038,14 +1957,10 @@ CREATE OR REPLACE FUNCTION attribute_contexts_match_v1(
     a_prop_id              text,
     a_internal_provider_id text,
     a_external_provider_id text,
-    a_schema_id            text,
-    a_schema_variant_id    text,
     a_component_id         text,
     b_prop_id              text,
     b_internal_provider_id text,
     b_external_provider_id text,
-    b_schema_id            text,
-    b_schema_variant_id    text,
     b_component_id         text
 )
 RETURNS bool
@@ -2055,8 +1970,6 @@ AS $$
     SELECT  a_prop_id              = b_prop_id
         AND a_internal_provider_id = b_internal_provider_id
         AND a_external_provider_id = b_external_provider_id
-        AND a_schema_id            = b_schema_id
-        AND a_schema_variant_id    = b_schema_variant_id
         AND a_component_id         = b_component_id
 $$;
 
@@ -2072,14 +1985,10 @@ AS $$
         record_a ->> 'attribute_context_prop_id',
         record_a ->> 'attribute_context_internal_provider_id',
         record_a ->> 'attribute_context_external_provider_id',
-        record_a ->> 'attribute_context_schema_id',
-        record_a ->> 'attribute_context_schema_variant_id',
         record_a ->> 'attribute_context_component_id',
         record_b ->> 'attribute_context_prop_id',
         record_b ->> 'attribute_context_internal_provider_id',
         record_b ->> 'attribute_context_external_provider_id',
-        record_b ->> 'attribute_context_schema_id',
-        record_b ->> 'attribute_context_schema_variant_id',
         record_b ->> 'attribute_context_component_id'
     )
 $$;
@@ -2118,15 +2027,11 @@ $$;
 --         record_a.attribute_context_prop_id,
 --         record_a.attribute_context_internal_provider_id,
 --         record_a.attribute_context_external_provider_id,
---         record_a.attribute_context_schema_id,
---         record_a.attribute_context_schema_variant_id,
 --         record_a.attribute_context_component_id,
 --         record_a.attribute_context_system_id,
 --         record_b.attribute_context_prop_id,
 --         record_b.attribute_context_internal_provider_id,
 --         record_b.attribute_context_external_provider_id,
---         record_b.attribute_context_schema_id,
---         record_b.attribute_context_schema_variant_id,
 --         record_b.attribute_context_component_id,
 --         record_b.attribute_context_system_id
 --     )
@@ -2329,8 +2234,6 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION attribute_context_build_from_parts_v1(this_prop_id              bigint,
                                                                  this_internal_provider_id bigint,
                                                                  this_external_provider_id bigint,
-                                                                 this_schema_id            bigint,
-                                                                 this_schema_variant_id    bigint,
                                                                  this_component_id         bigint,
                                                                  OUT new_attribute_context jsonb
 )
@@ -2340,8 +2243,6 @@ BEGIN
     new_attribute_context := jsonb_build_object('attribute_context_prop_id',              this_prop_id,
                                                 'attribute_context_internal_provider_id', this_internal_provider_id,
                                                 'attribute_context_external_provider_id', this_external_provider_id,
-                                                'attribute_context_schema_id',            this_schema_id,
-                                                'attribute_context_schema_variant_id',    this_schema_variant_id,
                                                 'attribute_context_component_id',         this_component_id);
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
@@ -2660,8 +2561,6 @@ BEGIN
                      props.name,
                      attribute_values.attribute_context_internal_provider_id,
                      attribute_values.attribute_context_external_provider_id,
-                     attribute_values.attribute_context_schema_id,
-                     attribute_values.attribute_context_schema_variant_id,
                      attribute_values.attribute_context_component_id,
                      attribute_values.proxy_for_attribute_value_id,
                      attribute_values.sealed_proxy,

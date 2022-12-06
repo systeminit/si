@@ -30,11 +30,11 @@ use crate::{
     pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    AttributeContextError, AttributePrototypeArgumentError, ComponentId, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncBinding, FuncError, HistoryEventError, IndexMap,
-    InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind, ReadTenancyError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp, TransactionsError,
-    Visibility, WriteTenancy,
+    AttributeContextError, AttributePrototypeArgumentError, Component, ComponentId, DalContext,
+    Func, FuncBackendKind, FuncBackendResponseType, FuncBinding, FuncError, HistoryEventError,
+    IndexMap, InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind,
+    ReadTenancyError, StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility,
+    WriteTenancy,
 };
 
 pub mod view;
@@ -173,10 +173,10 @@ pub enum AttributeValueError {
     ValueAsMap,
     #[error("JSON value failed to parse as an object")]
     ValueAsObject,
-    #[error("schema variant missing in context")]
-    SchemaVariantMissing,
-    #[error("schema missing in context")]
-    SchemaMissing,
+    #[error("component missing in context: {0:?}")]
+    MissingComponentInReadContext(AttributeReadContext),
+    #[error("component not found by id: {0}")]
+    ComponentNotFoundById(ComponentId),
 }
 
 /// This is the function that set the attribute value, along with the function's prototype
@@ -196,10 +196,6 @@ pub struct FuncWithPrototypeContext {
     is_builtin: bool,
     #[serde(rename(serialize = "attributePrototypeId"))]
     attribute_prototype_id: AttributePrototypeId,
-    #[serde(rename(serialize = "attributeContextSchemaId"))]
-    attribute_context_schema_id: SchemaId,
-    #[serde(rename(serialize = "attributeContextSchemaVariantId"))]
-    attribute_context_schema_variant_id: SchemaVariantId,
     #[serde(rename(serialize = "attributeContextComponentId"))]
     attribute_context_component_id: ComponentId,
 }
@@ -515,18 +511,31 @@ impl AttributeValue {
         Ok(standard_model::object_from_row(row)?)
     }
 
+    /// List [`AttributeValuePayloads`](AttributeValuePayload) for a given
+    /// [`context`](crate::AttributeReadContext), which must specify a
+    /// [`ComponentId`](crate::Component).
     pub async fn list_payload_for_read_context(
         ctx: &DalContext,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<AttributeValuePayload>> {
-        let schema_variant_id = if let Some(schema_variant_id) = context.schema_variant_id() {
-            schema_variant_id
-        } else {
-            return Err(AttributeValueError::SchemaVariantMissing);
+        let schema_variant_id = match context.component_id {
+            Some(component_id) if component_id != ComponentId::NONE => {
+                let component = Component::get_by_id(ctx, &component_id)
+                    .await?
+                    .ok_or(AttributeValueError::ComponentNotFoundById(component_id))?;
+                let schema_variant = component
+                    .schema_variant(ctx)
+                    .await
+                    .map_err(|e| AttributeValueError::Component(e.to_string()))?
+                    .ok_or(AttributeValueError::SchemaVariantNotFoundForComponent(
+                        component_id,
+                    ))?;
+                *schema_variant.id()
+            }
+            _ => {
+                return Err(AttributeValueError::MissingComponentInReadContext(context));
+            }
         };
-        if !context.has_schema_id() {
-            return Err(AttributeValueError::SchemaMissing);
-        }
 
         let rows = ctx
             .txns()

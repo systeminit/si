@@ -8,7 +8,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    attribute::context::UNSET_ID_VALUE, func::argument::FuncArgumentId, impl_standard_model, pk,
+    func::argument::FuncArgumentId, impl_standard_model, pk,
     provider::internal::InternalProviderId, standard_model, standard_model_accessor,
     AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, HistoryEventError,
     StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
@@ -103,10 +103,10 @@ impl AttributePrototypeArgument {
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<Self> {
         // Ensure the value fields are what we expect.
-        let external_provider_id: ExternalProviderId = UNSET_ID_VALUE.into();
-        let tail_component_id: ComponentId = UNSET_ID_VALUE.into();
-        let head_component_id: ComponentId = UNSET_ID_VALUE.into();
-        if internal_provider_id == UNSET_ID_VALUE.into() {
+        let external_provider_id = ExternalProviderId::NONE;
+        let tail_component_id = ComponentId::NONE;
+        let head_component_id = ComponentId::NONE;
+        if internal_provider_id == InternalProviderId::NONE {
             return Err(AttributePrototypeArgumentError::RequiredValueFieldsUnset);
         }
 
@@ -141,15 +141,15 @@ impl AttributePrototypeArgument {
         external_provider_id: ExternalProviderId,
     ) -> AttributePrototypeArgumentResult<Self> {
         // Ensure the value fields are what we expect.
-        if external_provider_id == UNSET_ID_VALUE.into()
-            || tail_component_id == UNSET_ID_VALUE.into()
-            || head_component_id == UNSET_ID_VALUE.into()
+        if external_provider_id == ExternalProviderId::NONE
+            || tail_component_id == ComponentId::NONE
+            || head_component_id == ComponentId::NONE
         {
             return Err(AttributePrototypeArgumentError::RequiredValueFieldsUnset);
         }
 
         // For inter component connections, the internal provider id field must be unset.
-        let internal_provider_id: InternalProviderId = UNSET_ID_VALUE.into();
+        let internal_provider_id = InternalProviderId::NONE;
 
         let row = ctx
             .txns()
@@ -209,15 +209,15 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<()> {
-        if self.internal_provider_id != UNSET_ID_VALUE.into()
-            && internal_provider_id == UNSET_ID_VALUE.into()
+        if self.internal_provider_id != InternalProviderId::NONE
+            && internal_provider_id == InternalProviderId::NONE
         {
             return Err(AttributePrototypeArgumentError::CannotFlipUnsetFieldToSet(
                 "InternalProviderId",
             ));
         };
-        if self.internal_provider_id == UNSET_ID_VALUE.into()
-            && internal_provider_id != UNSET_ID_VALUE.into()
+        if self.internal_provider_id == InternalProviderId::NONE
+            && internal_provider_id != InternalProviderId::NONE
         {
             return Err(AttributePrototypeArgumentError::CannotFlipSetFieldToUnset(
                 "InternalProviderId",
@@ -235,15 +235,15 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         external_provider_id: ExternalProviderId,
     ) -> AttributePrototypeArgumentResult<()> {
-        if self.external_provider_id != UNSET_ID_VALUE.into()
-            && external_provider_id == UNSET_ID_VALUE.into()
+        if self.external_provider_id != ExternalProviderId::NONE
+            && external_provider_id == ExternalProviderId::NONE
         {
             return Err(AttributePrototypeArgumentError::CannotFlipUnsetFieldToSet(
                 "ExternalProviderId",
             ));
         }
-        if self.external_provider_id == UNSET_ID_VALUE.into()
-            && external_provider_id != UNSET_ID_VALUE.into()
+        if self.external_provider_id == ExternalProviderId::NONE
+            && external_provider_id != ExternalProviderId::NONE
         {
             return Err(AttributePrototypeArgumentError::CannotFlipSetFieldToUnset(
                 "ExternalProviderId",
@@ -261,16 +261,12 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         tail_component_id: ComponentId,
     ) -> AttributePrototypeArgumentResult<()> {
-        if self.tail_component_id != UNSET_ID_VALUE.into()
-            && tail_component_id == UNSET_ID_VALUE.into()
-        {
+        if self.tail_component_id != ComponentId::NONE && tail_component_id == ComponentId::NONE {
             return Err(AttributePrototypeArgumentError::CannotFlipUnsetFieldToSet(
                 "tail ComponentId",
             ));
         }
-        if self.tail_component_id == UNSET_ID_VALUE.into()
-            && tail_component_id != UNSET_ID_VALUE.into()
-        {
+        if self.tail_component_id == ComponentId::NONE && tail_component_id != ComponentId::NONE {
             return Err(AttributePrototypeArgumentError::CannotFlipSetFieldToUnset(
                 "tail ComponentId",
             ));
@@ -286,16 +282,12 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         head_component_id: ComponentId,
     ) -> AttributePrototypeArgumentResult<()> {
-        if self.head_component_id != UNSET_ID_VALUE.into()
-            && head_component_id == UNSET_ID_VALUE.into()
-        {
+        if self.head_component_id != ComponentId::NONE && head_component_id == ComponentId::NONE {
             return Err(AttributePrototypeArgumentError::CannotFlipUnsetFieldToSet(
                 "head ComponentId",
             ));
         }
-        if self.head_component_id == UNSET_ID_VALUE.into()
-            && head_component_id != UNSET_ID_VALUE.into()
-        {
+        if self.head_component_id == ComponentId::NONE && head_component_id != ComponentId::NONE {
             return Err(AttributePrototypeArgumentError::CannotFlipSetFieldToUnset(
                 "head ComponentId",
             ));
@@ -307,7 +299,7 @@ impl AttributePrototypeArgument {
     /// Determines if the [`InternalProviderId`](crate::InternalProvider) is unset. This function
     /// can be useful for determining how to build [`FuncBinding`](crate::FuncBinding) arguments.
     pub fn is_internal_provider_unset(&self) -> bool {
-        self.internal_provider_id == UNSET_ID_VALUE.into()
+        self.internal_provider_id == InternalProviderId::NONE
     }
 
     /// List all [`AttributePrototypeArguments`](Self) for a given

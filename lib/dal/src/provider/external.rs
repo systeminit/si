@@ -134,12 +134,15 @@ impl ExternalProvider {
         let mut external_provider: ExternalProvider =
             standard_model::finish_create_from_row(ctx, row).await?;
 
+        let attribute_context = AttributeContext::builder()
+            .set_external_provider_id(external_provider.id)
+            .to_context()?;
         let attribute_prototype = AttributePrototype::new(
             ctx,
             func_id,
             func_binding_id,
             func_binding_return_value_id,
-            external_provider.attribute_context()?,
+            attribute_context,
             None,
             None,
         )
@@ -289,15 +292,5 @@ impl ExternalProvider {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
-    }
-
-    /// Returns an [`AttributeContext`](crate::AttributeContext) corresponding to our id, our
-    /// [`SchemaId`](crate::SchemaId) and our [`SchemaVariantId`](crate::SchemaVariantId).
-    pub fn attribute_context(&self) -> ExternalProviderResult<AttributeContext> {
-        Ok(AttributeContext::builder()
-            .set_external_provider_id(self.id)
-            .set_schema_id(self.schema_id)
-            .set_schema_variant_id(self.schema_variant_id)
-            .to_context()?)
     }
 }

@@ -21,17 +21,11 @@ impl Component {
         let component = Self::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
-        let schema = component
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(component_id))?;
         let schema_variant = component
             .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::NoSchemaVariant(component_id))?;
         let base_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(component_id),
             ..AttributeReadContext::default()
         };

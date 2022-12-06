@@ -36,8 +36,6 @@ async fn update_for_context_simple(ctx: &DalContext) {
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
@@ -177,8 +175,6 @@ async fn insert_for_context_simple(ctx: &DalContext) {
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
@@ -293,8 +289,6 @@ async fn update_for_context_object(ctx: &DalContext) {
 
     let read_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
@@ -320,8 +314,6 @@ async fn update_for_context_object(ctx: &DalContext) {
         AttributeReadContext {
             prop_id: Some(root.prop_id),
             component_id: Some(*component.id()),
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             ..AttributeReadContext::any()
         },
     )
@@ -337,8 +329,6 @@ async fn update_for_context_object(ctx: &DalContext) {
         AttributeReadContext {
             prop_id: Some(root.domain_prop_id),
             component_id: Some(*component.id()),
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             ..AttributeReadContext::any()
         },
     )
@@ -351,8 +341,6 @@ async fn update_for_context_object(ctx: &DalContext) {
 
     let update_context = AttributeContext::builder()
         .set_prop_id(root.domain_prop_id)
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
         .set_component_id(*component.id())
         .to_context()
         .expect("cannot build write AttributeContext");
@@ -492,8 +480,6 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
@@ -586,10 +572,8 @@ async fn list_payload(ctx: &DalContext) {
     let payloads = AttributeValue::list_payload_for_read_context(
         ctx,
         AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant_id),
-            component_id: Some(*component.id()),
             prop_id: None,
+            component_id: Some(*component.id()),
             ..AttributeReadContext::default()
         },
     )

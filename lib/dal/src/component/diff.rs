@@ -52,18 +52,12 @@ impl ComponentDiff {
             .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::NoSchemaVariant(component_id))?;
-        let schema = component
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(component_id))?;
         let root_prop = Prop::find_root_for_schema_variant(ctx, *schema_variant.id())
             .await?
             .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
 
         let component_view_context = AttributeReadContext {
             prop_id: Some(*root_prop.id()),
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(component_id),
             ..AttributeReadContext::default()
         };

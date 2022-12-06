@@ -8,12 +8,12 @@ use crate::socket::SocketArity;
 use crate::validation::Validation;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
-    schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributeContext,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsResult, CodeLanguage, ConfirmationPrototype, ConfirmationPrototypeContext, DalContext,
-    DiagramKind, ExternalProvider, Func, FuncBinding, FuncError, InternalProvider, PropKind,
-    QualificationPrototype, QualificationPrototypeContext, SchemaError, SchemaKind, SchemaVariant,
-    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
+    AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsResult, CodeLanguage,
+    ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider,
+    Func, FuncBinding, FuncError, InternalProvider, PropKind, QualificationPrototype,
+    QualificationPrototypeContext, SchemaError, SchemaKind, SchemaVariant, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 // VPC documentation URLs
@@ -51,11 +51,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
 
         // Diagram and UI Menu
         let diagram_kind = schema
@@ -333,8 +328,6 @@ impl MigrationDriver {
         self.set_default_value_for_prop(
             ctx,
             *aws_resource_type_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
             serde_json::json!["security-group-rule"],
         )
         .await?;
@@ -369,26 +362,17 @@ impl MigrationDriver {
         // info!("post");
 
         // Bind sockets to providers
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
-        let tags_map_attribute_read_context = AttributeReadContext {
-            prop_id: Some(*tags_map_prop.id()),
-            ..base_attribute_read_context
-        };
+        let tags_map_attribute_read_context =
+            AttributeReadContext::default_with_prop(*tags_map_prop.id());
         let tags_map_attribute_value =
             AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
                 .await?
                 .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
                     tags_map_attribute_read_context,
                 ))?;
-        let tags_map_item_attribute_context =
-            AttributeContextBuilder::from(base_attribute_read_context)
-                .set_prop_id(*tags_map_item_prop.id())
-                .to_context()?;
+        let tags_map_item_attribute_context = AttributeContextBuilder::new()
+            .set_prop_id(*tags_map_item_prop.id())
+            .to_context()?;
         let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
             ctx,
             tags_map_item_attribute_context,
@@ -438,18 +422,9 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Bind sockets to providers
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
         // region from input socket
-        let region_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*region_prop.id()),
-            ..base_attribute_read_context
-        };
+        let region_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*region_prop.id());
         let region_attribute_value =
             AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
                 .await?
@@ -473,10 +448,7 @@ impl MigrationDriver {
 
         // security group id from input socket
         {
-            let read_ctx = AttributeReadContext {
-                prop_id: Some(*group_id_prop.id()),
-                ..base_attribute_read_context
-            };
+            let read_ctx = AttributeReadContext::default_with_prop(*group_id_prop.id());
             let attribute_value = AttributeValue::find_for_context(ctx, read_ctx)
                 .await?
                 .ok_or(BuiltinsError::AttributeValueNotFoundForContext(read_ctx))?;
@@ -513,10 +485,7 @@ impl MigrationDriver {
                     )
                 })?;
 
-            let read_ctx = AttributeReadContext {
-                prop_id: Some(*ip_permissions_prop.id()),
-                ..base_attribute_read_context
-            };
+            let read_ctx = AttributeReadContext::default_with_prop(*ip_permissions_prop.id());
 
             let attribute_value = AttributeValue::find_for_context(ctx, read_ctx)
                 .await?
@@ -647,11 +616,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
 
         // Diagram and UI Menu
         let diagram_kind = schema
@@ -888,41 +852,24 @@ impl MigrationDriver {
         self.set_default_value_for_prop(
             ctx,
             *aws_resource_type_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
             serde_json::json!["security-group-rule"],
         )
         .await?;
-        self.set_default_value_for_prop(
-            ctx,
-            *protocol_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-            serde_json::json!["tcp"],
-        )
-        .await?;
+        self.set_default_value_for_prop(ctx, *protocol_prop.id(), serde_json::json!["tcp"])
+            .await?;
 
         // Bind sockets to providers
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
-        let tags_map_attribute_read_context = AttributeReadContext {
-            prop_id: Some(*tags_map_prop.id()),
-            ..base_attribute_read_context
-        };
+        let tags_map_attribute_read_context =
+            AttributeReadContext::default_with_prop(*tags_map_prop.id());
         let tags_map_attribute_value =
             AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
                 .await?
                 .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
                     tags_map_attribute_read_context,
                 ))?;
-        let tags_map_item_attribute_context =
-            AttributeContextBuilder::from(base_attribute_read_context)
-                .set_prop_id(*tags_map_item_prop.id())
-                .to_context()?;
+        let tags_map_item_attribute_context = AttributeContextBuilder::new()
+            .set_prop_id(*tags_map_item_prop.id())
+            .to_context()?;
         let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
             ctx,
             tags_map_item_attribute_context,
@@ -972,18 +919,9 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Bind sockets to providers
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
         // region from input socket
-        let region_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*region_prop.id()),
-            ..base_attribute_read_context
-        };
+        let region_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*region_prop.id());
         let region_attribute_value =
             AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
                 .await?
@@ -1006,10 +944,8 @@ impl MigrationDriver {
         .await?;
 
         // security group id from input socket
-        let group_id_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*group_id_prop.id()),
-            ..base_attribute_read_context
-        };
+        let group_id_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*group_id_prop.id());
         let group_id_attribute_value =
             AttributeValue::find_for_context(ctx, group_id_attribute_value_read_context)
                 .await?
@@ -1138,11 +1074,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
 
         // Diagram and UI Menu
         let diagram_kind = schema
@@ -1319,33 +1250,22 @@ impl MigrationDriver {
         self.set_default_value_for_prop(
             ctx,
             *aws_resource_type_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
             serde_json::json!["security-group"],
         )
         .await?;
 
         // Bind sockets to providers
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
-        let tags_map_attribute_read_context = AttributeReadContext {
-            prop_id: Some(*tags_map_prop.id()),
-            ..base_attribute_read_context
-        };
+        let tags_map_attribute_read_context =
+            AttributeReadContext::default_with_prop(*tags_map_prop.id());
         let tags_map_attribute_value =
             AttributeValue::find_for_context(ctx, tags_map_attribute_read_context)
                 .await?
                 .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
                     tags_map_attribute_read_context,
                 ))?;
-        let tags_map_item_attribute_context =
-            AttributeContextBuilder::from(base_attribute_read_context)
-                .set_prop_id(*tags_map_item_prop.id())
-                .to_context()?;
+        let tags_map_item_attribute_context = AttributeContextBuilder::new()
+            .set_prop_id(*tags_map_item_prop.id())
+            .to_context()?;
         let name_tags_item_attribute_value_id = AttributeValue::insert_for_context(
             ctx,
             tags_map_item_attribute_context,
@@ -1395,13 +1315,6 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Socket Binding
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
         // security_group_id to output socket
         let security_group_id_external_provider_attribute_prototype_id =
             security_group_id_external_provider
@@ -1441,10 +1354,8 @@ impl MigrationDriver {
         .await?;
 
         // region from input socket
-        let region_attribute_value_read_context = AttributeReadContext {
-            prop_id: Some(*region_prop.id()),
-            ..base_attribute_read_context
-        };
+        let region_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*region_prop.id());
         let region_attribute_value =
             AttributeValue::find_for_context(ctx, region_attribute_value_read_context)
                 .await?
@@ -1469,10 +1380,7 @@ impl MigrationDriver {
         // Make GroupName take the value of /root/si/name
         let group_name_attribute_value = AttributeValue::find_for_context(
             ctx,
-            AttributeReadContext {
-                prop_id: Some(*group_name_prop.id()),
-                ..base_attribute_read_context
-            },
+            AttributeReadContext::default_with_prop(*group_name_prop.id()),
         )
         .await?
         .ok_or(AttributeValueError::Missing)?;

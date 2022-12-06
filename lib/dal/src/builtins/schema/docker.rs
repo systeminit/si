@@ -5,11 +5,11 @@ use crate::builtins::schema::MigrationDriver;
 use crate::{
     component::ComponentKind, edit_field::widget::*, prototype_context::PrototypeContext,
     qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu,
-    socket::SocketArity, ActionPrototype, ActionPrototypeContext, AttributeContext,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func,
-    InternalProvider, Prop, PropKind, QualificationPrototype, SchemaError, SchemaKind,
-    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    socket::SocketArity, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
+    AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult,
+    DalContext, DiagramKind, ExternalProvider, Func, InternalProvider, Prop, PropKind,
+    QualificationPrototype, SchemaError, SchemaKind, StandardModel, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 
 // Reference: https://www.docker.com/company/newsroom/media-resources/
@@ -104,11 +104,6 @@ impl MigrationDriver {
             None => return Ok(()),
         };
 
-        let mut attribute_context_builder = AttributeContext::builder();
-        attribute_context_builder
-            .set_schema_id(*schema.id())
-            .set_schema_variant_id(*schema_variant.id());
-
         let diagram_kind = schema
             .diagram_kind()
             .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
@@ -198,19 +193,10 @@ impl MigrationDriver {
 
         schema_variant.finalize(ctx).await?;
 
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            ..AttributeReadContext::default()
-        };
-
         // Connect the "/root/si/name" field to the "/root/domain/image" field.
         let image_attribute_value = AttributeValue::find_for_context(
             ctx,
-            AttributeReadContext {
-                prop_id: Some(*image_prop.id()),
-                ..base_attribute_read_context
-            },
+            AttributeReadContext::default_with_prop(*image_prop.id()),
         )
         .await?
         .ok_or(AttributeValueError::Missing)?;
