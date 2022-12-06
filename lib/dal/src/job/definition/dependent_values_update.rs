@@ -9,7 +9,7 @@ use crate::{
     job::consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    DalContext, StandardModel, Visibility, WsEvent,
+    DalContext, DalContextBuilder, StandardModel, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -92,7 +92,17 @@ impl JobConsumer for DependentValuesUpdate {
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
+        // Only implemented for the trait. Everything happens in `run_job`.
+        unimplemented!();
+    }
+
+    async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
         let now = std::time::Instant::now();
+
+        let outer_ctx = ctx_builder
+            .build(self.access_builder().build(self.visibility()))
+            .await?;
+        let ctx = &outer_ctx;
 
         let mut source_attribute_value = AttributeValue::get_by_id(ctx, &self.attribute_value_id)
             .await?
@@ -148,11 +158,13 @@ impl JobConsumer for DependentValuesUpdate {
                 let attribute_value = AttributeValue::get_by_id(ctx, &id)
                     .await?
                     .ok_or_else(|| AttributeValueError::NotFound(id, *ctx.visibility()))?;
-                let ctx_copy = ctx.clone();
+                let task_ctx = ctx_builder
+                    .build(self.access_builder().build(self.visibility()))
+                    .await?;
                 update_tasks
                     .build_task()
                     .name("AttributeValue.update_from_prototype_function")
-                    .spawn(update_value(ctx_copy, attribute_value))?;
+                    .spawn(update_value(task_ctx, attribute_value))?;
             }
 
             match update_tasks.join_next().await {
@@ -204,6 +216,7 @@ async fn update_value(
     info!("DependentValueUpdate {:?}: START", attribute_value.id());
     let start = std::time::Instant::now();
     attribute_value.update_from_prototype_function(&ctx).await?;
+    ctx.commit().await?;
     info!(
         "DependentValueUpdate {:?}: DONE {:?}",
         attribute_value.id(),
