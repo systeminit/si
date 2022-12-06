@@ -1682,22 +1682,10 @@ CREATE OR REPLACE FUNCTION func_binding_return_value_get_by_func_binding_id_v1(t
 AS
 $$
 BEGIN
-    SELECT DISTINCT ON (id) to_jsonb(func_binding_return_values.*)
+    SELECT to_jsonb(func_binding_return_values.*)
     INTO fbrv
-    FROM func_binding_return_values
-    INNER JOIN (
-        SELECT DISTINCT ON (object_id) object_id AS fbrv_id
-        FROM func_binding_return_value_belongs_to_func_binding
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, func_binding_return_value_belongs_to_func_binding)
-              AND belongs_to_id = this_func_binding_id
-        ORDER BY object_id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS fbrvbtfb ON fbrvbtfb.fbrv_id = func_binding_return_values.id
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, func_binding_return_values)
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM func_binding_return_values_v1(this_read_tenancy, this_visibility) as func_binding_return_values
+    WHERE func_binding_return_values.func_binding_id = this_func_binding_id;
 END;
 $$ LANGUAGE PLPGSQL PARALLEL SAFE;
 
@@ -1857,6 +1845,8 @@ BEGIN
                                                                          this_visibility,
                                                                          this_unprocessed_value,
                                                                          this_value,
+									 this_func_id,
+									 this_func_binding_id,
                                                                          this_func_execution_pk));
     END IF;
 

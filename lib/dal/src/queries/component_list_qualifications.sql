@@ -7,10 +7,8 @@ SELECT
         'link',         f.link
     )                                         AS func_metadata_view
 FROM qualification_resolvers_v1($1, $2) AS qr
-INNER JOIN func_binding_return_value_belongs_to_func_binding_v1($1, $2) AS fbrvbtfb
-    ON fbrvbtfb.belongs_to_id = qr.func_binding_id
 INNER JOIN func_binding_return_values_v1($1, $2) AS fbrv
-    ON fbrv.id = fbrvbtfb.object_id
+    ON fbrv.func_binding_id = qr.func_binding_id
 INNER JOIN qualification_prototypes_v1($1, $2) AS qp
     ON qp.id = qr.qualification_prototype_id
 INNER JOIN funcs_v1($1, $2) AS f

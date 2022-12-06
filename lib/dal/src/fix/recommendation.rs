@@ -14,6 +14,7 @@ use crate::{ComponentError, DalContext};
 pub enum RecommendationStatus {
     Success,
     Failure,
+    Running,
     Unstarted,
 }
 
@@ -44,10 +45,6 @@ impl Recommendation {
 
         let mut views = Vec::with_capacity(resolvers.len());
         for resolver in resolvers {
-            if resolver.success().is_none() {
-                continue;
-            }
-
             let component_id = resolver.context().component_id;
             if component_id.is_none() {
                 continue;
@@ -93,10 +90,14 @@ impl Recommendation {
                     component_id,
                     recommendation: action.name().to_owned(),
                     recommendation_kind: action.kind().to_owned(),
-                    status: match fix.as_ref().and_then(FixResolver::success) {
-                        Some(true) => RecommendationStatus::Success,
-                        Some(false) => RecommendationStatus::Failure,
-                        None => RecommendationStatus::Unstarted,
+                    status: if resolver.success().is_none() {
+                        RecommendationStatus::Running
+                    } else {
+                        match fix.as_ref().and_then(FixResolver::success) {
+                            Some(true) => RecommendationStatus::Success,
+                            Some(false) => RecommendationStatus::Failure,
+                            None => RecommendationStatus::Unstarted,
+                        }
                     },
                     provider: prototype.provider().map(ToOwned::to_owned),
                     output: None,

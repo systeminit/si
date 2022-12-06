@@ -8,19 +8,11 @@ use thiserror::Error;
 use veritech_client::OutputStream;
 
 use crate::{
+    func::binding::FuncBindingId,
     func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk},
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    DalContext, Func, HistoryEventError, ReadTenancyError, StandardModel, StandardModelError,
-    Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_accessor, DalContext, FuncId,
+    HistoryEventError, ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility,
 };
-
-use super::{
-    binding::{FuncBinding, FuncBindingId},
-    FuncId,
-};
-
-const GET_FOR_FUNC_BINDING: &str =
-    include_str!("../queries/func_binding_return_value_get_for_func_binding.sql");
 
 #[derive(Error, Debug)]
 pub enum FuncBindingReturnValueError {
@@ -42,6 +34,8 @@ pub enum FuncBindingReturnValueError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("not found: {0}")]
+    NotFound(FuncBindingReturnValueId),
 }
 
 pub type FuncBindingReturnValueResult<T> = Result<T, FuncBindingReturnValueError>;
@@ -98,20 +92,19 @@ impl FuncBindingReturnValue {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM func_binding_return_value_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM func_binding_return_value_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &unprocessed_value,
                     &value,
+                    &func_id,
+                    &func_binding_id,
                     &func_execution_pk,
                 ],
             )
             .await?;
-        let object: FuncBindingReturnValue =
-            standard_model::finish_create_from_row(ctx, row).await?;
-        object.set_func(ctx, &func_id).await?;
-        object.set_func_binding(ctx, &func_binding_id).await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
 
         Ok(object)
     }
@@ -128,19 +121,6 @@ impl FuncBindingReturnValue {
         Ok(func_execution.into_output_stream())
     }
 
-    // NOTE(nick,fletcher): we might not need these. They might be DB-only.
-    // pub fn set_func_execution_op(&mut self, func_execution_id: Option<FuncExecutionId) {
-    //     self.func_execution_id = Some(func_execution_id);
-    // }
-    //
-    // pub fn unset_func_execution_id(&mut self) {/
-    //     self.func_execution_id = None;
-    // }
-    //
-    // pub fn func_execution_id(&self) -> Option<FuncExecutionId> {
-    //     self.func_execution_id
-    // }
-
     /// Attempts to retrieve [`Self`] by [`FuncBindingId`].
     pub async fn get_by_func_binding_id(
         ctx: &DalContext,
@@ -150,15 +130,18 @@ impl FuncBindingReturnValue {
             .txns()
             .pg()
             .query_opt(
-                GET_FOR_FUNC_BINDING,
+                "SELECT fbrv FROM func_binding_return_value_get_by_func_binding_id_v1($1, $2, $3)",
                 &[ctx.read_tenancy(), ctx.visibility(), &func_binding_id],
             )
             .await?;
-        let object = standard_model::option_object_from_row(row)?;
-        Ok(object)
+        if let Some(row) = row {
+            if let Some(json) = row.try_get("fbrv")? {
+                return Ok(Some(serde_json::from_value(json)?));
+            }
+        }
+        Ok(None)
     }
 
-    // Note(paulo): this is dumb
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn upsert(
@@ -169,27 +152,28 @@ impl FuncBindingReturnValue {
         func_binding_id: FuncBindingId,
         func_execution_pk: FuncExecutionPk,
     ) -> FuncBindingReturnValueResult<Self> {
-        let return_value = Self::get_by_func_binding_id(ctx, func_binding_id).await?;
-        if let Some(mut return_value) = return_value {
-            return_value.set_value(ctx, value).await?;
-            return_value
-                .set_unprocessed_value(ctx, unprocessed_value)
-                .await?;
-            return_value
-                .set_func_execution_pk(ctx, func_execution_pk)
-                .await?;
-            Ok(return_value)
-        } else {
-            Self::new(
-                ctx,
-                unprocessed_value,
-                value,
-                func_id,
-                func_binding_id,
-                func_execution_pk,
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT fbrv.id
+                 FROM func_binding_return_value_upsert_v1($1, $2, $3, $4, $5, $6, $7, $8) as fbrv(id)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &unprocessed_value,
+                    &value,
+                    &func_id,
+                    &func_binding_id,
+                    &func_execution_pk,
+                ],
             )
-            .await
-        }
+            .await?;
+        let id: FuncBindingReturnValueId = row.try_get("id")?;
+        Self::get_by_id(ctx, &id)
+            .await?
+            .ok_or(FuncBindingReturnValueError::NotFound(id))
     }
 
     standard_model_accessor!(
@@ -203,26 +187,4 @@ impl FuncBindingReturnValue {
         FuncBindingReturnValueResult
     );
     standard_model_accessor!(value, OptionJson<JsonValue>, FuncBindingReturnValueResult);
-
-    standard_model_belongs_to!(
-        lookup_fn: func,
-        set_fn: set_func,
-        unset_fn: unset_func,
-        table: "func_binding_return_value_belongs_to_func",
-        model_table: "funcs",
-        belongs_to_id: FuncId,
-        returns: Func,
-        result: FuncBindingReturnValueResult,
-    );
-
-    standard_model_belongs_to!(
-        lookup_fn: func_binding,
-        set_fn: set_func_binding,
-        unset_fn: unset_func_binding,
-        table: "func_binding_return_value_belongs_to_func_binding",
-        model_table: "func_bindings",
-        belongs_to_id: FuncBindingId,
-        returns: FuncBinding,
-        result: FuncBindingReturnValueResult,
-    );
 }

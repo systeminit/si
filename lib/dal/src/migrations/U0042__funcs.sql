@@ -67,20 +67,26 @@ CREATE TABLE func_binding_return_values
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     unprocessed_value           jsonb,
     value                       jsonb,
+    func_id                     bigint,
+    func_binding_id             bigint,
     func_execution_pk           bigint
 );
+CREATE UNIQUE INDEX unique_value_func_binding_return_value_live ON func_binding_return_values (
+  func_binding_id,
+  tenancy_universal,
+  tenancy_billing_account_ids,
+  tenancy_organization_ids,
+  tenancy_workspace_ids,
+  visibility_change_set_pk,
+  (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
 SELECT standard_model_table_constraints_v1('func_binding_return_values');
-SELECT belongs_to_table_create_v1('func_binding_return_value_belongs_to_func', 'func_binding_return_values', 'funcs');
-SELECT belongs_to_table_create_v1('func_binding_return_value_belongs_to_func_binding', 'func_binding_return_values',
-                                  'func_bindings');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('funcs', 'model', 'func', 'Func'),
        ('func_bindings', 'model', 'func_binding', 'Func Binding'),
        ('func_binding_belongs_to_func', 'belongs_to', 'func_binding.func', 'Func Binding <> Func'),
-       ('func_binding_return_values', 'model', 'func_binding_return_value', 'Func Binding Return Value'),
-       ('func_binding_return_value_belongs_to_func', 'belongs_to', 'func_binding_return_value.func', 'Func Binding Return Value <> Func'),
-       ('func_binding_return_value_belongs_to_func_binding', 'belongs_to', 'func_binding_return_value.func_binding', 'Func Binding Return Value <> Func Binding')
+       ('func_binding_return_values', 'model', 'func_binding_return_value', 'Func Binding Return Value')
 ;
 
 CREATE OR REPLACE FUNCTION func_create_v1(
@@ -220,6 +226,8 @@ CREATE OR REPLACE FUNCTION func_binding_return_value_create_v1(
     this_visibility jsonb,
     this_unprocessed_value jsonb,
     this_value jsonb,
+    this_func_id bigint,
+    this_func_binding_id bigint,
     this_func_execution_pk bigint,
     OUT object json) AS
 $$
@@ -234,11 +242,11 @@ BEGIN
     INSERT INTO func_binding_return_values (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                                             tenancy_workspace_ids,
                                             visibility_change_set_pk, visibility_deleted_at,
-                                            unprocessed_value, value, func_execution_pk)
+                                            unprocessed_value, value, func_id, func_binding_id, func_execution_pk)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at, this_unprocessed_value, this_value, this_func_execution_pk)
+            this_visibility_record.visibility_deleted_at, this_unprocessed_value, this_value, this_func_id, this_func_binding_id, this_func_execution_pk)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

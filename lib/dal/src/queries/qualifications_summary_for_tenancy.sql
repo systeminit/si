@@ -19,10 +19,8 @@ FROM (
         ON components.schema_variant_id = qualification_prototypes.schema_variant_id
     LEFT JOIN qualification_resolvers_v1($1, $2) AS qualification_resolvers
         ON components.component_id = qualification_resolvers.component_id
-    LEFT JOIN func_binding_return_value_belongs_to_func_binding_v1($1, $2) AS func_binding_return_value_belongs_to_func_binding
-        ON func_binding_return_value_belongs_to_func_binding.belongs_to_id =  qualification_resolvers.func_binding_id
     LEFT JOIN func_binding_return_values_v1($1, $2) AS func_binding_return_values
-        ON func_binding_return_values.id = func_binding_return_value_belongs_to_func_binding.object_id
+        ON func_binding_return_values.func_binding_id = qualification_resolvers.func_binding_id
     LEFT JOIN component_belongs_to_schema_v1($1, $2) AS component_belongs_to_schema
         ON components.component_id = component_belongs_to_schema.object_id
     LEFT JOIN schemas_v1($1, $2) AS schemas
