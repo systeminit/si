@@ -20,7 +20,6 @@ use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::{
     FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
 };
-use crate::func::execution::FuncExecutionPk;
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};

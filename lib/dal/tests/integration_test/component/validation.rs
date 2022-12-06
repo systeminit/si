@@ -526,7 +526,7 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "ksg"
+                "name": "us-east-1"
             },
             "code": {},
             "domain": {

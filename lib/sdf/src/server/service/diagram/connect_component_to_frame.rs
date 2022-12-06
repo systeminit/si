@@ -117,6 +117,7 @@ pub async fn connect_component_to_frame(
     .await?;
 
     // Create all valid connections between parent output and child inputs
+    // TODO(victor,paul) We should tidy up this section after the feature stabilizes a bit
     {
         let parent_node = Node::get_by_id(&ctx, &request.parent_node_id)
             .await?
@@ -166,15 +167,11 @@ pub async fn connect_component_to_frame(
                             )
                             .await?;
 
-                            let attribute_value_context = AttributeReadContext {
-                                component_id: Some(*parent_component.id()),
-                                schema_variant_id: Some(*parent_schema_variant.id()),
-                                schema_id: Some(
-                                    *parent_schema_variant.schema(&ctx).await?.expect("Err").id(),
-                                ),
-                                external_provider_id: Some(*parent_provider.id()),
-                                ..Default::default()
-                            };
+                            let attribute_value_context =
+                                AttributeReadContext::default_with_external_provider(
+                                    *parent_provider.id(),
+                                );
+
                             let attribute_value =
                                 AttributeValue::find_for_context(&ctx, attribute_value_context)
                                     .await?

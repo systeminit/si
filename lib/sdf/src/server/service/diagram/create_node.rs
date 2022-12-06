@@ -160,6 +160,8 @@ pub async fn create_node(
             )
             .await?;
 
+            // Create all valid connections between parent output and child inputs
+            // TODO(victor,paul) We should tidy up this section after the feature stabilizes a bit
             {
                 let frame_schema_variant = f
                     .schema_variant(&ctx)
@@ -202,14 +204,6 @@ pub async fn create_node(
 
                                 let attribute_value_context = AttributeReadContext {
                                     component_id: Some(*f.id()),
-                                    schema_variant_id: Some(*frame_schema_variant.id()),
-                                    schema_id: Some(
-                                        *frame_schema_variant
-                                            .schema(&ctx)
-                                            .await?
-                                            .expect("Err")
-                                            .id(),
-                                    ),
                                     external_provider_id: Some(*parent_provider.id()),
                                     ..Default::default()
                                 };
