@@ -1,5 +1,9 @@
 use axum::Json;
-use dal::{node::NodeId, Connection, Node, StandardModel, Visibility, WsEvent};
+use dal::job::definition::DependentValuesUpdate;
+use dal::{
+    node::NodeId, AttributeReadContext, AttributeValue, Connection, Node, StandardModel,
+    Visibility, WsEvent,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -30,6 +34,7 @@ pub async fn connect_component_to_frame(
 ) -> DiagramResult<Json<CreateConnectionResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    // Connect children to parent through frame edge
     let from_socket_id = {
         let from_node = Node::get_by_id(&ctx, &request.from_node_id)
             .await?
@@ -110,6 +115,84 @@ pub async fn connect_component_to_frame(
         to_socket_id,
     )
     .await?;
+
+    // Create all valid connections between parent output and child inputs
+    {
+        let parent_node = Node::get_by_id(&ctx, &request.to_node_id)
+            .await?
+            .ok_or(DiagramError::NodeNotFound(request.to_node_id))?;
+
+        let parent_component = parent_node
+            .component(&ctx)
+            .await?
+            .ok_or(DiagramError::ComponentNotFound)?;
+
+        let parent_schema_variant = parent_component
+            .schema_variant(&ctx)
+            .await?
+            .ok_or(DiagramError::SchemaVariantNotFound)?;
+
+        let parent_sockets = parent_schema_variant.sockets(&ctx).await?;
+
+        let child_node = Node::get_by_id(&ctx, &request.from_node_id)
+            .await?
+            .ok_or(DiagramError::NodeNotFound(request.from_node_id))?;
+
+        let child_component = child_node
+            .component(&ctx)
+            .await?
+            .ok_or(DiagramError::ComponentNotFound)?;
+
+        let child_schema_variant = child_component
+            .schema_variant(&ctx)
+            .await?
+            .ok_or(DiagramError::SchemaVariantNotFound)?;
+
+        let child_sockets = child_schema_variant.sockets(&ctx).await?;
+
+        for parent_socket in parent_sockets {
+            if let Some(parent_provider) = parent_socket.external_provider(&ctx).await? {
+                for child_socket in &child_sockets {
+                    if let Some(child_provider) = child_socket.internal_provider(&ctx).await? {
+                        if parent_provider.name() != "Frame"
+                            && parent_provider.name() == child_provider.name()
+                        {
+                            Connection::new(
+                                &ctx,
+                                request.to_node_id,
+                                *parent_socket.id(),
+                                request.from_node_id,
+                                *child_socket.id(),
+                            )
+                            .await?;
+
+                            let attribute_value_context = AttributeReadContext {
+                                component_id: Some(*parent_component.id()),
+                                schema_variant_id: Some(*parent_schema_variant.id()),
+                                schema_id: Some(
+                                    *parent_schema_variant.schema(&ctx).await?.expect("Err").id(),
+                                ),
+                                external_provider_id: Some(*parent_provider.id()),
+                                ..Default::default()
+                            };
+                            let attribute_value =
+                                AttributeValue::find_for_context(&ctx, attribute_value_context)
+                                    .await?
+                                    .ok_or(DiagramError::AttributeValueNotFoundForContext(
+                                        attribute_value_context,
+                                    ))?;
+
+                            ctx.enqueue_job(DependentValuesUpdate::new(
+                                &ctx,
+                                *attribute_value.id(),
+                            ))
+                            .await;
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 

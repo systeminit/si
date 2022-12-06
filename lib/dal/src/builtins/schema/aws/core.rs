@@ -879,7 +879,7 @@ impl MigrationDriver {
         let diagram_kind = schema
             .diagram_kind()
             .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Region Frame", "AWS", &diagram_kind).await?;
+        let ui_menu = SchemaUiMenu::new(ctx, "Region", "AWS", &diagram_kind).await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop Creation
