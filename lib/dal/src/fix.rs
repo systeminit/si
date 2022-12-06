@@ -143,7 +143,7 @@ pub struct Fix {
     /// The [`WorkflowRunner`](crate::WorkflowRunner) that got executed.
     workflow_runner_id: Option<WorkflowRunnerId>,
     /// The name of the [`ActionPrototype`](crate::action_prototype::ActionPrototype) used.
-    action: Option<String>,
+    action: String,
 
     // TODO(nick): convert to Option<DateTime<Utc>> once standard model accessor can accommodate both
     // Option<T<U>> and can handle "timestamp with time zone <--> DateTime<Utc>".
@@ -178,17 +178,19 @@ impl Fix {
         fix_batch_id: FixBatchId,
         confirmation_resolver_id: ConfirmationResolverId,
         component_id: ComponentId,
+        action: &str,
     ) -> FixResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM fix_create_v1($1, $2, $3, $4)",
+                "SELECT object FROM fix_create_v1($1, $2, $3, $4, $5)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &confirmation_resolver_id,
                     &component_id,
+                    &action,
                 ],
             )
             .await?;
@@ -210,7 +212,7 @@ impl Fix {
     }
 
     standard_model_accessor!(workflow_runner_id, Option<Pk(WorkflowRunnerId)>, FixResult);
-    standard_model_accessor!(action, Option<String>, FixResult);
+    standard_model_accessor!(action, String, FixResult);
     standard_model_accessor!(started_at, Option<String>, FixResult);
     standard_model_accessor!(finished_at, Option<String>, FixResult);
     standard_model_accessor!(
@@ -258,12 +260,10 @@ impl Fix {
         ctx: &DalContext,
         run_id: usize,
         action_workflow_prototype_id: WorkflowPrototypeId,
-        action_name: String,
         should_trigger_confirmations: bool,
     ) -> FixResult<Vec<CommandRunResult>> {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
-        self.set_action(ctx, Some(action_name)).await?;
         let runner_result = WorkflowRunner::run(
             ctx,
             run_id,

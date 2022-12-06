@@ -12,8 +12,8 @@ CREATE TABLE fixes
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     confirmation_resolver_id    bigint                   NOT NULL,
     component_id                bigint                   NOT NULL,
+    action                      text                     NOT NULL,
     workflow_runner_id          bigint,
-    action                      text,
     started_at                  text,
     finished_at                 text,
     completion_status           text,
@@ -48,6 +48,7 @@ CREATE OR REPLACE FUNCTION fix_create_v1(
     this_visibility jsonb,
     this_confirmation_resolver_id bigint,
     this_component_id bigint,
+    this_action text,
     OUT object json) AS
 $$
 DECLARE
@@ -60,11 +61,11 @@ BEGIN
 
     INSERT INTO fixes (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                        tenancy_workspace_ids, visibility_change_set_pk, visibility_deleted_at,
-                       confirmation_resolver_id, component_id)
+                       confirmation_resolver_id, component_id, action)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at,
-            this_confirmation_resolver_id, this_component_id)
+            this_confirmation_resolver_id, this_component_id, this_action)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

@@ -85,10 +85,7 @@ pub async fn list(
                 status: *fix
                     .completion_status()
                     .ok_or(DalFixError::EmptyCompletionStatus)?,
-                action: fix
-                    .action()
-                    .map(|a| a.to_string())
-                    .ok_or_else(|| FixError::MissingAction(*fix.id()))?,
+                action: fix.action().to_owned(),
                 schema_name: component
                     .schema(&ctx)
                     .await?
