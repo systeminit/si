@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::str::FromStr;
 use thiserror::Error;
 
 use crate::{
@@ -14,6 +15,8 @@ type ComponentViewResult<T> = Result<T, ComponentViewError>;
 
 #[derive(Error, Debug)]
 pub enum ComponentViewError {
+    #[error(transparent)]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error(transparent)]
     InternalProvider(#[from] InternalProviderError),
     #[error(transparent)]
@@ -142,10 +145,11 @@ impl ComponentView {
             //
             // TODO: traverse tree and decrypt leafs
             for (_key, value) in object {
-                if let Some(raw_id) = value.as_i64() {
-                    let decrypted_secret = EncryptedSecret::get_by_id(ctx, &raw_id.into())
+                if let Some(raw_id) = value.as_str() {
+                    let id = SecretId::from_str(raw_id)?;
+                    let decrypted_secret = EncryptedSecret::get_by_id(ctx, &id)
                         .await?
-                        .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
+                        .ok_or_else(|| ComponentViewError::SecretNotFound(id))?
                         .decrypt(ctx)
                         .await?;
                     let encoded = ctx

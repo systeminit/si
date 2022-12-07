@@ -1,4 +1,4 @@
-use std::{fs::File, io::prelude::*, path::Path, pin::Pin};
+use std::{fs::File, io::prelude::*, path::Path, pin::Pin, str::FromStr};
 
 use jwt_simple::{
     algorithms::{RS256KeyPair, RS256PublicKey},
@@ -15,7 +15,7 @@ use tokio::{
     task::JoinError,
 };
 
-use crate::{pk, DalContext, UserClaim};
+use crate::{pk, BillingAccountPk, DalContext, UserClaim};
 
 const JWT_KEY_EXISTS: &str = include_str!("./queries/jwt_key_exists.sql");
 const JWT_KEY_GET_LATEST_PRIVATE_KEY: &str =
@@ -24,6 +24,8 @@ const JWT_KEY_GET_PUBLIC_KEY: &str = include_str!("./queries/jwt_key_get_public_
 
 #[derive(Error, Debug)]
 pub enum JwtKeyError {
+    #[error(transparent)]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("bad nonce bytes")]
     BadNonce,
     #[error("failed to decode base64 string: {0}")]
@@ -44,8 +46,6 @@ pub enum JwtKeyError {
     Metadata(String),
     #[error("no signing keys - bad news for you!")]
     NoKeys,
-    #[error("bad string version of numeric id: {0}")]
-    ParseInt(#[from] std::num::ParseIntError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("pg pool error: {0}")]
@@ -62,16 +62,18 @@ pub enum JwtKeyError {
 
 pub type JwtKeyResult<T> = Result<T, JwtKeyError>;
 
+pk!(ClaimPk);
+
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct SiClaims {
-    pub user_pk: i64,
-    pub billing_account_pk: i64,
+    pub user_pk: ClaimPk,
+    pub billing_account_pk: BillingAccountPk,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct ApiClaim {
-    pub api_client_pk: i64,
-    pub billing_account_pk: i64,
+    pub api_client_pk: ClaimPk,
+    pub billing_account_pk: BillingAccountPk,
 }
 
 pk!(JwtPk);
@@ -135,7 +137,7 @@ pub async fn get_jwt_validation_key(
     jwt_id: impl AsRef<str>,
 ) -> JwtKeyResult<RS256PublicKey> {
     let jwt_id = jwt_id.as_ref();
-    let pk: JwtPk = jwt_id.parse::<i64>()?.into();
+    let pk = JwtPk::from_str(jwt_id)?;
 
     let row = ctx
         .txns()

@@ -49,17 +49,15 @@ pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
 pk!(PropertyEditorValueId);
 pk!(PropertyEditorPropId);
 
-impl From<&PropId> for PropertyEditorPropId {
-    fn from(prop_id: &PropId) -> Self {
-        let number: i64 = (*prop_id).into();
-        PropertyEditorPropId(number)
+impl From<PropId> for PropertyEditorPropId {
+    fn from(prop_id: PropId) -> Self {
+        PropertyEditorPropId::from(ulid::Ulid::from(prop_id))
     }
 }
 
-impl From<&PropertyEditorPropId> for PropId {
-    fn from(property_editor_prop_id: &PropertyEditorPropId) -> Self {
-        let number: i64 = (*property_editor_prop_id).into();
-        number.into()
+impl From<PropertyEditorPropId> for PropId {
+    fn from(property_editor_prop_id: PropertyEditorPropId) -> Self {
+        PropId::from(ulid::Ulid::from(property_editor_prop_id))
     }
 }
 

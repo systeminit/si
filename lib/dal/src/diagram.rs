@@ -124,8 +124,8 @@ impl Diagram {
                 .into_iter()
                 .filter(|conn| {
                     node_views.iter().any(|n| {
-                        let source_node_id: i64 = conn.source.node_id.into();
-                        source_node_id.to_string() == n.id()
+                        let source_node_id = conn.source.node_id.to_string();
+                        source_node_id == n.id()
                     })
                 })
                 .map(DiagramEdgeView::from)

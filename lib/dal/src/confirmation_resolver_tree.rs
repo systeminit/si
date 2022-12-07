@@ -70,8 +70,8 @@ impl ConfirmationResolverTree {
                 let other_component_id = resolver.context().component_id;
 
                 for edge in &edges {
-                    let head_id: ComponentId = edge.head_object_id().into();
-                    let tail_id: ComponentId = edge.tail_object_id().into();
+                    let head_id = ComponentId::from(edge.head_object_id());
+                    let tail_id = ComponentId::from(edge.tail_object_id());
 
                     if head_id == component_id && tail_id == other_component_id {
                         parent_ids.push(*resolver.id());

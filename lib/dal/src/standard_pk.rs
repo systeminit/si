@@ -30,6 +30,12 @@ macro_rules! pk {
             }
         }
 
+        impl<'a> From<&'a $name> for ulid::Ulid {
+            fn from(pk: &'a $name) -> Self {
+                pk.0
+            }
+        }
+
         impl<'a> From<&'a $name> for $name {
             fn from(pk: &'a $name) -> Self {
                 *pk

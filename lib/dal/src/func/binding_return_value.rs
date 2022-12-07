@@ -113,7 +113,7 @@ impl FuncBindingReturnValue {
         &self,
         ctx: &DalContext,
     ) -> FuncBindingReturnValueResult<Option<Vec<OutputStream>>> {
-        if self.func_execution_pk == FuncExecutionPk::from(-1) {
+        if self.func_execution_pk == FuncExecutionPk::NONE {
             return Ok(None);
         }
 
