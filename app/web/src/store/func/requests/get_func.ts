@@ -4,7 +4,7 @@ import { ApiRequest } from "@/utils/pinia_api_tools";
 import { FuncAssociations } from "../types";
 
 export interface GetFuncArgs {
-  id: number;
+  id: string;
 }
 
 export interface GetFuncResponse extends Func {

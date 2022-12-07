@@ -43,7 +43,7 @@ export type ComponentUpdateStatus = {
     | { type: "system" }
     | {
         type: "user";
-        id: number;
+        id: string;
         label: string;
       };
 };

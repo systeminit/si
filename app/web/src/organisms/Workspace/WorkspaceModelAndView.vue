@@ -229,7 +229,7 @@ function onDiagramDelete(_e: DeleteElementsEvent) {
   alert("Deletion not supported yet!");
 }
 
-function onOutlineSelectComponent(id: number) {
+function onOutlineSelectComponent(id: string) {
   componentsStore.setSelectedComponentId(id);
 }
 

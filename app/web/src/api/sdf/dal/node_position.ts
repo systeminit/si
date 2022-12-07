@@ -3,7 +3,7 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 
 export interface NodePosition {
   pk: number;
-  id: number;
+  id: string;
   diagram_kind: number;
   x: string;
   y: string;

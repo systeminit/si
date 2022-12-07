@@ -7,7 +7,7 @@ export interface Category {
 export interface Item {
   kind: "item";
   name: string;
-  schema_id: number;
+  schema_id: string;
   links?: LinkNodeItem[];
 }
 

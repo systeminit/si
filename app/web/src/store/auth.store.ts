@@ -13,8 +13,8 @@ const AUTH_LOCAL_STORAGE_KEYS = {
 };
 
 type TokenData = {
-  user_id: number;
-  billing_account_id: number;
+  user_id: string;
+  billing_account_id: string;
   // isImpersonating?: boolean;
 };
 

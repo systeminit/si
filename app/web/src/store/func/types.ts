@@ -29,7 +29,7 @@ export interface ValidationAssociations {
 }
 
 export interface ValidationPrototypeView {
-  id: number;
+  id: string;
   schemaVariantId: string;
   propId: string;
 }
@@ -41,7 +41,7 @@ export interface AttributePrototypeArgumentView {
 }
 
 export interface AttributePrototypeView {
-  id: number;
+  id: string;
   schemaVariantId: string;
   componentId?: number;
   propId: string;

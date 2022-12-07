@@ -105,7 +105,7 @@ const args = toRef(props, "arguments", []);
 const newArg = ref<EditingFuncArgument>(defaultNewArg);
 
 interface EditingFuncArgument {
-  id: number;
+  id: string;
   name: string;
   kind: Option;
   elementKind?: Option;

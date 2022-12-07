@@ -15,5 +15,5 @@ export interface ExternalProvider extends StandardModel {
   schemaVariantId: string;
   name?: string;
   type_definition?: string;
-  attribute_prototype_id: number;
+  attribute_prototype_id: string;
 }

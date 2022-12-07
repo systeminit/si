@@ -1,5 +1,5 @@
 export interface QualificationPrototype {
-  id: number;
+  id: string;
   title: string;
   link?: string;
   description?: string;

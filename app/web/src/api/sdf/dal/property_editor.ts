@@ -68,7 +68,7 @@ export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindSecretSelect;
 
 export interface PropertyEditorProp {
-  id: number;
+  id: string;
   name: string;
   kind: PropertyEditorPropKind;
   widgetKind: PropertyEditorPropWidgetKind;
@@ -77,14 +77,14 @@ export interface PropertyEditorProp {
 
 export interface PropertyEditorSchema {
   rootPropId: string;
-  props: { [id: number]: PropertyEditorProp };
+  props: { [id: string]: PropertyEditorProp };
   childProps: {
     [key: number]: Array<number>;
   };
 }
 
 export interface PropertyEditorValue {
-  id: number;
+  id: string;
   propId: string;
   key?: string;
   value: unknown;
@@ -94,7 +94,7 @@ export interface PropertyEditorValue {
 
 export interface PropertyEditorValues {
   rootValueId: string;
-  values: { [id: number]: PropertyEditorValue };
+  values: { [id: string]: PropertyEditorValue };
   childValues: {
     [key: number]: Array<number>;
   };
@@ -155,7 +155,7 @@ export interface PropertyPath {
 }
 
 export interface FuncWithPrototypeContext {
-  id: number;
+  id: string;
   name: string;
   displayName?: string;
   backendKind: FuncBackendKind;

@@ -7,7 +7,7 @@ export interface PublicKey extends StandardModel {
   /**
    * The ID of the public key
    */
-  id: number;
+  id: string;
   /**
    * The name of the public key
    */

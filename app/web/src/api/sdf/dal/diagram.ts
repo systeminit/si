@@ -5,33 +5,33 @@ export type DiagramKind = "configuration";
 export type DiagramProviderMetadata = string;
 
 export interface DiagramOutputProvider {
-  id: number;
+  id: string;
   ty: DiagramProviderMetadata;
   color: number;
 }
 
 export interface DiagramOutputSocket {
-  id: number;
+  id: string;
   name: string;
   diagramKind: DiagramKind;
   provider: DiagramOutputProvider;
 }
 
 export interface DiagramInputProvider {
-  id: number;
+  id: string;
   ty: DiagramProviderMetadata;
   color: number;
 }
 
 export interface DiagramInputSocket {
-  id: number;
+  id: string;
   name: string;
   diagramKind: DiagramKind;
   provider: DiagramInputProvider;
 }
 
 export interface DiagramSchemaVariant {
-  id: number;
+  id: string;
   name: string;
   schemaName: string;
   color: number;
@@ -62,7 +62,7 @@ export interface DiagramNodeTemplate {
 }
 
 export interface DiagramNode {
-  id: number;
+  id: string;
   name: string;
   title: string;
   kind: DiagramNodeKind;
