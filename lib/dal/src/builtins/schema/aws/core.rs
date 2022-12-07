@@ -1,11 +1,10 @@
-use serde::{Deserialize, Serialize};
-
 use crate::action_prototype::ActionKind;
 use crate::builtins::schema::aws::{AWS_NODE_COLOR, EC2_DOCS_URL, EC2_TAG_DOCS_URL};
 use crate::builtins::schema::MigrationDriver;
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
 use crate::edit_field::widget::WidgetKind;
+use crate::func::argument::FuncArgumentKind;
 use crate::property_editor::SelectWidgetOption;
 use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
@@ -15,11 +14,12 @@ use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, BuiltinsResult, CodeLanguage, ConfirmationPrototype,
-    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
-    InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncError, InternalProvider, PropKind, QualificationPrototype,
+    SchemaError, SchemaKind, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{AttributeValueError, SchemaVariant};
+use serde::{Deserialize, Serialize};
 
 // Core documentation URLs
 const AMI_DOCS_URL: &str =
@@ -983,14 +983,48 @@ impl MigrationDriver {
             .await?
             .ok_or(AttributeValueError::MissingAttributePrototype)?;
 
+        // Create and set the func to take off a string field.
+        let mut transformation_func = Func::new(
+            ctx,
+            "si:getRegion",
+            FuncBackendKind::JsAttribute,
+            FuncBackendResponseType::String,
+        )
+        .await?;
+
+        let code = "function getRegion(input) {
+            const defaultName = 'region';
+            if (!input.region || input.region.length === 0) {
+                return defaultName;
+            }
+
+            return input.region;
+        }";
+        transformation_func
+            .set_code_plaintext(ctx, Some(code))
+            .await?;
+
+        transformation_func
+            .set_handler(ctx, Some("getRegion"))
+            .await?;
+
+        let transformation_func_argument = FuncArgument::new(
+            ctx,
+            "region",
+            FuncArgumentKind::String,
+            None,
+            *transformation_func.id(),
+        )
+        .await?;
+
         si_name_attribute_prototype
-            .set_func_id(ctx, identity_func_item.func_id)
+            .set_func_id(ctx, transformation_func.id())
             .await?;
 
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
             *si_name_attribute_prototype.id(),
-            identity_func_item.func_argument_id,
+            *transformation_func_argument.id(),
             *region_implicit_internal_provider.id(),
         )
         .await?;
