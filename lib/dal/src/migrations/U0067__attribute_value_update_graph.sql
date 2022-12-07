@@ -22,6 +22,7 @@ DECLARE
     seen_attribute_value_ids    bigint[];
     tmp_attribute_context       jsonb;
     tmp_internal_provider       internal_providers%ROWTYPE;
+    tmp_internal_provider_ids   bigint[];
     tmp_record_id               bigint;
     tmp_record_ids              bigint[];
     tmp_prop                    props%ROWTYPE;
@@ -81,43 +82,58 @@ BEGIN
                         next_attribute_value_ids := array_cat(next_attribute_value_ids, tmp_record_ids);
                     END IF;
 
-                    internal_provider_id := closest_internal_provider_to_prop_v1(this_tenancy, this_visibility,
-                                                                                 current_prop_id);
+                    internal_provider_id := closest_internal_provider_to_prop_towards_root_v1(
+                        this_tenancy, this_visibility, current_prop_id
+                    );
                     If internal_provider_id IS NULL THEN
                         RAISE DEBUG 'attribute_value_affected_graph_v1: Could not find InternalProvider for Prop(%)', current_prop_id;
                         CONTINUE;
                     END IF;
 
-                    -- Find the AttributeValue for the InternalProvider that we just found that is
-                    -- for the exact same AttributeContext as the AttributeValue that caused us to
-                    -- find it. This AttributeValue directly depends on the AttributeValue we are
-                    -- currently looking at.
-                    tmp_attribute_context := jsonb_build_object('attribute_context_prop_id', -1,
-                                                                'attribute_context_external_provider_id', -1,
-                                                                'attribute_context_internal_provider_id',
-                                                                internal_provider_id,
-                                                                'attribute_context_component_id',
-                                                                attribute_value.attribute_context_component_id);
+                    tmp_internal_provider_ids := ARRAY [internal_provider_id];
+                    tmp_internal_provider_ids := array_cat(
+                        tmp_internal_provider_ids,
+                        child_internal_providers_for_prop_v1(
+                            this_tenancy,
+                            this_visibility,
+                            current_prop_id
+                        )
+                    );
 
-                    SELECT id
-                    INTO tmp_record_id
-                    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
-                    WHERE exact_attribute_context_v1(tmp_attribute_context, av)
-                      AND attribute_context_internal_provider_id = internal_provider_id;
-                    IF NOT FOUND THEN
-                        RAISE 'attribute_value_affected_graph_v1: Unable to find AttributeValue for InternalProvider(%) at AttributeContext(%)',
-                            internal_provider_id,
-                            tmp_attribute_context;
-                        CONTINUE;
-                    END IF;
+                    FOREACH
+                        internal_provider_id IN ARRAY tmp_internal_provider_ids
+                    LOOP
+                        -- Find the AttributeValue for the InternalProvider that we just found that is
+                        -- for the exact same AttributeContext as the AttributeValue that caused us to
+                        -- find it. This AttributeValue directly depends on the AttributeValue we are
+                        -- currently looking at.
+                        tmp_attribute_context := jsonb_build_object('attribute_context_prop_id', -1,
+                                                                    'attribute_context_external_provider_id', -1,
+                                                                    'attribute_context_internal_provider_id',
+                                                                    internal_provider_id,
+                                                                    'attribute_context_component_id',
+                                                                    attribute_value.attribute_context_component_id);
 
-                    RAISE DEBUG 'attribute_value_affected_graph_v1: Found InternalProvider value(s): %', tmp_record_id;
-                    RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) depends on AttributeValue(%)', tmp_record_id, attribute_value.id;
+                        SELECT id
+                        INTO tmp_record_id
+                        FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+                        WHERE exact_attribute_context_v1(tmp_attribute_context, av)
+                        AND attribute_context_internal_provider_id = internal_provider_id;
+                        IF NOT FOUND THEN
+                            RAISE 'attribute_value_affected_graph_v1: Unable to find AttributeValue for InternalProvider(%) at AttributeContext(%)',
+                                internal_provider_id,
+                                tmp_attribute_context;
+                            CONTINUE;
+                        END IF;
 
-                    RETURN QUERY SELECT tmp_record_id      AS attribute_value_id,
-                                        attribute_value.id AS dependency_attribute_value_id;
+                        RAISE DEBUG 'attribute_value_affected_graph_v1: Found InternalProvider value(s): %', tmp_record_id;
+                        RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) depends on AttributeValue(%)', tmp_record_id, attribute_value.id;
 
-                    next_attribute_value_ids := array_append(next_attribute_value_ids, tmp_record_id);
+                        RETURN QUERY SELECT tmp_record_id      AS attribute_value_id,
+                                            attribute_value.id AS dependency_attribute_value_id;
+
+                        next_attribute_value_ids := array_append(next_attribute_value_ids, tmp_record_id);
+                    END LOOP;
                 ELSIF attribute_value.attribute_context_internal_provider_id != -1 THEN
                     -- We found an AttributeValue for an InternalProvider
                     RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) is InternalProvider(%)', attribute_value.id, attribute_value.attribute_context_internal_provider_id;
@@ -281,7 +297,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION closest_internal_provider_to_prop_v1(
+CREATE OR REPLACE FUNCTION closest_internal_provider_to_prop_towards_root_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_prop_id bigint,
@@ -292,7 +308,7 @@ $$
 DECLARE
     current_prop_id bigint;
 BEGIN
-    RAISE DEBUG 'closest_internal_provider_to_prop_v1: Looking for InternalProvider for Prop(%)', this_prop_id;
+    RAISE DEBUG 'closest_internal_provider_to_prop_towards_root_v1: Looking for InternalProvider for Prop(%)', this_prop_id;
 
     internal_provider_id := NULL;
     current_prop_id := this_prop_id;
@@ -326,4 +342,36 @@ BEGIN
         END IF;
     END LOOP;
 END;
-$$ LANGUAGE PLPGSQL IMMUTABLE;
+$$ LANGUAGE PLPGSQL STABLE;
+
+CREATE OR REPLACE FUNCTION child_internal_providers_for_prop_v1(
+    this_tenancy jsonb,
+    this_visibility jsonb,
+    this_prop_id bigint,
+    OUT child_internal_provider_ids bigint[]
+)
+AS
+$$
+BEGIN
+    RAISE DEBUG 'child_internal_providers_for_prop_v1: Looking for child InternalProviders for Prop(%)', this_prop_id;
+
+    WITH RECURSIVE child_prop_tree AS (
+        SELECT object_id as prop_id FROM prop_belongs_to_prop_v1(this_tenancy, this_visibility) as pbtp
+        WHERE pbtp.belongs_to_id = this_prop_id AND object_id IS NOT NULL
+        UNION ALL
+        SELECT p.child_prop_id AS prop_id
+        FROM (
+            SELECT
+                object_id AS child_prop_id,
+                belongs_to_id AS parent_prop_id
+            FROM prop_belongs_to_prop_v1(this_tenancy, this_visibility)
+        ) p
+        INNER JOIN child_prop_tree ON child_prop_tree.prop_id = p.parent_prop_id
+    )
+    SELECT array_agg(ip.id)
+    INTO child_internal_provider_ids
+    FROM internal_providers_v1(this_tenancy, this_visibility) AS ip
+    INNER JOIN child_prop_tree ON child_prop_tree.prop_id = ip.prop_id;
+END;
+$$ LANGUAGE PLPGSQL STABLE;
+

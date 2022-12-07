@@ -240,7 +240,9 @@ BEGIN
                         attribute_prototype_id,
                         tmp_attribute_context
                         IN
-                        WITH RECURSIVE parent_prop_tree AS (
+
+                        -- Find all internal providers towards the root
+                        (WITH RECURSIVE parent_prop_tree AS (
                             SELECT source_attribute_value.attribute_context_prop_id AS prop_id
                             UNION ALL
                             SELECT p.parent_prop_id AS prop_id
@@ -260,7 +262,38 @@ BEGIN
                                        'attribute_context_external_provider_id', -1
                                    ) AS tmp_attribute_context
                         FROM internal_providers_v1(this_read_tenancy, this_visibility) AS ip
-                                 INNER JOIN parent_prop_tree ON parent_prop_tree.prop_id = ip.prop_id
+                                 INNER JOIN parent_prop_tree ON parent_prop_tree.prop_id = ip.prop_id)
+
+                        UNION
+
+                        -- Find all internal providers that are a child of this prop
+                        (WITH RECURSIVE child_prop_tree AS (
+                            SELECT object_id as prop_id FROM 
+                                prop_belongs_to_prop_v1(this_read_tenancy, this_visibility) as pbtp
+                            WHERE 
+                                belongs_to_id = source_attribute_value.attribute_context_prop_id 
+                                AND object_id IS NOT NULL
+                            UNION ALL
+                            SELECT p.child_prop_id AS prop_id
+                            FROM (
+                                SELECT
+                                    object_id AS child_prop_id,
+                                    belongs_to_id AS parent_prop_id
+                                FROM prop_belongs_to_prop_v1(this_read_tenancy, this_visibility)
+                            ) p
+                            INNER JOIN child_prop_tree ON child_prop_tree.prop_id = p.parent_prop_id
+                        )
+                        SELECT ip.id AS current_internal_provider_id,
+                               ip.attribute_prototype_id,
+                               current_attribute_context ||
+                               jsonb_build_object(
+                                       'attribute_context_prop_id', -1,
+                                       'attribute_context_internal_provider_id', ip.id,
+                                       'attribute_context_external_provider_id', -1
+                                   ) AS tmp_attribute_context
+                        FROM internal_providers_v1(this_read_tenancy, this_visibility) AS ip
+                                 INNER JOIN child_prop_tree ON child_prop_tree.prop_id = ip.prop_id)
+
                         LOOP
                             RAISE DEBUG 'attribute_value_create_new_affected_values_v1: current_attribute_context(%)', current_attribute_context;
                             RAISE DEBUG 'attribute_value_create_new_affected_values_v1: tmp_attribute_context(%)', tmp_attribute_context;

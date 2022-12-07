@@ -825,4 +825,31 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             .expect("cannot get destination component view")
             .properties,
     );
+
+    // confirm the presence of the correct internal provider value for a leaf of the base_object
+    // on the destination component
+    let destination_foo_ip = InternalProvider::find_for_prop(ctx, *destination_foo_prop.id())
+        .await
+        .expect("find ip for foo_string prop")
+        .expect("ip for foo string should exist");
+
+    let destination_foo_ip_av = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            internal_provider_id: Some(*destination_foo_ip.id()),
+            component_id: Some(*destination_component.id()),
+            ..AttributeReadContext::default()
+        },
+    )
+    .await
+    .expect("find attribute value for foo_string internal provider")
+    .expect("attribute value for foo_string internal provider should exist");
+
+    assert_eq!(
+        Some(serde_json::json!["deep update"]),
+        destination_foo_ip_av
+            .get_value(ctx)
+            .await
+            .expect("able to get value")
+    );
 }
