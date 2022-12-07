@@ -6,9 +6,9 @@ CREATE TABLE change_sets
     note                        text,
     status                      text                     NOT NULL,
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW()
 );
@@ -36,15 +36,15 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE TYPE change_set_update_type_v1 as
 (
-    pk                          bigint,
-    id                          bigint,
+    pk                          ident,
+    id                          ident,
     tenancy_universal           bool,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[]
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[]
 );
 
-CREATE OR REPLACE FUNCTION change_set_apply_v1(this_change_set_pk bigint,
+CREATE OR REPLACE FUNCTION change_set_apply_v1(this_change_set_pk ident,
                                                this_actor jsonb,
                                                OUT timestamp_updated_at timestamp with time zone) AS
 $$

@@ -15,8 +15,8 @@ LEFT JOIN attribute_values_v1($1, $2) AS parent_attribute_values
 WHERE
     exact_attribute_context_v1($3, ap)
     AND CASE
-            WHEN $4::bigint IS NULL THEN parent_attribute_values.id IS NULL
-            ELSE parent_attribute_values.id = $4::bigint
+            WHEN $4::ident IS NULL THEN parent_attribute_values.id IS NULL
+            ELSE parent_attribute_values.id = $4::ident
         END
     AND CASE
             WHEN $5::text IS NULL THEN ap.key IS NULL

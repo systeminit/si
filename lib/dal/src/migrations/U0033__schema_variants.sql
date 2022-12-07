@@ -3,16 +3,16 @@ CREATE TABLE schema_variants
     pk                          bigserial PRIMARY KEY,
     id                          bigserial                NOT NULL,
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     name                        text                     NOT NULL,
     link                        text,
-    color                       bigint
+    color                       ident
 );
 SELECT standard_model_table_constraints_v1('schema_variants');
 SELECT belongs_to_table_create_v1('schema_variant_belongs_to_schema', 'schema_variants', 'schemas');

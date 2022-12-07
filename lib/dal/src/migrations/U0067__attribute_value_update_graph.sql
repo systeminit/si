@@ -1,30 +1,30 @@
 CREATE OR REPLACE FUNCTION attribute_value_affected_graph_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_attribute_value_id bigint
+    this_attribute_value_id ident
 )
     RETURNS TABLE
             (
-                attribute_value_id           bigint,
-                dependent_attribute_value_id bigint
+                attribute_value_id           ident,
+                dependent_attribute_value_id ident
             )
 AS
 $$
 DECLARE
     attribute_value             attribute_values%ROWTYPE;
-    attribute_value_id          bigint;
-    current_attribute_value_ids bigint[];
-    current_prop_id             bigint;
-    external_provider_id        bigint;
-    internal_provider_id        bigint;
-    next_attribute_value_ids    bigint[];
+    attribute_value_id          ident;
+    current_attribute_value_ids ident[];
+    current_prop_id             ident;
+    external_provider_id        ident;
+    internal_provider_id        ident;
+    next_attribute_value_ids    ident[];
     original_attribute_context  jsonb;
-    seen_attribute_value_ids    bigint[];
+    seen_attribute_value_ids    ident[];
     tmp_attribute_context       jsonb;
     tmp_internal_provider       internal_providers%ROWTYPE;
-    tmp_internal_provider_ids   bigint[];
-    tmp_record_id               bigint;
-    tmp_record_ids              bigint[];
+    tmp_internal_provider_ids   ident[];
+    tmp_record_id               ident;
+    tmp_record_ids              ident[];
     tmp_prop                    props%ROWTYPE;
 BEGIN
     RAISE DEBUG 'attribute_value_affected_graph_v1: Finding graph of AttributeValues affected by AttributeValue(%)', this_attribute_value_id;
@@ -300,13 +300,13 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION closest_internal_provider_to_prop_towards_root_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_prop_id bigint,
-    OUT internal_provider_id bigint
+    this_prop_id ident,
+    OUT internal_provider_id ident
 )
 AS
 $$
 DECLARE
-    current_prop_id bigint;
+    current_prop_id ident;
 BEGIN
     RAISE DEBUG 'closest_internal_provider_to_prop_towards_root_v1: Looking for InternalProvider for Prop(%)', this_prop_id;
 

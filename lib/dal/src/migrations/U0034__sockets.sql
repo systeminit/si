@@ -3,10 +3,10 @@ CREATE TABLE sockets
     pk                          bigserial PRIMARY KEY,
     id                          bigserial                NOT NULL,
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -16,7 +16,7 @@ CREATE TABLE sockets
     arity                       text                     NOT NULL,
     diagram_kind              text                     NOT NULL,
     required                    bool                     NOT NULL DEFAULT false,
-    color                       bigint
+    color                       ident
 );
 SELECT standard_model_table_constraints_v1('sockets');
 SELECT many_to_many_table_create_v1('socket_many_to_many_schema_variants', 'sockets', 'schema_variants');

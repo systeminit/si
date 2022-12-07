@@ -2,15 +2,15 @@ CREATE OR REPLACE FUNCTION attribute_value_create_appropriate_for_prototype_and_
     this_write_tenancy jsonb,
     this_read_tenancy jsonb,
     this_visibility jsonb,
-    this_attribute_prototype_id bigint,
+    this_attribute_prototype_id ident,
     this_attribute_context jsonb,
-    OUT new_attribute_value_ids bigint[]
+    OUT new_attribute_value_ids ident[]
 ) AS
 $$
 DECLARE
     attribute_value        attribute_values%ROWTYPE;
     tmp_attribute_value    attribute_values%ROWTYPE;
-    new_attribute_value_id bigint;
+    new_attribute_value_id ident;
 BEGIN
     RAISE DEBUG 'attribute_value_create_appropriate_for_prototype_and_context_v1(%, %)',
         this_attribute_prototype_id,
@@ -104,7 +104,7 @@ $$ LANGUAGE PLPGSQL;
 -- CREATE TYPE attribute_value_create_new_affected_values_record_v1 AS
 -- (
 --     attribute_context  jsonb,
---     attribute_value_id bigint
+--     attribute_value_id ident
 -- );
 
 -- 1. Record the "base" AttributeContext as the one of the starting AttributeValue, minus
@@ -149,33 +149,33 @@ CREATE OR REPLACE FUNCTION attribute_value_create_new_affected_values_v1(
     this_write_tenancy jsonb,
     this_read_tenancy jsonb,
     this_visibility jsonb,
-    this_attribute_value_id bigint
+    this_attribute_value_id ident
 ) RETURNS void AS
 $$
 DECLARE
     attribute_prototype           attribute_prototypes%ROWTYPE;
     attribute_prototype_context   jsonb;
-    attribute_prototype_id        bigint;
-    attribute_prototype_ids       bigint[];
+    attribute_prototype_id        ident;
+    attribute_prototype_ids       ident[];
     attribute_value               attribute_values%ROWTYPE;
     base_attribute_context        jsonb;
     current_attribute_context     jsonb;
-    current_attribute_value_id    bigint;
-    current_attribute_value_ids   bigint[];
-    current_internal_provider_id  bigint;
+    current_attribute_value_id    ident;
+    current_attribute_value_ids   ident[];
+    current_internal_provider_id  ident;
     desired_attribute_context     jsonb;
-    head_component_id             bigint;
-    head_schema_id                bigint;
-    head_schema_variant_id        bigint;
+    head_component_id             ident;
+    head_schema_id                ident;
+    head_schema_variant_id        ident;
     insertion_attribute_context   jsonb;
     attribute_prototype_argument  attribute_prototype_arguments%ROWTYPE;
-    internal_provider_id          bigint;
+    internal_provider_id          ident;
     internal_provider             internal_providers%ROWTYPE;
-    new_attribute_value_id        bigint;
-    next_attribute_value_ids      bigint[];
+    new_attribute_value_id        ident;
+    next_attribute_value_ids      ident[];
     proxy_attribute_value         attribute_values%ROWTYPE;
     proxy_check_attribute_context jsonb;
-    seen_attribute_value_ids      bigint[];
+    seen_attribute_value_ids      ident[];
     source_attribute_value        attribute_values%ROWTYPE;
     tmp_attribute_context         jsonb;
     tmp_attribute_value           attribute_values%ROWTYPE;

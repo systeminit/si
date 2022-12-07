@@ -3,22 +3,22 @@ CREATE TABLE edges
     pk                          bigserial PRIMARY KEY,
     id                          bigserial                NOT NULL,
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     kind                        text                     NOT NULL,
-    head_node_id                bigint                   NOT NULL,
+    head_node_id                ident                   NOT NULL,
     head_object_kind            text                     NOT NULL,
-    head_object_id              bigint                   NOT NULL,
-    head_socket_id              bigint                   NOT NULL,
-    tail_node_id                bigint                   NOT NULL,
+    head_object_id              ident                   NOT NULL,
+    head_socket_id              ident                   NOT NULL,
+    tail_node_id                ident                   NOT NULL,
     tail_object_kind            text                     NOT NULL,
-    tail_object_id              bigint                   NOT NULL,
-    tail_socket_id              bigint                   NOT NULL
+    tail_object_id              ident                   NOT NULL,
+    tail_socket_id              ident                   NOT NULL
 );
 SELECT standard_model_table_constraints_v1('edges');
 
@@ -29,14 +29,14 @@ CREATE OR REPLACE FUNCTION edge_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_kind text,
-    this_head_node_id bigint,
+    this_head_node_id ident,
     this_head_object_kind text,
-    this_head_object_id bigint,
-    this_head_socket_id bigint,
-    this_tail_node_id bigint,
+    this_head_object_id ident,
+    this_head_socket_id ident,
+    this_tail_node_id ident,
     this_tail_object_kind text,
-    this_tail_object_id bigint,
-    this_tail_socket_id bigint,
+    this_tail_object_id ident,
+    this_tail_socket_id ident,
     OUT object json) AS
 $$
 DECLARE

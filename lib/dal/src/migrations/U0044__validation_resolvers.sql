@@ -3,18 +3,18 @@ CREATE TABLE validation_resolvers
     pk                                           bigserial PRIMARY KEY,
     id                                           bigserial                NOT NULL,
     tenancy_universal                            bool                     NOT NULL,
-    tenancy_billing_account_ids                  bigint[],
-    tenancy_organization_ids                     bigint[],
-    tenancy_workspace_ids                        bigint[],
-    visibility_change_set_pk                     bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids                  ident[],
+    tenancy_organization_ids                     ident[],
+    tenancy_workspace_ids                        ident[],
+    visibility_change_set_pk                     ident                   NOT NULL DEFAULT -1,
     visibility_deleted_at                        timestamp with time zone,
     created_at                                   timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                                   timestamp with time zone NOT NULL DEFAULT NOW(),
-    validation_prototype_id                      bigint                   NOT NULL,
-    attribute_value_id                           bigint                   NOT NULL,
-    validation_func_id                           bigint                   NOT NULL,
-    validation_func_binding_id                   bigint                   NOT NULL,
-    attribute_value_func_binding_return_value_id bigint                   NOT NULL
+    validation_prototype_id                      ident                   NOT NULL,
+    attribute_value_id                           ident                   NOT NULL,
+    validation_func_id                           ident                   NOT NULL,
+    validation_func_binding_id                   ident                   NOT NULL,
+    attribute_value_func_binding_return_value_id ident                   NOT NULL
 );
 CREATE UNIQUE INDEX unique_validation_resolver_value_live ON validation_resolvers (
 	validation_func_binding_id,
@@ -35,17 +35,17 @@ CREATE OR REPLACE FUNCTION validation_resolver_create_v1(
     this_write_tenancy jsonb,
     this_read_tenancy jsonb,
     this_visibility jsonb,
-    this_validation_prototype_id bigint,
-    this_attribute_value_id bigint,
-    this_func_binding_id bigint,
+    this_validation_prototype_id ident,
+    this_attribute_value_id ident,
+    this_func_binding_id ident,
     OUT object json) AS
 $$
 DECLARE
     this_write_tenancy_record                  tenancy_record_v1;
     this_visibility_record                     visibility_record_v1;
     this_new_row                               validation_resolvers%ROWTYPE;
-    this_func_id                               bigint;
-    this_attr_val_func_binding_return_value_id bigint;
+    this_func_id                               ident;
+    this_attr_val_func_binding_return_value_id ident;
 BEGIN
     this_write_tenancy_record := tenancy_json_to_columns_v1(this_write_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);

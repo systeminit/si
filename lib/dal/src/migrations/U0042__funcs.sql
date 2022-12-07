@@ -5,10 +5,10 @@ CREATE TABLE funcs
     pk                          bigserial PRIMARY KEY,
     id                          bigserial                NOT NULL,
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -39,10 +39,10 @@ CREATE TABLE func_bindings
     pk                          bigserial PRIMARY KEY,
     id                          bigserial                NOT NULL,
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -58,18 +58,18 @@ CREATE TABLE func_binding_return_values
     pk                          bigserial PRIMARY KEY,
     id                          bigserial                NOT NULL,
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     unprocessed_value           jsonb,
     value                       jsonb,
-    func_id                     bigint,
-    func_binding_id             bigint,
-    func_execution_pk           bigint
+    func_id                     ident,
+    func_binding_id             ident,
+    func_execution_pk           ident
 );
 CREATE UNIQUE INDEX unique_value_func_binding_return_value_live ON func_binding_return_values (
   func_binding_id,
@@ -160,16 +160,16 @@ CREATE OR REPLACE FUNCTION func_binding_find_or_create_v1(
     this_visibility jsonb,
     this_args json,
     this_backend_kind text,
-    this_func_id bigint,
+    this_func_id ident,
     OUT object json, OUT created bool) AS
 $$
 DECLARE
     this_code_sha256           text;
 
     -- Please no hate, this is a hack to be able to SELECT INTO object while sorting by visibility
-    dummy1                     bigint;
-    dummy2                     bigint;
-    dummy3                     bigint;
+    dummy1                     ident;
+    dummy2                     ident;
+    dummy3                     ident;
 BEGIN
     created := false;
 
@@ -213,7 +213,7 @@ BEGIN
             this_read_tenancy,
             this_write_tenancy,
             this_visibility,
-            (object ->> 'id')::bigint,
+            (object ->> 'id')::ident,
             this_func_id
         );
     END IF;
@@ -226,9 +226,9 @@ CREATE OR REPLACE FUNCTION func_binding_return_value_create_v1(
     this_visibility jsonb,
     this_unprocessed_value jsonb,
     this_value jsonb,
-    this_func_id bigint,
-    this_func_binding_id bigint,
-    this_func_execution_pk bigint,
+    this_func_id ident,
+    this_func_binding_id ident,
+    this_func_execution_pk ident,
     OUT object json) AS
 $$
 DECLARE

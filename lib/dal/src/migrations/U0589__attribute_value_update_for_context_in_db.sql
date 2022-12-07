@@ -1,12 +1,12 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE OR REPLACE FUNCTION less_specific_attribute_context_v1(check_context                  jsonb,
-                                                              reference_prop_id              bigint,
-                                                              reference_internal_provider_id bigint,
-                                                              reference_external_provider_id bigint,
-                                                              reference_schema_id            bigint,
-                                                              reference_schema_variant_id    bigint,
-                                                              reference_component_id         bigint,
+                                                              reference_prop_id              ident,
+                                                              reference_internal_provider_id ident,
+                                                              reference_external_provider_id ident,
+                                                              reference_schema_id            ident,
+                                                              reference_schema_variant_id    ident,
+                                                              reference_component_id         ident,
                                                               OUT result bool
 )
 AS
@@ -154,8 +154,8 @@ $$;
 CREATE OR REPLACE FUNCTION attribute_value_set_parent_attribute_value_v1(this_write_tenancy             jsonb,
                                                                          this_read_tenancy              jsonb,
                                                                          this_visibility                jsonb,
-                                                                         this_attribute_value_id        bigint,
-                                                                         this_parent_attribute_value_id bigint) RETURNS void
+                                                                         this_attribute_value_id        ident,
+                                                                         this_parent_attribute_value_id ident) RETURNS void
 AS
 $$
 DECLARE
@@ -202,7 +202,7 @@ $$ LANGUAGE PLPGSQL;
 DROP FUNCTION IF EXISTS attribute_value_find_with_parent_and_key_for_context_v1;
 CREATE OR REPLACE FUNCTION attribute_value_find_with_parent_and_key_for_context_v1(this_read_tenancy              jsonb,
                                                                                    this_visibility                jsonb,
-                                                                                   this_parent_attribute_value_id bigint,
+                                                                                   this_parent_attribute_value_id ident,
                                                                                    this_key                       text,
                                                                                    this_attribute_context         jsonb,
                                                                                    OUT attribute_value            jsonb
@@ -271,7 +271,7 @@ DROP FUNCTION IF EXISTS ap_find_with_parent_value_and_key_for_context_v1;
 CREATE OR REPLACE FUNCTION ap_find_with_parent_value_and_key_for_context_v1(
     this_read_tenancy              jsonb,
     this_visibility                jsonb,
-    this_parent_attribute_value_id bigint,
+    this_parent_attribute_value_id ident,
     this_key                       text,
     this_attribute_context         jsonb
 )
@@ -318,8 +318,8 @@ $$;
 CREATE OR REPLACE FUNCTION attribute_prototype_create_intermediate_proxy_values_v1(this_write_tenancy             jsonb,
                                                                                    this_read_tenancy              jsonb,
                                                                                    this_visibility                jsonb,
-                                                                                   this_parent_attribute_value_id bigint,
-                                                                                   this_prototype_id              bigint,
+                                                                                   this_parent_attribute_value_id ident,
+                                                                                   this_prototype_id              ident,
                                                                                    this_attribute_context         jsonb
 ) RETURNS void
 AS
@@ -390,21 +390,21 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION attribute_prototype_new_v1(this_write_tenancy                jsonb,
                                                       this_read_tenancy                 jsonb,
                                                       this_visibility                   jsonb,
-                                                      this_func_id                      bigint,
-                                                      this_func_binding_id              bigint,
-                                                      this_func_binding_return_value_id bigint,
+                                                      this_func_id                      ident,
+                                                      this_func_binding_id              ident,
+                                                      this_func_binding_return_value_id ident,
                                                       this_attribute_context            jsonb,
                                                       this_key                          text,
-                                                      this_parent_attribute_value_id    bigint,
+                                                      this_parent_attribute_value_id    ident,
                                                       OUT new_attribute_prototype       json
 )
 AS
 $$
 DECLARE
-    attribute_value_id                     bigint;
+    attribute_value_id                     ident;
     existing_attribute_value_proxy_context jsonb;
-    new_attribute_prototype_id             bigint;
-    original_attribute_prototype_id        bigint;
+    new_attribute_prototype_id             ident;
+    original_attribute_prototype_id        ident;
 BEGIN
     SELECT ap.object ->> 'id'
     INTO new_attribute_prototype_id
@@ -487,12 +487,12 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION attribute_prototype_new_with_attribute_value_v1(this_write_tenancy             jsonb,
                                                                            this_read_tenancy              jsonb,
                                                                            this_visibility                jsonb,
-                                                                           this_func_id                   bigint,
+                                                                           this_func_id                   ident,
                                                                            this_attribute_context         jsonb,
                                                                            this_key                       text,
-                                                                           this_parent_attribute_value_id bigint,
-                                                                           this_attribute_value_id        bigint,
-                                                                           OUT new_attribute_prototype_id bigint
+                                                                           this_parent_attribute_value_id ident,
+                                                                           this_attribute_value_id        ident,
+                                                                           OUT new_attribute_prototype_id ident
 )
 AS
 $$
@@ -558,10 +558,10 @@ AS
 $$
     SELECT exact_attribute_context_v1(
         check_context,
-        (reference_context ->> 'attribute_context_prop_id')::bigint,
-        (reference_context ->> 'attribute_context_internal_provider_id')::bigint,
-        (reference_context ->> 'attribute_context_external_provider_id')::bigint,
-        (reference_context ->> 'attribute_context_component_id')::bigint
+        (reference_context ->> 'attribute_context_prop_id')::ident,
+        (reference_context ->> 'attribute_context_internal_provider_id')::ident,
+        (reference_context ->> 'attribute_context_external_provider_id')::ident,
+        (reference_context ->> 'attribute_context_component_id')::ident
     )
 $$;
 
@@ -605,8 +605,8 @@ $$;
 CREATE OR REPLACE FUNCTION attribute_value_new_v1(this_write_tenancy                jsonb,
                                                   this_read_tenancy                 jsonb,
                                                   this_visibility                   jsonb,
-                                                  this_func_binding_id              bigint,
-                                                  this_func_binding_return_value_id bigint,
+                                                  this_func_binding_id              ident,
+                                                  this_func_binding_return_value_id ident,
                                                   this_attribute_context            jsonb,
                                                   this_key                          text,
                                                   OUT new_attribute_value           jsonb
@@ -644,14 +644,14 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION attribute_prototype_update_for_context_v1(this_write_tenancy                jsonb,
                                                                      this_read_tenancy                 jsonb,
                                                                      this_visibility                   jsonb,
-                                                                     this_attribute_prototype_id       bigint,
+                                                                     this_attribute_prototype_id       ident,
                                                                      this_attribute_context            jsonb,
-                                                                     this_func_id                      bigint,
-                                                                     this_func_binding_id              bigint,
-                                                                     this_func_binding_return_value_id bigint,
-                                                                     this_parent_attribute_value_id    bigint,
-                                                                     this_existing_attribute_value_id  bigint,
-                                                                     OUT new_attribute_prototype_id    bigint
+                                                                     this_func_id                      ident,
+                                                                     this_func_binding_id              ident,
+                                                                     this_func_binding_return_value_id ident,
+                                                                     this_parent_attribute_value_id    ident,
+                                                                     this_existing_attribute_value_id  ident,
+                                                                     OUT new_attribute_prototype_id    ident
 )
 AS
 $$
@@ -715,9 +715,9 @@ CREATE OR REPLACE FUNCTION func_binding_find_or_create_and_execute_v1(this_write
                                                                       this_read_tenancy                    jsonb,
                                                                       this_visibility                      jsonb,
                                                                       this_func_args                       jsonb,
-                                                                      this_func_id                         bigint,
-                                                                      OUT new_func_binding_id              bigint,
-                                                                      OUT new_func_binding_return_value_id bigint
+                                                                      this_func_id                         ident,
+                                                                      OUT new_func_binding_id              ident,
+                                                                      OUT new_func_binding_return_value_id ident
 )
 AS
 $$
@@ -779,7 +779,7 @@ DROP FUNCTION IF EXISTS attribute_value_child_attribute_values_for_context_v1;
 CREATE OR REPLACE FUNCTION attribute_value_child_attribute_values_for_context_v1(
     this_read_tenancy                jsonb,
     this_visibility                  jsonb,
-    this_original_attribute_value_id bigint,
+    this_original_attribute_value_id ident,
     this_read_attribute_context      jsonb)
 RETURNS SETOF attribute_values
 LANGUAGE sql
@@ -804,9 +804,9 @@ $$;
 CREATE OR REPLACE FUNCTION attribute_value_populate_child_proxies_for_value_v1(this_write_tenancy               jsonb,
                                                                                this_read_tenancy                jsonb,
                                                                                this_visibility                  jsonb,
-                                                                               this_original_attribute_value_id bigint,
+                                                                               this_original_attribute_value_id ident,
                                                                                this_previous_attribute_context  jsonb,
-                                                                               this_attribute_value_id          bigint) RETURNS void
+                                                                               this_attribute_value_id          ident) RETURNS void
 AS
 $$
 DECLARE
@@ -901,30 +901,30 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION attribute_value_update_for_context_raw_v1(this_write_tenancy                   jsonb,
                                                                      this_read_tenancy                    jsonb,
                                                                      this_visibility                      jsonb,
-                                                                     this_attribute_value_id              bigint,
-                                                                     this_maybe_parent_attribute_value_id bigint,
+                                                                     this_attribute_value_id              ident,
+                                                                     this_maybe_parent_attribute_value_id ident,
                                                                      this_attribute_context               jsonb,
                                                                      this_new_value                       jsonb,
                                                                      this_key                             text,
                                                                      this_create_child_proxies            bool,
-                                                                     OUT new_attribute_value_id           bigint
+                                                                     OUT new_attribute_value_id           ident
 )
 AS
 $$
 DECLARE
-    attribute_prototype_id          bigint;
-    attribute_value_id              bigint;
+    attribute_prototype_id          ident;
+    attribute_value_id              ident;
     func                            funcs%ROWTYPE;
     func_args                       jsonb;
     func_binding                    func_bindings%ROWTYPE;
     func_binding_created            bool;
-    func_binding_id                 bigint;
+    func_binding_id                 ident;
     func_binding_return_value       func_binding_return_values;
-    func_binding_return_value_id    bigint;
+    func_binding_return_value_id    ident;
     func_name                       text;
     given_attribute_value           attribute_values%ROWTYPE;
     maybe_attribute_value           attribute_values%ROWTYPE;
-    maybe_parent_attribute_value_id bigint;
+    maybe_parent_attribute_value_id ident;
     original_attribute_prototype    attribute_prototypes%ROWTYPE;
     parent_attribute_context        jsonb;
     parent_attribute_value          attribute_values%ROWTYPE;
@@ -1093,7 +1093,7 @@ BEGIN
         SELECT *
         INTO STRICT prop
         FROM props_v1(this_read_tenancy, this_visibility)
-        WHERE id = (this_attribute_context ->> 'attribute_context_prop_id')::bigint;
+        WHERE id = (this_attribute_context ->> 'attribute_context_prop_id')::ident;
 
         IF this_new_value IS NULL THEN
             func_name := 'si:unset';
@@ -1224,7 +1224,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION index_map_push_v1(this_index_map          jsonb,
-                                             this_attribute_value_id bigint,
+                                             this_attribute_value_id ident,
                                              this_value_key          text,
                                              OUT updated_index_map   jsonb
 )
@@ -1235,7 +1235,7 @@ DECLARE
     index_hashmap   jsonb;
     index_order     jsonb;
     insertion_value text;
-    order_set       bigint[];
+    order_set       ident[];
 BEGIN
     IF this_index_map IS NULL THEN
         base_index_map := jsonb_build_object('order', '[]'::jsonb,
@@ -1274,14 +1274,14 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION attribute_value_update_parent_index_map_v1(this_write_tenancy      jsonb,
                                                                       this_read_tenancy       jsonb,
                                                                       this_visibility         jsonb,
-                                                                      this_attribute_value_id bigint) RETURNS void
+                                                                      this_attribute_value_id ident) RETURNS void
 AS
 $$
 DECLARE
     child_key                 text;
-    parent_attribute_value_id bigint;
+    parent_attribute_value_id ident;
     parent_prop_kind          text;
-    parent_prop_id            bigint;
+    parent_prop_id            ident;
     parent_index_map          jsonb;
 BEGIN
     SELECT av.id, index_map, p.kind
@@ -1316,7 +1316,7 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION attribute_value_populate_nested_values_v1(this_write_tenancy             jsonb,
                                                                      this_read_tenancy              jsonb,
                                                                      this_visibility                jsonb,
-                                                                     this_parent_attribute_value_id bigint,
+                                                                     this_parent_attribute_value_id ident,
                                                                      this_update_attribute_context  jsonb,
                                                                      unprocessed_value              jsonb) RETURNS void
 AS
@@ -1325,20 +1325,20 @@ DECLARE
     attribute_value                    attribute_values%ROWTYPE;
     array_element                      jsonb;
     child_props                        props[];
-    child_value_id                     bigint;
+    child_value_id                     ident;
     field_context                      jsonb;
     field_value                        jsonb;
     invalid_object_keys                text[];
     map_key                            text;
-    object_field_prop_id               bigint;
+    object_field_prop_id               ident;
     object_field_prop_name             text;
     object_keys                        text[];
     parent_attribute_value             attribute_values%ROWTYPE;
     parent_prop                        props%ROWTYPE;
     prop_keys                          text[];
-    unset_func_id                      bigint;
-    unset_func_binding_id              bigint;
-    unset_func_binding_return_value_id bigint;
+    unset_func_id                      ident;
+    unset_func_binding_id              ident;
+    unset_func_binding_return_value_id ident;
     update_read_attribute_context      jsonb;
 BEGIN
     SELECT *
@@ -1546,7 +1546,7 @@ DROP FUNCTION IF EXISTS attribute_value_remove_proxies_v1;
 CREATE OR REPLACE FUNCTION attribute_value_remove_proxies_v1(this_write_tenancy      jsonb,
                                                              this_read_tenancy       jsonb,
                                                              this_visibility         jsonb,
-                                                             this_attribute_value_id bigint) RETURNS void
+                                                             this_attribute_value_id ident) RETURNS void
 AS
 $$
 DECLARE
@@ -1591,13 +1591,13 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION attribute_value_remove_value_and_children_v1(this_write_tenancy             jsonb,
                                                                         this_read_tenancy              jsonb,
                                                                         this_visibility                jsonb,
-                                                                        this_parent_attribute_value_id bigint) RETURNS void
+                                                                        this_parent_attribute_value_id ident) RETURNS void
 AS
 $$
 DECLARE
-    child_value_id         bigint;
-    attribute_prototype_id bigint;
-    attribute_value_count  bigint;
+    child_value_id         ident;
+    attribute_prototype_id ident;
+    attribute_value_count  ident;
 BEGIN
     FOR child_value_id IN
         SELECT av.id
@@ -1676,7 +1676,7 @@ $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION func_binding_return_value_get_by_func_binding_id_v1(this_read_tenancy    jsonb,
                                                                                this_visibility      jsonb,
-                                                                               this_func_binding_id bigint,
+                                                                               this_func_binding_id ident,
                                                                                OUT fbrv             jsonb
 )
 AS
@@ -1692,16 +1692,16 @@ $$ LANGUAGE PLPGSQL PARALLEL SAFE;
 CREATE OR REPLACE FUNCTION func_binding_execute_v1(this_write_tenancy               jsonb,
                                                    this_read_tenancy                jsonb,
                                                    this_visibility                  jsonb,
-                                                   this_func_binding_id             bigint,
-                                                   OUT func_binding_return_value_id bigint
+                                                   this_func_binding_id             ident,
+                                                   OUT func_binding_return_value_id ident
 )
 AS
 $$
 DECLARE
     func                    funcs%ROWTYPE;
     func_binding            func_bindings%ROWTYPE;
-    func_execution_pk       bigint;
-    fbrv_id                 bigint;
+    func_execution_pk       ident;
+    fbrv_id                 ident;
     read_tenancy            jsonb;
     result_value            jsonb;
     result_value_processed  jsonb;
@@ -1802,10 +1802,10 @@ CREATE OR REPLACE FUNCTION func_binding_return_value_upsert_v1(this_write_tenanc
                                                                this_visibility                  jsonb,
                                                                this_unprocessed_value           jsonb,
                                                                this_value                       jsonb,
-                                                               this_func_id                     bigint,
-                                                               this_func_binding_id             bigint,
-                                                               this_func_execution_pk           bigint,
-                                                               OUT func_binding_return_value_id bigint
+                                                               this_func_id                     ident,
+                                                               this_func_binding_id             ident,
+                                                               this_func_execution_pk           ident,
+                                                               OUT func_binding_return_value_id ident
 )
 AS
 $$
@@ -1855,9 +1855,9 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION tenancy_build_from_parts(this_universal           bool,
-                                                    this_billing_account_ids bigint[],
-                                                    this_organization_ids    bigint[],
-                                                    this_workspace_ids       bigint[],
+                                                    this_billing_account_ids ident[],
+                                                    this_organization_ids    ident[],
+                                                    this_workspace_ids       ident[],
                                                     OUT new_tenancy          jsonb
 )
 AS
@@ -1878,8 +1878,8 @@ AS
 $$
 DECLARE
     this_write_tenancy_record tenancy_record_v1;
-    billing_account_ids       bigint[];
-    organization_ids          bigint[];
+    billing_account_ids       ident[];
+    organization_ids          ident[];
 BEGIN
     this_write_tenancy_record := jsonb_to_record(this_write_tenancy);
 
@@ -1888,11 +1888,11 @@ BEGIN
             -- New billing account read tenancy
             read_tenancy := tenancy_build_from_parts(true,
                                                      this_write_tenancy_record.billing_account_ids,
-                                                     ARRAY[]::bigint[],
-                                                     ARRAY[]::bigint[]);
+                                                     ARRAY[]::ident[],
+                                                     ARRAY[]::ident[]);
         ELSE
             -- New organization read tenancy
-            SELECT COALESCE(array_agg(x.belongs_to_id), ARRAY[]::bigint[])
+            SELECT COALESCE(array_agg(x.belongs_to_id), ARRAY[]::ident[])
             INTO billing_account_ids
             FROM (
                 SELECT DISTINCT ON (object_id) belongs_to_id
@@ -1907,12 +1907,12 @@ BEGIN
             read_tenancy := tenancy_build_from_parts(true,
                                                      billing_account_ids,
                                                      this_write_tenancy_record.organization_ids,
-                                                     ARRAY[]::bigint[]);
+                                                     ARRAY[]::ident[]);
         END IF;
     ELSE
         -- New workspace read tenancy
-        SELECT COALESCE(array_agg(org.organization_id),        ARRAY[]::bigint[]),
-               COALESCE(array_agg(billing.billing_account_id), ARRAY[]::bigint[])
+        SELECT COALESCE(array_agg(org.organization_id),        ARRAY[]::ident[]),
+               COALESCE(array_agg(billing.billing_account_id), ARRAY[]::ident[])
         INTO organization_ids,
              billing_account_ids
         FROM (
@@ -2032,12 +2032,12 @@ $$;
 CREATE OR REPLACE FUNCTION attribute_value_update_for_context_without_child_proxies_v1(this_write_tenancy                   jsonb,
                                                                                        this_read_tenancy                    jsonb,
                                                                                        this_visibility                      jsonb,
-                                                                                       this_attribute_value_id              bigint,
-                                                                                       this_maybe_parent_attribute_value_id bigint,
+                                                                                       this_attribute_value_id              ident,
+                                                                                       this_maybe_parent_attribute_value_id ident,
                                                                                        this_attribute_context               jsonb,
                                                                                        this_new_value                       jsonb,
                                                                                        this_key                             text,
-                                                                                       OUT new_attribute_value_id           bigint
+                                                                                       OUT new_attribute_value_id           ident
 )
 AS
 $$
@@ -2059,9 +2059,9 @@ CREATE OR REPLACE FUNCTION attribute_value_vivify_value_and_parent_values_raw_v1
     this_read_tenancy          jsonb,
     this_visibility            jsonb,
     this_attribute_context     jsonb,
-    this_attribute_value_id    bigint,
+    this_attribute_value_id    ident,
     this_create_child_proxies  bool,
-    OUT new_attribute_value_id bigint
+    OUT new_attribute_value_id ident
 )
 AS
 $$
@@ -2069,9 +2069,9 @@ DECLARE
     attribute_value                 attribute_values%ROWTYPE;
     prop                            props%ROWTYPE;
     empty_value                     jsonb;
-    unset_func_id                   bigint;
-    func_id                         bigint;
-    maybe_parent_attribute_value_id bigint;
+    unset_func_id                   ident;
+    func_id                         ident;
+    maybe_parent_attribute_value_id ident;
 BEGIN
     RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1(%, %, %, %, %, %)',
         this_write_tenancy,
@@ -2191,8 +2191,8 @@ CREATE OR REPLACE FUNCTION attribute_value_vivify_value_and_parent_no_child_prox
                                                                                        this_read_tenancy          jsonb,
                                                                                        this_visibility            jsonb,
                                                                                        this_attribute_context     jsonb,
-                                                                                       this_attribute_value_id    bigint,
-                                                                                       OUT new_attribute_value_id bigint
+                                                                                       this_attribute_value_id    ident,
+                                                                                       OUT new_attribute_value_id ident
 )
 AS
 $$
@@ -2206,10 +2206,10 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_context_build_from_parts_v1(this_prop_id              bigint,
-                                                                 this_internal_provider_id bigint,
-                                                                 this_external_provider_id bigint,
-                                                                 this_component_id         bigint,
+CREATE OR REPLACE FUNCTION attribute_context_build_from_parts_v1(this_prop_id              ident,
+                                                                 this_internal_provider_id ident,
+                                                                 this_external_provider_id ident,
+                                                                 this_component_id         ident,
                                                                  OUT new_attribute_context jsonb
 )
 AS
@@ -2226,10 +2226,10 @@ CREATE OR REPLACE FUNCTION attribute_value_insert_for_context_without_child_prox
                                                                                        this_read_tenancy              jsonb,
                                                                                        this_visibility                jsonb,
                                                                                        this_parent_attribute_context  jsonb,
-                                                                                       this_parent_attribute_value_id bigint,
+                                                                                       this_parent_attribute_value_id ident,
                                                                                        this_value                     jsonb,
                                                                                        this_key                       text,
-                                                                                       OUT new_attribute_value_id     bigint
+                                                                                       OUT new_attribute_value_id     ident
 )
 AS
 $$
@@ -2247,13 +2247,13 @@ $$ LANGUAGE PLPGSQL;
 
 DROP TYPE IF EXISTS av_insert_for_context_raw_child_prop_record_v1;
 CREATE TYPE av_insert_for_context_raw_child_prop_record_v1 AS (
-    parent_attribute_value_id bigint,
+    parent_attribute_value_id ident,
     prop_json                 jsonb
 );
 
 CREATE OR REPLACE FUNCTION props_find_for_attribute_value_v1(this_read_tenancy       jsonb,
                                                              this_visibility         jsonb,
-                                                             this_attribute_value_id bigint,
+                                                             this_attribute_value_id ident,
                                                              OUT found_prop jsonb)
 AS
 $$
@@ -2276,11 +2276,11 @@ CREATE OR REPLACE FUNCTION attribute_value_insert_for_context_raw_v1(this_write_
                                                                      this_read_tenancy              jsonb,
                                                                      this_visibility                jsonb,
                                                                      this_parent_attribute_context  jsonb,
-                                                                     this_parent_attribute_value_id bigint,
+                                                                     this_parent_attribute_value_id ident,
                                                                      this_value                     jsonb,
                                                                      this_key                       text,
                                                                      this_create_child_proxies      bool,
-                                                                     OUT new_attribute_value_id     bigint
+                                                                     OUT new_attribute_value_id     ident
 )
 AS
 $$
@@ -2298,9 +2298,9 @@ DECLARE
     parent_prop                        props%ROWTYPE;
     prop_attribute_value               attribute_values%ROWTYPE;
     prototype                          attribute_prototypes%ROWTYPE;
-    unset_func_id                      bigint;
-    unset_func_binding_id              bigint;
-    unset_func_binding_return_value_id bigint;
+    unset_func_id                      ident;
+    unset_func_binding_id              ident;
+    unset_func_binding_return_value_id ident;
     unset_func_name                    text;
 BEGIN
     parent_prop := jsonb_populate_record(null::props, props_find_for_attribute_value_v1(this_read_tenancy,
@@ -2444,7 +2444,7 @@ BEGIN
                     this_write_tenancy,
                     this_visibility,
                     prop_attribute_value.id,
-                    (child_prop_info ->> 'parent_attribute_value_id')::bigint
+                    (child_prop_info ->> 'parent_attribute_value_id')::ident
                 );
                 -- XXX: The Rust code was originally using `child_prop_info.parent_attribute_value_id` as BOTH
                 -- OF the last two arguments here, then setting prop_attribute_value's AttributePrototype to be
@@ -2458,7 +2458,7 @@ BEGIN
                                                                         unset_func_id,
                                                                         unset_child_attribute_context,
                                                                         NULL,
-                                                                        (child_prop_info ->> 'parent_attribute_value_id')::bigint,
+                                                                        (child_prop_info ->> 'parent_attribute_value_id')::ident,
                                                                         prop_attribute_value.id);
 
                 IF child_prop.kind = 'object' THEN
@@ -2506,17 +2506,17 @@ $$ LANGUAGE PLPGSQL;
 DROP FUNCTION IF EXISTS jhelwig_debug_attribute_values;
 CREATE OR REPLACE FUNCTION jhelwig_debug_attribute_values()
     RETURNS TABLE (
-        attribute_value_id           bigint,
+        attribute_value_id           ident,
         attribute_value_key          text,
-        parent_attribute_value_id    bigint,
-        attribute_context_prop_id    bigint,
+        parent_attribute_value_id    ident,
+        attribute_context_prop_id    ident,
         prop_name                    text,
-        context_internal_provider_id bigint,
-        context_external_provider_id bigint,
-        context_schema_id            bigint,
-        context_schema_variant_id    bigint,
-        context_component_id         bigint,
-        proxy_for_attribute_value_id bigint,
+        context_internal_provider_id ident,
+        context_external_provider_id ident,
+        context_schema_id            ident,
+        context_schema_variant_id    ident,
+        context_component_id         ident,
+        proxy_for_attribute_value_id ident,
         sealed_proxy                 bool,
         func_name                    text,
         func_binding_args            json,

@@ -1,23 +1,23 @@
 CREATE TYPE func_with_attribute_prototype_context AS
 (
-    id                             bigint,
+    id                             ident,
     NAME                           text,
     display_name                   text,
     backend_kind                   text,
     backend_response_type          text,
     is_builtin                     bool,
-    attribute_prototype_id         bigint,
-    attribute_context_component_id bigint
+    attribute_prototype_id         ident,
+    attribute_context_component_id ident
 );
 CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_and_root_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_context jsonb,
-    this_attribute_value_id bigint
+    this_attribute_value_id ident
 )
     RETURNS TABLE
             (
-                parent_attribute_value_id        bigint,
+                parent_attribute_value_id        ident,
                 attribute_value_object           json,
                 prop_object                      json,
                 func_binding_return_value_object json,
@@ -26,8 +26,8 @@ CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_and_roo
 AS
 $$
 DECLARE
-    new_child_attribute_value_ids bigint[];
-    parent_attribute_value_ids    bigint[];
+    new_child_attribute_value_ids ident[];
+    parent_attribute_value_ids    ident[];
 BEGIN
     -- Make sure we return the result for the base AttributeValue before looping through
     -- to return all of its children.
@@ -147,9 +147,9 @@ CREATE OR REPLACE FUNCTION attribute_value_id_for_prop_and_context_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_context jsonb,
-    this_prop_id bigint
+    this_prop_id ident
 )
-    RETURNS bigint
+    RETURNS ident
     LANGUAGE SQL
     STABLE
     PARALLEL SAFE
@@ -182,11 +182,11 @@ CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_context jsonb,
-    this_prop_id bigint
+    this_prop_id ident
 )
     RETURNS TABLE
             (
-                parent_attribute_value_id        bigint,
+                parent_attribute_value_id        ident,
                 attribute_value_object           json,
                 prop_object                      json,
                 func_binding_return_value_object json,

@@ -1,9 +1,9 @@
 CREATE TYPE attribute_context_record_v1 AS
 (
-    attribute_context_prop_id              bigint,
-    attribute_context_internal_provider_id bigint,
-    attribute_context_external_provider_id bigint,
-    attribute_context_component_id         bigint
+    attribute_context_prop_id              ident,
+    attribute_context_internal_provider_id ident,
+    attribute_context_external_provider_id ident,
+    attribute_context_component_id         ident
 );
 
 CREATE OR REPLACE FUNCTION attribute_context_json_to_columns_v1(this_context jsonb,
@@ -13,10 +13,10 @@ $$
 BEGIN
     SELECT *
     FROM jsonb_to_record(this_context) AS x(
-                                            attribute_context_prop_id bigint,
-                                            attribute_context_internal_provider_id bigint,
-                                            attribute_context_external_provider_id bigint,
-                                            attribute_context_component_id bigint
+                                            attribute_context_prop_id ident,
+                                            attribute_context_internal_provider_id ident,
+                                            attribute_context_external_provider_id ident,
+                                            attribute_context_component_id ident
         )
     INTO result;
 END;
@@ -24,10 +24,10 @@ $$ LANGUAGE PLPGSQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION in_attribute_context_v1(
     check_context jsonb,
-    this_prop_id bigint,
-    this_internal_provider_id bigint,
-    this_external_provider_id bigint,
-    this_component_id bigint
+    this_prop_id ident,
+    this_internal_provider_id ident,
+    this_external_provider_id ident,
+    this_component_id ident
 )
     RETURNS bool
     LANGUAGE sql
@@ -46,7 +46,7 @@ SELECT
                             CASE
                                 WHEN check_context -> 'attribute_context_prop_id' IS NULL OR
                                      check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
-                                ELSE (check_context -> 'attribute_context_prop_id')::bigint = this_prop_id
+                                ELSE (check_context -> 'attribute_context_prop_id')::ident = this_prop_id
                                 END
                             AND this_internal_provider_id = -1
                             AND this_external_provider_id = -1
@@ -58,7 +58,7 @@ SELECT
                                     WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_internal_provider_id')::bigint =
+                                    ELSE (check_context -> 'attribute_context_internal_provider_id')::ident =
                                          this_internal_provider_id
                                     END
                             AND this_external_provider_id = -1
@@ -71,7 +71,7 @@ SELECT
                                     WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_external_provider_id')::bigint =
+                                    ELSE (check_context -> 'attribute_context_external_provider_id')::ident =
                                          this_external_provider_id
                                     END
                         )
@@ -80,7 +80,7 @@ SELECT
             AND CASE
                     WHEN check_context -> 'attribute_context_component_id' IS NULL OR
                          check_context -> 'attribute_context_component_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_component_id')::bigint = this_component_id
+                    ELSE (check_context -> 'attribute_context_component_id')::ident = this_component_id
                 END
         )
         -- ComponentId not set
@@ -92,7 +92,7 @@ SELECT
                             CASE
                                 WHEN check_context -> 'attribute_context_prop_id' IS NULL OR
                                      check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
-                                ELSE (check_context -> 'attribute_context_prop_id')::bigint = this_prop_id
+                                ELSE (check_context -> 'attribute_context_prop_id')::ident = this_prop_id
                                 END
                             AND this_internal_provider_id = -1
                             AND this_external_provider_id = -1
@@ -104,7 +104,7 @@ SELECT
                                     WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_internal_provider_id')::bigint =
+                                    ELSE (check_context -> 'attribute_context_internal_provider_id')::ident =
                                          this_internal_provider_id
                                     END
                             AND this_external_provider_id = -1
@@ -117,7 +117,7 @@ SELECT
                                     WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_external_provider_id')::bigint =
+                                    ELSE (check_context -> 'attribute_context_external_provider_id')::ident =
                                          this_external_provider_id
                                     END
                         )
@@ -128,10 +128,10 @@ SELECT
 $$;
 
 CREATE OR REPLACE FUNCTION exact_attribute_context_v1(check_context jsonb,
-                                                      this_prop_id bigint,
-                                                      this_internal_provider_id bigint,
-                                                      this_external_provider_id bigint,
-                                                      this_component_id bigint,
+                                                      this_prop_id ident,
+                                                      this_internal_provider_id ident,
+                                                      this_external_provider_id ident,
+                                                      this_component_id ident,
                                                       OUT result bool
 )
 AS
@@ -206,10 +206,10 @@ END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION exact_attribute_read_context_v1(check_context jsonb,
-                                                           this_prop_id bigint,
-                                                           this_internal_provider_id bigint,
-                                                           this_external_provider_id bigint,
-                                                           this_component_id bigint,
+                                                           this_prop_id ident,
+                                                           this_internal_provider_id ident,
+                                                           this_external_provider_id ident,
+                                                           this_component_id ident,
                                                            OUT result bool
 )
 AS
@@ -293,10 +293,10 @@ $$ LANGUAGE PLPGSQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION exact_or_more_attribute_read_context_v1(
     check_context jsonb,
-    this_prop_id bigint,
-    this_internal_provider_id bigint,
-    this_external_provider_id bigint,
-    this_component_id bigint,
+    this_prop_id ident,
+    this_internal_provider_id ident,
+    this_external_provider_id ident,
+    this_component_id ident,
     OUT result bool
 )
 AS

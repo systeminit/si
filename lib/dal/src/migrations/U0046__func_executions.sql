@@ -2,12 +2,12 @@ CREATE TABLE func_executions
 (
     pk                           bigserial PRIMARY KEY,
     state                        text                     NOT NULL,
-    func_id                      bigint                   NOT NULL,
-    func_binding_id              bigint                   NOT NULL,
+    func_id                      ident                   NOT NULL,
+    func_binding_id              ident                   NOT NULL,
     func_binding_args            jsonb                    NOT NULL,
     backend_kind                 text                     NOT NULL,
     backend_response_type        text                     NOT NULL,
-    func_binding_return_value_id bigint,
+    func_binding_return_value_id ident,
     handler                      text,
     code_base64                  text,
     unprocessed_value            jsonb,
@@ -15,9 +15,9 @@ CREATE TABLE func_executions
     output_stream                jsonb,
     function_failure             jsonb,
     tenancy_universal            bool,
-    tenancy_billing_account_ids  bigint[],
-    tenancy_organization_ids     bigint[],
-    tenancy_workspace_ids        bigint[],
+    tenancy_billing_account_ids  ident[],
+    tenancy_organization_ids     ident[],
+    tenancy_workspace_ids        ident[],
     created_at                   timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                   timestamp with time zone NOT NULL DEFAULT NOW()
 );
@@ -28,8 +28,8 @@ CREATE INDEX ON func_executions (func_binding_id);
 CREATE OR REPLACE FUNCTION func_execution_create_v1(
     this_tenancy jsonb,
     this_state text,
-    this_func_id bigint,
-    this_func_binding_id bigint,
+    this_func_id ident,
+    this_func_binding_id ident,
     this_func_binding_args jsonb,
     this_backend_kind text,
     this_backend_response_type text,
@@ -74,7 +74,7 @@ END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION func_execution_set_state_v1(
-    this_pk bigint,
+    this_pk ident,
     this_state text,
     OUT object json) AS
 $$
@@ -88,7 +88,7 @@ END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION func_execution_set_output_stream_v1(
-    this_pk bigint,
+    this_pk ident,
     this_output_stream jsonb,
     OUT object json) AS
 $$
@@ -102,8 +102,8 @@ END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION func_execution_set_return_value_v1(
-    this_pk bigint,
-    this_func_binding_return_value_id bigint,
+    this_pk ident,
+    this_func_binding_return_value_id ident,
     this_value jsonb,
     this_unprocessed_value jsonb,
     OUT object json) AS
