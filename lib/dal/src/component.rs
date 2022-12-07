@@ -1,3 +1,6 @@
+//! This module contains [`Component`], which is an instance of a
+//! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
@@ -6,9 +9,7 @@ use std::collections::HashMap;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech_client::ResourceStatus;
 
-use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::code_view::CodeViewError;
@@ -29,7 +30,6 @@ use crate::standard_model::object_from_row;
 use crate::validation::{ValidationConstructorError, ValidationError};
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
-    func::backend::js_command::CommandRunResult,
     func::{FuncId, FuncMetadataView},
     impl_standard_model,
     node::NodeId,
@@ -37,15 +37,15 @@ use crate::{
     provider::internal::InternalProviderError,
     qualification::QualificationError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    ActionPrototype, ActionPrototypeError, AttributeContext, AttributeContextBuilderError,
-    AttributeContextError, AttributePrototypeId, AttributeReadContext, CodeLanguage, DalContext,
-    Edge, EdgeError, ExternalProviderId, Func, FuncBackendKind, HistoryEventError,
-    InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
-    PropId, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
+    AttributePrototypeId, AttributeReadContext, CodeLanguage, DalContext, Edge, EdgeError,
+    ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider,
+    InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError, PropId,
+    QualificationPrototype, QualificationPrototypeError, QualificationResolver,
     QualificationResolverError, ReadTenancyError, Schema, SchemaError, SchemaId, Socket,
     StandardModel, StandardModelError, Timestamp, TransactionsError, ValidationPrototype,
     ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
-    WorkflowRunner, WorkflowRunnerError, WorkspaceError, WriteTenancy, WsPayload,
+    WorkflowRunnerError, WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
 
@@ -53,6 +53,7 @@ pub use view::{ComponentView, ComponentViewError};
 
 pub mod code;
 pub mod diff;
+pub mod resource;
 pub mod stats;
 pub mod view;
 
@@ -192,6 +193,8 @@ const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
 const NAME_FROM_CONTEXT: &str = include_str!("./queries/component/name_from_context.sql");
 const ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT: &str =
     include_str!("queries/component/root_child_attribute_value_for_component.sql");
+const LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE: &str =
+    include_str!("queries/component/list_connected_input_sockets_for_attribute_value.sql");
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -1188,158 +1191,49 @@ impl Component {
         Ok(object_from_row(row)?)
     }
 
-    pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<CommandRunResult> {
-        let prop = self
-            .find_prop_by_json_pointer(ctx, "/root/resource")
-            .await?
-            .ok_or_else(|| ComponentError::PropNotFound("/root/resource".to_owned()))?;
-
-        let implicit_provider = InternalProvider::find_for_prop(ctx, *prop.id())
-            .await?
-            .ok_or_else(|| ComponentError::InternalProviderNotFoundForProp(*prop.id()))?;
-
-        let value_context = AttributeReadContext {
-            internal_provider_id: Some(*implicit_provider.id()),
-            component_id: Some(self.id),
-            ..AttributeReadContext::default()
-        };
-
-        let attribute_value = AttributeValue::find_for_context(ctx, value_context)
-            .await?
-            .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                value_context,
-            ))?;
-
-        let func_binding_return_value =
-            FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
-                .await?
-                .ok_or_else(|| {
-                    ComponentError::FuncBindingReturnValueNotFound(
-                        attribute_value.func_binding_return_value_id(),
-                    )
-                })?;
-
-        let value = func_binding_return_value
-            .value()
-            .map(|value| {
-                if value == &serde_json::json!({}) {
-                    return serde_json::json!({
-                        "status": "ok",
-                    });
-                }
-                value.clone()
-            })
-            .unwrap_or_else(|| {
-                serde_json::json!({
-                    "status": "ok",
-                })
-            });
-        let result = CommandRunResult::deserialize(&value)?;
-        Ok(result)
-    }
-
-    /// Sets the "string" field, "/root/resource" with a given value. After that, ensure dependent
-    /// [`AttributeValues`](crate::AttributeValue) are updated.
-    pub async fn set_resource(
-        &self,
+    /// List the connected input [`Sockets`](crate::Socket) for a given [`ComponentId`](Self) and
+    /// [`AttributeValueId`](crate::AttributeValue) whose [`context`](crate::AttributeContext)'s
+    /// least specific field corresponding to a [`PropId`](crate::Prop). In other words, this is
+    /// the list of input [`Sockets`](crate::Socket) with incoming connections from other
+    /// [`Component(s)`](Self) that the given [`AttributeValue`](crate::AttributeValue) depends on.
+    ///
+    /// ```raw
+    ///                      ┌────────────────────────────┐
+    ///                      │ This                       │
+    ///                      │ Component                  │
+    /// ┌───────────┐        │         ┌────────────────┐ │
+    /// │ Another   │        │    ┌───►│ AttributeValue │ │
+    /// │ Component │        │    │    │ for Prop       │ │
+    /// │           │        │    │    └────────────────┘ │
+    /// │  ┌────────┤        ├────┴─────────┐             │
+    /// │  │ Output ├───────►│ Input        │             │
+    /// │  │ Socket │        │ Socket       │             │
+    /// │  │        │        │ (list these) │             │
+    /// └──┴────────┘        └──────────────┴─────────────┘
+    /// ```
+    ///
+    /// _Warning: users of this query must ensure that the
+    /// [`AttributeValueId`](crate::AttributeValue) provided has a
+    /// [`context`](crate::AttributeContext) whose least specific field corresponds to a
+    /// [`PropId`](crate::Prop)._
+    #[instrument(skip_all)]
+    pub async fn list_connected_input_sockets_for_attribute_value(
         ctx: &DalContext,
-        result: CommandRunResult,
-    ) -> ComponentResult<bool> {
-        // No need to update if the cached value is there
-        if self.resource(ctx).await? == result {
-            return Ok(false);
-        }
-
-        let resource_attribute_value =
-            Component::root_child_attribute_value_for_component(ctx, "resource", self.id).await?;
-
-        let root_attribute_value = resource_attribute_value
-            .parent_attribute_value(ctx)
-            .await?
-            .ok_or_else(|| AttributeValueError::ParentNotFound(*resource_attribute_value.id()))?;
-
-        let update_attribute_context =
-            AttributeContextBuilder::from(resource_attribute_value.context)
-                .set_component_id(self.id)
-                .to_context()?;
-
-        let (_, _) = AttributeValue::update_for_context(
-            ctx,
-            *resource_attribute_value.id(),
-            Some(*root_attribute_value.id()),
-            update_attribute_context,
-            Some(serde_json::to_value(result)?),
-            None,
-        )
-        .await?;
-        Ok(true)
-    }
-
-    pub async fn act(&self, ctx: &DalContext, action_name: &str) -> ComponentResult<()> {
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
-        let action = match ActionPrototype::find_by_name(
-            ctx,
-            action_name,
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?
-        {
-            Some(action) => action,
-            None => return Ok(()),
-        };
-
-        let prototype = action.workflow_prototype(ctx).await?;
-        let run_id: usize = rand::random();
-        let (_runner, _state, _func_binding_return_values, resources) =
-            WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id, true).await?;
-        if !resources.is_empty() {
-            WsEvent::resource_refreshed(ctx, self.id)
-                .publish(ctx)
-                .await?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ResourceView {
-    pub status: ResourceStatus,
-    pub message: Option<String>,
-    pub data: Option<Value>,
-    pub logs: Vec<String>,
-}
-
-impl ResourceView {
-    pub fn new(result: CommandRunResult) -> Self {
-        Self {
-            data: result.value,
-            message: result.message,
-            status: result.status,
-            logs: result.logs,
-        }
-    }
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ResourceRefreshId {
-    component_id: ComponentId,
-}
-
-impl WsEvent {
-    pub fn resource_refreshed(ctx: &DalContext, component_id: ComponentId) -> Self {
-        WsEvent::new(
-            ctx,
-            WsPayload::ResourceRefreshed(ResourceRefreshId { component_id }),
-        )
+        attribute_value_id: AttributeValueId,
+        component_id: ComponentId,
+    ) -> ComponentResult<Vec<Socket>> {
+        let rows = ctx
+            .pg_txn()
+            .query(
+                LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &attribute_value_id,
+                    &component_id,
+                ],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 }

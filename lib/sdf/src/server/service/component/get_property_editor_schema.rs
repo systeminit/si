@@ -1,6 +1,6 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::property_editor::PropertyEditorSchema;
+use dal::property_editor::schema::PropertyEditorSchema;
 use dal::{Component, ComponentId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 

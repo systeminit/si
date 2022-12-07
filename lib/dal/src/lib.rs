@@ -100,7 +100,9 @@ pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO_CHANGE_SET_PK};
 pub use code_view::{CodeLanguage, CodeView};
-pub use component::{Component, ComponentError, ComponentId, ComponentView, ResourceView};
+pub use component::{
+    resource::ResourceView, Component, ComponentError, ComponentId, ComponentView,
+};
 pub use confirmation_prototype::{
     ConfirmationPrototype, ConfirmationPrototypeContext, ConfirmationPrototypeError,
     ConfirmationPrototypeId,
