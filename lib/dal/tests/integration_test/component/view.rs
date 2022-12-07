@@ -1448,7 +1448,6 @@ async fn cyclone_crypto_e2e(ctx: &DalContext) {
 }
 
 #[test]
-#[ignore = "does not pass yet because of object vivification bugs"]
 async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
     // Create and setup the schema and schema variant.
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
@@ -1534,7 +1533,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
     .await
     .expect("could not create func");
     let code = "function getKratos(input) {
-        return input.ragnarok.kratos ?? '';
+        return input.ragnarok.kratos.toUpperCase() ?? '';
     }";
     transformation_func
         .set_code_plaintext(ctx, Some(code))
@@ -1657,7 +1656,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
     );
 
     assert_eq!(
-        Some(serde_json::json!["canoe"]),
+        Some(serde_json::json!["POOP"]),
         dump_value(
             ctx,
             AttributeReadContext {
@@ -1666,7 +1665,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
             },
         )
         .await,
-        "ensure external provider gets value of atreus internal provider",
+        "ensure external provider gets value of kratos internal provider in upper case",
     );
 
     // Prop structure gets the expected values...
