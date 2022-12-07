@@ -12,14 +12,16 @@ use si_data_pg::PgError;
 
 use crate::attribute::value::FuncWithPrototypeContext;
 use crate::{
-    edit_field::widget::WidgetKind, pk, schema::variant::SchemaVariantError, AttributeReadContext,
-    AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
-    LabelEntry, LabelList, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, Secret,
-    StandardModel, StandardModelError, ValidationResolver, ValidationResolverError,
+    edit_field::widget::WidgetKind, pk, schema::variant::SchemaVariantError, standard_model,
+    AttributeReadContext, AttributeValue, AttributeValueError, AttributeValueId, ComponentError,
+    ComponentId, DalContext, LabelEntry, LabelList, Prop, PropId, PropKind, SchemaVariant,
+    SchemaVariantId, Secret, Socket, StandardModel, StandardModelError, ValidationResolver,
+    ValidationResolverError,
 };
 
 const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
     include_str!("./queries/property_editor_schema_for_schema_variant.sql");
+const GET_CONNECTED_SOCKETS: &str = include_str!("queries/connected_input_sockets_for_prop.sql");
 
 #[derive(Error, Debug)]
 pub enum PropertyEditorError {
@@ -229,6 +231,7 @@ pub struct PropertyEditorValue {
     prop_id: PropertyEditorPropId,
     key: Option<String>,
     value: Value,
+    is_from_external_source: bool,
     func: FuncWithPrototypeContext,
 }
 
@@ -262,6 +265,10 @@ impl PropertyEditorValues {
         ctx: &DalContext,
         context: AttributeReadContext,
     ) -> PropertyEditorResult<Self> {
+        let component_id = context
+            .component_id
+            .ok_or(PropertyEditorError::ComponentNotFound)?;
+
         let mut root_value_id = None;
         let mut values = HashMap::new();
         let mut child_values: HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>> =
@@ -285,6 +292,25 @@ impl PropertyEditorValues {
         });
 
         for work in work_queue {
+            let attribute_value_id = (work.attribute_value).id();
+
+            let rows = ctx
+                .pg_txn()
+                .query(
+                    GET_CONNECTED_SOCKETS,
+                    &[
+                        ctx.read_tenancy(),
+                        ctx.visibility(),
+                        attribute_value_id,
+                        &component_id,
+                    ],
+                )
+                .await?;
+
+            let sockets = standard_model::objects_from_rows::<Socket>(rows)?;
+
+            let is_from_external_source = !sockets.is_empty();
+
             values.insert(
                 i64::from(*work.attribute_value.id()).into(),
                 PropertyEditorValue {
@@ -295,6 +321,7 @@ impl PropertyEditorValues {
                         .func_binding_return_value
                         .and_then(|f| f.value().cloned())
                         .unwrap_or(Value::Null),
+                    is_from_external_source,
                     func: work.func_with_prototype_context,
                 },
             );

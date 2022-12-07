@@ -88,6 +88,7 @@ export interface PropertyEditorValue {
   propId: number;
   key?: string;
   value: unknown;
+  isFromExternalSource: boolean;
   func: FuncWithPrototypeContext;
 }
 
