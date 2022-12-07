@@ -1,6 +1,6 @@
 CREATE TYPE visibility_record_v1 as
 (
-    visibility_change_set_pk bigint,
+    visibility_change_set_pk ident,
     visibility_deleted_at    timestamp with time zone
 );
 
@@ -12,7 +12,7 @@ $$
 BEGIN
     SELECT *
     FROM jsonb_to_record(this_visibility) AS x(
-                                               visibility_change_set_pk bigint,
+                                               visibility_change_set_pk ident,
                                                visibility_deleted_at timestamp with time zone
         )
     INTO result;
@@ -21,7 +21,7 @@ $$ LANGUAGE PLPGSQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION is_visible_v1(
     check_visibility jsonb,
-    this_visibility_change_set_pk bigint,
+    this_visibility_change_set_pk ident,
     this_visibility_deleted_at timestamp with time zone
 )
 RETURNS bool
@@ -38,7 +38,7 @@ SELECT
         ELSE TRUE
     END
     AND (
-        this_visibility_change_set_pk = -1
-        OR this_visibility_change_set_pk = (check_visibility ->> 'visibility_change_set_pk')::bigint
+        this_visibility_change_set_pk = ident_nil_v1()
+        OR this_visibility_change_set_pk = (check_visibility ->> 'visibility_change_set_pk')
     )
 $$;

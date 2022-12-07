@@ -88,7 +88,7 @@ const schemasById = computed(() => {
       p[schema.id] = schema;
     });
     return p;
-  }, {} as Record<number, MenuSchema>);
+  }, {} as Record<string, MenuSchema>);
 });
 const selectedSchema = computed(() => {
   if (componentsStore.selectedInsertSchemaId)
@@ -107,7 +107,7 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaId: number) {
+function onSelect(schemaId: string) {
   componentsStore.selectedInsertSchemaId = schemaId;
   selecting.value = true;
 }

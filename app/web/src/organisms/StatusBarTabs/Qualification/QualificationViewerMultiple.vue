@@ -23,7 +23,7 @@ import { useQualificationsStore } from "@/store/qualifications.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 
 const props = defineProps<{
-  componentId: number;
+  componentId: string;
 }>();
 
 const changeSetsStore = useChangeSetsStore();

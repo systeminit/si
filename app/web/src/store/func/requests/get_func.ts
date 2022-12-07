@@ -4,7 +4,7 @@ import { ApiRequest } from "@/utils/pinia_api_tools";
 import { FuncAssociations } from "../types";
 
 export interface GetFuncArgs {
-  id: number;
+  id: string;
 }
 
 export interface GetFuncResponse extends Func {
@@ -23,8 +23,12 @@ export const getFunc = (
     onSuccess,
   });
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 export const nullFunc: GetFuncResponse = {
-  id: 0,
+  id: nilId(),
   handler: "",
   kind: FuncBackendKind.Unset,
   name: "",

@@ -74,7 +74,7 @@ const {
   getIndexForFunc,
 } = storeToRefs(funcStore);
 
-const closeFunc = (funcId: number) => {
+const closeFunc = (funcId: string) => {
   const funcIndex = getIndexForFunc.value(funcId);
   if (funcId === selectedFuncId.value) {
     const newIndex = funcIndex - 1;

@@ -53,7 +53,11 @@ import { computed, PropType, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import _ from "lodash";
 import StatusBar from "@/organisms/StatusBar.vue";
-import { ChangeSetId, useChangeSetsStore } from "@/store/change_sets.store";
+import {
+  ChangeSetId,
+  useChangeSetsStore,
+  changeSetIdNil,
+} from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import AppLayout from "@/layout/AppLayout.vue";
@@ -61,8 +65,8 @@ import Navbar from "@/layout/navbar/Navbar.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps({
-  workspaceId: { type: Number, required: true },
-  changeSetId: { type: [Number, String] as PropType<number | "auto"> },
+  workspaceId: { type: String, required: true },
+  changeSetId: { type: [String, String] as PropType<string | "auto"> },
 });
 
 const router = useRouter();
@@ -97,15 +101,15 @@ function routeToChangeSet(id: ChangeSetId, replace = false) {
 }
 
 function handleUrlChange() {
-  // if id looks like a number, we set it in the store
-  if (_.isNumber(props.changeSetId)) {
+  // if id looks like a string, we set it in the store
+  if (props.changeSetId === "auto") {
+    tryAutoSelect();
+  } else if (_.isString(props.changeSetId)) {
     changeSetsStore.selectedChangeSetId = props.changeSetId;
     // if undefined, that means the route has no changeSetId param, so we select "head"
   } else if (props.changeSetId === undefined) {
-    changeSetsStore.selectedChangeSetId = -1;
+    changeSetsStore.selectedChangeSetId = changeSetIdNil();
     // if "auto", we do our best to autoselect, and show a selection screen otherwise
-  } else if (props.changeSetId === "auto") {
-    tryAutoSelect();
   }
 }
 function handleChangeSetsLoaded() {

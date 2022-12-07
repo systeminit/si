@@ -116,6 +116,7 @@ const getSockets = (_nodeId: string): DiagramSocketDef[] => [
 const nodes = reactive<DiagramNodeDef[]>([
   {
     id: "n1",
+    componentId: "c1",
     title: "Node 1",
     subtitle: "si-n1",
     type: "regular",
@@ -128,6 +129,7 @@ const nodes = reactive<DiagramNodeDef[]>([
   },
   {
     id: "n2",
+    componentId: "c2",
     title: "Node 2 has a super duper long name!",
     subtitle: "si-n2",
     type: "regular",
@@ -140,6 +142,7 @@ const nodes = reactive<DiagramNodeDef[]>([
   },
   {
     id: "n3",
+    componentId: "c3",
     title: "Node 3",
     subtitle: "si-n3",
     type: "regular",
@@ -159,6 +162,7 @@ const nodes = reactive<DiagramNodeDef[]>([
   },
   {
     id: "n4",
+    componentId: "c4",
     title: "Node 4",
     // subtitle: "si-n4",
     type: "regular",
@@ -171,6 +175,7 @@ const nodes = reactive<DiagramNodeDef[]>([
   },
   {
     id: "n5",
+    componentId: "c5",
     title: "Node 5",
     subtitle: "is being operated on!",
     type: "regular",
@@ -235,6 +240,7 @@ function onInsert(e: InsertElementEvent) {
     setTimeout(() => {
       nodes.push({
         id: `n${newNodeId}`,
+        componentId: `c${newNodeId}`,
         title: `Node ${newNodeId}`,
         subtitle: `si-${newNodeId}`,
         type: "regular",

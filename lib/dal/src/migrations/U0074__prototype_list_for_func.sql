@@ -5,7 +5,7 @@
 CREATE OR REPLACE FUNCTION prototype_list_for_func_v1(this_table_text text,
                                                       this_tenancy jsonb,
                                                       this_visibility jsonb,
-                                                      this_func_id bigint)
+                                                      this_func_id ident)
     RETURNS TABLE
             (
                 object                   json

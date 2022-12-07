@@ -7,10 +7,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model::TypeHint, standard_model_accessor,
-    standard_model_accessor_ro, DalContext, FuncBinding, HistoryEvent, HistoryEventError,
-    QualificationPrototypeError, StandardModel, StandardModelError, Timestamp, Visibility,
-    WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
+    DalContext, FuncBinding, HistoryEventError, QualificationPrototypeError, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -123,32 +122,6 @@ impl Func {
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
-    }
-
-    pub async fn set_id(&mut self, ctx: &DalContext, id: &FuncId) -> FuncResult<()> {
-        let updated_at = standard_model::update(
-            ctx,
-            Self::table_name(),
-            "id",
-            self.id(),
-            id,
-            TypeHint::BigInt,
-        )
-        .await?;
-        let _history_event = HistoryEvent::new(
-            ctx,
-            &Self::history_event_label(vec!["updated"]),
-            &Self::history_event_message("updated"),
-            &serde_json::json![{
-                "pk": self.pk,
-                "field": "id",
-                "value": id,
-            }],
-        )
-        .await?;
-        self.timestamp.updated_at = updated_at;
-        self.id = *id;
-        Ok(())
     }
 
     #[allow(clippy::result_large_err)]

@@ -1,18 +1,18 @@
 CREATE TABLE internal_providers
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
+    id                          ident not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    prop_id                     bigint                   NOT NULL,
-    schema_variant_id           bigint                   NOT NULL,
-    attribute_prototype_id      bigint,
+    prop_id                     ident                   NOT NULL,
+    schema_variant_id           ident                   NOT NULL,
+    attribute_prototype_id      ident,
     name                        text                     NOT NULL,
     inbound_type_definition     text,
     outbound_type_definition    text
@@ -28,7 +28,7 @@ CREATE UNIQUE INDEX unique_implicit_internal_providers
                            visibility_change_set_pk,
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
-        AND NOT prop_id = -1;
+        AND NOT prop_id = ident_nil_v1();
 
 CREATE UNIQUE INDEX unique_explicit_internal_providers
     ON internal_providers (name,
@@ -40,7 +40,7 @@ CREATE UNIQUE INDEX unique_explicit_internal_providers
                            visibility_change_set_pk,
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
-        AND prop_id = -1;
+        AND prop_id = ident_nil_v1();
 
 CREATE INDEX ON internal_providers (prop_id);
 CREATE INDEX ON internal_providers (schema_variant_id);
@@ -56,8 +56,8 @@ VALUES ('internal_providers', 'model', 'internal_provider', 'Input Provider'),
 CREATE OR REPLACE FUNCTION internal_provider_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_prop_id bigint,
-    this_schema_variant_id bigint,
+    this_prop_id ident,
+    this_schema_variant_id ident,
     this_name text,
     this_inbound_type_definition text,
     this_outbound_type_definition text,

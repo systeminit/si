@@ -89,19 +89,14 @@ impl DiagramEdgeView {
 
 impl From<Connection> for DiagramEdgeView {
     fn from(conn: Connection) -> Self {
-        let source_node_id: i64 = conn.source.node_id.into();
-        let source_socket_id: i64 = conn.source.socket_id.into();
-        let destination_node_id: i64 = conn.destination.node_id.into();
-        let destination_socket_id: i64 = conn.destination.socket_id.into();
-        let connection_id: i64 = conn.id.into();
         Self {
-            id: connection_id.to_string(),
+            id: conn.id.to_string(),
             ty: None,
             name: None,
-            from_node_id: source_node_id.to_string(),
-            from_socket_id: source_socket_id.to_string(),
-            to_node_id: destination_node_id.to_string(),
-            to_socket_id: destination_socket_id.to_string(),
+            from_node_id: conn.source.node_id.to_string(),
+            from_socket_id: conn.source.socket_id.to_string(),
+            to_node_id: conn.destination.node_id.to_string(),
+            to_socket_id: conn.destination.socket_id.to_string(),
             is_bidirectional: Some(false),
         }
     }

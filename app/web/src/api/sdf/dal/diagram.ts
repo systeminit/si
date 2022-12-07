@@ -5,35 +5,36 @@ export type DiagramKind = "configuration";
 export type DiagramProviderMetadata = string;
 
 export interface DiagramOutputProvider {
-  id: number;
+  id: string;
   ty: DiagramProviderMetadata;
   color: number;
 }
 
 export interface DiagramOutputSocket {
-  id: number;
+  id: string;
   name: string;
   diagramKind: DiagramKind;
   provider: DiagramOutputProvider;
 }
 
 export interface DiagramInputProvider {
-  id: number;
+  id: string;
   ty: DiagramProviderMetadata;
   color: number;
 }
 
 export interface DiagramInputSocket {
-  id: number;
+  id: string;
   name: string;
   diagramKind: DiagramKind;
   provider: DiagramInputProvider;
 }
 
 export interface DiagramSchemaVariant {
-  id: number;
+  id: string;
   name: string;
   schemaName: string;
+  schemaId: string;
   color: number;
   inputSockets: DiagramInputSocket[];
   outputSockets: DiagramOutputSocket[];
@@ -41,7 +42,7 @@ export interface DiagramSchemaVariant {
 
 export interface DiagramNodeKindComponent {
   kind: DiagramKind;
-  componentId: number;
+  componentId: string;
 }
 
 export type DiagramNodeKind = DiagramNodeKindComponent;
@@ -58,15 +59,15 @@ export interface DiagramNodeTemplate {
   name: string;
   title: string;
   kind: DiagramKind;
-  schemaVariantId: number;
+  schemaVariantId: string;
 }
 
 export interface DiagramNode {
-  id: number;
+  id: string;
   name: string;
   title: string;
   kind: DiagramNodeKind;
-  schemaVariantId: number;
+  schemaVariantId: string;
   positions: DiagramNodePosition[];
 }
 export type DiagramNodes = Array<DiagramNode>;

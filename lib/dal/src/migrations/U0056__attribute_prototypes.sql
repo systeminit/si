@@ -1,20 +1,20 @@
 CREATE TABLE attribute_prototypes
 (
-    pk                                     bigserial PRIMARY KEY,
-    id                                     bigserial                NOT NULL,
+    pk                                     ident primary key default ident_create_v1(),
+    id                                     ident not null default ident_create_v1(),
     tenancy_universal                      bool                     NOT NULL,
-    tenancy_billing_account_ids            bigint[],
-    tenancy_organization_ids               bigint[],
-    tenancy_workspace_ids                  bigint[],
-    visibility_change_set_pk               bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids            ident[],
+    tenancy_organization_ids               ident[],
+    tenancy_workspace_ids                  ident[],
+    visibility_change_set_pk               ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at                  timestamp with time zone,
-    attribute_context_prop_id              bigint,
-    attribute_context_internal_provider_id bigint,
-    attribute_context_external_provider_id bigint,
-    attribute_context_component_id         bigint,
+    attribute_context_prop_id              ident,
+    attribute_context_internal_provider_id ident,
+    attribute_context_external_provider_id ident,
+    attribute_context_component_id         ident,
     created_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
-    func_id                                bigint                   NOT NULL,
+    func_id                                ident                   NOT NULL,
     key                                    text
 );
 SELECT standard_model_table_constraints_v1('attribute_prototypes');
@@ -26,7 +26,7 @@ CREATE OR REPLACE FUNCTION attribute_prototype_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_attribute_context jsonb,
-    this_func_id bigint,
+    this_func_id ident,
     this_key text,
     OUT object json) AS
 $$

@@ -149,12 +149,12 @@ watch([diagramNodes, diagramEdges], () => {
 async function onDrawEdge(e: DrawEdgeEvent) {
   await componentsStore.CREATE_COMPONENT_CONNECTION(
     {
-      componentId: parseInt(e.fromSocket.parent.def.id),
-      socketId: parseInt(e.fromSocket.def.id),
+      nodeId: e.fromSocket.parent.def.id,
+      socketId: e.fromSocket.def.id,
     },
     {
-      componentId: parseInt(e.toSocket.parent.def.id),
-      socketId: parseInt(e.toSocket.def.id),
+      nodeId: e.toSocket.parent.def.id,
+      socketId: e.toSocket.def.id,
     },
   );
 }
@@ -169,12 +169,12 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   let parentId;
 
   if (e.parent) {
-    const parentComponent = componentsStore.componentsById[parseInt(e.parent)];
+    const parentComponent = componentsStore.componentsById[e.parent];
     if (
       parentComponent.nodeType !== "aggregationFrame" ||
-      schemaId === parentComponent.schemaVariantId
+      schemaId === parentComponent.schemaId
     ) {
-      parentId = parseInt(e.parent);
+      parentId = e.parent;
     }
   }
 
@@ -191,7 +191,7 @@ function onDiagramResizeElement(e: ResizeElementEvent) {
   if (!e.isFinal) return;
   if (e.element instanceof DiagramGroupData) {
     componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-      parseInt(e.element.def.id),
+      e.element.def.id,
       e.position,
       e.size,
     );
@@ -208,7 +208,7 @@ function onDiagramMoveElement(e: MoveElementEvent) {
     e.element instanceof DiagramGroupData
   ) {
     componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-      parseInt(e.element.def.id),
+      e.element.def.id,
       e.position,
     );
   }
@@ -227,7 +227,7 @@ function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
     selectedElement instanceof DiagramNodeData ||
     selectedElement instanceof DiagramGroupData
   ) {
-    componentsStore.setSelectedComponentId(parseInt(selectedElement.def.id));
+    componentsStore.setSelectedComponentId(selectedElement.def.componentId);
   } else {
     componentsStore.setSelectedComponentId(null);
   }
@@ -238,7 +238,7 @@ function onDiagramDelete(_e: DeleteElementsEvent) {
   alert("Deletion not supported yet!");
 }
 
-function onOutlineSelectComponent(id: number) {
+function onOutlineSelectComponent(id: string) {
   componentsStore.setSelectedComponentId(id);
 }
 
@@ -253,10 +253,12 @@ watch(
   () => selectedComponentId.value,
   () => {
     if (selectedComponentId.value) {
+      const component =
+        componentsStore.componentsById[selectedComponentId.value];
       diagramRef.value?.setSelection(
         selectedComponent.value.isGroup
-          ? DiagramGroupData.generateUniqueKey(selectedComponentId.value)
-          : DiagramNodeData.generateUniqueKey(selectedComponentId.value),
+          ? DiagramGroupData.generateUniqueKey(component.nodeId)
+          : DiagramNodeData.generateUniqueKey(component.nodeId),
       );
     } else {
       diagramRef.value?.clearSelection();
@@ -267,10 +269,10 @@ watch(
 function onGroupElements({ group, elements }: GroupEvent) {
   if (group.def.nodeType === "aggregationFrame") {
     const groupSchemaId =
-      componentsStore.componentsById[parseInt(group.def.id)].schemaVariantId;
+      componentsStore.componentsById[group.def.id].schemaVariantId;
     elements = _.filter(elements, (e) => {
       const elementSchemaId =
-        componentsStore.componentsById[parseInt(e.def.id)].schemaVariantId;
+        componentsStore.componentsById[e.def.id].schemaVariantId;
 
       return elementSchemaId === groupSchemaId;
     });

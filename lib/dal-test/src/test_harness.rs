@@ -11,11 +11,11 @@ use dal::{
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, EncryptedSecret, Func,
-    FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
-    Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId,
-    Secret, SecretKind, SecretObjectType, StandardModel, User, Visibility, Workspace, WriteTenancy,
-    NO_CHANGE_SET_PK,
+    BillingAccount, BillingAccountId, ChangeSet, ChangeSetPk, Component, DalContext,
+    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
+    Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
+    SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, User, Visibility,
+    Workspace, WriteTenancy,
 };
 use lazy_static::lazy_static;
 use names::{Generator, Name};
@@ -215,7 +215,7 @@ pub fn create_visibility_change_set(change_set: &ChangeSet) -> Visibility {
 }
 
 pub fn create_visibility_head() -> Visibility {
-    Visibility::new(NO_CHANGE_SET_PK, None)
+    Visibility::new(ChangeSetPk::NONE, None)
 }
 
 pub async fn create_billing_account_with_name(

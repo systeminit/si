@@ -14,7 +14,7 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
     <div class="inset-2 bottom-0 absolute">
-      <FuncEditorTabs v-if="selectedFuncId > 0" />
+      <FuncEditorTabs v-if="selectedFuncId !== nilId()" />
       <div
         v-else
         class="p-2 text-center text-neutral-400 dark:text-neutral-300"
@@ -49,10 +49,13 @@ const { selectedFuncId } = storeToRefs(funcStore);
 const isDevMode = import.meta.env.DEV;
 
 const props = defineProps<{
-  funcId?: number;
+  funcId?: string;
 }>();
 
-const funcIdParam = toRef(props, "funcId", -1);
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+const funcIdParam = toRef(props, "funcId", nilId());
 
 const routeToFunc = useRouteToFunc();
 const selectFunc = (func: ListedFuncView) => {
@@ -62,13 +65,13 @@ const selectFunc = (func: ListedFuncView) => {
 watch(
   () => funcIdParam.value,
   (funcIdParam) => {
-    let funcId = funcIdParam ?? -1;
-    if (Number.isNaN(funcIdParam) || funcId === -1) {
-      if (selectedFuncId.value !== -1) {
+    let funcId = funcIdParam ?? nilId();
+    if (Number.isNaN(funcIdParam) || funcId === nilId()) {
+      if (selectedFuncId.value !== nilId()) {
         routeToFunc(selectedFuncId.value);
         return;
       } else {
-        funcId = -1;
+        funcId = nilId();
       }
     }
     funcStore.SELECT_FUNC(funcId);

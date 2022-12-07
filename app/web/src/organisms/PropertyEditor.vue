@@ -61,8 +61,8 @@ const emits = defineEmits<{
   (
     e: "createAttributeFunc",
     currentFunc: FuncWithPrototypeContext,
-    valueId: number,
-    parentValueId?: number,
+    valueId: string,
+    parentValueId?: string,
   ): void;
 }>();
 
@@ -90,13 +90,13 @@ const toggleCollapsed = (path: string[]) => {
   collapsed.value.push(path);
 };
 
-const findParentProp = (propId: number) => {
+const findParentProp = (propId: string) => {
   for (const [parentPropId, childPropIds] of Object.entries(
     props.editorContext.schema.childProps,
   )) {
     for (const childProp of childPropIds) {
       if (childProp === propId) {
-        const parentProp = schemasByPropId.value[parseInt(parentPropId, 10)];
+        const parentProp = schemasByPropId.value[parentPropId];
         if (parentProp) {
           return parentProp;
         } else {
@@ -107,13 +107,13 @@ const findParentProp = (propId: number) => {
   }
 };
 
-const findParentValue = (valueId: number) => {
+const findParentValue = (valueId: string) => {
   for (const [parentValueId, childValueIds] of Object.entries(
     values.value.childValues,
   )) {
     for (const childValueId of childValueIds) {
       if (childValueId === valueId) {
-        const parentValue = values.value.values[parseInt(parentValueId, 10)];
+        const parentValue = values.value.values[parentValueId];
         if (parentValue) {
           return parentValue;
         } else {
@@ -124,7 +124,7 @@ const findParentValue = (valueId: number) => {
   }
 };
 
-const pathPartForValueId = (valueId: number) => {
+const pathPartForValueId = (valueId: string) => {
   let displayPathPart = "bug";
   let triggerPathPart = "bug";
   const currentValue = values.value.values[valueId];
@@ -183,24 +183,24 @@ const pathPartForValueId = (valueId: number) => {
 const findParentPath = (
   displayPath: string[],
   triggerPath: string[],
-  valueId: number,
+  valueId: string,
 ) => {
   for (const [parentValueId, childValueIds] of Object.entries(
     values.value.childValues,
   )) {
     for (const childValueId of childValueIds) {
       if (childValueId === valueId) {
-        const pathPart = pathPartForValueId(parseInt(parentValueId, 10));
+        const pathPart = pathPartForValueId(parentValueId);
         displayPath.push(pathPart.displayPathPart);
         triggerPath.push(pathPart.triggerPathPart);
-        findParentPath(displayPath, triggerPath, parseInt(parentValueId, 10));
+        findParentPath(displayPath, triggerPath, parentValueId);
       }
     }
   }
 };
 
-const paths = computed<{ [valueId: number]: PropertyPath | undefined }>(() => {
-  const result: { [valueId: number]: PropertyPath } = {};
+const paths = computed<{ [valueId: string]: PropertyPath | undefined }>(() => {
+  const result: { [valueId: string]: PropertyPath } = {};
   for (const propValue of Object.values(values.value.values)) {
     // First, do ourselves - then our parents
     const pathPart = pathPartForValueId(propValue.id);
@@ -217,7 +217,7 @@ const paths = computed<{ [valueId: number]: PropertyPath | undefined }>(() => {
 
 const determineOrder = (
   order: PropertyEditorValue[],
-  childValueIds: number[],
+  childValueIds: string[],
 ): PropertyEditorValue[] => {
   for (const childValueId of childValueIds) {
     const child = values.value.values[childValueId];
@@ -257,7 +257,7 @@ const addToMap = (event: AddToMap) => {
   emits("addToMap", event);
 };
 
-const findArrayIndex = (valueId: number) => {
+const findArrayIndex = (valueId: string) => {
   let parentProp;
   let index;
   for (const [parentValueId, childValues] of Object.entries(
@@ -267,7 +267,7 @@ const findArrayIndex = (valueId: number) => {
       const cv = childValues[x];
       if (cv === valueId) {
         index = x;
-        const parentValue = values.value.values[parseInt(parentValueId, 10)];
+        const parentValue = values.value.values[parentValueId];
         if (parentValue) {
           parentProp = schemasByPropId.value[parentValue.propId];
         }
@@ -282,7 +282,7 @@ const findArrayIndex = (valueId: number) => {
   }
 };
 
-const findArrayLength = (propId: number) => {
+const findArrayLength = (propId: string) => {
   const prop = schemasByPropId.value[propId];
   if (prop) {
     if (prop.kind === "array") {
@@ -306,7 +306,7 @@ const findArrayLength = (propId: number) => {
 };
 
 const arrayIndicesByValueId = computed(() => {
-  const result: { [valueId: number]: number } = {};
+  const result: { [valueId: string]: number } = {};
   for (const propValue of Object.values(values.value.values)) {
     const length = findArrayIndex(propValue.id);
     if (!_.isUndefined(length)) {
@@ -318,9 +318,9 @@ const arrayIndicesByValueId = computed(() => {
 });
 
 const arrayLengthsByPropId = computed(() => {
-  const result: { [propId: number]: number } = {};
+  const result: { [propId: string]: number } = {};
   for (const propId in Object.keys(schemasByPropId.value)) {
-    const length = findArrayLength(parseInt(propId, 10));
+    const length = findArrayLength(propId);
     if (!_.isUndefined(length)) {
       result[propId] = length;
     }
@@ -330,7 +330,7 @@ const arrayLengthsByPropId = computed(() => {
 
 const onCreateAttributeFunc = (
   currentFunc: FuncWithPrototypeContext,
-  valueId: number,
+  valueId: string,
 ) =>
   emits(
     "createAttributeFunc",

@@ -346,15 +346,3 @@ impl ConfirmationPrototype {
 }
 
 impl_prototype_list_for_func! {model: ConfirmationPrototype}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn context_builder() {
-        let mut c = ConfirmationPrototypeContext::new();
-        c.set_component_id(22.into());
-        assert_eq!(c.component_id(), 22.into());
-    }
-}

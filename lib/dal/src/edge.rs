@@ -99,11 +99,11 @@ pub struct Edge {
     // NOTE: Would love to flatten this, but serde doesn't allow flatten and rename.
     head_node_id: NodeId,
     head_object_kind: VertexObjectKind,
-    head_object_id: i64,
+    head_object_id: EdgeObjectId,
     head_socket_id: SocketId,
     tail_node_id: NodeId,
     tail_object_kind: VertexObjectKind,
-    tail_object_id: i64,
+    tail_object_id: EdgeObjectId,
     tail_socket_id: SocketId,
     #[serde(flatten)]
     tenancy: WriteTenancy,
@@ -122,6 +122,20 @@ impl_standard_model! {
     history_event_message_name: "Edge"
 }
 
+pk!(EdgeObjectId);
+
+impl From<EdgeObjectId> for ComponentId {
+    fn from(id: EdgeObjectId) -> Self {
+        Self::from(id.0)
+    }
+}
+
+impl From<ComponentId> for EdgeObjectId {
+    fn from(id: ComponentId) -> Self {
+        Self::from(ulid::Ulid::from(id))
+    }
+}
+
 impl Edge {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
@@ -130,11 +144,11 @@ impl Edge {
         kind: EdgeKind,
         head_node_id: NodeId,
         head_object_kind: VertexObjectKind,
-        head_object_id: i64,
+        head_object_id: EdgeObjectId,
         head_socket_id: SocketId,
         tail_node_id: NodeId,
         tail_object_kind: VertexObjectKind,
-        tail_object_id: i64,
+        tail_object_id: EdgeObjectId,
         tail_socket_id: SocketId,
     ) -> EdgeResult<Self> {
         let row = ctx
@@ -212,11 +226,11 @@ impl Edge {
             EdgeKind::Configuration,
             head_node_id,
             VertexObjectKind::Configuration,
-            (*head_component.id()).into(),
+            EdgeObjectId::from(*head_component.id()),
             head_socket_id,
             tail_node_id,
             VertexObjectKind::Configuration,
-            (*tail_component.id()).into(),
+            EdgeObjectId::from(*tail_component.id()),
             tail_socket_id,
         )
         .await?;
@@ -228,11 +242,11 @@ impl Edge {
     // Sockets
     standard_model_accessor!(head_node_id, Pk(NodeId), EdgeResult);
     standard_model_accessor!(head_object_kind, Enum(VertexObjectKind), EdgeResult);
-    standard_model_accessor!(head_object_id, i64, EdgeResult);
+    standard_model_accessor!(head_object_id, Pk(EdgeObjectId), EdgeResult);
     standard_model_accessor!(head_socket_id, Pk(SocketId), EdgeResult);
     standard_model_accessor!(tail_node_id, Pk(NodeId), EdgeResult);
     standard_model_accessor!(tail_object_kind, Enum(VertexObjectKind), EdgeResult);
-    standard_model_accessor!(tail_object_id, i64, EdgeResult);
+    standard_model_accessor!(tail_object_id, Pk(EdgeObjectId), EdgeResult);
     standard_model_accessor!(tail_socket_id, Pk(SocketId), EdgeResult);
 
     pub async fn list_parents_for_component(

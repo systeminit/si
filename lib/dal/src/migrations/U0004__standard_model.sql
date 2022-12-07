@@ -1,6 +1,6 @@
 CREATE TABLE standard_models
 (
-    pk                         bigserial PRIMARY KEY,
+    pk                         ident primary key default ident_create_v1(),
     table_name                 text NOT NULL,
     table_type                 text NOT NULL,
     history_event_label_base   text NOT NULL,
@@ -11,7 +11,7 @@ ALTER TABLE standard_models
     ADD CONSTRAINT standard_models_check_valid_table_type
         CHECK (table_type IN ('model', 'belongs_to', 'many_to_many'));
 
-CREATE OR REPLACE FUNCTION get_by_pk_v1(this_table_text text, this_pk bigint, OUT object json)
+CREATE OR REPLACE FUNCTION get_by_pk_v1(this_table_text text, this_pk ident, OUT object json)
 AS
 $$
 DECLARE
@@ -23,11 +23,11 @@ BEGIN
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
 
-CREATE OR REPLACE FUNCTION get_by_id_v1(this_table_text text, this_tenancy jsonb, this_visibility jsonb, this_id bigint)
+CREATE OR REPLACE FUNCTION get_by_id_v1(this_table_text text, this_tenancy jsonb, this_visibility jsonb, this_id ident)
     RETURNS TABLE
             (
-                id                       bigint,
-                visibility_change_set_pk bigint,
+                id                       ident,
+                visibility_change_set_pk ident,
                 visibility_deleted_at    timestamp with time zone,
                 object                   json
             )
@@ -44,7 +44,7 @@ BEGIN
                                 '   row_to_json(table_alias.*) AS object '
                                 ' FROM %1$I_v1(%3$L, %4$L) AS table_alias '
                                 ' WHERE table_alias.id = %2$L '
-                                ' ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                                ' ORDER BY created_at, id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
         , this_table, this_id, this_tenancy, this_visibility);
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
@@ -53,8 +53,8 @@ CREATE OR REPLACE FUNCTION find_by_attr_v1(this_table_text text, this_tenancy js
                                            this_attr_name text, this_value text)
     RETURNS TABLE
             (
-                id                       bigint,
-                visibility_change_set_pk bigint,
+                id                       ident,
+                visibility_change_set_pk ident,
                 object                   json
             )
 AS
@@ -78,8 +78,8 @@ CREATE OR REPLACE FUNCTION find_by_attr_null_v1(this_table_text text, this_tenan
                                                 this_attr_name text)
     RETURNS TABLE
             (
-                id                       bigint,
-                visibility_change_set_pk bigint,
+                id                       ident,
+                visibility_change_set_pk ident,
                 object                   json
             )
 AS
@@ -103,8 +103,8 @@ CREATE OR REPLACE FUNCTION find_by_attr_in_v1(this_table_text text, this_tenancy
                                               this_attr_name text, this_value text[])
     RETURNS TABLE
             (
-                id                       bigint,
-                visibility_change_set_pk bigint,
+                id                       ident,
+                visibility_change_set_pk ident,
                 object                   json
             )
 AS
@@ -129,8 +129,8 @@ CREATE OR REPLACE FUNCTION find_by_attr_not_in_v1(this_table_text text, this_ten
                                                   this_attr_name text, this_value text[])
     RETURNS TABLE
             (
-                id                       bigint,
-                visibility_change_set_pk bigint,
+                id                       ident,
+                visibility_change_set_pk ident,
                 object                   json
             )
 AS
@@ -157,7 +157,7 @@ CREATE OR REPLACE FUNCTION update_by_id_v1(
     this_read_tenancy  jsonb,
     this_write_tenancy jsonb,
     this_visibility    jsonb,
-    this_id            bigint,
+    this_id            ident,
     this_value         text,
     OUT updated_at     timestamp with time zone)
 AS
@@ -203,7 +203,7 @@ BEGIN
 
            If we aren't checking the change set and edit session, then we are pulling from head, so we
            can just copy head. */
-        IF this_visibility_row.visibility_change_set_pk != '-1' THEN
+        IF this_visibility_row.visibility_change_set_pk != ident_nil_v1() THEN
 
             SELECT string_agg(information_schema.columns.column_name::text, ',')
             FROM information_schema.columns
@@ -237,7 +237,7 @@ BEGIN
                            '                   %1$I.tenancy_billing_account_ids, '
                            '                   %1$I.tenancy_organization_ids, '
                            '                   %1$I.tenancy_workspace_ids) '
-                           ' AND %1$I.visibility_change_set_pk = -1 '
+                           ' AND %1$I.visibility_change_set_pk = ident_nil_v1() '
                            ' AND %1$I.visibility_deleted_at IS NULL '
                            ' RETURNING updated_at',
                            this_table,
@@ -281,7 +281,7 @@ CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_read_tenancy jsonb,
                                            this_write_tenancy jsonb,
                                            this_visibility jsonb,
-                                           this_id bigint,
+                                           this_id ident,
                                            this_value jsonb,
                                            OUT updated_at timestamp with time zone)
 AS
@@ -304,7 +304,7 @@ CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_read_tenancy jsonb,
                                            this_write_tenancy jsonb,
                                            this_visibility jsonb,
-                                           this_id bigint,
+                                           this_id ident,
                                            this_value bool,
                                            OUT updated_at timestamp with time zone)
 AS
@@ -327,7 +327,7 @@ CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_read_tenancy jsonb,
                                            this_write_tenancy jsonb,
                                            this_visibility jsonb,
-                                           this_id bigint,
+                                           this_id ident,
                                            this_value bigint,
                                            OUT updated_at timestamp with time zone)
 AS
@@ -348,7 +348,7 @@ CREATE OR REPLACE FUNCTION delete_by_id_v1(this_table_text text,
                                            this_read_tenancy jsonb,
                                            this_write_tenancy jsonb,
                                            this_visibility jsonb,
-                                           this_id bigint,
+                                           this_id ident,
                                            OUT updated_at timestamp with time zone)
 AS
 $$
@@ -366,7 +366,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION delete_by_pk_v1(this_table_text text,
                                            this_tenancy jsonb,
-                                           this_pk bigint,
+                                           this_pk ident,
                                            OUT updated_at timestamp with time zone)
 AS
 $$
@@ -388,7 +388,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION undelete_by_pk_v1(this_table_text text,
                                              this_tenancy jsonb,
-                                             this_pk bigint,
+                                             this_pk ident,
                                              OUT updated_at timestamp with time zone)
 AS
 $$
@@ -411,7 +411,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION hard_delete_by_pk_v1(
     this_table_text text,
-    this_pk bigint,
+    this_pk ident,
     OUT object json
 )
 AS
@@ -432,8 +432,8 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION list_models_v1(this_table_text text, this_tenancy jsonb, this_visibility jsonb)
     RETURNS TABLE
             (
-                id                       bigint,
-                visibility_change_set_pk bigint,
+                id                       ident,
+                visibility_change_set_pk ident,
                 visibility_deleted_at    timestamp with time zone,
                 object                   json
             )
@@ -460,11 +460,11 @@ CREATE OR REPLACE FUNCTION belongs_to_v1(this_table_text text,
                                          this_tenancy jsonb,
                                          this_visibility jsonb,
                                          this_retrieve_table text,
-                                         this_object_id bigint)
+                                         this_object_id ident)
     RETURNS TABLE
             (
-                id                       bigint,
-                visibility_change_set_pk bigint,
+                id                       ident,
+                visibility_change_set_pk ident,
                 visibility_deleted_at    timestamp with time zone,
                 object                   json
             )
@@ -495,11 +495,11 @@ CREATE OR REPLACE FUNCTION has_many_v1(this_table_text text,
                                        this_tenancy jsonb,
                                        this_visibility jsonb,
                                        this_retrieve_table text,
-                                       this_belongs_to_id bigint)
+                                       this_belongs_to_id ident)
     RETURNS TABLE
             (
-                id                       bigint,
-                visibility_change_set_pk bigint,
+                id                       ident,
+                visibility_change_set_pk ident,
                 visibility_deleted_at    timestamp with time zone,
                 object                   json
             )
@@ -535,12 +535,12 @@ CREATE OR REPLACE FUNCTION many_to_many_v1(this_table_text text,
                                            this_visibility jsonb,
                                            this_left_table text,
                                            this_right_table text,
-                                           this_left_object_id bigint,
-                                           this_right_object_id bigint)
+                                           this_left_object_id ident,
+                                           this_right_object_id ident)
     RETURNS TABLE
             (
-                id                       bigint,
-                visibility_change_set_pk bigint,
+                id                       ident,
+                visibility_change_set_pk ident,
                 visibility_deleted_at    timestamp with time zone,
                 object                   json
             )
@@ -550,7 +550,7 @@ DECLARE
     this_table           regclass;
     query                text;
     this_return_table    text;
-    this_query_object_id bigint;
+    this_query_object_id ident;
     this_join_column     text;
     this_query_column    text;
 BEGIN
@@ -591,7 +591,7 @@ END;
 $$ LANGUAGE PLPGSQL STABLE;
 
 
-CREATE OR REPLACE FUNCTION check_id_in_table_v1(this_table_name text, this_id bigint, OUT result bool) AS
+CREATE OR REPLACE FUNCTION check_id_in_table_v1(this_table_name text, this_id ident, OUT result bool) AS
 $$
 DECLARE
     check_query text;
@@ -614,15 +614,15 @@ DECLARE
     create_table text;
 BEGIN
     create_table := format('CREATE TABLE %1$I ( '
-                           ' pk                          bigserial PRIMARY KEY, '
-                           ' id                          bigserial                NOT NULL, '
-                           ' object_id                   bigint                   NOT NULL, '
-                           ' belongs_to_id               bigint                   NOT NULL, '
+                           ' pk                          ident primary key default ident_create_v1(), '
+                           ' id                          ident not null default ident_create_v1(), '
+                           ' object_id                   ident                   NOT NULL, '
+                           ' belongs_to_id               ident                   NOT NULL, '
                            ' tenancy_universal           bool                     NOT NULL, '
-                           ' tenancy_billing_account_ids bigint[], '
-                           ' tenancy_organization_ids    bigint[], '
-                           ' tenancy_workspace_ids       bigint[], '
-                           ' visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1, '
+                           ' tenancy_billing_account_ids ident[], '
+                           ' tenancy_organization_ids    ident[], '
+                           ' tenancy_workspace_ids       ident[], '
+                           ' visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(), '
                            ' visibility_deleted_at       timestamp with time zone, '
                            ' created_at                  timestamp with time zone NOT NULL DEFAULT NOW(), '
                            ' updated_at                  timestamp with time zone NOT NULL DEFAULT NOW() '
@@ -635,12 +635,6 @@ BEGIN
                            '                                    visibility_change_set_pk, '
                            '                                    (visibility_deleted_at IS NULL)) '
                            '                    WHERE visibility_deleted_at IS NULL; '
-                           'ALTER TABLE %1$I '
-                           '    ADD CONSTRAINT %1$s_valid_combinations CHECK ( '
-                           '        (visibility_change_set_pk = -1) '
-                           '        OR '
-                           '        (visibility_change_set_pk > 0) '
-                           '    ); '
                            'ALTER TABLE %1$I '
                            '    ADD CONSTRAINT %1$s_object_id_is_valid '
                            '        CHECK (check_id_in_table_v1(%2$L, object_id)); '
@@ -749,12 +743,6 @@ BEGIN
                           '                                    visibility_change_set_pk, '
                           '                                    (visibility_deleted_at IS NULL)) '
                           '                    WHERE visibility_deleted_at IS NULL; '
-                          'ALTER TABLE %1$I '
-                          '   ADD CONSTRAINT %1$s_visibility_valid_combinations CHECK ( '
-                          '           (visibility_change_set_pk = -1) '
-                          '           OR '
-                          '           (visibility_change_set_pk > 0) '
-                          '       ); '
                           'CREATE INDEX ON %1$I (id); '
                           'CREATE FUNCTION is_visible_v1( '
                           '    check_visibility jsonb, '
@@ -839,15 +827,15 @@ DECLARE
     create_table text;
 BEGIN
     create_table := format('CREATE TABLE %1$I ( '
-                           ' pk                          bigserial PRIMARY KEY, '
-                           ' id                          bigserial                NOT NULL, '
-                           ' left_object_id              bigint                   NOT NULL, '
-                           ' right_object_id             bigint                   NOT NULL, '
+                           ' pk                          ident primary key default ident_create_v1(), '
+                           ' id                          ident not null default ident_create_v1(), '
+                           ' left_object_id              ident                   NOT NULL, '
+                           ' right_object_id             ident                   NOT NULL, '
                            ' tenancy_universal           bool                     NOT NULL, '
-                           ' tenancy_billing_account_ids bigint[], '
-                           ' tenancy_organization_ids    bigint[], '
-                           ' tenancy_workspace_ids       bigint[], '
-                           ' visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1, '
+                           ' tenancy_billing_account_ids ident[], '
+                           ' tenancy_organization_ids    ident[], '
+                           ' tenancy_workspace_ids       ident[], '
+                           ' visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(), '
                            ' visibility_deleted_at       timestamp with time zone, '
                            ' created_at                  timestamp with time zone NOT NULL DEFAULT NOW(), '
                            ' updated_at                  timestamp with time zone NOT NULL DEFAULT NOW() '
@@ -860,12 +848,6 @@ BEGIN
                            '                                    visibility_change_set_pk, '
                            '                                    (visibility_deleted_at IS NULL)) '
                            '                    WHERE visibility_deleted_at IS NULL; '
-                           'ALTER TABLE %1$I '
-                           '    ADD CONSTRAINT %1$s_valid_combinations CHECK ( '
-                           '            (visibility_change_set_pk = -1) '
-                           '            OR '
-                           '            (visibility_change_set_pk > 0) '
-                           '        ); '
                            'ALTER TABLE %1$I '
                            '    ADD CONSTRAINT %1$s_left_object_id_is_valid '
                            '        CHECK (check_id_in_table_v1(%2$L, left_object_id)); '
@@ -961,8 +943,8 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE FUNCTION associate_many_to_many_v1(this_table_name text,
                                                      this_tenancy jsonb,
                                                      this_visibility jsonb,
-                                                     this_left_object_id bigint,
-                                                     this_right_object_id bigint
+                                                     this_left_object_id ident,
+                                                     this_right_object_id ident
 ) RETURNS VOID AS
 $$
 DECLARE
@@ -1004,8 +986,8 @@ $$ LANGUAGE plpgsql VOLATILE;
 CREATE OR REPLACE FUNCTION disassociate_many_to_many_v1(this_table_name text,
                                                         this_tenancy jsonb,
                                                         this_visibility jsonb,
-                                                        this_left_object_id bigint,
-                                                        this_right_object_id bigint
+                                                        this_left_object_id ident,
+                                                        this_right_object_id ident
 ) RETURNS VOID AS
 $$
 DECLARE
@@ -1038,7 +1020,7 @@ $$ LANGUAGE plpgsql VOLATILE;
 CREATE OR REPLACE FUNCTION disassociate_all_many_to_many_v1(this_table_name text,
                                                             this_tenancy jsonb,
                                                             this_visibility jsonb,
-                                                            this_left_object_id bigint
+                                                            this_left_object_id ident
 ) RETURNS VOID AS
 $$
 DECLARE
@@ -1071,15 +1053,15 @@ CREATE OR REPLACE FUNCTION set_belongs_to_v1(
     this_read_tenancy jsonb,
     this_write_tenancy jsonb,
     this_visibility jsonb,
-    this_object_id bigint,
-    this_belongs_to_id bigint
+    this_object_id ident,
+    this_belongs_to_id ident
 ) RETURNS VOID AS
 $$
 DECLARE
     insert_query              text;
     this_write_tenancy_record tenancy_record_v1;
     this_visibility_record    visibility_record_v1;
-    this_existing_record_id   bigint;
+    this_existing_record_id   ident;
 BEGIN
     this_write_tenancy_record := tenancy_json_to_columns_v1(this_write_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
@@ -1140,7 +1122,7 @@ $$ LANGUAGE plpgsql VOLATILE;
 CREATE OR REPLACE FUNCTION unset_belongs_to_v1(this_table_name text,
                                                this_tenancy jsonb,
                                                this_visibility jsonb,
-                                               this_object_id bigint
+                                               this_object_id ident
 ) RETURNS VOID AS
 $$
 DECLARE

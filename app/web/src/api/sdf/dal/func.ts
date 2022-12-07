@@ -44,7 +44,7 @@ export const isCustomizableFuncKind = (f: FuncBackendKind) =>
   f in CUSTOMIZABLE_FUNC_TYPES;
 
 export interface Func {
-  id: number;
+  id: string;
   handler: string;
   kind: FuncBackendKind;
   name: string;
@@ -64,7 +64,7 @@ export enum FuncArgumentKind {
 }
 
 export interface FuncArgument {
-  id: number;
+  id: string;
   name: string;
   kind: FuncArgumentKind;
   elementKind?: FuncArgumentKind;

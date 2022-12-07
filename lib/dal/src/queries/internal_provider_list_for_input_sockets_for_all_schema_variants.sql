@@ -4,4 +4,4 @@ JOIN socket_belongs_to_internal_provider_v1($1, $2) AS sbtip
      ON ip.id = sbtip.belongs_to_id
 JOIN sockets_v1($1, $2) AS s
      ON s.id = sbtip.object_id
-WHERE ip.prop_id = -1;
+WHERE ip.prop_id = ident_nil_v1();

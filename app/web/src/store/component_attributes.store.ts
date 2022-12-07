@@ -17,14 +17,14 @@ import { useComponentsStore } from "./components.store";
 import { useStatusStore } from "./status.store";
 
 export interface UpdatePropertyEditorValueArgs {
-  attributeValueId: number;
-  parentAttributeValueId?: number;
+  attributeValueId: string;
+  parentAttributeValueId?: string;
   attributeContext: AttributeContext;
   value?: unknown;
   key?: string;
 }
 export interface InsertPropertyEditorValueArgs {
-  parentAttributeValueId: number;
+  parentAttributeValueId: string;
   attributeContext: AttributeContext;
   value?: unknown;
   key?: string;
@@ -52,7 +52,7 @@ export const useComponentAttributesStore = () => {
       getters: {
         currentValueForValueId:
           (state) =>
-          (valueId: number): PropertyEditorValue | undefined =>
+          (valueId: string): PropertyEditorValue | undefined =>
             state.values?.values[valueId],
         // puts the schema, validations, values all together in a format used by the property editor
         editorContext: (state) => {
@@ -61,15 +61,15 @@ export const useComponentAttributesStore = () => {
 
           // previously called hackAwayTheZeroElementOfContainers - not entirely clear what it's doing
           // can likely refactor how we store/retrieve the data so we wont need this...
-          const filteredChildValues: { [key: number]: Array<number> } = {};
+          const filteredChildValues: { [key: string]: Array<string> } = {};
 
           for (const [parentValueId, childValuesIds] of Object.entries(
             values.childValues,
           )) {
-            const parentValue = values.values[parseInt(parentValueId)];
+            const parentValue = values.values[parentValueId];
             if (!parentValue) {
               // If we don't find a value, then don't filter and continue
-              filteredChildValues[parseInt(parentValueId)] = childValuesIds;
+              filteredChildValues[parentValueId] = childValuesIds;
               continue;
             }
             const parentProp = schema.props[parentValue.propId];

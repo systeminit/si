@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use crate::property_editor::{PropertyEditorError, PropertyEditorPropId, PropertyEditorResult};
 use crate::{
     edit_field::widget::WidgetKind, DalContext, LabelEntry, LabelList, Prop, PropKind,
-    SchemaVariant, SchemaVariantId, Secret, StandardModel,
+    SchemaVariant, SchemaVariantId, Secret, SecretId, StandardModel,
 };
 
 const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
@@ -64,7 +64,7 @@ impl PropertyEditorSchema {
         }
 
         Ok(PropertyEditorSchema {
-            root_prop_id: root_prop.id().into(),
+            root_prop_id: (*root_prop.id()).into(),
             props,
             child_props,
         })
@@ -84,7 +84,7 @@ pub struct PropertyEditorProp {
 impl PropertyEditorProp {
     pub async fn new(ctx: &DalContext, prop: Prop) -> PropertyEditorResult<PropertyEditorProp> {
         Ok(PropertyEditorProp {
-            id: prop.id().into(),
+            id: (*prop.id()).into(),
             name: prop.name().into(),
             kind: prop.kind().into(),
             widget_kind: PropertyEditorPropWidgetKind::new(
@@ -130,7 +130,7 @@ pub enum PropertyEditorPropWidgetKind {
     Checkbox,
     Header,
     Map,
-    SecretSelect { options: LabelList<i64> },
+    SecretSelect { options: LabelList<SecretId> },
     Select { options: Option<Value> },
     ComboBox { options: Option<Value> },
     Text,
@@ -155,7 +155,7 @@ impl PropertyEditorPropWidgetKind {
                     Secret::list(ctx)
                         .await?
                         .into_iter()
-                        .map(|s| LabelEntry::new(s.name(), i64::from(*s.id())))
+                        .map(|s| LabelEntry::new(s.name(), *s.id()))
                         .collect(),
                 ),
             },

@@ -68,6 +68,10 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 const componentsStore = useComponentsStore();
 // Note(victor): This component will only be rendered if there's a selected component.
 // To avoid weird data races where the store has already unset the value but we still need to use it, we can default to
@@ -82,10 +86,10 @@ const componentAttributesStore = useComponentAttributesStore();
 const editorContext = computed(() => componentAttributesStore.editorContext);
 
 // TODO: not sure why we need to pass this all back to the backend - seems like we should pass the minimal data
-const getAttributeContext = (propId: number) => ({
+const getAttributeContext = (propId: string) => ({
   attribute_context_prop_id: propId,
-  attribute_context_internal_provider_id: -1,
-  attribute_context_external_provider_id: -1,
+  attribute_context_internal_provider_id: nilId(),
+  attribute_context_external_provider_id: nilId(),
   attribute_context_component_id: lastSelectedComponent.value.id,
 });
 
@@ -121,8 +125,8 @@ const addToMap = (event: AddToMap) => {
 
 const onCreateAttributeFunc = async (
   currentFunc: FuncWithPrototypeContext,
-  valueId: number,
-  parentValueId?: number,
+  valueId: string,
+  parentValueId?: string,
 ) => {
   const res = await funcStore.CREATE_FUNC({
     kind: FuncBackendKind.JsAttribute,

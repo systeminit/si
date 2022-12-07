@@ -109,9 +109,9 @@ watch(
 
 const updateAssociations = () => {
   const associations: CodeGenerationAssociations = {
-    componentIds: selectedComponents.value.map(({ value }) => value as number),
+    componentIds: selectedComponents.value.map(({ value }) => value as string),
     schemaVariantIds: selectedVariants.value.map(
-      ({ value }) => value as number,
+      ({ value }) => value as string,
     ),
     format: selectedFormat.value.value as CodeLanguage,
     type: "codeGeneration",

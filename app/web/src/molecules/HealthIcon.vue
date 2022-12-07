@@ -17,7 +17,7 @@
         :key="singleMessage"
         class="mt-1 ml-1"
       >
-        {{ message }}
+        {{ singleMessage }}
         <button
           v-if="index === 0 && details.length > 0"
           class="underline text-action-400"
@@ -46,7 +46,7 @@
               :key="singleMessage"
               class="mt-1 ml-1"
             >
-              {{ message }}
+              {{ singleMessage }}
             </p>
           </span>
           <p v-if="message.length === 0">Health {{ health }}</p>

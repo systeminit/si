@@ -1,23 +1,23 @@
 CREATE TYPE func_with_attribute_prototype_context AS
 (
-    id                             bigint,
+    id                             ident,
     NAME                           text,
     display_name                   text,
     backend_kind                   text,
     backend_response_type          text,
     is_builtin                     bool,
-    attribute_prototype_id         bigint,
-    attribute_context_component_id bigint
+    attribute_prototype_id         ident,
+    attribute_context_component_id ident
 );
 CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_and_root_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_context jsonb,
-    this_attribute_value_id bigint
+    this_attribute_value_id ident
 )
     RETURNS TABLE
             (
-                parent_attribute_value_id        bigint,
+                parent_attribute_value_id        ident,
                 attribute_value_object           json,
                 prop_object                      json,
                 func_binding_return_value_object json,
@@ -26,8 +26,8 @@ CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_and_roo
 AS
 $$
 DECLARE
-    new_child_attribute_value_ids bigint[];
-    parent_attribute_value_ids    bigint[];
+    new_child_attribute_value_ids ident[];
+    parent_attribute_value_ids    ident[];
 BEGIN
     -- Make sure we return the result for the base AttributeValue before looping through
     -- to return all of its children.
@@ -45,7 +45,7 @@ BEGIN
                            func.backend_response_type,
                            CASE
                                WHEN func.tenancy_universal IS TRUE
-                                   AND func.visibility_change_set_pk = -1 THEN TRUE
+                                   AND func.visibility_change_set_pk = ident_nil_v1() THEN TRUE
                                ELSE FALSE
                                END,
                            ap.id,
@@ -75,7 +75,7 @@ BEGIN
         INTO STRICT new_child_attribute_value_ids
         FROM (
                  SELECT DISTINCT ON (
-                     COALESCE(avbtav.belongs_to_id, -1),
+                     COALESCE(avbtav.belongs_to_id, ident_nil_v1()),
                      av.attribute_context_prop_id,
                      COALESCE(av.key, '')
                      ) av.id AS attribute_value_id
@@ -85,7 +85,7 @@ BEGIN
                                     ON av.id = avbtav.object_id
                  WHERE in_attribute_context_v1(this_context, av)
                    AND avbtav.belongs_to_id = ANY (parent_attribute_value_ids)
-                 ORDER BY COALESCE(avbtav.belongs_to_id, -1) DESC,
+                 ORDER BY COALESCE(avbtav.belongs_to_id, ident_nil_v1()) DESC,
                           av.attribute_context_prop_id DESC,
                           COALESCE(av.key, ''),
                           av.attribute_context_component_id DESC,
@@ -109,7 +109,7 @@ BEGIN
                                func.backend_response_type,
                                CASE
                                    WHEN func.tenancy_universal IS TRUE
-                                       AND func.visibility_change_set_pk = -1 THEN TRUE
+                                       AND func.visibility_change_set_pk = ident_nil_v1() THEN TRUE
                                    ELSE FALSE
                                    END,
                                ap.id,
@@ -147,9 +147,9 @@ CREATE OR REPLACE FUNCTION attribute_value_id_for_prop_and_context_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_context jsonb,
-    this_prop_id bigint
+    this_prop_id ident
 )
-    RETURNS bigint
+    RETURNS ident
     LANGUAGE SQL
     STABLE
     PARALLEL SAFE
@@ -157,7 +157,7 @@ AS
 $$
 SELECT DISTINCT ON (
     av.attribute_context_prop_id,
-    COALESCE(avbtav.belongs_to_id, -1),
+    COALESCE(avbtav.belongs_to_id, ident_nil_v1()),
     COALESCE(av.key, '')
     ) av.id
 FROM attribute_values_v1(this_tenancy, this_visibility) AS av
@@ -168,7 +168,7 @@ FROM attribute_values_v1(this_tenancy, this_visibility) AS av
 WHERE in_attribute_context_v1(this_context, av)
   AND pmtmsv.right_object_id = this_prop_id
 ORDER BY av.attribute_context_prop_id,
-         COALESCE(avbtav.belongs_to_id, -1),
+         COALESCE(avbtav.belongs_to_id, ident_nil_v1()),
          COALESCE(av.key, ''),
          av.visibility_change_set_pk DESC,
          av.visibility_deleted_at DESC NULLS FIRST,
@@ -182,11 +182,11 @@ CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_context jsonb,
-    this_prop_id bigint
+    this_prop_id ident
 )
     RETURNS TABLE
             (
-                parent_attribute_value_id        bigint,
+                parent_attribute_value_id        ident,
                 attribute_value_object           json,
                 prop_object                      json,
                 func_binding_return_value_object json,

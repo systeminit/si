@@ -1,7 +1,6 @@
 use crate::DalContext;
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -219,17 +218,5 @@ impl ConfirmationResolver {
 
     pub fn context(&self) -> ConfirmationResolverContext {
         self.context.clone()
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::ConfirmationResolverContext;
-
-    #[test]
-    fn context_builder() {
-        let mut c = ConfirmationResolverContext::new();
-        c.set_component_id(15.into());
-        assert_eq!(c.component_id(), 15.into());
     }
 }

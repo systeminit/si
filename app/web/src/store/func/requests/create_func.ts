@@ -6,12 +6,12 @@ export type CreateFuncResponse = Func;
 
 export interface AttributeOptions {
   type: "attributeOptions";
-  valueId: number;
-  parentValueId?: number;
-  componentId: number;
-  schemaVariantId: number;
-  schemaId: number;
-  currentFuncId: number;
+  valueId: string;
+  parentValueId?: string;
+  componentId: string;
+  schemaVariantId: string;
+  schemaId: string;
+  currentFuncId: string;
 }
 
 export interface CreateFuncRequest {
@@ -19,8 +19,12 @@ export interface CreateFuncRequest {
   options?: AttributeOptions;
 }
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 export const nullFunc: CreateFuncResponse = {
-  id: 0,
+  id: nilId(),
   handler: "",
   kind: FuncBackendKind.Unset,
   name: "",

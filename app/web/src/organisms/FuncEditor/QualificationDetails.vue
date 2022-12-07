@@ -73,9 +73,9 @@ watch(
 
 const updateAssociations = () => {
   const associations: QualificationAssocations = {
-    componentIds: selectedComponents.value.map(({ value }) => value as number),
+    componentIds: selectedComponents.value.map(({ value }) => value as string),
     schemaVariantIds: selectedVariants.value.map(
-      ({ value }) => value as number,
+      ({ value }) => value as string,
     ),
     type: "qualification",
   };

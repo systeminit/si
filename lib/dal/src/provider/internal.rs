@@ -377,7 +377,7 @@ impl InternalProvider {
     // Mutable fields.
     standard_model_accessor!(
         attribute_prototype_id,
-        OptionBigInt<AttributePrototypeId>,
+        Option<Pk(AttributePrototypeId)>,
         InternalProviderResult
     );
     standard_model_accessor!(name, String, InternalProviderResult);

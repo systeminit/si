@@ -39,16 +39,18 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useFixesStore } from "./fixes/fixes.store";
 import { useStatusStore } from "./status.store";
 
-export type ComponentId = number;
+export type ComponentId = string;
+export type ComponentNodeId = string;
 type Component = {
+  nodeId: ComponentNodeId;
   id: ComponentId;
   isGroup: boolean;
   displayName: string;
-  parentId?: string;
-  childIds?: string[];
+  parentId?: ComponentNodeId;
+  childIds?: ComponentNodeId[];
   schemaName: string;
-  schemaId: number;
-  schemaVariantId: number;
+  schemaId: string;
+  schemaVariantId: string;
   schemaVariantName: string;
   icon: IconNames;
   color: string;
@@ -58,9 +60,10 @@ type Component = {
   resource: Resource;
 };
 
-type SocketId = number;
+type SocketId = string;
 
-type SchemaId = number;
+type SchemaId = string;
+type SchemaVariantId = string;
 
 export type MenuSchema = {
   id: SchemaId;
@@ -139,7 +142,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         rawDiagramNodes: [] as DiagramNodeDef[],
         diagramEdges: [] as DiagramEdgeDef[],
-        schemaVariantsById: {} as Record<SchemaId, DiagramSchemaVariant>,
+        schemaVariantsById: {} as Record<SchemaVariantId, DiagramSchemaVariant>,
         rawNodeAddMenu: [] as MenuItem[],
 
         selectedComponentId: null as ComponentId | null,
@@ -152,60 +155,68 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         // transforming the diagram-y data back into more generic looking data
         // TODO: ideally we just fetch it like this...
         componentsById(): Record<ComponentId, Component> {
-          const diagramNodesById = _.keyBy(this.rawDiagramNodes, (n) => n.id);
-          return _.mapValues(this.componentIdentificationsById, (ci) => {
-            const diagramNode = diagramNodesById[ci.componentId];
+          const diagramNodesByComponentId = _.keyBy(
+            this.rawDiagramNodes,
+            (n) => n.componentId,
+          );
+          return _.pickBy(
+            _.mapValues(this.componentIdentificationsById, (ci) => {
+              const diagramNode = diagramNodesByComponentId[ci.componentId];
+              if (!diagramNode) return;
 
-            // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
-            // and eventually can just assume the icon is `logo-${name}`
-            const typeIcon =
-              {
-                AWS: "logo-aws",
-                CoreOS: "logo-coreos",
-                Docker: "logo-docker",
-                Kubernetes: "logo-k8s",
-              }[diagramNode?.category || ""] || "logo-si"; // fallback to SI logo
+              // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
+              // and eventually can just assume the icon is `logo-${name}`
+              const typeIcon =
+                {
+                  AWS: "logo-aws",
+                  CoreOS: "logo-coreos",
+                  Docker: "logo-docker",
+                  Kubernetes: "logo-k8s",
+                }[diagramNode?.category || ""] || "logo-si"; // fallback to SI logo
 
-            const socketToFrame = _.find(
-              diagramNode?.sockets,
-              (s) => s.label === "Frame" && s.direction === "output",
-            );
-            const socketFromChildren = _.find(
-              diagramNode?.sockets,
-              (s) => s.label === "Frame" && s.direction === "input",
-            );
-            const frameEdge = _.find(
-              this.diagramEdges,
-              (edge) =>
-                edge.fromNodeId === diagramNode?.id &&
-                edge.fromSocketId === socketToFrame?.id,
-            );
-            const frameChildIds = _.filter(this.diagramEdges, (s) => {
-              return (
-                s.toSocketId === socketFromChildren?.id &&
-                s.toNodeId === diagramNode?.id
+              const socketToFrame = _.find(
+                diagramNode?.sockets,
+                (s) => s.label === "Frame" && s.direction === "output",
               );
-            }).map((i) => i.fromNodeId);
+              const socketFromChildren = _.find(
+                diagramNode?.sockets,
+                (s) => s.label === "Frame" && s.direction === "input",
+              );
+              const frameEdge = _.find(
+                this.diagramEdges,
+                (edge) =>
+                  edge.fromNodeId === diagramNode?.id &&
+                  edge.fromSocketId === socketToFrame?.id,
+              );
+              const frameChildIds = _.filter(this.diagramEdges, (s) => {
+                return (
+                  s.toSocketId === socketFromChildren?.id &&
+                  s.toNodeId === diagramNode?.id
+                );
+              }).map((i) => i.fromNodeId);
 
-            return {
-              id: ci.componentId,
-              // TODO: return this info from the backend (and not in category)
-              parentId: frameEdge?.toNodeId,
-              childIds: socketFromChildren ? frameChildIds : undefined,
-              displayName: diagramNode?.subtitle,
-              schemaId: ci.schemaId,
-              schemaName: ci.schemaName,
-              schemaVariantId: ci.schemaVariantId,
-              schemaVariantName: ci.schemaVariantName,
-              // TODO: probably want to move this into its own store
-              resource: ci.resource,
-              icon: typeIcon,
-              color: diagramNode?.color,
-              changeStatus: this.componentChangeStatusById[ci.componentId],
-              nodeType: diagramNode?.nodeType,
-              isGroup: diagramNode?.nodeType !== "component",
-            } as Component;
-          });
+              return {
+                id: ci.componentId,
+                nodeId: diagramNode.id,
+                // TODO: return this info from the backend (and not in category)
+                parentId: frameEdge?.toNodeId,
+                childIds: socketFromChildren ? frameChildIds : undefined,
+                displayName: diagramNode?.subtitle,
+                schemaId: ci.schemaId,
+                schemaName: ci.schemaName,
+                schemaVariantId: ci.schemaVariantId,
+                schemaVariantName: ci.schemaVariantName,
+                // TODO: probably want to move this into its own store
+                resource: ci.resource,
+                icon: typeIcon,
+                color: diagramNode?.color,
+                changeStatus: this.componentChangeStatusById[ci.componentId],
+                nodeType: diagramNode?.nodeType,
+                isGroup: diagramNode?.nodeType !== "component",
+              } as Component;
+            }),
+            (ci) => ci,
+          ) as Record<string, Component>;
         },
         allComponents(): Component[] {
           return _.values(this.componentsById);
@@ -233,7 +244,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
           return _.map(this.rawDiagramNodes, (node) => {
-            const componentId = parseInt(node.id);
+            const componentId = node.componentId;
 
             const qualificationStatus =
               qualificationsStore.qualificationStatusByComponentId[componentId];
@@ -280,8 +291,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     if (item.kind !== "item") return;
 
                     // TODO: return hex code from backend...
-                    const schemaVariant =
-                      this.schemaVariantsById[item.schema_id];
+                    const schemaVariant = Object.values(
+                      this.schemaVariantsById,
+                    ).find((v) => v.schemaId === item.schema_id);
                     const colorInt = schemaVariant?.color;
                     const color = colorInt
                       ? `#${colorInt.toString(16)}`
@@ -319,8 +331,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           const connectedNodes: Record<ComponentId, ComponentId[]> = {};
           _.each(state.diagramEdges, (edge) => {
-            const fromNodeId = parseInt(edge.fromNodeId);
-            const toNodeId = parseInt(edge.toNodeId);
+            const fromNodeId = edge.fromNodeId;
+            const toNodeId = edge.toNodeId;
             connectedNodes[fromNodeId] ||= [];
             connectedNodes[fromNodeId].push(toNodeId);
           });
@@ -425,7 +437,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async SET_COMPONENT_DIAGRAM_POSITION(
-          componentId: ComponentId,
+          nodeId: ComponentNodeId,
           position: Vector2d,
           size?: Size2D,
         ) {
@@ -433,7 +445,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             method: "post",
             url: "diagram/set_node_position",
             params: {
-              nodeId: componentId,
+              nodeId,
               x: position.x.toString(),
               y: position.y.toString(),
               width: size?.width.toString(),
@@ -447,9 +459,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async CREATE_COMPONENT(
-          schemaId: number,
+          schemaId: string,
           position: Vector2d,
-          parentId?: number,
+          parentId?: string,
         ) {
           return new ApiRequest<{ node: DiagramNode }>({
             method: "post",
@@ -467,16 +479,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async CREATE_COMPONENT_CONNECTION(
-          from: { componentId: ComponentId; socketId: SocketId },
-          to: { componentId: ComponentId; socketId: SocketId },
+          from: { nodeId: ComponentNodeId; socketId: SocketId },
+          to: { nodeId: ComponentNodeId; socketId: SocketId },
         ) {
           return new ApiRequest<{ node: DiagramNode }>({
             method: "post",
             url: "diagram/create_connection",
             params: {
-              fromNodeId: from.componentId,
+              fromNodeId: from.nodeId,
               fromSocketId: from.socketId,
-              toNodeId: to.componentId,
+              toNodeId: to.nodeId,
               toSocketId: to.socketId,
               ...visibilityParams,
             },
@@ -486,15 +498,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async CONNECT_COMPONENT_TO_FRAME(
-          childNodeId: string,
-          parentNodeId: string,
+          childNodeId: ComponentNodeId,
+          parentNodeId: ComponentNodeId,
         ) {
           return new ApiRequest<{ node: DiagramNode }>({
             method: "post",
             url: "diagram/connect_component_to_frame",
             params: {
-              childNodeId: parseInt(childNodeId),
-              parentNodeId: parseInt(parentNodeId),
+              childNodeId,
+              parentNodeId,
               ...visibilityParams,
             },
             onSuccess: (response) => {

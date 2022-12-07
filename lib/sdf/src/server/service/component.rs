@@ -58,7 +58,7 @@ pub enum ComponentError {
     SchemaVariantNotFound,
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    #[error("system id is required: -1 was provided")]
+    #[error("system id is required: ident_nil_v1() was provided")]
     SystemIdRequired,
     #[error(transparent)]
     Transactions(#[from] TransactionsError),

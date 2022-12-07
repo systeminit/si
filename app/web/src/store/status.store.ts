@@ -28,7 +28,7 @@ export type GlobalUpdateStatus = {
 };
 
 export type ComponentUpdateStatus = {
-  componentId: number;
+  componentId: string;
 
   isUpdating: boolean; // note - might change to enum if more states appear
 
@@ -43,7 +43,6 @@ export type ComponentUpdateStatus = {
     | { type: "system" }
     | {
         type: "user";
-        id: number;
         label: string;
       };
 };
@@ -162,7 +161,6 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
                     byActor: {
                       type: "user",
                       label: "theo",
-                      id: 100,
                     },
                   },
                 ],

@@ -26,8 +26,12 @@ import {
 import { execFunc } from "./requests/exec_func";
 import { saveFunc } from "./requests/save_func";
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 export const nullEditingFunc: EditingFunc = {
-  id: 0,
+  id: nilId(),
   handler: "",
   kind: FuncBackendKind.Unset,
   name: "",
@@ -36,14 +40,14 @@ export const nullEditingFunc: EditingFunc = {
   isRevertible: false,
 };
 
-type FuncId = number;
+type FuncId = string;
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
   const changeSetStore = useChangeSetsStore();
   const selectedChangeSetId = changeSetStore.selectedChangeSetId;
   const visibility: Visibility = {
-    visibility_change_set_pk: selectedChangeSetId ?? -1,
+    visibility_change_set_pk: selectedChangeSetId ?? nilId(),
   };
 
   const store = defineStore(`cs${selectedChangeSetId}/funcs`, {
@@ -51,7 +55,7 @@ export const useFuncStore = () => {
       funcList: [] as ListedFuncView[],
       openFuncsById: {} as Record<FuncId, EditingFunc>,
       openFuncsList: [] as ListedFuncView[],
-      selectedFuncId: -1 as FuncId,
+      selectedFuncId: nilId() as FuncId,
       inputSources: { sockets: [], props: [] } as ListInputSourcesResponse,
       saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
     }),
@@ -66,11 +70,11 @@ export const useFuncStore = () => {
       getIndexForFunc: (state) => (funcId: FuncId) =>
         state.openFuncsList.findIndex((f) => f.id === funcId),
       // Filter props by schema variant
-      propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: number) =>
+      propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: string) =>
         state.inputSources.props
           .filter(
             (prop) =>
-              schemaVariantId === -1 ||
+              schemaVariantId === nilId() ||
               schemaVariantId === prop.schemaVariantId,
           )
           .map((prop) => ({
@@ -91,7 +95,7 @@ export const useFuncStore = () => {
         }));
       },
       providerIdToSourceName() {
-        const idMap: { [key: number]: string } = {};
+        const idMap: { [key: string]: string } = {};
         for (const socket of this.inputSources.sockets ?? []) {
           idMap[socket.internalProviderId] = `Socket: ${socket.name}`;
         }
@@ -106,7 +110,7 @@ export const useFuncStore = () => {
         return idMap;
       },
       propIdToSourceName() {
-        const idMap: { [key: number]: string } = {};
+        const idMap: { [key: string]: string } = {};
         for (const prop of this.inputSources.props ?? []) {
           idMap[prop.propId] = `${prop.path}${prop.name}`;
         }
@@ -115,7 +119,7 @@ export const useFuncStore = () => {
     },
     actions: {
       async SELECT_FUNC(funcId: FuncId) {
-        if (funcId === -1) {
+        if (funcId === nilId()) {
           return;
         }
 
@@ -137,10 +141,10 @@ export const useFuncStore = () => {
           this.openFuncsList.push(func as ListedFuncView);
         }
       },
-      REMOVE_FUNC_FROM_OPEN_LIST(funcId: number) {
+      REMOVE_FUNC_FROM_OPEN_LIST(funcId: string) {
         this.openFuncsList = this.openFuncsList.filter((f) => f.id !== funcId);
       },
-      CLOSE_FUNC(funcId: number) {
+      CLOSE_FUNC(funcId: string) {
         this.REMOVE_FUNC_FROM_OPEN_LIST(funcId);
       },
       SELECT_FUNC_BY_INDEX(index: number) {
@@ -170,12 +174,12 @@ export const useFuncStore = () => {
         });
       },
 
-      async REVERT_FUNC(funcId: number) {
+      async REVERT_FUNC(funcId: string) {
         return revertFunc({ ...visibility, id: funcId }, (response) => {
           this.FETCH_FUNC(funcId);
         });
       },
-      async EXEC_FUNC(funcId: number) {
+      async EXEC_FUNC(funcId: string) {
         return execFunc({ ...visibility, id: funcId });
       },
       async CREATE_FUNC(createFuncRequest: CreateFuncRequest) {
@@ -191,7 +195,7 @@ export const useFuncStore = () => {
         });
       },
 
-      async removeFuncAttrPrototype(funcId: FuncId, prototypeId: number) {
+      async removeFuncAttrPrototype(funcId: FuncId, prototypeId: string) {
         const func = this.openFuncsById[funcId];
         if (func?.associations?.type !== "attribute") {
           return;
@@ -212,7 +216,7 @@ export const useFuncStore = () => {
           return;
         }
 
-        if (prototype.id === -1) {
+        if (prototype.id === nilId()) {
           func.associations.prototypes.push(prototype);
         } else {
           const currentPrototypeIdx = func.associations.prototypes.findIndex(

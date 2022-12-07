@@ -73,7 +73,7 @@ export const useQualificationsStore = () => {
             succeeded: number;
             failed: number;
             components: {
-              componentId: number;
+              componentId: string;
               componentName: string;
               total: number;
               succeeded: number;

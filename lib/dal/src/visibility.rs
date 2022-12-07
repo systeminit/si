@@ -5,7 +5,7 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{ChangeSetPk, NO_CHANGE_SET_PK};
+use crate::ChangeSetPk;
 use serde_aux::field_attributes::deserialize_number_from_string;
 
 #[derive(Error, Debug)]
@@ -43,7 +43,7 @@ impl Visibility {
             true => Some(Utc::now()),
             false => None,
         };
-        Visibility::new(NO_CHANGE_SET_PK, deleted_at)
+        Visibility::new(ChangeSetPk::NONE, deleted_at)
     }
 
     /// Converts this [`Visibility`] to a new head [`Visibility`].
@@ -53,7 +53,7 @@ impl Visibility {
 
     /// Determines if this [`Visibility`] is a head [`Visibility`].
     pub fn is_head(&self) -> bool {
-        self.change_set_pk == NO_CHANGE_SET_PK && self.deleted_at.is_none()
+        self.change_set_pk == ChangeSetPk::NONE && self.deleted_at.is_none()
     }
 
     /// Constructs a new change set `Visibility`.
@@ -74,7 +74,7 @@ impl Visibility {
     /// Returns true if this [`Visibility`] is in a working changeset (and not in head)
     #[instrument]
     pub fn in_change_set(&self) -> bool {
-        self.change_set_pk != NO_CHANGE_SET_PK
+        self.change_set_pk != ChangeSetPk::NONE
     }
 
     #[instrument(skip(ctx))]

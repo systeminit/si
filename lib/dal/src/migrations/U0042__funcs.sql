@@ -1,14 +1,12 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 CREATE TABLE funcs
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
+    id                          ident not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -36,13 +34,13 @@ SELECT standard_model_table_constraints_v1('funcs');
 
 CREATE TABLE func_bindings
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
+    id                          ident not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -55,21 +53,21 @@ SELECT belongs_to_table_create_v1('func_binding_belongs_to_func', 'func_bindings
 
 CREATE TABLE func_binding_return_values
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
+    id                          ident not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     unprocessed_value           jsonb,
     value                       jsonb,
-    func_id                     bigint,
-    func_binding_id             bigint,
-    func_execution_pk           bigint
+    func_id                     ident,
+    func_binding_id             ident,
+    func_execution_pk           ident
 );
 CREATE UNIQUE INDEX unique_value_func_binding_return_value_live ON func_binding_return_values (
   func_binding_id,
@@ -124,7 +122,7 @@ CREATE OR REPLACE FUNCTION func_binding_create_v1(
     this_read_tenancy jsonb,
     this_visibility jsonb,
     this_args json,
-    this_func_id bigint,
+    this_func_id ident,
     this_backend_kind text,
     this_code_sha256 text,
     OUT object json) AS
@@ -178,9 +176,9 @@ CREATE OR REPLACE FUNCTION func_binding_return_value_create_v1(
     this_visibility jsonb,
     this_unprocessed_value jsonb,
     this_value jsonb,
-    this_func_id bigint,
-    this_func_binding_id bigint,
-    this_func_execution_pk bigint,
+    this_func_id ident,
+    this_func_binding_id ident,
+    this_func_execution_pk ident,
     OUT object json) AS
 $$
 DECLARE
