@@ -342,6 +342,20 @@ impl AttributeValue {
         self.index_map.as_mut()
     }
 
+    /// Returns the *unprocessed* [`serde_json::Value`] within the [`FuncBindingReturnValue`](crate::FuncBindingReturnValue)
+    /// corresponding to the field on [`Self`].
+    pub async fn get_unprocessed_value(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributeValueResult<Option<serde_json::Value>> {
+        match FuncBindingReturnValue::get_by_id(ctx, &self.func_binding_return_value_id).await? {
+            Some(func_binding_return_value) => {
+                Ok(func_binding_return_value.unprocessed_value().cloned())
+            }
+            None => Err(AttributeValueError::MissingFuncBindingReturnValue),
+        }
+    }
+
     /// Returns the [`serde_json::Value`] within the [`FuncBindingReturnValue`](crate::FuncBindingReturnValue)
     /// corresponding to the field on [`Self`].
     pub async fn get_value(
@@ -942,6 +956,24 @@ impl AttributeValue {
         Ok(result)
     }
 
+    pub async fn vivify_value_and_parent_values(
+        &self,
+        ctx: &DalContext,
+    ) -> AttributeValueResult<AttributeValueId> {
+        let row = ctx.pg_txn().query_one(
+            "SELECT new_attribute_value_id FROM attribute_value_vivify_value_and_parent_values_raw_v1($1, $2, $3, $4, $5, $6)",
+        &[
+            ctx.write_tenancy(),
+            ctx.read_tenancy(),
+            ctx.visibility(),
+            &self.context,
+            &self.id,
+            &true
+        ]).await?;
+
+        Ok(row.try_get("new_attribute_value_id")?)
+    }
+
     /// Re-evaluates the current `AttributeValue`'s `AttributePrototype` to update the
     /// `FuncBinding`, and `FuncBindingReturnValue`, reflecting the current inputs to
     /// the function.
@@ -986,6 +1018,12 @@ impl AttributeValue {
                     );
 
                 return Ok(());
+            }
+        } else if self.context.is_least_specific_field_kind_prop()? {
+            if let Some(parent_attribute_value) = self.parent_attribute_value(ctx).await? {
+                parent_attribute_value
+                    .vivify_value_and_parent_values(ctx)
+                    .await?;
             }
         }
 
