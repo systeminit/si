@@ -968,6 +968,9 @@ impl MigrationDriver {
             .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
             .await?;
 
+        self.set_default_value_for_prop(ctx, *si_name_prop.id(), serde_json::json!["region"])
+            .await?;
+
         let si_name_attribute_value = AttributeValue::find_for_context(
             ctx,
             AttributeReadContext::default_with_prop(*si_name_prop.id()),
