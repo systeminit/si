@@ -402,7 +402,6 @@ impl MigrationDriver {
             )
             .await?;
 
-        // TODO(victor): Make one item of the list have key `Name` and value equal to /root/si/name
         // Prop: /root/domain/tags/tag
         let tags_map_item_prop = self
             .create_prop(
@@ -574,7 +573,6 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Note(victor): The code below is commented out because it breaks some tests. We should come back to this someday.
         // Create a default item in the map. We will need this to connect
         // "/root/si/name" to the item's value.
 
@@ -598,8 +596,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Note(victor): The code below connects si/name to a tag in the tags list.
-        // It's commented out because it breaks some tests
+        // Connect si/name to a tag in the tags list.
 
         let si_name_prop = self
             .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
@@ -919,6 +916,24 @@ impl MigrationDriver {
         )
         .await?;
 
+        // Sockets
+        let identity_func_item = self
+            .get_func_item("si:identity")
+            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
+
+        // Input Socket
+        let (_frame_internal_provider, _input_socket) = InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema_variant.id(),
+            "Frame",
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+
         // Output Socket
         let identity_func_item = self
             .get_func_item("si:identity")
@@ -941,6 +956,42 @@ impl MigrationDriver {
         // Wrap it up.
         schema_variant.finalize(ctx).await?;
 
+        let region_implicit_internal_provider =
+            InternalProvider::find_for_prop(ctx, *region_prop.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::ImplicitInternalProviderNotFoundForProp(*region_prop.id())
+                })?;
+
+        // domain/region to si/name
+        let si_name_prop = self
+            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "name")
+            .await?;
+
+        let si_name_attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext::default_with_prop(*si_name_prop.id()),
+        )
+        .await?
+        .ok_or(AttributeValueError::Missing)?;
+
+        let mut si_name_attribute_prototype = si_name_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(AttributeValueError::MissingAttributePrototype)?;
+
+        si_name_attribute_prototype
+            .set_func_id(ctx, identity_func_item.func_id)
+            .await?;
+
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *si_name_attribute_prototype.id(),
+            identity_func_item.func_argument_id,
+            *region_implicit_internal_provider.id(),
+        )
+        .await?;
+
         // Connect the "/root/domain/region" prop to the external provider.
         let external_provider_attribute_prototype_id = region_external_provider
             .attribute_prototype_id()
@@ -949,12 +1000,6 @@ impl MigrationDriver {
                     *region_external_provider.id(),
                 )
             })?;
-        let region_implicit_internal_provider =
-            InternalProvider::find_for_prop(ctx, *region_prop.id())
-                .await?
-                .ok_or_else(|| {
-                    BuiltinsError::ImplicitInternalProviderNotFoundForProp(*region_prop.id())
-                })?;
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
             *external_provider_attribute_prototype_id,

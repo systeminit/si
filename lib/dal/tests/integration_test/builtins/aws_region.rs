@@ -35,7 +35,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             },
             "code": {},
             "si": {
-                "name": "region"
+                "name": "us-east-2"
             }
         }], // expected
         region_payload.component_view_properties(ctx).await // actual
@@ -99,7 +99,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             },
             "code": {},
             "si": {
-                "name": "region"
+                "name": "us-east-2"
             }
         }], // expected
         region_payload.component_view_properties(ctx).await // actual
@@ -142,7 +142,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             },
             "code": {},
             "si": {
-                "name": "region"
+                "name": "us-west-2"
             }
         }], // expected
         region_payload.component_view_properties(ctx).await // actual
@@ -188,7 +188,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "region"
+                "name": "us-poop-1"
             },
             "code": {},
             "domain": {
@@ -242,7 +242,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "region"
+                "name": "us-east-1"
             },
             "code": {},
             "domain": {
