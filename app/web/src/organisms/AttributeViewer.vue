@@ -82,7 +82,7 @@ const componentAttributesStore = useComponentAttributesStore();
 const editorContext = computed(() => componentAttributesStore.editorContext);
 
 // TODO: not sure why we need to pass this all back to the backend - seems like we should pass the minimal data
-const getAttributeContext = (propId: number) => ({
+const getAttributeContext = (propId: string) => ({
   attribute_context_prop_id: propId,
   attribute_context_internal_provider_id: -1,
   attribute_context_external_provider_id: -1,
@@ -121,7 +121,7 @@ const addToMap = (event: AddToMap) => {
 
 const onCreateAttributeFunc = async (
   currentFunc: FuncWithPrototypeContext,
-  valueId: number,
+  valueId: string,
   parentValueId?: number,
 ) => {
   const res = await funcStore.CREATE_FUNC({

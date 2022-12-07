@@ -134,7 +134,7 @@ const funcArgumentsIdMap =
   inject<Ref<{ [key: number]: FuncArgument }>>("funcArgumentsIdMap");
 
 const props = defineProps<{
-  funcId: number;
+  funcId: string;
   associations: AttributeAssocations;
   disabled?: boolean;
 }>();

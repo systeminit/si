@@ -15,17 +15,17 @@ export type WsEventPayloadMap = {
   ChangeSetCancelled: number;
 
   CheckedQualifications: {
-    prototypeId: number;
-    componentId: number;
+    prototypeId: string;
+    componentId: string;
   };
 
   CodeGenerated: {
-    componentId: number;
+    componentId: string;
   };
 
   ConfirmationStatusUpdate: {
-    componentId: number;
-    confirmationPrototypeId: number;
+    componentId: string;
+    confirmationPrototypeId: string;
     status: "success" | "running" | "pending" | "failure" | "error";
     errorMessage?: string;
   };
@@ -33,22 +33,22 @@ export type WsEventPayloadMap = {
   // NOT CURRENTLY USED - but leaving here so we remember these events exist
   // SecretCreated: number;
   // ResourceRefreshed: {
-  //   componentId: number;
+  //   componentId: string;
   // }
   // UpdatedDependentValue: {
-  //   componentId: number;
+  //   componentId: string;
   // }
-  // CommandOutput: { runId: number; output: string }
+  // CommandOutput: { runId: string; output: string }
   // CommandReturn: {
-  //   runId: number;
+  //   runId: string;
   //   resources: Resource[];
   //   output: string[];
   //   runnerState: WorkflowRunnerState;
   // };
   FixReturn: {
     id: number;
-    batchId: number;
-    confirmationResolverId: number;
+    batchId: string;
+    confirmationResolverId: string;
     action: string;
     output: string[];
     status: FixStatus;

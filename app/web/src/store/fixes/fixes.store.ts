@@ -11,8 +11,8 @@ import { useAuthStore } from "../auth.store";
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 export type RecommendationKind = "create" | "other";
 
-export type ConfirmationId = number;
-export type ConfirmationResolverId = number;
+export type ConfirmationId = string;
+export type ConfirmationResolverId = string;
 export type Confirmation = {
   id: ConfirmationId;
   title: string;
@@ -39,7 +39,7 @@ export type Recommendation = {
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.
 // A potential temporary fix: we decide to convert the "string" from the database row into
 // a "date" object within the sdf route(s).
-export type FixId = number;
+export type FixId = string;
 export type Fix = {
   id: FixId;
   status: FixStatus;
@@ -55,7 +55,7 @@ export type Fix = {
 };
 
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.
-export type FixBatchId = number;
+export type FixBatchId = string;
 export type FixBatch = {
   id: FixBatchId;
   status: FixStatus;

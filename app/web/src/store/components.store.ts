@@ -39,7 +39,7 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useFixesStore } from "./fixes/fixes.store";
 import { useStatusStore } from "./status.store";
 
-export type ComponentId = number;
+export type ComponentId = string;
 type Component = {
   id: ComponentId;
   isGroup: boolean;
@@ -47,8 +47,8 @@ type Component = {
   parentId?: string;
   childIds?: string[];
   schemaName: string;
-  schemaId: number;
-  schemaVariantId: number;
+  schemaId: string;
+  schemaVariantId: string;
   schemaVariantName: string;
   icon: IconNames;
   color: string;
@@ -57,9 +57,9 @@ type Component = {
   resource: Resource;
 };
 
-type SocketId = number;
+type SocketId = string;
 
-type SchemaId = number;
+type SchemaId = string;
 
 export type MenuSchema = {
   id: SchemaId;
@@ -444,7 +444,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async CREATE_COMPONENT(
-          schemaId: number,
+          schemaId: string,
           position: Vector2d,
           parentId?: number,
         ) {

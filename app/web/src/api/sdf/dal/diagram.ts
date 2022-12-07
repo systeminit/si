@@ -41,7 +41,7 @@ export interface DiagramSchemaVariant {
 
 export interface DiagramNodeKindComponent {
   kind: DiagramKind;
-  componentId: number;
+  componentId: string;
 }
 
 export type DiagramNodeKind = DiagramNodeKindComponent;
@@ -58,7 +58,7 @@ export interface DiagramNodeTemplate {
   name: string;
   title: string;
   kind: DiagramKind;
-  schemaVariantId: number;
+  schemaVariantId: string;
 }
 
 export interface DiagramNode {
@@ -66,7 +66,7 @@ export interface DiagramNode {
   name: string;
   title: string;
   kind: DiagramNodeKind;
-  schemaVariantId: number;
+  schemaVariantId: string;
   positions: DiagramNodePosition[];
 }
 export type DiagramNodes = Array<DiagramNode>;

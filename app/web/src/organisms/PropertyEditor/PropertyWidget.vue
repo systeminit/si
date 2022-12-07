@@ -175,7 +175,7 @@ const emits = defineEmits<{
   (
     e: "createAttributeFunc",
     currentFunc: FuncWithPrototypeContext,
-    valueId: number,
+    valueId: string,
   ): void;
 }>();
 
@@ -205,7 +205,7 @@ const addToMap = (event: AddToMap) => {
 
 // const onCreateAttributeFunc = (
 //   currentFunc: FuncWithPrototypeContext,
-//   valueId: number,
+//   valueId: string,
 // ) => emits("createAttributeFunc", currentFunc, valueId);
 
 const showArrayElementHeader = computed(() => {

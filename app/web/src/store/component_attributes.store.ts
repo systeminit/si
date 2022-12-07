@@ -17,14 +17,14 @@ import { useComponentsStore } from "./components.store";
 import { useStatusStore } from "./status.store";
 
 export interface UpdatePropertyEditorValueArgs {
-  attributeValueId: number;
+  attributeValueId: string;
   parentAttributeValueId?: number;
   attributeContext: AttributeContext;
   value?: unknown;
   key?: string;
 }
 export interface InsertPropertyEditorValueArgs {
-  parentAttributeValueId: number;
+  parentAttributeValueId: string;
   attributeContext: AttributeContext;
   value?: unknown;
   key?: string;
@@ -52,7 +52,7 @@ export const useComponentAttributesStore = () => {
       getters: {
         currentValueForValueId:
           (state) =>
-          (valueId: number): PropertyEditorValue | undefined =>
+          (valueId: string): PropertyEditorValue | undefined =>
             state.values?.values[valueId],
         // puts the schema, validations, values all together in a format used by the property editor
         editorContext: (state) => {

@@ -88,7 +88,7 @@ const kindOptions = generateKindOptions();
 // const elementKindOptions = [kindToOption()].concat(generateKindOptions());
 
 const props = defineProps<{
-  funcId: number;
+  funcId: string;
   arguments: FuncArgument[];
   disabled?: boolean;
 }>();

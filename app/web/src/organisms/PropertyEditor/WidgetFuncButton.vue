@@ -61,14 +61,14 @@ const hasExistingCustomFunction = computed(() =>
 
 const props = defineProps<{
   func: FuncWithPrototypeContext;
-  valueId: number;
+  valueId: string;
 }>();
 
 const emits = defineEmits<{
   (
     e: "createAttributeFunc",
     currentFunc: FuncWithPrototypeContext,
-    valueId: number,
+    valueId: string,
   ): void;
 }>();
 

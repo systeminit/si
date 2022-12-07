@@ -66,7 +66,7 @@ export const useFuncStore = () => {
       getIndexForFunc: (state) => (funcId: FuncId) =>
         state.openFuncsList.findIndex((f) => f.id === funcId),
       // Filter props by schema variant
-      propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: number) =>
+      propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: string) =>
         state.inputSources.props
           .filter(
             (prop) =>
@@ -137,10 +137,10 @@ export const useFuncStore = () => {
           this.openFuncsList.push(func as ListedFuncView);
         }
       },
-      REMOVE_FUNC_FROM_OPEN_LIST(funcId: number) {
+      REMOVE_FUNC_FROM_OPEN_LIST(funcId: string) {
         this.openFuncsList = this.openFuncsList.filter((f) => f.id !== funcId);
       },
-      CLOSE_FUNC(funcId: number) {
+      CLOSE_FUNC(funcId: string) {
         this.REMOVE_FUNC_FROM_OPEN_LIST(funcId);
       },
       SELECT_FUNC_BY_INDEX(index: number) {
@@ -170,12 +170,12 @@ export const useFuncStore = () => {
         });
       },
 
-      async REVERT_FUNC(funcId: number) {
+      async REVERT_FUNC(funcId: string) {
         return revertFunc({ ...visibility, id: funcId }, (response) => {
           this.FETCH_FUNC(funcId);
         });
       },
-      async EXEC_FUNC(funcId: number) {
+      async EXEC_FUNC(funcId: string) {
         return execFunc({ ...visibility, id: funcId });
       },
       async CREATE_FUNC(createFuncRequest: CreateFuncRequest) {
@@ -191,7 +191,7 @@ export const useFuncStore = () => {
         });
       },
 
-      async removeFuncAttrPrototype(funcId: FuncId, prototypeId: number) {
+      async removeFuncAttrPrototype(funcId: FuncId, prototypeId: string) {
         const func = this.openFuncsById[funcId];
         if (func?.associations?.type !== "attribute") {
           return;

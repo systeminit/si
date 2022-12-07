@@ -40,8 +40,8 @@ const props = defineProps<{
   path?: PropertyPath;
   collapsedPaths: Array<Array<string>>;
   disabled?: boolean;
-  propId: number;
-  valueId: number;
+  propId: string;
+  valueId: string;
   arrayLength?: number;
 }>();
 const emits = defineEmits<{

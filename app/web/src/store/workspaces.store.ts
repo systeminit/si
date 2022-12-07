@@ -9,8 +9,8 @@ import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useRouterStore } from "./router.store";
 import { useAuthStore } from "./auth.store";
 
-type WorkspaceId = number;
-type OrganizationId = number;
+type WorkspaceId = string;
+type OrganizationId = string;
 
 export const useWorkspacesStore = addStoreHooks(
   defineStore("workspaces", {

@@ -11,7 +11,7 @@ import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
-export type ChangeSetId = number;
+export type ChangeSetId = string;
 
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();

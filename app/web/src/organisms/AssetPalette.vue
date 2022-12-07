@@ -100,7 +100,7 @@ const updateMouseNode = (e: MouseEvent) => {
   }
 };
 
-function onSelect(schemaId: number) {
+function onSelect(schemaId: string) {
   componentsStore.selectedInsertSchemaId = schemaId;
   selecting.value = true;
 }

@@ -6,12 +6,12 @@ export type CreateFuncResponse = Func;
 
 export interface AttributeOptions {
   type: "attributeOptions";
-  valueId: number;
+  valueId: string;
   parentValueId?: number;
-  componentId: number;
-  schemaVariantId: number;
-  schemaId: number;
-  currentFuncId: number;
+  componentId: string;
+  schemaVariantId: string;
+  schemaId: string;
+  currentFuncId: string;
 }
 
 export interface CreateFuncRequest {

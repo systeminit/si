@@ -1,6 +1,6 @@
 use dal::{
     BillingAccountId, ChangeSet, ChangeSetStatus, DalContext, Group, StandardModel, Visibility,
-    NO_CHANGE_SET_PK,
+    ChangeSetPk,
 };
 use dal_test::{
     helpers::{create_change_set, create_group},
@@ -50,7 +50,7 @@ async fn apply(ctx: &mut DalContext) {
     assert_eq!(group.id(), head_group.id());
     assert_ne!(group.pk(), head_group.pk());
     assert_eq!(group.name(), head_group.name());
-    assert_eq!(head_group.visibility().change_set_pk, NO_CHANGE_SET_PK,);
+    assert_eq!(head_group.visibility().change_set_pk, ChangeSetPk::NONE);
 }
 
 #[test]

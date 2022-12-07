@@ -58,7 +58,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "select", componentId: number): void;
+  (e: "select", componentId: string): void;
 }>();
 
 const componentsStore = useComponentsStore();

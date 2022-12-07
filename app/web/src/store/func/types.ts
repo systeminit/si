@@ -30,21 +30,21 @@ export interface ValidationAssociations {
 
 export interface ValidationPrototypeView {
   id: number;
-  schemaVariantId: number;
-  propId: number;
+  schemaVariantId: string;
+  propId: string;
 }
 
 export interface AttributePrototypeArgumentView {
-  funcArgumentId: number;
+  funcArgumentId: string;
   id?: number;
   internalProviderId?: number;
 }
 
 export interface AttributePrototypeView {
   id: number;
-  schemaVariantId: number;
+  schemaVariantId: string;
   componentId?: number;
-  propId: number;
+  propId: string;
   prototypeArguments: AttributePrototypeArgumentView[];
 }
 

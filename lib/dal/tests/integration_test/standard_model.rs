@@ -1,7 +1,7 @@
 use dal::{
     component::ComponentKind, standard_model, BillingAccount, BillingAccountPk,
     BillingAccountSignup, ChangeSet, DalContext, Func, FuncBackendKind, Group, GroupId, KeyPair,
-    Schema, SchemaKind, StandardModel, User, UserId, WriteTenancy, NO_CHANGE_SET_PK,
+    Schema, SchemaKind, StandardModel, User, UserId, WriteTenancy, ChangeSetPk,
 };
 use dal_test::{
     test,
@@ -62,7 +62,7 @@ async fn get_by_id(ctx: &DalContext) {
             .expect("change set object should exist but it does not");
     assert_ne!(&for_head.pk(), &for_change_set.pk());
     assert_eq!(&for_head.id(), &for_change_set.id());
-    assert_eq!(&for_head.visibility().change_set_pk, &NO_CHANGE_SET_PK,);
+    assert_eq!(&for_head.visibility().change_set_pk, &ChangeSetPk::NONE,);
 }
 
 #[test]

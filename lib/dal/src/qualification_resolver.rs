@@ -30,7 +30,6 @@ pub enum QualificationResolverError {
 
 pub type QualificationResolverResult<T> = Result<T, QualificationResolverError>;
 
-pub const UNSET_ID_VALUE: i64 = -1;
 const FIND_FOR_PROTOTYPE: &str =
     include_str!("./queries/qualification_resolver_find_for_prototype.sql");
 
@@ -51,9 +50,9 @@ impl Default for QualificationResolverContext {
 impl QualificationResolverContext {
     pub fn new() -> Self {
         QualificationResolverContext {
-            component_id: UNSET_ID_VALUE.into(),
-            schema_id: UNSET_ID_VALUE.into(),
-            schema_variant_id: UNSET_ID_VALUE.into(),
+            component_id: ComponentId::NONE,
+            schema_id: SchemaId::NONE,
+            schema_variant_id: SchemaVariantId::NONE,
         }
     }
 

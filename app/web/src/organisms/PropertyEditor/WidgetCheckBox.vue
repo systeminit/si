@@ -40,8 +40,8 @@ const props = defineProps<{
   path?: PropertyPath;
   collapsedPaths: Array<Array<string>>;
   value: unknown;
-  propId: number;
-  valueId: number;
+  propId: string;
+  valueId: string;
   docLink?: string;
   validation?: PropertyEditorValidation;
   disabled?: boolean;

@@ -7,7 +7,7 @@ use dal::{
         execution::FuncExecution,
     },
     generate_name, ChangeSet, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncId,
-    HistoryActor, StandardModel, Visibility, WriteTenancy, NO_CHANGE_SET_PK,
+    HistoryActor, StandardModel, Visibility, WriteTenancy, ChangeSetPk,
 };
 use dal_test::{
     test,
@@ -117,7 +117,7 @@ async fn func_binding_find_or_create_change_set(ctx: &DalContext) {
     );
     assert_eq!(
         head_func_binding.visibility().change_set_pk,
-        NO_CHANGE_SET_PK,
+        ChangeSetPk::NONE,
         "should not have a change set"
     );
 }
@@ -201,7 +201,7 @@ async fn func_binding_find_or_create_sha_diff_between_changeset_and_head(ctx: &D
 
     let final_change_set = create_change_set(ctx).await;
     let final_visibility = create_visibility_change_set(&final_change_set);
-    assert_ne!(final_visibility.change_set_pk, NO_CHANGE_SET_PK);
+    assert_ne!(final_visibility.change_set_pk, ChangeSetPk::NONE);
     let foctx = ctx.clone_with_new_visibility(final_visibility);
     let ctx = &foctx;
 
@@ -215,7 +215,7 @@ async fn func_binding_find_or_create_sha_diff_between_changeset_and_head(ctx: &D
     );
     assert_eq!(
         head_func_binding.visibility().change_set_pk,
-        NO_CHANGE_SET_PK,
+        ChangeSetPk::NONE,
         "should not have a change set"
     );
 

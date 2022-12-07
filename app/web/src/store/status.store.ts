@@ -28,7 +28,7 @@ export type GlobalUpdateStatus = {
 };
 
 export type ComponentUpdateStatus = {
-  componentId: number;
+  componentId: string;
 
   isUpdating: boolean; // note - might change to enum if more states appear
 

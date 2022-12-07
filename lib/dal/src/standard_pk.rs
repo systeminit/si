@@ -16,10 +16,10 @@ macro_rules! pk {
             serde::Serialize,
             serde::Deserialize,
         )]
-        pub struct $name(i64);
+        pub struct $name(ulid::Ulid);
 
         impl $name {
-            pub const NONE: Self = Self(-1);
+            pub const NONE: Self = Self(ulid::Ulid::nil());
 
             pub fn is_some(&self) -> bool {
                 !self.is_none()
@@ -30,12 +30,6 @@ macro_rules! pk {
             }
         }
 
-        impl<'a> From<&'a $name> for i64 {
-            fn from(pk: &'a $name) -> Self {
-                pk.0
-            }
-        }
-
         impl<'a> From<&'a $name> for $name {
             fn from(pk: &'a $name) -> Self {
                 *pk
@@ -43,11 +37,10 @@ macro_rules! pk {
         }
 
         impl std::str::FromStr for $name {
-            type Err = std::num::ParseIntError;
+            type Err = ulid::DecodeError;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                let x = s.parse::<i64>()?;
-                Ok(Self(x))
+                Ok(Self(ulid::Ulid::from_string(s)?))
             }
         }
 
@@ -56,12 +49,12 @@ macro_rules! pk {
                 ty: &postgres_types::Type,
                 raw: &'a [u8],
             ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
-                let number: i64 = postgres_types::FromSql::from_sql(ty, raw)?;
-                Ok(Self(number))
+                let id: String = postgres_types::FromSql::from_sql(ty, raw)?;
+                Ok(Self(ulid::Ulid::from_string(&id)?))
             }
 
             fn accepts(ty: &postgres_types::Type) -> bool {
-                ty == &postgres_types::Type::INT8
+                ty == &postgres_types::Type::TEXT
             }
         }
 
@@ -74,14 +67,14 @@ macro_rules! pk {
             where
                 Self: Sized,
             {
-                postgres_types::ToSql::to_sql(&self.0, &ty, out)
+                postgres_types::ToSql::to_sql(&self.0.to_string(), &ty, out)
             }
 
             fn accepts(ty: &postgres_types::Type) -> bool
             where
                 Self: Sized,
             {
-                ty == &postgres_types::Type::INT8
+                ty == &postgres_types::Type::TEXT
             }
 
             fn to_sql_checked(
@@ -89,7 +82,7 @@ macro_rules! pk {
                 ty: &postgres_types::Type,
                 out: &mut postgres_types::private::BytesMut,
             ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
-                postgres_types::ToSql::to_sql(&self.0, &ty, out)
+                postgres_types::ToSql::to_sql(&self.0.to_string(), &ty, out)
             }
         }
 

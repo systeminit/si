@@ -82,7 +82,7 @@ const { schemaVariantOptions, inputSources, propsAsOptionsForSchemaVariant } =
 const props = withDefaults(
   defineProps<{
     open: boolean;
-    funcId: number;
+    funcId: string;
     prototype?: AttributePrototypeView;
   }>(),
   { open: false, edit: false },
@@ -99,7 +99,7 @@ const emit = defineEmits<{
 
 interface EditingBinding {
   id?: number;
-  funcArgumentId: number;
+  funcArgumentId: string;
   binding: Option;
 }
 
