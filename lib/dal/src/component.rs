@@ -38,10 +38,10 @@ use crate::{
     qualification::QualificationError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototype, ActionPrototypeError, AttributeContext, AttributeContextBuilderError,
-    AttributeContextError, AttributeReadContext, CodeLanguage, DalContext, Edge, EdgeError,
-    ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider,
-    InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError, PropId,
-    QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    AttributeContextError, AttributePrototypeId, AttributeReadContext, CodeLanguage, DalContext,
+    Edge, EdgeError, ExternalProviderId, Func, FuncBackendKind, HistoryEventError,
+    InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
+    PropId, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
     QualificationResolverError, ReadTenancyError, Schema, SchemaError, SchemaId, Socket,
     StandardModel, StandardModelError, Timestamp, TransactionsError, ValidationPrototype,
     ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
@@ -100,6 +100,10 @@ pub enum ComponentError {
     RootPropNotFound(SchemaVariantId),
     #[error("validation error: {0}")]
     Validation(#[from] ValidationConstructorError),
+    #[error("attribute value does not have a prototype: {0}")]
+    MissingAttributePrototype(AttributeValueId),
+    #[error("attribute prototype does not have a function: {0}")]
+    MissingAttributePrototypeFunction(AttributePrototypeId),
 
     // FIXME: change the below to be alphabetical and re-join with the above variants.
     #[error(transparent)]
@@ -295,9 +299,7 @@ impl Component {
         // persist. But it isn't, - our node is anemic.
         let node = Node::new(ctx, &(*schema.kind()).into()).await?;
         node.set_component(ctx, component.id()).await?;
-        component
-            .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
-            .await?;
+        component.set_name(ctx, Some(name.as_ref())).await?;
 
         Ok((component, node))
     }
@@ -965,16 +967,32 @@ impl Component {
     // NOTE(nick): please do not use this for anything other than setting "/root/si/name" in its
     // current state.
     #[instrument(skip_all)]
-    pub async fn set_value_by_json_pointer<T: Serialize + std::fmt::Debug + std::clone::Clone>(
+    pub async fn set_name<T: Serialize + std::fmt::Debug + std::clone::Clone>(
         &self,
         ctx: &DalContext,
-        json_pointer: &str,
         value: Option<T>,
     ) -> ComponentResult<Option<T>> {
+        let json_pointer = "/root/si/name";
+
         let attribute_value = self
             .find_attribute_value_by_json_pointer(ctx, json_pointer)
             .await?
             .ok_or(AttributeValueError::Missing)?;
+
+        let attribute_prototype = attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or_else(|| ComponentError::MissingAttributePrototype(*attribute_value.id()))?;
+
+        let prototype_func = Func::get_by_id(ctx, &attribute_prototype.func_id())
+            .await?
+            .ok_or_else(|| {
+                ComponentError::MissingAttributePrototypeFunction(*attribute_prototype.id())
+            })?;
+        let name = prototype_func.name();
+        if name != "si:unset" && name != "si:setString" {
+            return Ok(None);
+        }
 
         let attribute_context = AttributeContext::builder()
             .set_component_id(self.id)
