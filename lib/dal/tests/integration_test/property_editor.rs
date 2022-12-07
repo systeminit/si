@@ -1,7 +1,7 @@
 use dal::{
     generate_name,
-    property_editor::{PropertyEditorSchema, PropertyEditorValues},
-    AttributeReadContext, Component, DalContext, Schema, StandardModel,
+    property_editor::{schema::PropertyEditorSchema, values::PropertyEditorValues},
+    Component, DalContext, Schema, StandardModel,
 };
 use dal_test::test;
 
@@ -37,16 +37,9 @@ async fn property_editor_value(ctx: &DalContext) {
             .await
             .expect("could not create component");
 
-    let property_editor_values = PropertyEditorValues::for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: None,
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::default()
-        },
-    )
-    .await
-    .expect("cannot create property editor values from context");
+    let property_editor_values = PropertyEditorValues::for_component(ctx, *component.id())
+        .await
+        .expect("cannot create property editor values from context");
 
     let mut name_value = None;
     let mut image_value = None;

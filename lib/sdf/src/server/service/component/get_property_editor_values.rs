@@ -1,7 +1,7 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::property_editor::PropertyEditorValues;
-use dal::{AttributeReadContext, Component, ComponentId, StandardModel, Visibility};
+use dal::property_editor::values::PropertyEditorValues;
+use dal::{Component, ComponentId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -32,12 +32,7 @@ pub async fn get_property_editor_values(
         return Err(ComponentError::InvalidVisibility);
     }
 
-    let context = AttributeReadContext {
-        prop_id: None,
-        component_id: Some(request.component_id),
-        ..AttributeReadContext::default()
-    };
-    let prop_edit_values = PropertyEditorValues::for_context(&ctx, context).await?;
+    let prop_edit_values = PropertyEditorValues::for_component(&ctx, request.component_id).await?;
 
     Ok(Json(prop_edit_values))
 }

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use thiserror::Error;
 
-use crate::component::ResourceRefreshId;
+use crate::component::resource::ResourceRefreshId;
 use crate::confirmation_status::ConfirmationStatusUpdate;
 use crate::fix::batch::FixBatchReturn;
 use crate::fix::FixReturn;
