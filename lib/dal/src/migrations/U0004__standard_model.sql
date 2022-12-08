@@ -1,6 +1,6 @@
 CREATE TABLE standard_models
 (
-    pk                         bigserial PRIMARY KEY,
+    pk                         ident primary key default ident_create_v1(),
     table_name                 text NOT NULL,
     table_type                 text NOT NULL,
     history_event_label_base   text NOT NULL,
@@ -203,7 +203,7 @@ BEGIN
 
            If we aren't checking the change set and edit session, then we are pulling from head, so we
            can just copy head. */
-        IF this_visibility_row.visibility_change_set_pk != '-1' THEN
+        IF this_visibility_row.visibility_change_set_pk != ident_nil_v1() THEN
 
             SELECT string_agg(information_schema.columns.column_name::text, ',')
             FROM information_schema.columns
@@ -237,7 +237,7 @@ BEGIN
                            '                   %1$I.tenancy_billing_account_ids, '
                            '                   %1$I.tenancy_organization_ids, '
                            '                   %1$I.tenancy_workspace_ids) '
-                           ' AND %1$I.visibility_change_set_pk = -1 '
+                           ' AND %1$I.visibility_change_set_pk = ident_nil_v1() '
                            ' AND %1$I.visibility_deleted_at IS NULL '
                            ' RETURNING updated_at',
                            this_table,
@@ -614,15 +614,15 @@ DECLARE
     create_table text;
 BEGIN
     create_table := format('CREATE TABLE %1$I ( '
-                           ' pk                          bigserial PRIMARY KEY, '
-                           ' id                          bigserial                NOT NULL, '
+                           ' pk                          ident primary key default ident_create_v1(), '
+                           ' id                          ident not null default ident_create_v1(), '
                            ' object_id                   ident                   NOT NULL, '
                            ' belongs_to_id               ident                   NOT NULL, '
                            ' tenancy_universal           bool                     NOT NULL, '
                            ' tenancy_billing_account_ids ident[], '
                            ' tenancy_organization_ids    ident[], '
                            ' tenancy_workspace_ids       ident[], '
-                           ' visibility_change_set_pk    ident                   NOT NULL DEFAULT -1, '
+                           ' visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(), '
                            ' visibility_deleted_at       timestamp with time zone, '
                            ' created_at                  timestamp with time zone NOT NULL DEFAULT NOW(), '
                            ' updated_at                  timestamp with time zone NOT NULL DEFAULT NOW() '
@@ -637,9 +637,7 @@ BEGIN
                            '                    WHERE visibility_deleted_at IS NULL; '
                            'ALTER TABLE %1$I '
                            '    ADD CONSTRAINT %1$s_valid_combinations CHECK ( '
-                           '        (visibility_change_set_pk = -1) '
-                           '        OR '
-                           '        (visibility_change_set_pk > 0) '
+                           '        (visibility_change_set_pk = ident_nil_v1()) '
                            '    ); '
                            'ALTER TABLE %1$I '
                            '    ADD CONSTRAINT %1$s_object_id_is_valid '
@@ -751,9 +749,7 @@ BEGIN
                           '                    WHERE visibility_deleted_at IS NULL; '
                           'ALTER TABLE %1$I '
                           '   ADD CONSTRAINT %1$s_visibility_valid_combinations CHECK ( '
-                          '           (visibility_change_set_pk = -1) '
-                          '           OR '
-                          '           (visibility_change_set_pk > 0) '
+                          '           (visibility_change_set_pk = ident_nil_v1()) '
                           '       ); '
                           'CREATE INDEX ON %1$I (id); '
                           'CREATE FUNCTION is_visible_v1( '
@@ -839,15 +835,15 @@ DECLARE
     create_table text;
 BEGIN
     create_table := format('CREATE TABLE %1$I ( '
-                           ' pk                          bigserial PRIMARY KEY, '
-                           ' id                          bigserial                NOT NULL, '
+                           ' pk                          ident primary key default ident_create_v1(), '
+                           ' id                          ident not null default ident_create_v1(), '
                            ' left_object_id              ident                   NOT NULL, '
                            ' right_object_id             ident                   NOT NULL, '
                            ' tenancy_universal           bool                     NOT NULL, '
                            ' tenancy_billing_account_ids ident[], '
                            ' tenancy_organization_ids    ident[], '
                            ' tenancy_workspace_ids       ident[], '
-                           ' visibility_change_set_pk    ident                   NOT NULL DEFAULT -1, '
+                           ' visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(), '
                            ' visibility_deleted_at       timestamp with time zone, '
                            ' created_at                  timestamp with time zone NOT NULL DEFAULT NOW(), '
                            ' updated_at                  timestamp with time zone NOT NULL DEFAULT NOW() '
@@ -862,9 +858,7 @@ BEGIN
                            '                    WHERE visibility_deleted_at IS NULL; '
                            'ALTER TABLE %1$I '
                            '    ADD CONSTRAINT %1$s_valid_combinations CHECK ( '
-                           '            (visibility_change_set_pk = -1) '
-                           '            OR '
-                           '            (visibility_change_set_pk > 0) '
+                           '            (visibility_change_set_pk = ident_nil_v1()) '
                            '        ); '
                            'ALTER TABLE %1$I '
                            '    ADD CONSTRAINT %1$s_left_object_id_is_valid '

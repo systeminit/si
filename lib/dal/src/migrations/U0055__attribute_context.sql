@@ -48,12 +48,12 @@ SELECT
                                      check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
                                 ELSE (check_context -> 'attribute_context_prop_id')::ident = this_prop_id
                                 END
-                            AND this_internal_provider_id = -1
-                            AND this_external_provider_id = -1
+                            AND this_internal_provider_id = ident_nil_v1()
+                            AND this_external_provider_id = ident_nil_v1()
                         )
                     -- InternalProviderId set
                     OR (
-                                this_prop_id = -1
+                                this_prop_id = ident_nil_v1()
                             AND CASE
                                     WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb
@@ -61,12 +61,12 @@ SELECT
                                     ELSE (check_context -> 'attribute_context_internal_provider_id')::ident =
                                          this_internal_provider_id
                                     END
-                            AND this_external_provider_id = -1
+                            AND this_external_provider_id = ident_nil_v1()
                         )
                     -- ExternalProviderId set
                     OR (
-                                this_prop_id = -1
-                            AND this_internal_provider_id = -1
+                                this_prop_id = ident_nil_v1()
+                            AND this_internal_provider_id = ident_nil_v1()
                             AND CASE
                                     WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb
@@ -94,12 +94,12 @@ SELECT
                                      check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
                                 ELSE (check_context -> 'attribute_context_prop_id')::ident = this_prop_id
                                 END
-                            AND this_internal_provider_id = -1
-                            AND this_external_provider_id = -1
+                            AND this_internal_provider_id = ident_nil_v1()
+                            AND this_external_provider_id = ident_nil_v1()
                         )
                     -- InternalProviderId set
                     OR (
-                                this_prop_id = -1
+                                this_prop_id = ident_nil_v1()
                             AND CASE
                                     WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb
@@ -107,12 +107,12 @@ SELECT
                                     ELSE (check_context -> 'attribute_context_internal_provider_id')::ident =
                                          this_internal_provider_id
                                     END
-                            AND this_external_provider_id = -1
+                            AND this_external_provider_id = ident_nil_v1()
                         )
                     -- ExternalProviderId set
                     OR (
-                                this_prop_id = -1
-                            AND this_internal_provider_id = -1
+                                this_prop_id = ident_nil_v1()
+                            AND this_internal_provider_id = ident_nil_v1()
                             AND CASE
                                     WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb
@@ -123,7 +123,7 @@ SELECT
                         )
                 )
             -- Component check
-            AND this_component_id = -1
+            AND this_component_id = ident_nil_v1()
         )
 $$;
 
@@ -257,9 +257,9 @@ BEGIN
         END;
     RAISE DEBUG 'external_provider_check: %', external_provider_check;
 
-    least_specific_level_check := (prop_check AND this_internal_provider_id = -1 AND this_external_provider_id = -1) OR
-                                  (this_prop_id = -1 AND internal_provider_check AND this_external_provider_id = -1) OR
-                                  (this_prop_id = -1 AND this_internal_provider_id = -1 AND external_provider_check);
+    least_specific_level_check := (prop_check AND this_internal_provider_id = ident_nil_v1() AND this_external_provider_id = ident_nil_v1()) OR
+                                  (this_prop_id = ident_nil_v1() AND internal_provider_check AND this_external_provider_id = ident_nil_v1()) OR
+                                  (this_prop_id = ident_nil_v1() AND this_internal_provider_id = ident_nil_v1() AND external_provider_check);
 
     component_check := CASE
                            WHEN check_context_record.attribute_context_component_id IS NULL THEN
@@ -323,11 +323,11 @@ BEGIN
     component_is_most_specific := FALSE;
     least_specific_level_is_most_specific := FALSE;
 
-    IF check_context_record.attribute_context_component_id != -1 THEN
+    IF check_context_record.attribute_context_component_id != ident_nil_v1() THEN
         component_is_most_specific := TRUE;
-    ELSIF (check_context_record.attribute_context_prop_id != -1 OR
-           check_context_record.attribute_context_internal_provider_id != -1 OR
-           check_context_record.attribute_context_external_provider_id != -1) THEN
+    ELSIF (check_context_record.attribute_context_prop_id != ident_nil_v1() OR
+           check_context_record.attribute_context_internal_provider_id != ident_nil_v1() OR
+           check_context_record.attribute_context_external_provider_id != ident_nil_v1()) THEN
         least_specific_level_is_most_specific := TRUE;
     END IF;
 
@@ -374,7 +374,7 @@ BEGIN
                                                        component_check)
                   WHEN
                       least_specific_level_is_most_specific THEN (least_specific_level_check AND
-                                                                  this_component_id != -1)
+                                                                  this_component_id != ident_nil_v1())
                   ELSE
                       FALSE
                   END;

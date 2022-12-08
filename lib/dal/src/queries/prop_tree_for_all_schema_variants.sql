@@ -9,8 +9,8 @@ WITH RECURSIVE props_tree AS (
         p.id              AS prop_id,
         p.name            AS name,
         '/'               AS path,
-        -1::ident        AS parent_id,
-        0::ident         AS depth
+        ident_nil_v1()    AS parent_id,
+        0::bigint         AS depth
     FROM props_v1($1, $2) AS p
     LEFT JOIN prop_belongs_to_prop_v1($1, $2) AS pbtp
         ON p.id = pbtp.object_id

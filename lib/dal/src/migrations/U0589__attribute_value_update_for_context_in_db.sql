@@ -23,7 +23,7 @@ BEGIN
     check_is_schema_variant_specific := FALSE;
     check_is_schema_specific := FALSE;
 
-    IF check_context_record.attribute_context_component_id != -1 THEN
+    IF check_context_record.attribute_context_component_id != ident_nil_v1() THEN
         check_is_component_specific := TRUE;
     ELSE
         -- If the check_context is only specific to one of the triple that is
@@ -35,9 +35,9 @@ BEGIN
 
     -- Check Component level.
     IF check_is_component_specific
-       AND reference_component_id != -1 THEN
+       AND reference_component_id != ident_nil_v1() THEN
         -- If the ComponentId is the most specific part of the "check"
-        -- AttributeContext, then "reference" needs to have -1 to be
+        -- AttributeContext, then "reference" needs to have ident_nil_v1() to be
         -- less specific.
         result := FALSE;
         RETURN;
@@ -49,13 +49,13 @@ BEGIN
         --     must be for the same Component on both.
         --   * If something less specific than Component is the most
         --     specific peice, then both "check" and "reference" must have
-        --     -1.
+        --     ident_nil_v1().
         result := FALSE;
         RETURN;
     END IF;
     -- The only options left should all mean that the ComponentId on
     -- "reference" is acceptable:
-    --   * Component is the most specific, and "reference" is set to -1.
+    --   * Component is the most specific, and "reference" is set to ident_nil_v1().
     --   * Component is not the most specific, and "check" is the same
     --     "reference".
 
@@ -148,7 +148,7 @@ AS $$
     -- Even though these fields are numeric, when we extract their values we either get a jsonb, or text. We'd
     -- have to further use jsonb_typeof(...)  to make sure it's actually a 'number' before doing a conversion,
     -- but checking against a string is good enough for now.
-    SELECT  this_context ->> 'attribute_context_component_id'      = '-1'
+    SELECT  this_context ->> 'attribute_context_component_id'      = 'ident_nil_v1()'
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_value_set_parent_attribute_value_v1(this_write_tenancy             jsonb,
@@ -254,9 +254,9 @@ DECLARE
 BEGIN
     new_attribute_context_record := jsonb_populate_record(null::attribute_context_record_v1, this_attribute_context);
 
-    IF new_attribute_context_record.attribute_context_component_id != -1 THEN
+    IF new_attribute_context_record.attribute_context_component_id != ident_nil_v1() THEN
         -- Remove the ComponentId part of the AttributeContext.
-        new_attribute_context_record.attribute_context_component_id := -1;
+        new_attribute_context_record.attribute_context_component_id := ident_nil_v1();
     END IF;
     -- We don't try to remove the PropId/InternalProviderId/ExternalProviderId as there is nothing less
     -- specific than that part of the AttributeContext. (Those three form a triple that is the least specific
@@ -542,8 +542,8 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE
 AS $$
-    SELECT this_attribute_context ->> 'attribute_context_internal_provider_id' != '-1'
-        OR this_attribute_context ->> 'attribtue_context_external_provider_id' != '-1'
+    SELECT this_attribute_context ->> 'attribute_context_internal_provider_id' != 'ident_nil_v1()'
+        OR this_attribute_context ->> 'attribtue_context_external_provider_id' != 'ident_nil_v1()'
 $$;
 
 CREATE OR REPLACE FUNCTION exact_attribute_context_v1(
@@ -578,7 +578,7 @@ STABLE
 PARALLEL SAFE
 AS $$
     SELECT DISTINCT ON (
-        COALESCE(belongs_to_id, -1),
+        COALESCE(belongs_to_id, ident_nil_v1()),
         attribute_context_prop_id,
         attribute_context_internal_provider_id,
         attribute_context_external_provider_id,
@@ -593,7 +593,7 @@ AS $$
                 WHEN this_key IS NULL THEN key IS NULL
                 ELSE key = this_key
             END
-    ORDER BY COALESCE(belongs_to_id, -1),
+    ORDER BY COALESCE(belongs_to_id, ident_nil_v1()),
             attribute_context_prop_id DESC,
             attribute_context_internal_provider_id DESC,
             attribute_context_external_provider_id DESC,
@@ -1054,7 +1054,7 @@ BEGIN
     END IF;
 
     RAISE DEBUG 'attribute_value_update_for_context_raw_v1: this_attribute_context - %', this_attribute_context;
-    IF this_attribute_context ->> 'attribute_context_prop_id' = '-1' THEN
+    IF this_attribute_context ->> 'attribute_context_prop_id' = 'ident_nil_v1()' THEN
         typeof_value := jsonb_typeof(this_new_value);
 
         -- jsonb_typeof returns: 'object', 'array', 'string', 'number', 'boolean', 'null' and SQL NULL
@@ -2172,7 +2172,7 @@ BEGIN
     IF
         new_attribute_value_id != attribute_value.id
         -- Providers don't have Proxy values, only AttributeValues directly for Props.
-        AND this_attribute_context ->> 'attribute_context_prop_id' != '-1'
+        AND this_attribute_context ->> 'attribute_context_prop_id' != 'ident_nil_v1()'
     THEN
         PERFORM update_by_id_v1(
             'attribute_values',

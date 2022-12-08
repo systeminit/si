@@ -1,6 +1,6 @@
 CREATE TABLE func_executions
 (
-    pk                           bigserial PRIMARY KEY,
+    pk                           ident primary key default ident_create_v1(),
     state                        text                     NOT NULL,
     func_id                      ident                   NOT NULL,
     func_binding_id              ident                   NOT NULL,

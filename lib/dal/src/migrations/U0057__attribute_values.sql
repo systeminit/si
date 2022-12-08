@@ -1,12 +1,12 @@
 CREATE TABLE attribute_values
 (
-    pk                                     bigserial PRIMARY KEY,
-    id                                     bigserial                NOT NULL,
+    pk                                     ident primary key default ident_create_v1(),
+    id                                     ident not null default ident_create_v1(),
     tenancy_universal                      bool                     NOT NULL,
     tenancy_billing_account_ids            ident[],
     tenancy_organization_ids               ident[],
     tenancy_workspace_ids                  ident[],
-    visibility_change_set_pk               ident                   NOT NULL DEFAULT -1,
+    visibility_change_set_pk               ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at                  timestamp with time zone,
     attribute_context_prop_id              ident                   NOT NULL,
     attribute_context_internal_provider_id ident                   NOT NULL,

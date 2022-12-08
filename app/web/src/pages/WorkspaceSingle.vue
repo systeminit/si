@@ -47,7 +47,7 @@ import { computed, PropType, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import _ from "lodash";
 import StatusBar from "@/organisms/StatusBar.vue";
-import { ChangeSetId, useChangeSetsStore } from "@/store/change_sets.store";
+import { ChangeSetId, useChangeSetsStore, changeSetIdNil } from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import AppLayout from "@/layout/AppLayout.vue";
@@ -95,7 +95,7 @@ function handleUrlChange() {
     changeSetsStore.selectedChangeSetId = props.changeSetId;
     // if undefined, that means the route has no changeSetId param, so we select "head"
   } else if (props.changeSetId === undefined) {
-    changeSetsStore.selectedChangeSetId = -1;
+    changeSetsStore.selectedChangeSetId = changeSetIdNil();
     // if "auto", we do our best to autoselect, and show a selection screen otherwise
   } else if (props.changeSetId === "auto") {
     tryAutoSelect();

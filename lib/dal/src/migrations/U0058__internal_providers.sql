@@ -1,12 +1,12 @@
 CREATE TABLE internal_providers
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
+    id                          ident not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
     tenancy_billing_account_ids ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT -1,
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -28,7 +28,7 @@ CREATE UNIQUE INDEX unique_implicit_internal_providers
                            visibility_change_set_pk,
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
-        AND NOT prop_id = -1;
+        AND NOT prop_id = ident_nil_v1();
 
 CREATE UNIQUE INDEX unique_explicit_internal_providers
     ON internal_providers (name,
@@ -40,7 +40,7 @@ CREATE UNIQUE INDEX unique_explicit_internal_providers
                            visibility_change_set_pk,
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
-        AND prop_id = -1;
+        AND prop_id = ident_nil_v1();
 
 CREATE INDEX ON internal_providers (prop_id);
 CREATE INDEX ON internal_providers (schema_variant_id);

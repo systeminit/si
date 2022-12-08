@@ -1,7 +1,7 @@
 WITH RECURSIVE recursive_props AS (
     SELECT
         $3::ident AS prop_id,
-        0::ident  AS depth
+        0::bigint  AS depth
     UNION ALL
     SELECT
         pbp.belongs_to_id         AS prop_id,

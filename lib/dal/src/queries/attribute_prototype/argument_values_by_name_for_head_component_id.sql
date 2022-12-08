@@ -24,7 +24,7 @@ FROM (
                                       ON apa.func_argument_id = fa.id
                   WHERE apa.attribute_prototype_id = $3
                     AND CASE
-                            WHEN apa.external_provider_id != -1
+                            WHEN apa.external_provider_id != ident_nil_v1()
                                 THEN
                                 apa.head_component_id = $4
                             ELSE
@@ -51,8 +51,8 @@ FROM (
                  -- (1 row)
                  in_attribute_context_v1(
                              $5 || jsonb_build_object(
-                                 'attribute_context_prop_id', -1,
-                                 'attribute_context_external_provider_id', -1,
+                                 'attribute_context_prop_id', ident_nil_v1(),
+                                 'attribute_context_external_provider_id', ident_nil_v1(),
                              -- The reference to `prototype_argument_data` is why this needs to be a `LATERAL` join.
                                  'attribute_context_internal_provider_id', prototype_argument_data.internal_provider_id
                              ),
@@ -75,9 +75,9 @@ FROM (
                  -- where we're trying to set the final value.
                  in_attribute_context_v1(
                              $5 || jsonb_build_object(
-                                 'attribute_context_prop_id', -1,
+                                 'attribute_context_prop_id', ident_nil_v1(),
                                  'attribute_context_external_provider_id', prototype_argument_data.external_provider_id,
-                                 'attribute_context_internal_provider_id', -1,
+                                 'attribute_context_internal_provider_id', ident_nil_v1(),
                                  'attribute_context_component_id', prototype_argument_data.tail_component_id
                              ),
                              av

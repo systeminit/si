@@ -232,7 +232,7 @@ BEGIN
                                                  );
                 RAISE DEBUG 'attribute_value_create_new_affected_values_v1: current_attribute_context: %', current_attribute_context;
 
-                IF source_attribute_value.attribute_context_prop_id != -1 THEN
+                IF source_attribute_value.attribute_context_prop_id != ident_nil_v1() THEN
                     -- AttributeValues that are directly for a Prop can only be used by implicit InternalProviders.
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Found AttributeValue for Prop';
                     -- Need to make sure the direct (and parent) InternalProviders have AttributeValues for the exact context.
@@ -257,9 +257,9 @@ BEGIN
                                ip.attribute_prototype_id,
                                current_attribute_context ||
                                jsonb_build_object(
-                                       'attribute_context_prop_id', -1,
+                                       'attribute_context_prop_id', ident_nil_v1(),
                                        'attribute_context_internal_provider_id', ip.id,
-                                       'attribute_context_external_provider_id', -1
+                                       'attribute_context_external_provider_id', ident_nil_v1()
                                    ) AS tmp_attribute_context
                         FROM internal_providers_v1(this_read_tenancy, this_visibility) AS ip
                                  INNER JOIN parent_prop_tree ON parent_prop_tree.prop_id = ip.prop_id)
@@ -337,7 +337,7 @@ BEGIN
                                         )
                                 );
                         END LOOP;
-                ELSIF source_attribute_value.attribute_context_internal_provider_id != -1 THEN
+                ELSIF source_attribute_value.attribute_context_internal_provider_id != ident_nil_v1() THEN
                     -- AttributeValues that are for an InternalProvider can be used by either of:
                     --   * An ExternalProvider
                     --   * An AttributeValue that is directly for a Prop.
@@ -371,7 +371,7 @@ BEGIN
                             desired_attribute_context := attribute_context_from_record_v1(attribute_prototype) ||
                                                          tmp_attribute_context;
 
-                            IF attribute_prototype.attribute_context_prop_id != -1 THEN
+                            IF attribute_prototype.attribute_context_prop_id != ident_nil_v1() THEN
                                 -- This AttributePrototype is directly associated with a Prop
                                 RAISE DEBUG 'attribute_value_create_new_affected_values_v1: AttributePrototype(%) is for Prop(%)',
                                     attribute_prototype.id,
@@ -467,7 +467,7 @@ BEGIN
                                                 new_attribute_value_id
                                             );
                                     END LOOP attribute_values_for_prototype;
-                            ELSIF attribute_prototype.attribute_context_external_provider_id != -1 THEN
+                            ELSIF attribute_prototype.attribute_context_external_provider_id != ident_nil_v1() THEN
                                 insertion_attribute_context := attribute_context_from_record_v1(attribute_prototype)
                                                                    || base_attribute_context
                                     || jsonb_build_object(
@@ -491,7 +491,7 @@ BEGIN
                             END IF;
 
                         END LOOP;
-                ELSIF source_attribute_value.attribute_context_external_provider_id != -1 THEN
+                ELSIF source_attribute_value.attribute_context_external_provider_id != ident_nil_v1() THEN
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Found AttributeValue for ExternalProvider(%)',
                         source_attribute_value.attribute_context_external_provider_id;
                     -- This AttributeValue is directly for an ExternalProvider.
@@ -500,9 +500,9 @@ BEGIN
                     -- on what will be using this AttributeValue.
                     tmp_attribute_context := attribute_context_from_record_v1(source_attribute_value)
                         || jsonb_build_object(
-                                                     'attribute_context_prop_id', -1,
+                                                     'attribute_context_prop_id', ident_nil_v1(),
                                                      'attribute_context_internal_provider_id', NULL,
-                                                     'attribute_context_external_provider_id', -1,
+                                                     'attribute_context_external_provider_id', ident_nil_v1(),
                                                  -- The InternalProviders that use this Attribute value can be for any Component,
                                                  -- and will not likely have the same ComponentId as the source AttributeValue
                                                      'attribute_context_component_id', NULL
@@ -541,7 +541,7 @@ BEGIN
                             -- and that it will be associated with a different Component.
                             insertion_attribute_context := tmp_attribute_context
                                 || jsonb_build_object(
-                                                                   'attribute_context_external_provider_id', -1,
+                                                                   'attribute_context_external_provider_id', ident_nil_v1(),
                                                                    'attribute_context_internal_provider_id',
                                                                    internal_provider_id,
                                                                    'attribute_context_component_id', head_component_id

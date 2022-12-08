@@ -13,6 +13,10 @@ import { useRealtimeStore } from "./realtime/realtime.store";
 
 export type ChangeSetId = string;
 
+export function changeSetIdNil(): string {
+  return "00000000000000000000000000";
+}
+
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspaceId;

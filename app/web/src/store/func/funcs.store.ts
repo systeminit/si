@@ -36,14 +36,18 @@ export const nullEditingFunc: EditingFunc = {
   isRevertible: false,
 };
 
-type FuncId = number;
+type FuncId = string;
+
+function nilId(): string {
+  return "00000000000000000000000000";
+}
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
   const changeSetStore = useChangeSetsStore();
   const selectedChangeSetId = changeSetStore.selectedChangeSetId;
   const visibility: Visibility = {
-    visibility_change_set_pk: selectedChangeSetId ?? -1,
+    visibility_change_set_pk: selectedChangeSetId ?? nilId(),
   };
 
   const store = defineStore(`cs${selectedChangeSetId}/funcs`, {
@@ -51,7 +55,7 @@ export const useFuncStore = () => {
       funcList: [] as ListedFuncView[],
       openFuncsById: {} as Record<FuncId, EditingFunc>,
       openFuncsList: [] as ListedFuncView[],
-      selectedFuncId: -1 as FuncId,
+      selectedFuncId: nilId() as FuncId,
       inputSources: { sockets: [], props: [] } as ListInputSourcesResponse,
       saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
     }),
@@ -70,7 +74,7 @@ export const useFuncStore = () => {
         state.inputSources.props
           .filter(
             (prop) =>
-              schemaVariantId === -1 ||
+              schemaVariantId === nilId() ||
               schemaVariantId === prop.schemaVariantId,
           )
           .map((prop) => ({
@@ -115,7 +119,7 @@ export const useFuncStore = () => {
     },
     actions: {
       async SELECT_FUNC(funcId: FuncId) {
-        if (funcId === -1) {
+        if (funcId === nilId()) {
           return;
         }
 
@@ -133,7 +137,7 @@ export const useFuncStore = () => {
       },
       ADD_FUNC_TO_OPEN_LIST(funcId: FuncId) {
         const func = this.openFuncsById[funcId];
-        if (func && this.getIndexForFunc(funcId) === -1) {
+        if (func && this.getIndexForFunc(funcId) === nilId()) {
           this.openFuncsList.push(func as ListedFuncView);
         }
       },
@@ -212,7 +216,7 @@ export const useFuncStore = () => {
           return;
         }
 
-        if (prototype.id === -1) {
+        if (prototype.id === nilId()) {
           func.associations.prototypes.push(prototype);
         } else {
           const currentPrototypeIdx = func.associations.prototypes.findIndex(

@@ -8,6 +8,10 @@ import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useAuthStore } from "../auth.store";
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 export type RecommendationKind = "create" | "other";
 
@@ -183,7 +187,7 @@ export const useFixesStore = () => {
 
           return new ApiRequest<Array<Confirmation>>({
             url: "/fix/confirmations",
-            params: { visibility_change_set_pk: -1 },
+            params: { visibility_change_set_pk: nilId() },
             onSuccess: (response) => {
               this.confirmations = response;
               this.populatingFixes =
@@ -195,7 +199,7 @@ export const useFixesStore = () => {
         async LOAD_RECOMMENDATIONS() {
           return new ApiRequest<Array<Recommendation>>({
             url: "/fix/recommendations",
-            params: { visibility_change_set_pk: -1 },
+            params: { visibility_change_set_pk: nilId() },
             onSuccess: (response) => {
               this.recommendations = response;
             },
@@ -204,7 +208,7 @@ export const useFixesStore = () => {
         async LOAD_FIX_BATCHES() {
           return new ApiRequest<Array<FixBatch>>({
             url: "/fix/list",
-            params: { visibility_change_set_pk: -1 },
+            params: { visibility_change_set_pk: nilId() },
             onSuccess: (response) => {
               this.fixBatches = response;
             },
@@ -223,7 +227,7 @@ export const useFixesStore = () => {
                 componentId: fix.componentId,
                 actionName: fix.recommendation,
               })),
-              visibility_change_set_pk: -1,
+              visibility_change_set_pk: nilId(),
             },
             url: "/fix/run",
             onSuccess: (response) => {
@@ -271,7 +275,7 @@ export const useFixesStore = () => {
           const index = this.recommendations.findIndex(
             (r) => r.id === recommendation.id,
           );
-          if (index === -1) {
+          if (index === nilId()) {
             this.recommendations.push(recommendation);
           } else {
             this.recommendations[index] = recommendation;

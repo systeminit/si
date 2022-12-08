@@ -51,7 +51,10 @@ const props = defineProps<{
   funcId?: number;
 }>();
 
-const funcIdParam = toRef(props, "funcId", -1);
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+const funcIdParam = toRef(props, "funcId", nilId());
 
 const routeToFunc = useRouteToFunc();
 const selectFunc = (func: ListedFuncView) => {
@@ -61,13 +64,13 @@ const selectFunc = (func: ListedFuncView) => {
 watch(
   () => funcIdParam.value,
   (funcIdParam) => {
-    let funcId = funcIdParam ?? -1;
-    if (Number.isNaN(funcIdParam) || funcId === -1) {
-      if (selectedFuncId.value !== -1) {
+    let funcId = funcIdParam ?? nilId();
+    if (Number.isNaN(funcIdParam) || funcId === nilId()) {
+      if (selectedFuncId.value !== nilId()) {
         routeToFunc(selectedFuncId.value);
         return;
       } else {
-        funcId = -1;
+        funcId = nilId();
       }
     }
     funcStore.SELECT_FUNC(funcId);

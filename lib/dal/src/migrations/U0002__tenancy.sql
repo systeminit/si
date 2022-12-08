@@ -1,5 +1,3 @@
-CREATE TYPE ident as char[32];
-
 CREATE TYPE tenancy_record_v1 as
 (
     tenancy_universal           bool,

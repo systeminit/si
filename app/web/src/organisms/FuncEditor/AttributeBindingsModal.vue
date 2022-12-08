@@ -72,6 +72,10 @@ import { FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 const componentsStore = useComponentsStore();
 const { allComponents } = storeToRefs(componentsStore);
 
@@ -90,7 +94,7 @@ const props = withDefaults(
 
 const prototype = toRef(props, "prototype", undefined);
 
-const isCreating = computed(() => props.prototype?.id === -1);
+const isCreating = computed(() => props.prototype?.id === nilId());
 
 const emit = defineEmits<{
   (e: "close"): void;
@@ -105,11 +109,11 @@ interface EditingBinding {
 
 const allComponentsOption = {
   label: "All components for schema variant",
-  value: -1,
+  value: nilId(),
 };
-const noneVariant = { label: "select schema variant", value: -1 };
-const noneOutputLocation = { label: "select place to store output", value: -1 };
-const noneSource = { label: "select source", value: -1 };
+const noneVariant = { label: "select schema variant", value: nilId() };
+const noneOutputLocation = { label: "select place to store output", value: nilId() };
+const noneSource = { label: "select source", value: nilId() };
 
 const selectedVariant = ref<Option>(noneVariant);
 const selectedComponent = ref<Option>(allComponentsOption);
@@ -120,14 +124,14 @@ const funcArgumentsIdMap =
   inject<Ref<{ [key: number]: FuncArgument }>>("funcArgumentsIdMap");
 
 const editedPrototype = computed(() => ({
-  id: props.prototype?.id ?? -1,
+  id: props.prototype?.id ?? nilId(),
   schemaVariantId: selectedVariant.value.value as number,
   componentId: selectedComponent.value.value as number,
   propId: selectedOutputLocation.value.value as number,
   prototypeArguments: editableBindings.value.map(
     ({ id, funcArgumentId, binding }) => ({
-      id: id ?? -1,
-      funcArgumentId: funcArgumentId ?? -1,
+      id: id ?? nilId(),
+      funcArgumentId: funcArgumentId ?? nilId(),
       internalProviderId: binding.value as number,
     }),
   ),
@@ -138,7 +142,7 @@ const filteredComponentOptions = computed<Option[]>(() =>
     allComponents.value
       .filter(
         (c) =>
-          selectedVariant.value.value === -1 ||
+          selectedVariant.value.value === nilId() ||
           c.schemaVariantId === selectedVariant.value.value,
       )
       .map(({ displayName, id }) => ({
@@ -152,7 +156,7 @@ const outputLocationOptions = computed<Option[]>(() =>
   propsAsOptionsForSchemaVariant.value(
     typeof selectedVariant.value.value === "number"
       ? selectedVariant.value.value
-      : -1,
+      : nilId(),
   ),
 );
 
@@ -162,7 +166,7 @@ const inputSourceOptions = computed<Option[]>(() => {
     inputSources?.value.sockets
       .filter(
         (socket) =>
-          (selectedVariantId === -1 ||
+          (selectedVariantId === nilId() ||
             selectedVariantId === socket.schemaVariantId) &&
           socket.internalProviderId,
       )
@@ -170,21 +174,21 @@ const inputSourceOptions = computed<Option[]>(() => {
         label: `Socket: ${socket.name}`,
         // internalProviderId will never be undefined given the condition above but the Typescript compiler
         // is not quite smart enough to figure that out.
-        value: socket.internalProviderId ?? -1,
+        value: socket.internalProviderId ?? nilId(),
       })) ?? [];
 
   const props =
     inputSources?.value.props
       .filter(
         (prop) =>
-          (selectedVariantId === -1 ||
+          (selectedVariantId === nilId() ||
             selectedVariantId === prop.schemaVariantId) &&
           prop.internalProviderId &&
           prop.propId !== selectedOutputLocation.value.value,
       )
       .map((prop) => ({
         label: `Attribute: ${prop.path}${prop.name}`,
-        value: prop.internalProviderId ?? -1,
+        value: prop.internalProviderId ?? nilId(),
       })) ?? [];
 
   return sockets.concat(props);
@@ -203,7 +207,7 @@ watch(
     }
 
     // If we switched from another schema variant, unset selected output location
-    if (oldValue.value !== -1) {
+    if (oldValue.value !== nilId()) {
       selectedOutputLocation.value = noneOutputLocation;
     }
   },

@@ -1,7 +1,7 @@
 CREATE TABLE change_sets
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
+    id                          ident not null default ident_create_v1(),
     name                        text                     NOT NULL,
     note                        text,
     status                      text                     NOT NULL,
@@ -92,7 +92,7 @@ BEGIN
             -- behavior).
             EXECUTE format('UPDATE %1$I ' ||
                            '  SET visibility_deleted_at = now(), updated_at = now() ' ||
-                           'WHERE visibility_change_set_pk = -1 ' ||
+                           'WHERE visibility_change_set_pk = ident_nil_v1() ' ||
                            '  AND visibility_deleted_at IS NULL ' ||
                            '  AND id IN ( ' ||
                            '      SELECT id ' ||

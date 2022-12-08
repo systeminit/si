@@ -45,7 +45,7 @@ BEGIN
                            func.backend_response_type,
                            CASE
                                WHEN func.tenancy_universal IS TRUE
-                                   AND func.visibility_change_set_pk = -1 THEN TRUE
+                                   AND func.visibility_change_set_pk = ident_nil_v1() THEN TRUE
                                ELSE FALSE
                                END,
                            ap.id,
@@ -75,7 +75,7 @@ BEGIN
         INTO STRICT new_child_attribute_value_ids
         FROM (
                  SELECT DISTINCT ON (
-                     COALESCE(avbtav.belongs_to_id, -1),
+                     COALESCE(avbtav.belongs_to_id, ident_nil_v1()),
                      av.attribute_context_prop_id,
                      COALESCE(av.key, '')
                      ) av.id AS attribute_value_id
@@ -85,7 +85,7 @@ BEGIN
                                     ON av.id = avbtav.object_id
                  WHERE in_attribute_context_v1(this_context, av)
                    AND avbtav.belongs_to_id = ANY (parent_attribute_value_ids)
-                 ORDER BY COALESCE(avbtav.belongs_to_id, -1) DESC,
+                 ORDER BY COALESCE(avbtav.belongs_to_id, ident_nil_v1()) DESC,
                           av.attribute_context_prop_id DESC,
                           COALESCE(av.key, ''),
                           av.attribute_context_component_id DESC,
@@ -109,7 +109,7 @@ BEGIN
                                func.backend_response_type,
                                CASE
                                    WHEN func.tenancy_universal IS TRUE
-                                       AND func.visibility_change_set_pk = -1 THEN TRUE
+                                       AND func.visibility_change_set_pk = ident_nil_v1() THEN TRUE
                                    ELSE FALSE
                                    END,
                                ap.id,
@@ -157,7 +157,7 @@ AS
 $$
 SELECT DISTINCT ON (
     av.attribute_context_prop_id,
-    COALESCE(avbtav.belongs_to_id, -1),
+    COALESCE(avbtav.belongs_to_id, ident_nil_v1()),
     COALESCE(av.key, '')
     ) av.id
 FROM attribute_values_v1(this_tenancy, this_visibility) AS av
@@ -168,7 +168,7 @@ FROM attribute_values_v1(this_tenancy, this_visibility) AS av
 WHERE in_attribute_context_v1(this_context, av)
   AND pmtmsv.right_object_id = this_prop_id
 ORDER BY av.attribute_context_prop_id,
-         COALESCE(avbtav.belongs_to_id, -1),
+         COALESCE(avbtav.belongs_to_id, ident_nil_v1()),
          COALESCE(av.key, ''),
          av.visibility_change_set_pk DESC,
          av.visibility_deleted_at DESC NULLS FIRST,

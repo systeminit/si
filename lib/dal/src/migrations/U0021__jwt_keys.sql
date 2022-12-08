@@ -1,6 +1,6 @@
 CREATE TABLE jwt_keys
 (
-    pk          bigserial PRIMARY KEY,
+    pk          ident primary key default ident_create_v1(),
     public_key  text,
     private_key text,
     nonce       bytea,

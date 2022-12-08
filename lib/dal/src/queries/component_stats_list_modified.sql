@@ -10,7 +10,7 @@ FROM components_with_attributes AS components
                           -- Grab all components on HEAD
                      WHERE attribute_context_component_id IN (SELECT id
                                                               FROM components
-                                                              WHERE visibility_change_set_pk = -1
+                                                              WHERE visibility_change_set_pk = ident_nil_v1()
                                                                 AND visibility_deleted_at IS NULL
                                                                 AND in_tenancy_v1($1,
                                                                                   tenancy_universal,

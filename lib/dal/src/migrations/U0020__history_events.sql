@@ -1,6 +1,6 @@
 CREATE TABLE history_events
 (
-    pk                          bigserial PRIMARY KEY,
+    pk                          ident primary key default ident_create_v1(),
     label                       text                     NOT NULL,
     actor                       jsonb                    NOT NULL,
     message                     text                     NOT NULL,
