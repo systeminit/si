@@ -20,3 +20,4 @@ app/web/cypress/videos/
 # vim temp files
 .*.swp
 .*.swo
+.vim
