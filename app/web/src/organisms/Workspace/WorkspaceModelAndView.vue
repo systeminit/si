@@ -166,12 +166,20 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   const schemaId = componentsStore.selectedInsertSchemaId;
   componentsStore.selectedInsertSchemaId = null;
 
+  let parentId;
+
+  if (e.parent) {
+    const parentComponent = componentsStore.componentsById[parseInt(e.parent)];
+    if (
+      parentComponent.nodeType !== "aggregationFrame" ||
+      schemaId === parentComponent.schemaVariantId
+    ) {
+      parentId = parseInt(e.parent);
+    }
+  }
+
   // TODO These ids should be number from the start.
-  await componentsStore.CREATE_COMPONENT(
-    schemaId,
-    e.position,
-    e.parent ? parseInt(e.parent) : undefined,
-  );
+  await componentsStore.CREATE_COMPONENT(schemaId, e.position, parentId);
 
   // TODO: we actually want the new node ID so we can watch for it in the updated data
   // but the API currently doesn't have it right away :(
@@ -257,6 +265,17 @@ watch(
 );
 
 function onGroupElements({ group, elements }: GroupEvent) {
+  if (group.def.nodeType === "aggregationFrame") {
+    const groupSchemaId =
+      componentsStore.componentsById[parseInt(group.def.id)].schemaVariantId;
+    elements = _.filter(elements, (e) => {
+      const elementSchemaId =
+        componentsStore.componentsById[parseInt(e.def.id)].schemaVariantId;
+
+      return elementSchemaId === groupSchemaId;
+    });
+  }
+
   for (const element of elements) {
     componentsStore.CONNECT_COMPONENT_TO_FRAME(element.def.id, group.def.id);
   }
