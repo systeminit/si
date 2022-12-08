@@ -11,7 +11,7 @@ CREATE TABLE key_pairs
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     name                        text                     NOT NULL,
-    created_lamport_clock       ident not null default ident_create_v1(),
+    created_lamport_clock       bigserial                NOT NULL,
     public_key                  text                     NOT NULL,
     secret_key                  text                     NOT NULL
 );

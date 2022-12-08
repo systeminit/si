@@ -177,7 +177,7 @@ pub use secret::{
 pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use timestamp::{Timestamp, TimestampError};
-pub use user::{User, UserClaim, UserError, UserId, UserResult};
+pub use user::{User, UserClaim, UserError, UserId, UserResult, UserPk};
 pub use validation::prototype::{
     context::ValidationPrototypeContext, ValidationPrototype, ValidationPrototypeError,
     ValidationPrototypeId,

@@ -77,8 +77,12 @@ const emit = defineEmits<{
   (e: "change", v: ValidationAssociations): void;
 }>();
 
-const noneVariant = { label: "select schema variant", value: -1 };
-const noneProp = { label: "select attribute to validate", value: -1 };
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
+const noneVariant = { label: "select schema variant", value: nilId() };
+const noneProp = { label: "select attribute to validate", value: nilId() };
 
 const selectedVariant = ref<Option>(noneVariant);
 const selectedProp = ref<Option>(noneProp);
@@ -87,7 +91,7 @@ const propOptions = computed<Option[]>(() =>
   propsAsOptionsForSchemaVariant.value(
     typeof selectedVariant.value.value === "number"
       ? selectedVariant.value.value
-      : -1,
+      : nilId(),
   ),
 );
 
@@ -112,7 +116,7 @@ const addValidation = () => {
   const prototypes = Array.from(
     new Set(
       props.modelValue.prototypes.concat({
-        id: -1,
+        id: nilId(),
         schemaVariantId: selectedVariant.value.value as number,
         propId: selectedProp.value.value as number,
       }),

@@ -12,7 +12,7 @@ CREATE TABLE schema_variants
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     name                        text                     NOT NULL,
     link                        text,
-    color                       ident
+    color                       bigint
 );
 SELECT standard_model_table_constraints_v1('schema_variants');
 SELECT belongs_to_table_create_v1('schema_variant_belongs_to_schema', 'schema_variants', 'schemas');

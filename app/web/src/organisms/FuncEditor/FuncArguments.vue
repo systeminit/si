@@ -93,8 +93,12 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 const defaultNewArg = {
-  id: -1,
+  id: nilId(),
   name: "",
   kind: kindToOption(FuncArgumentKind.String),
   elementKind: kindToOption(),

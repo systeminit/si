@@ -148,7 +148,7 @@ AS $$
     -- Even though these fields are numeric, when we extract their values we either get a jsonb, or text. We'd
     -- have to further use jsonb_typeof(...)  to make sure it's actually a 'number' before doing a conversion,
     -- but checking against a string is good enough for now.
-    SELECT  this_context ->> 'attribute_context_component_id'      = 'ident_nil_v1()'
+    SELECT  this_context ->> 'attribute_context_component_id'      = ident_nil_v1()
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_value_set_parent_attribute_value_v1(this_write_tenancy             jsonb,
@@ -542,8 +542,8 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE
 AS $$
-    SELECT this_attribute_context ->> 'attribute_context_internal_provider_id' != 'ident_nil_v1()'
-        OR this_attribute_context ->> 'attribtue_context_external_provider_id' != 'ident_nil_v1()'
+    SELECT this_attribute_context ->> 'attribute_context_internal_provider_id' != ident_nil_v1()
+        OR this_attribute_context ->> 'attribtue_context_external_provider_id' != ident_nil_v1()
 $$;
 
 CREATE OR REPLACE FUNCTION exact_attribute_context_v1(
@@ -1054,7 +1054,7 @@ BEGIN
     END IF;
 
     RAISE DEBUG 'attribute_value_update_for_context_raw_v1: this_attribute_context - %', this_attribute_context;
-    IF this_attribute_context ->> 'attribute_context_prop_id' = 'ident_nil_v1()' THEN
+    IF this_attribute_context ->> 'attribute_context_prop_id' = ident_nil_v1() THEN
         typeof_value := jsonb_typeof(this_new_value);
 
         -- jsonb_typeof returns: 'object', 'array', 'string', 'number', 'boolean', 'null' and SQL NULL
@@ -1235,7 +1235,7 @@ DECLARE
     index_hashmap   jsonb;
     index_order     jsonb;
     insertion_value text;
-    order_set       ident[];
+    order_set       bigint[];
 BEGIN
     IF this_index_map IS NULL THEN
         base_index_map := jsonb_build_object('order', '[]'::jsonb,
@@ -2172,7 +2172,7 @@ BEGIN
     IF
         new_attribute_value_id != attribute_value.id
         -- Providers don't have Proxy values, only AttributeValues directly for Props.
-        AND this_attribute_context ->> 'attribute_context_prop_id' != 'ident_nil_v1()'
+        AND this_attribute_context ->> 'attribute_context_prop_id' != ident_nil_v1()
     THEN
         PERFORM update_by_id_v1(
             'attribute_values',

@@ -38,8 +38,8 @@ BEGIN
         --- The following is needed for Postgres 10+:
 
         CREATE OR REPLACE FUNCTION pganalyze.get_sequence_state(schema_name text, sequence_name text) RETURNS TABLE(
-        last_value ident, start_value ident, increment_by ident,
-        max_value ident, min_value ident, cache_size ident, cycle boolean
+        last_value bigint, start_value bigint, increment_by bigint,
+        max_value bigint, min_value bigint, cache_size bigint, cycle boolean
         ) AS
         $$
         /* pganalyze-collector */ SELECT last_value, start_value, increment_by, max_value, min_value, cache_size, cycle

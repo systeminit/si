@@ -16,7 +16,7 @@ CREATE TABLE sockets
     arity                       text                     NOT NULL,
     diagram_kind              text                     NOT NULL,
     required                    bool                     NOT NULL DEFAULT false,
-    color                       ident
+    color                       bigint
 );
 SELECT standard_model_table_constraints_v1('sockets');
 SELECT many_to_many_table_create_v1('socket_many_to_many_schema_variants', 'sockets', 'schema_variants');

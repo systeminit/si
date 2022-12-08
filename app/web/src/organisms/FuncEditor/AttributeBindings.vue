@@ -93,12 +93,16 @@ const {
   componentOptions,
 } = storeToRefs(funcStore);
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 const editingPrototype = ref<AttributePrototypeView | undefined>(undefined);
 const makeEmptyPrototype = (): AttributePrototypeView => ({
-  id: -1,
-  schemaVariantId: -1,
-  componentId: -1,
-  propId: -1,
+  id: nilId(),
+  schemaVariantId: nilId(),
+  componentId: nilId(),
+  propId: nilId(),
   prototypeArguments: associations.value.arguments.map(({ id }) => ({
     funcArgumentId: id,
   })),

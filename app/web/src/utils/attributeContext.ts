@@ -2,6 +2,10 @@ import { AttributeContext } from "../api/sdf/dal/attribute";
 import { ComponentIdentification } from "../api/sdf/dal/component";
 import { EditFieldBaggage } from "../api/sdf/dal/edit_field";
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 export function buildAttributeContext(
   baggage: EditFieldBaggage,
   componentIdentification?: ComponentIdentification,
@@ -12,16 +16,16 @@ export function buildAttributeContext(
   if (!componentIdentification) {
     return {
       attribute_context_prop_id: baggage.prop_id,
-      attribute_context_internal_provider_id: -1,
-      attribute_context_external_provider_id: -1,
-      attribute_context_component_id: -1,
+      attribute_context_internal_provider_id: nilId(),
+      attribute_context_external_provider_id: nilId(),
+      attribute_context_component_id: nilId(),
     };
   }
 
   return {
     attribute_context_prop_id: baggage.prop_id,
-    attribute_context_internal_provider_id: -1,
-    attribute_context_external_provider_id: -1,
+    attribute_context_internal_provider_id: nilId(),
+    attribute_context_external_provider_id: nilId(),
     attribute_context_component_id: componentIdentification.componentId,
   };
 }
