@@ -149,7 +149,7 @@ impl ComponentView {
                     let id = SecretId::from_str(raw_id)?;
                     let decrypted_secret = EncryptedSecret::get_by_id(ctx, &id)
                         .await?
-                        .ok_or_else(|| ComponentViewError::SecretNotFound(id))?
+                        .ok_or(ComponentViewError::SecretNotFound(id))?
                         .decrypt(ctx)
                         .await?;
                     let encoded = ctx

@@ -189,7 +189,7 @@ impl ExternalProvider {
     standard_model_accessor!(type_definition, Option<String>, ExternalProviderResult);
     standard_model_accessor!(
         attribute_prototype_id,
-        OptionBigInt<AttributePrototypeId>,
+        Option<Pk(AttributePrototypeId)>,
         ExternalProviderResult
     );
 

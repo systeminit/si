@@ -2,7 +2,7 @@ import { Tenancy } from "@/api/sdf/dal/tenancy";
 import { Visibility } from "@/api/sdf/dal/visibility";
 
 export interface NodePosition {
-  pk: number;
+  pk: string;
   id: string;
   diagram_kind: number;
   x: string;

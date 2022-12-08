@@ -311,10 +311,10 @@ async fn func_binding_execute_unset(ctx: &DalContext) {
 #[test]
 async fn func_argument_new(ctx: &DalContext) {
     for kind in FuncArgumentKind::iter() {
-        FuncArgument::new(ctx, generate_name(), kind, None, 1.into())
+        FuncArgument::new(ctx, generate_name(), kind, None, FuncId::generate())
             .await
             .expect("Could not create function argument with null argument kind");
-        FuncArgument::new(ctx, generate_name(), kind, Some(kind), 1.into())
+        FuncArgument::new(ctx, generate_name(), kind, Some(kind), FuncId::generate())
             .await
             .expect("Could not create function argument with element kind");
     }
@@ -323,12 +323,12 @@ async fn func_argument_new(ctx: &DalContext) {
 #[test]
 async fn func_argument_list_for_func(ctx: &DalContext) {
     for kind in FuncArgumentKind::iter() {
-        FuncArgument::new(ctx, generate_name(), kind, None, 1.into())
+        FuncArgument::new(ctx, generate_name(), kind, None, FuncId::generate())
             .await
             .expect("Could not create function argument with null argument kind");
     }
 
-    let funcs = FuncArgument::list_for_func(ctx, 1.into())
+    let funcs = FuncArgument::list_for_func(ctx, FuncId::generate())
         .await
         .expect("Could not list func arguments for func");
     assert_eq!(7, funcs.len());
@@ -340,7 +340,7 @@ async fn func_argument_find_by_name_for_func(ctx: &DalContext) {
     ctx.update_to_head();
 
     let name = "an_argument";
-    let func_id: FuncId = 1.into();
+    let func_id = FuncId::generate();
 
     assert_eq!(
         None,
@@ -349,24 +349,34 @@ async fn func_argument_find_by_name_for_func(ctx: &DalContext) {
             .expect("could not find_by_name_for_func")
     );
 
-    assert!(
-        FuncArgument::new(&ctx, name, FuncArgumentKind::String, None, 1.into(),)
-            .await
-            .expect("Could not create argument in head")
-            .visibility()
-            .is_head()
-    );
+    assert!(FuncArgument::new(
+        &ctx,
+        name,
+        FuncArgumentKind::String,
+        None,
+        FuncId::generate()
+    )
+    .await
+    .expect("Could not create argument in head")
+    .visibility()
+    .is_head());
 
-    ctx.update_visibility(Visibility::new_change_set(1.into(), false));
+    ctx.update_visibility(Visibility::new_change_set(ChangeSetPk::generate(), false));
 
     FuncArgument::find_by_name_for_func(&ctx, name, func_id)
         .await
         .expect("could not find_by_name_for_func")
         .expect("should have found a func");
 
-    let arg = FuncArgument::new(&ctx, name, FuncArgumentKind::String, None, 1.into())
-        .await
-        .expect("Could not create argument in head");
+    let arg = FuncArgument::new(
+        &ctx,
+        name,
+        FuncArgumentKind::String,
+        None,
+        FuncId::generate(),
+    )
+    .await
+    .expect("Could not create argument in head");
 
     assert!(arg.visibility().in_change_set());
     assert_eq!(name, arg.name());

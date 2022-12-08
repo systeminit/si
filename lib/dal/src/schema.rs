@@ -171,7 +171,7 @@ impl Schema {
     standard_model_accessor!(ui_hidden, bool, SchemaResult);
     standard_model_accessor!(
         default_schema_variant_id,
-        OptionBigInt<SchemaVariantId>,
+        Option<Pk(SchemaVariantId)>,
         SchemaResult
     );
 

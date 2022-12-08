@@ -26,8 +26,12 @@ import {
 import { execFunc } from "./requests/exec_func";
 import { saveFunc } from "./requests/save_func";
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 export const nullEditingFunc: EditingFunc = {
-  id: 0,
+  id: nilId(),
   handler: "",
   kind: FuncBackendKind.Unset,
   name: "",
@@ -37,10 +41,6 @@ export const nullEditingFunc: EditingFunc = {
 };
 
 type FuncId = string;
-
-function nilId(): string {
-  return "00000000000000000000000000";
-}
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
@@ -95,7 +95,7 @@ export const useFuncStore = () => {
         }));
       },
       providerIdToSourceName() {
-        const idMap: { [key: number]: string } = {};
+        const idMap: { [key: string]: string } = {};
         for (const socket of this.inputSources.sockets ?? []) {
           idMap[socket.internalProviderId] = `Socket: ${socket.name}`;
         }
@@ -110,7 +110,7 @@ export const useFuncStore = () => {
         return idMap;
       },
       propIdToSourceName() {
-        const idMap: { [key: number]: string } = {};
+        const idMap: { [key: string]: string } = {};
         for (const prop of this.inputSources.props ?? []) {
           idMap[prop.propId] = `${prop.path}${prop.name}`;
         }
@@ -137,7 +137,7 @@ export const useFuncStore = () => {
       },
       ADD_FUNC_TO_OPEN_LIST(funcId: FuncId) {
         const func = this.openFuncsById[funcId];
-        if (func && this.getIndexForFunc(funcId) === nilId()) {
+        if (func && this.getIndexForFunc(funcId) === -1) {
           this.openFuncsList.push(func as ListedFuncView);
         }
       },

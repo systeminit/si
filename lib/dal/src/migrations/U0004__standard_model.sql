@@ -321,14 +321,14 @@ BEGIN
 END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
--- update_by_id_v1 (ident)
+-- update_by_id_v1 (bigint)
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
                                            this_read_tenancy jsonb,
                                            this_write_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id ident,
-                                           this_value ident,
+                                           this_value bigint,
                                            OUT updated_at timestamp with time zone)
 AS
 $$

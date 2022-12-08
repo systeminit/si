@@ -9,10 +9,10 @@ import { GlobalUpdateStatus, ComponentUpdateStatus } from "../status.store";
 // once things are working again, we should do a big review of all the realtime events coming from the backend...
 
 export type WsEventPayloadMap = {
-  ChangeSetCreated: number;
-  ChangeSetApplied: number;
-  ChangeSetWritten: number;
-  ChangeSetCancelled: number;
+  ChangeSetCreated: string;
+  ChangeSetApplied: string;
+  ChangeSetWritten: string;
+  ChangeSetCancelled: string;
 
   CheckedQualifications: {
     prototypeId: string;

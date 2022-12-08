@@ -28,6 +28,19 @@ macro_rules! pk {
             pub fn is_none(&self) -> bool {
                 self == &Self::NONE
             }
+
+            pub fn generate() -> Self {
+                Self(ulid::Ulid::new())
+            }
+        }
+
+        impl From<Option<$name>> for $name {
+            fn from(optional_pk: Option<$name>) -> Self {
+                match optional_pk {
+                    Some(id) => id,
+                    None => Self::NONE,
+                }
+            }
         }
 
         impl<'a> From<&'a $name> for ulid::Ulid {
@@ -60,7 +73,8 @@ macro_rules! pk {
             }
 
             fn accepts(ty: &postgres_types::Type) -> bool {
-                ty == &postgres_types::Type::TEXT
+                ty == &postgres_types::Type::BPCHAR
+                    || ty.kind() == &postgres_types::Kind::Domain(postgres_types::Type::BPCHAR)
             }
         }
 
@@ -73,14 +87,15 @@ macro_rules! pk {
             where
                 Self: Sized,
             {
-                postgres_types::ToSql::to_sql(&self.0.to_string(), &ty, out)
+                postgres_types::ToSql::to_sql(&self.0.to_string(), ty, out)
             }
 
             fn accepts(ty: &postgres_types::Type) -> bool
             where
                 Self: Sized,
             {
-                ty == &postgres_types::Type::TEXT
+                ty == &postgres_types::Type::BPCHAR
+                    || ty.kind() == &postgres_types::Kind::Domain(postgres_types::Type::BPCHAR)
             }
 
             fn to_sql_checked(
@@ -88,16 +103,7 @@ macro_rules! pk {
                 ty: &postgres_types::Type,
                 out: &mut postgres_types::private::BytesMut,
             ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
-                postgres_types::ToSql::to_sql(&self.0.to_string(), &ty, out)
-            }
-        }
-
-        impl From<Option<$name>> for $name {
-            fn from(optional_pk: Option<$name>) -> Self {
-                match optional_pk {
-                    Some(id) => id,
-                    None => Self::NONE,
-                }
+                postgres_types::ToSql::to_sql(&self.0.to_string(), ty, out)
             }
         }
     };

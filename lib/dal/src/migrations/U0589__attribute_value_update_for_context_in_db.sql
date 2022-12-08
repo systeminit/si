@@ -1235,7 +1235,7 @@ DECLARE
     index_hashmap   jsonb;
     index_order     jsonb;
     insertion_value text;
-    order_set       bigint[];
+    order_set       ident[];
 BEGIN
     IF this_index_map IS NULL THEN
         base_index_map := jsonb_build_object('order', '[]'::jsonb,

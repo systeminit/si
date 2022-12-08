@@ -275,7 +275,7 @@ export const useFixesStore = () => {
           const index = this.recommendations.findIndex(
             (r) => r.id === recommendation.id,
           );
-          if (index === nilId()) {
+          if (index === -1) {
             this.recommendations.push(recommendation);
           } else {
             this.recommendations[index] = recommendation;

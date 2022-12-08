@@ -104,7 +104,7 @@ const defaultNewArg = {
   elementKind: kindToOption(),
 };
 
-const funcId = toRef(props, "funcId", -1);
+const funcId = toRef(props, "funcId", nilId());
 const args = toRef(props, "arguments", []);
 const newArg = ref<EditingFuncArgument>(defaultNewArg);
 

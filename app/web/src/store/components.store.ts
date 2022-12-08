@@ -231,7 +231,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
           return _.map(this.rawDiagramNodes, (node) => {
-            const componentId = parseInt(node.id);
+            const componentId = node.id;
 
             const qualificationStatus =
               qualificationsStore.qualificationStatusByComponentId[componentId];
@@ -316,8 +316,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           const connectedNodes: Record<ComponentId, ComponentId[]> = {};
           _.each(state.diagramEdges, (edge) => {
-            const fromNodeId = parseInt(edge.fromNodeId);
-            const toNodeId = parseInt(edge.toNodeId);
+            const fromNodeId = edge.fromNodeId;
+            const toNodeId = edge.toNodeId;
             connectedNodes[fromNodeId] ||= [];
             connectedNodes[fromNodeId].push(toNodeId);
           });
@@ -446,7 +446,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         async CREATE_COMPONENT(
           schemaId: string,
           position: Vector2d,
-          parentId?: number,
+          parentId?: string,
         ) {
           return new ApiRequest<{ node: DiagramNode }>({
             method: "post",
@@ -490,8 +490,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             method: "post",
             url: "diagram/connect_component_to_frame",
             params: {
-              childNodeId: parseInt(childNodeId),
-              parentNodeId: parseInt(parentNodeId),
+              childNodeId,
+              parentNodeId,
               ...visibilityParams,
             },
             onSuccess: (response) => {

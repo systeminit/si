@@ -315,15 +315,3 @@ impl WorkflowPrototype {
         context
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::WorkflowPrototypeContext;
-
-    #[test]
-    fn context_builder() {
-        let mut c = WorkflowPrototypeContext::new();
-        c.set_component_id(22.into());
-        assert_eq!(c.component_id(), 22.into());
-    }
-}

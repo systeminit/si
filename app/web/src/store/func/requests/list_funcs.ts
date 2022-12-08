@@ -8,8 +8,12 @@ export interface ListFuncsResponse {
   funcs: ListedFuncView[];
 }
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 export const nullListFunc: ListedFuncView = {
-  id: 0,
+  id: nilId(),
   handler: "",
   kind: FuncBackendKind.Unset,
   name: "",

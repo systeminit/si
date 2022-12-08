@@ -43,7 +43,6 @@ export type ComponentUpdateStatus = {
     | { type: "system" }
     | {
         type: "user";
-        id: string;
         label: string;
       };
 };
@@ -162,7 +161,6 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
                     byActor: {
                       type: "user",
                       label: "theo",
-                      id: 100,
                     },
                   },
                 ],

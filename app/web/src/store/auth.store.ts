@@ -27,8 +27,8 @@ interface LoginResponse {
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     token: null as string | null,
-    billingAccountId: null as number | null,
-    userId: null as number | null,
+    billingAccountId: null as string | null,
+    userId: null as string | null,
     adminIsImpersonatingUser: false,
 
     // TODO: these maybe should live in another module related to the user/org/groups/etc

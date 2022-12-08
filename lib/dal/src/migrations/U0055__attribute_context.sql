@@ -46,7 +46,7 @@ SELECT
                             CASE
                                 WHEN check_context -> 'attribute_context_prop_id' IS NULL OR
                                      check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
-                                ELSE (check_context -> 'attribute_context_prop_id')::ident = this_prop_id
+                                ELSE (check_context ->> 'attribute_context_prop_id') = this_prop_id
                                 END
                             AND this_internal_provider_id = ident_nil_v1()
                             AND this_external_provider_id = ident_nil_v1()
@@ -58,7 +58,7 @@ SELECT
                                     WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_internal_provider_id')::ident =
+                                    ELSE (check_context ->> 'attribute_context_internal_provider_id') =
                                          this_internal_provider_id
                                     END
                             AND this_external_provider_id = ident_nil_v1()
@@ -71,7 +71,7 @@ SELECT
                                     WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_external_provider_id')::ident =
+                                    ELSE (check_context ->> 'attribute_context_external_provider_id') =
                                          this_external_provider_id
                                     END
                         )
@@ -80,7 +80,7 @@ SELECT
             AND CASE
                     WHEN check_context -> 'attribute_context_component_id' IS NULL OR
                          check_context -> 'attribute_context_component_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_component_id')::ident = this_component_id
+                    ELSE (check_context ->> 'attribute_context_component_id') = this_component_id
                 END
         )
         -- ComponentId not set
@@ -92,7 +92,7 @@ SELECT
                             CASE
                                 WHEN check_context -> 'attribute_context_prop_id' IS NULL OR
                                      check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
-                                ELSE (check_context -> 'attribute_context_prop_id')::ident = this_prop_id
+                                ELSE (check_context ->> 'attribute_context_prop_id') = this_prop_id
                                 END
                             AND this_internal_provider_id = ident_nil_v1()
                             AND this_external_provider_id = ident_nil_v1()
@@ -104,7 +104,7 @@ SELECT
                                     WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_internal_provider_id')::ident =
+                                    ELSE (check_context ->> 'attribute_context_internal_provider_id') =
                                          this_internal_provider_id
                                     END
                             AND this_external_provider_id = ident_nil_v1()
@@ -117,7 +117,7 @@ SELECT
                                     WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_external_provider_id')::ident =
+                                    ELSE (check_context ->> 'attribute_context_external_provider_id') =
                                          this_external_provider_id
                                     END
                         )

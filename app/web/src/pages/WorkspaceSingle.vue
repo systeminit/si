@@ -47,15 +47,19 @@ import { computed, PropType, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import _ from "lodash";
 import StatusBar from "@/organisms/StatusBar.vue";
-import { ChangeSetId, useChangeSetsStore, changeSetIdNil } from "@/store/change_sets.store";
+import {
+  ChangeSetId,
+  useChangeSetsStore,
+  changeSetIdNil,
+} from "@/store/change_sets.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import AppLayout from "@/layout/AppLayout.vue";
 import Navbar from "@/layout/navbar/Navbar.vue";
 
 const props = defineProps({
-  workspaceId: { type: Number, required: true },
-  changeSetId: { type: [Number, String] as PropType<number | "auto"> },
+  workspaceId: { type: String, required: true },
+  changeSetId: { type: [String, String] as PropType<string | "auto"> },
 });
 
 const router = useRouter();

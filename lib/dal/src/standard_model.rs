@@ -39,6 +39,7 @@ pub enum TypeHint {
     Text,
     JsonB,
     Json,
+    BpChar,
 }
 
 #[instrument(skip(ctx))]

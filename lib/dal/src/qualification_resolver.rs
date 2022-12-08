@@ -172,15 +172,3 @@ impl QualificationResolver {
         Ok(object)
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::QualificationResolverContext;
-
-    #[test]
-    fn context_builder() {
-        let mut c = QualificationResolverContext::new();
-        c.set_component_id(15.into());
-        assert_eq!(c.component_id(), 15.into());
-    }
-}

@@ -126,7 +126,7 @@ const addToMap = (event: AddToMap) => {
 const onCreateAttributeFunc = async (
   currentFunc: FuncWithPrototypeContext,
   valueId: string,
-  parentValueId?: number,
+  parentValueId?: string,
 ) => {
   const res = await funcStore.CREATE_FUNC({
     kind: FuncBackendKind.JsAttribute,

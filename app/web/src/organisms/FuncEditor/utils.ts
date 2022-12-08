@@ -2,8 +2,8 @@ export const toOptionValues = <
   T extends { value: string | number; label: string },
 >(
   options: T[],
-  ids: number[],
+  ids: string[],
 ): T[] =>
   options.filter((opt) =>
-    typeof opt.value === "number" ? ids.includes(opt.value) : false,
+    typeof opt.value === "string" ? ids.includes(opt.value) : false,
   );

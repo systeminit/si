@@ -122,44 +122,45 @@ async fn check_workspace_in_organization(
 
 #[test]
 async fn check_universal(ctx: &DalContext) {
-    let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountId::from(-1)]);
+    let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountId::NONE]);
 
-    let write_tenancy = WriteTenancy::new_billing_account(1.into());
+    let write_tenancy = WriteTenancy::new_billing_account(BillingAccountId::generate());
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
         .await
         .expect("cannot check tenancy");
     assert!(!check);
 
-    let write_tenancy = WriteTenancy::new_organization(1.into());
+    let write_tenancy = WriteTenancy::new_organization(OrganizationId::generate());
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
         .await
         .expect("cannot check tenancy");
     assert!(!check);
 
-    let write_tenancy = WriteTenancy::new_workspace(1.into());
+    let write_tenancy = WriteTenancy::new_workspace(WorkspaceId::generate());
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
         .await
         .expect("cannot check tenancy");
     assert!(!check);
 
-    let write_tenancy = WriteTenancy::new_billing_account(1.into()).into_universal();
+    let write_tenancy =
+        WriteTenancy::new_billing_account(BillingAccountId::generate()).into_universal();
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
         .await
         .expect("cannot check tenancy");
     assert!(check);
 
-    let write_tenancy = WriteTenancy::new_organization(1.into()).into_universal();
+    let write_tenancy = WriteTenancy::new_organization(OrganizationId::generate()).into_universal();
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
         .await
         .expect("cannot check tenancy");
     assert!(check);
 
-    let write_tenancy = WriteTenancy::new_workspace(1.into()).into_universal();
+    let write_tenancy = WriteTenancy::new_workspace(WorkspaceId::generate()).into_universal();
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
         .await
@@ -169,8 +170,8 @@ async fn check_universal(ctx: &DalContext) {
 
 #[test]
 async fn check_billing_account_pk_identical(ctx: &DalContext) {
-    let read_tenancy = ReadTenancy::new_billing_account(vec![1.into()]);
-    let write_tenancy = WriteTenancy::new_billing_account(1.into());
+    let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountId::generate()]);
+    let write_tenancy = WriteTenancy::new_billing_account(BillingAccountId::generate());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -182,14 +183,14 @@ async fn check_billing_account_pk_identical(ctx: &DalContext) {
 #[test]
 async fn check_billing_account_pk_overlapping(ctx: &DalContext) {
     let read_tenancy = ReadTenancy::new_billing_account(vec![
-        1.into(),
-        2.into(),
-        3.into(),
-        4.into(),
-        5.into(),
-        6.into(),
+        BillingAccountId::generate(),
+        BillingAccountId::generate(),
+        BillingAccountId::generate(),
+        BillingAccountId::generate(),
+        BillingAccountId::generate(),
+        BillingAccountId::generate(),
     ]);
-    let write_tenancy = WriteTenancy::new_billing_account(2.into());
+    let write_tenancy = WriteTenancy::new_billing_account(BillingAccountId::generate());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -200,8 +201,8 @@ async fn check_billing_account_pk_overlapping(ctx: &DalContext) {
 
 #[test]
 async fn check_billing_account_pk_mismatched(ctx: &DalContext) {
-    let read_tenancy = ReadTenancy::new_billing_account(vec![1.into()]);
-    let write_tenancy = WriteTenancy::new_billing_account(2.into());
+    let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountId::generate()]);
+    let write_tenancy = WriteTenancy::new_billing_account(BillingAccountId::generate());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -212,8 +213,8 @@ async fn check_billing_account_pk_mismatched(ctx: &DalContext) {
 
 #[test]
 async fn check_billing_account_pk_mismatched_level(ctx: &DalContext) {
-    let read_tenancy = ReadTenancy::new_billing_account(vec![1.into()]);
-    let write_tenancy = WriteTenancy::new_organization(1.into());
+    let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountId::generate()]);
+    let write_tenancy = WriteTenancy::new_organization(OrganizationId::generate());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -269,7 +270,7 @@ async fn check_organization_pk_mismatched(ctx: &DalContext, jwt_secret_key: &Jwt
         ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.id()], ctx.visibility())
             .await
             .expect("unable to set organization read read_tenancy");
-    let write_tenancy = WriteTenancy::new_organization(OrganizationId::from(-1));
+    let write_tenancy = WriteTenancy::new_organization(OrganizationId::NONE);
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -326,7 +327,7 @@ async fn check_workspace_pk_mismatched(ctx: &DalContext, jwt_secret_key: &JwtSec
         ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.id()], ctx.visibility())
             .await
             .expect("unable to set workspace read read_tenancy");
-    let write_tenancy = WriteTenancy::new_workspace(WorkspaceId::from(-1));
+    let write_tenancy = WriteTenancy::new_workspace(WorkspaceId::NONE);
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)

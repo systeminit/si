@@ -1,5 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 CREATE TABLE funcs
 (
     pk                          ident primary key default ident_create_v1(),

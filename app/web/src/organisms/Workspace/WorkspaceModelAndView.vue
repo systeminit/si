@@ -148,12 +148,12 @@ watch([diagramNodes, diagramEdges], () => {
 async function onDrawEdge(e: DrawEdgeEvent) {
   await componentsStore.CREATE_COMPONENT_CONNECTION(
     {
-      componentId: parseInt(e.fromSocket.parent.def.id),
-      socketId: parseInt(e.fromSocket.def.id),
+      componentId: e.fromSocket.parent.def.id,
+      socketId: e.fromSocket.def.id,
     },
     {
-      componentId: parseInt(e.toSocket.parent.def.id),
-      socketId: parseInt(e.toSocket.def.id),
+      componentId: e.toSocket.parent.def.id,
+      socketId: e.toSocket.def.id,
     },
   );
 }
@@ -169,7 +169,7 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   await componentsStore.CREATE_COMPONENT(
     schemaId,
     e.position,
-    e.parent ? parseInt(e.parent) : undefined,
+    e.parent ? e.parent : undefined,
   );
 
   // TODO: we actually want the new node ID so we can watch for it in the updated data
@@ -182,7 +182,7 @@ function onDiagramResizeElement(e: ResizeElementEvent) {
   if (!e.isFinal) return;
   if (e.element instanceof DiagramGroupData) {
     componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-      parseInt(e.element.def.id),
+      e.element.def.id,
       e.position,
       e.size,
     );
@@ -199,7 +199,7 @@ function onDiagramMoveElement(e: MoveElementEvent) {
     e.element instanceof DiagramGroupData
   ) {
     componentsStore.SET_COMPONENT_DIAGRAM_POSITION(
-      parseInt(e.element.def.id),
+      e.element.def.id,
       e.position,
     );
   }
@@ -218,7 +218,7 @@ function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
     selectedElement instanceof DiagramNodeData ||
     selectedElement instanceof DiagramGroupData
   ) {
-    componentsStore.setSelectedComponentId(parseInt(selectedElement.def.id));
+    componentsStore.setSelectedComponentId(selectedElement.def.id);
   } else {
     componentsStore.setSelectedComponentId(null);
   }

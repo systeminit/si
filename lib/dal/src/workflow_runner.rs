@@ -381,15 +381,3 @@ impl WorkflowRunner {
         Ok(serde_json::from_value(self.resources.clone())?)
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::WorkflowRunnerContext;
-
-    #[test]
-    fn context_builder() {
-        let mut c = WorkflowRunnerContext::new();
-        c.set_component_id(15.into());
-        assert_eq!(c.component_id(), 15.into());
-    }
-}

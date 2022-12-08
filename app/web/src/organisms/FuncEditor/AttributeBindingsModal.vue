@@ -102,7 +102,7 @@ const emit = defineEmits<{
 }>();
 
 interface EditingBinding {
-  id?: number;
+  id?: string;
   funcArgumentId: string;
   binding: Option;
 }
@@ -112,7 +112,10 @@ const allComponentsOption = {
   value: nilId(),
 };
 const noneVariant = { label: "select schema variant", value: nilId() };
-const noneOutputLocation = { label: "select place to store output", value: nilId() };
+const noneOutputLocation = {
+  label: "select place to store output",
+  value: nilId(),
+};
 const noneSource = { label: "select source", value: nilId() };
 
 const selectedVariant = ref<Option>(noneVariant);
@@ -121,18 +124,18 @@ const selectedOutputLocation = ref<Option>(noneOutputLocation);
 const editableBindings = ref<EditingBinding[]>([]);
 
 const funcArgumentsIdMap =
-  inject<Ref<{ [key: number]: FuncArgument }>>("funcArgumentsIdMap");
+  inject<Ref<{ [key: string]: FuncArgument }>>("funcArgumentsIdMap");
 
 const editedPrototype = computed(() => ({
   id: props.prototype?.id ?? nilId(),
-  schemaVariantId: selectedVariant.value.value as number,
-  componentId: selectedComponent.value.value as number,
-  propId: selectedOutputLocation.value.value as number,
+  schemaVariantId: selectedVariant.value.value as string,
+  componentId: selectedComponent.value.value as string,
+  propId: selectedOutputLocation.value.value as string,
   prototypeArguments: editableBindings.value.map(
     ({ id, funcArgumentId, binding }) => ({
       id: id ?? nilId(),
       funcArgumentId: funcArgumentId ?? nilId(),
-      internalProviderId: binding.value as number,
+      internalProviderId: binding.value as string,
     }),
   ),
 }));
@@ -154,7 +157,7 @@ const filteredComponentOptions = computed<Option[]>(() =>
 
 const outputLocationOptions = computed<Option[]>(() =>
   propsAsOptionsForSchemaVariant.value(
-    typeof selectedVariant.value.value === "number"
+    typeof selectedVariant.value.value === "string"
       ? selectedVariant.value.value
       : nilId(),
   ),

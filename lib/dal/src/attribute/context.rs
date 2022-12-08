@@ -445,7 +445,7 @@ impl postgres_types::ToSql for AttributeContext {
 // need a helper to "flip" values from set to unset (and vice versa) to automatically test every condition.
 // Currently, all error permutations are manually written. In an example using an automatic setup, the
 // helper could provide an iteration method that flips each fields value from unset to
-// "1.into()" and vice versa. Then, the test writer could supply contraints to indicate when the helper
+// "Id::generate()" and vice versa. Then, the test writer could supply contraints to indicate when the helper
 // should expect failure or success upon iteration.
 
 #[cfg(test)]
@@ -454,9 +454,11 @@ mod tests {
 
     #[test]
     fn less_specific() {
+        let prop_id = PropId::generate();
+        let component_id = ComponentId::generate();
         let context = AttributeContextBuilder::new()
-            .set_prop_id(1.into())
-            .set_component_id(4.into())
+            .set_prop_id(prop_id)
+            .set_component_id(component_id)
             .to_context()
             .expect("cannot build attribute context");
         assert!(!context.is_least_specific());
@@ -467,7 +469,7 @@ mod tests {
 
         assert_eq!(
             AttributeContextBuilder::new()
-                .set_prop_id(1.into())
+                .set_prop_id(prop_id)
                 .to_context()
                 .expect("cannot create expected context"),
             new_context,
@@ -480,7 +482,7 @@ mod tests {
         // Should be the exact same.
         assert_eq!(
             AttributeContextBuilder::new()
-                .set_prop_id(1.into())
+                .set_prop_id(prop_id)
                 .to_context()
                 .expect("cannot create expected context"),
             new_context,
@@ -490,8 +492,8 @@ mod tests {
 
     #[test]
     fn builder_new() {
-        let prop_id: PropId = 1.into();
-        let component_id: ComponentId = 1.into();
+        let prop_id = PropId::generate();
+        let component_id = ComponentId::generate();
 
         let mut builder = AttributeContextBuilder::new();
 

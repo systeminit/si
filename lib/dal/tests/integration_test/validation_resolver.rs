@@ -240,8 +240,7 @@ async fn find_errors(ctx: &DalContext) {
     // Order of output from find_status above isn't stable. Order the
     // results by the AttributeValueId that they are for, so we have
     // something stable to compare against in the asserts below.
-    validation_results
-        .sort_by(|a, b| i64::from(a.attribute_value_id).cmp(&i64::from(b.attribute_value_id)));
+    validation_results.sort_by(|a, b| a.attribute_value_id.cmp(&b.attribute_value_id));
 
     let mut got_results = false;
     for result in &validation_results {

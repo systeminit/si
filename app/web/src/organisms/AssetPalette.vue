@@ -81,7 +81,7 @@ const schemasById = computed(() => {
       p[schema.id] = schema;
     });
     return p;
-  }, {} as Record<number, MenuSchema>);
+  }, {} as Record<string, MenuSchema>);
 });
 const selectedSchema = computed(() => {
   if (componentsStore.selectedInsertSchemaId)

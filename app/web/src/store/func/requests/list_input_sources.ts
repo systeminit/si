@@ -12,7 +12,7 @@ export interface InputSourceProp {
   propId: string;
   kind: PropKind;
   schemaVariantId: string;
-  internalProviderId?: number;
+  internalProviderId?: string;
   path: string;
   name: string;
 }

@@ -198,10 +198,14 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
 
     // Check the nodes.
     assert_eq!(diagram.nodes().len(), 2);
-    let from_node_id: i64 = from_docker_hub_credential.node_id.into();
-    assert_eq!(diagram.nodes()[0].id(), &from_node_id.to_string());
-    let to_node_id: i64 = to_docker_image.node_id.into();
-    assert_eq!(diagram.nodes()[1].id(), &to_node_id.to_string(),);
+    assert_eq!(
+        diagram.nodes()[0].id(),
+        &from_docker_hub_credential.node_id.to_string()
+    );
+    assert_eq!(
+        diagram.nodes()[1].id(),
+        &to_docker_image.node_id.to_string(),
+    );
 
     // Check the node positions.
     assert_eq!(

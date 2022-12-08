@@ -10,7 +10,7 @@ use crate::property_editor::{PropertyEditorError, PropertyEditorResult};
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use crate::{
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId, DalContext,
-    Prop, PropId, StandardModel,
+    Prop, StandardModel,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -68,10 +68,10 @@ impl PropertyEditorValues {
             let is_from_external_source = !sockets.is_empty();
 
             values.insert(
-                i64::from(work_attribute_value_id).into(),
+                work_attribute_value_id.into(),
                 PropertyEditorValue {
-                    id: i64::from(work_attribute_value_id).into(),
-                    prop_id: i64::from(*work.prop.id()).into(),
+                    id: work_attribute_value_id.into(),
+                    prop_id: (*work.prop.id()).into(),
                     key: work.attribute_value.key().map(Into::into),
                     value: work
                         .func_binding_return_value
@@ -83,11 +83,11 @@ impl PropertyEditorValues {
             );
             if let Some(parent_id) = work.parent_attribute_value_id {
                 child_values
-                    .entry(i64::from(parent_id).into())
+                    .entry(parent_id.into())
                     .or_default()
-                    .push(i64::from(work_attribute_value_id).into());
+                    .push(work_attribute_value_id.into());
             } else {
-                root_value_id = Some(i64::from(work_attribute_value_id).into());
+                root_value_id = Some(work_attribute_value_id.into());
             }
         }
 
@@ -133,12 +133,9 @@ impl PropertyEditorValue {
 
     /// Returns the [`Prop`](crate::Prop) corresponding to the "prop_id" field.
     pub async fn prop(&self, ctx: &DalContext) -> PropertyEditorResult<Prop> {
-        // FIXME(nick): implement from.
-        let unchecked_id: i64 = self.prop_id.into();
-        let prop_id: PropId = unchecked_id.into();
-        let prop = Prop::get_by_id(ctx, &prop_id)
+        let prop = Prop::get_by_id(ctx, &self.prop_id.into())
             .await?
-            .ok_or(PropertyEditorError::PropNotFound(prop_id))?;
+            .ok_or_else(|| PropertyEditorError::PropNotFound(self.prop_id.into()))?;
         Ok(prop)
     }
 }

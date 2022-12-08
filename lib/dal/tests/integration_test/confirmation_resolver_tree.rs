@@ -107,11 +107,11 @@ async fn new(ctx: &DalContext) {
         EdgeKind::Configuration,
         *second_node.id(),
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(second.id().into()),
+        EdgeObjectId::from(*second.id()),
         *output_socket.id(),
         *first_node.id(),
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(first.id().into()),
+        EdgeObjectId::from(*first.id()),
         *input_socket.id(),
     )
     .await
@@ -121,11 +121,11 @@ async fn new(ctx: &DalContext) {
         EdgeKind::Configuration,
         *second2_node.id(),
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(second2.id().into()),
+        EdgeObjectId::from(*second2.id()),
         *output_socket.id(),
         *first_node.id(),
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(first.id().into()),
+        EdgeObjectId::from(*first.id()),
         *input_socket.id(),
     )
     .await
@@ -135,11 +135,11 @@ async fn new(ctx: &DalContext) {
         EdgeKind::Configuration,
         *third_node.id(),
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(third.id().into()),
+        EdgeObjectId::from(*third.id()),
         *output_socket.id(),
         *first_node.id(),
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(second.id().into()),
+        EdgeObjectId::from(*second.id()),
         *input_socket.id(),
     )
     .await
@@ -149,11 +149,11 @@ async fn new(ctx: &DalContext) {
         EdgeKind::Configuration,
         *third2_node.id(),
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(third2.id().into()),
+        EdgeObjectId::from(*third2.id()),
         *output_socket.id(),
         *first_node.id(),
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(second2.id().into()),
+        EdgeObjectId::from(*second2.id()),
         *input_socket.id(),
     )
     .await

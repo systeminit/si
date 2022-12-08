@@ -220,15 +220,3 @@ impl ConfirmationResolver {
         self.context.clone()
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::ConfirmationResolverContext;
-
-    #[test]
-    fn context_builder() {
-        let mut c = ConfirmationResolverContext::new();
-        c.set_component_id(15.into());
-        assert_eq!(c.component_id(), 15.into());
-    }
-}

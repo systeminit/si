@@ -3,6 +3,7 @@ CREATE EXTENSION IF NOT EXISTS ltree;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- TODO: add constraints
+--CREATE DOMAIN ident as char(26) check (ident ~ '^[A-HJ-NP-TV-Z0-9+]$');
 CREATE DOMAIN ident as char(26);
 
 CREATE OR REPLACE FUNCTION ident_nil_v1()
@@ -17,7 +18,7 @@ BEGIN
 END
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
--- Copied from https://github.com/geckoboard/pgulid/blob/d6187a00f66dca196cf5242588f87c3a7969df75/pgulid.sql
+-- Adapter from https://github.com/geckoboard/pgulid/blob/d6187a00f66dca196cf5242588f87c3a7969df75/pgulid.sql
 CREATE OR REPLACE FUNCTION ident_create_v1()
 RETURNS ident
 AS

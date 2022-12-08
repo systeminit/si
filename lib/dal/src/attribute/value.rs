@@ -272,7 +272,7 @@ impl AttributeValue {
 
     standard_model_accessor!(
         proxy_for_attribute_value_id,
-        OptionBigInt<AttributeValueId>,
+        Option<Pk(AttributeValueId)>,
         AttributeValueResult
     );
     standard_model_accessor!(sealed_proxy, bool, AttributeValueResult);

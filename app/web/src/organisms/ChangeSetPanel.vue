@@ -199,7 +199,7 @@ const createChangeSetName = ref("");
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
-function onSelectChangeSet(newVal: number | "NEW") {
+function onSelectChangeSet(newVal: string | "NEW") {
   if (newVal === "NEW") {
     showDialog.value = "create";
   } else if (newVal && route.name) {

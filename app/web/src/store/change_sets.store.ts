@@ -51,7 +51,7 @@ export function useChangeSetsStore() {
       },
       actions: {
         async FETCH_CHANGE_SETS() {
-          return new ApiRequest<{ list: LabelList<number> }>({
+          return new ApiRequest<{ list: LabelList<string> }>({
             // TODO: probably want to fetch all change sets, not just open (or could have a filter)
             // this endpoint currently returns dropdown-y data, should just return the change set data itself
             url: "change_set/list_open_change_sets",
@@ -115,11 +115,10 @@ export function useChangeSetsStore() {
           // TODO: add logic to for auto-selecting when multiple change sets open
           // - select one created by you
           // - track last selected in localstorage and select that one...
-          const lastChangeSetIdRaw = storage.getItem(
+          const lastChangeSetId = storage.getItem(
             `SI:LAST_CHANGE_SET/${workspaceId}`,
           );
-          if (!lastChangeSetIdRaw) return false;
-          const lastChangeSetId = parseInt(lastChangeSetIdRaw);
+          if (!lastChangeSetId) return false;
           if (
             this.changeSetsById[lastChangeSetId]?.status ===
             ChangeSetStatus.Open

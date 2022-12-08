@@ -202,15 +202,3 @@ impl FixResolver {
         self.context.clone()
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::FixResolverContext;
-
-    #[test]
-    fn context_builder() {
-        let mut c = FixResolverContext::new();
-        c.set_component_id(15.into());
-        assert_eq!(c.component_id(), 15.into());
-    }
-}

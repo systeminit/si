@@ -16,7 +16,7 @@
       >
         <span
           :class="
-            selectedComponentId === component.id
+            props.selectedComponentId === component.id
               ? ['bg-action-500 text-white']
               : ['hover:bg-action-400 hover:text-white']
           "
@@ -31,7 +31,7 @@
           >
           <i
             :class="
-              selectedComponentId === component.id
+              props.selectedComponentId === component.id
                 ? ['bg-action-500 text-white']
                 : ['text-neutral-500 group-hover:text-white']
             "
@@ -53,8 +53,8 @@ import { useComponentsStore } from "@/store/components.store";
 
 // TODO: deal with ids as numbers vs strings...
 
-defineProps<{
-  selectedComponentId?: number;
+const props = defineProps<{
+  selectedComponentId?: string;
 }>();
 
 const emit = defineEmits<{

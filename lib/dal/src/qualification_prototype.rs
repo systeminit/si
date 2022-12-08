@@ -11,10 +11,10 @@ use crate::{
     func::FuncId,
     impl_prototype_list_for_func, impl_standard_model, pk,
     prototype_context::{HasPrototypeContext, PrototypeContext},
-    standard_model::{self, objects_from_rows, TypeHint},
-    standard_model_accessor, ComponentId, DalContext, HistoryEvent, HistoryEventError,
-    PrototypeListForFuncError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
-    Timestamp, Visibility, WriteTenancy,
+    standard_model::{self, objects_from_rows},
+    standard_model_accessor, ComponentId, DalContext, HistoryEventError, PrototypeListForFuncError,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -176,36 +176,6 @@ impl QualificationPrototype {
     );
     standard_model_accessor!(component_id, Pk(ComponentId), QualificationPrototypeResult);
 
-    pub async fn set_id(
-        &mut self,
-        ctx: &DalContext,
-        id: &QualificationPrototypeId,
-    ) -> QualificationPrototypeResult<()> {
-        let updated_at = standard_model::update(
-            ctx,
-            Self::table_name(),
-            "id",
-            self.id(),
-            id,
-            TypeHint::BigInt,
-        )
-        .await?;
-        let _history_event = HistoryEvent::new(
-            ctx,
-            &Self::history_event_label(vec!["updated"]),
-            &Self::history_event_message("updated"),
-            &serde_json::json![{
-                "pk": self.pk,
-                "field": "id",
-                "value": id,
-            }],
-        )
-        .await?;
-        self.timestamp.updated_at = updated_at;
-        self.id = *id;
-        Ok(())
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_component(
         ctx: &DalContext,
@@ -233,15 +203,3 @@ impl QualificationPrototype {
 }
 
 impl_prototype_list_for_func! {model: QualificationPrototype}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn context_builder() {
-        let mut c = QualificationPrototypeContext::new();
-        c.set_component_id(22.into());
-        assert_eq!(c.component_id(), 22.into());
-    }
-}

@@ -39,6 +39,6 @@ SELECT
     END
     AND (
         this_visibility_change_set_pk = ident_nil_v1()
-        OR this_visibility_change_set_pk = (check_visibility ->> 'visibility_change_set_pk')::ident
+        OR this_visibility_change_set_pk = (check_visibility ->> 'visibility_change_set_pk')
     )
 $$;

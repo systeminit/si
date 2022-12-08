@@ -89,7 +89,7 @@ const selectedProp = ref<Option>(noneProp);
 
 const propOptions = computed<Option[]>(() =>
   propsAsOptionsForSchemaVariant.value(
-    typeof selectedVariant.value.value === "number"
+    typeof selectedVariant.value.value === "string"
       ? selectedVariant.value.value
       : nilId(),
   ),
@@ -117,8 +117,8 @@ const addValidation = () => {
     new Set(
       props.modelValue.prototypes.concat({
         id: nilId(),
-        schemaVariantId: selectedVariant.value.value as number,
-        propId: selectedProp.value.value as number,
+        schemaVariantId: selectedVariant.value.value as string,
+        propId: selectedProp.value.value as string,
       }),
     ),
   );

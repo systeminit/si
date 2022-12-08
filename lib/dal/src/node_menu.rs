@@ -265,7 +265,7 @@ mod test {
         menu_items
             .insert_menu_item(
                 &["planes".to_string(), "snakes".to_string()],
-                MenuItem::item("ninjas", 1.into()),
+                MenuItem::item("ninjas", SchemaId::generate()),
             )
             .expect("cannot insert menu item");
         let item = menu_items
@@ -284,13 +284,13 @@ mod test {
         menu_items
             .insert_menu_item(
                 &["planes".to_string(), "snakes".to_string()],
-                MenuItem::item("ninjas", 1.into()),
+                MenuItem::item("ninjas", SchemaId::generate()),
             )
             .expect("cannot insert menu item");
         menu_items
             .insert_menu_item(
                 &["planes".to_string(), "snakes".to_string()],
-                MenuItem::item("dragons", 1.into()),
+                MenuItem::item("dragons", SchemaId::generate()),
             )
             .expect("cannot insert menu item");
         let ninjas = menu_items

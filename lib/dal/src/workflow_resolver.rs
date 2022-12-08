@@ -195,15 +195,3 @@ impl WorkflowResolver {
         Ok(object)
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::WorkflowResolverContext;
-
-    #[test]
-    fn context_builder() {
-        let mut c = WorkflowResolverContext::new();
-        c.set_component_id(15.into());
-        assert_eq!(c.component_id(), 15.into());
-    }
-}

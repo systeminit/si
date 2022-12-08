@@ -79,7 +79,7 @@ export interface PropertyEditorSchema {
   rootPropId: string;
   props: { [id: string]: PropertyEditorProp };
   childProps: {
-    [key: number]: Array<number>;
+    [key: string]: Array<string>;
   };
 }
 
@@ -96,7 +96,7 @@ export interface PropertyEditorValues {
   rootValueId: string;
   values: { [id: string]: PropertyEditorValue };
   childValues: {
-    [key: number]: Array<number>;
+    [key: string]: Array<string>;
   };
 }
 
@@ -132,7 +132,7 @@ export interface UpdatedProperty {
   propId: string;
   valueId: string;
   value: unknown;
-  parentValueId?: number;
+  parentValueId?: string;
   key?: string;
 }
 
@@ -145,7 +145,7 @@ export interface AddToArray {
 export interface AddToMap {
   propId: string;
   valueId: string;
-  parentValueId?: number;
+  parentValueId?: string;
   key?: string;
 }
 

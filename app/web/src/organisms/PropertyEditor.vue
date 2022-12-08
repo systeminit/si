@@ -62,7 +62,7 @@ const emits = defineEmits<{
     e: "createAttributeFunc",
     currentFunc: FuncWithPrototypeContext,
     valueId: string,
-    parentValueId?: number,
+    parentValueId?: string,
   ): void;
 }>();
 
@@ -97,7 +97,7 @@ const findParentProp = (propId: string) => {
   )) {
     for (const childProp of childPropIds) {
       if (childProp === propId) {
-        const parentProp = schemasByPropId.value[parseInt(parentPropId, 10)];
+        const parentProp = schemasByPropId.value[parentPropId];
         if (parentProp) {
           return parentProp;
         } else {
@@ -114,7 +114,7 @@ const findParentValue = (valueId: string) => {
   )) {
     for (const childValueId of childValueIds) {
       if (childValueId === valueId) {
-        const parentValue = values.value.values[parseInt(parentValueId, 10)];
+        const parentValue = values.value.values[parentValueId];
         if (parentValue) {
           return parentValue;
         } else {
@@ -191,10 +191,10 @@ const findParentPath = (
   )) {
     for (const childValueId of childValueIds) {
       if (childValueId === valueId) {
-        const pathPart = pathPartForValueId(parseInt(parentValueId, 10));
+        const pathPart = pathPartForValueId(parentValueId);
         displayPath.push(pathPart.displayPathPart);
         triggerPath.push(pathPart.triggerPathPart);
-        findParentPath(displayPath, triggerPath, parseInt(parentValueId, 10));
+        findParentPath(displayPath, triggerPath, parentValueId);
       }
     }
   }
@@ -218,7 +218,7 @@ const paths = computed<{ [valueId: string]: PropertyPath | undefined }>(() => {
 
 const determineOrder = (
   order: PropertyEditorValue[],
-  childValueIds: number[],
+  childValueIds: string[],
 ): PropertyEditorValue[] => {
   for (const childValueId of childValueIds) {
     const child = values.value.values[childValueId];
@@ -268,7 +268,7 @@ const findArrayIndex = (valueId: string) => {
       const cv = childValues[x];
       if (cv === valueId) {
         index = x;
-        const parentValue = values.value.values[parseInt(parentValueId, 10)];
+        const parentValue = values.value.values[parentValueId];
         if (parentValue) {
           parentProp = schemasByPropId.value[parentValue.propId];
         }
@@ -321,7 +321,7 @@ const arrayIndicesByValueId = computed(() => {
 const arrayLengthsByPropId = computed(() => {
   const result: { [propId: string]: number } = {};
   for (const propId in Object.keys(schemasByPropId.value)) {
-    const length = findArrayLength(parseInt(propId, 10));
+    const length = findArrayLength(propId);
     if (!_.isUndefined(length)) {
       result[propId] = length;
     }

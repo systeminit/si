@@ -7,8 +7,8 @@ use si_data_pg::PgError;
 use thiserror::Error;
 
 use crate::{
-    pk, schema::variant::SchemaVariantError, AttributeValueError, ComponentError, PropId,
-    SchemaVariantId, StandardModelError, ValidationResolverError,
+    pk, schema::variant::SchemaVariantError, AttributeValueError, AttributeValueId, ComponentError,
+    PropId, SchemaVariantId, StandardModelError, ValidationResolverError,
 };
 
 pub mod schema;
@@ -49,15 +49,21 @@ pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
 pk!(PropertyEditorValueId);
 pk!(PropertyEditorPropId);
 
+impl From<AttributeValueId> for PropertyEditorValueId {
+    fn from(id: AttributeValueId) -> Self {
+        Self::from(ulid::Ulid::from(id))
+    }
+}
+
 impl From<PropId> for PropertyEditorPropId {
     fn from(prop_id: PropId) -> Self {
-        PropertyEditorPropId::from(ulid::Ulid::from(prop_id))
+        Self::from(ulid::Ulid::from(prop_id))
     }
 }
 
 impl From<PropertyEditorPropId> for PropId {
     fn from(property_editor_prop_id: PropertyEditorPropId) -> Self {
-        PropId::from(ulid::Ulid::from(property_editor_prop_id))
+        Self::from(ulid::Ulid::from(property_editor_prop_id))
     }
 }
 

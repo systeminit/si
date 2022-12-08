@@ -57,11 +57,11 @@ async fn new(ctx: &DalContext) {
         EdgeKind::Configuration,
         image_payload.node_id,
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(image_payload.component_id.into()),
+        EdgeObjectId::from(image_payload.component_id),
         *input_socket.id(),
         credential_payload.node_id,
         VertexObjectKind::Configuration,
-        EdgeObjectId::from(credential_payload.component_id.into()),
+        EdgeObjectId::from(credential_payload.component_id),
         *output_socket.id(),
     )
     .await

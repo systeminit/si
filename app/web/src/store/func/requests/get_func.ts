@@ -23,8 +23,12 @@ export const getFunc = (
     onSuccess,
   });
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 export const nullFunc: GetFuncResponse = {
-  id: 0,
+  id: nilId(),
   handler: "",
   kind: FuncBackendKind.Unset,
   name: "",

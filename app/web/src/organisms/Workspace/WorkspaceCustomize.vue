@@ -13,7 +13,7 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
     <div class="inset-2 bottom-0 absolute">
-      <FuncEditorTabs v-if="selectedFuncId > 0" />
+      <FuncEditorTabs v-if="selectedFuncId !== nilId()" />
       <div
         v-else
         class="p-2 text-center text-neutral-400 dark:text-neutral-300"
@@ -48,7 +48,7 @@ const { selectedFuncId } = storeToRefs(funcStore);
 const isDevMode = import.meta.env.DEV;
 
 const props = defineProps<{
-  funcId?: number;
+  funcId?: string;
 }>();
 
 function nilId(): string {

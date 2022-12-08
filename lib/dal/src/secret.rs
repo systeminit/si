@@ -443,8 +443,8 @@ mod tests {
             let crypted = crypted.into();
 
             EncryptedSecret {
-                pk: 1.into(),
-                id: 1.into(),
+                pk: SecretPk::NONE,
+                id: SecretId::NONE,
                 name,
                 object_type,
                 kind,
@@ -482,7 +482,7 @@ mod tests {
                 SecretObjectType::Credential,
                 SecretKind::DockerHub,
                 crypted,
-                1.into(),
+                BillingAccountId::NONE,
             );
             let decrypted = encrypted
                 .into_decrypted(&pkey, &skey)
