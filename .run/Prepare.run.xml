@@ -1,9 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Prepare" type="MAKEFILE_TARGET_RUN_CONFIGURATION" factoryName="Makefile">
-    <makefile filename="$PROJECT_DIR$/Makefile" target="prepare" workingDirectory="$PROJECT_DIR$" arguments="">
-      <envs>
-        <env name="LOCAL_PG" value="true" />
-      </envs>
+    <makefile filename="$PROJECT_DIR$/Makefile" target="prepare" workingDirectory="$PROJECT_DIR$" arguments="LOCAL_PG=true">
+      <envs />
     </makefile>
     <method v="2" />
   </configuration>
