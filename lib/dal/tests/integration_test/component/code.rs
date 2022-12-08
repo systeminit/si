@@ -48,7 +48,6 @@ async fn set_code_prop_for_component(ctx: &DalContext) {
         *func.id(),
         *code_generation_func_argument.id(),
         *schema_variant.id(),
-        CodeLanguage::Yaml,
     )
     .await
     .expect("could not add code generation");

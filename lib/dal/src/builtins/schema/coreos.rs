@@ -7,9 +7,8 @@ use crate::socket::SocketArity;
 use crate::{
     qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
-    BuiltinsResult, CodeLanguage, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
-    InternalProvider, QualificationPrototype, SchemaError, SchemaKind, SchemaVariant,
-    StandardModel,
+    BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func, FuncError, InternalProvider,
+    QualificationPrototype, SchemaError, SchemaKind, SchemaVariant, StandardModel,
 };
 
 // Definitions
@@ -71,7 +70,6 @@ impl MigrationDriver {
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
             *schema_variant.id(),
-            CodeLanguage::Json,
         )
         .await?;
 

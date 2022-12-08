@@ -9,7 +9,7 @@ use crate::validation::Validation;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
-    AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsResult, CodeLanguage,
+    AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsResult,
     ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider,
     Func, FuncBinding, FuncError, InternalProvider, PropKind, QualificationPrototype,
     QualificationPrototypeContext, SchemaError, SchemaKind, SchemaVariant, StandardModel,
@@ -305,7 +305,6 @@ impl MigrationDriver {
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
             *schema_variant.id(),
-            CodeLanguage::Json,
         )
         .await?;
 
@@ -829,7 +828,6 @@ impl MigrationDriver {
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
             *schema_variant.id(),
-            CodeLanguage::Json,
         )
         .await?;
 
@@ -1227,7 +1225,6 @@ impl MigrationDriver {
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
             *schema_variant.id(),
-            CodeLanguage::Json,
         )
         .await?;
 
