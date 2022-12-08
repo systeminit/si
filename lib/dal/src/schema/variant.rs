@@ -5,6 +5,7 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::edit_field::widget::WidgetKind;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::internal::InternalProviderError;
 use crate::{
@@ -169,6 +170,49 @@ impl SchemaVariant {
                 *identity_func.id(),
             )
             .await?;
+
+        // create a type property for each of the nodes
+        // this type will control the functionality of the node
+        // the types can be component, or frame types (configuration and aggregation)
+        // each schema will set its default type for a node
+        let type_prop = Prop::new(
+            ctx,
+            "type",
+            PropKind::String,
+            Some((
+                WidgetKind::Select,
+                serde_json::json!([
+                    {
+                        "label": "component",
+                        "value": "component",
+                    },
+                    {
+                        "label": "configurationFrame",
+                        "value": "configurationFrame",
+                    },
+                    {
+                        "label": "aggregationFrame",
+                        "value": "aggregationFrame",
+                    },
+                ]),
+            )),
+        )
+        .await?;
+        type_prop.set_parent_prop(ctx, root_prop.si_prop_id).await?;
+
+        // all nodes can be turned into frames therefore, they will need a frame input socket
+        // the UI itself will determine if this socket is available to be connected
+        let (_frame_internal_provider, _input_socket) = InternalProvider::new_explicit_with_socket(
+            ctx,
+            *object.id(),
+            "Frame",
+            *identity_func.id(),
+            *identity_func_binding.id(),
+            *identity_func_binding_return_value.id(),
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
 
         let (_output_provider, _output_socket) = ExternalProvider::new_with_socket(
             ctx,

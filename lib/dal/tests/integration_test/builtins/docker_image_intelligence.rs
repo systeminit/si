@@ -24,6 +24,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "code": {},
             "si": {
                 "name": "soulrender",
+                "type": "component"
             },
         }], // expected
         soulrender_payload.component_view_properties(ctx).await // actual
@@ -36,6 +37,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "code": {},
             "si": {
                 "name": "bloodscythe",
+                "type": "component"
             },
         }], // expected
         bloodscythe_payload.component_view_properties(ctx).await // actual
@@ -59,6 +61,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "code": {},
             "si": {
                 "name": "soulrender",
+                "type": "component"
             },
         }], // expected
         soulrender_payload.component_view_properties(ctx).await // actual
@@ -72,6 +75,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "code": {},
             "si": {
                 "name": "bloodscythe-updated",
+                "type": "component"
             },
         }], // expected
         bloodscythe_payload.component_view_properties(ctx).await // actual
@@ -95,6 +99,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "code": {},
             "si": {
                 "name": "soulrender-updated",
+                "type": "component"
             },
         }], // expected
         soulrender_payload.component_view_properties(ctx).await // actual
@@ -107,6 +112,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "code": {},
             "si": {
                 "name": "bloodscythe-updated",
+                "type": "component"
             },
         }], // expected
         bloodscythe_payload.component_view_properties(ctx).await // actual

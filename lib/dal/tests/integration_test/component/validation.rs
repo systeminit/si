@@ -526,11 +526,12 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "us-east-1"
+                "name": "us-east-1",
+                "type": "configurationFrame",
             },
             "code": {},
             "domain": {
-                "region": "us-east-1"
+                "region": "us-east-1",
             }
         }], // actual
         component_payload.component_view_properties(ctx).await // expected

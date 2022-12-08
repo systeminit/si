@@ -322,7 +322,8 @@ impl MigrationDriver {
         QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
         // Wrap it up.
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Set Defaults
         self.set_default_value_for_prop(
@@ -846,7 +847,8 @@ impl MigrationDriver {
         QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
         // Wrap it up.
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Set Defaults
         self.set_default_value_for_prop(
@@ -1244,7 +1246,8 @@ impl MigrationDriver {
         QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
         // Wrap it up!
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Set Defaults
         self.set_default_value_for_prop(

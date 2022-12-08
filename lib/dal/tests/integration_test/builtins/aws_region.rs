@@ -35,7 +35,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             },
             "code": {},
             "si": {
-                "name": "us-east-2"
+                "name": "us-east-2",
+                "type": "configurationFrame"
             }
         }], // expected
         region_payload.component_view_properties(ctx).await // actual
@@ -55,7 +56,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
             "si": {
-                "name": "server"
+                "name": "server",
+                "type": "component"
             }
         }], // expected
         ec2_payload.component_view_properties(ctx).await // actual
@@ -99,7 +101,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             },
             "code": {},
             "si": {
-                "name": "us-east-2"
+                "name": "us-east-2",
+                "type": "configurationFrame"
             }
         }], // expected
         region_payload.component_view_properties(ctx).await // actual
@@ -119,7 +122,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
             "si": {
-                "name": "server"
+                "name": "server",
+                "type": "component"
             }
         }], // expected
         ec2_payload.component_view_properties(ctx).await // actual
@@ -142,7 +146,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             },
             "code": {},
             "si": {
-                "name": "us-west-2"
+                "name": "us-west-2",
+                "type": "configurationFrame"
             }
         }], // expected
         region_payload.component_view_properties(ctx).await // actual
@@ -163,7 +168,8 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 },
             },
             "si": {
-                "name": "server"
+                "name": "server",
+                "type": "component"
             }
         }], // expected
         ec2_payload.component_view_properties(ctx).await // actual
@@ -188,11 +194,12 @@ async fn aws_region_field_validation(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "us-poop-1"
+                "name": "us-poop-1",
+                "type": "configurationFrame"
             },
             "code": {},
             "domain": {
-                "region": "us-poop-1"
+                "region": "us-poop-1",
             }
         }], // actual
         region_payload.component_view_properties(ctx).await // expected
@@ -242,7 +249,8 @@ async fn aws_region_field_validation(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "us-east-1"
+                "name": "us-east-1",
+                "type": "configurationFrame",
             },
             "code": {},
             "domain": {

@@ -109,7 +109,8 @@ impl MigrationDriver {
         .await?;
         output_socket.set_color(ctx, Some(0x85c9a3)).await?;
 
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Connect the "/root/si/name" field to the "/root/domain/metadata/name" field.
         let metadata_name_prop = self
@@ -306,7 +307,8 @@ impl MigrationDriver {
         let ui_menu = SchemaUiMenu::new(ctx, "Deployment", "Kubernetes", &diagram_kind).await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Set default values after finalization.
         self.set_default_value_for_prop(ctx, *api_version_prop.id(), serde_json::json!["apps/v1"])

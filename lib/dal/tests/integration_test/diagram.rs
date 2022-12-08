@@ -45,6 +45,7 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
             "code": {},
             "si": {
                 "name": "13700KF",
+                "type": "component"
             },
         }], // expected
         component_view.properties // actual
@@ -94,6 +95,7 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
             "code": {},
             "si": {
                 "name": "13700KF",
+                "type": "component"
             },
         }], // expected
         component_view.properties // actual

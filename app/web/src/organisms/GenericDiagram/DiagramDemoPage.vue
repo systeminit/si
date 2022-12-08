@@ -124,6 +124,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     color: colors.action[500],
     typeIcon: "logo-docker",
     isLoading: false,
+    nodeType: "component",
   },
   {
     id: "n2",
@@ -135,6 +136,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     color: "#A752DE",
     typeIcon: "logo-docker",
     isLoading: false,
+    nodeType: "component",
   },
   {
     id: "n3",
@@ -153,6 +155,7 @@ const nodes = reactive<DiagramNodeDef[]>([
       // { icon: "logo-docker", tone: "neutral" },
     ],
     isLoading: false,
+    nodeType: "component",
   },
   {
     id: "n4",
@@ -164,6 +167,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     color: "#5AACAD",
     typeIcon: "logo-k8s",
     isLoading: false,
+    nodeType: "component",
   },
   {
     id: "n5",
@@ -175,6 +179,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     color: "#FF9900",
     typeIcon: "logo-k8s",
     isLoading: true,
+    nodeType: "component",
   },
 ]);
 
@@ -237,6 +242,7 @@ function onInsert(e: InsertElementEvent) {
         sockets: getSockets(`n${newNodeId}`),
         typeIcon: "logo-docker",
         isLoading: false,
+        nodeType: "component",
       });
 
       // parent needs to call this when insert is complete

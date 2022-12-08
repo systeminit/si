@@ -35,7 +35,8 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
             "si": {
-                "name": "tail"
+                "name": "tail",
+                "type": "component"
             }
         }], // expected
         tail_namespace_payload.component_view_properties(ctx).await // actual
@@ -53,7 +54,8 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
             "si": {
-                "name": "head"
+                "name": "head",
+                "type": "component"
             }
         }], // expected
         head_deployment_payload.component_view_properties(ctx).await // actual
@@ -104,7 +106,8 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
             "si": {
-                "name": "tail"
+                "name": "tail",
+                "type": "component"
             }
         }], // expected
         tail_namespace_payload.component_view_properties(ctx).await // actual
@@ -122,7 +125,8 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
             "si": {
-                "name": "head"
+                "name": "head",
+                "type": "component"
             }
         }], // expected
         head_deployment_payload.component_view_properties(ctx).await // actual
@@ -152,7 +156,8 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
             "si": {
-                "name": "look-at-me-mom-i-updated"
+                "name": "look-at-me-mom-i-updated",
+                "type": "component"
             }
         }], // expected
         tail_namespace_payload.component_view_properties(ctx).await // actual
@@ -181,7 +186,8 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 },
             },
             "si": {
-                "name": "head"
+                "name": "head",
+                "type": "component"
             }
         }], // expected
         head_deployment_payload.component_view_properties(ctx).await // actual

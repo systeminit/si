@@ -76,7 +76,8 @@ impl MigrationDriver {
         .await?;
         output_socket.set_color(ctx, Some(0x1e88d6)).await?;
 
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Note: I wasn't able to create a ui menu with two layers
         let diagram_kind = schema
@@ -191,7 +192,8 @@ impl MigrationDriver {
 
         let _ = QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Connect the "/root/si/name" field to the "/root/domain/image" field.
         let image_attribute_value = AttributeValue::find_for_context(

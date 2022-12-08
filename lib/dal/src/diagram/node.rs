@@ -145,6 +145,7 @@ pub struct DiagramNodeView {
     position: GridPoint,
     size: Option<Size2D>,
     color: Option<String>,
+    node_type: String,
 }
 
 impl DiagramNodeView {
@@ -203,6 +204,10 @@ impl DiagramNodeView {
                         .color()
                         .map(|color_int| format!("#{color_int:x}"))
                 }),
+            node_type: component
+                .find_value_by_json_pointer::<String>(ctx, "/root/si/type")
+                .await?
+                .unwrap_or_else(|| "component".to_string()),
         })
     }
 
