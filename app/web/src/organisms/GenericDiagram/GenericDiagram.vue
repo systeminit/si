@@ -1605,13 +1605,13 @@ function onNodeLayoutOrLocationChange(el: DiagramNodeData | DiagramGroupData) {
 
 const nodes = computed(() =>
   _.map(
-    _.filter(props.nodes, (n) => n.childIds === undefined),
+    _.filter(props.nodes, (n) => n.nodeType === "component"),
     (nodeDef) => new DiagramNodeData(nodeDef),
   ),
 );
 const groups = computed(() =>
   _.map(
-    _.filter(props.nodes, (n) => n.childIds !== undefined),
+    _.filter(props.nodes, (n) => n.nodeType !== "component"),
     (groupDef) => new DiagramGroupData(groupDef),
   ),
 );

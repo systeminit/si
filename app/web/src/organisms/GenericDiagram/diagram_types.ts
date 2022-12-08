@@ -145,6 +145,8 @@ export type DiagramNodeDef = {
   color?: string | null;
   /** icon (name/slug) used to help convey node type */
   typeIcon?: string | null;
+  /** type of node - possible options are component, configurationFrame or aggregationFrame */
+  nodeType: "component" | "configurationFrame" | "aggregationFrame";
   /** array of icons (slug and colors) to show statuses */
   statusIcons?: DiagramStatusIcon[];
   /** if true, node shows the `loading` overlay */

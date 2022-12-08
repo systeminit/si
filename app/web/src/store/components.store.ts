@@ -52,6 +52,7 @@ type Component = {
   schemaVariantName: string;
   icon: IconNames;
   color: string;
+  nodeType: "component" | "configurationFrame" | "aggregationFrame";
   changeStatus?: ComponentChangeStatus;
   // TODO: probably want to move this to a different store and not load it all the time
   resource: Resource;
@@ -189,7 +190,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             return {
               id: ci.componentId,
               // TODO: return this info from the backend (and not in category)
-              isGroup: socketFromChildren !== undefined,
               parentId: frameEdge?.toNodeId,
               childIds: socketFromChildren ? frameChildIds : undefined,
               displayName: diagramNode?.subtitle,
@@ -202,6 +202,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               icon: typeIcon,
               color: diagramNode?.color,
               changeStatus: this.componentChangeStatusById[ci.componentId],
+              nodeType: diagramNode?.nodeType,
+              isGroup: diagramNode?.nodeType !== "component",
             } as Component;
           });
         },
@@ -245,6 +247,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...node,
               parentId: component.parentId,
               childIds: component.childIds,
+              nodeType: component.nodeType,
               isLoading:
                 !!statusStore.componentStatusById[componentId]?.isUpdating,
               typeIcon: component?.icon || "logo-si",

@@ -190,7 +190,8 @@ impl MigrationDriver {
         QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
         // Wrap it up.
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Connect the props to providers.
         let external_provider_attribute_prototype_id = image_id_external_provider
@@ -561,7 +562,8 @@ impl MigrationDriver {
         QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
         // Wrap it up.
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Set Defaults
         self.set_default_value_for_prop(
@@ -914,24 +916,6 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Sockets
-        let identity_func_item = self
-            .get_func_item("si:identity")
-            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-
-        // Input Socket
-        let (_frame_internal_provider, _input_socket) = InternalProvider::new_explicit_with_socket(
-            ctx,
-            *schema_variant.id(),
-            "Frame",
-            identity_func_item.func_id,
-            identity_func_item.func_binding_id,
-            identity_func_item.func_binding_return_value_id,
-            SocketArity::Many,
-            DiagramKind::Configuration,
-        )
-        .await?;
-
         // Output Socket
         let identity_func_item = self
             .get_func_item("si:identity")
@@ -952,7 +936,20 @@ impl MigrationDriver {
         output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Wrap it up.
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
+
+        // set the component as a configuration frame
+        let si_type_prop = self
+            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "type")
+            .await?;
+
+        self.set_default_value_for_prop(
+            ctx,
+            *si_type_prop.id(),
+            serde_json::json!["configurationFrame"],
+        )
+        .await?;
 
         let region_implicit_internal_provider =
             InternalProvider::find_for_prop(ctx, *region_prop.id())
@@ -1221,7 +1218,8 @@ impl MigrationDriver {
         QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
         // Wrap it up.
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Set Defaults
         self.set_default_value_for_prop(
@@ -1583,7 +1581,8 @@ impl MigrationDriver {
         QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
         // Wrap it up.
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
 
         // Set Defaults
         self.set_default_value_for_prop(

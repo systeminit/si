@@ -270,7 +270,10 @@ const subtitleTextRef = ref();
 const groupRef = ref();
 
 const leftSockets = computed(() =>
-  _.filter(props.node.sockets, (s) => s.def.nodeSide === "left"),
+  _.filter(
+    props.node.sockets,
+    (s) => s.def.nodeSide === "left" && s.def.label !== "Frame",
+  ),
 );
 const rightSockets = computed(() =>
   _.filter(props.node.sockets, (s) => s.def.nodeSide === "right"),

@@ -28,7 +28,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
             },
             "code": {},
             "si": {
-                "name": "tail"
+                "name": "tail",
+                "type": "component"
             }
         }], // expected
         tail_docker_image_payload
@@ -48,7 +49,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
                 "kind": "Deployment",
             },
             "si": {
-                "name": "deployment"
+                "name": "deployment",
+                "type": "component"
             }
         }], // expected
         head_deployment_payload.component_view_properties(ctx).await // actual
@@ -92,7 +94,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
                 "image": "tail"
             },
             "si": {
-                "name": "tail"
+                "name": "tail",
+                "type": "component"
             }
         }], // expected
         tail_docker_image_payload
@@ -112,7 +115,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
                 "kind": "Deployment",
             },
             "si": {
-                "name": "deployment"
+                "name": "deployment",
+                "type": "component"
             }
         }], // expected
         head_deployment_payload.component_view_properties(ctx).await // actual
@@ -135,7 +139,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
                 "image": "ironsides"
             },
             "si": {
-                "name": "ironsides"
+                "name": "ironsides",
+                "type": "component"
             }
         }], // expected
         tail_docker_image_payload
@@ -169,7 +174,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
                 },
             },
             "si": {
-                "name": "deployment"
+                "name": "deployment",
+                "type": "component"
             },
         }], // expected
         head_deployment_payload.component_view_properties(ctx).await // actual

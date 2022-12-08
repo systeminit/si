@@ -108,7 +108,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "fedora"
+                "name": "fedora",
+                "type": "component"
             },
             "code": {},
             "domain": {
@@ -122,7 +123,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "alpine"
+                "name": "alpine",
+                "type": "component"
             },
             "code": {},
             "domain": {
@@ -136,7 +138,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "namespace"
+                "name": "namespace",
+                "type": "component"
             },
             "code": {
                 "si:generateYAML": {
@@ -155,7 +158,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "spongebob"
+                "name": "spongebob",
+                "type": "component"
             },
             "code": {
                 "si:generateYAML": {
@@ -175,7 +179,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "patrick"
+                "name": "patrick",
+                "type": "component"
             },
             "code": {
                 "si:generateYAML": {
@@ -217,7 +222,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "fedora-updated"
+                "name": "fedora-updated",
+                "type": "component"
             },
             "code": {},
             "domain": {
@@ -231,7 +237,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "alpine"
+                "name": "alpine",
+                "type": "component"
             },
             "code": {},
             "domain": {
@@ -245,7 +252,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "namespace"
+                "name": "namespace",
+                "type": "component"
             },
             "code": {
                 "si:generateYAML": {
@@ -264,7 +272,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "spongebob"
+                "name": "spongebob",
+                "type": "component"
             },
             "code": {
                 "si:generateYAML": {
@@ -297,7 +306,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "patrick"
+                "name": "patrick",
+                "type": "component"
             },
             "code": {
                 "si:generateYAML": {
@@ -376,7 +386,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "fedora-updated-twice"
+                "name": "fedora-updated-twice",
+                "type": "component"
             },
             "code": {},
             "domain": {
@@ -390,7 +401,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "alpine-updated"
+                "name": "alpine-updated",
+                "type": "component"
             },
             "code": {},
             "domain": {
@@ -404,7 +416,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "namespace"
+                "name": "namespace",
+                "type": "component"
             },
             "code": {
                 "si:generateYAML": {
@@ -423,7 +436,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "spongebob"
+                "name": "spongebob",
+                "type": "component"
             },
             "code": {
                 "si:generateYAML": {
@@ -467,7 +481,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "patrick"
+                "name": "patrick",
+                "type": "component"
             },
             "code": {
                 "si:generateYAML": {

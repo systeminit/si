@@ -2,8 +2,8 @@ use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
 use crate::validation::Validation;
 use crate::{
-    schema::SchemaUiMenu, BuiltinsError, BuiltinsResult, DalContext, DiagramKind, InternalProvider,
-    PropKind, SchemaError, SchemaKind, SocketArity, StandardModel,
+    schema::SchemaUiMenu, BuiltinsResult, DalContext, PropKind, SchemaError, SchemaKind,
+    StandardModel,
 };
 
 const FRAME_NODE_COLOR: i64 = 0xFFFFFF;
@@ -49,24 +49,6 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Sockets
-        let identity_func_item = self
-            .get_func_item("si:identity")
-            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-
-        let (_docker_hub_credential_explicit_internal_provider, _input_socket) =
-            InternalProvider::new_explicit_with_socket(
-                ctx,
-                *schema_variant.id(),
-                "Frame",
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-
         self.create_validation(
             ctx,
             Validation::StringIsHexColor { value: None },
@@ -76,7 +58,24 @@ impl MigrationDriver {
         )
         .await?;
 
-        schema_variant.finalize(ctx).await?;
+        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+            .await?;
+
+        // set the component as a configuration frame
+        let si_type_prop = self
+            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "type")
+            .await?;
+
+        self.set_default_value_for_prop(
+            ctx,
+            *si_type_prop.id(),
+            serde_json::json!["configurationFrame"],
+        )
+        .await?;
+
+        // TODO - PAUL/VICTOR:
+        // As this is an actual frame and has no alternative functionality
+        // we want to disable the ability that a user can change the node type
 
         Ok(())
     }
