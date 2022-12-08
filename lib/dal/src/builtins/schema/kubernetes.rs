@@ -5,9 +5,9 @@ use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::{
     func::argument::FuncArgument, schema::SchemaUiMenu, socket::SocketArity,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsError, BuiltinsResult, CodeLanguage, DalContext, DiagramKind, ExternalProvider, Func,
-    FuncError, InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind,
-    SchemaVariant, StandardModel,
+    BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
+    InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind, SchemaVariant,
+    StandardModel,
 };
 
 mod kubernetes_deployment_spec;
@@ -85,7 +85,6 @@ impl MigrationDriver {
             code_generation_func_id,
             *code_generation_func_argument.id(),
             *schema_variant.id(),
-            CodeLanguage::Yaml,
         )
         .await?;
 
@@ -264,7 +263,6 @@ impl MigrationDriver {
             code_generation_func_id,
             *code_generation_func_argument.id(),
             *schema_variant.id(),
-            CodeLanguage::Yaml,
         )
         .await?;
 

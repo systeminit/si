@@ -6,10 +6,9 @@ use serde::Serialize;
 use crate::func::argument::FuncArgumentId;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
-    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, CodeLanguage, ComponentId, DalContext, Func, FuncError, FuncId,
-    InternalProvider, InternalProviderError, Prop, PropId, PropKind, SchemaVariant,
-    SchemaVariantId, StandardModel, WsEvent, WsPayload,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
+    ComponentId, DalContext, Func, FuncError, FuncId, InternalProvider, InternalProviderError,
+    Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, StandardModel, WsEvent, WsPayload,
 };
 
 /// A leaf representing a single "code generation" for a [`SchemaVariant`](crate::SchemaVariant).
@@ -42,7 +41,6 @@ impl SchemaVariant {
         func_id: FuncId,
         func_argument_id: FuncArgumentId,
         schema_variant_id: SchemaVariantId,
-        format: CodeLanguage,
     ) -> SchemaVariantResult<CodeGenerationLeaf> {
         if schema_variant_id.is_none() {
             return Err(SchemaVariantError::InvalidSchemaVariant);
@@ -82,53 +80,23 @@ impl SchemaVariant {
             .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
         schema_variant.finalize(ctx).await?;
 
-        // FIXME(nick): once we fix the bug where child props of prop objects with functions that
-        // set nested complex objects does not result in the internal providers for those child
-        // props being updated we can use the function on the tree prop instead of the code prop.
-        // For now, let's manually set the format prop and then set the function on the code prop.
-        let format_attribute_context = AttributeContext::builder()
-            .set_prop_id(child_format_prop_id)
-            .to_context()?;
-        let format_attribute_value =
-            AttributeValue::find_for_context(ctx, format_attribute_context.into())
-                .await?
-                .ok_or_else(|| {
-                    AttributeValueError::NotFoundForReadContext(format_attribute_context.into())
-                })?;
-        let tree_attribute_value = format_attribute_value
-            .parent_attribute_value(ctx)
-            .await?
-            .ok_or_else(|| AttributeValueError::ParentNotFound(*format_attribute_value.id()))?;
-
-        // Following the steps in the "fixme" above, use the format parameter as the value here.
-        // We will eventually no longer use this parameter as the function itself should set the
-        // output format in the future as it should be dynamic.
-        AttributeValue::update_for_context(
-            ctx,
-            *format_attribute_value.id(),
-            Some(*tree_attribute_value.id()),
-            format_attribute_context,
-            Some(serde_json::to_value(format)?),
-            None,
-        )
-        .await?;
-
-        // Following the steps in the "fixme" above, set the function on the child code field.
-        let code_attribute_read_context = AttributeReadContext {
-            prop_id: Some(child_code_prop_id),
+        let code_gen_obj_read_context = AttributeReadContext {
+            prop_id: Some(tree_prop_id),
             ..AttributeReadContext::default()
         };
-        let code_attribute_value =
-            AttributeValue::find_for_context(ctx, code_attribute_read_context)
-                .await?
-                .ok_or(AttributeValueError::NotFoundForReadContext(
-                    code_attribute_read_context,
-                ))?;
-        let mut code_attribute_prototype = code_attribute_value
+        let code_gen_obj_value = AttributeValue::find_for_context(ctx, code_gen_obj_read_context)
+            .await?
+            .ok_or(AttributeValueError::NotFoundForReadContext(
+                code_gen_obj_read_context,
+            ))?;
+        let mut code_gen_obj_prototype = code_gen_obj_value
             .attribute_prototype(ctx)
             .await?
             .ok_or(AttributeValueError::MissingAttributePrototype)?;
-        code_attribute_prototype.set_func_id(ctx, func_id).await?;
+
+        code_gen_obj_prototype.set_func_id(ctx, func_id).await?;
+
+        // code gen depends on the whole domain of the schema variant
         let domain_implicit_internal_provider =
             InternalProvider::find_for_prop(ctx, root_prop.domain_prop_id)
                 .await?
@@ -137,7 +105,7 @@ impl SchemaVariant {
                 ))?;
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
-            *code_attribute_prototype.id(),
+            *code_gen_obj_prototype.id(),
             func_argument_id,
             *domain_implicit_internal_provider.id(),
         )

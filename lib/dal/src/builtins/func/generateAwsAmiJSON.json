@@ -6,7 +6,7 @@
       "kind": "Object"
     }
   ],
-  "response_type": "String",
+  "response_type": "CodeGeneration",
   "display_name": "si:generateAwsAmiJSON",
   "description": null,
   "link": null,
