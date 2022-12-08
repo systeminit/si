@@ -111,7 +111,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "name": "fedora",
                 "type": "component"
             },
-            "code": {},
+
             "domain": {
                 "image": "fedora"
             },
@@ -126,7 +126,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "name": "alpine",
                 "type": "component"
             },
-            "code": {},
+
             "domain": {
                 "image": "alpine"
             },
@@ -225,7 +225,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "name": "fedora-updated",
                 "type": "component"
             },
-            "code": {},
+
             "domain": {
                 "image": "fedora-updated"
             },
@@ -240,7 +240,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "name": "alpine",
                 "type": "component"
             },
-            "code": {},
+
             "domain": {
                 "image": "alpine"
             },
@@ -389,7 +389,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "name": "fedora-updated-twice",
                 "type": "component"
             },
-            "code": {},
+
             "domain": {
                 "image": "fedora-updated-twice"
             },
@@ -404,7 +404,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "name": "alpine-updated",
                 "type": "component"
             },
-            "code": {},
+
             "domain": {
                 "image": "alpine-updated"
             },

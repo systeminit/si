@@ -1,7 +1,7 @@
 use dal::{
-    workflow_prototype::WorkflowPrototypeContext, AttributeReadContext, ComponentId, ComponentView,
-    DalContext, Func, Schema, SchemaId, SchemaVariantId, StandardModel, WorkflowKind,
-    WorkflowPrototype, WorkflowTreeStep,
+    workflow_prototype::WorkflowPrototypeContext, ComponentId, ComponentView, DalContext, Func,
+    Schema, SchemaId, SchemaVariantId, StandardModel, WorkflowKind, WorkflowPrototype,
+    WorkflowTreeStep,
 };
 use dal_test::{test, test_harness::create_component_for_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -92,14 +92,7 @@ async fn resolve(ctx: &DalContext) {
         .pop()
         .expect("unable to find docker image");
     let component = create_component_for_schema(ctx, schema.id()).await;
-
-    let context = AttributeReadContext {
-        prop_id: None,
-        component_id: Some(*component.id()),
-        ..AttributeReadContext::default()
-    };
-
-    let component_view = ComponentView::for_context(ctx, context)
+    let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("unable to generate component view for docker image component");
     let mut tree = prototype

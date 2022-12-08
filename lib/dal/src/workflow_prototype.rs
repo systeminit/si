@@ -8,10 +8,10 @@ use thiserror::Error;
 
 use crate::{
     func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor,
-    workflow_resolver::WorkflowResolverContext, AttributeReadContext, Component, ComponentId,
-    ComponentView, DalContext, Func, FuncBinding, FuncBindingError, HistoryEventError, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WorkflowError,
-    WorkflowResolver, WorkflowResolverError, WorkflowView, WriteTenancy, WsEvent, WsEventError,
+    workflow_resolver::WorkflowResolverContext, Component, ComponentId, ComponentView, DalContext,
+    Func, FuncBinding, FuncBindingError, HistoryEventError, SchemaId, SchemaVariantId,
+    StandardModel, StandardModelError, Timestamp, Visibility, WorkflowError, WorkflowResolver,
+    WorkflowResolverError, WorkflowView, WriteTenancy, WsEvent, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -210,15 +210,10 @@ impl WorkflowPrototype {
                 ));
             }
 
-            let context = AttributeReadContext {
-                prop_id: None,
-                component_id: Some(*component.id()),
-                ..AttributeReadContext::default()
-            };
-            let component = ComponentView::for_context(ctx, context)
+            let component_view = ComponentView::new(ctx, *component.id())
                 .await
                 .map_err(|err| WorkflowPrototypeError::Component(err.to_string()))?;
-            Some(component)
+            Some(component_view)
         } else {
             None
         };

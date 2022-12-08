@@ -8,10 +8,7 @@ use dal::{
 use dal_test::{
     helpers::{component_payload::ComponentPayload, setup_identity_func},
     test,
-    test_harness::{
-        create_prop_of_kind_and_set_parent_with_name, create_prop_of_kind_with_name, create_schema,
-        create_schema_variant_with_root,
-    },
+    test_harness::{create_prop_and_set_parent, create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -30,7 +27,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                     "source": "zero-source",
                 },
             },
-            "code": {},
+
             "si": {
                 "name": "esp",
             },
@@ -39,7 +36,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {},
             "si": {
                 "name": "swings",
@@ -99,7 +96,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Ensure that they look as we expect.
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "object": {
                     "intermediate": "one",
@@ -114,7 +111,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {},
             "si": {
                 "name": "swings",
@@ -199,7 +196,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // component identity update working.
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "object": {
                     "intermediate": "one",
@@ -214,7 +211,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {},
             "si": {
                 "name": "swings",
@@ -237,7 +234,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Ensure that both components continue to look as we expect.
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "object": {
                     "intermediate": "one",
@@ -252,7 +249,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {},
             "si": {
                 "name": "swings",
@@ -273,7 +270,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Observe that inter component identity updating work.
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "object": {
                     "intermediate": "two",
@@ -288,7 +285,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "destination": "two",
             },
@@ -314,27 +311,12 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
     // └─ object: Object
     //    ├─ source: String
     //    └─ intermediate: String
-    let object_prop = create_prop_of_kind_and_set_parent_with_name(
-        ctx,
-        PropKind::Object,
-        "object",
-        root_prop.domain_prop_id,
-    )
-    .await;
-    let source_prop = create_prop_of_kind_and_set_parent_with_name(
-        ctx,
-        PropKind::String,
-        "source",
-        *object_prop.id(),
-    )
-    .await;
-    let intermediate_prop = create_prop_of_kind_and_set_parent_with_name(
-        ctx,
-        PropKind::String,
-        "intermediate",
-        *object_prop.id(),
-    )
-    .await;
+    let object_prop =
+        create_prop_and_set_parent(ctx, PropKind::Object, "object", root_prop.domain_prop_id).await;
+    let source_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "source", *object_prop.id()).await;
+    let intermediate_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "intermediate", *object_prop.id()).await;
 
     schema_variant
         .finalize(ctx)
@@ -397,7 +379,7 @@ async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
     // "swings"
     // domain: Object
     // └─ destination: string
-    let destination_prop = create_prop_of_kind_and_set_parent_with_name(
+    let destination_prop = create_prop_and_set_parent(
         ctx,
         PropKind::String,
         "destination",
@@ -452,23 +434,27 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let source_object_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::Object, "base_object").await;
-    source_object_prop
-        .set_parent_prop(ctx, source_root.domain_prop_id)
-        .await
-        .expect("cannot set parent of base_object");
-    let source_foo_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "foo_string").await;
-    source_foo_prop
-        .set_parent_prop(ctx, *source_object_prop.id())
-        .await
-        .expect("cannot set parent of foo_string");
-    let source_bar_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "bar_string").await;
-    source_bar_prop
-        .set_parent_prop(ctx, *source_object_prop.id())
-        .await
-        .expect("cannot set parent of bar_string");
-
+    let source_object_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::Object,
+        "base_object",
+        source_root.domain_prop_id,
+    )
+    .await;
+    let source_foo_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "foo_string",
+        *source_object_prop.id(),
+    )
+    .await;
+    let source_bar_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "bar_string",
+        *source_object_prop.id(),
+    )
+    .await;
     source_schema_variant
         .finalize(ctx)
         .await
@@ -511,31 +497,34 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let destination_parent_object_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::Object, "parent_object").await;
-    destination_parent_object_prop
-        .set_parent_prop(ctx, destination_root.domain_prop_id)
-        .await
-        .expect("cannot set parent of parent_object");
-    let destination_object_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::Object, "base_object").await;
-    destination_object_prop
-        .set_parent_prop(ctx, *destination_parent_object_prop.id())
-        .await
-        .expect("cannot set parent of base_object");
-    let destination_foo_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "foo_string").await;
-    destination_foo_prop
-        .set_parent_prop(ctx, *destination_object_prop.id())
-        .await
-        .expect("cannot set parent of foo_string");
-    let destination_bar_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "bar_string").await;
-    destination_bar_prop
-        .set_parent_prop(ctx, *destination_object_prop.id())
-        .await
-        .expect("cannot set parent of bar_string");
-
+    let destination_parent_object_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::Object,
+        "parent_object",
+        destination_root.domain_prop_id,
+    )
+    .await;
+    let destination_object_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::Object,
+        "base_object",
+        *destination_parent_object_prop.id(),
+    )
+    .await;
+    let destination_foo_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "foo_string",
+        *destination_object_prop.id(),
+    )
+    .await;
+    let _destination_bar_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "bar_string",
+        *destination_object_prop.id(),
+    )
+    .await;
     destination_schema_variant
         .finalize(ctx)
         .await
@@ -598,11 +587,11 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Source Component",
                 },
-                "code": {},
+
                 "domain": {},
             }
         ],
-        ComponentView::for_context(ctx, source_attribute_read_context)
+        ComponentView::new(ctx, *source_component.id())
             .await
             .expect("cannot get source component view")
             .properties,
@@ -613,23 +602,17 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             .await
             .expect("Unable to create destination component");
 
-    let destination_attribute_read_context = AttributeReadContext {
-        prop_id: None,
-        component_id: Some(*destination_component.id()),
-        ..AttributeReadContext::default()
-    };
-
     assert_eq!(
         serde_json::json![
             {
                 "si": {
                     "name": "Destination Component",
                 },
-                "code": {},
+
                 "domain": {},
             }
         ],
-        ComponentView::for_context(ctx, destination_attribute_read_context)
+        ComponentView::new(ctx, *destination_component.id())
             .await
             .expect("cannot get destination component view")
             .properties,
@@ -704,7 +687,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Source Component",
                 },
-                "code": {},
+
                 "domain": {
                     "base_object": {
                         "foo_string": "deep update",
@@ -712,7 +695,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, source_attribute_read_context)
+        ComponentView::new(ctx, *source_component.id())
             .await
             .expect("cannot get source component view")
             .properties,
@@ -724,7 +707,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Destination Component",
                 },
-                "code": {},
+
                 "domain": {
                     "parent_object": {
                         "base_object": {
@@ -734,7 +717,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, destination_attribute_read_context)
+        ComponentView::new(ctx, *destination_component.id())
             .await
             .expect("cannot get destination component view")
             .properties,
@@ -788,7 +771,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Source Component",
                 },
-                "code": {},
+
                 "domain": {
                     "base_object": {
                         "foo_string": "deep update",
@@ -797,7 +780,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, source_attribute_read_context)
+        ComponentView::new(ctx, *source_component.id())
             .await
             .expect("cannot get source component view")
             .properties,
@@ -809,7 +792,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Destination Component",
                 },
-                "code": {},
+
                 "domain": {
                     "parent_object": {
                         "base_object": {
@@ -820,7 +803,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 },
             }
         ],
-        ComponentView::for_context(ctx, destination_attribute_read_context)
+        ComponentView::new(ctx, *destination_component.id())
             .await
             .expect("cannot get destination component view")
             .properties,

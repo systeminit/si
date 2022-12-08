@@ -1,9 +1,8 @@
 use dal::node_position::NodePositionView;
 use dal::{
     socket::{SocketArity, SocketEdgeKind, SocketKind},
-    AttributeReadContext, Component, ComponentView, Connection, DalContext, Diagram,
-    DiagramEdgeView, DiagramKind, NodePosition, NodeTemplate, NodeView, Schema, SchemaVariant,
-    StandardModel,
+    Component, ComponentView, Connection, DalContext, Diagram, DiagramEdgeView, DiagramKind,
+    NodePosition, NodeTemplate, NodeView, Schema, SchemaVariant, StandardModel,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
@@ -27,22 +26,15 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
             .await
             .expect("could not create component");
 
-    let component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: None,
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::default()
-        },
-    )
-    .await
-    .expect("could not get component view");
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("could not get component view");
     assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "13700KF"
             },
-            "code": {},
+
             "si": {
                 "name": "13700KF",
                 "type": "component"
@@ -77,22 +69,15 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         .expect("component not found by id");
     assert_eq!(*component.id(), *found_component.id());
 
-    let component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: None,
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::default()
-        },
-    )
-    .await
-    .expect("could not get component view");
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("could not get component view");
     assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "13700KF"
             },
-            "code": {},
+
             "si": {
                 "name": "13700KF",
                 "type": "component"

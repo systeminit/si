@@ -1,16 +1,16 @@
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
 use si_data_pg::PgError;
 use telemetry::prelude::*;
+use thiserror::Error;
 
+use crate::component::ComponentViewError;
 use crate::{
     func::backend::js_confirmation::{ConfirmationResult, FuncBackendJsConfirmationArgs},
     func::FuncId,
     impl_prototype_list_for_func, impl_standard_model, pk,
     prototype_context::{HasPrototypeContext, PrototypeContext},
     standard_model, standard_model_accessor, ActionPrototype, ActionPrototypeError, Component,
-    ComponentError, ComponentId, ConfirmationResolver, ConfirmationResolverContext,
+    ComponentError, ComponentId, ComponentView, ConfirmationResolver, ConfirmationResolverContext,
     ConfirmationResolverError, DalContext, FuncBinding, FuncBindingError, FuncBindingId, FuncError,
     HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
     Visibility, WriteTenancy,
@@ -36,6 +36,8 @@ pub enum ConfirmationPrototypeError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error(transparent)]
     Func(#[from] FuncError),
+    #[error(transparent)]
+    ComponentView(#[from] ComponentViewError),
 
     #[error("not found by id: {0}")]
     NotFound(ConfirmationPrototypeId),
@@ -212,7 +214,7 @@ impl ConfirmationPrototype {
         component_id: ComponentId,
     ) -> ConfirmationPrototypeResult<ConfirmationResolver> {
         let args = FuncBackendJsConfirmationArgs {
-            component: Component::view(ctx, component_id).await?.into(),
+            component: ComponentView::new(ctx, component_id).await?.into(),
         };
 
         let json_args = serde_json::to_value(args)?;

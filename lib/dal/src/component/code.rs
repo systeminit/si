@@ -1,16 +1,23 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 use telemetry::prelude::*;
-use veritech_client::CodeGenerated;
 
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
-use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 use crate::{
     AttributeReadContext, CodeLanguage, CodeView, ComponentError, ComponentId, DalContext,
-    InternalProvider, InternalProviderError, StandardModel,
+    StandardModel,
 };
-use crate::{Component, Prop, PropError, SchemaVariant};
+use crate::{Component, SchemaVariant};
+
+// FIXME(nick): use the formal types from the new version of function authoring instead of this
+// struct. This struct is a temporary stopgap until that's implemented.
+#[derive(Deserialize, Debug)]
+struct CodeGenerationEntry {
+    pub code: String,
+    pub format: String,
+}
 
 impl Component {
     #[instrument(skip_all)]
@@ -25,58 +32,46 @@ impl Component {
             .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::NoSchemaVariant(component_id))?;
-        let base_read_context = AttributeReadContext {
-            component_id: Some(component_id),
-            ..AttributeReadContext::default()
-        };
 
         // Prepare to assemble code views and access the "/root/code" prop tree.
         let mut code_views: Vec<CodeView> = Vec::new();
-        let root_prop = SchemaVariant::root_prop(ctx, *schema_variant.id()).await?;
-        let code_prop = Prop::get_by_id(ctx, &root_prop.code_prop_id)
-            .await?
-            .ok_or_else(|| PropError::NotFound(root_prop.code_prop_id, *ctx.visibility()))?;
-
-        // Assemble a code view for each code generation tree prop.
-        for code_generation_tree_prop in code_prop.child_props(ctx).await? {
-            // Get the raw value for the code generated object via the prop tree.
-            let tree_internal_provider =
-                InternalProvider::find_for_prop(ctx, *code_generation_tree_prop.id())
-                    .await?
-                    .ok_or_else(|| {
-                        InternalProviderError::NotFoundForProp(*code_generation_tree_prop.id())
-                    })?;
-            let tree_read_context = AttributeReadContext {
-                internal_provider_id: Some(*tree_internal_provider.id()),
-                ..base_read_context
-            };
-            let tree_attribute_value = AttributeValue::find_for_context(ctx, tree_read_context)
+        let code_map_implicit_internal_provider =
+            SchemaVariant::find_code_implicit_internal_provider(ctx, *schema_variant.id()).await?;
+        let code_map_attribute_read_context = AttributeReadContext {
+            internal_provider_id: Some(*code_map_implicit_internal_provider.id()),
+            component_id: Some(component_id),
+            ..AttributeReadContext::default()
+        };
+        let code_map_attribute_value =
+            AttributeValue::find_for_context(ctx, code_map_attribute_read_context)
                 .await?
                 .ok_or(AttributeValueError::NotFoundForReadContext(
-                    tree_read_context,
+                    code_map_attribute_read_context,
                 ))?;
-            let tree_func_binding_return_value = FuncBindingReturnValue::get_by_id(
-                ctx,
-                &tree_attribute_value.func_binding_return_value_id(),
-            )
-            .await?
-            .ok_or(FuncBindingReturnValueError::Missing)?;
+        let maybe_code_map_value = code_map_attribute_value.get_value(ctx).await?;
 
-            // Deserialize the value into the code generated object defined by the veritech client.
-            let code_generated = match tree_func_binding_return_value.value() {
-                Some(value) => Some(CodeGenerated::deserialize(value)?),
-                None => None,
-            };
+        // If the map has been populated, we need to see if there are code views to generate.
+        if let Some(code_map_value) = maybe_code_map_value {
+            let code_map: HashMap<String, CodeGenerationEntry> =
+                serde_json::from_value(code_map_value)?;
 
-            // Assemble the code view. If the code is empty, that means it is still being generated.
-            let code_view = match code_generated {
-                Some(code_generated) => CodeView::new(
-                    CodeLanguage::try_from(code_generated.format)?,
-                    Some(code_generated.code),
-                ),
-                None => CodeView::new(CodeLanguage::Unknown, None),
-            };
-            code_views.push(code_view);
+            for entry in code_map.values() {
+                let language = if entry.format.is_empty() {
+                    CodeLanguage::Unknown
+                } else {
+                    CodeLanguage::try_from(entry.format.clone())?
+                };
+
+                // TODO(nick): determine how we handle empty code generation or generation in
+                // progress. Maybe we never need to? Just re-run?
+                let code = if entry.code.is_empty() {
+                    None
+                } else {
+                    Some(entry.code.clone())
+                };
+
+                code_views.push(CodeView::new(language, code));
+            }
         }
         Ok(code_views)
     }

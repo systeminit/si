@@ -57,13 +57,13 @@ pub enum FuncExecutionState {
     Failure,
 }
 
-/// FuncExecutions record that a function has executed, all the
-/// various context required to understand the execution, and
-/// contains the log of the output stream for the function.
+/// [`FuncExecutions`](Self) record that a [`function`](crate::Func) has executed alongside all the
+/// context required to understand the execution as well as the log of the output stream for the
+/// [`function`](crate::Func).
 ///
-/// It is not part of the 'standard model' - it doesn't participate
-/// in change sets, and is only used for reference. Essentially the
-/// func equivalent of a `HistoryEvent`
+/// It's not part of the [`standard model`](crate::standard_model) as it doesn't participate in
+/// [`change sets`](crate::ChangeSet), and is only used for reference. Essentially, this is the
+/// [`Func`](crate::Func) equivalent of a [`HistoryEvent`](crate::HistoryEvent).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncExecution {
     pk: FuncExecutionPk,

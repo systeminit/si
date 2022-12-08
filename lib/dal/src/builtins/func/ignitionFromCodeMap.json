@@ -1,0 +1,12 @@
+{
+  "kind": "Json",
+  "response_type": "String",
+  "code_file": "ignitionFromCodeMap.js",
+  "code_entrypoint": "ignitionFromCodeMap",
+  "arguments": [
+    {
+      "name": "code",
+      "kind": "Map"
+    }
+  ]
+}

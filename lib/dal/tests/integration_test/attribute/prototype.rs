@@ -2,16 +2,14 @@ use dal::{
     attribute::context::{AttributeContext, AttributeContextBuilder},
     attribute::prototype::AttributePrototype,
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
-    AttributePrototypeError, AttributeReadContext, AttributeValue, Component, ComponentView,
-    DalContext, Func, FuncBackendKind, FuncBackendResponseType, PropKind, Schema, SchemaKind,
-    SchemaVariant, StandardModel,
+    AttributePrototypeError, AttributeValue, Component, ComponentView, DalContext, Func,
+    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, Schema, SchemaKind, SchemaVariant,
+    StandardModel,
 };
+use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
-    test_harness::{
-        create_component_for_schema, create_prop_of_kind_with_name, create_schema,
-        create_schema_variant_with_root,
-    },
+    test_harness::{create_component_for_schema, create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -93,24 +91,12 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
     //     { String: String, },
     //   ]
     // }
-    let albums_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "albums_array").await;
-    albums_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent prop for albums array");
-
-    let album_prop = create_prop_of_kind_with_name(ctx, PropKind::Map, "album_object").await;
-    album_prop
-        .set_parent_prop(ctx, *albums_prop.id())
-        .await
-        .expect("cannot set parent prop for album object");
-
+    let albums_prop =
+        create_prop_and_set_parent(ctx, PropKind::Array, "albums_array", root.domain_prop_id).await;
+    let album_prop =
+        create_prop_and_set_parent(ctx, PropKind::Map, "album_object", *albums_prop.id()).await;
     let hash_key_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "album_hash_key").await;
-    hash_key_prop
-        .set_parent_prop(ctx, *album_prop.id())
-        .await
-        .expect("cannot set parent prop for album hash key");
+        create_prop_and_set_parent(ctx, PropKind::String, "album_hash_key", *album_prop.id()).await;
 
     SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
         .await
@@ -336,7 +322,9 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
 /// Test attribute prototype removal corresponding to a least specific context.
 #[test]
 async fn remove_least_specific(ctx: &DalContext) {
-    let prop = create_prop_of_kind_with_name(ctx, PropKind::String, "toddhoward").await;
+    let prop = Prop::new(ctx, "toddhoward", PropKind::String, None)
+        .await
+        .expect("could not create prop");
 
     let context = AttributeContextBuilder::new()
         .set_prop_id(*prop.id())
@@ -369,11 +357,7 @@ async fn remove_component_specific(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let prop = create_prop_of_kind_with_name(ctx, PropKind::String, "god").await;
-    prop.set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent of prop");
-
+    let prop = create_prop_and_set_parent(ctx, PropKind::String, "god", root.domain_prop_id).await;
     schema_variant
         .finalize(ctx)
         .await
@@ -382,13 +366,7 @@ async fn remove_component_specific(ctx: &DalContext) {
     let (component, _) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())
         .await
         .expect("cannot create component");
-
-    let read_context = AttributeReadContext {
-        prop_id: None,
-        component_id: Some(*component.id()),
-        ..AttributeReadContext::default()
-    };
-    let component_view = ComponentView::for_context(ctx, read_context)
+    let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view");
 
@@ -398,7 +376,6 @@ async fn remove_component_specific(ctx: &DalContext) {
                 "si": {
                     "name": "toddhoward",
                 },
-                "code": {},
                 "domain": {}
             }
         ],

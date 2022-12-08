@@ -10,10 +10,7 @@ use dal::{
 use dal_test::{
     helpers::setup_identity_func,
     test,
-    test_harness::{
-        create_prop_of_kind_and_set_parent_with_name, create_schema,
-        create_schema_variant_with_root,
-    },
+    test_harness::{create_prop_and_set_parent, create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -30,27 +27,12 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // └─ object: Object
     //    ├─ source: String
     //    └─ destination: String
-    let object_prop = create_prop_of_kind_and_set_parent_with_name(
-        ctx,
-        PropKind::Object,
-        "object",
-        root_prop.domain_prop_id,
-    )
-    .await;
-    let source_prop = create_prop_of_kind_and_set_parent_with_name(
-        ctx,
-        PropKind::String,
-        "source",
-        *object_prop.id(),
-    )
-    .await;
-    let destination_prop = create_prop_of_kind_and_set_parent_with_name(
-        ctx,
-        PropKind::String,
-        "destination",
-        *object_prop.id(),
-    )
-    .await;
+    let object_prop =
+        create_prop_and_set_parent(ctx, PropKind::Object, "object", root_prop.domain_prop_id).await;
+    let source_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "source", *object_prop.id()).await;
+    let destination_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "destination", *object_prop.id()).await;
 
     schema_variant
         .finalize(ctx)
@@ -146,7 +128,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Ensure that our rendered data matches what was intended.
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "object": {
                     "destination": "11-nov-2022",
@@ -157,7 +139,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties // actual
@@ -212,7 +194,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Ensure that the shape has not changed after creating the provider and updating the prototype.
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "object": {
                     "destination": "11-nov-2022",
@@ -223,7 +205,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties // actual
@@ -245,7 +227,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Observe that both the source and destination fields were updated.
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "object": {
                     "destination": "h1-2023",
@@ -256,7 +238,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties // actual
@@ -278,7 +260,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Observe it again!
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "object": {
                     "destination": "pain.",
@@ -289,7 +271,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
                 "name": "starfield",
             },
         }], // expected
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties // actual
@@ -307,13 +289,8 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let freya_prop = create_prop_of_kind_and_set_parent_with_name(
-        ctx,
-        PropKind::String,
-        "freya",
-        root_prop.domain_prop_id,
-    )
-    .await;
+    let freya_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "freya", root_prop.domain_prop_id).await;
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
         setup_identity_func(ctx).await;
     let (external_provider, _output_socket) = ExternalProvider::new_with_socket(

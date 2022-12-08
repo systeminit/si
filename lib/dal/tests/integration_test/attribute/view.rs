@@ -2,9 +2,10 @@ use dal::{
     attribute::context::AttributeContextBuilder, AttributeReadContext, AttributeValue,
     AttributeView, DalContext, PropKind, SchemaKind, SchemaVariant, StandardModel,
 };
+use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
-    test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
+    test_harness::{create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -17,12 +18,8 @@ async fn schema_variant_specific(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-
-    let name_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "name").await;
-    name_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id)
-        .await
-        .expect("cannot set parent of name_prop");
+    let name_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "name", root_prop.domain_prop_id).await;
 
     SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
         .await
@@ -56,7 +53,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
         serde_json::json![
             {
                 "domain": {},
-                "code": {},
+
                 "si": {}
             }
         ], // expected
@@ -118,7 +115,7 @@ async fn schema_variant_specific(ctx: &DalContext) {
                 "domain": {
                     "name": "toddhoward"
                 },
-                "code": {},
+
                 "si": {}
             }
         ], // expected

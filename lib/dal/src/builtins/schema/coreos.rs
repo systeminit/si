@@ -6,9 +6,10 @@ use crate::schema::variant::definition::SchemaVariantDefinition;
 use crate::socket::SocketArity;
 use crate::{
     qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
-    BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func, FuncError, InternalProvider,
-    QualificationPrototype, SchemaError, SchemaKind, SchemaVariant, StandardModel,
+    AttributePrototype, AttributePrototypeArgument, AttributePrototypeError, AttributeReadContext,
+    AttributeValue, BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func,
+    FuncError, InternalProvider, QualificationPrototype, SchemaError, SchemaKind, SchemaVariant,
+    StandardModel,
 };
 
 // Definitions
@@ -65,7 +66,7 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        let ignition_code_generation_leaf = SchemaVariant::add_code_generation(
+        let code_map_prop_id = SchemaVariant::add_code_generation(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
@@ -176,31 +177,52 @@ impl MigrationDriver {
         )
         .await?;
 
-        // FIXME(nick,jacob): when setting a complex object, implicit internal providers of child props
-        // must be updated. Currently, that does not happen. Thus, code generation functions return
-        // strings for now (just the code) instead of the code _and_ the format. Moreover, we collect
-        // the value for the implicit internal provider for the code string prop instead of the object
-        // prop as a result.
-        let code_implicit_internal_provider =
-            InternalProvider::find_for_prop(ctx, ignition_code_generation_leaf.code_prop_id())
+        // Connect the "/root/code" map to the external provider and use a transformation function
+        // to grab the ignition data (aws ec2 user data) out of the map.
+        let code_map_implicit_internal_provider =
+            InternalProvider::find_for_prop(ctx, code_map_prop_id)
+                .await?
+                .ok_or({
+                    BuiltinsError::ImplicitInternalProviderNotFoundForProp(code_map_prop_id)
+                })?;
+        let transformation_func_name = "si:ignitionFromCodeMap".to_string();
+        let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| FuncError::NotFoundByName(transformation_func_name.clone()))?;
+        let transformation_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "code", *transformation_func.id())
                 .await?
                 .ok_or_else(|| {
-                    BuiltinsError::ImplicitInternalProviderNotFoundForProp(
-                        ignition_code_generation_leaf.code_prop_id(),
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        transformation_func_name.clone(),
+                        "code".to_string(),
                     )
                 })?;
-        let user_data_external_provider_attribute_prototype_id = *user_data_external_provider
+        let user_data_external_provider_attribute_prototype_id = user_data_external_provider
             .attribute_prototype_id()
             .ok_or_else(|| {
                 BuiltinsError::MissingAttributePrototypeForExternalProvider(
                     *user_data_external_provider.id(),
                 )
             })?;
+        let mut user_data_external_provider_attribute_prototype =
+            AttributePrototype::get_by_id(ctx, user_data_external_provider_attribute_prototype_id)
+                .await?
+                .ok_or_else(|| {
+                    AttributePrototypeError::NotFound(
+                        *user_data_external_provider_attribute_prototype_id,
+                        *ctx.visibility(),
+                    )
+                })?;
+        user_data_external_provider_attribute_prototype
+            .set_func_id(ctx, transformation_func.id())
+            .await?;
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
-            user_data_external_provider_attribute_prototype_id,
-            identity_func_item.func_argument_id,
-            *code_implicit_internal_provider.id(),
+            *user_data_external_provider_attribute_prototype_id,
+            *transformation_func_argument.id(),
+            *code_map_implicit_internal_provider.id(),
         )
         .await?;
 

@@ -5,12 +5,10 @@ use dal::{
     PropKind, SchemaKind, StandardModel, ValidationPrototype, ValidationPrototypeContext,
     ValidationResolver,
 };
+use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
-    test_harness::{
-        create_component_for_schema, create_prop_of_kind_with_name, create_schema,
-        create_schema_variant_with_root,
-    },
+    test_harness::{create_component_for_schema, create_schema, create_schema_variant_with_root},
 };
 
 #[test]
@@ -21,10 +19,8 @@ async fn new(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let prop = create_prop_of_kind_with_name(ctx, PropKind::String, "glaive").await;
-    prop.set_parent_prop(ctx, root_prop.domain_prop_id)
-        .await
-        .expect("cannot set parent prop");
+    let prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "glaive", root_prop.domain_prop_id).await;
 
     let func = Func::new(
         ctx,
@@ -110,10 +106,8 @@ async fn find_errors(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let prop = create_prop_of_kind_with_name(ctx, PropKind::String, "glaive").await;
-    prop.set_parent_prop(ctx, root_prop.domain_prop_id)
-        .await
-        .expect("cannot set parent prop");
+    let prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "glaive", root_prop.domain_prop_id).await;
 
     let func = Func::new(
         ctx,

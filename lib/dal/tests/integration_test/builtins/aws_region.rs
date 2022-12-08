@@ -33,7 +33,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "domain": {
                 "region": "us-east-2"
             },
-            "code": {},
+
             "si": {
                 "name": "us-east-2",
                 "type": "configurationFrame"
@@ -99,7 +99,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "domain": {
                 "region": "us-east-2"
             },
-            "code": {},
+
             "si": {
                 "name": "us-east-2",
                 "type": "configurationFrame"
@@ -144,7 +144,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             "domain": {
                 "region": "us-west-2"
             },
-            "code": {},
+
             "si": {
                 "name": "us-west-2",
                 "type": "configurationFrame"
@@ -197,7 +197,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
                 "name": "us-poop-1",
                 "type": "configurationFrame"
             },
-            "code": {},
+
             "domain": {
                 "region": "us-poop-1",
             }
@@ -252,7 +252,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
                 "name": "us-east-1",
                 "type": "configurationFrame",
             },
-            "code": {},
+
             "domain": {
                 "region": "us-east-1"
             }

@@ -407,35 +407,9 @@ pub async fn create_qualification_check(ctx: &DalContext) -> QualificationCheck 
         .expect("cannot create qualification check")
 }
 
-pub async fn create_prop(ctx: &DalContext) -> Prop {
-    let name = generate_fake_name();
-    Prop::new(ctx, name, PropKind::String, None)
-        .await
-        .expect("cannot create prop")
-}
-
-#[allow(clippy::too_many_arguments)]
-pub async fn create_prop_of_kind(ctx: &DalContext, prop_kind: PropKind) -> Prop {
-    let name = generate_fake_name();
-    Prop::new(ctx, name, prop_kind, None)
-        .await
-        .expect("cannot create prop")
-}
-
-#[allow(clippy::too_many_arguments)]
-pub async fn create_prop_of_kind_with_name(
-    ctx: &DalContext,
-    prop_kind: PropKind,
-    name: impl AsRef<str>,
-) -> Prop {
-    let name = name.as_ref();
-    Prop::new(ctx, name, prop_kind, None)
-        .await
-        .expect("cannot create prop")
-}
-
-#[allow(clippy::too_many_arguments)]
-pub async fn create_prop_of_kind_and_set_parent_with_name(
+/// Create a [`Prop`](dal::Prop) with a given [`PropKind`](dal::PropKind), name and parent
+/// [`PropId`](dal::Prop).
+pub async fn create_prop_and_set_parent(
     ctx: &DalContext,
     prop_kind: PropKind,
     name: impl AsRef<str>,

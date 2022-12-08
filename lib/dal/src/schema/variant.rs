@@ -8,6 +8,7 @@ use thiserror::Error;
 use crate::edit_field::widget::WidgetKind;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::internal::InternalProviderError;
+use crate::standard_model::object_from_row;
 use crate::{
     func::binding::FuncBindingError,
     impl_standard_model, pk,
@@ -25,6 +26,11 @@ use crate::{
 pub mod definition;
 pub mod leaves;
 pub mod root_prop;
+
+const ALL_PROPS: &str = include_str!("../queries/schema_variant/all_props.sql");
+const FIND_CODE_ITEM_PROP: &str = include_str!("../queries/schema_variant/find_code_item_prop.sql");
+const FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER: &str =
+    include_str!("../queries/schema_variant/find_root_child_implicit_internal_provider.sql");
 
 #[derive(Error, Debug)]
 pub enum SchemaVariantError {
@@ -44,8 +50,6 @@ pub enum SchemaVariantError {
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("could not find immediate child ({0}) of root prop: {1}")]
-    ImmediateChildOfRootPropNotFound(&'static str, PropId),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
     #[error("missing a func in attribute update: {0} not found")]
@@ -64,8 +68,6 @@ pub enum SchemaVariantError {
     Builtins(#[from] Box<BuiltinsError>),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
-    #[error("root prop not found for schema variant: {0}")]
-    RootPropNotFound(SchemaVariantId),
     #[error("schema error: {0}")]
     Schema(#[from] Box<SchemaError>),
     #[error("error serializing/deserializing json: {0}")]
@@ -80,6 +82,8 @@ pub enum SchemaVariantError {
     Std(#[from] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("must provide valid schema variant, found unset schema variant id")]
     InvalidSchemaVariant,
+    #[error("parent prop not found for prop id: {0}")]
+    ParentPropNotFound(PropId),
 
     // Errors related to definitions.
     #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
@@ -105,8 +109,6 @@ pub enum SchemaVariantError {
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
-
-const ALL_PROPS: &str = include_str!("../queries/schema_variant_all_props.sql");
 
 pk!(SchemaVariantPk);
 pk!(SchemaVariantId);
@@ -137,6 +139,7 @@ impl_standard_model! {
 }
 
 impl SchemaVariant {
+    // Create a [`SchemaVariant`](Self) with a [`RootProp`](crate::schema::RootProp).
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
@@ -231,6 +234,11 @@ impl SchemaVariant {
         Ok((object, root_prop))
     }
 
+    /// Calls [`Self::finalize_for_id()`]. Refer to the aforementioned method for more information.
+    pub async fn finalize(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
+        Self::finalize_for_id(ctx, self.id).await
+    }
+
     /// This _idempotent_ function "finalizes" a [`SchemaVariant`].
     ///
     /// Once a [`SchemaVariant`] has had all of its [`Props`](crate::Prop) created, there are a few
@@ -245,9 +253,12 @@ impl SchemaVariant {
     /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
     /// [`SchemaVariant`]. It can be called multiple times while [`Props`](Prop) are being created,
     /// but it must be called once after all [`Props`](Prop) have been created.
-    pub async fn finalize(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
-        Self::create_default_prototypes_and_values(ctx, self.id).await?;
-        Self::create_implicit_internal_providers(ctx, self.id).await?;
+    pub async fn finalize_for_id(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        Self::create_default_prototypes_and_values(ctx, schema_variant_id).await?;
+        Self::create_implicit_internal_providers(ctx, schema_variant_id).await?;
         Ok(())
     }
 
@@ -361,51 +372,70 @@ impl SchemaVariant {
         Ok(results)
     }
 
-    /// Find the [`RootProp`](crate::RootProp) for a given [`SchemaVariant`].
-    pub async fn root_prop(
+    /// Finds the [`Prop`](crate::Prop) corresponding to "/root/code/codeItem", which is of kind
+    /// [`object`](crate::PropKind::Object) underneath a [`map`](crate::PropKind::Map).
+    #[instrument(skip_all)]
+    pub async fn find_code_item_prop(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<RootProp> {
-        // FIXME(nick): this whole thing is an inefficient solution that would be better suited by a
-        // database query.
-        let root_prop = Prop::find_root_for_schema_variant(ctx, schema_variant_id)
-            .await?
-            .ok_or(SchemaVariantError::RootPropNotFound(schema_variant_id))?;
-        let root_prop_id = *root_prop.id();
+    ) -> SchemaVariantResult<Prop> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                FIND_CODE_ITEM_PROP,
+                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+            )
+            .await?;
+        Ok(object_from_row(row)?)
+    }
 
-        let mut si_prop_id = None;
-        let mut domain_prop_id = None;
-        let mut resource_prop_id = None;
-        let mut code_prop_id = None;
+    /// Finds the implicit [`InternalProvider`](crate::InternalProvider) corresponding to
+    /// "/root/domain", which is of kind [`object`](crate::PropKind::Object).
+    ///
+    /// _Note: the [`SchemaVariant`](crate::SchemaVariant) must be
+    /// [`finalized`](crate::SchemaVariant::finalize()) (or
+    /// [`finalized for id`](crate::SchemaVariant::finalize_for_id())) before running this query.
+    pub async fn find_domain_implicit_internal_provider(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<InternalProvider> {
+        Self::find_root_child_implicit_internal_provider(ctx, schema_variant_id, "domain").await
+    }
 
-        for maybe_code_prop in root_prop.child_props(ctx).await? {
-            match maybe_code_prop.name() {
-                "si" => si_prop_id = Some(*maybe_code_prop.id()),
-                "domain" => domain_prop_id = Some(*maybe_code_prop.id()),
-                "resource" => resource_prop_id = Some(*maybe_code_prop.id()),
-                "code" => code_prop_id = Some(*maybe_code_prop.id()),
-                _ => debug!(
-                    "found unexpected, immediate child of root prop: {:?}",
-                    *maybe_code_prop.id()
-                ),
-            }
-        }
+    /// Finds the implicit [`InternalProvider`](crate::InternalProvider) corresponding to
+    /// "/root/code", which is of kind [`map`](crate::PropKind::Map).
+    ///
+    /// _Note: the [`SchemaVariant`](crate::SchemaVariant) must be
+    /// [`finalized`](crate::SchemaVariant::finalize()) (or
+    /// [`finalized for id`](crate::SchemaVariant::finalize_for_id())) before running this query.
+    pub async fn find_code_implicit_internal_provider(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<InternalProvider> {
+        Self::find_root_child_implicit_internal_provider(ctx, schema_variant_id, "code").await
+    }
 
-        Ok(RootProp {
-            prop_id: root_prop_id,
-            si_prop_id: si_prop_id.ok_or(SchemaVariantError::ImmediateChildOfRootPropNotFound(
-                "si",
-                root_prop_id,
-            ))?,
-            domain_prop_id: domain_prop_id.ok_or(
-                SchemaVariantError::ImmediateChildOfRootPropNotFound("domain", root_prop_id),
-            )?,
-            resource_prop_id: resource_prop_id.ok_or(
-                SchemaVariantError::ImmediateChildOfRootPropNotFound("resource", root_prop_id),
-            )?,
-            code_prop_id: code_prop_id.ok_or(
-                SchemaVariantError::ImmediateChildOfRootPropNotFound("code", root_prop_id),
-            )?,
-        })
+    /// A private method that passes in a provided name for a direct child [`Prop`](crate::Prop)
+    /// of "/root". This method is private to ensure compile time safety.
+    async fn find_root_child_implicit_internal_provider(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        direct_child_of_root_prop_name: &str,
+    ) -> SchemaVariantResult<InternalProvider> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &schema_variant_id,
+                    &direct_child_of_root_prop_name,
+                ],
+            )
+            .await?;
+        Ok(object_from_row(row)?)
     }
 }

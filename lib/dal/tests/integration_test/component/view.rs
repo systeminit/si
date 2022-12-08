@@ -1,18 +1,17 @@
-use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::job::definition::DependentValuesUpdate;
 use dal::{
-    schema::RootProp, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, Component, ComponentView, DalContext, DiagramKind, ExternalProvider, Func,
-    FuncBackendKind, FuncBackendResponseType, InternalProvider, Prop, PropKind, Schema, SchemaKind,
-    SchemaVariant, SocketArity, StandardModel,
+    schema::RootProp, AttributeContext, AttributeValue, Component, ComponentView, DalContext, Prop,
+    PropKind, Schema, SchemaKind, SchemaVariant, StandardModel,
 };
-use dal_test::helpers::setup_identity_func;
+
+use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
-    test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
+    test_harness::{create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
-use tokio::sync::mpsc;
+
+mod complex_func;
+mod cyclone_crypto;
 
 /// Create a schema that looks like this:
 /// ```json
@@ -30,26 +29,13 @@ pub async fn create_schema_with_object_and_string_prop(
         .await
         .expect("cannot set default schema variant");
 
-    let queen_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "queen").await;
-
-    let killer_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "killer_queen").await;
-
+    let queen_prop =
+        create_prop_and_set_parent(ctx, PropKind::Object, "queen", root.domain_prop_id).await;
+    let killer_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "killer_queen", *queen_prop.id()).await;
     let bohemian_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "bohemian_rhapsody").await;
-
-    queen_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent prop");
-    killer_prop
-        .set_parent_prop(ctx, *queen_prop.id())
-        .await
-        .expect("cannot set parent prop");
-    bohemian_prop
-        .set_parent_prop(ctx, *queen_prop.id())
-        .await
-        .expect("cannot set parent prop");
-
+        create_prop_and_set_parent(ctx, PropKind::String, "bohemian_rhapsody", *queen_prop.id())
+            .await;
     schema_variant
         .finalize(ctx)
         .await
@@ -90,40 +76,22 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         .await
         .expect("cannot set default schema variant");
 
-    let queen_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "queen").await;
-    queen_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent prop");
-
+    let queen_prop =
+        create_prop_and_set_parent(ctx, PropKind::Object, "queen", root.domain_prop_id).await;
     let bohemian_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "bohemian_rhapsody").await;
-
-    let killer_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "killer_queen").await;
-
+        create_prop_and_set_parent(ctx, PropKind::String, "bohemian_rhapsody", *queen_prop.id())
+            .await;
+    let killer_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "killer_queen", *queen_prop.id()).await;
     let pressure_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::Object, "under_pressure").await;
-
-    killer_prop
-        .set_parent_prop(ctx, *queen_prop.id())
-        .await
-        .expect("cannot set parent prop");
-    bohemian_prop
-        .set_parent_prop(ctx, *queen_prop.id())
-        .await
-        .expect("cannot set parent prop");
-    pressure_prop
-        .set_parent_prop(ctx, *queen_prop.id())
-        .await
-        .expect("cannot set parent prop");
-
-    let dust_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "another_one_bites_the_dust").await;
-    dust_prop
-        .set_parent_prop(ctx, *pressure_prop.id())
-        .await
-        .expect("cannot set parent prop");
-
+        create_prop_and_set_parent(ctx, PropKind::Object, "under_pressure", *queen_prop.id()).await;
+    let dust_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "another_one_bites_the_dust",
+        *pressure_prop.id(),
+    )
+    .await;
     schema_variant
         .finalize(ctx)
         .await
@@ -157,19 +125,16 @@ pub async fn create_schema_with_string_props(
         .await
         .expect("cannot set default schema variant");
 
-    let bohemian_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "bohemian_rhapsody").await;
-    bohemian_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent prop");
-
-    let killer_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "killer_queen").await;
-    killer_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent prop");
-
+    let bohemian_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "bohemian_rhapsody",
+        root.domain_prop_id,
+    )
+    .await;
+    let killer_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "killer_queen", root.domain_prop_id)
+            .await;
     schema_variant
         .finalize(ctx)
         .await
@@ -195,18 +160,10 @@ pub async fn create_schema_with_array_of_string_props(
         .await
         .expect("cannot set default schema variant");
 
-    let sammy_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "sammy_hagar").await;
-    sammy_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent");
-
-    let album_string_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "ignoreme").await;
-    album_string_prop
-        .set_parent_prop(ctx, *sammy_prop.id())
-        .await
-        .expect("cannot set parent");
-
+    let sammy_prop =
+        create_prop_and_set_parent(ctx, PropKind::Array, "sammy_hagar", root.domain_prop_id).await;
+    let album_string_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "ignoreme", *sammy_prop.id()).await;
     schema_variant
         .finalize(ctx)
         .await
@@ -245,38 +202,21 @@ pub async fn create_schema_with_nested_array_objects(
         .await
         .expect("cannot set default schema variant");
 
-    let sammy_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "sammy_hagar").await;
-    sammy_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent");
-
+    let sammy_prop =
+        create_prop_and_set_parent(ctx, PropKind::Array, "sammy_hagar", root.domain_prop_id).await;
     let album_object_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::Object, "album_ignore").await;
-    album_object_prop
-        .set_parent_prop(ctx, *sammy_prop.id())
-        .await
-        .expect("cannot set parent");
-
-    let album_string_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "album").await;
-    album_string_prop
-        .set_parent_prop(ctx, *album_object_prop.id())
-        .await
-        .expect("cannot set parent");
-
-    let songs_array_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "songs").await;
-    songs_array_prop
-        .set_parent_prop(ctx, *album_object_prop.id())
-        .await
-        .expect("cannot set parent");
-
-    let song_name_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "song_name_ignore").await;
-    song_name_prop
-        .set_parent_prop(ctx, *songs_array_prop.id())
-        .await
-        .expect("cannot set parent");
-
+        create_prop_and_set_parent(ctx, PropKind::Object, "album_ignore", *sammy_prop.id()).await;
+    let album_string_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "album", *album_object_prop.id()).await;
+    let songs_array_prop =
+        create_prop_and_set_parent(ctx, PropKind::Array, "songs", *album_object_prop.id()).await;
+    let song_name_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "song_name_ignore",
+        *songs_array_prop.id(),
+    )
+    .await;
     schema_variant
         .finalize(ctx)
         .await
@@ -311,19 +251,10 @@ pub async fn create_simple_map(ctx: &DalContext) -> (Schema, SchemaVariant, Prop
         .await
         .expect("cannot set default schema variant");
 
-    let album_prop = create_prop_of_kind_with_name(ctx, PropKind::Map, "albums").await;
-    album_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent");
-
+    let album_prop =
+        create_prop_and_set_parent(ctx, PropKind::Map, "albums", root.domain_prop_id).await;
     let album_item_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "album_ignore").await;
-    album_item_prop
-        .set_parent_prop(ctx, *album_prop.id())
-        .await
-        .expect("cannot set parent");
-
+        create_prop_and_set_parent(ctx, PropKind::String, "album_ignore", *album_prop.id()).await;
     schema_variant
         .finalize(ctx)
         .await
@@ -362,44 +293,28 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         .await
         .expect("cannot set default schema variant");
 
-    let sammy_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "sammy_hagar").await;
-    sammy_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent");
-
+    let sammy_prop =
+        create_prop_and_set_parent(ctx, PropKind::Array, "sammy_hagar", root.domain_prop_id).await;
     let album_object_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::Object, "album_ignore").await;
-    album_object_prop
-        .set_parent_prop(ctx, *sammy_prop.id())
-        .await
-        .expect("cannot set parent");
-
-    let album_string_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "album").await;
-    album_string_prop
-        .set_parent_prop(ctx, *album_object_prop.id())
-        .await
-        .expect("cannot set parent");
-
-    let songs_array_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "songs").await;
-    songs_array_prop
-        .set_parent_prop(ctx, *album_object_prop.id())
-        .await
-        .expect("cannot set parent");
-
-    let song_map_prop = create_prop_of_kind_with_name(ctx, PropKind::Map, "song_map_ignore").await;
-    song_map_prop
-        .set_parent_prop(ctx, *songs_array_prop.id())
-        .await
-        .expect("cannot set parent");
-
-    let song_map_item_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "song_map_item_ignore").await;
-    song_map_item_prop
-        .set_parent_prop(ctx, *song_map_prop.id())
-        .await
-        .expect("cannot set parent");
-
+        create_prop_and_set_parent(ctx, PropKind::Object, "album_ignore", *sammy_prop.id()).await;
+    let album_string_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "album", *album_object_prop.id()).await;
+    let songs_array_prop =
+        create_prop_and_set_parent(ctx, PropKind::Array, "songs", *album_object_prop.id()).await;
+    let song_map_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::Map,
+        "song_map_ignore",
+        *songs_array_prop.id(),
+    )
+    .await;
+    let song_map_item_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "song_map_item_ignore",
+        *song_map_prop.id(),
+    )
+    .await;
     schema_variant
         .finalize(ctx)
         .await
@@ -480,22 +395,16 @@ async fn only_string_props(ctx: &DalContext) {
     .await
     .expect("could not update bohemian prop value");
 
-    let component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::any()
-        },
-    )
-    .await
-    .expect("cannot get component view");
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
     assert_eq!(
         serde_json::json![
             {
                 "si": {
                     "name": "capoeira"
                 },
-                "code": {},
+
                 "domain": {
                     "bohemian_rhapsody": "Galileo",
                     "killer_queen": "woohoo"
@@ -588,21 +497,15 @@ async fn one_object_prop(ctx: &DalContext) {
     .await
     .expect("could not update killer AttributeValue");
 
-    let component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::any()
-        },
-    )
-    .await
-    .expect("cannot get component view");
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
 
     assert_eq!(
         component_view.properties,
         serde_json::json![{
             "si": { "name": "santos dumont" },
-            "code": {},
+
             "domain": {
                 "queen": {
                     "bohemian_rhapsody": "Galileo",
@@ -743,15 +646,9 @@ async fn nested_object_prop(ctx: &DalContext) {
     .await
     .expect("could not update dust AttributeValue");
 
-    let component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::any()
-        },
-    )
-    .await
-    .expect("cannot get component view");
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
 
     assert_eq!(
         serde_json::json![
@@ -759,7 +656,7 @@ async fn nested_object_prop(ctx: &DalContext) {
                 "si": {
                     "name": "free ronaldinho"
                 },
-                "code": {},
+
                 "domain": {
                     "queen": {
                         "bohemian_rhapsody": "scaramouche",
@@ -843,15 +740,9 @@ async fn simple_array_of_strings(ctx: &DalContext) {
     .await
     .expect("could not insert album AttributeValue");
 
-    let component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::any()
-        },
-    )
-    .await
-    .expect("cannot get component view");
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
 
     assert_eq!(
         serde_json::json![
@@ -859,7 +750,7 @@ async fn simple_array_of_strings(ctx: &DalContext) {
                 "si": {
                     "name": "tim maia"
                 },
-                "code": {},
+
                 "domain": {
                     "sammy_hagar": ["standing_hampton", "voa"]
                 }
@@ -1088,20 +979,14 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
     .await
     .expect("could not insert can't drive 55 into voa songs array");
 
-    let component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::any()
-        },
-    )
-    .await
-    .expect("cannot get component view");
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
 
     assert_eq!(
         serde_json::json![{
             "si": {"name": "An Integralist Doesn't Run, It Flies"},
-            "code": {},
+
             "domain": {
                 "sammy_hagar": [
                     {
@@ -1195,20 +1080,14 @@ async fn simple_map(ctx: &DalContext) {
     .await
     .expect("could not insert album item");
 
-    let component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::any()
-        },
-    )
-    .await
-    .expect("cannot get component view");
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
 
     assert_eq!(
         serde_json::json![{
             "si": {"name": "E como isso afeta o Grêmio?"},
-            "code": {},
+
             "domain": {
                 "albums": {
                     "black_dahlia": "nocturnal",
@@ -1370,21 +1249,14 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
     .await
     .expect("could not insert surrender into standing hampton song map");
 
-    let component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: None,
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::default()
-        },
-    )
-    .await
-    .expect("cannot get component view");
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("cannot get component view");
 
     assert_eq!(
         serde_json::json![{
             "si": { "name": "E como isso afeta o Grêmio?" },
-            "code": {},
+
             "domain": {
                 "sammy_hagar": [
                     {
@@ -1398,367 +1270,4 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
         }], // expected
         component_view.properties, // actual
     );
-}
-
-#[test]
-async fn cyclone_crypto_e2e(ctx: &DalContext) {
-    let (tx, _rx) = mpsc::channel(64);
-    let secret_value = "Beware Cuca will catch you";
-    let secret = serde_json::to_string(&serde_json::json!({
-        "key": secret_value,
-    }))
-    .expect("Secret serialization failed");
-    let encoded = ctx.encryption_key().encrypt_and_encode(&secret);
-    let code = format!(
-        "function testE2ECrypto(input) {{ return input.secret.message.key === '{secret_value}'; }}"
-    );
-    let request = veritech_client::ResolverFunctionRequest {
-        execution_id: "seujorge".to_owned(),
-        handler: "testE2ECrypto".to_owned(),
-        component: veritech_client::ResolverFunctionComponent {
-            data: veritech_client::ComponentView {
-                kind: veritech_client::ComponentKind::Credential,
-                properties: serde_json::json!({
-                    "secret": {
-                        "name": "ufo",
-                        "secret_kind": "dockerHub",
-                        "object_type": "credential",
-                        "message": {
-                            "cycloneEncryptedDataMarker": true,
-                            "encryptedSecret": encoded,
-                        },
-                    },
-                }),
-            },
-            parents: Vec::new(),
-        },
-        code_base64: base64::encode(&code),
-    };
-    let result = ctx
-        .veritech()
-        .execute_resolver_function(tx, &request)
-        .await
-        .expect("Veritech run failed");
-    match result {
-        veritech_client::FunctionResult::Success(result) => {
-            assert_eq!(result.data, serde_json::Value::Bool(true))
-        }
-        veritech_client::FunctionResult::Failure(err) => panic!("Veritech run failed: {:?}", err),
-    }
-}
-
-#[test]
-async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
-    // Create and setup the schema and schema variant.
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await
-        .expect("cannot set default schema variant");
-    let ragnarok_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "ragnarok").await;
-    ragnarok_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id)
-        .await
-        .expect("cannot set parent");
-    let kratos_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "kratos").await;
-    kratos_prop
-        .set_parent_prop(ctx, *ragnarok_prop.id())
-        .await
-        .expect("cannot set parent");
-    let atreus_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "atreus").await;
-    atreus_prop
-        .set_parent_prop(ctx, *ragnarok_prop.id())
-        .await
-        .expect("cannot set parent");
-
-    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id, _) =
-        setup_identity_func(ctx).await;
-    let (external_provider, _output_socket) = ExternalProvider::new_with_socket(
-        ctx,
-        *schema.id(),
-        *schema_variant.id(),
-        "kratos",
-        None,
-        identity_func_id,
-        identity_func_binding_id,
-        identity_func_binding_return_value_id,
-        SocketArity::Many,
-        DiagramKind::Configuration,
-    )
-    .await
-    .expect("could not create external provider");
-
-    schema_variant
-        .finalize(ctx)
-        .await
-        .expect("cannot finalize schema variant");
-
-    // Collect the internal providers.
-    let ragnarok_provider = InternalProvider::find_for_prop(ctx, *ragnarok_prop.id())
-        .await
-        .expect("could not perform find for prop")
-        .expect("no internal provider for prop");
-    let kratos_provider = InternalProvider::find_for_prop(ctx, *kratos_prop.id())
-        .await
-        .expect("could not perform find for prop")
-        .expect("no internal provider for prop");
-    let atreus_provider = InternalProvider::find_for_prop(ctx, *atreus_prop.id())
-        .await
-        .expect("could not perform find for prop")
-        .expect("no internal provider for prop");
-
-    // Add the external provider.
-
-    let external_provider_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext::default_with_external_provider(*external_provider.id()),
-    )
-    .await
-    .unwrap()
-    .unwrap();
-    let mut external_provider_attribute_prototype = external_provider_attribute_value
-        .attribute_prototype(ctx)
-        .await
-        .expect("could not perform get attribute prototype for attribute value")
-        .expect("could not find attribute prototype for attribute value");
-
-    // Create and set the func to take off a string field.
-    let mut transformation_func = Func::new(
-        ctx,
-        "test:getKratos",
-        FuncBackendKind::JsAttribute,
-        FuncBackendResponseType::String,
-    )
-    .await
-    .expect("could not create func");
-    let code = "function getKratos(input) {
-        return input.ragnarok.kratos.toUpperCase() ?? '';
-    }";
-    transformation_func
-        .set_code_plaintext(ctx, Some(code))
-        .await
-        .expect("set code");
-    transformation_func
-        .set_handler(ctx, Some("getKratos"))
-        .await
-        .expect("set handler");
-    external_provider_attribute_prototype
-        .set_func_id(ctx, *transformation_func.id())
-        .await
-        .expect("set function on attribute prototype for external provider");
-    let transformation_func_argument = FuncArgument::new(
-        ctx,
-        "ragnarok",
-        FuncArgumentKind::Object,
-        None,
-        *transformation_func.id(),
-    )
-    .await
-    .expect("could not create func argument");
-    AttributePrototypeArgument::new_for_intra_component(
-        ctx,
-        *external_provider_attribute_prototype.id(),
-        *transformation_func_argument.id(),
-        *ragnarok_provider.id(),
-    )
-    .await
-    .expect("could not create attribute prototype argument");
-
-    // Create the func for the object prop.
-    let mut func = Func::new(
-        ctx,
-        "test:complexObject",
-        FuncBackendKind::JsAttribute,
-        FuncBackendResponseType::PropObject,
-    )
-    .await
-    .expect("could not create func");
-    let code = "function complex(_args) { 
-        return { 
-            kratos: \"poop\",
-            atreus: \"canoe\"
-        };
-    }";
-    func.set_code_plaintext(ctx, Some(code))
-        .await
-        .expect("set code");
-    func.set_handler(ctx, Some("complex"))
-        .await
-        .expect("set handler");
-
-    // Assign the func for the object prop.
-    let ragnarok_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext::default_with_prop(*ragnarok_prop.id()),
-    )
-    .await
-    .expect("could not perform find for context")
-    .expect("attribute value not found");
-    let mut ragnarok_attribute_prototype = ragnarok_attribute_value
-        .attribute_prototype(ctx)
-        .await
-        .expect("could not perform get attribute prototype for attribute value")
-        .expect("could not find attribute prototype for attribute value");
-    ragnarok_attribute_prototype
-        .set_func_id(ctx, *func.id())
-        .await
-        .expect("could not set func id");
-
-    // Execute the function and update the values that depend on it.
-    let mut attribute_value_for_prototype = ragnarok_attribute_prototype
-        .attribute_values(ctx)
-        .await
-        .expect("could not perform get attribute values for prototype")
-        .pop()
-        .expect("attribute values empty");
-    attribute_value_for_prototype
-        .update_from_prototype_function(ctx)
-        .await
-        .expect("could not update from prototype function");
-
-    ctx.enqueue_job(DependentValuesUpdate::new(
-        ctx,
-        *attribute_value_for_prototype.id(),
-    ))
-    .await;
-
-    // Now that everything is set up, create the component.
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "god-of-war", schema_variant.id())
-            .await
-            .expect("unable to create component");
-    let base_attribute_read_context = AttributeReadContext {
-        component_id: Some(*component.id()),
-        ..AttributeReadContext::default()
-    };
-
-    // Confirm the component view renders what we expect
-    let component_view = ComponentView::for_context(ctx, base_attribute_read_context)
-        .await
-        .expect("cannot get component view");
-    assert_eq!(
-        serde_json::json![
-            {
-                "si": {
-                    "name": "god-of-war"
-                },
-                "code": {},
-                "domain": {
-                    "ragnarok": {
-                        "kratos": "poop",
-                        "atreus": "canoe"
-                    }
-                }
-            }
-        ],
-        component_view.properties,
-    );
-
-    assert_eq!(
-        Some(serde_json::json!["POOP"]),
-        dump_value(
-            ctx,
-            AttributeReadContext {
-                external_provider_id: Some(*external_provider.id()),
-                ..base_attribute_read_context
-            },
-        )
-        .await,
-        "ensure external provider gets value of kratos internal provider in upper case",
-    );
-
-    // Prop structure gets the expected values...
-    assert_eq!(
-        Some(serde_json::json![{}]),
-        dump_value(
-            ctx,
-            AttributeReadContext {
-                prop_id: Some(*ragnarok_prop.id()),
-                ..base_attribute_read_context
-            },
-        )
-        .await,
-        "ensure ragnarok prop gets expected value of {{}}",
-    );
-
-    assert_eq!(
-        Some(serde_json::json!["poop"]),
-        dump_value(
-            ctx,
-            AttributeReadContext {
-                prop_id: Some(*kratos_prop.id()),
-                ..base_attribute_read_context
-            },
-        )
-        .await,
-        "ensure kratos prop gets expected value",
-    );
-
-    assert_eq!(
-        Some(serde_json::json!["canoe"]),
-        dump_value(
-            ctx,
-            AttributeReadContext {
-                prop_id: Some(*atreus_prop.id()),
-                ..base_attribute_read_context
-            },
-        )
-        .await,
-        "ensure atreus prop gets expected value",
-    );
-
-    assert_eq!(
-        Some(serde_json::json![{
-            "kratos": "poop",
-            "atreus": "canoe",
-        }]),
-        dump_value(
-            ctx,
-            AttributeReadContext {
-                internal_provider_id: Some(*ragnarok_provider.id()),
-                ..base_attribute_read_context
-            },
-        )
-        .await
-    );
-
-    assert_eq!(
-        Some(serde_json::json!["poop"]),
-        dump_value(
-            ctx,
-            AttributeReadContext {
-                internal_provider_id: Some(*kratos_provider.id()),
-                ..base_attribute_read_context
-            },
-        )
-        .await,
-        "ensure internal provider for kratos prop gets expected value"
-    );
-
-    assert_eq!(
-        Some(serde_json::json!["canoe"]),
-        dump_value(
-            ctx,
-            AttributeReadContext {
-                internal_provider_id: Some(*atreus_provider.id()),
-                ..base_attribute_read_context
-            },
-        )
-        .await,
-        "ensure internal provider for atreus prop gets expected value"
-    );
-}
-
-async fn dump_value(
-    ctx: &DalContext,
-    read_context: AttributeReadContext,
-) -> Option<serde_json::Value> {
-    let av = AttributeValue::find_for_context(ctx, read_context)
-        .await
-        .unwrap()
-        .unwrap();
-    av.get_value(ctx)
-        .await
-        .expect("get value for attribute value")
 }

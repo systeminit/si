@@ -10,10 +10,7 @@ use dal::{
 };
 use dal_test::{
     test,
-    test_harness::{
-        create_prop_of_kind_and_set_parent_with_name, create_schema,
-        create_schema_variant_with_root,
-    },
+    test_harness::{create_prop_and_set_parent, create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -29,20 +26,10 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext) {
     // domain: Object
     // └─ object: Object
     //    └─ name: String
-    let object_prop = create_prop_of_kind_and_set_parent_with_name(
-        ctx,
-        PropKind::Object,
-        "object",
-        root_prop.domain_prop_id,
-    )
-    .await;
-    let name_prop = create_prop_of_kind_and_set_parent_with_name(
-        ctx,
-        PropKind::String,
-        "name",
-        *object_prop.id(),
-    )
-    .await;
+    let object_prop =
+        create_prop_and_set_parent(ctx, PropKind::Object, "object", root_prop.domain_prop_id).await;
+    let name_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "name", *object_prop.id()).await;
 
     let func = Func::new(
         ctx,
