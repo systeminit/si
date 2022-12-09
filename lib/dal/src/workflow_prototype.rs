@@ -239,7 +239,7 @@ impl WorkflowPrototype {
         let mut resolver = if let Some(resolver) = resolver {
             resolver
         } else {
-            let (identity_func_binding, _, _) = FuncBinding::find_or_create_and_execute(
+            let (identity_func_binding, _) = FuncBinding::create_and_execute(
                 ctx,
                 serde_json::json!({ "identity": null }),
                 *identity_func.id(),
@@ -270,8 +270,8 @@ impl WorkflowPrototype {
         let args = serde_json::json!({ "identity": serde_json::to_value(tree)? });
 
         // Serialize the tree into the arguments for the identity function.
-        let (func_binding, _, _) =
-            FuncBinding::find_or_create_and_execute(ctx, args, *identity_func.id()).await?;
+        let (func_binding, _) =
+            FuncBinding::create_and_execute(ctx, args, *identity_func.id()).await?;
         resolver
             .set_func_binding_id(ctx, *func_binding.id())
             .await?;

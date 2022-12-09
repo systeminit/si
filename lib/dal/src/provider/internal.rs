@@ -251,8 +251,8 @@ impl InternalProvider {
             .await?
             .pop()
             .ok_or(InternalProviderError::MissingFunc(identity_func_name))?;
-        let (identity_func_binding, identity_func_binding_return_value, _) =
-            FuncBinding::find_or_create_and_execute(
+        let (identity_func_binding, identity_func_binding_return_value) =
+            FuncBinding::create_and_execute(
                 ctx,
                 serde_json::json![{ "identity": null }],
                 *identity_func.id(),
@@ -454,7 +454,7 @@ impl InternalProvider {
             Some(*source_attribute_value.id()),
         )
         .await?;
-        let (func_binding, func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
+        let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
             ctx,
             serde_json::to_value(FuncBackendIdentityArgs {
                 identity: found_attribute_view.value().clone(),

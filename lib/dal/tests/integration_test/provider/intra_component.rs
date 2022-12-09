@@ -1,9 +1,6 @@
 use dal::{
     attribute::context::AttributeContextBuilder,
-    func::{
-        argument::{FuncArgument, FuncArgumentKind},
-        binding::FuncBinding,
-    },
+    func::argument::{FuncArgument, FuncArgumentKind},
     job::definition::DependentValuesUpdate,
     provider::internal::InternalProvider,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
@@ -189,14 +186,6 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         .expect("cannot list identity func args")
         .pop()
         .expect("cannot find identity func identity arg");
-    let (_identity_func_binding, _identity_func_binding_return_value, _) =
-        FuncBinding::find_or_create_and_execute(
-            ctx,
-            serde_json::json![{ "identity": null }],
-            *identity_func.id(),
-        )
-        .await
-        .expect("could not find or create identity func binding");
 
     // Now, update the "destination" field's corresponding prototype to use the identity function
     // and the source internal provider.

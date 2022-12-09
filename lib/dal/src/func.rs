@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model::TypeHint, standard_model_accessor,
-    standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError,
+    standard_model_accessor_ro, DalContext, FuncBinding, HistoryEvent, HistoryEventError,
     QualificationPrototypeError, StandardModel, StandardModelError, Timestamp, Visibility,
     WriteTenancy,
 };
@@ -174,6 +174,23 @@ impl Func {
             description: self.description().map(Into::into),
             link: self.description().map(Into::into),
         }
+    }
+
+    pub async fn for_binding(ctx: &DalContext, func_binding: &FuncBinding) -> FuncResult<Self> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT row_to_json(funcs.*) AS object
+                FROM funcs_v1($1, $2) AS funcs
+                INNER JOIN func_binding_belongs_to_func_v1($1, $2) AS func_binding_belongs_to_func
+                    ON funcs.id = func_binding_belongs_to_func.belongs_to_id
+                WHERE func_binding_belongs_to_func.object_id = $3",
+                &[ctx.read_tenancy(), ctx.visibility(), func_binding.id()],
+            )
+            .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
+        Ok(object)
     }
 
     standard_model_accessor!(name, String, FuncResult);

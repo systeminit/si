@@ -1,7 +1,7 @@
 use dal::{
-    func::binding::FuncBinding, workflow_prototype::WorkflowPrototypeContext, AttributeReadContext,
-    ComponentId, ComponentView, DalContext, Func, Schema, SchemaId, SchemaVariantId, StandardModel,
-    WorkflowPrototype,
+    workflow_prototype::WorkflowPrototypeContext, AttributeReadContext, ComponentId, ComponentView,
+    DalContext, Func, Schema, SchemaId, SchemaVariantId, StandardModel, WorkflowKind,
+    WorkflowPrototype, WorkflowTreeStep,
 };
 use dal_test::{test, test_harness::create_component_for_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -77,19 +77,6 @@ async fn find_for_context(ctx: &DalContext) {
     assert!(found_new_prototype);
 }
 
-async fn fb(ctx: &DalContext, name: &str, args: serde_json::Value) -> serde_json::Value {
-    let func = Func::find_by_attr(ctx, "name", &name)
-        .await
-        .expect("unable to find func")
-        .pop()
-        .unwrap_or_else(|| panic!("function not found: {}", name));
-    let fb = FuncBinding::find_or_create(ctx, args, *func.id(), *func.backend_kind())
-        .await
-        .expect("unable to find_or_create func binding")
-        .0;
-    serde_json::to_value(fb).expect("unable to serialize func binding")
-}
-
 #[test]
 async fn resolve(ctx: &DalContext) {
     let title = "Refresh Docker Image";
@@ -115,7 +102,7 @@ async fn resolve(ctx: &DalContext) {
     let component_view = ComponentView::for_context(ctx, context)
         .await
         .expect("unable to generate component view for docker image component");
-    let tree = prototype
+    let mut tree = prototype
         .resolve(ctx, *component.id())
         .await
         .expect("unable to resolve prototype")
@@ -123,17 +110,20 @@ async fn resolve(ctx: &DalContext) {
         .await
         .expect("unable to extract tree");
 
-    let expected_json = json!({
-        "name": "si:dockerImageRefreshWorkflow",
-        "kind": "conditional",
-        "steps": [
-            { "func_binding": fb(ctx, "si:dockerImageRefreshCommand", json!([ serde_json::to_value(component_view).expect("unable to serialize component view") ])).await },
-        ],
-    });
-    assert_eq!(
-        serde_json::to_value(tree).expect("unable to serialize tree"),
-        expected_json
-    );
+    assert_eq!("si:dockerImageRefreshWorkflow", tree.name);
+    assert_eq!(WorkflowKind::Conditional, tree.kind);
+    assert_eq!(1, tree.steps.len());
+    let step = tree.steps.pop().expect("Cannot get first step");
+    match step {
+        WorkflowTreeStep::Workflow(_) => panic!("Expected workflow step to be of kind Command"),
+        WorkflowTreeStep::Command { func_binding } => {
+            assert_eq!(
+                json!([serde_json::to_value(component_view)
+                    .expect("unable to serialize component view")]),
+                *func_binding.args(),
+            );
+        }
+    }
 }
 
 #[test]

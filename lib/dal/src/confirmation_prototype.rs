@@ -11,9 +11,9 @@ use crate::{
     prototype_context::{HasPrototypeContext, PrototypeContext},
     standard_model, standard_model_accessor, ActionPrototype, ActionPrototypeError, Component,
     ComponentError, ComponentId, ConfirmationResolver, ConfirmationResolverContext,
-    ConfirmationResolverError, DalContext, Func, FuncBinding, FuncBindingError, FuncBindingId,
-    FuncError, HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
-    Timestamp, Visibility, WriteTenancy,
+    ConfirmationResolverError, DalContext, FuncBinding, FuncBindingError, FuncBindingId, FuncError,
+    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
+    Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -216,13 +216,8 @@ impl ConfirmationPrototype {
         };
 
         let json_args = serde_json::to_value(args)?;
-        let func = Func::get_by_id(ctx, &self.func_id)
-            .await?
-            .ok_or(FuncError::NotFound(self.func_id))?;
-        let (func_binding, _) =
-            FuncBinding::find_or_create(ctx, json_args, self.func_id(), *func.backend_kind())
-                .await?;
-        let func_binding_return_value = func_binding.execute(ctx).await?;
+        let (func_binding, func_binding_return_value) =
+            FuncBinding::create_and_execute(ctx, json_args, self.func_id()).await?;
 
         let (success, message, recommended_actions) = if let Some(mut value) =
             func_binding_return_value

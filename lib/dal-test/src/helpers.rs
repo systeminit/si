@@ -213,8 +213,8 @@ pub async fn setup_identity_func(
         .pop()
         .expect("cannot find identity func identity arg");
 
-    let (identity_func_binding, identity_func_binding_return_value, _) =
-        FuncBinding::find_or_create_and_execute(
+    let (identity_func_binding, identity_func_binding_return_value) =
+        FuncBinding::create_and_execute(
             ctx,
             serde_json::json![{ "identity": null }],
             *identity_func.id(),

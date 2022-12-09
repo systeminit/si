@@ -122,8 +122,8 @@ impl MigrationDriver {
             .pop()
             .ok_or_else(|| FuncError::NotFoundByName(func_name.clone()))?;
         let func_id = *func.id();
-        let (func_binding, func_binding_return_value, _) =
-            FuncBinding::find_or_create_and_execute(ctx, func_binding_args, func_id).await?;
+        let (func_binding, func_binding_return_value) =
+            FuncBinding::create_and_execute(ctx, func_binding_args, func_id).await?;
         let func_argument = FuncArgument::find_by_name_for_func(ctx, &func_argument_name, func_id)
             .await?
             .ok_or_else(|| {

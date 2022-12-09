@@ -163,8 +163,8 @@ impl SchemaVariant {
             .await?
             .pop()
             .ok_or(FuncError::NotFoundByName(identity_func_name))?;
-        let (identity_func_binding, identity_func_binding_return_value, _) =
-            FuncBinding::find_or_create_and_execute(
+        let (identity_func_binding, identity_func_binding_return_value) =
+            FuncBinding::create_and_execute(
                 ctx,
                 serde_json::json![{ "identity": null }],
                 *identity_func.id(),

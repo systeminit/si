@@ -1184,7 +1184,7 @@ impl MigrationDriver {
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-        let (func_binding, func_binding_return_value, _) = FuncBinding::find_or_create_and_execute(
+        let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
             ctx,
             serde_json::json!({}),
             *aws_security_group_id_from_resource_func.id(),
