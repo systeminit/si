@@ -244,13 +244,15 @@ async fn find_errors(ctx: &DalContext) {
         .sort_by(|a, b| i64::from(a.attribute_value_id).cmp(&i64::from(b.attribute_value_id)));
 
     let mut got_results = false;
-    for result in &validation_results {
+    for result in &mut validation_results {
         let av = AttributeValue::get_by_id(ctx, &result.attribute_value_id)
             .await
             .unwrap()
             .unwrap();
         if av.context.prop_id() == *prop.id() {
             assert_eq!(2, result.errors.len());
+            // Order of the individual error messages isn't stable, so we'll sort them lexicographically.
+            result.errors.sort_by(|a, b| a.message.cmp(&b.message));
             assert_eq!(
                 "value () does not match expected (amon amarth)",
                 &result.errors[0].message,
