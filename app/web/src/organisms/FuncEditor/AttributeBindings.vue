@@ -146,7 +146,6 @@ const associations = toRef(props, "associations", {
 });
 
 const prototypeView = computed(() => {
-  console.log("prototypeView");
   return associations.value.prototypes.map((proto) => {
     const schemaVariant =
       schemaVariantOptions.value.find(

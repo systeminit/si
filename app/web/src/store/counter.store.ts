@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 import { defineStore } from "pinia";
 import { watch } from "vue";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";

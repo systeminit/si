@@ -79,7 +79,6 @@ const nestingLevel = computed(() =>
 
 const setCollapsed = () => {
   if (props.path) {
-    console.log("collapsing", { triggerPath: props.path.triggerPath });
     emits("toggle-collapsed", props.path.triggerPath);
   }
 };

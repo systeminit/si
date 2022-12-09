@@ -163,7 +163,6 @@ const emits = defineEmits<{
 }>();
 
 const createFunc = (kind: FuncBackendKind) => {
-  console.log(kind);
   emits("createFunc", { kind, isBuiltin: false });
 };
 
