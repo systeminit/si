@@ -510,7 +510,7 @@ const childInputOptions = ref([] as ComponentInternalInstance[]);
 function registerChildInputOption(
   inputOptionComponent: ComponentInternalInstance,
 ) {
-  childInputOptions.value.push(inputOptionComponent);
+  childInputOptions.value.push(inputOptionComponent as any);
 }
 function unregisterChildInputOption(
   inputOptionComponent: ComponentInternalInstance,

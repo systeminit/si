@@ -128,8 +128,8 @@ export function useValidatedInputGroup() {
 
   provide<ValidatedInputGroupRegistrar>(ValidationGroupInjectionKey, {
     register(component, isGroup) {
-      if (isGroup) children.groups.push(component);
-      else children.inputs.push(component);
+      if (isGroup) children.groups.push(component as any);
+      else children.inputs.push(component as any);
     },
     unregister(component, isGroup) {
       // not sure if uid is the best method here, but it works
