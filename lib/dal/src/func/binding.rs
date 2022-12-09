@@ -30,8 +30,8 @@ use crate::func::execution::FuncExecutionPk;
 use crate::DalContext;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Func, FuncBackendError, FuncBackendKind, HistoryEvent, HistoryEventError, ReadTenancyError,
-    StandardModel, StandardModelError, Timestamp, Visibility,
+    Func, FuncBackendError, FuncBackendKind, HistoryEventError, ReadTenancyError, StandardModel,
+    StandardModelError, Timestamp, Visibility,
 };
 
 use super::{
@@ -121,11 +121,13 @@ impl FuncBinding {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM func_binding_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM func_binding_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
                     ctx.write_tenancy(),
+                    ctx.read_tenancy(),
                     ctx.visibility(),
                     &args,
+                    &func_id,
                     &backend_kind.as_ref(),
                     &func.code_sha256(),
                 ],
@@ -136,59 +138,18 @@ impl FuncBinding {
         Ok(object)
     }
 
-    #[instrument(skip_all)]
-    pub async fn find_or_create(
-        ctx: &DalContext,
-        args: serde_json::Value,
-        func_id: FuncId,
-        backend_kind: FuncBackendKind,
-    ) -> FuncBindingResult<(Self, bool)> {
-        let row = ctx
-            .txns()
-            .pg()
-            .query_one(
-                "SELECT object, created FROM func_binding_find_or_create_v1($1, $2, $3, $4, $5, $6)",
-                &[
-                    ctx.read_tenancy(),
-                    ctx.write_tenancy(),
-                    ctx.visibility(),
-                    &args,
-                    &backend_kind.as_ref(),
-                    &func_id,
-                ],
-            )
-            .await?;
-        let created: bool = row.try_get("created")?;
-
-        let json_object: serde_json::Value = row.try_get("object")?;
-        let object: FuncBinding = serde_json::from_value(json_object)?;
-
-        if created {
-            let _history_event = HistoryEvent::new(
-                ctx,
-                FuncBinding::history_event_label(vec!["create"]),
-                FuncBinding::history_event_message("created"),
-                &serde_json::json![{ "visibility": ctx.visibility() }],
-            )
-            .await?;
-        }
-
-        Ok((object, created))
-    }
-
-    pub async fn find_or_create_with_existing_value(
+    pub async fn create_with_existing_value(
         ctx: &DalContext,
         args: serde_json::Value,
         value: Option<serde_json::Value>,
         func_id: FuncId,
-    ) -> FuncBindingResult<(Self, FuncBindingReturnValue, bool)> {
+    ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
         let func = Func::get_by_id(ctx, &func_id)
             .await?
             .ok_or(FuncError::NotFound(func_id))?;
-        let (func_binding, created_func_binding) =
-            Self::find_or_create(ctx, args, func_id, func.backend_kind).await?;
+        let func_binding = Self::new(ctx, args, func_id, func.backend_kind).await?;
 
-        let func_binding_return_value = FuncBindingReturnValue::upsert(
+        let func_binding_return_value = FuncBindingReturnValue::new(
             ctx,
             value.clone(),
             value,
@@ -198,51 +159,27 @@ impl FuncBinding {
         )
         .await?;
 
-        Ok((
-            func_binding,
-            func_binding_return_value,
-            created_func_binding,
-        ))
+        Ok((func_binding, func_binding_return_value))
     }
 
-    /// Runs [`Self::find_or_create()`] and executes if [`Self`] was newly created or
-    /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) could not be found.
+    /// Runs [`Self::new()`] and executes.
     ///
     /// Use this function if you would like to receive the
     /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) for a given
     /// [`FuncId`](crate::Func) and [`args`](serde_json::Value).
-    pub async fn find_or_create_and_execute(
+    pub async fn create_and_execute(
         ctx: &DalContext,
         args: serde_json::Value,
         func_id: FuncId,
-    ) -> FuncBindingResult<(Self, FuncBindingReturnValue, bool)> {
+    ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
         let func = Func::get_by_id(ctx, &func_id)
             .await?
             .ok_or(FuncError::NotFound(func_id))?;
-        let (func_binding, created_func_binding) =
-            Self::find_or_create(ctx, args, func_id, func.backend_kind).await?;
+        let func_binding = Self::new(ctx, args, func_id, func.backend_kind).await?;
 
-        let func_binding_return_value: FuncBindingReturnValue = if created_func_binding {
-            func_binding.execute(ctx).await?
-        } else {
-            // If the func binding was not newly created, let's try to find a func binding
-            // return value first.
-            let maybe_func_binding_return_value =
-                FuncBindingReturnValue::get_by_func_binding_id(ctx, *func_binding.id()).await?;
-            if let Some(func_binding_return_value) = maybe_func_binding_return_value {
-                // If we found one, return it!
-                func_binding_return_value
-            } else {
-                // If we did not find one, let's execute.
-                func_binding.execute(ctx).await?
-            }
-        };
+        let func_binding_return_value: FuncBindingReturnValue = func_binding.execute(ctx).await?;
 
-        Ok((
-            func_binding,
-            func_binding_return_value,
-            created_func_binding,
-        ))
+        Ok((func_binding, func_binding_return_value))
     }
 
     standard_model_accessor!(args, PlainJson<JsonValue>, FuncBindingResult);
@@ -351,7 +288,7 @@ impl FuncBinding {
     ) -> FuncBindingResult<FuncBindingReturnValue> {
         execution.set_output_stream(ctx, output_stream).await?;
 
-        let func_binding_return_value = FuncBindingReturnValue::upsert(
+        let func_binding_return_value = FuncBindingReturnValue::new(
             ctx,
             unprocessed_value,
             processed_value,

@@ -167,7 +167,7 @@ async fn save_attr_func_prototypes(
 
             let maybe_parent_attribute_value = existing_value.parent_attribute_value(ctx).await?;
 
-            let (mut func_binding, fbrv, _) = FuncBinding::find_or_create_with_existing_value(
+            let (mut func_binding, fbrv) = FuncBinding::create_with_existing_value(
                 ctx,
                 serde_json::json!({}),
                 existing_value.get_value(ctx).await?,

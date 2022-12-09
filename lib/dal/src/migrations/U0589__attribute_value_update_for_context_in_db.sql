@@ -711,13 +711,14 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION func_binding_find_or_create_and_execute_v1(this_write_tenancy                   jsonb,
-                                                                      this_read_tenancy                    jsonb,
-                                                                      this_visibility                      jsonb,
-                                                                      this_func_args                       jsonb,
-                                                                      this_func_id                         bigint,
-                                                                      OUT new_func_binding_id              bigint,
-                                                                      OUT new_func_binding_return_value_id bigint
+CREATE OR REPLACE FUNCTION func_binding_create_and_execute_v1(
+    this_write_tenancy                   jsonb,
+    this_read_tenancy                    jsonb,
+    this_visibility                      jsonb,
+    this_func_args                       jsonb,
+    this_func_id                         bigint,
+    OUT new_func_binding_id              bigint,
+    OUT new_func_binding_return_value_id bigint
 )
 AS
 $$
@@ -727,51 +728,36 @@ DECLARE
     func_binding_json         jsonb;
     func_binding_created      bool;
     func_binding_return_value func_binding_return_values%ROWTYPE;
+    code_sha                  text;
 BEGIN
-    RAISE DEBUG 'func_binding_find_or_create_and_execute_v1: Args(%), FuncId(%)', this_func_args, this_func_id;
-    SELECT DISTINCT ON (id) backend_kind
-    INTO STRICT func_backend_kind
-    FROM funcs
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, funcs)
-          AND id = this_func_id
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    RAISE DEBUG 'func_binding_create_and_execute_v1: Args(%), FuncId(%)', this_func_args, this_func_id;
+    SELECT backend_kind, code_sha256
+    INTO STRICT func_backend_kind, code_sha
+    FROM funcs_v1(this_read_tenancy, this_visibility)
+    WHERE id = this_func_id;
 
-    SELECT object, created
-    INTO STRICT func_binding_json, func_binding_created
-    FROM func_binding_find_or_create_v1(this_read_tenancy,
-                                        this_write_tenancy,
-                                        this_visibility,
-                                        this_func_args::json,
-                                        func_backend_kind,
-                                        this_func_id);
+    SELECT object
+    INTO STRICT func_binding_json
+    FROM func_binding_create_v1(
+        this_write_tenancy,
+        this_read_tenancy,
+        this_visibility,
+        this_func_args::json,
+        this_func_id,
+        func_backend_kind,
+        code_sha
+    );
     func_binding := jsonb_populate_record(null::func_bindings, func_binding_json);
     new_func_binding_id := func_binding.id;
 
-    IF func_binding_created THEN
-        SELECT func_binding_return_value_id
-        INTO STRICT new_func_binding_return_value_id
-        FROM func_binding_execute_v1(this_write_tenancy,
-                                     this_read_tenancy,
-                                     this_visibility,
-                                     func_binding.id);
-    ELSE
-        func_binding_return_value := jsonb_populate_record(NULL::func_binding_return_values,
-                                                           func_binding_return_value_get_by_func_binding_id_v1(this_read_tenancy,
-                                                                                                               this_visibility,
-                                                                                                               func_binding.id));
-        IF func_binding_return_value.id IS NULL THEN
-            SELECT func_binding_return_value_id
-            INTO new_func_binding_return_value_id
-            FROM func_binding_execute_v1(this_write_tenancy,
-                                         this_read_tenancy,
-                                         this_visibility,
-                                         func_binding.id);
-        ELSE
-            new_func_binding_return_value_id := func_binding_return_value.id;
-        END IF;
-    END IF;
+    SELECT func_binding_return_value_id
+    INTO STRICT new_func_binding_return_value_id
+    FROM func_binding_execute_v1(
+        this_write_tenancy,
+        this_read_tenancy,
+        this_visibility,
+        new_func_binding_id
+    );
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -1126,11 +1112,13 @@ BEGIN
 
     SELECT new_func_binding_id, new_func_binding_return_value_id
     INTO func_binding_id, func_binding_return_value_id
-    FROM func_binding_find_or_create_and_execute_v1(this_write_tenancy,
-                                                    this_read_tenancy,
-                                                    this_visibility,
-                                                    func_args,
-                                                    func.id);
+    FROM func_binding_create_and_execute_v1(
+        this_write_tenancy,
+        this_read_tenancy,
+        this_visibility,
+        func_args,
+        func.id
+    );
 
     PERFORM update_by_id_v1('attribute_values',
                             'func_binding_id',
@@ -1415,11 +1403,13 @@ BEGIN
         END IF;
         SELECT new_func_binding_id, new_func_binding_return_value_id
         INTO unset_func_binding_id, unset_func_binding_return_value_id
-        FROM func_binding_find_or_create_and_execute_v1(this_write_tenancy,
-                                                        this_read_tenancy,
-                                                        this_visibility,
-                                                        'null'::jsonb,
-                                                        unset_func_id);
+        FROM func_binding_create_and_execute_v1(
+            this_write_tenancy,
+            this_read_tenancy,
+            this_visibility,
+            'null'::jsonb,
+            unset_func_id
+        );
 
         FOR object_field_prop_id, object_field_prop_name IN
             SELECT DISTINCT ON (id) id, name
@@ -1689,11 +1679,12 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION func_binding_execute_v1(this_write_tenancy               jsonb,
-                                                   this_read_tenancy                jsonb,
-                                                   this_visibility                  jsonb,
-                                                   this_func_binding_id             bigint,
-                                                   OUT func_binding_return_value_id bigint
+CREATE OR REPLACE FUNCTION func_binding_execute_v1(
+    this_write_tenancy               jsonb,
+    this_read_tenancy                jsonb,
+    this_visibility                  jsonb,
+    this_func_binding_id             bigint,
+    OUT func_binding_return_value_id bigint
 )
 AS
 $$
@@ -1710,43 +1701,35 @@ BEGIN
     universal_write_tenancy := jsonb_set(this_write_tenancy, '{tenancy_universal}', to_jsonb(TRUE));
 
     -- binding.prepare_execution
-    SELECT DISTINCT ON (id) *
+    SELECT *
     INTO STRICT func_binding
-    FROM func_bindings
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, func_bindings)
-          AND id = this_func_binding_id
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    FROM func_bindings_v1(this_read_tenancy, this_visibility)
+    WHERE id = this_func_binding_id;
+    RAISE WARNING 'func_binding_execute_v1: Found FuncBinding(%)', func_binding;
 
-    SELECT DISTINCT ON (funcs.id) funcs.*
+    SELECT funcs.*
     INTO STRICT func
-    FROM funcs
-    INNER JOIN (
-        SELECT DISTINCT ON (object_id) belongs_to_id AS func_id
-        FROM func_binding_belongs_to_func
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, func_binding_belongs_to_func)
-              AND object_id = func_binding.id
-        ORDER BY object_id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS fb ON fb.func_id = funcs.id
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, funcs)
-    ORDER BY funcs.id,
-             funcs.visibility_change_set_pk DESC,
-             funcs.visibility_deleted_at DESC NULLS FIRST;
+    FROM funcs_v1(this_read_tenancy, this_visibility) AS funcs
+    INNER JOIN func_binding_belongs_to_func_v1(this_read_tenancy, this_visibility)
+        AS func_binding_belongs_to_func
+        ON funcs.id = func_binding_belongs_to_func.belongs_to_id
+            AND func_binding_belongs_to_func.object_id = func_binding.id;
+    RAISE WARNING 'func_binding_execute_v1: Found Func(%)', func;
 
     SELECT fe.object ->> 'pk'
     INTO STRICT func_execution_pk
-    FROM func_execution_create_v1(universal_write_tenancy,
-                                  'Start'::text,
-                                  func.id,
-                                  func_binding.id,
-                                  func_binding.args::jsonb,
-                                  func_binding.backend_kind,
-                                  func.backend_response_type,
-                                  func.handler,
-                                  func.code_base64) AS fe;
+    FROM func_execution_create_v1(
+        universal_write_tenancy,
+        'Start'::text,
+        func.id,
+        func_binding.id,
+        func_binding.args::jsonb,
+        func_binding.backend_kind,
+        func.backend_response_type,
+        func.handler,
+        func.code_base64
+    ) AS fe;
+    RAISE WARNING 'func_binding_execute_v1: Found FuncExecution(%)', func_execution_pk;
     PERFORM func_execution_set_state_v1(func_execution_pk, 'Run');
 
     -- FuncDispatchContext::new(read_context)
@@ -1778,79 +1761,28 @@ BEGIN
     END CASE;
 
     -- binding.postprocess_execution
-    fbrv_id := func_binding_return_value_upsert_v1(this_write_tenancy,
-                                                   this_read_tenancy,
-                                                   this_visibility,
-                                                   result_value,
-                                                   result_value_processed,
-                                                   func.id,
-                                                   func_binding.id,
-                                                   func_execution_pk);
+    fbrv_id := func_binding_return_value_create_v1(
+        this_write_tenancy,
+        this_visibility,
+        result_value,
+        result_value_processed,
+        func.id,
+        func_binding.id,
+        func_execution_pk
+    ) ->> 'id';
+    RAISE WARNING 'func_binding_execute_v1: Created FuncBindingReturnValue(%)', fbrv_id;
     -- execution.process_return_value
-    PERFORM func_execution_set_return_value_v1(func_execution_pk,
-                                               fbrv_id,
-                                               result_value_processed,
-                                               result_value);
+    PERFORM func_execution_set_return_value_v1(
+        func_execution_pk,
+        fbrv_id,
+        result_value_processed,
+        result_value
+    );
+    RAISE WARNING 'func_binding_execute_v1: Set FBRV on execution';
     PERFORM func_execution_set_state_v1(func_execution_pk, 'Success');
 
+    RAISE WARNING 'func_binding_execute_v1: DONE';
     func_binding_return_value_id := fbrv_id;
-END;
-$$ LANGUAGE PLPGSQL;
-
-CREATE OR REPLACE FUNCTION func_binding_return_value_upsert_v1(this_write_tenancy               jsonb,
-                                                               this_read_tenancy                jsonb,
-                                                               this_visibility                  jsonb,
-                                                               this_unprocessed_value           jsonb,
-                                                               this_value                       jsonb,
-                                                               this_func_id                     bigint,
-                                                               this_func_binding_id             bigint,
-                                                               this_func_execution_pk           bigint,
-                                                               OUT func_binding_return_value_id bigint
-)
-AS
-$$
-DECLARE
-    fbrv func_binding_return_values%ROWTYPE;
-BEGIN
-    fbrv := jsonb_populate_record(NULL::func_binding_return_values,
-                                  func_binding_return_value_get_by_func_binding_id_v1(this_read_tenancy,
-                                                                                      this_visibility,
-                                                                                      this_func_binding_id));
-
-    IF fbrv.id IS NOT NULL THEN
-        PERFORM update_by_id_v1('func_binding_return_values',
-                                'value',
-                                this_read_tenancy,
-                                this_write_tenancy,
-                                this_visibility,
-                                fbrv.id,
-                                this_value);
-        PERFORM update_by_id_v1('func_binding_return_values',
-                                'unprocessed_value',
-                                this_read_tenancy,
-                                this_write_tenancy,
-                                this_visibility,
-                                fbrv.id,
-                                this_unprocessed_value);
-        PERFORM update_by_id_v1('func_binding_return_values',
-                                'func_execution_pk',
-                                this_read_tenancy,
-                                this_write_tenancy,
-                                this_visibility,
-                                fbrv.id,
-                                this_func_execution_pk);
-    ELSE
-        fbrv := json_populate_record(null::func_binding_return_values,
-                                     func_binding_return_value_create_v1(this_write_tenancy,
-                                                                         this_visibility,
-                                                                         this_unprocessed_value,
-                                                                         this_value,
-									 this_func_id,
-									 this_func_binding_id,
-                                                                         this_func_execution_pk));
-    END IF;
-
-    func_binding_return_value_id := fbrv.id;
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -2370,11 +2302,13 @@ BEGIN
     END IF;
     SELECT new_func_binding_id, new_func_binding_return_value_id
     INTO unset_func_binding_id, unset_func_binding_return_value_id
-    FROM func_binding_find_or_create_and_execute_v1(this_write_tenancy,
-                                                    this_read_tenancy,
-                                                    this_visibility,
-                                                    'null'::jsonb,
-                                                    unset_func_id);
+    FROM func_binding_create_and_execute_v1(
+        this_write_tenancy,
+        this_read_tenancy,
+        this_visibility,
+        'null'::jsonb,
+        unset_func_id
+    );
 
     attribute_value := jsonb_populate_record(NULL::attribute_values, attribute_value_new_v1(this_write_tenancy,
                                                                                             this_read_tenancy,

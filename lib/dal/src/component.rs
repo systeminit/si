@@ -445,8 +445,8 @@ impl Component {
         };
 
         // Now, we can load in the mutated args!
-        let (func_binding, _, _) =
-            FuncBinding::find_or_create_and_execute(ctx, mutated_args, *func.id()).await?;
+        let (func_binding, _) =
+            FuncBinding::create_and_execute(ctx, mutated_args, *func.id()).await?;
 
         let attribute_value_id = *attribute_value.id();
 
@@ -534,14 +534,9 @@ impl Component {
         };
 
         let json_args = serde_json::to_value(args)?;
-        let (func_binding, _func_binding_return_value, _created) =
-            FuncBinding::find_or_create_with_existing_value(
-                ctx,
-                json_args,
-                None,
-                prototype.func_id(),
-            )
-            .await?;
+        let (func_binding, _func_binding_return_value) =
+            FuncBinding::create_with_existing_value(ctx, json_args, None, prototype.func_id())
+                .await?;
         let mut existing_resolvers =
             QualificationResolver::find_for_prototype_and_component(ctx, prototype.id(), self.id())
                 .await?;
@@ -604,14 +599,9 @@ impl Component {
             };
 
             let json_args = serde_json::to_value(args)?;
-            let (func_binding, _func_binding_return_value, _created) =
-                FuncBinding::find_or_create_with_existing_value(
-                    ctx,
-                    json_args,
-                    None,
-                    prototype.func_id(),
-                )
-                .await?;
+            let (func_binding, _func_binding_return_value) =
+                FuncBinding::create_with_existing_value(ctx, json_args, None, prototype.func_id())
+                    .await?;
 
             let mut existing_resolvers = QualificationResolver::find_for_prototype_and_component(
                 ctx,
@@ -665,16 +655,11 @@ impl Component {
         };
 
         let json_args = serde_json::to_value(args)?;
-        let (func_binding, _created) =
-            FuncBinding::find_or_create(ctx, json_args, prototype.func_id(), *func.backend_kind())
-                .await?;
-
-        // We always re-execute the qualification checks as they are not idempotent
-
         // Note for future humans - if this isn't a built in, then we need to
         // think about execution time. Probably higher up than this? But just
         // an FYI.
-        func_binding.execute(ctx).await?;
+        let (func_binding, _func_binding_return_value) =
+            FuncBinding::create_and_execute(ctx, json_args, prototype.func_id()).await?;
 
         let mut existing_resolvers =
             QualificationResolver::find_for_prototype_and_component(ctx, prototype.id(), self.id())
@@ -734,20 +719,11 @@ impl Component {
             };
 
             let json_args = serde_json::to_value(args)?;
-            let (func_binding, _created) = FuncBinding::find_or_create(
-                ctx,
-                json_args,
-                prototype.func_id(),
-                *func.backend_kind(),
-            )
-            .await?;
-
-            // We always re-execute the qualification checks as they are not idempotent
-
             // Note for future humans - if this isn't a built in, then we need to
             // think about execution time. Probably higher up than this? But just
             // an FYI.
-            func_binding.execute(ctx).await?;
+            let (func_binding, _func_binding_return_value) =
+                FuncBinding::create_and_execute(ctx, json_args, prototype.func_id()).await?;
 
             let mut existing_resolvers = QualificationResolver::find_for_prototype_and_component(
                 ctx,

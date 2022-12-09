@@ -1096,13 +1096,12 @@ impl AttributeValue {
         }
 
         let execution_start = std::time::Instant::now();
-        let (func_binding, mut func_binding_return_value, _) =
-            FuncBinding::find_or_create_and_execute(
-                ctx,
-                serde_json::to_value(func_binding_args)?,
-                attribute_prototype.func_id(),
-            )
-            .await?;
+        let (func_binding, mut func_binding_return_value) = FuncBinding::create_and_execute(
+            ctx,
+            serde_json::to_value(func_binding_args)?,
+            attribute_prototype.func_id(),
+        )
+        .await?;
 
         info!(
             "update_from_prototype_function({:?}): Func {:?} execution took {:?}",

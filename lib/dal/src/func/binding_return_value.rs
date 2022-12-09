@@ -142,40 +142,6 @@ impl FuncBindingReturnValue {
         Ok(None)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
-    pub async fn upsert(
-        ctx: &DalContext,
-        unprocessed_value: Option<serde_json::Value>,
-        value: Option<serde_json::Value>,
-        func_id: FuncId,
-        func_binding_id: FuncBindingId,
-        func_execution_pk: FuncExecutionPk,
-    ) -> FuncBindingReturnValueResult<Self> {
-        let row = ctx
-            .txns()
-            .pg()
-            .query_one(
-                "SELECT fbrv.id
-                 FROM func_binding_return_value_upsert_v1($1, $2, $3, $4, $5, $6, $7, $8) as fbrv(id)",
-                &[
-                    ctx.write_tenancy(),
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &unprocessed_value,
-                    &value,
-                    &func_id,
-                    &func_binding_id,
-                    &func_execution_pk,
-                ],
-            )
-            .await?;
-        let id: FuncBindingReturnValueId = row.try_get("id")?;
-        Self::get_by_id(ctx, &id)
-            .await?
-            .ok_or(FuncBindingReturnValueError::NotFound(id))
-    }
-
     standard_model_accessor!(
         func_execution_pk,
         Pk(FuncExecutionPk),

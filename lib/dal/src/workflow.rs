@@ -117,7 +117,7 @@ impl WorkflowView {
         args: FuncBackendJsWorkflowArgs,
     ) -> WorkflowResult<Self> {
         assert_eq!(func.backend_kind(), &FuncBackendKind::JsWorkflow);
-        let (func_binding, _) = FuncBinding::find_or_create(
+        let func_binding = FuncBinding::new(
             ctx,
             serde_json::to_value(&args)?,
             *func.id(),
@@ -182,7 +182,7 @@ impl WorkflowView {
                         .pop()
                         .ok_or(WorkflowError::MissingCommand(command))?;
                     assert_eq!(func.backend_kind(), &FuncBackendKind::JsCommand);
-                    let (func_binding, _) = FuncBinding::find_or_create(
+                    let func_binding = FuncBinding::new(
                         ctx,
                         serde_json::to_value(args)?,
                         *func.id(),
@@ -211,9 +211,9 @@ pub enum WorkflowTreeStep {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct WorkflowTree {
-    name: String,
-    kind: WorkflowKind,
-    steps: Vec<WorkflowTreeStep>,
+    pub name: String,
+    pub kind: WorkflowKind,
+    pub steps: Vec<WorkflowTreeStep>,
 }
 
 #[derive(Debug, Clone)]
