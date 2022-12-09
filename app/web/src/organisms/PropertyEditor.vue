@@ -88,7 +88,6 @@ const toggleCollapsed = (path: string[]) => {
     }
   }
   collapsed.value.push(path);
-  console.log("new collapsed", { collapsed: JSON.stringify(collapsed.value) });
 };
 
 const findParentProp = (propId: number) => {

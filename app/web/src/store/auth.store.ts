@@ -49,7 +49,6 @@ export const useAuthStore = defineStore("auth", {
         url: "/session/login",
         params: payload,
         onSuccess: (response) => {
-          console.log("login success!", response);
           // finish login is split out because we'll likely add other login methods or trigger login after signup
           // (ex: oauth, magic link)
           this.finishUserLogin(response);
@@ -65,6 +64,7 @@ export const useAuthStore = defineStore("auth", {
           this.billingAccount = response.billingAccount;
         },
         onFail(e) {
+          /* eslint-disable-next-line no-console */
           console.log("RESTORE AUTH FAILED!", e);
           // trigger logout?
         },

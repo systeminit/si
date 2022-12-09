@@ -10,11 +10,11 @@
 
     <span
       class="flex flex-col w-full h-full break-words"
-      :title="props.message.join('\n')"
+      :title="message.join('\n')"
     >
       <strong
-        v-for="(message, index) in props.message"
-        :key="message"
+        v-for="(singleMessage, index) in message"
+        :key="singleMessage"
         class="mt-1 ml-1"
       >
         {{ message }}
@@ -26,9 +26,7 @@
           View Details
         </button>
       </strong>
-      <strong v-if="props.message.length === 0"
-        >Health {{ props.health }}</strong
-      >
+      <strong v-if="message.length === 0">Health {{ health }}</strong>
     </span>
 
     <Modal size="2xl" :open="modalOpen" @close="closeModal">
@@ -44,14 +42,14 @@
 
           <span class="flex flex-col">
             <p
-              v-for="message in props.message"
-              :key="message"
+              v-for="singleMessage in message"
+              :key="singleMessage"
               class="mt-1 ml-1"
             >
               {{ message }}
             </p>
           </span>
-          <p v-if="props.message.length === 0">Health {{ props.health }}</p>
+          <p v-if="message.length === 0">Health {{ health }}</p>
         </span>
       </template>
       <template #content>

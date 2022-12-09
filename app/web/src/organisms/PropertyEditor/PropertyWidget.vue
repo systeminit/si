@@ -212,10 +212,6 @@ const showArrayElementHeader = computed(() => {
   if (_.isUndefined(arrayIndex?.value) && _.isNull(props.propValue.key)) {
     return false;
   } else {
-    console.log("showing array element header", {
-      ai: JSON.stringify(arrayIndex?.value),
-      key: JSON.stringify(props.propValue.key),
-    });
     return true;
   }
   // if (props.schemaProp.kind === "array") {

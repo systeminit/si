@@ -271,6 +271,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         // but there are cases where its useful to be able to get it from the return value
         // like redirecting to a newly created ID, so we return the api response
       } catch (err: any) {
+        /* eslint-disable-next-line no-console */
         console.log(err);
         // TODO: trigger global error hook that can be added on plugin init (or split by api)
 
@@ -323,7 +324,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
             request.requestSpec,
           );
           if (!triggerResult) {
-            console.log(`no trigger result for ${actionName}`);
+            throw new Error(`No trigger result for ${actionName}`);
           }
 
           // attach the result back to the api request object so caller can use it if necessary

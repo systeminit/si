@@ -66,7 +66,7 @@ export const piniaHooksPlugin: PiniaPlugin = ({
     // console.log(store.$id, "+");
     // store._trackedStoreUsersCount++;
     if (store._trackedStoreUsersCount === 1 && storeOptions.onActivated) {
-      console.log(`${store.$id} - ACTIVATE`);
+      // console.log(`${store.$id} - ACTIVATE`);
       // activation fn can return a deactivate / cleanup fn
       store.onDeactivated = storeOptions.onActivated.call(store);
 
@@ -97,7 +97,7 @@ export const piniaHooksPlugin: PiniaPlugin = ({
         store.onDeactivated &&
         _.isFunction(store.onDeactivated)
       ) {
-        console.log(`${store.$id} - DEACTIVATE`);
+        // console.log(`${store.$id} - DEACTIVATE`);
         store.onDeactivated.call(store);
       }
     });

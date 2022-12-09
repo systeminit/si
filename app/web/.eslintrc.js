@@ -26,6 +26,8 @@ module.exports = {
     },
   },
   rules: {
+    "prettier/prettier": process.env.STRICT_LINT ? "error" : "warn",
+
     // some customizations of vue rules ------------------
     // standard order of sections in vue SFCs
     "vue/component-tags-order": [
@@ -120,27 +122,24 @@ module.exports = {
     "@typescript-eslint/naming-convention": 0,
     "@typescript-eslint/no-shadow": 0,
     "guard-for-in": 0,
-    "no-console": 0,
 
     // some rules to downgrade to warning while developing --------------------
     // useful so things dont crash when code is temporarily commented out
+    "no-console": process.env.STRICT_LINT ? "error" : "warn",
     "@typescript-eslint/no-empty-function": process.env.STRICT_LINT
       ? "error"
       : "warn",
     "no-debugger": process.env.STRICT_LINT ? "error" : "warn",
     "no-alert": process.env.STRICT_LINT ? "error" : "warn",
     "no-empty": process.env.STRICT_LINT ? "error" : "warn",
-    // "no-console": process.env.STRICT_LINT ? "error" : "warn",
 
-    // rules that we want to warn, but disable agressive auto-fixing
+    // rules that we want to warn, but disable agressive auto-fixing -----------
     "prefer-const": 0,
     "no-unreachable": 0, // handy when you return early or throw an error while debugging
     // unreachable code will be removed by default, so we disable autofix, but leave a warning
     "no-autofix/no-unreachable": 1,
     // useful while debugging and commenting things out, otherwise gets automatically changed from let to const
     "no-autofix/prefer-const": process.env.STRICT_LINT ? "error" : "warn",
-
-    "prettier/prettier": process.env.STRICT_LINT ? "error" : "warn",
   },
 
   overrides: [

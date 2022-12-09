@@ -161,6 +161,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
     eventData: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     eventMetadata: RealtimeEventMetadata,
   ) {
+    /* eslint-disable-next-line no-console */
     console.log("WS message", eventKind, eventData);
 
     _.each(subscriptions, (sub) => {
@@ -182,6 +183,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
     );
   });
   socket.addEventListener("error", (errorEvent) => {
+    /* eslint-disable-next-line no-console */
     console.log("ws error", errorEvent.error, errorEvent.message);
   });
 

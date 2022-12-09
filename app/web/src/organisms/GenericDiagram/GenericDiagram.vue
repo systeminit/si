@@ -574,6 +574,7 @@ function checkIfDragStarted(_e: MouseEvent) {
     beginDrawEdge(lastMouseDownElement.value);
   } else if (lastMouseDownElement.value instanceof DiagramEdgeData) {
     // not sure what dragging an edge means... maybe nothing?
+    /* eslint-disable-next-line no-console */
     console.log("dragging edge ?");
   } else if (
     lastMouseDownElement.value instanceof DiagramNodeData ||
@@ -957,7 +958,7 @@ function onDragElementsMove() {
     else delta.x = 0;
   }
 
-  _.each(currentSelectionMovableElements.value, (el, i) => {
+  _.each(currentSelectionMovableElements.value, (el) => {
     if (!draggedElementsPositionsPreDrag.value?.[el.uniqueKey]) return;
     const newPosition = vectorAdd(
       draggedElementsPositionsPreDrag.value?.[el.uniqueKey],

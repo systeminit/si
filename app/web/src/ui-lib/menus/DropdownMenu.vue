@@ -102,7 +102,6 @@ function refreshSortedItemIds() {
     if (domNode1.$el) domNode1 = domNode1.$el;
     if (domNode2.$el) domNode2 = domNode2.$el;
     if (!domNode1 || !domNode2) return 0;
-    console.log(domNode1, domNode2);
     const position = domNode1.compareDocumentPosition(domNode2);
     /* eslint-disable no-bitwise */
     if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
@@ -204,7 +203,6 @@ const posX = ref(0);
 const posY = ref(0);
 
 function readjustMenuPosition() {
-  // console.log("readjustMenuPosition");
   if (!internalRef.value) return;
 
   isRepositioning.value = false;
