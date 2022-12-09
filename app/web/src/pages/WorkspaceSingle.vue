@@ -3,15 +3,18 @@
     <Navbar />
 
     <template v-if="workspacesReqStatus.isPending">
-      <div class="flex-grow p-lg">Loading your workspace(s)...</div>
+      <div class="flex-grow p-lg flex flex-col items-center gap-4">
+        <Icon name="loader" size="2xl" />
+        <h2>Loading your workspace(s)...</h2>
+      </div>
     </template>
     <template v-else-if="workspacesReqStatus.isError">
-      <div class="flex-grow p-lg">
+      <div class="flex-grow p-lg flex flex-col items-center">
         <ErrorMessage>Error loading your workspaces</ErrorMessage>
       </div>
     </template>
     <template v-else-if="!selectedWorkspace">
-      <div class="flex-grow p-lg">
+      <div class="flex-grow p-lg flex flex-col items-center">
         <ErrorMessage>Cannot find workspace {{ workspaceId }}</ErrorMessage>
       </div>
     </template>
@@ -24,10 +27,13 @@
         <StatusBar :key="selectedChangeSet?.id" class="flex-none" />
       </template>
       <template v-else-if="changeSetsReqStatus.isPending">
-        <div class="flex-grow p-lg">Loading change sets...</div>
+        <div class="flex-grow p-lg flex flex-col items-center gap-4">
+          <Icon name="loader" size="2xl" />
+          <h2>Loading change sets...</h2>
+        </div>
       </template>
       <template v-else-if="changeSetsReqStatus.isError">
-        <div class="flex-grow p-lg">
+        <div class="flex-grow p-lg flex flex-col items-center">
           <ErrorMessage>Error loading change sets</ErrorMessage>
         </div>
       </template>
@@ -52,6 +58,7 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import AppLayout from "@/layout/AppLayout.vue";
 import Navbar from "@/layout/navbar/Navbar.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps({
   workspaceId: { type: Number, required: true },

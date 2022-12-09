@@ -1,17 +1,23 @@
 <template>
   <AppLayout>
     <div class="text-white">
-      <template v-if="workspacesReqStatus.isPending">
-        <Icon name="loader" size="xl" />
-        <h2>Loading your workspaces...</h2>
-      </template>
+      <div
+        v-if="workspacesReqStatus.isPending"
+        class="w-full flex flex-col items-center gap-4 p-xl"
+      >
+        <Icon name="loader" size="2xl" />
+        <h2>Loading your workspace(s)...</h2>
+      </div>
       <ErrorMessage
         v-else-if="workspacesReqStatus.isError"
         :request-status="workspacesReqStatus"
       />
-      <template v-else-if="workspacesReqStatus.isSuccess">
-        Your workspaces...
-      </template>
+      <div
+        v-else-if="workspacesReqStatus.isSuccess"
+        class="w-full flex flex-col items-center gap-4 p-xl"
+      >
+        Finished loading!
+      </div>
     </div>
   </AppLayout>
 </template>
