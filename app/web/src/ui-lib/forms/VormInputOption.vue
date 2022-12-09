@@ -2,48 +2,46 @@
 meant to be used within it specifically it's only for VormInputs with type =
 dropdown | radio | multi-checkbox */
 <template>
-  <template v-if="parentInputType === 'dropdown'">
-    <option
-      class="vorm-input-option"
+  <option
+    v-if="parentInputType === 'dropdown'"
+    class="vorm-input-option"
+    :value="safeOptionValue"
+    :selected="dropdownOptionSelected"
+    :disabled="disabledBySelfOrParent"
+  >
+    <slot>{{ value }}</slot>
+  </option>
+  <label v-else-if="parentInputType === 'radio'" class="vorm-input-option">
+    <input
+      class="vorm-input-option__input"
+      type="radio"
       :value="safeOptionValue"
-      :selected="dropdownOptionSelected"
+      :name="radioName"
       :disabled="disabledBySelfOrParent"
-    >
-      <slot>{{ value }}</slot>
-    </option>
-  </template>
-  <template v-else-if="parentInputType === 'radio'">
-    <label class="vorm-input-option">
-      <input
-        class="vorm-input-option__input"
-        type="radio"
-        :value="safeOptionValue"
-        :name="radioName"
-        :disabled="disabledBySelfOrParent"
-        :checked="value === parentValue"
-        @focus="onFocus"
-        @blur="onBlur"
-        @change="onChange"
-      />
-      <slot>{{ value }}</slot>
-    </label>
-  </template>
+      :checked="value === parentValue"
+      @focus="onFocus"
+      @blur="onBlur"
+      @change="onChange"
+    />
+    <slot>{{ value }}</slot>
+  </label>
 
-  <template v-else-if="parentInputType === 'multi-checkbox'">
-    <label class="vorm-input-option">
-      <input
-        class="vorm-input-option__input"
-        type="checkbox"
-        :value="safeOptionValue"
-        :disabled="disabledBySelfOrParent"
-        :checked="parentValue?.indexOf(value) > -1"
-        @focus="onFocus"
-        @blur="onBlur"
-        @change="onMultiCheckboxChange"
-      />
-      <slot>{{ value }}</slot>
-    </label>
-  </template>
+  <label
+    v-else-if="parentInputType === 'multi-checkbox'"
+    class="vorm-input-option"
+  >
+    <input
+      class="vorm-input-option__input"
+      type="checkbox"
+      :value="safeOptionValue"
+      :disabled="disabledBySelfOrParent"
+      :checked="parentValue?.indexOf(value) > -1"
+      @focus="onFocus"
+      @blur="onBlur"
+      @change="onMultiCheckboxChange"
+    />
+    <slot>{{ value }}</slot>
+  </label>
 </template>
 
 <script lang="ts" setup>

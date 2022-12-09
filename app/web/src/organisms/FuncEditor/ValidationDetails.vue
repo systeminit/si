@@ -1,51 +1,53 @@
 <template>
-  <div class="p-3 flex flex-col gap-2">
-    <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-      Run this validation on the selected schema variant attributes below.
-    </h1>
+  <div>
+    <div class="p-3 flex flex-col gap-2">
+      <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
+        Run this validation on the selected schema variant attributes below.
+      </h1>
 
-    <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Run on Schema Variant and Attribute:
-    </h2>
-    <SelectMenu
-      v-model="selectedVariant"
-      class="flex-auto"
-      :options="schemaVariantOptions ?? []"
-    />
-    <SelectMenu
-      v-model="selectedProp"
-      class="flex-auto"
-      :options="propOptions"
-    />
-    <VButton
-      label="Add"
-      button-rank="primary"
-      icon="plus"
-      :disabled="disabled"
-      @click="addValidation"
-    />
-  </div>
-  <h2 class="p-3 pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-    Currently Validating:
-  </h2>
-  <ul class="flex flex-col p-3 gap-1 list-disc list-inside">
-    <li
-      v-for="protoView in prototypeViews"
-      :key="protoView.key"
-      class="flex flex-row gap-1 items-center text-sm pb-2 pl-4"
-    >
-      <div class="pr-2" role="decoration">•</div>
-      {{ protoView.schemaVariantName }}: {{ protoView.propName }}
-      <VButton
-        class="flex-none"
-        label=""
-        icon="trash"
-        button-rank="tertiary"
-        :disabled="disabled"
-        @click="deleteValidation(protoView.proto)"
+      <h2 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        Run on Schema Variant and Attribute:
+      </h2>
+      <SelectMenu
+        v-model="selectedVariant"
+        class="flex-auto"
+        :options="schemaVariantOptions ?? []"
       />
-    </li>
-  </ul>
+      <SelectMenu
+        v-model="selectedProp"
+        class="flex-auto"
+        :options="propOptions"
+      />
+      <VButton
+        label="Add"
+        button-rank="primary"
+        icon="plus"
+        :disabled="disabled"
+        @click="addValidation"
+      />
+    </div>
+    <h2 class="p-3 pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+      Currently Validating:
+    </h2>
+    <ul class="flex flex-col p-3 gap-1 list-disc list-inside">
+      <li
+        v-for="protoView in prototypeViews"
+        :key="protoView.key"
+        class="flex flex-row gap-1 items-center text-sm pb-2 pl-4"
+      >
+        <div class="pr-2" role="decoration">•</div>
+        {{ protoView.schemaVariantName }}: {{ protoView.propName }}
+        <VButton
+          class="flex-none"
+          label=""
+          icon="trash"
+          button-rank="tertiary"
+          :disabled="disabled"
+          @click="deleteValidation(protoView.proto)"
+        />
+      </li>
+    </ul>
+  </div>
 </template>
 
 <script lang="ts" setup>

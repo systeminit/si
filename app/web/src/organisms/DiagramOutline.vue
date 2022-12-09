@@ -1,48 +1,50 @@
 <template>
-  <SiSearch auto-search @search="onSearchUpdated" />
-  <template v-if="!allComponents.length">
-    <div class="p-2 text-neutral-500">No components</div>
-  </template>
-  <template v-else-if="!filteredComponenets.length">
-    <div class="p-2 text-neutral-500">No components matching your search</div>
-  </template>
-  <template v-else>
-    <ul>
-      <li
-        v-for="component in filteredComponenets"
-        :key="component.id"
-        class="border-b-2 dark:border-neutral-600 cursor-pointer"
-        @click="emit('select', component.id)"
-      >
-        <span
-          :class="
-            selectedComponentId === component.id
-              ? ['bg-action-500 text-white']
-              : ['hover:bg-action-400 hover:text-white']
-          "
-          :style="{
-            'border-color': component.color || colors.neutral[400],
-          }"
-          class="w-full px-2 py-2 border-l-8 group flex flex-row items-baseline"
+  <div>
+    <SiSearch auto-search @search="onSearchUpdated" />
+    <template v-if="!allComponents.length">
+      <div class="p-2 text-neutral-500">No components</div>
+    </template>
+    <template v-else-if="!filteredComponenets.length">
+      <div class="p-2 text-neutral-500">No components matching your search</div>
+    </template>
+    <template v-else>
+      <ul>
+        <li
+          v-for="component in filteredComponenets"
+          :key="component.id"
+          class="border-b-2 dark:border-neutral-600 cursor-pointer"
+          @click="emit('select', component.id)"
         >
           <span
-            class="whitespace-nowrap text-ellipsis overflow-hidden shrink leading-tight"
-            >{{ component.displayName || "si-123" }}</span
-          >
-          <i
             :class="
               selectedComponentId === component.id
                 ? ['bg-action-500 text-white']
-                : ['text-neutral-500 group-hover:text-white']
+                : ['hover:bg-action-400 hover:text-white']
             "
-            class="text-sm pl-1 flex-none"
+            :style="{
+              'border-color': component.color || colors.neutral[400],
+            }"
+            class="w-full px-2 py-2 border-l-8 group flex flex-row items-baseline"
           >
-            {{ component.schemaName }}
-          </i>
-        </span>
-      </li>
-    </ul>
-  </template>
+            <span
+              class="whitespace-nowrap text-ellipsis overflow-hidden shrink leading-tight"
+              >{{ component.displayName || "si-123" }}</span
+            >
+            <i
+              :class="
+                selectedComponentId === component.id
+                  ? ['bg-action-500 text-white']
+                  : ['text-neutral-500 group-hover:text-white']
+              "
+              class="text-sm pl-1 flex-none"
+            >
+              {{ component.schemaName }}
+            </i>
+          </span>
+        </li>
+      </ul>
+    </template>
+  </div>
 </template>
 
 <script lang="ts" setup>

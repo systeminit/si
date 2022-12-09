@@ -90,7 +90,7 @@
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-no-autofix": "^1.2.3",
     "eslint-plugin-prettier": "^4.2.1",
-    "eslint-plugin-vue": "^9.4.0",
+    "eslint-plugin-vue": "^9.8.0",
     "faker": "^6.6.6",
     "postcss": "^8.4.16",
     "postcss-comment": "^2.0.0",

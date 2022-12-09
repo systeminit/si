@@ -1,38 +1,40 @@
 <template>
-  <v-circle
-    :config="{
-      id: socket.uniqueKey,
-      x,
-      y,
-      width: socketSize,
-      height: socketSize,
-      stroke: colors.stroke,
-      strokeWidth: isHovered ? 2 : 1,
-      fill: colors.fill,
-    }"
-    @mouseover="onMouseOver"
-    @mouseout="onMouseOut"
-  />
-  <v-text
-    ref="socketLabelRef"
-    :config="{
-      x: socket.def.nodeSide === 'left' ? 15 : -nodeWidth + 15,
-      y: y - SOCKET_SIZE / 2,
-      verticalAlign: 'middle',
-      align: socket.def.nodeSide === 'left' ? 'left' : 'right',
-      height: SOCKET_SIZE,
-      width: nodeWidth - 30,
-      text: socket.def.label,
-      padding: 0,
-      fill: colors.labelText,
-      wrap: 'none',
-      ellipsis: true,
-      listening: false,
-      fontFamily: DIAGRAM_FONT_FAMILY,
-      fontSize: 11,
-      opacity: state === 'draw_edge_disabled' ? 0.5 : 1,
-    }"
-  />
+  <v-group>
+    <v-circle
+      :config="{
+        id: socket.uniqueKey,
+        x,
+        y,
+        width: socketSize,
+        height: socketSize,
+        stroke: colors.stroke,
+        strokeWidth: isHovered ? 2 : 1,
+        fill: colors.fill,
+      }"
+      @mouseover="onMouseOver"
+      @mouseout="onMouseOut"
+    />
+    <v-text
+      ref="socketLabelRef"
+      :config="{
+        x: socket.def.nodeSide === 'left' ? 15 : -nodeWidth + 15,
+        y: y - SOCKET_SIZE / 2,
+        verticalAlign: 'middle',
+        align: socket.def.nodeSide === 'left' ? 'left' : 'right',
+        height: SOCKET_SIZE,
+        width: nodeWidth - 30,
+        text: socket.def.label,
+        padding: 0,
+        fill: colors.labelText,
+        wrap: 'none',
+        ellipsis: true,
+        listening: false,
+        fontFamily: DIAGRAM_FONT_FAMILY,
+        fontSize: 11,
+        opacity: state === 'draw_edge_disabled' ? 0.5 : 1,
+      }"
+    />
+  </v-group>
 </template>
 
 <script lang="ts" setup>

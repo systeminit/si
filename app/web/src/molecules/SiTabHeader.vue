@@ -1,5 +1,5 @@
+<!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <!-- selectedToFront ? (selected ? 'order-1' : 'order-2') : '' -->
   <Tab
     v-slot="{ selected }"
     class="focus:outline-none whitespace-nowrap"
@@ -43,7 +43,7 @@
     v-if="noAfterMargin === false"
     class="border-b border-neutral-300 dark:border-neutral-600 w-2"
     :class="selectedToFront ? 'order-2' : ''"
-  ></div>
+  />
 </template>
 
 <script setup lang="ts">

@@ -86,12 +86,8 @@ const setCollapsed = () => {
 const { name, path, collapsedPaths } = toRefs(props);
 
 const displayPath = computed(() => {
-  if (path && path.value) {
-    // Always chop off the root path
-    return path.value.displayPath.slice(0, -1).reverse();
-  } else {
-    return [];
-  }
+  // Always chop off the root path
+  return path?.value?.displayPath.slice(0, -1).reverse() || [];
 });
 
 const pathParents = computed(() => displayPath.value.slice(undefined, -1));

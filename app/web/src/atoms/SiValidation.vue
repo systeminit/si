@@ -1,11 +1,13 @@
 <template>
-  <div
-    v-for="error in displayErrors"
-    :key="error.id"
-    :class="errorClasses(error.id)"
-    v-bind="$attrs"
-  >
-    {{ error.message }}
+  <div>
+    <div
+      v-for="error in displayErrors"
+      :key="error.id"
+      :class="errorClasses(error.id)"
+      v-bind="$attrs"
+    >
+      {{ error.message }}
+    </div>
   </div>
 </template>
 

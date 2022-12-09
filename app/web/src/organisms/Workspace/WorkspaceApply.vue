@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/no-multiple-template-root -->
 <template>
   <SiPanel remember-size-key="workflow-left" side="left" :min-size="315">
     <RecommendationPicker />
