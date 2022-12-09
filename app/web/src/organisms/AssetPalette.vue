@@ -1,60 +1,63 @@
 <template>
-  <template v-if="schemasReqStatus.isPending || addMenuReqStatus.isPending">
-    <div class="w-full p-lg flex flex-col gap-2 items-center">
-      <Icon name="loader" size="2xl" />
-      <h2>Loading Asset Palette...</h2>
-    </div>
-  </template>
-  <template v-else-if="schemasReqStatus.isSuccess">
-    <!-- <SiSearch /> -->
-
-    <p
-      class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-500"
-    >
-      Drag the assets that you wish to include in your application into the
-      canvas to the right.
-    </p>
-
-    <ul class="overflow-y-auto">
-      <SiCollapsible
-        v-for="(category, categoryIndex) in addMenuData"
-        :key="categoryIndex"
-        :label="category.displayName"
-        as="li"
-        content-as="ul"
-        default-open
-        class="select-none"
-      >
-        <li
-          v-for="(schema, schemaIndex) in category.schemas"
-          :key="schemaIndex"
-          class="select-none border-b-2 dark:border-neutral-600"
-        >
-          <SiNodeSprite
-            :class="
-              componentsStore.selectedInsertSchemaId === schema.id
-                ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
-                : ''
-            "
-            :color="schema.color"
-            :name="schema.displayName"
-            class="border border-transparent hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer"
-            @mousedown.left="onSelect(schema.id)"
-          />
-        </li>
-      </SiCollapsible>
-    </ul>
-  </template>
-  <template v-if="selectedSchema">
-    <Teleport to="body">
-      <div
-        ref="mouseNode"
-        class="fixed top-0 pointer-events-none translate-x-[-50%] translate-y-[-50%] z-100"
-      >
-        <NodeSkeleton :color="selectedSchema.color" />
+  <div>
+    <template v-if="schemasReqStatus.isPending || addMenuReqStatus.isPending">
+      <div class="w-full p-lg flex flex-col gap-2 items-center">
+        <Icon name="loader" size="2xl" />
+        <h2>Loading Asset Palette...</h2>
       </div>
-    </Teleport>
-  </template>
+    </template>
+    <template v-else-if="schemasReqStatus.isSuccess">
+      <!-- <SiSearch /> -->
+
+      <p
+        class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-500"
+      >
+        Drag the assets that you wish to include in your application into the
+        canvas to the right.
+      </p>
+
+      <ul class="overflow-y-auto">
+        <SiCollapsible
+          v-for="(category, categoryIndex) in addMenuData"
+          :key="categoryIndex"
+          :label="category.displayName"
+          as="li"
+          content-as="ul"
+          default-open
+          class="select-none"
+        >
+          <li
+            v-for="(schema, schemaIndex) in category.schemas"
+            :key="schemaIndex"
+            class="select-none border-b-2 dark:border-neutral-600"
+          >
+            <SiNodeSprite
+              :class="
+                componentsStore.selectedInsertSchemaId === schema.id
+                  ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
+                  : ''
+              "
+              :color="schema.color"
+              :name="schema.displayName"
+              class="border border-transparent hover:border-action-500 dark:hover:border-action-300 dark:text-white hover:text-action-500 dark:hover:text-action-500 hover:cursor-pointer"
+              @mousedown.left="onSelect(schema.id)"
+            />
+          </li>
+        </SiCollapsible>
+      </ul>
+    </template>
+
+    <template v-if="selectedSchema">
+      <Teleport to="body">
+        <div
+          ref="mouseNode"
+          class="fixed top-0 pointer-events-none translate-x-[-50%] translate-y-[-50%] z-100"
+        >
+          <NodeSkeleton :color="selectedSchema.color" />
+        </div>
+      </Teleport>
+    </template>
+  </div>
 </template>
 
 <script lang="ts" setup>

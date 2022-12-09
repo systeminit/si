@@ -8,17 +8,17 @@
     @click="menuRef?.open"
   >
     {{ label }}
+    <DropdownMenu ref="menuRef">
+      <DropdownMenuItem
+        v-for="(fnLabel, fnKind) in fnTypes"
+        :key="fnKind"
+        @select="emit('selectedFuncKind', fnKind)"
+      >
+        <template #icon><FuncSkeleton /></template>
+        {{ fnLabel }}
+      </DropdownMenuItem>
+    </DropdownMenu>
   </VButton2>
-  <DropdownMenu ref="menuRef">
-    <DropdownMenuItem
-      v-for="(fnLabel, fnKind) in fnTypes"
-      :key="fnKind"
-      @select="emit('selectedFuncKind', fnKind)"
-    >
-      <template #icon><FuncSkeleton /></template>
-      {{ fnLabel }}
-    </DropdownMenuItem>
-  </DropdownMenu>
 </template>
 
 <script setup lang="ts">

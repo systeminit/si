@@ -31,6 +31,7 @@
         </VormInput>
       </div>
     </section>
+
     <Modal
       :open="showDialog === 'create'"
       size="sm"
@@ -118,40 +119,41 @@
         </Stack>
       </template>
     </Modal>
+
+    <Wipe ref="wipeRef">
+      <template #duringWipe>
+        <VButton2
+          icon="git-merge"
+          size="md"
+          loading-text="Merging"
+          label="Merge"
+          loading
+        />
+      </template>
+      <template #afterWipe>
+        <div
+          v-if="changeSetMergeStatus.isPending"
+          class="gap-2 items-center flex flex-row p-xl min-w-0 w-full justify-center"
+        >
+          <Icon name="loader" size="2xl" />
+          <span class="text-3xl italic truncate">
+            Merging Change Set<template v-if="selectedChangeSetName">
+              "{{ selectedChangeSetName }}"
+            </template>
+          </span>
+        </div>
+        <div
+          v-else-if="changeSetMergeStatus.isSuccess"
+          class="gap-2 items-center flex flex-col"
+        >
+          <span class="text-3xl">Change Set Merged!</span>
+          <span class="text-md italic pt-sm">
+            Preparing your recommendations...
+          </span>
+        </div>
+      </template>
+    </Wipe>
   </div>
-  <Wipe ref="wipeRef">
-    <template #duringWipe>
-      <VButton2
-        icon="git-merge"
-        size="md"
-        loading-text="Merging"
-        label="Merge"
-        loading
-      />
-    </template>
-    <template #afterWipe>
-      <div
-        v-if="changeSetMergeStatus.isPending"
-        class="gap-2 items-center flex flex-row p-xl min-w-0 w-full justify-center"
-      >
-        <Icon name="loader" size="2xl" />
-        <span class="text-3xl italic truncate">
-          Merging Change Set<template v-if="selectedChangeSetName">
-            "{{ selectedChangeSetName }}"
-          </template>
-        </span>
-      </div>
-      <div
-        v-else-if="changeSetMergeStatus.isSuccess"
-        class="gap-2 items-center flex flex-col"
-      >
-        <span class="text-3xl">Change Set Merged!</span>
-        <span class="text-md italic pt-sm">
-          Preparing your recommendations...
-        </span>
-      </div>
-    </template>
-  </Wipe>
 </template>
 
 <script lang="ts" setup>

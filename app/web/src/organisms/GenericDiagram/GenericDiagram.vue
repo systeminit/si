@@ -135,8 +135,8 @@ overflow hidden */
         />
       </v-layer>
     </v-stage>
+    <DiagramHelpModal :open="helpModalOpen" @close="helpModalClose" />
   </div>
-  <DiagramHelpModal :open="helpModalOpen" @close="helpModalClose" />
 </template>
 
 <script lang="ts" setup>

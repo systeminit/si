@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/no-multiple-template-root -->
 <template>
   <SiPanel remember-size-key="func-picker" side="left" :min-size="300">
     <div class="flex flex-col h-full">

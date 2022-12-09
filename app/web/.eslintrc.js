@@ -57,6 +57,7 @@ module.exports = {
     "vue/padding-line-between-blocks": "error",
     "vue/prefer-true-attribute-shorthand": "error",
     "vue/eqeqeq": "error",
+    "vue/no-multiple-template-root": "error",
 
     // some strict rules from TS / airbnb presets to relax -----------
     camelcase: "off",

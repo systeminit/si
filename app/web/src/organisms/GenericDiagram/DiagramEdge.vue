@@ -1,27 +1,27 @@
 <template>
-  <v-line
-    v-if="points"
-    :config="{
-      visible: isSelected,
-      points,
-      stroke: SELECTION_COLOR,
-      strokeWidth: 7,
-      listening: false,
-    }"
-  />
-  <v-line
-    v-if="points"
-    :config="{
-      id: edge.uniqueKey,
-      points,
-      stroke: strokeColor,
-      strokeWidth: isHovered ? 3 : 2,
-      hitStrokeWidth: 8,
-    }"
-    @mouseover="onMouseOver"
-    @mouseout="onMouseOut"
-    @mousedown="onMouseDown"
-  />
+  <v-group v-if="points">
+    <v-line
+      :config="{
+        visible: isSelected,
+        points,
+        stroke: SELECTION_COLOR,
+        strokeWidth: 7,
+        listening: false,
+      }"
+    />
+    <v-line
+      :config="{
+        id: edge.uniqueKey,
+        points,
+        stroke: strokeColor,
+        strokeWidth: isHovered ? 3 : 2,
+        hitStrokeWidth: 8,
+      }"
+      @mouseover="onMouseOver"
+      @mouseout="onMouseOut"
+      @mousedown="onMouseDown"
+    />
+  </v-group>
 </template>
 
 <script lang="ts" setup>

@@ -1,76 +1,79 @@
 <template>
-  <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
-    <VButton
-      :disabled="disabled"
-      button-rank="primary"
-      button-type="success"
-      icon="plus"
-      label="Add binding"
-      size="md"
-      @click="openModal()"
-    />
+  <div>
+    <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
+      <VButton
+        :disabled="disabled"
+        button-rank="primary"
+        button-type="success"
+        icon="plus"
+        label="Add binding"
+        size="md"
+        @click="openModal()"
+      />
+    </div>
+    <ul class="flex flex-col p-3 gap-1">
+      <li v-for="proto in prototypeView" :key="proto.id">
+        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+          Schema Variant:
+        </h1>
+        <h2 class="pb-2 text-sm">{{ proto.schemaVariant }}</h2>
+
+        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+          Component:
+        </h1>
+        <h2 class="pb-2 text-sm">{{ proto.component }}</h2>
+
+        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+          Output location:
+        </h1>
+        <h2 class="pb-2 text-sm">{{ proto.prop }}</h2>
+
+        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+          Expected Function Arguments:
+        </h1>
+        <h2 class="pb-2 text-sm">
+          Below is the source of the data for each function argument listed.
+        </h2>
+        <ul>
+          <li v-for="arg in proto.args" :key="arg.name">
+            <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+              {{ arg.name }}
+            </h1>
+            <h2 class="pb-2 text-sm">{{ arg.prop }}</h2>
+          </li>
+        </ul>
+        <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
+          <VButton
+            :disabled="disabled"
+            button-rank="primary"
+            button-type="neutral"
+            label="Edit binding "
+            size="md"
+            @click="openModal(proto.id)"
+          />
+          <VButton
+            :disabled="disabled"
+            button-rank="tertiary"
+            button-type="destructive"
+            icon="x"
+            label="Remove Binding"
+            size="sm"
+            @click="removeBinding(proto.id)"
+          />
+        </div>
+      </li>
+
+      <AttributeBindingsModal
+        :func-id="funcId"
+        :open="isModalOpen"
+        :prototype="editingPrototype"
+        :edit="editingPrototype !== undefined"
+        type="save"
+        @close="closeModal()"
+        @save="saveModal"
+      />
+    </ul>
   </div>
-  <ul class="flex flex-col p-3 gap-1">
-    <li v-for="proto in prototypeView" :key="proto.id">
-      <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-        Schema Variant:
-      </h1>
-      <h2 class="pb-2 text-sm">{{ proto.schemaVariant }}</h2>
-
-      <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-        Component:
-      </h1>
-      <h2 class="pb-2 text-sm">{{ proto.component }}</h2>
-
-      <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-        Output location:
-      </h1>
-      <h2 class="pb-2 text-sm">{{ proto.prop }}</h2>
-
-      <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-        Expected Function Arguments:
-      </h1>
-      <h2 class="pb-2 text-sm">
-        Below is the source of the data for each function argument listed.
-      </h2>
-      <ul>
-        <li v-for="arg in proto.args" :key="arg.name">
-          <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-            {{ arg.name }}
-          </h1>
-          <h2 class="pb-2 text-sm">{{ arg.prop }}</h2>
-        </li>
-      </ul>
-      <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
-        <VButton
-          :disabled="disabled"
-          button-rank="primary"
-          button-type="neutral"
-          label="Edit binding "
-          size="md"
-          @click="openModal(proto.id)"
-        />
-        <VButton
-          :disabled="disabled"
-          button-rank="tertiary"
-          button-type="destructive"
-          icon="x"
-          label="Remove Binding"
-          size="sm"
-          @click="removeBinding(proto.id)"
-        />
-      </div>
-    </li>
-  </ul>
-  <AttributeBindingsModal
-    :func-id="funcId"
-    :open="isModalOpen"
-    :prototype="editingPrototype"
-    :edit="editingPrototype !== undefined"
-    type="save"
-    @close="closeModal()"
-    @save="saveModal"
-  />
 </template>
 
 <script lang="ts" setup>

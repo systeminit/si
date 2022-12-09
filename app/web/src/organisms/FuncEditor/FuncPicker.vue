@@ -66,37 +66,37 @@
         </ul>
       </TabPanel>
     </template>
-  </SiTabGroup>
 
-  <Modal
-    size="sm"
-    :open="funcNameModalOpen"
-    type="save"
-    @close="closeFuncNameModal"
-    @save="createBuiltinFunc"
-  >
-    <template #title>Name your Builtin Function</template>
-    <template #content>
-      <SiTextBox
-        id="name"
-        v-model="newBuiltinFuncName"
-        class="pb-2"
-        autofocus
-        title=""
-        required
-        placeholder="Type the name of this function here..."
-        :validations="[
-          {
-            id: 'name',
-            message: 'Alphanumeric characters only.',
-            check: validator.isAlphanumeric,
-          },
-        ]"
-        @keyup.enter="createBuiltinFunc"
-        @error="updateFuncNameError"
-      />
-    </template>
-  </Modal>
+    <Modal
+      size="sm"
+      :open="funcNameModalOpen"
+      type="save"
+      @close="closeFuncNameModal"
+      @save="createBuiltinFunc"
+    >
+      <template #title>Name your Builtin Function</template>
+      <template #content>
+        <SiTextBox
+          id="name"
+          v-model="newBuiltinFuncName"
+          class="pb-2"
+          autofocus
+          title=""
+          required
+          placeholder="Type the name of this function here..."
+          :validations="[
+            {
+              id: 'name',
+              message: 'Alphanumeric characters only.',
+              check: validator.isAlphanumeric,
+            },
+          ]"
+          @keyup.enter="createBuiltinFunc"
+          @error="updateFuncNameError"
+        />
+      </template>
+    </Modal>
+  </SiTabGroup>
 </template>
 
 <script lang="ts" setup>
