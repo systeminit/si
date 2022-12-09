@@ -1,6 +1,9 @@
 <template>
   <template v-if="schemasReqStatus.isPending || addMenuReqStatus.isPending">
-    loading...
+    <div class="w-full p-lg flex flex-col gap-2 items-center">
+      <Icon name="loader" size="2xl" />
+      <h2>Loading Asset Palette...</h2>
+    </div>
   </template>
   <template v-else-if="schemasReqStatus.isSuccess">
     <!-- <SiSearch /> -->
@@ -61,6 +64,7 @@ import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { useComponentsStore, MenuSchema } from "@/store/components.store";
 import NodeSkeleton from "@/atoms/NodeSkeleton.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used

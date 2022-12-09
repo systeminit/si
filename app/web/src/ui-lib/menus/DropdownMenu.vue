@@ -204,7 +204,7 @@ const posX = ref(0);
 const posY = ref(0);
 
 function readjustMenuPosition() {
-  console.log("readjustMenuPosition");
+  // console.log("readjustMenuPosition");
   if (!internalRef.value) return;
 
   isRepositioning.value = false;
