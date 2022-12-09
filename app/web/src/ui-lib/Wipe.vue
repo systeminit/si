@@ -1,40 +1,22 @@
 <template>
   <Teleport to="body">
     <Transition
-      enter-from-class="w-0 h-0"
-      enter-to-class="w-[250vw] h-[250vw]"
-      enter-active-class="duration-[20000ms] ease-in rounded-full"
-      leave-from-class="w-[250vw] h-[250vw]"
-      leave-to-class="w-0 h-0"
-      leave-active-class="duration-[1000ms] ease-out rounded-full"
-      @after-enter="onWipeDone"
+      name="wipe"
+      @after-enter="onWipeOpenDone"
+      @after-leave="onWipeCloseDone"
     >
-      <!-- The wipe itself -->
       <div
         v-if="state === 'running' || state === 'done'"
         :class="
           clsx(
-            'bg-neutral-50 dark:bg-neutral-900 fixed z-80 translate-x-[-50%] translate-y-[-50%] inset-1/2 w-full h-full overflow-hidden',
+            'wipe',
+            'fixed z-80 top-0 left-0 w-screen h-screen overflow-hidden flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-900',
           )
         "
-        :style="{
-          ...(state === 'running' && {
-            top: `${origin.y}px`,
-            left: `${origin.x}px`,
-          }),
-        }"
-      ></div>
-    </Transition>
-    <!-- Div for holding wipe content -->
-    <div
-      :class="clsx('fixed left-0 top-0 z-90 w-screen h-screen overflow-hidden')"
-    >
-      <div class="flex flex-col items-center justify-center w-full h-full">
+      >
         <slot name="afterWipe" :state="state" />
       </div>
-    </div>
-
-    <!-- During wipe overlay -->
+    </Transition>
     <div
       :class="
         clsx(
@@ -54,8 +36,9 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import clsx from "clsx";
+import { useHead } from "@vueuse/head";
 import defer from "@/utils/defer_promise";
 
 export type WipeState = "idle" | "running" | "done" | "exiting";
@@ -63,11 +46,31 @@ type Position = { x: number; y: number };
 
 const state = ref("idle" as WipeState);
 const origin = ref<Position>({ x: 0, y: 0 });
+const originX = computed(() => `${Math.round(origin.value.x)}px`);
+const originY = computed(() => `${Math.round(origin.value.y)}px`);
+// Unfortunately, v-bind, Teleport, and Transition do not all cooperate together!
+// So we're just injecting global variables to hold the wipe origin for the CSS below.
+// Ask Theo or Wendy or Fletcher for more details!
+useHead(
+  computed(() => ({
+    style: [
+      {
+        children: `:root {--si-wipe-origin-x: ${originX.value}; --si-wipe-origin-y: ${originY.value};}`,
+      },
+    ],
+  })),
+);
 let openDonePromise: ReturnType<typeof defer>;
+let closeDonePromise: ReturnType<typeof defer>;
 
-const onWipeDone = () => {
+const onWipeOpenDone = () => {
   state.value = "done";
   openDonePromise.resolve();
+};
+
+const onWipeCloseDone = () => {
+  state.value = "idle";
+  closeDonePromise.resolve();
 };
 
 const open = async (openAt: HTMLElement | Position) => {
@@ -84,10 +87,8 @@ const open = async (openAt: HTMLElement | Position) => {
     origin.value = openAt;
   }
 
-  // Now setting up the wipe itself
-  state.value = "running";
-
   // run the wipe!
+  state.value = "running";
   openDonePromise = defer();
   return openDonePromise.promise;
 };
@@ -99,7 +100,30 @@ const close = () => {
   };
 
   state.value = "exiting";
+  closeDonePromise = defer();
+  return closeDonePromise.promise;
 };
 
 defineExpose({ open, close });
 </script>
+
+<style scoped>
+.wipe-enter-from {
+  clip-path: circle(0px at var(--si-wipe-origin-x) var(--si-wipe-origin-y));
+}
+.wipe-enter-to {
+  clip-path: circle(250vw at var(--si-wipe-origin-x) var(--si-wipe-origin-y));
+}
+.wipe-enter-active {
+  transition: clip-path 1s;
+}
+.wipe-leave-from {
+  clip-path: circle(250vw at 50vw 50vh);
+}
+.wipe-leave-to {
+  clip-path: circle(0px at 50vw 50vh);
+}
+.wipe-leave-active {
+  transition: clip-path 1s;
+}
+</style>

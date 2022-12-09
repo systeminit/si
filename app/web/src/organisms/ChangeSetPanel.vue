@@ -132,10 +132,10 @@
     <template #afterWipe>
       <div
         v-if="changeSetMergeStatus.isPending"
-        class="gap-2 items-center flex flex-row"
+        class="gap-2 items-center flex flex-row p-xl min-w-0 w-full justify-center"
       >
         <Icon name="loader" size="2xl" />
-        <span class="text-3xl italic">
+        <span class="text-3xl italic truncate">
           Merging Change Set<template v-if="selectedChangeSetName">
             "{{ selectedChangeSetName }}"
           </template>
