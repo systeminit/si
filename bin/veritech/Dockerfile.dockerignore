@@ -40,6 +40,9 @@
 
 # Include lang-js as currently Veritech ships with Cyclone/lang-js as a bundle
 !bin/lang-js
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
 
 # Ignore non-portable context in component sub-directories
 **/.envrc

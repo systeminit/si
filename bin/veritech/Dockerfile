@@ -61,19 +61,12 @@ RUN set -eux; \
 FROM node:$NODE_VERSION as cache_lang_js
 ARG NODE_VERSION
 
+RUN npm install -g pnpm
+
 WORKDIR /usr/src
-COPY bin/lang-js/package.json bin/lang-js/package-lock.json ./
+COPY ./package.json ./pnpm-lock.yaml ./pnpm-workspace.yaml ./
 
-RUN set -eux; \
-    npm ci;
-
-RUN set -eux; \
-    find . \
-        -maxdepth 1 \
-        ! -path './node_modules' \
-        -and \
-        ! -path '.' \
-        -exec rm -rf {} \;;
+RUN pnpm fetch --filter lang-js;
 
 ###########################################################################
 # lang-js Builder Stage
@@ -82,11 +75,14 @@ RUN set -eux; \
 FROM $BUILDER_LANG_JS_IMAGE as builder_lang_js
 
 WORKDIR /usr/src
-COPY bin/lang-js .
+COPY bin/lang-js ./bin/lang-js
+
+RUN pnpm install --filter lang-js;
 
 RUN set -eux; \
     env; \
-    npm run package; \
+    cd bin/lang-js; \
+    pnpm run package; \
     ls -la target;
 
 ###########################################################################
@@ -140,7 +136,7 @@ COPY --from=builder /usr/src/target/release/$BIN.dbg /usr/local/bin/.debug/
 COPY --from=builder /usr/src/target/release/cyclone /usr/local/bin/
 COPY --from=builder /usr/src/target/release/cyclone.dbg /usr/local/bin/.debug/
 
-COPY --from=builder_lang_js /usr/src/target/lang-js /usr/local/bin/
+COPY --from=builder_lang_js /usr/src/bin/lang-js/target/lang-js /usr/local/bin/
 
 EXPOSE 5156/tcp
 ENTRYPOINT [ \

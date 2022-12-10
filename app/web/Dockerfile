@@ -1,5 +1,5 @@
 ARG BUILDER_IMAGE=cache
-ARG NODE_VERSION=16.13.1
+ARG NODE_VERSION=16.16.0
 ARG NGINX_VERSION=1.21.4
 
 ###########################################################################
@@ -8,12 +8,17 @@ ARG NGINX_VERSION=1.21.4
 FROM node:$NODE_VERSION as cache
 ARG NODE_VERSION
 
+RUN npm install -g pnpm
+
 WORKDIR /usr/src
 COPY . .
 
 WORKDIR /usr/src/app/web
+
+# TODO: might want to call pnpm fetch here instead, and might want to filter
+# will investigate when we start breaking things out of web into monorepo
 RUN set -eux; \
-    npm ci;
+    pnpm install;
 
 ###########################################################################
 # Builder Stage
@@ -27,7 +32,7 @@ COPY . .
 WORKDIR /usr/src/app/web
 RUN set -eux; \
     env; \
-    npm run build;
+    pnpm run build;
 
 ###########################################################################
 # Final Stage

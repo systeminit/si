@@ -500,3 +500,25 @@ async fn your_dal_integration_test(octx: DalContext) {
 
 With these changes, you will be able to commit transactions and see them in the
 database.
+
+
+-----
+
+
+**WIP notes on pnpm-based dev workflow**
+
+### setup / installation
+- install [pnpm](https://pnpm.io/installation)
+  - you'll probably want shell tab completion (`pnpm install-completion`)<br/>
+- install js deps for the whole project (`pnpm install` or `pnpm i`)
+- `pnpm run docker:deps` - triggers `make prepare` and is aware of apple silicon postgres shenanigans
+### running dev stack
+
+> NOTE - `pnpm taskname` or `pnpm run taskname` both work, but tab autocomplete only works with `pnpm run X`
+
+- `pnpm run dev:backend` - runs cargo build (at root) and then boots all 3 backend services in a single terminal
+- or alternatively can run individual components. Each script still runs the build at the root level but then boots only that component. Cargo caching means each build after the first is instant.
+  - `pnpm run dev:sdf`
+  - `pnpm run dev:veritech`
+  - `pnpm run dev:pinga`
+- `pnpm run dev:frontend` - boots frontend for dev - uses vite, autoreload and HMR enabled...

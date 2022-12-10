@@ -1,0 +1,32 @@
+{
+  "name": "si",
+  "version": "1.0.0",
+  "description": "SI monorepo",
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    "bootstrap": "./scripts/bootstrap.sh",
+    "docker:deps": "make LOCAL_PG=$(test $(uname -m) = \"arm64\" && test $(uname) = \"Darwin\" && echo true) prepare",
+    "rc:build": "cargo build",
+    "build": "turbo run rc:build build --filter=./app/* --filter=lang-js --filter=// --parallel",
+    "rc:clean": "cargo clean",
+    "clean": "turbo run rc:clean clean --filter=./app/* --filter=lang-js --filter=// --parallel",
+    "dev:frontend": "pnpm run --filter web dev",
+    "dev:backend": "turbo dev:backend",
+    "dev:pinga": "turbo dev:backend --filter=pinga",
+    "dev:sdf": "turbo dev:backend --filter=sdf-cli",
+    "dev:veritech": "turbo dev:backend --filter=veritech-cli",
+    "rc:clippy": "cargo clippy --no-deps --all-targets -- -D warnings",
+    "rc:fmt": "cargo fmt",
+    "rc:check": "cargo check",
+    "rc:doc": "env RUSTDOCFLAGS=\"-Dwarnings\" cargo doc --no-deps"
+  },
+  "volta": {
+    "node": "16.16.0"
+  },
+  "devDependencies": {
+    "fast-glob": "^3.2.12",
+    "toml": "^3.0.0",
+    "turbo": "^1.6.3"
+  },
+  "packageManager": "pnpm@7.18.1"
+}

@@ -5,8 +5,9 @@
 *
 
 # Root/common files
-!.prettierrc.js
-!babel.config.js
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
 
 # All components required to build
 !app/web
