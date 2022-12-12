@@ -10,12 +10,11 @@ use std::{
 
 use async_trait::async_trait;
 use cyclone_core::{
-    CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
-    ConfirmationRequest, ConfirmationResultSuccess, LivenessStatus, LivenessStatusParseError,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
-    ReadinessStatusParseError, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    CommandRunRequest, CommandRunResultSuccess, ConfirmationRequest, ConfirmationResultSuccess,
+    LivenessStatus, LivenessStatusParseError, QualificationCheckRequest,
+    QualificationCheckResultSuccess, ReadinessStatus, ReadinessStatusParseError,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
+    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use http::{
     request::Builder,
@@ -146,14 +145,6 @@ where
         request: ResolverFunctionRequest,
     ) -> result::Result<
         Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
-        ClientError,
-    >;
-
-    async fn execute_code_generation(
-        &mut self,
-        request: CodeGenerationRequest,
-    ) -> result::Result<
-        Execution<Strm, CodeGenerationRequest, CodeGenerationResultSuccess>,
         ClientError,
     >;
 
@@ -305,17 +296,6 @@ where
         request: ResolverFunctionRequest,
     ) -> Result<Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>> {
         let stream = self.websocket_stream("/execute/resolver").await?;
-        Ok(execution::execute(stream, request))
-    }
-
-    async fn execute_code_generation(
-        &mut self,
-        request: CodeGenerationRequest,
-    ) -> result::Result<
-        Execution<Strm, CodeGenerationRequest, CodeGenerationResultSuccess>,
-        ClientError,
-    > {
-        let stream = self.websocket_stream("/execute/code_generation").await?;
         Ok(execution::execute(stream, request))
     }
 
@@ -479,8 +459,8 @@ mod tests {
     use std::{borrow::Cow, env, path::Path};
 
     use cyclone_core::{
-        CodeGenerated, ComponentKind, ComponentView, FunctionResult, ProgressMessage,
-        QualificationCheckComponent, ResolverFunctionComponent, ValidationRequest,
+        ComponentKind, ComponentView, FunctionResult, ProgressMessage, QualificationCheckComponent,
+        ResolverFunctionComponent, ValidationRequest,
     };
     use cyclone_server::{Config, ConfigBuilder, DecryptionKey, Server, UdsIncomingStream};
     use futures::StreamExt;
@@ -767,6 +747,7 @@ mod tests {
                     },
                 ],
             },
+            response_type: cyclone_core::ResolverFunctionResponseType::PropObject,
             code_base64: base64::encode(
                 r#"function doit(input) {
                     console.log(`${Object.keys(input).length}`);
@@ -855,6 +836,7 @@ mod tests {
                     },
                 ],
             },
+            response_type: cyclone_core::ResolverFunctionResponseType::PropObject,
             code_base64: base64::encode(
                 r#"function doit(input) {
                     console.log(`${Object.keys(input).length}`);
@@ -1254,180 +1236,6 @@ mod tests {
                 assert_eq!(
                     success.recommended_actions,
                     vec!["fried cassava baby".to_owned()]
-                );
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn http_execute_code_generation() {
-        let (_, key) = gen_keys();
-        let mut builder = Config::builder();
-        let mut client =
-            http_client_for_running_server(builder.enable_code_generation(true), key).await;
-
-        let component = ComponentView {
-            properties: serde_json::json!({ "si": { "name": "Ablublubé"}}),
-            kind: ComponentKind::Standard,
-        };
-        let req = CodeGenerationRequest {
-            execution_id: "1234".to_string(),
-            handler: "portugueseJsonGeneration".to_string(),
-            component: component.clone(),
-            code_base64: base64::encode(
-                r#"function portugueseJsonGeneration(component) {
-                    console.log(JSON.stringify(component));
-                    console.log('generate');
-                    return { format: "json", code: JSON.stringify({nome: component.properties.si.name }) };
-                }"#,
-            ),
-        };
-
-        // Start the protocol
-        let mut progress = client
-            .execute_code_generation(req)
-            .await
-            .expect("failed to establish websocket stream")
-            .start()
-            .await
-            .expect("failed to start protocol");
-
-        // Consume the output messages
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(
-                    serde_json::from_str::<serde_json::Value>(&output.message)
-                        .expect("Unable to serialize output to json"),
-                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "kind": "standard" })
-                )
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "generate")
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        // TODO(fnichol): until we've determined how to handle processing the result server side,
-        // we're going to see a heartbeat come back when a request is processed
-        match progress.next().await {
-            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
-            None => panic!("output stream ended early"),
-        }
-        match progress.next().await {
-            None => assert!(true),
-            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-        };
-        // Get the result
-        let result = progress.finish().await.expect("failed to return result");
-        match result {
-            FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "1234");
-                assert_eq!(
-                    success.data,
-                    CodeGenerated {
-                        format: "json".to_owned(),
-                        code: serde_json::to_string(&serde_json::json!({ "nome": "Ablublubé" }))
-                            .expect("unable to deserialize"),
-                    }
-                );
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn uds_execute_code_generation() {
-        let (_, key) = gen_keys();
-        let tmp_socket = rand_uds();
-        let mut builder = Config::builder();
-        let mut client =
-            uds_client_for_running_server(builder.enable_code_generation(true), &tmp_socket, key)
-                .await;
-
-        let component = ComponentView {
-            properties: serde_json::json!({ "si": { "name": "Ablublubé"}}),
-            kind: ComponentKind::Standard,
-        };
-        let req = CodeGenerationRequest {
-            execution_id: "1234".to_string(),
-            handler: "portugueseJsonGeneration".to_string(),
-            component: component.clone(),
-            code_base64: base64::encode(
-                r#"function portugueseJsonGeneration(component) {
-                    console.log(JSON.stringify(component));
-                    console.log('generate');
-                    return { format: "json", code: JSON.stringify({nome: component.properties.si.name }) };
-                }"#,
-            ),
-        };
-
-        // Start the protocol
-        let mut progress = client
-            .execute_code_generation(req)
-            .await
-            .expect("failed to establish websocket stream")
-            .start()
-            .await
-            .expect("failed to start protocol");
-
-        // Consume the output messages
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(
-                    serde_json::from_str::<serde_json::Value>(&output.message)
-                        .expect("Unable to serialize output to json"),
-                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "kind": "standard" })
-                )
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "generate")
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        // TODO(fnichol): until we've determined how to handle processing the result server side,
-        // we're going to see a heartbeat come back when a request is processed
-        match progress.next().await {
-            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
-            None => panic!("output stream ended early"),
-        }
-        match progress.next().await {
-            None => assert!(true),
-            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-        };
-        // Get the result
-        let result = progress.finish().await.expect("failed to return result");
-        match result {
-            FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "1234");
-                assert_eq!(
-                    success.data,
-                    CodeGenerated {
-                        format: "json".to_owned(),
-                        code: serde_json::to_string(&serde_json::json!({ "nome": "Ablublubé" }))
-                            .expect("unable to deserialize"),
-                    }
                 );
             }
             FunctionResult::Failure(failure) => {

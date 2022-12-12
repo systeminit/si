@@ -157,24 +157,6 @@ async fn create_confirmation_func(ctx: &DalContext) -> FuncResult<Func> {
     Ok(func)
 }
 
-async fn create_code_gen_func(ctx: &DalContext) -> FuncResult<Func> {
-    let mut func = Func::new(
-        ctx,
-        generate_name(),
-        FuncBackendKind::JsCodeGeneration,
-        FuncBackendResponseType::CodeGeneration,
-    )
-    .await?;
-
-    func.set_code_plaintext(ctx, Some(DEFAULT_CODE_GENERATION_CODE))
-        .await?;
-    func.set_handler(ctx, Some(DEFAULT_CODE_GENERATION_HANDLER))
-        .await?;
-
-    // NOTE(nick): do nothing since everything is moving under the prop tree.
-    Ok(func)
-}
-
 async fn create_default_attribute_func(
     ctx: &DalContext,
     value_id: Option<AttributeValueId>,
@@ -289,7 +271,6 @@ pub async fn create_func(
             None => create_attribute_func(&ctx, None, None).await?,
         },
         FuncBackendKind::JsQualification => create_qualification_func(&ctx).await?,
-        FuncBackendKind::JsCodeGeneration => create_code_gen_func(&ctx).await?,
         FuncBackendKind::JsConfirmation => create_confirmation_func(&ctx).await?,
         FuncBackendKind::JsCommand => create_command_func(&ctx).await?,
         FuncBackendKind::JsValidation => create_validation_func(&ctx).await?,

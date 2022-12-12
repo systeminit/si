@@ -12,11 +12,10 @@ use cyclone_client::{
 };
 use cyclone_core::{
     process::{self, ShutdownError},
-    CanonicalCommand, CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest,
-    CommandRunResultSuccess, ConfirmationRequest, ConfirmationResultSuccess,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ValidationRequest, ValidationResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    CanonicalCommand, CommandRunRequest, CommandRunResultSuccess, ConfirmationRequest,
+    ConfirmationResultSuccess, QualificationCheckRequest, QualificationCheckResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
+    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -195,23 +194,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         result
     }
 
-    async fn execute_code_generation(
-        &mut self,
-        request: CodeGenerationRequest,
-    ) -> result::Result<
-        Execution<UnixStream, CodeGenerationRequest, CodeGenerationResultSuccess>,
-        ClientError,
-    > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
-        let result = self.client.execute_code_generation(request).await;
-        self.count_request();
-
-        result
-    }
-
     async fn execute_validation(
         &mut self,
         request: ValidationRequest,
@@ -340,10 +322,6 @@ pub struct LocalUdsInstanceSpec {
     #[builder(private, setter(name = "_resolver"), default = "false")]
     resolver: bool,
 
-    /// Enables the `code_generation` execution endpoint for a spawned Cyclone server.
-    #[builder(private, setter(name = "_code_generation"), default = "false")]
-    code_generation: bool,
-
     /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_workflow"), default = "false")]
     workflow: bool,
@@ -437,9 +415,6 @@ impl LocalUdsInstanceSpec {
         if self.resolver {
             cmd.arg("--enable-resolver");
         }
-        if self.code_generation {
-            cmd.arg("--enable-code-generation");
-        }
         if self.workflow {
             cmd.arg("--enable-workflow");
         }
@@ -486,11 +461,6 @@ impl LocalUdsInstanceSpecBuilder {
         self._resolver(true)
     }
 
-    /// Enables the `code_generation` execution endpoint for a spawned Cyclone server.
-    pub fn code_generation(&mut self) -> &mut Self {
-        self._code_generation(true)
-    }
-
     /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
     pub fn workflow(&mut self) -> &mut Self {
         self._workflow(true)
@@ -503,8 +473,7 @@ impl LocalUdsInstanceSpecBuilder {
 
     /// Enables all available endpoints for a spawned Cyclone server
     pub fn all_endpoints(&mut self) -> &mut Self {
-        self.code_generation()
-            .command()
+        self.command()
             .confirmation()
             .qualification()
             .resolver()

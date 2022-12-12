@@ -3,6 +3,7 @@ use dal::DalContext;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use tokio::sync::mpsc;
+use veritech_client::ResolverFunctionResponseType;
 
 #[test]
 async fn cyclone_crypto_e2e(ctx: &DalContext) {
@@ -36,6 +37,7 @@ async fn cyclone_crypto_e2e(ctx: &DalContext) {
             },
             parents: Vec::new(),
         },
+        response_type: ResolverFunctionResponseType::Boolean,
         code_base64: base64::encode(&code),
     };
     let result = ctx

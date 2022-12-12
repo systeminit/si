@@ -29,8 +29,8 @@ export type ConfirmationResult =
   | ConfirmationResultFailure;
 
 export interface ConfirmationResultSuccess extends ResultSuccess {
-  success: boolean,
-  recommendedActions?: string[],
+  success: boolean;
+  recommendedActions?: string[];
   message?: string;
 }
 
@@ -49,10 +49,7 @@ export async function executeConfirmation(
   code = wrapCode(code, request.handler);
   debug({ code });
 
-  const sandbox = createSandbox(
-    FunctionKind.Confirmation,
-    request.executionId
-  );
+  const sandbox = createSandbox(FunctionKind.Confirmation, request.executionId);
   const vm = createNodeVm(sandbox);
 
   const result = await execute(
@@ -77,9 +74,8 @@ async function execute(
     const confirmationRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     confirmationResult = await new Promise((resolve) => {
-      confirmationRunner(
-        component,
-        (resolution: Record<string, unknown>) => resolve(resolution)
+      confirmationRunner(component, (resolution: Record<string, unknown>) =>
+        resolve(resolution)
       );
     });
     debug({ result: JSON.stringify(confirmationResult) });
@@ -87,10 +83,7 @@ async function execute(
     return failureExecution(err, executionId);
   }
 
-  if (
-    _.isUndefined(confirmationResult) ||
-    _.isNull(confirmationResult)
-  ) {
+  if (_.isUndefined(confirmationResult) || _.isNull(confirmationResult)) {
     return {
       protocol: "result",
       status: "failure",
@@ -115,14 +108,21 @@ async function execute(
   }
 
   if (confirmationResult["success"]) {
-    if (!(_.isUndefined(confirmationResult["recommendedActions"]) || (_.isArray(confirmationResult["recommendedActions"]) && _.isEmpty(confirmationResult["recommendedActions"])))) {
+    if (
+      !(
+        _.isUndefined(confirmationResult["recommendedActions"]) ||
+        (_.isArray(confirmationResult["recommendedActions"]) &&
+          _.isEmpty(confirmationResult["recommendedActions"]))
+      )
+    ) {
       return {
         protocol: "result",
         status: "failure",
         executionId,
         error: {
           kind: "InvalidReturnType",
-          message: "recommendedActions field must undefined or an empty array on success",
+          message:
+            "recommendedActions field must undefined or an empty array on success",
         },
       };
     }
@@ -134,25 +134,34 @@ async function execute(
         executionId,
         error: {
           kind: "InvalidReturnType",
-          message: "recommendedActions field must be an array of strings on failure",
+          message:
+            "recommendedActions field must be an array of strings on failure",
         },
       };
-     }
+    }
 
-     if (confirmationResult["recommendedActions"].some((field) => !_.isString(field))) {
-       return {
-         protocol: "result",
-         status: "failure",
-         executionId,
-         error: {
-           kind: "InvalidReturnType",
-           message: "recommendedActions field must be an array of strings on failure",
-         },
-       };
-     }
+    if (
+      confirmationResult["recommendedActions"].some(
+        (field) => !_.isString(field)
+      )
+    ) {
+      return {
+        protocol: "result",
+        status: "failure",
+        executionId,
+        error: {
+          kind: "InvalidReturnType",
+          message:
+            "recommendedActions field must be an array of strings on failure",
+        },
+      };
+    }
   }
 
-  if (!_.isUndefined(confirmationResult["message"]) && !_.isString(confirmationResult["message"])) {
+  if (
+    !_.isUndefined(confirmationResult["message"]) &&
+    !_.isString(confirmationResult["message"])
+  ) {
     return {
       protocol: "result",
       status: "failure",

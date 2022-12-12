@@ -13,10 +13,9 @@ use axum::{
     response::IntoResponse,
 };
 use cyclone_core::{
-    CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
-    ConfirmationRequest, ConfirmationResultSuccess, LivenessStatus, Message,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
+    CommandRunRequest, CommandRunResultSuccess, ConfirmationRequest, ConfirmationResultSuccess,
+    LivenessStatus, Message, QualificationCheckRequest, QualificationCheckResultSuccess,
+    ReadinessStatus, ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
     ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use hyper::StatusCode;
@@ -32,9 +31,9 @@ use crate::{
     execution::{self, Execution},
     request::{DecryptRequest, ListSecrets},
     result::{
-        LangServerCodeGenerationResultSuccess, LangServerCommandRunResultSuccess,
-        LangServerConfirmationResultSuccess, LangServerQualificationCheckResultSuccess,
-        LangServerResolverFunctionResultSuccess, LangServerWorkflowResolveResultSuccess,
+        LangServerCommandRunResultSuccess, LangServerConfirmationResultSuccess,
+        LangServerQualificationCheckResultSuccess, LangServerResolverFunctionResultSuccess,
+        LangServerWorkflowResolveResultSuccess,
     },
     watch, DecryptionKey,
 };
@@ -133,33 +132,6 @@ pub async fn ws_execute_qualification(
             key,
             limit_request_guard,
             "qualificationcheck".to_owned(),
-            request,
-            lang_server_success,
-            success,
-        )
-    })
-}
-
-#[allow(clippy::unused_async)]
-pub async fn ws_execute_code_generation(
-    wsu: WebSocketUpgrade,
-    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
-    Extension(key): Extension<Arc<DecryptionKey>>,
-    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
-    limit_request_guard: LimitRequestGuard,
-) -> impl IntoResponse {
-    let lang_server_path = lang_server_path.as_path().to_path_buf();
-    wsu.on_upgrade(move |socket| {
-        let request: PhantomData<CodeGenerationRequest> = PhantomData;
-        let lang_server_success: PhantomData<LangServerCodeGenerationResultSuccess> = PhantomData;
-        let success: PhantomData<CodeGenerationResultSuccess> = PhantomData;
-        handle_socket(
-            socket,
-            lang_server_path,
-            telemetry_level.is_debug_or_lower(),
-            key,
-            limit_request_guard,
-            "codeGeneration".to_owned(),
             request,
             lang_server_success,
             success,

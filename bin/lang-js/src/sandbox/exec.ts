@@ -17,9 +17,9 @@ export const makeExec = (executionId: string) => {
     execaOptions?: Options<string>
   ): Promise<SiExecResult> {
     debug(
-      `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs?.map((a) => `'${a}'`)?.join(
-        " "
-      )}"`
+      `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs
+        ?.map((a) => `'${a}'`)
+        ?.join(" ")}"`
     );
 
     const child = await execa(execaFile, execaArgs, {

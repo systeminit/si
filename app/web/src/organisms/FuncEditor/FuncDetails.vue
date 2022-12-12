@@ -77,7 +77,6 @@
           <SiCollapsible
             v-if="
               editingFunc.kind === FuncBackendKind.JsQualification ||
-              editingFunc.kind === FuncBackendKind.JsCodeGeneration ||
               editingFunc.kind === FuncBackendKind.JsConfirmation ||
               editingFunc.kind === FuncBackendKind.JsValidation
             "

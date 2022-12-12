@@ -5,7 +5,6 @@ import { Command } from "commander";
 import Debug from "debug";
 import { failureExecution, FunctionKind, function_kinds } from "./function";
 import { makeConsole } from "./sandbox/console";
-import { executeCodeGeneration } from "./code_generation";
 import { executeQualificationCheck } from "./qualification_check";
 import { executeConfirmation } from "./confirmation";
 import { executeResolverFunction } from "./resolver_function";
@@ -53,9 +52,6 @@ async function main() {
     error = makeConsole(executionId).error;
 
     switch (kind) {
-      case FunctionKind.CodeGeneration:
-        await executeCodeGeneration(request);
-        break;
       case FunctionKind.QualificationCheck:
         await executeQualificationCheck(request);
         break;

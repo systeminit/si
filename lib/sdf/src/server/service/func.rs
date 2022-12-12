@@ -28,7 +28,6 @@ use dal::{
     ValidationPrototypeId,
 };
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::info;
 use thiserror::Error;
 
 use crate::service::func::get_func::GetFuncResponse;
@@ -328,11 +327,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                     })
                     .collect(),
             })
-        }
-        FuncBackendKind::JsCodeGeneration => {
-            // NOTE(nick): do nothing since everything is moving under the prop tree.
-            info!("JsCodeGeneration is currently unsupported for func authoring");
-            None
         }
         FuncBackendKind::JsConfirmation => {
             let protos = ConfirmationPrototype::list_for_func(ctx, *func.id()).await?;

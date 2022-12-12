@@ -14,7 +14,6 @@ use crate::func::backend::{
     identity::FuncBackendIdentity,
     integer::FuncBackendInteger,
     js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
-    js_code_generation::FuncBackendJsCodeGeneration,
     js_command::FuncBackendJsCommand,
     js_confirmation::FuncBackendJsConfirmation,
     js_qualification::FuncBackendJsQualification,
@@ -219,9 +218,6 @@ impl FuncBinding {
     ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         // TODO: encrypt components
         let value = match self.backend_kind() {
-            FuncBackendKind::JsCodeGeneration => {
-                FuncBackendJsCodeGeneration::create_and_execute(context, &func, &self.args).await?
-            }
             FuncBackendKind::JsQualification => {
                 FuncBackendJsQualification::create_and_execute(context, &func, &self.args).await?
             }
@@ -240,7 +236,7 @@ impl FuncBinding {
             // NOTE: Adding JsAttribute here is a *hack*. We need separate backends for the json transformation
             // NOTE: functions and the JsAttribute functions. Probably neither of them should take a ComponentView
             FuncBackendKind::Json | FuncBackendKind::JsAttribute => {
-                let component = FuncBackendJsAttributeArgs {
+                let args = FuncBackendJsAttributeArgs {
                     component: ResolverFunctionComponent {
                         data: veritech_client::ComponentView {
                             properties: self.args.clone(),
@@ -248,11 +244,12 @@ impl FuncBinding {
                         },
                         parents: Vec::new(),
                     },
+                    response_type: (*func.backend_response_type()).into(),
                 };
                 FuncBackendJsAttribute::create_and_execute(
                     context,
                     &func,
-                    &serde_json::to_value(component)?,
+                    &serde_json::to_value(args)?,
                 )
                 .await?
             }
@@ -335,8 +332,7 @@ impl FuncBinding {
             | FuncBackendKind::Unset
             | FuncBackendKind::Validation => {}
 
-            FuncBackendKind::JsCodeGeneration
-            | FuncBackendKind::JsQualification
+            FuncBackendKind::JsQualification
             | FuncBackendKind::JsAttribute
             | FuncBackendKind::JsWorkflow
             | FuncBackendKind::JsCommand

@@ -6,7 +6,6 @@ export enum FuncBackendKind {
   JsQualification = "JsQualification",
   JsCommand = "JsCommand",
   JsConfirmation = "JsConfirmation",
-  JsCodeGeneration = "JsCodeGeneration",
   JsAttribute = "JsAttribute",
   JsValidation = "JsValidation",
   Map = "Map",
@@ -26,10 +25,6 @@ export const CUSTOMIZABLE_FUNC_TYPES = {
   [FuncBackendKind.JsAttribute]: {
     pluralLabel: "Attributes",
     singularLabel: "Attribute",
-  },
-  [FuncBackendKind.JsCodeGeneration]: {
-    pluralLabel: "Code Generators",
-    singularLabel: "Code Generation",
   },
   [FuncBackendKind.JsConfirmation]: {
     pluralLabel: "Confirmations",

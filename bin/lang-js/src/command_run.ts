@@ -5,7 +5,7 @@ import _ from "lodash";
 import {
   failureExecution,
   FunctionKind,
-  Request, RequestWithCode,
+  RequestWithCode,
   ResultFailure,
   ResultSuccess,
 } from "./function";
@@ -51,23 +51,19 @@ async function execute(
   vm: NodeVM,
   code: string,
   executionId: string,
-  args: unknown,
+  args: unknown
 ): Promise<CommandRunResult> {
   let commandRunResult: Record<string, unknown>;
   try {
     const commandRunRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     commandRunResult = await new Promise((resolve) => {
-      commandRunRunner(
-        args,
-        (resolution: Record<string, unknown>) => resolve(resolution)
+      commandRunRunner(args, (resolution: Record<string, unknown>) =>
+        resolve(resolution)
       );
     });
 
-    if (
-      _.isUndefined(commandRunResult) ||
-      _.isNull(commandRunResult)
-    ) {
+    if (_.isUndefined(commandRunResult) || _.isNull(commandRunResult)) {
       return {
         protocol: "result",
         status: "failure",
@@ -79,38 +75,50 @@ async function execute(
       };
     }
 
-    if (!_.isString(commandRunResult["status"]) || !["ok", "warning", "error"].includes(commandRunResult["status"])) {
+    if (
+      !_.isString(commandRunResult["status"]) ||
+      !["ok", "warning", "error"].includes(commandRunResult["status"])
+    ) {
       return {
         protocol: "result",
         status: "failure",
         executionId,
         error: {
           kind: "WorkflowFieldWrongType",
-          message: 'The status field type must be either "ok", "warning" or "error"',
+          message:
+            'The status field type must be either "ok", "warning" or "error"',
         },
       };
     }
 
-    if (commandRunResult["status"] === "ok" && !_.isUndefined(commandRunResult["message"])) {
+    if (
+      commandRunResult["status"] === "ok" &&
+      !_.isUndefined(commandRunResult["message"])
+    ) {
       return {
         protocol: "result",
         status: "failure",
         executionId,
         error: {
           kind: "WorkflowFieldWrongType",
-          message: 'The message field type must be undefined when status is "ok"',
+          message:
+            'The message field type must be undefined when status is "ok"',
         },
       };
     }
 
-    if (commandRunResult["status"] !== "ok" && !_.isString(commandRunResult["message"])) {
+    if (
+      commandRunResult["status"] !== "ok" &&
+      !_.isString(commandRunResult["message"])
+    ) {
       return {
         protocol: "result",
         status: "failure",
         executionId,
         error: {
           kind: "WorkflowFieldWrongType",
-          message: 'The message field type must be string when status is either "warning" or "error"',
+          message:
+            'The message field type must be string when status is either "warning" or "error"',
         },
       };
     }
@@ -122,7 +130,7 @@ async function execute(
       error: commandRunResult.error as string | undefined,
       value: commandRunResult.value,
       health: commandRunResult.status as "ok" | "warning" | "error",
-      message: commandRunResult.message as string | undefined
+      message: commandRunResult.message as string | undefined,
     };
     return result;
   } catch (err) {

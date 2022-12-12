@@ -37,9 +37,6 @@ pub struct Config {
     enable_resolver: bool,
 
     #[builder(default = "true")]
-    enable_code_generation: bool,
-
-    #[builder(default = "true")]
     enable_workflow_resolve: bool,
 
     #[builder(default = "true")]
@@ -90,12 +87,6 @@ impl Config {
     #[must_use]
     pub fn enable_resolver(&self) -> bool {
         self.enable_resolver
-    }
-
-    /// Gets a reference to the config's enable sync.
-    #[must_use]
-    pub fn enable_code_generation(&self) -> bool {
-        self.enable_code_generation
     }
 
     /// Gets a reference to the config's enable workflow resolve.
