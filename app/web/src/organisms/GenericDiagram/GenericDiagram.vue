@@ -53,6 +53,7 @@ overflow hidden */
           :group="group"
           :temp-position="movedElementPositions[group.uniqueKey]"
           :temp-size="resizedElementSizes[group.uniqueKey]"
+          :connected-edges="connectedEdgesByElementKey[group.uniqueKey]"
           :draw-edge-state="drawEdgeState"
           :is-hovered="elementIsHovered(group)"
           :is-selected="elementIsSelected(group)"
@@ -1616,7 +1617,9 @@ const groups = computed(() =>
     (groupDef) => new DiagramGroupData(groupDef),
   ),
 );
-const sockets = computed(() => _.flatMap(nodes.value, (node) => node.sockets));
+const sockets = computed(() =>
+  _.compact(_.flatMap(_.concat(nodes.value, groups.value), (i) => i.sockets)),
+);
 const edges = computed(() =>
   _.map(props.edges, (edgeDef) => new DiagramEdgeData(edgeDef)),
 );

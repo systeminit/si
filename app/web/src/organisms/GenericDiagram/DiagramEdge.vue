@@ -1,5 +1,5 @@
 <template>
-  <v-group v-if="points">
+  <v-group v-if="points && !edge.def.isInvisible">
     <v-line
       :config="{
         visible: isSelected,

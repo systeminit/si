@@ -57,6 +57,48 @@
       }"
     />
 
+    <!-- sockets -->
+    <v-group
+      :config="{
+        x: -halfWidth - 1,
+        y: nodeHeaderHeight + SOCKET_MARGIN_TOP,
+      }"
+    >
+      <DiagramNodeSocket
+        v-for="(socket, i) in leftSockets"
+        :key="socket.uniqueKey"
+        :socket="socket"
+        :y="i * SOCKET_GAP"
+        :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
+        :draw-edge-state="drawEdgeState"
+        :node-width="nodeWidth"
+        @hover:start="emit('hover:start', socket)"
+        @hover:end="emit('hover:end', socket)"
+      />
+    </v-group>
+
+    <v-group
+      :config="{
+        x: halfWidth + 1,
+        y:
+          nodeHeaderHeight +
+          SOCKET_MARGIN_TOP +
+          SOCKET_GAP * leftSockets.length,
+      }"
+    >
+      <DiagramNodeSocket
+        v-for="(socket, i) in rightSockets"
+        :key="socket.uniqueKey"
+        :socket="socket"
+        :y="i * SOCKET_GAP"
+        :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
+        :draw-edge-state="drawEdgeState"
+        :node-width="nodeWidth"
+        @hover:start="emit('hover:start', socket)"
+        @hover:end="emit('hover:end', socket)"
+      />
+    </v-group>
+
     <!-- header -->
     <v-group
       :config="{
@@ -172,13 +214,10 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
+import DiagramNodeSocket from "@/organisms/GenericDiagram/DiagramNodeSocket.vue";
 import {
-  DiagramDrawEdgeState,
-  DiagramGroupData,
-  Size2D,
-} from "./diagram_types";
-
-import {
+  SOCKET_GAP,
+  SOCKET_MARGIN_TOP,
   CORNER_RADIUS,
   DEFAULT_NODE_COLOR,
   DIAGRAM_FONT_FAMILY,
@@ -186,7 +225,15 @@ import {
   GROUP_HEADER_BOTTOM_MARGIN,
   GROUP_TITLE_FONT_SIZE,
   RESIZE_HANDLE_SIZE,
-} from "./diagram_constants";
+} from "@/organisms/GenericDiagram/diagram_constants";
+import {
+  DiagramDrawEdgeState,
+  DiagramEdgeData,
+  DiagramElementUniqueKey,
+  DiagramGroupData,
+  Size2D,
+} from "./diagram_types";
+
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 
@@ -194,6 +241,10 @@ const props = defineProps({
   group: {
     type: Object as PropType<DiagramGroupData>,
     required: true,
+  },
+  connectedEdges: {
+    type: Object as PropType<DiagramEdgeData[]>,
+    default: () => ({}),
   },
   tempPosition: {
     type: Object as PropType<Vector2d>,
@@ -225,6 +276,35 @@ const nodeWidth = computed(() => size.value.width);
 const halfWidth = computed(() => nodeWidth.value / 2);
 // TODO(Victor): this is wrong. headerWidth should be the smallest value between the actual text width and nodeWidth
 const headerWidth = computed(() => nodeWidth.value * 0.75);
+
+const leftSockets = computed(() =>
+  _.filter(
+    props.group.sockets,
+    (s) =>
+      s.def.nodeSide === "left" &&
+      s.def.label !== "Frame" &&
+      s.parent.def.nodeType !== "configurationFrame",
+  ),
+);
+const rightSockets = computed(() =>
+  _.filter(
+    props.group.sockets,
+    (s) =>
+      s.def.nodeSide === "right" &&
+      s.parent.def.nodeType !== "configurationFrame",
+  ),
+);
+const connectedEdgesBySocketKey = computed(() => {
+  console.log(props.connectedEdges);
+  const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
+  _.each(props.connectedEdges, (edge) => {
+    lookup[edge.fromSocketKey] ||= [];
+    lookup[edge.fromSocketKey].push(edge);
+    lookup[edge.toSocketKey] ||= [];
+    lookup[edge.toSocketKey].push(edge);
+  });
+  return lookup;
+});
 
 const overlayIconSize = computed(() => nodeWidth.value / 3);
 

@@ -114,7 +114,25 @@ const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const componentsStore = useComponentsStore();
 // TODO: probably want to get more generic component data and then transform into diagram nodes
-const diagramEdges = computed(() => componentsStore.diagramEdges);
+const diagramEdges = computed(() => {
+  const edges = _.map(componentsStore.diagramEdges, (edge) => {
+    edge.isInvisible = false;
+    const parentId =
+      componentsStore.componentsById[parseInt(edge.toNodeId)].parentId;
+
+    if (parentId === undefined) return edge;
+
+    const parentComp = componentsStore.componentsById[parseInt(parentId)];
+
+    if (parentComp.nodeType === "aggregationFrame") {
+      edge.isInvisible = true;
+    }
+
+    return edge;
+  });
+
+  return edges;
+});
 const diagramNodes = computed(() => componentsStore.diagramNodes);
 
 const selectedComponentId = computed(() => componentsStore.selectedComponentId);
@@ -147,6 +165,32 @@ watch([diagramNodes, diagramEdges], () => {
 });
 
 async function onDrawEdge(e: DrawEdgeEvent) {
+  if (
+    e.toSocket.parent instanceof DiagramGroupData &&
+    e.toSocket.parent.def.nodeType === "aggregationFrame" &&
+    e.toSocket.parent.def.childIds !== undefined
+  ) {
+    const unattachedChildIds = _.filter(
+      e.toSocket.parent.def.childIds,
+      (childId) =>
+        diagramEdges.value.filter(
+          (edge) =>
+            edge.fromNodeId === e.fromSocket.parent.def.id &&
+            edge.toNodeId === childId &&
+            edge.fromSocketId === e.fromSocket.def.id &&
+            edge.toSocketId === e.toSocket.def.id,
+        ).length === 0,
+    );
+
+    await componentsStore.CREATE_AGGREGATE_PROXY_CONNECTIONS(
+      parseInt(e.toSocket.parent.def.id),
+      _.map(unattachedChildIds, (s) => parseInt(s)),
+      parseInt(e.fromSocket.def.id),
+      parseInt(e.toSocket.def.id),
+      parseInt(e.fromSocket.parent.def.id),
+    );
+    return;
+  }
   await componentsStore.CREATE_COMPONENT_CONNECTION(
     {
       nodeId: e.fromSocket.parent.def.id,
