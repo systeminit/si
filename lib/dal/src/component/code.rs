@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 use telemetry::prelude::*;
 
@@ -7,7 +8,7 @@ use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
 use crate::{
     AttributeReadContext, CodeLanguage, CodeView, ComponentError, ComponentId, DalContext,
-    StandardModel,
+    StandardModel, WsEvent, WsPayload,
 };
 use crate::{Component, SchemaVariant};
 
@@ -74,5 +75,22 @@ impl Component {
             }
         }
         Ok(code_views)
+    }
+}
+
+// NOTE(nick): consider moving this somewhere else.
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeGeneratedPayload {
+    component_id: ComponentId,
+}
+
+// NOTE(nick): consider moving this somewhere else.
+impl WsEvent {
+    pub fn code_generated(ctx: &DalContext, component_id: ComponentId) -> Self {
+        WsEvent::new(
+            ctx,
+            WsPayload::CodeGenerated(CodeGeneratedPayload { component_id }),
+        )
     }
 }

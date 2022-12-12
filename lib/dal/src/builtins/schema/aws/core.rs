@@ -8,6 +8,7 @@ use crate::func::argument::FuncArgumentKind;
 use crate::property_editor::SelectWidgetOption;
 use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
+use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
 use crate::validation::Validation;
 use crate::{
@@ -134,11 +135,12 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        SchemaVariant::add_code_generation(
+        SchemaVariant::add_leaf(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
             *schema_variant.id(),
+            LeafKind::CodeGeneration,
         )
         .await?;
 
@@ -465,11 +467,12 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        SchemaVariant::add_code_generation(
+        SchemaVariant::add_leaf(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
             *schema_variant.id(),
+            LeafKind::CodeGeneration,
         )
         .await?;
 
@@ -1160,11 +1163,12 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        SchemaVariant::add_code_generation(
+        SchemaVariant::add_leaf(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
             *schema_variant.id(),
+            LeafKind::CodeGeneration,
         )
         .await?;
 
@@ -1526,11 +1530,12 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        SchemaVariant::add_code_generation(
+        SchemaVariant::add_leaf(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
             *schema_variant.id(),
+            LeafKind::CodeGeneration,
         )
         .await?;
 

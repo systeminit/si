@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use thiserror::Error;
 
+use crate::component::code::CodeGeneratedPayload;
 use crate::component::resource::ResourceRefreshId;
 use crate::confirmation_status::ConfirmationStatusUpdate;
 use crate::fix::batch::FixBatchReturn;
 use crate::fix::FixReturn;
 use crate::qualification::QualificationCheckId;
-use crate::schema::variant::leaves::CodeGeneratedPayload;
 use crate::workflow::{CommandOutput, CommandReturn};
 use crate::{
     BillingAccountId, ChangeSetPk, ConfirmationPrototypeError, DalContext, HistoryActor,

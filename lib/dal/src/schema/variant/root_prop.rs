@@ -23,8 +23,12 @@ pub struct RootProp {
     /// Contains the tree of [`Props`](crate::Prop) corresponding to the real world _resource_.
     /// All information needed to populate the _model_ should be derived from this tree.
     pub resource_prop_id: PropId,
-    /// Contains the tree of [`Props`](crate::Prop) corresponding to code generation [`Funcs`](crate::Func).
+    /// Contains the tree of [`Props`](crate::Prop) corresponding to code generation
+    /// [`Funcs`](crate::Func).
     pub code_prop_id: PropId,
+    /// Contains the tree of [`Props`](crate::Prop) corresponding to qualification
+    /// [`Funcs`](crate::Func).
+    pub qualification_prop_id: PropId,
 }
 
 impl RootProp {
@@ -55,6 +59,7 @@ impl RootProp {
 
         let resource_specific_prop_id = Self::setup_resource(ctx, root_prop_id).await?;
         let code_specific_prop_id = Self::setup_code(ctx, root_prop_id).await?;
+        let qualification_specific_prop_id = Self::setup_qualification(ctx, root_prop_id).await?;
 
         // Now that the structure is set up, we can populate default
         // AttributePrototypes & AttributeValues to be updated appropriately below.
@@ -130,6 +135,7 @@ impl RootProp {
             domain_prop_id: *domain_specific_prop.id(),
             resource_prop_id: resource_specific_prop_id,
             code_prop_id: code_specific_prop_id,
+            qualification_prop_id: qualification_specific_prop_id,
         })
     }
 
@@ -181,7 +187,7 @@ impl RootProp {
         let mut code_map_item_prop = Prop::new(ctx, "codeItem", PropKind::Object, None).await?;
         code_map_item_prop.set_hidden(ctx, true).await?;
         code_map_item_prop
-            .set_parent_prop(ctx, *code_map_prop.id())
+            .set_parent_prop(ctx, code_map_prop_id)
             .await?;
         let code_map_item_prop_id = *code_map_item_prop.id();
 
@@ -198,5 +204,34 @@ impl RootProp {
             .await?;
 
         Ok(code_map_prop_id)
+    }
+
+    async fn setup_qualification(
+        ctx: &DalContext,
+        root_prop_id: PropId,
+    ) -> SchemaVariantResult<PropId> {
+        let mut qualification_map_prop =
+            Prop::new(ctx, "qualification", PropKind::Map, None).await?;
+        qualification_map_prop.set_hidden(ctx, true).await?;
+        qualification_map_prop
+            .set_parent_prop(ctx, root_prop_id)
+            .await?;
+        let qualification_map_prop_id = *qualification_map_prop.id();
+
+        let mut qualification_map_item_prop =
+            Prop::new(ctx, "qualificationItem", PropKind::Object, None).await?;
+        qualification_map_item_prop.set_hidden(ctx, true).await?;
+        qualification_map_item_prop
+            .set_parent_prop(ctx, qualification_map_prop_id)
+            .await?;
+        let qualification_map_item_prop_id = *qualification_map_item_prop.id();
+
+        let mut child_qualified_prop = Prop::new(ctx, "qualified", PropKind::Boolean, None).await?;
+        child_qualified_prop.set_hidden(ctx, true).await?;
+        child_qualified_prop
+            .set_parent_prop(ctx, qualification_map_item_prop_id)
+            .await?;
+
+        Ok(qualification_map_prop_id)
     }
 }
