@@ -15,9 +15,10 @@ use crate::{
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
-    AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext, Func,
-    FuncError, FuncId, Prop, PropError, PropId, PropKind, Schema, SchemaId, SchemaKind,
-    SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
+    BuiltinsResult, DalContext, Func, FuncError, FuncId, InternalProvider, Prop, PropError, PropId,
+    PropKind, Schema, SchemaId, SchemaKind, SchemaVariant, SchemaVariantId, StandardModel,
+    ValidationPrototype, ValidationPrototypeContext,
 };
 
 mod aws;
@@ -253,6 +254,43 @@ impl MigrationDriver {
             }
         }
         Err(PropError::ExpectedChildNotFound(child_prop_name.to_string()).into())
+    }
+
+    pub async fn connect_prop_to_provider(
+        &self,
+        ctx: &DalContext,
+        prop: &Prop,
+        identity_func_item: FuncCacheItem,
+        internal_provider: &InternalProvider,
+    ) -> BuiltinsResult<()> {
+        let prop_id_attribute_value_read_context =
+            AttributeReadContext::default_with_prop(*prop.id());
+
+        let prop_id_attribute_value =
+            AttributeValue::find_for_context(ctx, prop_id_attribute_value_read_context)
+                .await?
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    prop_id_attribute_value_read_context,
+                ))?;
+
+        let mut prop_id_attribute_prototype = prop_id_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+
+        prop_id_attribute_prototype
+            .set_func_id(ctx, identity_func_item.func_id)
+            .await?;
+
+        AttributePrototypeArgument::new_for_intra_component(
+            ctx,
+            *prop_id_attribute_prototype.id(),
+            identity_func_item.func_argument_id,
+            *internal_provider.id(),
+        )
+        .await?;
+
+        Ok(())
     }
 
     pub async fn finalize_schema_variant(
