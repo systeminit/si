@@ -3,9 +3,10 @@ use dal::{
     AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
     Schema, SchemaKind, StandardModel,
 };
+use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
-    test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
+    test_harness::{create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -18,13 +19,8 @@ async fn update_for_context_simple(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-
-    let name_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "name_prop").await;
-    name_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent of name_prop");
-
+    let name_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "name_prop", root.domain_prop_id).await;
     schema_variant
         .finalize(ctx)
         .await
@@ -46,11 +42,11 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
-                "code": {},
+
                 "domain": {},
             }
         ],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties,
@@ -101,13 +97,13 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
-                "code": {},
+
                 "domain": {
                     "name_prop": "Miles",
                 },
             }
         ],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties,
@@ -130,13 +126,13 @@ async fn update_for_context_simple(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
-                "code": {},
+
                 "domain": {
                     "name_prop": "Iria",
                 },
             }
         ],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties,
@@ -152,18 +148,10 @@ async fn insert_for_context_simple(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let array_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "array_prop").await;
-    array_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent of array_prop");
-
-    let array_element = create_prop_of_kind_with_name(ctx, PropKind::String, "array_element").await;
-    array_element
-        .set_parent_prop(ctx, *array_prop.id())
-        .await
-        .expect("cannot set parent of array_element");
-
+    let array_prop =
+        create_prop_and_set_parent(ctx, PropKind::Array, "array_prop", root.domain_prop_id).await;
+    let array_element =
+        create_prop_and_set_parent(ctx, PropKind::String, "array_element", *array_prop.id()).await;
     schema_variant
         .finalize(ctx)
         .await
@@ -184,10 +172,10 @@ async fn insert_for_context_simple(ctx: &DalContext) {
             "si": {
                 "name": "Array Component",
             },
-            "code": {},
+
             "domain": {},
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties,
@@ -218,12 +206,12 @@ async fn insert_for_context_simple(ctx: &DalContext) {
             "si": {
                 "name": "Array Component",
             },
-            "code": {},
+
             "domain": {
                 "array_prop": [],
             },
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties,
@@ -239,45 +227,21 @@ async fn update_for_context_object(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let address_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "address").await;
-    address_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent of address_prop");
+    let address_prop =
+        create_prop_and_set_parent(ctx, PropKind::Object, "address", root.domain_prop_id).await;
+    let streets_prop =
+        create_prop_and_set_parent(ctx, PropKind::Array, "streets", *address_prop.id()).await;
+    let _streets_child_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "street", *streets_prop.id()).await;
+    let _city_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "city", *address_prop.id()).await;
+    let _country_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "country", *address_prop.id()).await;
 
-    let streets_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "streets").await;
-    streets_prop
-        .set_parent_prop(ctx, *address_prop.id())
-        .await
-        .expect("cannot set parent of streets prop");
-    let streets_child_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "street").await;
-    streets_child_prop
-        .set_parent_prop(ctx, *streets_prop.id())
-        .await
-        .expect("cannot set parent of street prop");
-
-    let city_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "city").await;
-    city_prop
-        .set_parent_prop(ctx, *address_prop.id())
-        .await
-        .expect("cannot set parent of city prop");
-    let country_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "country").await;
-    country_prop
-        .set_parent_prop(ctx, *address_prop.id())
-        .await
-        .expect("cannot set parent of country prop");
-
-    let tags_prop = create_prop_of_kind_with_name(ctx, PropKind::Map, "tags").await;
-    tags_prop
-        .set_parent_prop(ctx, *address_prop.id())
-        .await
-        .expect("cannot set parent of tags prop");
-    let tags_child_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "tag").await;
-    tags_child_prop
-        .set_parent_prop(ctx, *tags_prop.id())
-        .await
-        .expect("cannot set parent of tags child prop");
-
+    let tags_prop =
+        create_prop_and_set_parent(ctx, PropKind::Map, "tags", *address_prop.id()).await;
+    let _tags_child_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "tag", *tags_prop.id()).await;
     schema_variant
         .finalize(ctx)
         .await
@@ -287,12 +251,7 @@ async fn update_for_context_object(ctx: &DalContext) {
         .await
         .expect("Unable to create component");
 
-    let read_context = AttributeReadContext {
-        prop_id: None,
-        component_id: Some(*component.id()),
-        ..AttributeReadContext::default()
-    };
-    let component_view = ComponentView::for_context(ctx, read_context)
+    let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view");
 
@@ -302,7 +261,7 @@ async fn update_for_context_object(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
-                "code": {},
+
                 "domain": {},
             }
         ],
@@ -369,7 +328,7 @@ async fn update_for_context_object(ctx: &DalContext) {
     .await
     .expect("cannot update value");
 
-    let component_view = ComponentView::for_context(ctx, read_context)
+    let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view");
 
@@ -379,7 +338,7 @@ async fn update_for_context_object(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
-                "code": {},
+
                 "domain": {
                     "address": {
                         "streets": [
@@ -420,7 +379,7 @@ async fn update_for_context_object(ctx: &DalContext) {
     .await
     .expect("cannot update value");
 
-    let component_view = ComponentView::for_context(ctx, read_context)
+    let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view");
 
@@ -430,7 +389,7 @@ async fn update_for_context_object(ctx: &DalContext) {
                 "si": {
                     "name": "Basic component",
                 },
-                "code": {},
+
                 "domain": {
                     "address": {
                         "streets": [
@@ -457,18 +416,10 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         .await
         .expect("cannot set default schema variant");
 
-    let array_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "array_prop").await;
-    array_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
-        .await
-        .expect("cannot set parent of array_prop");
-
-    let array_element = create_prop_of_kind_with_name(ctx, PropKind::String, "array_element").await;
-    array_element
-        .set_parent_prop(ctx, *array_prop.id())
-        .await
-        .expect("cannot set parent of array_element");
-
+    let array_prop =
+        create_prop_and_set_parent(ctx, PropKind::Array, "array_prop", root.domain_prop_id).await;
+    let array_element =
+        create_prop_and_set_parent(ctx, PropKind::String, "array_element", *array_prop.id()).await;
     schema_variant
         .finalize(ctx)
         .await
@@ -489,10 +440,10 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
             "si": {
                 "name": "Array Component",
             },
-            "code": {},
+
             "domain": {},
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties,
@@ -528,14 +479,14 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
             "si": {
                 "name": "Array Component",
             },
-            "code": {},
+
             "domain": {
                 "array_prop": [
                     "Component Element",
                 ],
             },
         }],
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties,

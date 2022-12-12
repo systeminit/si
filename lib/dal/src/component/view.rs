@@ -5,9 +5,8 @@ use thiserror::Error;
 use crate::{
     component::ComponentKind, func::binding_return_value::FuncBindingReturnValueId,
     AttributeReadContext, AttributeValue, AttributeValueError, Component, ComponentId, DalContext,
-    EncryptedSecret, ExternalProviderId, FuncBindingReturnValue, InternalProvider,
-    InternalProviderError, Prop, PropError, PropId, SchemaVariantId, SecretError, SecretId,
-    StandardModel, StandardModelError,
+    EncryptedSecret, FuncBindingReturnValue, InternalProvider, InternalProviderError, Prop,
+    PropError, PropId, SchemaVariantId, SecretError, SecretId, StandardModel, StandardModelError,
 };
 
 type ComponentViewResult<T> = Result<T, ComponentViewError>;
@@ -30,8 +29,6 @@ pub enum ComponentViewError {
     SecretNotFound(SecretId),
     #[error("json pointer not found: {1:?} at {0}")]
     JSONPointerNotFound(serde_json::Value, String),
-    #[error("bad attribute read context {0}")]
-    BadAttributeReadContext(String),
     #[error("component not found {0}")]
     NotFound(ComponentId),
     #[error("schema variant not found for component {0}")]
@@ -64,19 +61,10 @@ impl Default for ComponentView {
 }
 
 impl ComponentView {
-    pub async fn for_context(
+    pub async fn new(
         ctx: &DalContext,
-        context: AttributeReadContext,
+        component_id: ComponentId,
     ) -> ComponentViewResult<ComponentView> {
-        let component_id = match context.component_id() {
-            Some(c) => c,
-            None => {
-                return Err(ComponentViewError::BadAttributeReadContext(
-                    "component_id is required".to_string(),
-                ));
-            }
-        };
-
         let component = Component::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ComponentViewError::NotFound(component_id))?;
@@ -96,9 +84,8 @@ impl ComponentView {
 
         let value_context = AttributeReadContext {
             internal_provider_id: Some(*implicit_provider.id()),
-            prop_id: Some(PropId::NONE),
-            external_provider_id: Some(ExternalProviderId::NONE),
-            ..context
+            component_id: Some(component_id),
+            ..AttributeReadContext::default()
         };
 
         let attribute_value = AttributeValue::find_for_context(ctx, value_context)
@@ -115,7 +102,7 @@ impl ComponentView {
                 })?;
         let properties = properties_func_binding_return_value
             .value()
-            .unwrap_or(&serde_json::Value::Null);
+            .unwrap_or(&Value::Null);
 
         Ok(ComponentView {
             kind: *component.kind(),

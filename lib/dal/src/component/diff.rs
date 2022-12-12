@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::component::ComponentResult;
 use crate::{
-    AttributeReadContext, CodeLanguage, CodeView, Component, ComponentError, ComponentId,
-    ComponentView, DalContext, Prop, StandardModel,
+    CodeLanguage, CodeView, Component, ComponentError, ComponentId, ComponentView, DalContext,
+    StandardModel,
 };
 
 const NEWLINE: &str = "\n";
@@ -43,27 +43,8 @@ impl ComponentDiff {
             return Err(ComponentError::InvalidContextForDiff);
         }
 
-        // FIXME(nick): this is inefficient and should be replaced with a single query that returns
-        // the three IDs. The query could leverage the "components_with_attributes" table.
-        let component = Component::get_by_id(ctx, &component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(component_id))?;
-        let schema_variant = component
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(component_id))?;
-        let root_prop = Prop::find_root_for_schema_variant(ctx, *schema_variant.id())
-            .await?
-            .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
-
-        let component_view_context = AttributeReadContext {
-            prop_id: Some(*root_prop.id()),
-            component_id: Some(component_id),
-            ..AttributeReadContext::default()
-        };
-
         // TODO(nick): perhaps, we can serialize the value into other kinds of structure in the future.
-        let curr_component_view = ComponentView::for_context(ctx, component_view_context).await?;
+        let curr_component_view = ComponentView::new(ctx, component_id).await?;
         let curr_json = serde_json::to_string_pretty(&curr_component_view.properties)?;
 
         // Find the "diffs" given the head dal context only if the component exists on head.
@@ -71,8 +52,7 @@ impl ComponentDiff {
             .await?
             .is_some()
         {
-            let prev_component_view =
-                ComponentView::for_context(&head_ctx, component_view_context).await?;
+            let prev_component_view = ComponentView::new(&head_ctx, component_id).await?;
             let prev_json = serde_json::to_string_pretty(&prev_component_view.properties)?;
 
             let mut lines = Vec::new();

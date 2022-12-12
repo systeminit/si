@@ -6,12 +6,12 @@ use dal::{
 };
 use dal_test::test;
 use dal_test::test_harness::{
-    create_prop_of_kind_and_set_parent_with_name, create_schema, create_schema_variant_with_root,
+    create_prop_and_set_parent, create_schema, create_schema_variant_with_root,
 };
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
-async fn set_code_prop_for_component(ctx: &DalContext) {
+async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -21,13 +21,8 @@ async fn set_code_prop_for_component(ctx: &DalContext) {
 
     // domain: Object
     // └─ poop: String
-    let poop_prop = create_prop_of_kind_and_set_parent_with_name(
-        ctx,
-        PropKind::String,
-        "poop",
-        root_prop.domain_prop_id,
-    )
-    .await;
+    let poop_prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "poop", root_prop.domain_prop_id).await;
 
     // Create code prototype(s).
     let func_name = "si:generateYAML".to_owned();
@@ -93,16 +88,9 @@ async fn set_code_prop_for_component(ctx: &DalContext) {
     .expect("could not perform update for context");
 
     // Observe that the code generation worked.
-    let component_view = ComponentView::for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: None,
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::default()
-        },
-    )
-    .await
-    .expect("could not generate component view");
+    let component_view = ComponentView::new(ctx, *component.id())
+        .await
+        .expect("could not generate component view");
     assert_eq!(
         serde_json::json![
             {

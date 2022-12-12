@@ -882,22 +882,8 @@ impl Component {
         &self,
         ctx: &DalContext,
     ) -> ComponentResult<ComponentView> {
-        Self::view(ctx, self.id).await
-    }
-
-    pub async fn view(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<ComponentView> {
-        let component = Self::get_by_id(ctx, &component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(component_id))?;
-        let read_context = AttributeReadContext {
-            prop_id: None,
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::default()
-        };
-        Ok(ComponentView::for_context(ctx, read_context).await?)
+        let view = ComponentView::new(ctx, self.id).await?;
+        Ok(view)
     }
 
     pub async fn veritech_qualification_check_component(
@@ -908,12 +894,12 @@ impl Component {
 
         let mut parents = Vec::new();
         for id in parent_ids {
-            let view = Self::view(ctx, id).await?;
+            let view = ComponentView::new(ctx, id).await?;
             parents.push(view.into());
         }
 
         let qualification_view = veritech_client::QualificationCheckComponent {
-            data: Self::view(ctx, self.id).await?.into(),
+            data: ComponentView::new(ctx, self.id).await?.into(),
             parents,
         };
         Ok(qualification_view)

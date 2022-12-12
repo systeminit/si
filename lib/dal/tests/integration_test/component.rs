@@ -9,7 +9,7 @@ use dal_test::{
     test,
     test_harness::{
         create_component_and_schema, create_component_for_schema_variant,
-        create_prop_of_kind_and_set_parent_with_name, create_schema, create_schema_variant,
+        create_prop_and_set_parent, create_schema, create_schema_variant,
         create_schema_variant_with_root,
     },
 };
@@ -87,7 +87,7 @@ async fn qualification_view(ctx: &DalContext) {
         json!({
             "data": {
                 "kind": "standard",
-                "properties": { "si": { "name": "mastodon" }, "domain": {}, "code": {} },
+                "properties": { "si": { "name": "mastodon" }, "domain": {} },
             },
             "parents": [],
         }),
@@ -182,7 +182,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     let noctua_schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (noctua_schema_variant, noctua_root_prop) =
         create_schema_variant_with_root(ctx, *noctua_schema.id()).await;
-    let u12a_prop = create_prop_of_kind_and_set_parent_with_name(
+    let u12a_prop = create_prop_and_set_parent(
         ctx,
         PropKind::String,
         "u12a",
@@ -288,35 +288,25 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         Component::new_for_schema_variant_with_node(ctx, "noctua", noctua_schema_variant.id())
             .await
             .expect("cannot create component");
+    let ekwb_component_id = *ekwb_component.id();
+    let noctua_component_id = *noctua_component.id();
 
     // Connect the two components.
     Edge::connect_providers_for_components(
         ctx,
         *noctua_explicit_internal_provider.id(),
-        *noctua_component.id(),
+        noctua_component_id,
         *ekwb_external_provider.id(),
-        *ekwb_component.id(),
+        ekwb_component_id,
     )
     .await
     .expect("could not connect providers for components");
 
-    // Cache the read contexts for generating views for our components.
-    let ekwb_component_view_context = AttributeReadContext {
-        prop_id: None,
-        component_id: Some(*ekwb_component.id()),
-        ..AttributeReadContext::default()
-    };
-    let noctua_component_view_context = AttributeReadContext {
-        prop_id: None,
-        component_id: Some(*noctua_component.id()),
-        ..AttributeReadContext::default()
-    };
-
     // Ensure everything looks correct post connection.
-    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
+    let ekwb_component_view = ComponentView::new(ctx, ekwb_component_id)
         .await
         .expect("could not generate component view");
-    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
+    let noctua_component_view = ComponentView::new(ctx, noctua_component_id)
         .await
         .expect("could not generate component view");
     assert_eq!(
@@ -324,7 +314,6 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             "si": {
                 "name": "ekwb",
             },
-            "code": {},
             "domain": {},
         }], // expected
         ekwb_component_view.properties // actual
@@ -334,7 +323,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             "si": {
                 "name": "noctua",
             },
-            "code": {},
+
             "domain": {}
         }], // expected
         noctua_component_view.properties // actual
@@ -368,10 +357,10 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         .expect("could not set resource field");
 
     // Ensure the value is propagated end-to-end.
-    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
+    let ekwb_component_view = ComponentView::new(ctx, ekwb_component_id)
         .await
         .expect("could not generate component view");
-    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
+    let noctua_component_view = ComponentView::new(ctx, noctua_component_id)
         .await
         .expect("could not generate component view");
     assert_eq!(
@@ -379,7 +368,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             "si": {
                 "name": "ekwb",
             },
-            "code": {},
+
             "domain": {},
             "resource": {
                 "status": "ok",
@@ -394,7 +383,6 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             "si": {
                 "name": "noctua",
             },
-            "code": {},
             "domain": {
                 "u12a": {
                     "status": "ok",
@@ -414,10 +402,10 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     ctx.update_visibility(Visibility::new(new_change_set.pk, None));
 
     // Ensure the views are identical to HEAD.
-    let ekwb_component_view = ComponentView::for_context(ctx, ekwb_component_view_context)
+    let ekwb_component_view = ComponentView::new(ctx, ekwb_component_id)
         .await
         .expect("could not generate component view");
-    let noctua_component_view = ComponentView::for_context(ctx, noctua_component_view_context)
+    let noctua_component_view = ComponentView::new(ctx, noctua_component_id)
         .await
         .expect("could not generate component view");
     assert_eq!(
@@ -425,7 +413,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             "si": {
                 "name": "ekwb",
             },
-            "code": {},
+
             "domain": {},
             "resource": {
                 "status": "ok",
@@ -440,7 +428,6 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             "si": {
                 "name": "noctua",
             },
-            "code": {},
             "domain": {
                 "u12a": {
                     "status": "ok",

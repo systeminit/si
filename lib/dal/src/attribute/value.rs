@@ -754,15 +754,15 @@ impl AttributeValue {
     #[instrument(skip_all)]
     pub async fn insert_for_context(
         ctx: &DalContext,
-        parent_context: AttributeContext,
-        parent_attribute_value_id: AttributeValueId,
+        item_attribute_context: AttributeContext,
+        array_or_map_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
         key: Option<String>,
     ) -> AttributeValueResult<AttributeValueId> {
         Self::insert_for_context_raw(
             ctx,
-            parent_context,
-            parent_attribute_value_id,
+            item_attribute_context,
+            array_or_map_attribute_value_id,
             value,
             key,
             true,
@@ -792,8 +792,8 @@ impl AttributeValue {
     #[instrument(skip_all)]
     async fn insert_for_context_raw(
         ctx: &DalContext,
-        parent_context: AttributeContext,
-        parent_attribute_value_id: AttributeValueId,
+        item_attribute_context: AttributeContext,
+        array_or_map_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
         key: Option<String>,
         create_child_proxies: bool,
@@ -804,8 +804,8 @@ impl AttributeValue {
                 ctx.write_tenancy(),
                 ctx.read_tenancy(),
                 ctx.visibility(),
-                &parent_context,
-                &parent_attribute_value_id,
+                &item_attribute_context,
+                &array_or_map_attribute_value_id,
                 &value,
                 &key,
                 &create_child_proxies,

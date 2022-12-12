@@ -1,9 +1,10 @@
 use dal::{
     DalContext, HistoryActor, Prop, PropKind, SchemaKind, StandardModel, Visibility, WriteTenancy,
 };
+use dal_test::helpers::generate_fake_name;
 use dal_test::{
     test,
-    test_harness::{create_prop, create_prop_of_kind, create_schema, create_schema_variant},
+    test_harness::{create_schema, create_schema_variant},
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -23,7 +24,9 @@ async fn new(ctx: &DalContext) {
 async fn schema_variants(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
-    let prop = create_prop(ctx).await;
+    let prop = Prop::new(ctx, generate_fake_name(), PropKind::String, None)
+        .await
+        .expect("cannot create prop");
 
     prop.add_schema_variant(ctx, schema_variant.id())
         .await
@@ -48,8 +51,12 @@ async fn schema_variants(ctx: &DalContext) {
 
 #[test]
 async fn parent_props(ctx: &DalContext) {
-    let parent_prop = create_prop_of_kind(ctx, PropKind::Object).await;
-    let child_prop = create_prop_of_kind(ctx, PropKind::String).await;
+    let parent_prop = Prop::new(ctx, generate_fake_name(), PropKind::Object, None)
+        .await
+        .expect("cannot create prop");
+    let child_prop = Prop::new(ctx, generate_fake_name(), PropKind::String, None)
+        .await
+        .expect("cannot create prop");
     child_prop
         .set_parent_prop(ctx, *parent_prop.id())
         .await
@@ -70,8 +77,12 @@ async fn parent_props(ctx: &DalContext) {
 
 #[test]
 async fn parent_props_wrong_prop_kinds(ctx: &DalContext) {
-    let parent_prop = create_prop_of_kind(ctx, PropKind::String).await;
-    let child_prop = create_prop_of_kind(ctx, PropKind::Object).await;
+    let parent_prop = Prop::new(ctx, generate_fake_name(), PropKind::String, None)
+        .await
+        .expect("cannot create prop");
+    let child_prop = Prop::new(ctx, generate_fake_name(), PropKind::Object, None)
+        .await
+        .expect("cannot create prop");
 
     let result = child_prop.set_parent_prop(ctx, *parent_prop.id()).await;
     result.expect_err("should have errored, and it did not");

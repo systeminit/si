@@ -26,7 +26,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
             "domain": {
                 "image": "tail"
             },
-            "code": {},
+
             "si": {
                 "name": "tail",
                 "type": "component"
@@ -89,7 +89,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     // Ensure the view did not drift.
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "image": "tail"
             },
@@ -134,7 +134,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     // Observe that it worked.
     assert_eq!(
         serde_json::json![{
-            "code": {},
+
             "domain": {
                 "image": "ironsides"
             },

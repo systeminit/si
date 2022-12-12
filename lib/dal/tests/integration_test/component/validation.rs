@@ -6,10 +6,11 @@ use dal::{
     Func, FuncBackendKind, FuncBackendResponseType, PropId, PropKind, SchemaKind, StandardModel,
     ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
 };
+use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
-    test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
+    test_harness::{create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
@@ -24,17 +25,20 @@ async fn check_validations_for_component(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let gecs_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "thousand_gecs").await;
-    gecs_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id)
-        .await
-        .expect("cannot set parent prop");
-    let prefix_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "the_tree_of_clues").await;
-    prefix_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id)
-        .await
-        .expect("cannot set parent prop");
+    let gecs_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "thousand_gecs",
+        root_prop.domain_prop_id,
+    )
+    .await;
+    let prefix_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "the_tree_of_clues",
+        root_prop.domain_prop_id,
+    )
+    .await;
 
     // Gather what we need to create validations
     let mut builder = ValidationPrototypeContext::builder();
@@ -174,13 +178,13 @@ async fn check_validations_for_component(ctx: &DalContext) {
             "si": {
                 "name": "hundo_gecs"
             },
-            "code": {},
+
             "domain": {
                 "the_tree_of_clues": "wrong song title",
                 "thousand_gecs": "wrongLyrics"
             }
         }], // actual
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties // expected
@@ -253,13 +257,13 @@ async fn check_validations_for_component(ctx: &DalContext) {
             "si": {
                 "name": "hundo_gecs"
             },
-            "code": {},
+
             "domain": {
                 "the_tree_of_clues": "toothless",
                 "thousand_gecs": "stupidHorse"
             }
         }], // actual
-        ComponentView::for_context(ctx, base_attribute_read_context)
+        ComponentView::new(ctx, *component.id())
             .await
             .expect("cannot get component view")
             .properties // expected
@@ -285,10 +289,9 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-    let prop = create_prop_of_kind_with_name(ctx, PropKind::String, "Tamarian").await;
-    prop.set_parent_prop(ctx, root_prop.domain_prop_id)
-        .await
-        .expect("cannot set parent prop");
+    let prop =
+        create_prop_and_set_parent(ctx, PropKind::String, "Tamarian", root_prop.domain_prop_id)
+            .await;
 
     let mut func = Func::new(
         ctx,
@@ -375,7 +378,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .await
     .expect("update attr value");
 
-    let properties = ComponentView::for_context(ctx, base_attribute_read_context)
+    let properties = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view")
         .properties;
@@ -385,7 +388,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
             "si": {
                 "name": "Danoth",
             },
-            "code": {},
+
             "domain": {
                 "Tamarian": "Shaka, when the walls fell",
             }
@@ -459,7 +462,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .await
     .expect("update attr value");
 
-    let properties = ComponentView::for_context(ctx, base_attribute_read_context)
+    let properties = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view")
         .properties;
@@ -469,7 +472,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
             "si": {
                 "name": "Danoth",
             },
-            "code": {},
+
             "domain": {
                 "Tamarian": "Temba, his arms open",
             }
@@ -529,7 +532,7 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
                 "name": "us-east-1",
                 "type": "configurationFrame",
             },
-            "code": {},
+
             "domain": {
                 "region": "us-east-1",
             }

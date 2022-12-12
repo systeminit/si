@@ -21,7 +21,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "soulrender"
             },
-            "code": {},
+
             "si": {
                 "name": "soulrender",
                 "type": "component"
@@ -34,7 +34,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "bloodscythe"
             },
-            "code": {},
+
             "si": {
                 "name": "bloodscythe",
                 "type": "component"
@@ -58,7 +58,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "soulrender"
             },
-            "code": {},
+
             "si": {
                 "name": "soulrender",
                 "type": "component"
@@ -72,7 +72,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "bloodscythe-updated"
             },
-            "code": {},
+
             "si": {
                 "name": "bloodscythe-updated",
                 "type": "component"
@@ -96,7 +96,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "soulrender-updated"
             },
-            "code": {},
+
             "si": {
                 "name": "soulrender-updated",
                 "type": "component"
@@ -109,7 +109,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "bloodscythe-updated"
             },
-            "code": {},
+
             "si": {
                 "name": "bloodscythe-updated",
                 "type": "component"

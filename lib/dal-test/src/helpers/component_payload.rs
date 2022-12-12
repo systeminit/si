@@ -51,9 +51,9 @@ impl ComponentPayload {
             .expect("could not convert builder to attribute context")
     }
 
-    /// Generates a new [`ComponentView`] and returns the "properites" field.
+    /// Generates a new [`ComponentView`] and returns the "properties" field.
     pub async fn component_view_properties(&self, ctx: &DalContext) -> serde_json::Value {
-        ComponentView::for_context(ctx, self.base_attribute_read_context)
+        ComponentView::new(ctx, self.component_id)
             .await
             .expect("cannot get component view")
             .properties
