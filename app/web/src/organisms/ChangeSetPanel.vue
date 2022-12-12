@@ -146,7 +146,9 @@
           v-else-if="changeSetMergeStatus.isSuccess"
           class="gap-2 items-center flex flex-col"
         >
-          <span class="text-3xl">Change Set Merged!</span>
+          <span class="text-3xl">
+            {{ celebrate }} Change Set Merged! {{ celebrate }}
+          </span>
           <span class="text-md italic pt-sm">
             Preparing your recommendations...
           </span>
@@ -235,15 +237,26 @@ const createChangeSetReqStatus =
 const applyChangeSetReqStatus =
   changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
 
+const celebrationEmoji = [
+  "🎉",
+  "🎊",
+  "✨",
+  "🔥",
+  "⚡️",
+  "🥳",
+  "🍻",
+  "🍺",
+  "🥂",
+  "🍾",
+];
+const celebrate = ref("🎉");
 let jsConfetti: JSConfetti;
 const confettis = [
   {},
-  { emojis: ["🌈"] },
-  { emojis: ["⚡️"] },
   { emojis: ["🤘", "🤘🏻", "🤘🏼", "🤘🏽", "🤘🏾", "🤘🏿"] },
   { emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜"] },
   { emojis: ["🍾", "🍷", "🍸", "🍹", "🍺", "🥂", "🍻"] },
-  { emojis: ["🏳️‍🌈", "🏳️‍⚧️"] },
+  { emojis: ["🏳️‍🌈", "🏳️‍⚧️", "⚡️", "🌈", "✨", "🔥"] },
 ];
 onMounted(() => {
   jsConfetti = new JSConfetti({
@@ -258,6 +271,9 @@ const changeSetMergeStatus =
 // Saves the current edit session and then applies the current change set
 const applyChangeSet = async () => {
   if (!wipeRef.value) return; // bail if the wipe doesn't exist
+
+  // Pick a celebration emoji!
+  celebrate.value = _.sample(celebrationEmoji) || "🎉";
 
   // Run both the wipe and the change set apply in parallel
   const wipeDone = wipeRef.value.open(mergeButtonRef.value.$el);

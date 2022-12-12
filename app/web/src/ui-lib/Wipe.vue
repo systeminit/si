@@ -115,7 +115,7 @@ defineExpose({ open, close });
   clip-path: circle(250vw at var(--si-wipe-origin-x) var(--si-wipe-origin-y));
 }
 .wipe-enter-active {
-  transition: clip-path 1s;
+  transition: clip-path 1.312s;
 }
 .wipe-leave-from {
   clip-path: circle(250vw at 50vw 50vh);
@@ -124,6 +124,6 @@ defineExpose({ open, close });
   clip-path: circle(0px at 50vw 50vh);
 }
 .wipe-leave-active {
-  transition: clip-path 1s;
+  transition: clip-path 1.312s;
 }
 </style>
