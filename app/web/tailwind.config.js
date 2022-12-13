@@ -13,7 +13,6 @@ module.exports = {
   theme: {
     fontFamily: {
       sans: ["Inter", "sans-serif"],
-      commodore: ["commodore", "Sans-serif"],
     },
     fontMetrics: {
       sans: {

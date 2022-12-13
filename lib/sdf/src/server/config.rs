@@ -139,6 +139,7 @@ impl Default for ConfigFile {
         // default, etc.
         if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
             jwt_secret_key_path = Path::new(&dir)
+                // .join("src/dev.jwt_secret_key.bin")
                 .join("src/dev.jwt_secret_key.bin")
                 .to_string_lossy()
                 .to_string();

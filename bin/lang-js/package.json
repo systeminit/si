@@ -1,6 +1,6 @@
 {
   "name": "lang-js",
-  "private": "true",
+  "private": true,
   "version": "0.1.0",
   "description": "Inference for Entities",
   "main": "dist/index.js",
@@ -23,6 +23,7 @@
     "build:clean": "npm run clean && npm run build",
     "build:watch": "npm run clean && tsc --watch",
     "package": "npm run build && pkg . --output ./target/lang-js",
+    "jsbuild:backend": "pnpm package",
     "watch": "npm run build:watch",
     "lint": "eslint --ext .ts,.js --ignore-path .gitignore src",
     "lint:fix": "eslint --fix",
@@ -40,11 +41,12 @@
   "devDependencies": {
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.4.1",
-    "@types/lodash": "^4.14.182",
     "@types/js-yaml": "^4.0.5",
+    "@types/lodash": "^4.14.182",
+    "@types/node": "^17.0.29",
+    "@types/node-fetch": "^2.6.1",
     "@typescript-eslint/eslint-plugin": "^5.21.0",
     "@typescript-eslint/parser": "^5.21.0",
-    "@types/node-fetch": "^2.6.1",
     "eslint": "^8.14.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-jest": "^26.1.5",
@@ -58,11 +60,11 @@
   "dependencies": {
     "commander": "^9.2.0",
     "debug": "^4.3.4",
-    "lodash": "^4.17.21",
-    "vm2": "^3.9.11",
     "execa": "^5.1.1",
     "js-yaml": "^4.1.0",
-    "node-fetch": "^2"
+    "lodash": "^4.17.21",
+    "node-fetch": "^2",
+    "vm2": "^3.9.11"
   },
   "volta": {
     "node": "16.5.0",

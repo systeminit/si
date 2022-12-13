@@ -301,11 +301,16 @@ endif
 	$(call header,$@)
 ifeq ($(shell [[ $(FORCE) == "true" && $(LOCAL_PG) == "true" ]] && echo "true"),true)
 	cd $(MAKEPATH)/deploy; $(MAKE) partial-local-pg
-	@echo "  - Sleeping to not race LOCAL postgres or the queue to being alive; you're welcome."
-	@sleep 10
+
+	@echo "- waiting for postgres to boot up -"
+# still have to sleep a bit for the postgres connection to exist before checking ready
+	@sleep 2
+	pg_isready -h localhost -t 10 -U si
+
 else ifeq ($(shell [[ $(CI) == "true" || $(FORCE) == "true" ]] && echo "true"),true)
 	cd $(MAKEPATH)/deploy; $(MAKE) partial
-	@echo "  - Sleeping to not race postgres or the queue to being alive; you're welcome."
+	@echo "- waiting for postgres to boot up -"
+# pg_isready is not available in ci :(
 	@sleep 10
 else
 	@echo "  - Skipping $@ outside of CI; set FORCE=true if you want this to happen automatically."

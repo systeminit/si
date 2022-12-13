@@ -17,6 +17,8 @@ deploy/docker-compose.env.yml
 app/web/cypress/screenshots/
 app/web/cypress/videos/
 
+.turbo
+
 # vim temp files
 .*.swp
 .*.swo
