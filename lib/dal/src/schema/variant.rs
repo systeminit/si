@@ -22,6 +22,9 @@ use crate::{
     PropError, PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel, StandardModelError,
     Timestamp, Visibility, WriteTenancy, WsEventError,
 };
+use crate::{FuncBackendResponseType, FuncId};
+
+use self::leaves::LeafKind;
 
 pub mod definition;
 pub mod leaves;
@@ -106,6 +109,10 @@ pub enum SchemaVariantError {
     FoundEntryForPrimitive(String),
     #[error("can neither provide children nor entry for primitive with name: ({0})")]
     FoundChildrenAndEntryForPrimitive(String),
+    #[error("leaf function response type ({0}) must match leaf kind ({0})")]
+    LeafFunctionMismatch(FuncBackendResponseType, LeafKind),
+    #[error("leaf function ({0}) must be JsAttribute")]
+    LeafFunctionMustBeJsAttribute(FuncId),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
@@ -372,40 +379,14 @@ impl SchemaVariant {
         Ok(results)
     }
 
-    /// Finds the [`Prop`](crate::Prop) corresponding to "/root/code/codeItem", which is of kind
-    /// [`object`](crate::PropKind::Object) underneath a [`map`](crate::PropKind::Map).
-    pub async fn find_code_item_prop(
+    /// This method finds a [`leaf`](crate::schema::variant::leaves)'s entry
+    /// [`Prop`](crate::Prop) given a [`LeafKind`](crate::schema::variant::leaves::LeafKind).
+    pub async fn find_leaf_item_prop(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
+        leaf_kind: LeafKind,
     ) -> SchemaVariantResult<Prop> {
-        Self::find_leaf_item_prop(ctx, schema_variant_id, "code", "codeItem").await
-    }
-
-    /// Finds the [`Prop`](crate::Prop) corresponding to "/root/qualification/qualificationItem",
-    /// which is of kind [`object`](crate::PropKind::Object) underneath a
-    /// [`map`](crate::PropKind::Map).
-    pub async fn find_qualification_item_prop(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<Prop> {
-        Self::find_leaf_item_prop(ctx, schema_variant_id, "qualification", "qualificationItem")
-            .await
-    }
-
-    /// This private method finds a [`leaf`](crate::schema::variant::leaves)'s entry
-    /// [`Prop`](crate::Prop). It takes in a provided name for the direct child
-    /// [`map`](crate::PropKind::Map) [`Prop`](crate::Prop) of "/root" as well as a provided name
-    /// for the entry [`object`](crate::PropKind::Object) [`Prop`](crate::Prop).
-    ///
-    /// This method is private to ensure compile time safety.
-    async fn find_leaf_item_prop(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-        leaf_map_prop_name: impl AsRef<str>,
-        leaf_item_prop_name: impl AsRef<str>,
-    ) -> SchemaVariantResult<Prop> {
-        let leaf_map_prop_name = leaf_map_prop_name.as_ref();
-        let leaf_item_prop_name = leaf_item_prop_name.as_ref();
+        let (leaf_map_prop_name, leaf_item_prop_name) = leaf_kind.prop_names();
         let row = ctx
             .txns()
             .pg()
