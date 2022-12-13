@@ -28,7 +28,7 @@ pub mod leaves;
 pub mod root_prop;
 
 const ALL_PROPS: &str = include_str!("../queries/schema_variant/all_props.sql");
-const FIND_CODE_ITEM_PROP: &str = include_str!("../queries/schema_variant/find_code_item_prop.sql");
+const FIND_LEAF_ITEM_PROP: &str = include_str!("../queries/schema_variant/find_leaf_item_prop.sql");
 const FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER: &str =
     include_str!("../queries/schema_variant/find_root_child_implicit_internal_provider.sql");
 
@@ -374,17 +374,50 @@ impl SchemaVariant {
 
     /// Finds the [`Prop`](crate::Prop) corresponding to "/root/code/codeItem", which is of kind
     /// [`object`](crate::PropKind::Object) underneath a [`map`](crate::PropKind::Map).
-    #[instrument(skip_all)]
     pub async fn find_code_item_prop(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Prop> {
+        Self::find_leaf_item_prop(ctx, schema_variant_id, "code", "codeItem").await
+    }
+
+    /// Finds the [`Prop`](crate::Prop) corresponding to "/root/qualification/qualificationItem",
+    /// which is of kind [`object`](crate::PropKind::Object) underneath a
+    /// [`map`](crate::PropKind::Map).
+    pub async fn find_qualification_item_prop(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Prop> {
+        Self::find_leaf_item_prop(ctx, schema_variant_id, "qualification", "qualificationItem")
+            .await
+    }
+
+    /// This private method finds a [`leaf`](crate::schema::variant::leaves)'s entry
+    /// [`Prop`](crate::Prop). It takes in a provided name for the direct child
+    /// [`map`](crate::PropKind::Map) [`Prop`](crate::Prop) of "/root" as well as a provided name
+    /// for the entry [`object`](crate::PropKind::Object) [`Prop`](crate::Prop).
+    ///
+    /// This method is private to ensure compile time safety.
+    async fn find_leaf_item_prop(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        leaf_map_prop_name: impl AsRef<str>,
+        leaf_item_prop_name: impl AsRef<str>,
+    ) -> SchemaVariantResult<Prop> {
+        let leaf_map_prop_name = leaf_map_prop_name.as_ref();
+        let leaf_item_prop_name = leaf_item_prop_name.as_ref();
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                FIND_CODE_ITEM_PROP,
-                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+                FIND_LEAF_ITEM_PROP,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &schema_variant_id,
+                    &leaf_map_prop_name,
+                    &leaf_item_prop_name,
+                ],
             )
             .await?;
         Ok(object_from_row(row)?)
@@ -416,8 +449,11 @@ impl SchemaVariant {
         Self::find_root_child_implicit_internal_provider(ctx, schema_variant_id, "code").await
     }
 
-    /// A private method that passes in a provided name for a direct child [`Prop`](crate::Prop)
-    /// of "/root". This method is private to ensure compile time safety.
+    /// This private method takes in a provided name for a direct child [`Prop`](crate::Prop)
+    /// of "/root" in order to find the child's implicit
+    /// [`InternalProvider`](crate::InternalProvider).
+    ///
+    /// This method is private to ensure compile time safety.
     async fn find_root_child_implicit_internal_provider(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,

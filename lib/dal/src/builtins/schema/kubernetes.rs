@@ -2,6 +2,7 @@ use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
 use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
+use crate::schema::variant::leaves::LeafKind;
 use crate::{
     func::argument::FuncArgument, schema::SchemaUiMenu, socket::SocketArity,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
@@ -80,11 +81,12 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        SchemaVariant::add_code_generation(
+        SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             *code_generation_func_argument.id(),
             *schema_variant.id(),
+            LeafKind::CodeGeneration,
         )
         .await?;
 
@@ -259,11 +261,12 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        SchemaVariant::add_code_generation(
+        SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             *code_generation_func_argument.id(),
             *schema_variant.id(),
+            LeafKind::CodeGeneration,
         )
         .await?;
 

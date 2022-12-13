@@ -3,6 +3,7 @@ use crate::component::ComponentKind;
 use crate::func::argument::FuncArgument;
 use crate::prototype_context::PrototypeContext;
 use crate::schema::variant::definition::SchemaVariantDefinition;
+use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
 use crate::{
     qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu,
@@ -66,11 +67,12 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
-        let code_map_prop_id = SchemaVariant::add_code_generation(
+        let code_map_prop_id = SchemaVariant::add_leaf(
             ctx,
             *code_generation_func.id(),
             *code_generation_func_argument.id(),
             *schema_variant.id(),
+            LeafKind::CodeGeneration,
         )
         .await?;
 

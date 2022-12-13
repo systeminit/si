@@ -18,6 +18,7 @@ use serde_json::json;
 use veritech_client::ResourceStatus;
 
 mod code;
+mod qualification;
 mod validation;
 mod view;
 
