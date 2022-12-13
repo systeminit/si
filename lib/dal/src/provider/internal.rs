@@ -80,11 +80,11 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 use crate::standard_model::object_option_from_row_option;
 use crate::{
-    impl_standard_model, job::definition::Qualifications, pk, standard_model,
-    standard_model_accessor, standard_model_accessor_ro, AttributeContextBuilderError,
-    AttributePrototype, AttributePrototypeError, AttributePrototypeId, AttributeReadContext,
-    AttributeValueError, AttributeView, DiagramKind, FuncId, HistoryEventError, Prop, PropError,
-    SchemaVariant, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
+    AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
+    AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView, DiagramKind,
+    FuncId, HistoryEventError, Prop, PropError, SchemaVariant, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributeContext, AttributeContextError, AttributeValue, DalContext, Func, FuncBinding, PropId,
@@ -491,13 +491,6 @@ impl InternalProvider {
                     .check_validations(ctx)
                     .await
                     .map_err(|e| InternalProviderError::Component(e.to_string()))?;
-
-                ctx.enqueue_job(
-                    Qualifications::new(ctx, *component.id())
-                        .await
-                        .map_err(|e| InternalProviderError::Component(e.to_string()))?,
-                )
-                .await;
             }
         }
 

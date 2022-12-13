@@ -2,14 +2,15 @@
 //! [`Components`](dal::Component), caching relevant information for them, and providing
 //! helper functions for them by leveraging the cached information.
 
-use std::collections::HashMap;
-
 use dal::{
     attribute::context::AttributeContextBuilder, node::NodeId, AttributeContext,
     AttributeReadContext, AttributeValue, AttributeValueId, ComponentId, ComponentView, DalContext,
     Prop, PropId, SchemaId, SchemaVariantId, StandardModel,
 };
 use serde_json::Value;
+use std::collections::HashMap;
+
+use crate::helpers::component_view::ComponentViewProperties;
 
 #[derive(Debug)]
 /// Payload used for bundling a [`Component`](dal::Component) with all metadata needed for a test.
@@ -51,8 +52,23 @@ impl ComponentPayload {
             .expect("could not convert builder to attribute context")
     }
 
-    /// Generates a new [`ComponentView`] and returns the "properties" field.
-    pub async fn component_view_properties(&self, ctx: &DalContext) -> serde_json::Value {
+    /// Generates a new [`ComponentView`] and returns [`ComponentViewProperties`].
+    ///
+    /// Use this over [`Self::component_view_properties_raw()`] if you'd like to drop certain
+    /// subtrees.
+    pub async fn component_view_properties(&self, ctx: &DalContext) -> ComponentViewProperties {
+        let component_view = ComponentView::new(ctx, self.component_id)
+            .await
+            .expect("cannot get component view");
+        ComponentViewProperties::try_from(component_view)
+            .expect("cannot create component view properties from component view")
+    }
+
+    /// Generates a new [`ComponentView`] and returns the "properties" field as a raw [`Value`].
+    ///
+    /// Use this over [`Self::component_view_properties()`] if you'd like to use the entire
+    /// [`ComponentView`] with all subtrees (potentially) present.
+    pub async fn component_view_properties_raw(&self, ctx: &DalContext) -> Value {
         ComponentView::new(ctx, self.component_id)
             .await
             .expect("cannot get component view")

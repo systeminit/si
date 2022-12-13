@@ -6,10 +6,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{
-    BillingAccountError, QualificationPrototypeError, StandardModelError, TransactionsError,
-    UserError, WsEventError,
-};
+use dal::{BillingAccountError, StandardModelError, TransactionsError, UserError, WsEventError};
 use thiserror::Error;
 
 mod create_builtin_func;
@@ -39,8 +36,6 @@ pub enum DevError {
     Func(#[from] dal::FuncError),
     #[error(transparent)]
     SdfFunc(#[from] func::FuncError),
-    #[error(transparent)]
-    QualificationPrototype(#[from] QualificationPrototypeError),
     #[error(transparent)]
     Builtin(#[from] dal::BuiltinsError),
 }

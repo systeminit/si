@@ -126,14 +126,18 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
                 "version": "1.4.0",
             },
         }], // expected
-        butane_payload.component_view_properties(ctx).await // actual
+        butane_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 
-    // FIXME(nick): there is  a race here where the "generateAwsEc2JSON" function needs to run
+    // FIXME(nick): there is a race here where the "generateAwsEc2JSON" function needs to run
     // again to include the new "UserData" in its code generation output. Sometimes, the "UserData"
     // populated when we generate the view. Other times, it is not. Thus, this test _temporarily_
     // looks at the contents of the "UserData" field alone, rather than the entire object.
-    let ec2_component_view_properties = ec2_payload.component_view_properties(ctx).await;
+    let ec2_component_view_properties = ec2_payload.component_view_properties_raw(ctx).await;
     let ec2_properties = ec2_component_view_properties
         .as_object()
         .expect("could not convert ec2 component view properties to object");
@@ -296,45 +300,47 @@ async fn get_ignition_from_qualification_output(
         .await
         .expect("could not find component by id")
         .expect("component not found by id");
-    component
-        .check_qualifications(ctx)
-        .await
-        .expect("cannot check qualifications");
-    let qualifications = component
-        .list_qualifications(ctx)
+    let qualifications = Component::list_qualifications(ctx, *component.id())
         .await
         .expect("could not list qualifications");
-    let mut filtered_stream_view_lines = qualifications
+    let mut messages = qualifications
         .iter()
         .filter(|qv| qv.title == "Verify Butane config is valid Ignition")
         .map(|qv| {
             // First, ensure the qualification contained a successful result.
-            let qualification_result = qv
+            let mut qualification_result = qv
                 .result
                 .clone()
                 .expect("could not get result from qualification view");
-            dbg!(&qualification_result);
             assert!(qualification_result.success);
 
-            // Then, find the return line. This should be the "pretty" ignition output.
-            let mut lines_from_stream_views = qv
-                .output
-                .iter()
-                .filter(|sv| sv.stream == "return")
-                .map(|sv| sv.line.clone())
-                .collect::<Vec<String>>();
-            let line = lines_from_stream_views
+            // Find the output in the sub check. Ensure there's only one sub check.
+            let sub_check = qualification_result
+                .sub_checks
                 .pop()
-                .expect("lines from filtered stream views are empty");
-            assert!(lines_from_stream_views.is_empty());
-            line
+                .expect("no sub checks found");
+            assert!(qualification_result.sub_checks.is_empty());
+            sub_check.description
+
+            // TODO(nick): decide if we want to see the output stream the same way now that
+            // qualifications are on the prop tree.
+            // Then, find the return line. This should be the "pretty" ignition output.
+            // let mut lines_from_stream_views = qv
+            //     .output
+            //     .iter()
+            //     .filter(|sv| sv.stream == "return")
+            //     .map(|sv| sv.line.clone())
+            //     .collect::<Vec<String>>();
+            // let line = lines_from_stream_views
+            //     .pop()
+            //     .expect("lines from filtered stream views are empty");
+            // assert!(lines_from_stream_views.is_empty());
+            // line
         })
         .collect::<Vec<String>>();
 
     // Return the ignition.
-    let ignition = filtered_stream_view_lines
-        .pop()
-        .expect("filtered streams are empty");
-    assert!(filtered_stream_view_lines.is_empty());
+    let ignition = messages.pop().expect("messages are empty");
+    assert!(messages.is_empty());
     ignition
 }

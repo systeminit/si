@@ -39,7 +39,9 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 "type": "component"
             }
         }], // expected
-        tail_namespace_payload.component_view_properties(ctx).await // actual
+        tail_namespace_payload
+            .component_view_properties_raw(ctx)
+            .await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -58,7 +60,11 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 "type": "component"
             }
         }], // expected
-        head_deployment_payload.component_view_properties(ctx).await // actual
+        head_deployment_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 
     // Find the providers we need for connection.
@@ -110,7 +116,9 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 "type": "component"
             }
         }], // expected
-        tail_namespace_payload.component_view_properties(ctx).await // actual
+        tail_namespace_payload
+            .component_view_properties_raw(ctx)
+            .await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -129,7 +137,11 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 "type": "component"
             }
         }], // expected
-        head_deployment_payload.component_view_properties(ctx).await // actual
+        head_deployment_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 
     // Perform update!
@@ -160,7 +172,9 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 "type": "component"
             }
         }], // expected
-        tail_namespace_payload.component_view_properties(ctx).await // actual
+        tail_namespace_payload
+            .component_view_properties_raw(ctx)
+            .await // actual
     );
 
     assert_eq!(
@@ -190,6 +204,10 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                 "type": "component"
             }
         }], // expected
-        head_deployment_payload.component_view_properties(ctx).await // actual
+        head_deployment_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 }

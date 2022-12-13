@@ -1,9 +1,8 @@
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CommandRunRequest, CommandRunResultSuccess,
     ConfirmationRequest, ConfirmationResultSuccess, CycloneClient, Manager, Pool, ProgressMessage,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ValidationRequest, ValidationResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
+    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use si_data_nats::NatsClient;
@@ -33,8 +32,6 @@ pub enum ServerError {
     NatsConnect(#[source] si_data_nats::NatsError),
     #[error(transparent)]
     Publisher(#[from] PublisherError),
-    #[error(transparent)]
-    QualificationCheck(#[from] deadpool_cyclone::ExecutionError<QualificationCheckResultSuccess>),
     #[error(transparent)]
     Confirmation(#[from] deadpool_cyclone::ExecutionError<ConfirmationResultSuccess>),
     #[error(transparent)]
@@ -137,12 +134,6 @@ impl Server {
 impl Server {
     pub async fn run(self) -> Result<()> {
         let _ = join!(
-            process_qualification_check_requests_task(
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.cyclone_pool.clone(),
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
             process_confirmation_requests_task(
                 self.nats.clone(),
                 self.subject_prefix.clone(),
@@ -194,7 +185,7 @@ impl ShutdownHandle {
     }
 }
 
-// NOTE(fnichol): the resolver_function, qualification_check, confirmation,
+// NOTE(fnichol): the resolver_function, confirmation,
 // workflow, command are parallel and extremely similar, so there is a lurking "unifying" refactor
 // here. It felt like waiting until the third time adding one of these would do the trick, and as a
 // result the first 2 impls are here and not split apart into their own modules.
@@ -290,123 +281,6 @@ async fn resolver_function_request(
         .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
     let mut progress = client
         .execute_resolver(cyclone_request)
-        .await?
-        .start()
-        .await?;
-
-    while let Some(msg) = progress.next().await {
-        match msg {
-            Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await?;
-            }
-            Ok(ProgressMessage::Heartbeat) => {
-                trace!("received heartbeat message");
-            }
-            Err(err) => {
-                warn!(error = ?err, "next progress message was an error, bailing out");
-                break;
-            }
-        }
-    }
-    publisher.finalize_output().await?;
-
-    let function_result = progress.finish().await?;
-    publisher.publish_result(&function_result).await?;
-
-    Ok(())
-}
-
-async fn process_qualification_check_requests_task(
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) = process_qualification_check_requests(
-        nats,
-        subject_prefix,
-        cyclone_pool,
-        shutdown_broadcast_rx,
-    )
-    .await
-    {
-        warn!(error = ?err, "processing qualification check requests failed");
-    }
-}
-
-async fn process_qualification_check_requests(
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> Result<()> {
-    let mut requests = Subscriber::qualification_check(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process qualification check requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Spawn a task an process the request
-                        tokio::spawn(qualification_check_request_task(
-                            nats.clone(),
-                            cyclone_pool.clone(),
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next qualification check request had error");
-                    }
-                    None => {
-                        trace!("qualification check requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
-
-    Ok(())
-}
-
-async fn qualification_check_request_task(
-    nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<QualificationCheckRequest>,
-) {
-    if let Err(err) = qualification_check_request(nats, cyclone_pool, request).await {
-        warn!(error = ?err, "qualification check execution failed");
-    }
-}
-
-async fn qualification_check_request(
-    nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<QualificationCheckRequest>,
-) -> Result<()> {
-    let (reply_mailbox, cyclone_request) = request.into_parts();
-
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool
-        .get()
-        .await
-        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
-    let mut progress = client
-        .execute_qualification(cyclone_request)
         .await?
         .start()
         .await?;

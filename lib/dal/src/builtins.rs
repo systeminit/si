@@ -17,8 +17,8 @@ use crate::{
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
     ConfirmationPrototypeError, DalContext, ExternalProviderId, FuncError, PropError, PropId,
-    PropKind, QualificationPrototypeError, SchemaError, SchemaVariantId, StandardModelError,
-    ValidationPrototypeError, WorkflowPrototypeError,
+    PropKind, SchemaError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
+    WorkflowPrototypeError,
 };
 
 // Private builtins modules.
@@ -75,8 +75,6 @@ pub enum BuiltinsError {
     PropNotFound(PropId),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
-    #[error("qualification prototype error: {0}")]
-    QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]

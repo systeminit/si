@@ -32,7 +32,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "name": "esp",
             },
         }], // expected
-        esp_payload.component_view_properties(ctx).await // actual
+        esp_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -42,7 +42,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "name": "swings",
             }
         }], // expected
-        swings_payload.component_view_properties(ctx).await // actual
+        swings_payload.component_view_properties_raw(ctx).await // actual
     );
 
     // Collect the identity func information we need.
@@ -107,7 +107,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "name": "esp",
             },
         }], // expected
-        esp_payload.component_view_properties(ctx).await // actual
+        esp_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -117,7 +117,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "name": "swings",
             }
         }], // expected
-        swings_payload.component_view_properties(ctx).await // actual
+        swings_payload.component_view_properties_raw(ctx).await // actual
     );
 
     // Create the "esp" external provider for inter component connection.
@@ -207,7 +207,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "name": "esp",
             },
         }], // expected
-        esp_payload.component_view_properties(ctx).await // actual
+        esp_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -217,7 +217,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "name": "swings",
             }
         }], // expected
-        swings_payload.component_view_properties(ctx).await // actual
+        swings_payload.component_view_properties_raw(ctx).await // actual
     );
 
     // Connect the two components.
@@ -245,7 +245,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "name": "esp",
             },
         }], // expected
-        esp_payload.component_view_properties(ctx).await // actual
+        esp_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -255,7 +255,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "name": "swings",
             }
         }], // expected
-        swings_payload.component_view_properties(ctx).await // actual
+        swings_payload.component_view_properties_raw(ctx).await // actual
     );
 
     // Update the "esp" field, "source", again.
@@ -281,7 +281,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "name": "esp",
             },
         }], // expected
-        esp_payload.component_view_properties(ctx).await // actual
+        esp_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -293,7 +293,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
                 "name": "swings",
             },
         }], // expected
-        swings_payload.component_view_properties(ctx).await // actual
+        swings_payload.component_view_properties_raw(ctx).await // actual
     );
 }
 

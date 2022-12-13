@@ -12,7 +12,7 @@ use dal_test::test_harness::{
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
-async fn add_qualification(ctx: &DalContext) {
+async fn add_and_list_qualifications(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     let schema_variant_id = *schema_variant.id();
@@ -128,5 +128,49 @@ async fn add_qualification(ctx: &DalContext) {
                 }
         }], // expected
         component_view.properties // actual
+    );
+
+    // List qualifications, check that we only find two and then ensure they look as we expect.
+    let found_qualifications = Component::list_qualifications(ctx, *component.id())
+        .await
+        .expect("cannot list qualifications");
+    assert_eq!(found_qualifications.len(), 2);
+
+    let mut all_fields_valid_qualification = None;
+    let mut test_qualification = None;
+    for found_qualification in found_qualifications {
+        match found_qualification.title.as_str() {
+            "All fields are valid" => {
+                assert!(
+                    all_fields_valid_qualification.is_none(),
+                    "already found all fields valid"
+                );
+                all_fields_valid_qualification = Some(found_qualification);
+            }
+            "test:qualification" => {
+                assert!(
+                    test_qualification.is_none(),
+                    "already found all fields valid"
+                );
+                test_qualification = Some(found_qualification);
+            }
+            _ => panic!("found unexpected qualification: {:?}", found_qualification),
+        }
+    }
+    let all_fields_valid_qualification =
+        all_fields_valid_qualification.expect("could not find all fields valid qualification");
+    let test_qualification = test_qualification.expect("could not find test qualification");
+
+    assert!(
+        all_fields_valid_qualification
+            .result
+            .expect("could not get result")
+            .success
+    );
+    assert!(
+        test_qualification
+            .result
+            .expect("could not get result")
+            .success
     );
 }

@@ -1,5 +1,11 @@
 {
-  "kind": "JsQualification",
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "domain",
+      "kind": "Object"
+    }
+  ],
   "response_type": "Qualification",
   "display_name": "Run kubeval on YAML",
   "description": "Runs kubeval on the generated",

@@ -5,7 +5,6 @@ import { Command } from "commander";
 import Debug from "debug";
 import { failureExecution, FunctionKind, function_kinds } from "./function";
 import { makeConsole } from "./sandbox/console";
-import { executeQualificationCheck } from "./qualification_check";
 import { executeConfirmation } from "./confirmation";
 import { executeResolverFunction } from "./resolver_function";
 import { executeWorkflowResolve } from "./workflow_resolve";
@@ -52,9 +51,6 @@ async function main() {
     error = makeConsole(executionId).error;
 
     switch (kind) {
-      case FunctionKind.QualificationCheck:
-        await executeQualificationCheck(request);
-        break;
       case FunctionKind.ResolverFunction:
         await executeResolverFunction(request);
         break;

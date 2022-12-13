@@ -38,7 +38,6 @@ pub async fn list_funcs(
         &ctx,
         "backend_kind",
         &[
-            &FuncBackendKind::JsQualification.as_ref().to_string(),
             &FuncBackendKind::JsAttribute.as_ref().to_string(),
             &FuncBackendKind::JsCommand.as_ref().to_string(),
             &FuncBackendKind::JsConfirmation.as_ref().to_string(),

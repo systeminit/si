@@ -10,7 +10,7 @@ use si_data_pg::{PgError, PgPool, PgPoolError};
 use strum_macros::{Display, EnumString, EnumVariantNames};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech_client::EncryptionKey;
+use veritech_client::{Client, EncryptionKey};
 
 pub mod action_prototype;
 pub mod attribute;
@@ -50,9 +50,6 @@ pub mod prototype_context;
 pub mod prototype_list_for_func;
 pub mod provider;
 pub mod qualification;
-pub mod qualification_check;
-pub mod qualification_prototype;
-pub mod qualification_resolver;
 pub mod read_tenancy;
 pub mod resource_scheduler;
 pub mod schema;
@@ -155,16 +152,6 @@ pub use prototype_list_for_func::{
 pub use provider::external::{ExternalProvider, ExternalProviderError, ExternalProviderId};
 pub use provider::internal::{InternalProvider, InternalProviderError, InternalProviderId};
 pub use qualification::{QualificationError, QualificationView};
-pub use qualification_check::{
-    QualificationCheck, QualificationCheckError, QualificationCheckId, QualificationCheckPk,
-};
-pub use qualification_prototype::{
-    QualificationPrototype, QualificationPrototypeContext, QualificationPrototypeError,
-    QualificationPrototypeId,
-};
-pub use qualification_resolver::{
-    QualificationResolver, QualificationResolverError, QualificationResolverId,
-};
 pub use read_tenancy::{ReadTenancy, ReadTenancyError};
 pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
 pub use schema::variant::root_prop::RootProp;
@@ -299,7 +286,7 @@ pub async fn migrate_all(
     pg: &PgPool,
     nats: &NatsClient,
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    veritech: veritech_client::Client,
+    veritech: Client,
     encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {
     migrate(pg).await?;

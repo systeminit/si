@@ -1,7 +1,7 @@
 use crate::{
-    ComponentId, ConfirmationPrototypeError, DalContext, FuncError, FuncId,
-    QualificationPrototypeError, ReadTenancyError, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, TransactionsError, WriteTenancyError,
+    ComponentId, ConfirmationPrototypeError, DalContext, FuncError, FuncId, ReadTenancyError,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, TransactionsError,
+    WriteTenancyError,
 };
 use std::future::Future;
 use thiserror::Error;
@@ -20,8 +20,6 @@ pub enum PrototypeContextError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
-    #[error(transparent)]
-    QualificationPrototype(#[from] QualificationPrototypeError),
     #[error(transparent)]
     ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error(transparent)]

@@ -13,7 +13,6 @@ use thiserror::Error;
 
 use crate::service::schema::SchemaError;
 
-pub mod check_qualifications;
 pub mod get_code;
 pub mod get_components_metadata;
 pub mod get_diff;
@@ -29,7 +28,7 @@ pub mod update_property_editor_value;
 pub enum ComponentError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("entity error: {0}")]
+    #[error("component error: {0}")]
     Component(#[from] DalComponentError),
     #[error("component name not found")]
     ComponentNameNotFound,
@@ -101,10 +100,6 @@ pub fn routes() -> Router {
         .route(
             "/list_qualifications",
             get(list_qualifications::list_qualifications),
-        )
-        .route(
-            "/check_qualifications",
-            post(check_qualifications::check_qualifications),
         )
         .route("/get_code", get(get_code::get_code))
         .route("/get_diff", get(get_diff::get_diff))

@@ -48,26 +48,11 @@ function commandRunSandbox(executionId: string): Sandbox {
   };
 }
 
-function qualificationCheckSandbox(executionId: string): Sandbox {
-  return {
-    siExec: makeExec(executionId),
-    fetch,
-    os, // This certainly is bad
-    fs, // This certainly is bad
-    path, // This certainly is bad
-  };
-}
-
 export function createSandbox(
   kind: FunctionKind,
   executionId: string
 ): Sandbox {
   switch (kind) {
-    case FunctionKind.QualificationCheck:
-      return {
-        ...commonSandbox(executionId),
-        ...qualificationCheckSandbox(executionId),
-      };
     case FunctionKind.ResolverFunction:
       return {
         ...commonSandbox(executionId),

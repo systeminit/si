@@ -12,9 +12,9 @@ use cyclone_client::{
 use cyclone_core::{
     process::{self, ShutdownError},
     CanonicalCommand, CommandRunRequest, CommandRunResultSuccess, ConfirmationRequest,
-    ConfirmationResultSuccess, QualificationCheckRequest, QualificationCheckResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
-    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ConfirmationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -132,23 +132,6 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .map_err(ClientError::unhealthy)?;
 
         let result = self.client.execute_ping().await;
-        self.count_request();
-
-        result
-    }
-
-    async fn execute_qualification(
-        &mut self,
-        request: QualificationCheckRequest,
-    ) -> result::Result<
-        Execution<TcpStream, QualificationCheckRequest, QualificationCheckResultSuccess>,
-        ClientError,
-    > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
-        let result = self.client.execute_qualification(request).await;
         self.count_request();
 
         result
@@ -297,10 +280,6 @@ pub struct LocalHttpInstanceSpec {
     #[builder(private, setter(name = "_ping"), default = "false")]
     ping: bool,
 
-    /// Enables the `qualification` execution endpoint for a spawned Cyclone server.
-    #[builder(private, setter(name = "_qualification"), default = "false")]
-    qualification: bool,
-
     /// Enables the `confirmation` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_confirmation"), default = "false")]
     confirmation: bool,
@@ -391,9 +370,6 @@ impl LocalHttpInstanceSpec {
         if self.ping {
             cmd.arg("--enable-ping");
         }
-        if self.qualification {
-            cmd.arg("--enable-qualification");
-        }
         // NOTE: Not yet implemented on the other side.
         // if self.confirmation {
         //     cmd.arg("--enable-confirmation");
@@ -432,11 +408,6 @@ impl LocalHttpInstanceSpecBuilder {
         self._ping(true)
     }
 
-    /// Enables the `qualification` execution endpoint for a spawned Cyclone server.
-    pub fn qualification(&mut self) -> &mut Self {
-        self._qualification(true)
-    }
-
     /// Enables the `confirmation` execution endpoint for a spawned Cyclone server.
     pub fn confirmation(&mut self) -> &mut Self {
         self._confirmation(true)
@@ -459,11 +430,7 @@ impl LocalHttpInstanceSpecBuilder {
 
     /// Enables all available endpoints for a spawned Cyclone server
     pub fn all_endpoints(&mut self) -> &mut Self {
-        self.command()
-            .confirmation()
-            .qualification()
-            .resolver()
-            .workflow()
+        self.command().confirmation().resolver().workflow()
     }
 }
 

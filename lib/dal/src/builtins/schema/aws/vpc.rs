@@ -3,7 +3,6 @@ use crate::builtins::schema::aws::{AWS_NODE_COLOR, EC2_DOCS_URL, EC2_TAG_DOCS_UR
 use crate::builtins::schema::MigrationDriver;
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
-use crate::prototype_context::PrototypeContext;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
 use crate::validation::Validation;
@@ -12,9 +11,8 @@ use crate::{
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsResult,
     ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider,
-    Func, FuncBinding, FuncError, InternalProvider, PropKind, QualificationPrototype,
-    QualificationPrototypeContext, SchemaError, SchemaKind, SchemaVariant, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    Func, FuncBinding, InternalProvider, PropKind, SchemaError, SchemaKind, SchemaVariant,
+    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 // VPC documentation URLs
@@ -287,40 +285,34 @@ impl MigrationDriver {
         input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Code Generation
-        let code_generation_func_name = "si:generateAwsIngressJSON".to_string();
-        let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
-        let code_generation_func_argument =
-            FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
-                .await?
-                .ok_or_else(|| {
-                    BuiltinsError::BuiltinMissingFuncArgument(
-                        code_generation_func_name.clone(),
-                        "domain".to_string(),
-                    )
-                })?;
+        let (code_generation_func_id, code_generation_func_argument_id) = self
+            .find_func_and_single_argument_by_names(ctx, "si:generateAwsIngressJSON", "domain")
+            .await?;
         SchemaVariant::add_leaf(
             ctx,
-            *code_generation_func.id(),
-            *code_generation_func_argument.id(),
+            code_generation_func_id,
+            code_generation_func_argument_id,
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
         .await?;
 
         // Qualifications
-        let qual_func_name = "si:qualificationIngressCanCreate".to_string();
-        let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
-            .await?
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
-
-        let mut qual_prototype_context = QualificationPrototypeContext::new();
-        qual_prototype_context.set_schema_variant_id(*schema_variant.id());
-
-        QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+        let (qualification_func_id, qualification_func_argument_id) = self
+            .find_func_and_single_argument_by_names(
+                ctx,
+                "si:qualificationIngressCanCreate",
+                "domain",
+            )
+            .await?;
+        SchemaVariant::add_leaf(
+            ctx,
+            qualification_func_id,
+            qualification_func_argument_id,
+            *schema_variant.id(),
+            LeafKind::Qualification,
+        )
+        .await?;
 
         // Wrap it up.
         self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
@@ -472,72 +464,69 @@ impl MigrationDriver {
 
         // Exposed Ports from input socket
         {
-            let transformation_func_name = "si:dockerPortsToAwsIngressPorts".to_string();
-            let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
+            let attribute_read_context =
+                AttributeReadContext::default_with_prop(*ip_permissions_prop.id());
+            let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
                 .await?
-                .pop()
-                .ok_or_else(|| FuncError::NotFoundByName(transformation_func_name.clone()))?;
-            let arg_name = "ExposedPorts";
-            let arg = FuncArgument::find_by_name_for_func(ctx, arg_name, *transformation_func.id())
-                .await?
-                .ok_or_else(|| {
-                    BuiltinsError::BuiltinMissingFuncArgument(
-                        transformation_func_name.clone(),
-                        arg_name.to_string(),
-                    )
-                })?;
-
-            let read_ctx = AttributeReadContext::default_with_prop(*ip_permissions_prop.id());
-
-            let attribute_value = AttributeValue::find_for_context(ctx, read_ctx)
-                .await?
-                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(read_ctx))?;
-
+                .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                    attribute_read_context,
+                ))?;
             let mut attribute_prototype = attribute_value
                 .attribute_prototype(ctx)
                 .await?
                 .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-
-            attribute_prototype
-                .set_func_id(ctx, *transformation_func.id())
+            let (transformation_func_id, transformation_func_argument_id) = self
+                .find_func_and_single_argument_by_names(
+                    ctx,
+                    "si:dockerPortsToAwsIngressPorts",
+                    "ExposedPorts",
+                )
                 .await?;
-
+            attribute_prototype
+                .set_func_id(ctx, transformation_func_id)
+                .await?;
             AttributePrototypeArgument::new_for_intra_component(
                 ctx,
                 *attribute_prototype.id(),
-                *arg.id(),
+                transformation_func_argument_id,
                 *exposed_ports_internal_provider.id(),
             )
             .await?;
         }
 
-        let func_name = "si:awsIngressCreateWorkflow";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
+        let workflow_func_name = "si:awsIngressCreateWorkflow";
+        let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
             .await?
             .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+            .ok_or_else(|| SchemaError::FuncNotFound(workflow_func_name.to_owned()))?;
         let title = "Create Ingress";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
-        let workflow_prototype =
-            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
-                .await?;
+        let workflow_prototype = WorkflowPrototype::new(
+            ctx,
+            *workflow_func.id(),
+            serde_json::Value::Null,
+            context,
+            title,
+        )
+        .await?;
 
-        let func_name = "si:resourceExistsConfirmation";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
+        let confirmation_func_name = "si:resourceExistsConfirmation";
+        let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
             .await?
             .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+            .ok_or_else(|| SchemaError::FuncNotFound(confirmation_func_name.to_owned()))?;
         let context = ConfirmationPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
         let mut confirmation_prototype =
-            ConfirmationPrototype::new(ctx, "Ingress Exists?", *func.id(), context).await?;
+            ConfirmationPrototype::new(ctx, "Ingress Exists?", *confirmation_func.id(), context)
+                .await?;
         confirmation_prototype
             .set_provider(ctx, Some("AWS".to_owned()))
             .await?;
@@ -569,20 +558,28 @@ impl MigrationDriver {
         )
         .await?;
 
-        let func_name = "si:awsIngressRefreshWorkflow";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+        let ingress_refresh_workflow_func_name = "si:awsIngressRefreshWorkflow";
+        let ingress_refresh_workflow_func =
+            Func::find_by_attr(ctx, "name", &ingress_refresh_workflow_func_name)
+                .await?
+                .pop()
+                .ok_or_else(|| {
+                    SchemaError::FuncNotFound(ingress_refresh_workflow_func_name.to_owned())
+                })?;
         let title = "Refresh Ingress's Resource";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
-        let workflow_prototype =
-            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
-                .await?;
+        let workflow_prototype = WorkflowPrototype::new(
+            ctx,
+            *ingress_refresh_workflow_func.id(),
+            serde_json::Value::Null,
+            context,
+            title,
+        )
+        .await?;
 
         let name = "refresh";
         let context = ActionPrototypeContext {
@@ -812,40 +809,34 @@ impl MigrationDriver {
         input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Code Generation
-        let code_generation_func_name = "si:generateAwsEgressJSON".to_string();
-        let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
-        let code_generation_func_argument =
-            FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
-                .await?
-                .ok_or_else(|| {
-                    BuiltinsError::BuiltinMissingFuncArgument(
-                        code_generation_func_name.clone(),
-                        "domain".to_string(),
-                    )
-                })?;
+        let (code_generation_func_id, qualification_func_argument_id) = self
+            .find_func_and_single_argument_by_names(ctx, "si:generateAwsEgressJSON", "domain")
+            .await?;
         SchemaVariant::add_leaf(
             ctx,
-            *code_generation_func.id(),
-            *code_generation_func_argument.id(),
+            code_generation_func_id,
+            qualification_func_argument_id,
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
         .await?;
 
         // Qualifications
-        let qual_func_name = "si:qualificationEgressCanCreate".to_string();
-        let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
-            .await?
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
-
-        let mut qual_prototype_context = QualificationPrototypeContext::new();
-        qual_prototype_context.set_schema_variant_id(*schema_variant.id());
-
-        QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+        let (qualification_func_id, qualification_func_argument_id) = self
+            .find_func_and_single_argument_by_names(
+                ctx,
+                "si:qualificationEgressCanCreate",
+                "domain",
+            )
+            .await?;
+        SchemaVariant::add_leaf(
+            ctx,
+            qualification_func_id,
+            qualification_func_argument_id,
+            *schema_variant.id(),
+            LeafKind::Qualification,
+        )
+        .await?;
 
         // Wrap it up.
         self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
@@ -970,33 +961,39 @@ impl MigrationDriver {
         )
         .await?;
 
-        let func_name = "si:awsEgressCreateWorkflow";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
+        let workflow_func_name = "si:awsEgressCreateWorkflow";
+        let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
             .await?
             .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+            .ok_or_else(|| SchemaError::FuncNotFound(workflow_func_name.to_owned()))?;
         let title = "Create Egress";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
-        let workflow_prototype =
-            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
-                .await?;
+        let workflow_prototype = WorkflowPrototype::new(
+            ctx,
+            *workflow_func.id(),
+            serde_json::Value::Null,
+            context,
+            title,
+        )
+        .await?;
 
-        let func_name = "si:resourceExistsConfirmation";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
+        let confirmation_func_name = "si:resourceExistsConfirmation";
+        let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
             .await?
             .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+            .ok_or_else(|| SchemaError::FuncNotFound(confirmation_func_name.to_owned()))?;
         let context = ConfirmationPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
         let mut confirmation_prototype =
-            ConfirmationPrototype::new(ctx, "Egress Exists?", *func.id(), context).await?;
+            ConfirmationPrototype::new(ctx, "Egress Exists?", *confirmation_func.id(), context)
+                .await?;
         confirmation_prototype
             .set_provider(ctx, Some("AWS".to_owned()))
             .await?;
@@ -1028,20 +1025,28 @@ impl MigrationDriver {
         )
         .await?;
 
-        let func_name = "si:awsEgressRefreshWorkflow";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+        let egress_refresh_workflow_func_name = "si:awsEgressRefreshWorkflow";
+        let egress_refresh_workflow_func =
+            Func::find_by_attr(ctx, "name", &egress_refresh_workflow_func_name)
+                .await?
+                .pop()
+                .ok_or_else(|| {
+                    SchemaError::FuncNotFound(egress_refresh_workflow_func_name.to_owned())
+                })?;
         let title = "Refresh Egress's Resource";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
-        let workflow_prototype =
-            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
-                .await?;
+        let workflow_prototype = WorkflowPrototype::new(
+            ctx,
+            *egress_refresh_workflow_func.id(),
+            serde_json::Value::Null,
+            context,
+            title,
+        )
+        .await?;
 
         let name = "refresh";
         let context = ActionPrototypeContext {
@@ -1182,17 +1187,15 @@ impl MigrationDriver {
             .await?;
         input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        let func_name = "si:awsSecurityGroupIdFromResource";
-        let aws_security_group_id_from_resource_func = Func::find_by_attr(ctx, "name", &func_name)
+        let transformation_func_name = "si:awsSecurityGroupIdFromResource";
+        let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
             .await?
             .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
-        let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
-            ctx,
-            serde_json::json!({}),
-            *aws_security_group_id_from_resource_func.id(),
-        )
-        .await?;
+            .ok_or_else(|| SchemaError::FuncNotFound(transformation_func_name.to_owned()))?;
+        let transformation_func_id = *transformation_func.id();
+        let (transformation_func_binding, transformation_func_binding_return_value) =
+            FuncBinding::create_and_execute(ctx, serde_json::json!({}), transformation_func_id)
+                .await?;
 
         let (security_group_id_external_provider, mut output_socket) =
             ExternalProvider::new_with_socket(
@@ -1201,9 +1204,9 @@ impl MigrationDriver {
                 *schema_variant.id(),
                 "Security Group ID",
                 None,
-                *aws_security_group_id_from_resource_func.id(),
-                *func_binding.id(),
-                *func_binding_return_value.id(),
+                transformation_func_id,
+                *transformation_func_binding.id(),
+                *transformation_func_binding_return_value.id(),
                 SocketArity::Many,
                 DiagramKind::Configuration,
             )
@@ -1211,40 +1214,38 @@ impl MigrationDriver {
         output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Code Generation
-        let code_generation_func_name = "si:generateAwsSecurityGroupJSON".to_string();
-        let code_generation_func = Func::find_by_attr(ctx, "name", &code_generation_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(code_generation_func_name.to_owned()))?;
-        let code_generation_func_argument =
-            FuncArgument::find_by_name_for_func(ctx, "domain", *code_generation_func.id())
-                .await?
-                .ok_or_else(|| {
-                    BuiltinsError::BuiltinMissingFuncArgument(
-                        code_generation_func_name.clone(),
-                        "domain".to_string(),
-                    )
-                })?;
+        let (code_generation_func_id, code_generation_func_argument_id) = self
+            .find_func_and_single_argument_by_names(
+                ctx,
+                "si:generateAwsSecurityGroupJSON",
+                "domain",
+            )
+            .await?;
         SchemaVariant::add_leaf(
             ctx,
-            *code_generation_func.id(),
-            *code_generation_func_argument.id(),
+            code_generation_func_id,
+            code_generation_func_argument_id,
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
         .await?;
 
         // Qualifications
-        let qual_func_name = "si:qualificationSecurityGroupCanCreate".to_string();
-        let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
-            .await?
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
-
-        let mut qual_prototype_context = QualificationPrototypeContext::new();
-        qual_prototype_context.set_schema_variant_id(*schema_variant.id());
-
-        QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+        let (qualification_func_id, qualification_func_argument_id) = self
+            .find_func_and_single_argument_by_names(
+                ctx,
+                "si:qualificationSecurityGroupCanCreate",
+                "domain",
+            )
+            .await?;
+        SchemaVariant::add_leaf(
+            ctx,
+            qualification_func_id,
+            qualification_func_argument_id,
+            *schema_variant.id(),
+            LeafKind::Qualification,
+        )
+        .await?;
 
         // Wrap it up!
         self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
@@ -1336,18 +1337,15 @@ impl MigrationDriver {
                     root_prop.resource_prop_id,
                 ))?;
 
-        let func_argument = FuncArgument::find_by_name_for_func(
-            ctx,
-            "resource",
-            *aws_security_group_id_from_resource_func.id(),
-        )
-        .await?
-        .ok_or_else(|| {
-            BuiltinsError::BuiltinMissingFuncArgument(
-                "si:awsSecurityGroupIdFromResource".to_owned(),
-                "resource".to_owned(),
-            )
-        })?;
+        let func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "resource", *transformation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        "si:awsSecurityGroupIdFromResource".to_owned(),
+                        "resource".to_owned(),
+                    )
+                })?;
 
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
@@ -1411,33 +1409,43 @@ impl MigrationDriver {
         )
         .await?;
 
-        let func_name = "si:awsSecurityGroupCreateWorkflow";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
+        let workflow_func_name = "si:awsSecurityGroupCreateWorkflow";
+        let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
             .await?
             .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+            .ok_or_else(|| SchemaError::FuncNotFound(workflow_func_name.to_owned()))?;
         let title = "Create Security Group";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
-        let workflow_prototype =
-            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
-                .await?;
+        let workflow_prototype = WorkflowPrototype::new(
+            ctx,
+            *workflow_func.id(),
+            serde_json::Value::Null,
+            context,
+            title,
+        )
+        .await?;
 
-        let func_name = "si:resourceExistsConfirmation";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
+        let confirmation_func_name = "si:resourceExistsConfirmation";
+        let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
             .await?
             .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+            .ok_or_else(|| SchemaError::FuncNotFound(confirmation_func_name.to_owned()))?;
         let context = ConfirmationPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
-        let mut confirmation_prototype =
-            ConfirmationPrototype::new(ctx, "Security Group Exists?", *func.id(), context).await?;
+        let mut confirmation_prototype = ConfirmationPrototype::new(
+            ctx,
+            "Security Group Exists?",
+            *confirmation_func.id(),
+            context,
+        )
+        .await?;
         confirmation_prototype
             .set_provider(ctx, Some("AWS".to_owned()))
             .await?;
@@ -1461,20 +1469,25 @@ impl MigrationDriver {
         )
         .await?;
 
-        let func_name = "si:awsSecurityGroupRefreshWorkflow";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
+        let workflow_func_name = "si:awsSecurityGroupRefreshWorkflow";
+        let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
             .await?
             .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+            .ok_or_else(|| SchemaError::FuncNotFound(workflow_func_name.to_owned()))?;
         let title = "Refresh Security Group's Resource";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
-        let workflow_prototype =
-            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
-                .await?;
+        let workflow_prototype = WorkflowPrototype::new(
+            ctx,
+            *workflow_func.id(),
+            serde_json::Value::Null,
+            context,
+            title,
+        )
+        .await?;
 
         let name = "refresh";
         let context = ActionPrototypeContext {

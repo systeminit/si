@@ -148,6 +148,10 @@ async fn get_components_metadata() {
     let schema = create_schema(&dal_ctx, &SchemaKind::Configuration).await;
 
     let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
+    schema_variant
+        .finalize(&dal_ctx)
+        .await
+        .expect("could not finalize schema variant");
 
     let _component = create_component_for_schema_variant(&dal_ctx, schema_variant.id()).await;
 

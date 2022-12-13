@@ -5,8 +5,8 @@ use std::{
 };
 
 use deadpool_cyclone::{
-    CommandRunRequest, ConfirmationRequest, QualificationCheckRequest, ResolverFunctionRequest,
-    ValidationRequest, WorkflowResolveRequest,
+    CommandRunRequest, ConfirmationRequest, ResolverFunctionRequest, ValidationRequest,
+    WorkflowResolveRequest,
 };
 use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
@@ -16,8 +16,8 @@ use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_core::{
-    nats_command_run_subject, nats_confirmation_subject, nats_qualification_check_subject,
-    nats_resolver_function_subject, nats_validation_subject, nats_workflow_resolve_subject,
+    nats_command_run_subject, nats_confirmation_subject, nats_resolver_function_subject,
+    nats_validation_subject, nats_workflow_resolve_subject,
 };
 
 #[derive(Error, Debug)]
@@ -41,26 +41,6 @@ type Result<T> = std::result::Result<T, SubscriberError>;
 pub struct Subscriber;
 
 impl Subscriber {
-    pub async fn qualification_check(
-        nats: &NatsClient,
-        subject_prefix: Option<&str>,
-    ) -> Result<Subscription<QualificationCheckRequest>> {
-        let subject = nats_qualification_check_subject(subject_prefix);
-        debug!(
-            messaging.destination = &subject.as_str(),
-            "subscribing for qualification check requests"
-        );
-        let inner = nats
-            .subscribe(subject)
-            .await
-            .map_err(SubscriberError::NatsSubscribe)?;
-
-        Ok(Subscription {
-            inner,
-            _phantom: PhantomData,
-        })
-    }
-
     pub async fn confirmation(
         nats: &NatsClient,
         subject_prefix: Option<&str>,

@@ -13,9 +13,8 @@ use dal::{
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     BillingAccount, BillingAccountId, ChangeSet, ChangeSetPk, Component, DalContext,
     EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
-    Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
-    SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, User, Visibility,
-    Workspace, WriteTenancy,
+    Node, Organization, Prop, PropId, PropKind, Schema, SchemaId, SchemaKind, SchemaVariantId,
+    Secret, SecretKind, SecretObjectType, StandardModel, User, Visibility, Workspace, WriteTenancy,
 };
 use lazy_static::lazy_static;
 use names::{Generator, Name};
@@ -398,13 +397,6 @@ pub async fn create_component_for_schema(ctx: &DalContext, schema_id: &SchemaId)
 
 pub async fn create_node(ctx: &DalContext, node_kind: &NodeKind) -> Node {
     Node::new(ctx, node_kind).await.expect("cannot create node")
-}
-
-pub async fn create_qualification_check(ctx: &DalContext) -> QualificationCheck {
-    let name = generate_fake_name();
-    QualificationCheck::new(ctx, name)
-        .await
-        .expect("cannot create qualification check")
 }
 
 /// Create a [`Prop`](dal::Prop) with a given [`PropKind`](dal::PropKind), name and parent

@@ -10,8 +10,7 @@ pub use watch::{Watch, WatchError, WatchStarted};
 
 pub use cyclone_core::{
     CommandRunRequest, CommandRunResultSuccess, ConfirmationRequest, ConfirmationResultSuccess,
-    EncryptionKey, EncryptionKeyError, LivenessStatus, LivenessStatusParseError,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
+    EncryptionKey, EncryptionKeyError, LivenessStatus, LivenessStatusParseError, ReadinessStatus,
     ReadinessStatusParseError, ResolverFunctionRequest, ResolverFunctionResultSuccess,
     WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };

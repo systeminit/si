@@ -1,11 +1,14 @@
 use dal::attribute::context::AttributeContextBuilder;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::schema::variant::leaves::LeafKind;
+
 use dal::{
     AttributeReadContext, AttributeValue, Component, ComponentView, DalContext, Func,
     FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind, SchemaVariant, StandardModel,
 };
+
 use dal_test::helpers::component_view::ComponentViewProperties;
+
 use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
@@ -106,10 +109,7 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
             },
             "domain": {}
         }], // expected
-        component_view_properties
-            .drop_code()
-            .to_value()
-            .expect("could not convert component view properties to value") // actual
+        component_view_properties.drop_code().to_value() // actual
     );
 
     // Update the poop field, which will cause the code generation entry to be updated.
@@ -174,9 +174,6 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
                 "poop": "canoe"
             }
         }], // expected
-        component_view_properties
-            .drop_code()
-            .to_value()
-            .expect("could not convert component view properties to value") // actual
+        component_view_properties.drop_code().to_value() // actual
     );
 }

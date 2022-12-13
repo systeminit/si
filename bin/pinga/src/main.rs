@@ -3,10 +3,7 @@ use std::{any::TypeId, panic::AssertUnwindSafe, sync::Arc, time::Duration};
 use color_eyre::Result;
 use dal::{
     job::consumer::{JobConsumer, JobConsumerError},
-    job::definition::{
-        Confirmation, Confirmations, DependentValuesUpdate, FixesJob, Qualification,
-        Qualifications, WorkflowRun,
-    },
+    job::definition::{Confirmation, Confirmations, DependentValuesUpdate, FixesJob, WorkflowRun},
     CycloneKeyPair, DalContext, DalContextBuilder, FaktoryProcessor, JobFailure, JobFailureError,
     JobQueueProcessor, ServicesContext, TransactionsError,
 };
@@ -294,8 +291,6 @@ async fn execute_job_fallible(
         job,
         Confirmation,
         Confirmations,
-        Qualification,
-        Qualifications,
         DependentValuesUpdate,
         WorkflowRun,
         FixesJob,

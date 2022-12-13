@@ -56,14 +56,6 @@ pub(crate) struct Args {
     #[arg(long, group = "ping")]
     pub(crate) disable_ping: bool,
 
-    /// Enables qualification endpoint.
-    #[arg(long, group = "qualification")]
-    pub(crate) enable_qualification: bool,
-
-    /// Disables qualification endpoint.
-    #[arg(long, group = "qualification")]
-    pub(crate) disable_qualification: bool,
-
     /// Enables resolver endpoint.
     #[arg(long, group = "resolver")]
     pub(crate) enable_resolver: bool,
@@ -146,12 +138,6 @@ impl TryFrom<Args> for Config {
             builder.enable_ping(true);
         } else if args.disable_ping {
             builder.enable_ping(false);
-        }
-
-        if args.enable_qualification {
-            builder.enable_qualification(true);
-        } else if args.disable_qualification {
-            builder.enable_qualification(false);
         }
 
         if args.enable_resolver {
