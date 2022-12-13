@@ -7,9 +7,9 @@ use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
-    DiagramError as DalDiagramError, DiagramKind, NodeError, NodeKind, NodeMenuError,
-    NodePositionError, ReadTenancyError, SchemaError as DalSchemaError, SchemaVariantId,
-    StandardModelError, TransactionsError,
+    DiagramError as DalDiagramError, DiagramKind, InternalProviderError, NodeError, NodeKind,
+    NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
+    SchemaVariantId, StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
@@ -38,11 +38,13 @@ pub enum DiagramError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
+    #[error(transparent)]
+    InternalProvider(#[from] InternalProviderError),
     #[error("dal schema error: {0}")]
     DalSchema(#[from] DalSchemaError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("attrubte value not found for context: {0:?}")]
+    #[error("attribute value not found for context: {0:?}")]
     AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
@@ -68,6 +70,8 @@ pub enum DiagramError {
     ExternalProviderNotFoundForSocket(SocketId),
     #[error("internal provider not found for socket id: {0}")]
     InternalProviderNotFoundForSocket(SocketId),
+    #[error("frame internal provider not found for schema variant id: {0}")]
+    FrameInternalProviderNotFoundForSchemaVariant(SchemaVariantId),
     #[error("invalid request")]
     InvalidRequest,
     #[error("schema variant error: {0}")]
