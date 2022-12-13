@@ -1705,7 +1705,7 @@ BEGIN
     INTO STRICT func_binding
     FROM func_bindings_v1(this_read_tenancy, this_visibility)
     WHERE id = this_func_binding_id;
-    RAISE WARNING 'func_binding_execute_v1: Found FuncBinding(%)', func_binding;
+    RAISE DEBUG 'func_binding_execute_v1: Found FuncBinding(%)', func_binding;
 
     SELECT funcs.*
     INTO STRICT func
@@ -1714,7 +1714,7 @@ BEGIN
         AS func_binding_belongs_to_func
         ON funcs.id = func_binding_belongs_to_func.belongs_to_id
             AND func_binding_belongs_to_func.object_id = func_binding.id;
-    RAISE WARNING 'func_binding_execute_v1: Found Func(%)', func;
+    RAISE DEBUG 'func_binding_execute_v1: Found Func(%)', func;
 
     SELECT fe.object ->> 'pk'
     INTO STRICT func_execution_pk
@@ -1729,7 +1729,7 @@ BEGIN
         func.handler,
         func.code_base64
     ) AS fe;
-    RAISE WARNING 'func_binding_execute_v1: Found FuncExecution(%)', func_execution_pk;
+    RAISE DEBUG 'func_binding_execute_v1: Found FuncExecution(%)', func_execution_pk;
     PERFORM func_execution_set_state_v1(func_execution_pk, 'Run');
 
     -- FuncDispatchContext::new(read_context)
@@ -1770,7 +1770,7 @@ BEGIN
         func_binding.id,
         func_execution_pk
     ) ->> 'id';
-    RAISE WARNING 'func_binding_execute_v1: Created FuncBindingReturnValue(%)', fbrv_id;
+    RAISE DEBUG 'func_binding_execute_v1: Created FuncBindingReturnValue(%)', fbrv_id;
     -- execution.process_return_value
     PERFORM func_execution_set_return_value_v1(
         func_execution_pk,
@@ -1778,10 +1778,10 @@ BEGIN
         result_value_processed,
         result_value
     );
-    RAISE WARNING 'func_binding_execute_v1: Set FBRV on execution';
+    RAISE DEBUG 'func_binding_execute_v1: Set FBRV on execution';
     PERFORM func_execution_set_state_v1(func_execution_pk, 'Success');
 
-    RAISE WARNING 'func_binding_execute_v1: DONE';
+    RAISE DEBUG 'func_binding_execute_v1: DONE';
     func_binding_return_value_id := fbrv_id;
 END;
 $$ LANGUAGE PLPGSQL;
