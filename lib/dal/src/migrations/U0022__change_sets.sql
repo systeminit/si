@@ -8,8 +8,8 @@ CREATE TABLE change_sets
     tenancy_billing_account_ids ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
-    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW()
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP()
 );
 
 CREATE OR REPLACE FUNCTION change_set_create_v1(this_name text,
@@ -57,7 +57,7 @@ DECLARE
 BEGIN
     UPDATE change_sets
     SET status     = 'Applied',
-        updated_at = now()
+        updated_at = clock_timestamp()
     WHERE pk = this_change_set_pk
     RETURNING updated_at INTO timestamp_updated_at;
 
@@ -90,7 +90,7 @@ BEGIN
             -- next query below (i.e. we're looking to trigger the ON CONFLICT
             -- behavior).
             EXECUTE format('UPDATE %1$I ' ||
-                           '  SET visibility_deleted_at = now(), updated_at = now() ' ||
+                           '  SET visibility_deleted_at = clock_timestamp(), updated_at = clock_timestamp() ' ||
                            'WHERE visibility_change_set_pk = ident_nil_v1() ' ||
                            '  AND visibility_deleted_at IS NULL ' ||
                            '  AND id IN ( ' ||
@@ -111,7 +111,7 @@ BEGIN
                             '              visibility_change_set_pk, ' ||
                             '              (visibility_deleted_at IS NULL)) ' ||
                             '    WHERE visibility_deleted_at IS NULL ' ||
-                            'DO UPDATE SET updated_at = now(), %4$s ' ||
+                            'DO UPDATE SET updated_at = clock_timestamp(), %4$s ' ||
                             'RETURNING pk, id, tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids, tenancy_workspace_ids',
                             this_table_name, insert_column_names, this_change_set_pk, update_set_names);
 

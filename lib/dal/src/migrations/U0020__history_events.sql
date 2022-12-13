@@ -9,8 +9,8 @@ CREATE TABLE history_events
     tenancy_billing_account_ids ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
-    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW()
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP()
 );
 
 CREATE OR REPLACE FUNCTION history_event_create_v1(this_label text,

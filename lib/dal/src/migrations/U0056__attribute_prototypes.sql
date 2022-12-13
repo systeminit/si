@@ -12,8 +12,8 @@ CREATE TABLE attribute_prototypes
     attribute_context_internal_provider_id ident,
     attribute_context_external_provider_id ident,
     attribute_context_component_id         ident,
-    created_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
+    created_at                             timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                             timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     func_id                                ident                   NOT NULL,
     key                                    text
 );

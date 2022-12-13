@@ -18,8 +18,8 @@ CREATE TABLE func_executions
     tenancy_billing_account_ids  ident[],
     tenancy_organization_ids     ident[],
     tenancy_workspace_ids        ident[],
-    created_at                   timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                   timestamp with time zone NOT NULL DEFAULT NOW()
+    created_at                   timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                   timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP()
 );
 
 CREATE INDEX ON func_executions (func_id);
@@ -81,7 +81,7 @@ $$
 BEGIN
     UPDATE func_executions
     SET state      = this_state,
-        updated_at = now()
+        updated_at = clock_timestamp()
     WHERE pk = this_pk
     RETURNING row_to_json(func_executions.*) INTO object;
 END;
@@ -95,7 +95,7 @@ $$
 BEGIN
     UPDATE func_executions
     SET output_stream = this_output_stream,
-        updated_at    = now()
+        updated_at    = clock_timestamp()
     WHERE pk = this_pk
     RETURNING row_to_json(func_executions.*) INTO object;
 END;
@@ -113,7 +113,7 @@ BEGIN
     SET func_binding_return_value_id = this_func_binding_return_value_id,
         value                        = this_value,
         unprocessed_value            = this_unprocessed_value,
-        updated_at                   = now()
+        updated_at                   = clock_timestamp()
     WHERE pk = this_pk
     RETURNING row_to_json(func_executions.*) INTO object;
 END;

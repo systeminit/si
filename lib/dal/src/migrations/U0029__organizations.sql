@@ -8,8 +8,8 @@ CREATE TABLE organizations
     tenancy_workspace_ids       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL
 );
 SELECT standard_model_table_constraints_v1('organizations');

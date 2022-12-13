@@ -27,7 +27,7 @@ DECLARE
   ulid       BYTEA;
 BEGIN
   -- 6 timestamp bytes
-  unix_time = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
+  unix_time = (EXTRACT(EPOCH FROM CLOCK_TIMESTAMP()) * 1000)::BIGINT;
   timestamp = SET_BYTE(timestamp, 0, (unix_time >> 40)::BIT(8)::INTEGER);
   timestamp = SET_BYTE(timestamp, 1, (unix_time >> 32)::BIT(8)::INTEGER);
   timestamp = SET_BYTE(timestamp, 2, (unix_time >> 24)::BIT(8)::INTEGER);

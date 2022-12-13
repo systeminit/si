@@ -178,7 +178,7 @@ BEGIN
     END IF;
 
     /* First, try the update - if it works, we're all set. */
-    EXECUTE format('UPDATE %1$I SET %2$I = %6$L, updated_at = now() WHERE id = %5$L '
+    EXECUTE format('UPDATE %1$I SET %2$I = %6$L, updated_at = clock_timestamp() WHERE id = %5$L '
                    '  AND in_tenancy_v1(%3$L, '
                    '                    %1$I.tenancy_universal, '
                    '                    %1$I.tenancy_billing_account_ids, '
@@ -359,7 +359,7 @@ BEGIN
                            this_write_tenancy,
                            this_visibility,
                            this_id,
-                           CAST(now() as text))
+                           CAST(clock_timestamp() as text))
     INTO updated_at;
 END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
@@ -374,7 +374,7 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    EXECUTE format('UPDATE %1$I SET visibility_deleted_at = now(), updated_at = now() '
+    EXECUTE format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp(), updated_at = clock_timestamp() '
                    'WHERE pk = %3$L '
                    '  AND in_tenancy_v1(%2$L, '
                    '                    %1$I.tenancy_universal, '
@@ -396,7 +396,7 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    EXECUTE format('UPDATE %1$I SET visibility_deleted_at = NULL, updated_at = now() '
+    EXECUTE format('UPDATE %1$I SET visibility_deleted_at = NULL, updated_at = clock_timestamp() '
                    'WHERE pk = %3$L '
                    '  AND in_tenancy_v1(%2$L, '
                    '                    %1$I.tenancy_universal, '
@@ -624,8 +624,8 @@ BEGIN
                            ' tenancy_workspace_ids       ident[], '
                            ' visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(), '
                            ' visibility_deleted_at       timestamp with time zone, '
-                           ' created_at                  timestamp with time zone NOT NULL DEFAULT NOW(), '
-                           ' updated_at                  timestamp with time zone NOT NULL DEFAULT NOW() '
+                           ' created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(), '
+                           ' updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP() '
                            '); '
                            'CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
                            '                                    tenancy_universal, '
@@ -837,8 +837,8 @@ BEGIN
                            ' tenancy_workspace_ids       ident[], '
                            ' visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(), '
                            ' visibility_deleted_at       timestamp with time zone, '
-                           ' created_at                  timestamp with time zone NOT NULL DEFAULT NOW(), '
-                           ' updated_at                  timestamp with time zone NOT NULL DEFAULT NOW() '
+                           ' created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(), '
+                           ' updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP() '
                            '); '
                            'CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
                            '                                    tenancy_universal, '
@@ -995,7 +995,7 @@ DECLARE
 BEGIN
 
     update_query :=
-            format('UPDATE %1$I SET visibility_deleted_at = now() '
+            format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
                    '  WHERE left_object_id = %2$L '
                    '    AND right_object_id = %3$L '
                    '    AND in_tenancy_v1(%4$L, '
@@ -1028,7 +1028,7 @@ DECLARE
 BEGIN
 
     update_query :=
-            format('UPDATE %1$I SET visibility_deleted_at = now() '
+            format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
                    '  WHERE left_object_id = %2$L '
                    '    AND in_tenancy_v1(%3$L, '
                    '                    %1$I.tenancy_universal, '
@@ -1130,7 +1130,7 @@ DECLARE
 BEGIN
 
     update_query :=
-            format('UPDATE %1$I SET visibility_deleted_at = now() '
+            format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
                    '  WHERE object_id = %2$L '
                    '    AND in_tenancy_v1(%3$L, '
                    '                    %1$I.tenancy_universal, '

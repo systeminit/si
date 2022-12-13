@@ -8,8 +8,8 @@ CREATE TABLE job_failures
     tenancy_workspace_ids       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     kind                        text                     NOT NULL,
     message                     text                     NOT NULL,
     solved                      bool                     NOT NULL DEFAULT false

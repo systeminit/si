@@ -113,7 +113,7 @@ async fn func_binding_execute_unset(ctx: &DalContext) {
 async fn func_argument_new(ctx: &DalContext) {
     let func_id = FuncId::generate();
     for (index, kind) in FuncArgumentKind::iter().enumerate() {
-        FuncArgument::new(ctx, format!("poop {index}"), kind, None, func)
+        FuncArgument::new(ctx, format!("poop {index}"), kind, None, func_id)
             .await
             .expect("Could not create function argument with null argument kind");
         FuncArgument::new(ctx, format!("canoe {index}"), kind, Some(kind), func_id)
