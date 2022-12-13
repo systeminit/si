@@ -30,6 +30,7 @@
 
     <div v-if="currentStatus" class="border-b dark:border-neutral-600 p-sm">
       <template v-if="currentStatus.isUpdating">
+        <!-- currently updating -->
         <div class="flex flex-row items-center gap-xs">
           <Icon name="loader" size="lg" class="text-action-500 shrink-0" />
           <div class="grow truncate py-xs">
@@ -39,19 +40,16 @@
         </div>
       </template>
       <template v-else>
+        <!-- not currently updating -->
         <div class="font-bold capsize">
           {{ currentStatus.statusMessage }}
         </div>
         <div class="text-xs italic text-neutral-400 capsize mt-xs">
           Updated at
-          <Timestamp :date="currentStatus.lastStepCompletedAt" size="long" />
-          <template v-if="currentStatus.byActor">
+          <Timestamp :date="new Date(currentStatus.lastUpdateAt)" size="long" />
+          <template v-if="currentStatus.lastUpdateBy">
             by
-            {{
-              currentStatus.byActor.type === "user"
-                ? currentStatus.byActor.label
-                : "system"
-            }}
+            {{ currentStatus.lastUpdateBy.label }}
           </template>
         </div>
       </template>
@@ -129,16 +127,16 @@
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
 import { computed, onBeforeMount } from "vue";
+import { useComponentsStore } from "@/store/components.store";
+import { useStatusStore } from "@/store/status.store";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import HealthIcon from "@/molecules/HealthIcon.vue";
-import { useComponentsStore } from "@/store/components.store";
-import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
-import { useStatusStore } from "@/store/status.store";
 import Timestamp from "@/ui-lib/Timestamp.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
+import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const props = defineProps<{
   disabled?: boolean;

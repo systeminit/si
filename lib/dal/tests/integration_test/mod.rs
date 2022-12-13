@@ -29,6 +29,7 @@ mod schema;
 mod secret;
 mod socket;
 mod standard_model;
+mod status_update;
 mod user;
 mod validation_prototype;
 mod validation_resolver;

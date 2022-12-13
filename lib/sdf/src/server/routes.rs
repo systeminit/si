@@ -99,6 +99,7 @@ pub fn routes(
         .nest("/api/secret", crate::server::service::secret::routes())
         .nest("/api/session", crate::server::service::session::routes())
         .nest("/api/signup", crate::server::service::signup::routes())
+        .nest("/api/status", crate::server::service::status::routes())
         .nest("/api/workflow", crate::server::service::workflow::routes())
         .nest("/api/ws", crate::server::service::ws::routes());
 

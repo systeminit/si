@@ -248,7 +248,7 @@ impl WorkflowTree {
                 read_tenancy: ctx.read_tenancy().clone(),
                 write_tenancy: ctx.write_tenancy().clone(),
                 visibility: *ctx.visibility(),
-                history_actor: ctx.history_actor().clone(),
+                history_actor: *ctx.history_actor(),
             };
             let conns = services_context.connections().await?;
 

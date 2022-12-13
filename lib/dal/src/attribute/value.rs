@@ -34,7 +34,7 @@ use crate::{
     Func, FuncBackendKind, FuncBackendResponseType, FuncBinding, FuncError, HistoryEventError,
     IndexMap, InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind,
     ReadTenancyError, StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility,
-    WriteTenancy,
+    WriteTenancy, WsEventError,
 };
 
 pub mod view;
@@ -177,6 +177,12 @@ pub enum AttributeValueError {
     MissingComponentInReadContext(AttributeReadContext),
     #[error("component not found by id: {0}")]
     ComponentNotFoundById(ComponentId),
+    #[error("schema variant missing in context")]
+    SchemaVariantMissing,
+    #[error("schema missing in context")]
+    SchemaMissing,
+    #[error("ws event publishing error")]
+    WsEvent(#[from] WsEventError),
 }
 
 /// This is the function that set the attribute value, along with the function's prototype
@@ -737,6 +743,9 @@ impl AttributeValue {
             ).await?;
 
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
+
+        // TODO(fnichol): we might want to fire off a status even at this point, however we've
+        // already updated the initial attribute value, so is there much value?
 
         ctx.enqueue_job(DependentValuesUpdate::new(ctx, new_attribute_value_id))
             .await;

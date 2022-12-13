@@ -1,9 +1,12 @@
 use axum::extract::Query;
 use axum::Json;
+use chrono::{DateTime, Utc};
+use dal::status::StatusUpdateActor;
 use dal::{
     node::Node, ComponentId, DiagramKind, LabelEntry, LabelList, ResourceView, SchemaId,
     SchemaVariantId, StandardModel, Visibility, WorkspaceId,
 };
+use dal::{ComponentStatus, DalContext, HistoryActorTimestamp};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -20,6 +23,27 @@ pub struct ListComponentsIdentificationRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct ListComponentsIdentificationItemTimestamp {
+    actor: StatusUpdateActor,
+    timestamp: DateTime<Utc>,
+}
+
+impl ListComponentsIdentificationItemTimestamp {
+    async fn from_history_actor_timestamp(
+        ctx: &DalContext,
+        value: HistoryActorTimestamp,
+    ) -> ComponentResult<Self> {
+        let actor = StatusUpdateActor::from_history_actor(ctx, value.actor).await?;
+
+        Ok(Self {
+            actor,
+            timestamp: value.timestamp,
+        })
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ListComponentsIdentificationItem {
     pub component_id: ComponentId,
     pub schema_variant_id: SchemaVariantId,
@@ -28,6 +52,8 @@ pub struct ListComponentsIdentificationItem {
     pub diagram_kind: DiagramKind,
     pub schema_variant_name: String,
     pub resource: ResourceView,
+    pub created_at: ListComponentsIdentificationItemTimestamp,
+    pub updated_at: ListComponentsIdentificationItemTimestamp,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -51,6 +77,9 @@ pub async fn list_components_identification(
             Some(component) => component,
             None => continue,
         };
+        let component_status = ComponentStatus::get_by_id(&ctx, component.id())
+            .await?
+            .ok_or(ComponentError::ComponentNotFound)?;
         let resource = ResourceView::new(component.resource(&ctx).await?);
 
         let schema_variant = component
@@ -65,6 +94,17 @@ pub async fn list_components_identification(
             .diagram_kind()
             .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
 
+        let created_at = ListComponentsIdentificationItemTimestamp::from_history_actor_timestamp(
+            &ctx,
+            component_status.creation(),
+        )
+        .await?;
+        let updated_at = ListComponentsIdentificationItemTimestamp::from_history_actor_timestamp(
+            &ctx,
+            component_status.update(),
+        )
+        .await?;
+
         let value = ListComponentsIdentificationItem {
             component_id: *component.id(),
             schema_variant_id: *schema_variant.id(),
@@ -73,6 +113,8 @@ pub async fn list_components_identification(
             schema_name: schema.name().to_owned(),
             diagram_kind,
             resource,
+            created_at,
+            updated_at,
         };
         label_entries.push(LabelEntry {
             label: component.name(&ctx).await?,

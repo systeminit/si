@@ -30,16 +30,18 @@ pub type StandardModelResult<T> = Result<T, StandardModelError>;
 #[derive(AsRefStr, Debug, Eq, PartialEq)]
 #[strum(serialize_all = "lowercase")]
 pub enum TypeHint {
-    Bytea,
     BigInt,
     Boolean,
+    BpChar,
+    Bytea,
     Char,
     Integer,
+    Json,
+    JsonB,
     SmallInt,
     Text,
-    JsonB,
-    Json,
-    BpChar,
+    #[strum(serialize = "timestamp with time zone")]
+    TimestampWithTimeZone,
 }
 
 #[instrument(skip(ctx))]

@@ -9,6 +9,7 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 use crate::fix::FixError;
+use crate::status::StatusUpdaterError;
 use crate::{
     func::binding_return_value::FuncBindingReturnValueError, workflow_runner::WorkflowRunnerError,
     AccessBuilder, ActionPrototypeError, AttributeValueError, ComponentError, ComponentId,
@@ -60,6 +61,8 @@ pub enum JobConsumerError {
     NoSchemaVariantFound(ComponentId),
     #[error("action named {0} not found for component {1}")]
     ActionNotFound(String, ComponentId),
+    #[error(transparent)]
+    StatusUpdaterError(#[from] StatusUpdaterError),
 }
 
 impl From<JobConsumerError> for std::io::Error {

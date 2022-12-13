@@ -8,10 +8,11 @@ use crate::confirmation_status::ConfirmationStatusUpdate;
 use crate::fix::batch::FixBatchReturn;
 use crate::fix::FixReturn;
 use crate::qualification::QualificationCheckPayload;
+use crate::status::StatusMessage;
 use crate::workflow::{CommandOutput, CommandReturn};
 use crate::{
-    BillingAccountId, ChangeSetPk, ConfirmationPrototypeError, DalContext, HistoryActor,
-    ReadTenancy, SchemaPk, StandardModelError,
+    AttributeValueId, BillingAccountId, ChangeSetPk, ComponentId, ConfirmationPrototypeError,
+    DalContext, HistoryActor, PropId, ReadTenancy, SchemaPk, SocketId, StandardModelError,
 };
 
 #[derive(Error, Debug)]
@@ -45,6 +46,40 @@ pub enum WsPayload {
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
     ConfirmationStatusUpdate(ConfirmationStatusUpdate),
+    StatusUpdate(StatusMessage),
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Copy, Hash)]
+#[serde(rename_all = "camelCase", tag = "kind", content = "id")]
+pub enum StatusValueKind {
+    Attribute(PropId),
+    CodeGen,
+    Qualification,
+    Internal,
+    InputSocket(SocketId),
+    OutputSocket(SocketId),
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, Eq, Hash, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributeValueStatusUpdate {
+    value_id: AttributeValueId,
+    component_id: ComponentId,
+    value_kind: StatusValueKind,
+}
+
+impl AttributeValueStatusUpdate {
+    pub fn new(
+        value_id: AttributeValueId,
+        component_id: ComponentId,
+        value_kind: StatusValueKind,
+    ) -> Self {
+        Self {
+            value_id,
+            component_id,
+            value_kind,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
@@ -52,30 +87,21 @@ pub struct WsEvent {
     version: i64,
     billing_account_ids: Vec<BillingAccountId>,
     history_actor: HistoryActor,
+    change_set_pk: ChangeSetPk,
     payload: WsPayload,
 }
 
 impl WsEvent {
     pub fn new(ctx: &DalContext, payload: WsPayload) -> Self {
         let billing_account_ids = Self::billing_account_id_from_tenancy(ctx.read_tenancy());
-        let history_actor = ctx.history_actor().clone();
-        WsEvent {
-            version: 1,
-            billing_account_ids,
-            history_actor,
-            payload,
-        }
-    }
+        let history_actor = *ctx.history_actor();
+        let change_set_pk = ctx.visibility().change_set_pk;
 
-    pub fn new_raw(
-        billing_account_ids: Vec<BillingAccountId>,
-        history_actor: HistoryActor,
-        payload: WsPayload,
-    ) -> Self {
         WsEvent {
             version: 1,
             billing_account_ids,
             history_actor,
+            change_set_pk,
             payload,
         }
     }
@@ -88,6 +114,15 @@ impl WsEvent {
         for billing_account_id in self.billing_account_ids.iter() {
             let subject = format!("si.billing_account_id.{}.event", billing_account_id);
             ctx.nats_txn().publish(subject, &self).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn publish_immediately(&self, ctx: &DalContext) -> WsEventResult<()> {
+        for billing_account_id in self.billing_account_ids.iter() {
+            let subject = format!("si.billing_account_id.{}.event", billing_account_id);
+            let msg_bytes = serde_json::to_vec(self)?;
+            ctx.nats_conn().publish(subject, msg_bytes).await?;
         }
         Ok(())
     }

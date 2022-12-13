@@ -40,7 +40,12 @@
         <ProgressBar :progress-percent="computedProgressPercent" />
         <span class="whitespace-nowrap flex-shrink-0">
           <slot name="barLabel">
-            {{ doneCount }} / {{ totalCount }} {{ barLabel }}
+            <template v-if="totalCount === Infinity">
+              <Icon name="loader" class="-mt-1" />
+            </template>
+            <template v-else>
+              {{ doneCount }} / {{ totalCount }} {{ barLabel }}
+            </template>
           </slot>
         </span>
       </div>
@@ -52,6 +57,7 @@
 import clsx from "clsx";
 import { computed } from "vue";
 import ProgressBar from "@/atoms/ProgressBar.vue";
+import Icon from "@/ui-lib/icons/Icon.vue";
 
 const props = defineProps({
   title: { type: String },

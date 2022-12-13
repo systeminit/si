@@ -30,7 +30,7 @@ importers:
       '@types/codemirror': ^5.60.5
       '@types/fontfaceobserver': ^2.1.0
       '@types/javascript-time-ago': ^2.0.3
-      '@types/lodash': ^4.14.182
+      '@types/lodash': ^4.14.191
       '@types/node': ^17.0.29
       '@types/tinycolor2': ^1.4.3
       '@types/validator': ^13.7.2
@@ -136,7 +136,7 @@ importers:
       '@types/codemirror': 5.60.5
       '@types/fontfaceobserver': 2.1.0
       '@types/javascript-time-ago': 2.0.3
-      '@types/lodash': 4.14.188
+      '@types/lodash': 4.14.191
       '@types/node': 17.0.45
       '@types/tinycolor2': 1.4.3
       '@types/validator': 13.7.10
@@ -1469,6 +1469,10 @@ packages:
 
   /@types/lodash/4.14.188:
     resolution: {integrity: sha512-zmEmF5OIM3rb7SbLCFYoQhO4dGt2FRM9AMkxvA3LaADOF1n8in/zGJlWji9fmafLoNyz+FoL6FE0SLtGIArD7w==}
+    dev: true
+
+  /@types/lodash/4.14.191:
+    resolution: {integrity: sha512-BdZ5BCCvho3EIXw6wUCXHe7rS53AIDPLE+JzwgT+OsJk53oBfbSmZZ7CX4VaRoN78N+TJpFi9QPlfIVNmJYWxQ==}
     dev: true
 
   /@types/ms/0.7.31:

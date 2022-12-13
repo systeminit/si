@@ -112,8 +112,8 @@ const devAutofill = true;
 // local dev prefills signup and login
 const signupPayload = reactive({
   billingAccountName: import.meta.env.DEV && devAutofill ? "systeminit" : "",
-  userName: import.meta.env.DEV && devAutofill ? "System Init" : "",
-  userEmail: import.meta.env.DEV && devAutofill ? "example@systeminit.com" : "",
+  userName: import.meta.env.DEV && devAutofill ? "Signup Sally" : "",
+  userEmail: import.meta.env.DEV && devAutofill ? "sally@systeminit.com" : "",
   userPassword: import.meta.env.DEV && devAutofill ? "Password123!" : "",
   signupSecret: import.meta.env.DEV && devAutofill ? "cool-steam" : "",
 });

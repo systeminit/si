@@ -1,12 +1,12 @@
 CREATE TABLE components
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
+    pk                          ident                    PRIMARY KEY DEFAULT ident_create_v1(),
+    id                          ident                    NOT NULL DEFAULT ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
     tenancy_billing_account_ids ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
+    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
@@ -22,9 +22,31 @@ VALUES ('components', 'model', 'component', 'Component'),
        ('component_belongs_to_schema_variant', 'belongs_to', 'component.schema_variant', 'Component <> SchemaVariant');
 
 
+CREATE TABLE component_statuses
+(
+    pk                          ident                    PRIMARY KEY DEFAULT ident_create_v1(),
+    id                          ident                    NOT NULL,
+    tenancy_universal           bool                     NOT NULL,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
+    visibility_deleted_at       timestamp with time zone,
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    creation_timestamp          timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    creation_user_id            ident,
+    update_timestamp            timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    update_user_id              ident
+);
+SELECT standard_model_table_constraints_v1('component_statuses');
+INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
+VALUES ('component_statuses', 'model', 'component_status', 'Component Status');
+
 CREATE OR REPLACE FUNCTION component_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
+    this_user_id ident,
     this_kind text,
     OUT object json) AS
 $$
@@ -43,6 +65,18 @@ BEGIN
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at, this_kind)
     RETURNING * INTO this_new_row;
+
+    -- Create a parallel record to store creation and update status, meaning that this table's id refers to components.id
+    INSERT INTO component_statuses (id,
+                                    tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
+                                    tenancy_workspace_ids,
+                                    visibility_change_set_pk, visibility_deleted_at,
+                                    creation_user_id, update_user_id)
+    VALUES (this_new_row.id,
+            this_new_row.tenancy_universal, this_new_row.tenancy_billing_account_ids,
+            this_new_row.tenancy_organization_ids, this_new_row.tenancy_workspace_ids,
+            this_new_row.visibility_change_set_pk, this_new_row.visibility_deleted_at,
+            this_user_id, this_user_id);
 
     object := row_to_json(this_new_row);
 END;
