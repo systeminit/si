@@ -6,8 +6,8 @@ use crate::func::argument::FuncArgumentId;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, DalContext, Func, FuncError, FuncId, PropId, SchemaVariant,
-    SchemaVariantId, StandardModel,
+    AttributeValueError, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
+    FuncId, PropId, SchemaVariant, SchemaVariantId, StandardModel,
 };
 
 /// This enum provides options for creating leaves underneath compatible subtrees of "/root" within
@@ -16,6 +16,7 @@ use crate::{
 /// [`object`](crate::PropKind::Object) entries. Each entry must leverage the same kind of
 /// [`Func`](crate::Func) within the same [`map`](crate::PropKind::Map). The kind of
 /// [`Func`](crate::Func) allowed corresponds to the [`LeafKind`].
+#[derive(Clone, Copy, Debug)]
 pub enum LeafKind {
     /// This variant corresponds to the "/root/code" subtree whose leaves leverage code generation
     /// [`Funcs`](crate::Func).
@@ -23,6 +24,29 @@ pub enum LeafKind {
     /// This variant corresponds to the "/root/qualification" subtree whose leaves leverage
     /// qualification [`Funcs`](crate::Func).
     Qualification,
+    /// This variant corresponds to the "/root/validation" subtree whose leaves store
+    /// validation [`Func`](crate::Func) output
+    Validation,
+}
+
+impl LeafKind {
+    pub fn prop_names(&self) -> (&'static str, &'static str) {
+        match self {
+            LeafKind::CodeGeneration => ("code", "codeItem"),
+            LeafKind::Qualification => ("qualification", "qualificationItem"),
+            LeafKind::Validation => ("validation", "validationItem"),
+        }
+    }
+}
+
+impl From<LeafKind> for FuncBackendResponseType {
+    fn from(leaf_kind: LeafKind) -> Self {
+        match leaf_kind {
+            LeafKind::CodeGeneration => FuncBackendResponseType::CodeGeneration,
+            LeafKind::Qualification => FuncBackendResponseType::Qualification,
+            LeafKind::Validation => FuncBackendResponseType::Validation,
+        }
+    }
 }
 
 impl SchemaVariant {
@@ -43,26 +67,30 @@ impl SchemaVariant {
             return Err(SchemaVariantError::InvalidSchemaVariant);
         }
 
-        // TODO(nick): check if the func is valid for the leaf kind. We "get" the func here
-        // since we not only need it for the name later, but we want to perform that check upfront
-        // to save time if the func kind is invalid for the leaf.
         let func = Func::get_by_id(ctx, &func_id)
             .await?
             .ok_or(FuncError::NotFound(func_id))?;
+
+        if func.backend_kind() != &FuncBackendKind::JsAttribute {
+            return Err(SchemaVariantError::LeafFunctionMustBeJsAttribute(
+                *func.id(),
+            ));
+        }
+
+        if func.backend_response_type() != &leaf_kind.into() {
+            return Err(SchemaVariantError::LeafFunctionMismatch(
+                *func.backend_response_type(),
+                leaf_kind,
+            ));
+        }
 
         // NOTE(nick): perhaps, considering only finalizing once and outside of this method. We only
         // need to finalize once if multiple leaves are added.
         SchemaVariant::finalize_for_id(ctx, schema_variant_id).await?;
 
         // Assemble the values we need to insert an object into the map.
-        let item_prop = match leaf_kind {
-            LeafKind::CodeGeneration => {
-                SchemaVariant::find_code_item_prop(ctx, schema_variant_id).await?
-            }
-            LeafKind::Qualification => {
-                SchemaVariant::find_qualification_item_prop(ctx, schema_variant_id).await?
-            }
-        };
+        let item_prop =
+            SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
 
         // NOTE(nick): we should consider getting the parent and the item at the same time.
         let map_prop = item_prop

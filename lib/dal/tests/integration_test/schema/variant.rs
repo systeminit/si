@@ -1,4 +1,7 @@
-use dal::{schema::SchemaVariant, DalContext, InternalProvider, SchemaKind, StandardModel};
+use dal::{
+    schema::{variant::leaves::LeafKind, SchemaVariant},
+    DalContext, InternalProvider, SchemaKind, StandardModel,
+};
 use dal_test::{test, test_harness::create_schema};
 use pretty_assertions_sorted::assert_eq;
 
@@ -42,9 +45,10 @@ async fn find_code_item_prop(ctx: &DalContext) {
         .expect("cannot create schema variant");
 
     // Check that our query works to find "/root/code/codeItem".
-    let found_code_item_prop = SchemaVariant::find_code_item_prop(ctx, *schema_variant.id())
-        .await
-        .expect("could not find code item prop");
+    let found_code_item_prop =
+        SchemaVariant::find_leaf_item_prop(ctx, *schema_variant.id(), LeafKind::CodeGeneration)
+            .await
+            .expect("could not find code item prop");
     assert_eq!("codeItem", found_code_item_prop.name());
 
     // Check that the parent is "/root/code".

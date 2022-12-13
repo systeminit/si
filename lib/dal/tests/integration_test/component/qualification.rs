@@ -29,7 +29,7 @@ async fn add_qualification(ctx: &DalContext) {
         ctx,
         "test:qualification",
         FuncBackendKind::JsAttribute,
-        FuncBackendResponseType::PropObject,
+        FuncBackendResponseType::Qualification,
     )
     .await
     .expect("could not create func");

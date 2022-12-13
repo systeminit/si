@@ -4,8 +4,9 @@
 use telemetry::prelude::*;
 
 use crate::{
-    schema::variant::SchemaVariantResult, AttributeContext, AttributeValue, AttributeValueError,
-    DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, StandardModel,
+    schema::variant::{leaves::LeafKind, SchemaVariantResult},
+    AttributeContext, AttributeValue, AttributeValueError, DalContext, Prop, PropId, PropKind,
+    SchemaVariant, SchemaVariantId, StandardModel,
 };
 
 /// Contains the root [`PropId`](crate::Prop) and its immediate children for a
@@ -179,17 +180,8 @@ impl RootProp {
     }
 
     async fn setup_code(ctx: &DalContext, root_prop_id: PropId) -> SchemaVariantResult<PropId> {
-        let mut code_map_prop = Prop::new(ctx, "code", PropKind::Map, None).await?;
-        code_map_prop.set_hidden(ctx, true).await?;
-        code_map_prop.set_parent_prop(ctx, root_prop_id).await?;
-        let code_map_prop_id = *code_map_prop.id();
-
-        let mut code_map_item_prop = Prop::new(ctx, "codeItem", PropKind::Object, None).await?;
-        code_map_item_prop.set_hidden(ctx, true).await?;
-        code_map_item_prop
-            .set_parent_prop(ctx, code_map_prop_id)
-            .await?;
-        let code_map_item_prop_id = *code_map_item_prop.id();
+        let (code_map_prop_id, code_map_item_prop_id) =
+            RootProp::insert_leaf_props(ctx, LeafKind::CodeGeneration, root_prop_id).await?;
 
         let mut child_code_prop = Prop::new(ctx, "code", PropKind::String, None).await?;
         child_code_prop.set_hidden(ctx, true).await?;
@@ -210,21 +202,8 @@ impl RootProp {
         ctx: &DalContext,
         root_prop_id: PropId,
     ) -> SchemaVariantResult<PropId> {
-        let mut qualification_map_prop =
-            Prop::new(ctx, "qualification", PropKind::Map, None).await?;
-        qualification_map_prop.set_hidden(ctx, true).await?;
-        qualification_map_prop
-            .set_parent_prop(ctx, root_prop_id)
-            .await?;
-        let qualification_map_prop_id = *qualification_map_prop.id();
-
-        let mut qualification_map_item_prop =
-            Prop::new(ctx, "qualificationItem", PropKind::Object, None).await?;
-        qualification_map_item_prop.set_hidden(ctx, true).await?;
-        qualification_map_item_prop
-            .set_parent_prop(ctx, qualification_map_prop_id)
-            .await?;
-        let qualification_map_item_prop_id = *qualification_map_item_prop.id();
+        let (qualification_map_prop_id, qualification_map_item_prop_id) =
+            RootProp::insert_leaf_props(ctx, LeafKind::Qualification, root_prop_id).await?;
 
         let mut child_qualified_prop = Prop::new(ctx, "qualified", PropKind::Boolean, None).await?;
         child_qualified_prop.set_hidden(ctx, true).await?;
@@ -233,5 +212,24 @@ impl RootProp {
             .await?;
 
         Ok(qualification_map_prop_id)
+    }
+
+    async fn insert_leaf_props(
+        ctx: &DalContext,
+        leaf_kind: LeafKind,
+        root_prop_id: PropId,
+    ) -> SchemaVariantResult<(PropId, PropId)> {
+        let (leaf_prop_name, leaf_item_prop_name) = leaf_kind.prop_names();
+
+        let mut leaf_prop = Prop::new(ctx, leaf_prop_name, PropKind::Map, None).await?;
+        leaf_prop.set_hidden(ctx, true).await?;
+        leaf_prop.set_parent_prop(ctx, root_prop_id).await?;
+
+        let mut leaf_item_prop =
+            Prop::new(ctx, leaf_item_prop_name, PropKind::Object, None).await?;
+        leaf_item_prop.set_hidden(ctx, true).await?;
+        leaf_item_prop.set_parent_prop(ctx, *leaf_prop.id()).await?;
+
+        Ok((*leaf_prop.id(), *leaf_item_prop.id()))
     }
 }
