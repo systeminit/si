@@ -44,7 +44,7 @@ BEGIN
                                 '   row_to_json(table_alias.*) AS object '
                                 ' FROM %1$I_v1(%3$L, %4$L) AS table_alias '
                                 ' WHERE table_alias.id = %2$L '
-                                ' ORDER BY created_at, id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
+                                ' ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
         , this_table, this_id, this_tenancy, this_visibility);
 END ;
 $$ LANGUAGE PLPGSQL STABLE;
@@ -449,9 +449,6 @@ BEGIN
                                 '   table_alias.visibility_deleted_at, '
                                 '   row_to_json(table_alias.*) AS object '
                                 ' FROM %1$I_v1(%2$L, %3$L) AS table_alias '
-                                ' ORDER BY id, '
-                                '          visibility_change_set_pk DESC, '
-                                '          visibility_deleted_at DESC NULLS FIRST '
         , this_table, this_tenancy, this_visibility);
 END ;
 $$ LANGUAGE PLPGSQL STABLE;

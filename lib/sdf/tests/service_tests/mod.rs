@@ -36,7 +36,7 @@ pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
     if let Some(workspace_id) = request_json
         .as_object()
         .and_then(|obj| obj.get("workspaceId"))
-        .and_then(|value| value.as_u64())
+        .and_then(|value| value.as_str())
     {
         api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
     }
@@ -79,7 +79,7 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
     if let Some(workspace_id) = request_json
         .as_object()
         .and_then(|obj| obj.get("workspaceId"))
-        .and_then(|value| value.as_u64())
+        .and_then(|value| value.as_str())
     {
         api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
     }
@@ -157,7 +157,7 @@ pub async fn api_request<Req: Serialize, Res: DeserializeOwned>(
     if let Some(workspace_id) = request_json
         .as_object()
         .and_then(|obj| obj.get("workspaceId"))
-        .and_then(|value| value.as_u64())
+        .and_then(|value| value.as_str())
     {
         api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
     }
