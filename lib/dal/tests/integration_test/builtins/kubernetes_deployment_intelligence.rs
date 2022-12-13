@@ -16,9 +16,6 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
     let fedora_docker_image_payload = harness
         .create_component(ctx, "fedora", Builtin::DockerImage)
         .await;
-    let alpine_docker_image_payload = harness
-        .create_component(ctx, "alpine", Builtin::DockerImage)
-        .await;
     let namespace_payload = harness
         .create_component(ctx, "namespace", Builtin::KubernetesNamespace)
         .await;
@@ -27,6 +24,9 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         .await;
     let patrick_deployment_payload = harness
         .create_component(ctx, "patrick", Builtin::KubernetesDeployment)
+        .await;
+    let alpine_docker_image_payload = harness
+        .create_component(ctx, "alpine", Builtin::DockerImage)
         .await;
 
     // Cache schema variants to increase clarity in the test structure.

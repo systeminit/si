@@ -6,21 +6,21 @@ export type EditingFunc = GetFuncResponse;
 
 export interface CodeGenerationAssociations {
   type: "codeGeneration";
-  schemaVariantIds: number[];
-  componentIds: number[];
+  schemaVariantIds: string[];
+  componentIds: string[];
   format: CodeLanguage;
 }
 
 export interface ConfirmationAssociations {
   type: "confirmation";
-  schemaVariantIds: number[];
-  componentIds: number[];
+  schemaVariantIds: string[];
+  componentIds: string[];
 }
 
 export interface QualificationAssocations {
   type: "qualification";
-  schemaVariantIds: number[];
-  componentIds: number[];
+  schemaVariantIds: string[];
+  componentIds: string[];
 }
 
 export interface ValidationAssociations {
@@ -29,22 +29,22 @@ export interface ValidationAssociations {
 }
 
 export interface ValidationPrototypeView {
-  id: number;
-  schemaVariantId: number;
-  propId: number;
+  id: string;
+  schemaVariantId: string;
+  propId: string;
 }
 
 export interface AttributePrototypeArgumentView {
-  funcArgumentId: number;
-  id?: number;
-  internalProviderId?: number;
+  funcArgumentId: string;
+  id?: string;
+  internalProviderId?: string;
 }
 
 export interface AttributePrototypeView {
-  id: number;
-  schemaVariantId: number;
-  componentId?: number;
-  propId: number;
+  id: string;
+  schemaVariantId: string;
+  componentId?: string;
+  propId: string;
   prototypeArguments: AttributePrototypeArgumentView[];
 }
 

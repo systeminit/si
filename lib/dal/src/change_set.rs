@@ -49,14 +49,10 @@ pub enum ChangeSetStatus {
 }
 
 pk!(ChangeSetPk);
-pk!(ChangeSetId);
-
-pub const NO_CHANGE_SET_PK: ChangeSetPk = ChangeSetPk(-1);
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct ChangeSet {
     pub pk: ChangeSetPk,
-    pub id: ChangeSetId,
     pub name: String,
     pub note: Option<String>,
     pub status: ChangeSetStatus,

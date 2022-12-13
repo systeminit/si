@@ -9,6 +9,7 @@ export enum ChangeSetStatus {
 }
 
 export interface ChangeSet extends StandardModelNoVisibility {
+  id: never;
   name: string;
   note?: string;
   status: ChangeSetStatus;
@@ -17,7 +18,7 @@ export interface ChangeSet extends StandardModelNoVisibility {
 export type ComponentChangeStatus = "added" | "deleted" | "modified";
 
 export interface ComponentStatsGroup {
-  componentId: number;
+  componentId: string;
   componentName: string;
   componentStatus: ComponentChangeStatus;
 }

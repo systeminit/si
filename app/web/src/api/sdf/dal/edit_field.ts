@@ -90,10 +90,10 @@ export type VisibilityDiff =
 export type EditFieldValues = null | boolean | number | string;
 
 export interface EditFieldBaggage {
-  attribute_value_id: number;
+  attribute_value_id: string;
   parent_attribute_value_id?: number;
   key?: string;
-  prop_id: number;
+  prop_id: string;
   prop_doc_link?: string;
 }
 
@@ -102,7 +102,7 @@ export interface EditField {
   name: string;
   path: Array<string>;
   object_kind: EditFieldObjectKind;
-  object_id: number;
+  object_id: string;
   data_type: EditFieldDataType;
   widget: Widget;
   value?: EditFieldValues;

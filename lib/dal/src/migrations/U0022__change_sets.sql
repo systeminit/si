@@ -1,16 +1,15 @@
 CREATE TABLE change_sets
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
     name                        text                     NOT NULL,
     note                        text,
     status                      text                     NOT NULL,
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW()
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP()
 );
 
 CREATE OR REPLACE FUNCTION change_set_create_v1(this_name text,
@@ -36,15 +35,15 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE TYPE change_set_update_type_v1 as
 (
-    pk                          bigint,
-    id                          bigint,
+    pk                          ident,
+    id                          ident,
     tenancy_universal           bool,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[]
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[]
 );
 
-CREATE OR REPLACE FUNCTION change_set_apply_v1(this_change_set_pk bigint,
+CREATE OR REPLACE FUNCTION change_set_apply_v1(this_change_set_pk ident,
                                                this_actor jsonb,
                                                OUT timestamp_updated_at timestamp with time zone) AS
 $$
@@ -58,7 +57,7 @@ DECLARE
 BEGIN
     UPDATE change_sets
     SET status     = 'Applied',
-        updated_at = now()
+        updated_at = clock_timestamp()
     WHERE pk = this_change_set_pk
     RETURNING updated_at INTO timestamp_updated_at;
 
@@ -91,8 +90,8 @@ BEGIN
             -- next query below (i.e. we're looking to trigger the ON CONFLICT
             -- behavior).
             EXECUTE format('UPDATE %1$I ' ||
-                           '  SET visibility_deleted_at = now(), updated_at = now() ' ||
-                           'WHERE visibility_change_set_pk = -1 ' ||
+                           '  SET visibility_deleted_at = clock_timestamp(), updated_at = clock_timestamp() ' ||
+                           'WHERE visibility_change_set_pk = ident_nil_v1() ' ||
                            '  AND visibility_deleted_at IS NULL ' ||
                            '  AND id IN ( ' ||
                            '      SELECT id ' ||
@@ -112,10 +111,9 @@ BEGIN
                             '              visibility_change_set_pk, ' ||
                             '              (visibility_deleted_at IS NULL)) ' ||
                             '    WHERE visibility_deleted_at IS NULL ' ||
-                            'DO UPDATE SET updated_at = now(), %4$s ' ||
+                            'DO UPDATE SET updated_at = clock_timestamp(), %4$s ' ||
                             'RETURNING pk, id, tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids, tenancy_workspace_ids',
                             this_table_name, insert_column_names, this_change_set_pk, update_set_names);
-            RAISE WARNING '%', query;
 
             FOR updated_model IN EXECUTE query
                 LOOP

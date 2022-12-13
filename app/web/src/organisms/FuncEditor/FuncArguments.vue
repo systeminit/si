@@ -88,24 +88,28 @@ const kindOptions = generateKindOptions();
 // const elementKindOptions = [kindToOption()].concat(generateKindOptions());
 
 const props = defineProps<{
-  funcId: number;
+  funcId: string;
   arguments: FuncArgument[];
   disabled?: boolean;
 }>();
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 const defaultNewArg = {
-  id: -1,
+  id: nilId(),
   name: "",
   kind: kindToOption(FuncArgumentKind.String),
   elementKind: kindToOption(),
 };
 
-const funcId = toRef(props, "funcId", -1);
+const funcId = toRef(props, "funcId", nilId());
 const args = toRef(props, "arguments", []);
 const newArg = ref<EditingFuncArgument>(defaultNewArg);
 
 interface EditingFuncArgument {
-  id: number;
+  id: string;
   name: string;
   kind: Option;
   elementKind?: Option;

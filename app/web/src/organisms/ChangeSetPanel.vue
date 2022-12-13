@@ -204,7 +204,7 @@ const createChangeSetName = ref("");
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
-function onSelectChangeSet(newVal: number | "NEW") {
+function onSelectChangeSet(newVal: string | "NEW") {
   if (newVal === "NEW") {
     showDialog.value = "create";
   } else if (newVal && route.name) {
@@ -227,7 +227,7 @@ async function onCreateChangeSet() {
   );
   if (createReq.result.success) {
     // reusing above to navigate to new change set... will probably clean this all up later
-    onSelectChangeSet(createReq.result.data.changeSet.id);
+    onSelectChangeSet(createReq.result.data.changeSet.pk);
   }
 }
 

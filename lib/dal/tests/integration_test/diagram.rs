@@ -185,27 +185,27 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
 
     // Check the nodes.
     assert_eq!(diagram.nodes().len(), 2);
-    let from_node_id: i64 = from_docker_hub_credential.node_id.into();
-    assert_eq!(diagram.nodes()[0].id(), &from_node_id.to_string());
-    let to_node_id: i64 = to_docker_image.node_id.into();
-    assert_eq!(diagram.nodes()[1].id(), &to_node_id.to_string(),);
+    assert_eq!(
+        diagram
+            .nodes()
+            .iter()
+            .filter(|n| n.id() == from_docker_hub_credential.node_id.to_string()
+                || n.id() == to_docker_image.node_id.to_string())
+            .count(),
+        2
+    );
 
     // Check the node positions.
     assert_eq!(
-        diagram.nodes()[0].position().x().to_string(),
-        from_node_position.x()
-    );
-    assert_eq!(
-        diagram.nodes()[0].position().y().to_string(),
-        from_node_position.y()
-    );
-    assert_eq!(
-        diagram.nodes()[1].position().x().to_string(),
-        to_node_position.x()
-    );
-    assert_eq!(
-        diagram.nodes()[1].position().y().to_string(),
-        to_node_position.y()
+        diagram
+            .nodes()
+            .iter()
+            .filter(|n| (n.position().x().to_string() == from_node_position.x()
+                && n.position().y().to_string() == from_node_position.y())
+                || (n.position().x().to_string() == to_node_position.x()
+                    && n.position().y().to_string() == to_node_position.y()))
+            .count(),
+        2
     );
 
     // Check the connection on the diagram.

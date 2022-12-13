@@ -178,11 +178,11 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
 #[test]
 async fn docker_to_butane_is_valid_ignition(ctx: &DalContext) {
     let mut harness = SchemaBuiltinsTestHarness::new();
-    let butane_payload = harness
-        .create_component(ctx, "butane", Builtin::CoreOsButane)
-        .await;
     let alpine_payload = harness
         .create_component(ctx, "alpine", Builtin::DockerImage)
+        .await;
+    let butane_payload = harness
+        .create_component(ctx, "butane", Builtin::CoreOsButane)
         .await;
     let nginx_payload = harness
         .create_component(ctx, "nginx", Builtin::DockerImage)

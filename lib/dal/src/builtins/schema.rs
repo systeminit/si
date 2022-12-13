@@ -38,7 +38,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
 /// A _private_ item containing useful metadata alongside a [`FuncId`](crate::Func). This is used by
 /// the [`MigrationDriver`].
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct FuncCacheItem {
     pub func_id: FuncId,
     pub func_binding_id: FuncBindingId,

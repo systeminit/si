@@ -11,7 +11,11 @@ import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
-export type ChangeSetId = number;
+export type ChangeSetId = string;
+
+export function changeSetIdNil(): string {
+  return "00000000000000000000000000";
+}
 
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();
@@ -34,12 +38,12 @@ export function useChangeSetsStore() {
         },
         selectedChangeSet: (state) =>
           state.selectedChangeSetId
-            ? state.changeSetsById[state.selectedChangeSetId] || null
+            ? state.changeSetsById[state.selectedChangeSetId] ?? null
             : null,
 
         selectedChangeSetWritten: (state) =>
           state.selectedChangeSetId
-            ? state.changeSetsWrittenAtById[state.selectedChangeSetId]
+            ? state.changeSetsWrittenAtById[state.selectedChangeSetId] ?? null
             : null,
 
         // expose here so other stores can get it without needing to call useWorkspaceStore directly
@@ -47,7 +51,7 @@ export function useChangeSetsStore() {
       },
       actions: {
         async FETCH_CHANGE_SETS() {
-          return new ApiRequest<{ list: LabelList<number> }>({
+          return new ApiRequest<{ list: LabelList<string> }>({
             // TODO: probably want to fetch all change sets, not just open (or could have a filter)
             // this endpoint currently returns dropdown-y data, should just return the change set data itself
             url: "change_set/list_open_change_sets",
@@ -79,7 +83,7 @@ export function useChangeSetsStore() {
               changeSetName: name,
             },
             onSuccess: (response) => {
-              this.changeSetsById[response.changeSet.id] = response.changeSet;
+              this.changeSetsById[response.changeSet.pk] = response.changeSet;
             },
           });
         },
@@ -92,7 +96,7 @@ export function useChangeSetsStore() {
               changeSetPk: this.selectedChangeSet.pk,
             },
             onSuccess: (response) => {
-              this.changeSetsById[response.changeSet.id] = response.changeSet;
+              this.changeSetsById[response.changeSet.pk] = response.changeSet;
               // could switch to head here, or could let the caller decide...
             },
           });
@@ -107,15 +111,14 @@ export function useChangeSetsStore() {
           // returning `false` means we cannot auto select
           if (!this.openChangeSets.length) return false; // no open change sets
           if (this.openChangeSets.length === 1)
-            return this.openChangeSets[0].id; // only 1 change set - will auto select it
+            return this.openChangeSets[0].pk; // only 1 change set - will auto select it
           // TODO: add logic to for auto-selecting when multiple change sets open
           // - select one created by you
           // - track last selected in localstorage and select that one...
-          const lastChangeSetIdRaw = storage.getItem(
+          const lastChangeSetId = storage.getItem(
             `SI:LAST_CHANGE_SET/${workspaceId}`,
           );
-          if (!lastChangeSetIdRaw) return false;
-          const lastChangeSetId = parseInt(lastChangeSetIdRaw);
+          if (!lastChangeSetId) return false;
           if (
             this.changeSetsById[lastChangeSetId]?.status ===
             ChangeSetStatus.Open
@@ -135,7 +138,7 @@ export function useChangeSetsStore() {
             if (this.selectedChangeSet && workspaceId) {
               storage.setItem(
                 `SI:LAST_CHANGE_SET/${workspaceId}`,
-                this.selectedChangeSet.id.toString(),
+                this.selectedChangeSet.pk,
               );
             }
           },

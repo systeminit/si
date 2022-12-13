@@ -96,12 +96,16 @@ const {
   componentOptions,
 } = storeToRefs(funcStore);
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 const editingPrototype = ref<AttributePrototypeView | undefined>(undefined);
 const makeEmptyPrototype = (): AttributePrototypeView => ({
-  id: -1,
-  schemaVariantId: -1,
-  componentId: -1,
-  propId: -1,
+  id: nilId(),
+  schemaVariantId: nilId(),
+  componentId: nilId(),
+  propId: nilId(),
   prototypeArguments: associations.value.arguments.map(({ id }) => ({
     funcArgumentId: id,
   })),
@@ -112,7 +116,7 @@ const closeModal = () => {
   isModalOpen.value = false;
 };
 
-const removeBinding = (prototypeId?: number) =>
+const removeBinding = (prototypeId?: string) =>
   prototypeId && funcStore.removeFuncAttrPrototype(props.funcId, prototypeId);
 
 const saveModal = (prototype?: AttributePrototypeView) => {
@@ -122,7 +126,7 @@ const saveModal = (prototype?: AttributePrototypeView) => {
   closeModal();
 };
 
-const openModal = (prototypeId?: number) => {
+const openModal = (prototypeId?: string) => {
   // clear the prototype and then if we are editing an existing one, set it
   editingPrototype.value = makeEmptyPrototype();
   if (prototypeId) {
@@ -134,10 +138,10 @@ const openModal = (prototypeId?: number) => {
 };
 
 const funcArgumentsIdMap =
-  inject<Ref<{ [key: number]: FuncArgument }>>("funcArgumentsIdMap");
+  inject<Ref<{ [key: string]: FuncArgument }>>("funcArgumentsIdMap");
 
 const props = defineProps<{
-  funcId: number;
+  funcId: string;
   associations: AttributeAssocations;
   disabled?: boolean;
 }>();

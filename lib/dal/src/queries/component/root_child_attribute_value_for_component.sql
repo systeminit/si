@@ -20,8 +20,8 @@ FROM attribute_values_v1($1, $2) AS av
 WHERE in_attribute_context_v1(
               attribute_context_build_from_parts_v1(
                       root_child_prop.id, -- PropId
-                      -1, -- InternalProviderId
-                      -1, -- ExternalProviderId
+                      ident_nil_v1(), -- InternalProviderId
+                      ident_nil_v1(), -- ExternalProviderId
                       $4 -- ComponentId
                   ),
               av

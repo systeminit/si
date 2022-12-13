@@ -2,7 +2,6 @@
 macro_rules! pk {
     ($name:ident) => {
         #[derive(
-            Debug,
             Eq,
             PartialEq,
             PartialOrd,
@@ -16,10 +15,18 @@ macro_rules! pk {
             serde::Serialize,
             serde::Deserialize,
         )]
-        pub struct $name(i64);
+        pub struct $name(ulid::Ulid);
+
+        impl std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.debug_tuple(stringify!($name))
+                    .field(&self.to_string())
+                    .finish()
+            }
+        }
 
         impl $name {
-            pub const NONE: Self = Self(-1);
+            pub const NONE: Self = Self(ulid::Ulid::nil());
 
             pub fn is_some(&self) -> bool {
                 !self.is_none()
@@ -28,9 +35,22 @@ macro_rules! pk {
             pub fn is_none(&self) -> bool {
                 self == &Self::NONE
             }
+
+            pub fn generate() -> Self {
+                Self(ulid::Ulid::new())
+            }
         }
 
-        impl<'a> From<&'a $name> for i64 {
+        impl From<Option<$name>> for $name {
+            fn from(optional_pk: Option<$name>) -> Self {
+                match optional_pk {
+                    Some(id) => id,
+                    None => Self::NONE,
+                }
+            }
+        }
+
+        impl<'a> From<&'a $name> for ulid::Ulid {
             fn from(pk: &'a $name) -> Self {
                 pk.0
             }
@@ -43,11 +63,10 @@ macro_rules! pk {
         }
 
         impl std::str::FromStr for $name {
-            type Err = std::num::ParseIntError;
+            type Err = ulid::DecodeError;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                let x = s.parse::<i64>()?;
-                Ok(Self(x))
+                Ok(Self(ulid::Ulid::from_string(s)?))
             }
         }
 
@@ -56,12 +75,13 @@ macro_rules! pk {
                 ty: &postgres_types::Type,
                 raw: &'a [u8],
             ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
-                let number: i64 = postgres_types::FromSql::from_sql(ty, raw)?;
-                Ok(Self(number))
+                let id: String = postgres_types::FromSql::from_sql(ty, raw)?;
+                Ok(Self(ulid::Ulid::from_string(&id)?))
             }
 
             fn accepts(ty: &postgres_types::Type) -> bool {
-                ty == &postgres_types::Type::INT8
+                ty == &postgres_types::Type::BPCHAR
+                    || ty.kind() == &postgres_types::Kind::Domain(postgres_types::Type::BPCHAR)
             }
         }
 
@@ -74,14 +94,15 @@ macro_rules! pk {
             where
                 Self: Sized,
             {
-                postgres_types::ToSql::to_sql(&self.0, &ty, out)
+                postgres_types::ToSql::to_sql(&self.0.to_string(), ty, out)
             }
 
             fn accepts(ty: &postgres_types::Type) -> bool
             where
                 Self: Sized,
             {
-                ty == &postgres_types::Type::INT8
+                ty == &postgres_types::Type::BPCHAR
+                    || ty.kind() == &postgres_types::Kind::Domain(postgres_types::Type::BPCHAR)
             }
 
             fn to_sql_checked(
@@ -89,16 +110,7 @@ macro_rules! pk {
                 ty: &postgres_types::Type,
                 out: &mut postgres_types::private::BytesMut,
             ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
-                postgres_types::ToSql::to_sql(&self.0, &ty, out)
-            }
-        }
-
-        impl From<Option<$name>> for $name {
-            fn from(optional_pk: Option<$name>) -> Self {
-                match optional_pk {
-                    Some(id) => id,
-                    None => Self::NONE,
-                }
+                postgres_types::ToSql::to_sql(&self.0.to_string(), ty, out)
             }
         }
     };

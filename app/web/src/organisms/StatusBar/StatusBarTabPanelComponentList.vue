@@ -57,7 +57,7 @@ import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 
 export interface ComponentListItem {
-  id: number;
+  id: string;
   name: string;
   schema?: string;
 }

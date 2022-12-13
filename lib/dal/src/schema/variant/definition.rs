@@ -14,6 +14,7 @@ use crate::{DalContext, Prop, PropId, PropKind, RootProp, SchemaId, SchemaVarian
 ///
 /// It is recommended to start with the [`RootProp`](crate::RootProp) in order to descend into the
 /// cache.
+#[derive(Debug, Clone)]
 pub struct PropCache(HashMap<(String, PropId), PropId>);
 
 impl PropCache {

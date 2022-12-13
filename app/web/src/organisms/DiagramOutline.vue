@@ -4,20 +4,20 @@
     <template v-if="!allComponents.length">
       <div class="p-2 text-neutral-500">No components</div>
     </template>
-    <template v-else-if="!filteredComponenets.length">
+    <template v-else-if="!filteredComponents.length">
       <div class="p-2 text-neutral-500">No components matching your search</div>
     </template>
     <template v-else>
       <ul>
         <li
-          v-for="component in filteredComponenets"
+          v-for="component in filteredComponents"
           :key="component.id"
           class="border-b-2 dark:border-neutral-600 cursor-pointer"
           @click="emit('select', component.id)"
         >
           <span
             :class="
-              selectedComponentId === component.id
+              props.selectedComponentId === component.id
                 ? ['bg-action-500 text-white']
                 : ['hover:bg-action-400 hover:text-white']
             "
@@ -55,12 +55,12 @@ import { useComponentsStore } from "@/store/components.store";
 
 // TODO: deal with ids as numbers vs strings...
 
-defineProps<{
-  selectedComponentId?: number;
+const props = defineProps<{
+  selectedComponentId?: string;
 }>();
 
 const emit = defineEmits<{
-  (e: "select", componentId: number): void;
+  (e: "select", componentId: string): void;
 }>();
 
 const componentsStore = useComponentsStore();
@@ -72,7 +72,7 @@ function onSearchUpdated(newFilterString: string) {
 
 const allComponents = computed(() => componentsStore.allComponents);
 
-const filteredComponenets = computed(() => {
+const filteredComponents = computed(() => {
   if (!filterString.value) return allComponents.value;
   const searchLower = filterString.value.toLowerCase();
   return allComponents.value.filter((item) => {

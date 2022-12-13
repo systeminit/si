@@ -75,8 +75,11 @@ async fn users(ctx: &mut DalContext, bid: BillingAccountId) {
 
     let all_users = group.users(ctx).await.expect("cannot list users for group");
     assert_eq!(
-        all_users,
-        vec![user_one.clone(), user_two.clone()],
+        all_users
+            .into_iter()
+            .filter(|u| u == &user_one || u == &user_two)
+            .count(),
+        2,
         "all associated users in the list"
     );
 

@@ -1,30 +1,30 @@
 CREATE OR REPLACE FUNCTION attribute_value_affected_graph_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_attribute_value_id bigint
+    this_attribute_value_id ident
 )
     RETURNS TABLE
             (
-                attribute_value_id           bigint,
-                dependent_attribute_value_id bigint
+                attribute_value_id           ident,
+                dependent_attribute_value_id ident
             )
 AS
 $$
 DECLARE
     attribute_value             attribute_values%ROWTYPE;
-    attribute_value_id          bigint;
-    current_attribute_value_ids bigint[];
-    current_prop_id             bigint;
-    external_provider_id        bigint;
-    internal_provider_id        bigint;
-    next_attribute_value_ids    bigint[];
+    attribute_value_id          ident;
+    current_attribute_value_ids ident[];
+    current_prop_id             ident;
+    external_provider_id        ident;
+    internal_provider_id        ident;
+    next_attribute_value_ids    ident[];
     original_attribute_context  jsonb;
-    seen_attribute_value_ids    bigint[];
+    seen_attribute_value_ids    ident[];
     tmp_attribute_context       jsonb;
     tmp_internal_provider       internal_providers%ROWTYPE;
-    tmp_internal_provider_ids   bigint[];
-    tmp_record_id               bigint;
-    tmp_record_ids              bigint[];
+    tmp_internal_provider_ids   ident[];
+    tmp_record_id               ident;
+    tmp_record_ids              ident[];
     tmp_prop                    props%ROWTYPE;
 BEGIN
     RAISE DEBUG 'attribute_value_affected_graph_v1: Finding graph of AttributeValues affected by AttributeValue(%)', this_attribute_value_id;
@@ -48,12 +48,12 @@ BEGIN
                 FROM attribute_values_v1(this_tenancy, this_visibility)
                 WHERE id = attribute_value_id;
 
-                -- If the attribute_context_prop_id != -1 then that means that this AttributeValue
+                -- If the attribute_context_prop_id != ident_nil_v1() then that means that this AttributeValue
                 -- represents a value that is "directly" part of a Component's schema, either
                 -- because it is a value set for an attribute, or because it is for an implicit
                 -- InternalProvider that is the "summary" of the schema from that Prop down to the
                 -- leaf nodes.
-                IF attribute_value.attribute_context_prop_id != -1 THEN
+                IF attribute_value.attribute_context_prop_id != ident_nil_v1() THEN
                     SELECT *
                     INTO STRICT tmp_prop
                     FROM props_v1(this_tenancy, this_visibility)
@@ -107,8 +107,8 @@ BEGIN
                         -- for the exact same AttributeContext as the AttributeValue that caused us to
                         -- find it. This AttributeValue directly depends on the AttributeValue we are
                         -- currently looking at.
-                        tmp_attribute_context := jsonb_build_object('attribute_context_prop_id', -1,
-                                                                    'attribute_context_external_provider_id', -1,
+                        tmp_attribute_context := jsonb_build_object('attribute_context_prop_id', ident_nil_v1(),
+                                                                    'attribute_context_external_provider_id', ident_nil_v1(),
                                                                     'attribute_context_internal_provider_id',
                                                                     internal_provider_id,
                                                                     'attribute_context_component_id',
@@ -134,7 +134,7 @@ BEGIN
 
                         next_attribute_value_ids := array_append(next_attribute_value_ids, tmp_record_id);
                     END LOOP;
-                ELSIF attribute_value.attribute_context_internal_provider_id != -1 THEN
+                ELSIF attribute_value.attribute_context_internal_provider_id != ident_nil_v1() THEN
                     -- We found an AttributeValue for an InternalProvider
                     RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) is InternalProvider(%)', attribute_value.id, attribute_value.attribute_context_internal_provider_id;
 
@@ -151,9 +151,9 @@ BEGIN
                     IF FOUND THEN
                         RAISE DEBUG 'attribute_value_affected_graph_v1: Found a parent InternalProvider(%) for InternalProvider(%)', tmp_internal_provider.id, attribute_value.attribute_context_internal_provider_id;
                         tmp_attribute_context := jsonb_build_object(
-                                'attribute_context_prop_id', -1,
+                                'attribute_context_prop_id', ident_nil_v1(),
                                 'attribute_context_internal_provider_id', tmp_internal_provider.id,
-                                'attribute_context_external_provider_id', -1,
+                                'attribute_context_external_provider_id', ident_nil_v1(),
                                 'attribute_context_component_id', attribute_value.attribute_context_component_id
                             );
                         -- TODO(jhelwig): This can, strictly speaking, find more AttributeValues that it considers
@@ -215,7 +215,7 @@ BEGIN
 
                             next_attribute_value_ids := array_append(next_attribute_value_ids, attribute_value_id);
                         END LOOP;
-                ELSIF attribute_value.attribute_context_external_provider_id != -1 THEN
+                ELSIF attribute_value.attribute_context_external_provider_id != ident_nil_v1() THEN
                     -- We found an AttributeValue for an ExternalProvider
                     RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) is ExternalProvider(%)', attribute_value.id, attribute_value.attribute_context_external_provider_id;
 
@@ -230,12 +230,12 @@ BEGIN
                     -- Build up an AttributeReadContext appropriate for finding InternalProviders
                     -- that are using this ExternalProvider as one of their arguments.
                     tmp_attribute_context := jsonb_build_object(
-                            'attribute_context_prop_id', -1,
+                            'attribute_context_prop_id', ident_nil_v1(),
                         -- The InternalProvider is likely to be for some other SchemaVariant, and is
                         -- pretty much guaranteed to be for a different Component, so we need to be
                         -- looking at any possible values there.
                             'attribute_context_internal_provider_id', NULL,
-                            'attribute_context_external_provider_id', -1,
+                            'attribute_context_external_provider_id', ident_nil_v1(),
                             'attribute_context_component_id', NULL
                         );
 
@@ -262,7 +262,7 @@ BEGIN
                                                 attribute_value.attribute_context_external_provider_id
                                             AND apa.tail_component_id = attribute_value.attribute_context_component_id
                          -- For an AttributeValue to actually be using an ExternalProvider, it _must_ be (at least) for a Component.
-                    WHERE av.attribute_context_component_id != -1;
+                    WHERE av.attribute_context_component_id != ident_nil_v1();
                     -- See the TODO above tmp_attribute_context for why this is commented out.
                     --
                     -- WHERE exact_or_more_attribute_read_context_v1(tmp_attribute_context, av)
@@ -300,13 +300,13 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION closest_internal_provider_to_prop_towards_root_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_prop_id bigint,
-    OUT internal_provider_id bigint
+    this_prop_id ident,
+    OUT internal_provider_id ident
 )
 AS
 $$
 DECLARE
-    current_prop_id bigint;
+    current_prop_id ident;
 BEGIN
     RAISE DEBUG 'closest_internal_provider_to_prop_towards_root_v1: Looking for InternalProvider for Prop(%)', this_prop_id;
 
@@ -347,8 +347,8 @@ $$ LANGUAGE PLPGSQL STABLE;
 CREATE OR REPLACE FUNCTION child_internal_providers_for_prop_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_prop_id bigint,
-    OUT child_internal_provider_ids bigint[]
+    this_prop_id ident,
+    OUT child_internal_provider_ids ident[]
 )
 AS
 $$

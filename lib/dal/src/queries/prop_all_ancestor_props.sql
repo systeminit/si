@@ -1,6 +1,6 @@
 WITH RECURSIVE recursive_props AS (
     SELECT
-        $3::bigint AS prop_id,
+        $3::ident AS prop_id,
         0::bigint  AS depth
     UNION ALL
     SELECT

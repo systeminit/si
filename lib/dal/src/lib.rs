@@ -98,7 +98,7 @@ pub use billing_account::{
 };
 pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
-pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO_CHANGE_SET_PK};
+pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{
     resource::ResourceView, Component, ComponentError, ComponentId, ComponentView,
@@ -177,7 +177,7 @@ pub use secret::{
 pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use timestamp::{Timestamp, TimestampError};
-pub use user::{User, UserClaim, UserError, UserId, UserResult};
+pub use user::{User, UserClaim, UserError, UserId, UserPk, UserResult};
 pub use validation::prototype::{
     context::ValidationPrototypeContext, ValidationPrototype, ValidationPrototypeError,
     ValidationPrototypeId,

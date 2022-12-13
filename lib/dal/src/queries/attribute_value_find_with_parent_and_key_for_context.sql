@@ -4,8 +4,8 @@ FROM attribute_values_v1($1, $2) AS av
                    ON avbtav.object_id = av.id
 WHERE in_attribute_context_v1($3, av)
   AND CASE
-          WHEN $4::bigint IS NULL THEN avbtav.belongs_to_id IS NULL
-          ELSE avbtav.belongs_to_id = $4::bigint
+          WHEN $4::ident IS NULL THEN avbtav.belongs_to_id IS NULL
+          ELSE avbtav.belongs_to_id = $4::ident
     END
   AND CASE
           WHEN $5::text IS NULL THEN av.key IS NULL

@@ -3,16 +3,16 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 
 export interface InputSourceSocket {
-  schemaVariantId: number;
-  internalProviderId: number;
+  schemaVariantId: string;
+  internalProviderId: string;
   name: string;
 }
 
 export interface InputSourceProp {
-  propId: number;
+  propId: string;
   kind: PropKind;
-  schemaVariantId: number;
-  internalProviderId?: number;
+  schemaVariantId: string;
+  internalProviderId?: string;
   path: string;
   name: string;
 }

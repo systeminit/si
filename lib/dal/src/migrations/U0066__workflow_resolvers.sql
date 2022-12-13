@@ -1,21 +1,21 @@
 CREATE TABLE workflow_resolvers
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
+    id                          ident not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    workflow_prototype_id       bigint                   NOT NULL,
-    func_id                     bigint                   NOT NULL,
-    func_binding_id             bigint                   NOT NULL,
-    component_id                bigint                   NOT NULL,
-    schema_id                   bigint                   NOT NULL,
-    schema_variant_id           bigint                   NOT NULL
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    workflow_prototype_id       ident                   NOT NULL,
+    func_id                     ident                   NOT NULL,
+    func_binding_id             ident                   NOT NULL,
+    component_id                ident                   NOT NULL,
+    schema_id                   ident                   NOT NULL,
+    schema_variant_id           ident                   NOT NULL
 );
 SELECT standard_model_table_constraints_v1('workflow_resolvers');
 
@@ -25,12 +25,12 @@ VALUES ('workflow_resolvers', 'model', 'workflow_resolver', 'workflow Resolver')
 CREATE OR REPLACE FUNCTION workflow_resolver_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_workflow_prototype_id bigint,
-    this_func_id bigint,
-    this_func_binding_id bigint,
-    this_component_id bigint,
-    this_schema_id bigint,
-    this_schema_variant_id bigint,
+    this_workflow_prototype_id ident,
+    this_func_id ident,
+    this_func_binding_id ident,
+    this_component_id ident,
+    this_schema_id ident,
+    this_schema_variant_id ident,
     OUT object json) AS
 $$
 DECLARE

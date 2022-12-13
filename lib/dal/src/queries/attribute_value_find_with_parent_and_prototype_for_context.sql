@@ -16,8 +16,8 @@ FROM attribute_values_v1($1, $2) AS av
 WHERE exact_attribute_context_v1($3, av)
   AND ap.id = $4
   AND CASE
-          WHEN $5::bigint IS NULL THEN parent_attribute_values.id IS NULL
-          ELSE parent_attribute_values.id = $5::bigint
+          WHEN $5::ident IS NULL THEN parent_attribute_values.id IS NULL
+          ELSE parent_attribute_values.id = $5::ident
     END
 ORDER BY attribute_context_prop_id,
          attribute_context_internal_provider_id DESC,

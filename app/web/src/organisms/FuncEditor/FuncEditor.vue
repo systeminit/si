@@ -37,10 +37,14 @@ const editorMount = ref();
 let view: EditorView;
 
 const props = defineProps<{
-  funcId?: number;
+  funcId?: string;
 }>();
 
-const funcId = toRef(props, "funcId", -1);
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
+const funcId = toRef(props, "funcId", nilId());
 
 watch(
   () => selectedFunc.value,

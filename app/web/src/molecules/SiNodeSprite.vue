@@ -3,8 +3,8 @@
     class="flex flex-row items-center gap-2.5 px-4 py-4 text-xs"
     :class="classes"
   >
-    <NodeSkeleton :color="color" class="flex-shrink-0" />
-    <span class=""> {{ name }} </span>
+    <NodeSkeleton :color="props.color" class="flex-shrink-0" />
+    <span class=""> {{ props.name }} </span>
   </div>
 </template>
 

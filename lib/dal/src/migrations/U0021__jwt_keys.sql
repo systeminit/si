@@ -1,11 +1,11 @@
 CREATE TABLE jwt_keys
 (
-    pk          bigserial PRIMARY KEY,
+    pk          ident primary key default ident_create_v1(),
     public_key  text,
     private_key text,
     nonce       bytea,
-    created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CLOCK_TIMESTAMP()
 );
 
 CREATE OR REPLACE FUNCTION jwt_key_create_v1(this_public_key text,

@@ -1,7 +1,7 @@
 use dal::{
     func::{backend::js_qualification::FuncBackendJsQualificationArgs, binding::FuncBinding},
-    qualification_resolver::{QualificationResolverContext, UNSET_ID_VALUE},
-    DalContext, Func, QualificationResolver, Schema, StandardModel,
+    qualification_resolver::QualificationResolverContext,
+    DalContext, Func, QualificationPrototypeId, QualificationResolver, Schema, StandardModel,
 };
 use dal_test::{test, test_harness::create_component_for_schema_variant};
 
@@ -51,7 +51,7 @@ async fn new(ctx: &DalContext) {
     qualification_resolver_context.set_component_id(*component.id());
     let _qualification_resolver = QualificationResolver::new(
         ctx,
-        UNSET_ID_VALUE.into(),
+        QualificationPrototypeId::NONE,
         *func.id(),
         *func_binding.id(),
         qualification_resolver_context,
@@ -107,7 +107,7 @@ async fn find_for_prototype(ctx: &DalContext) {
     resolver_context.set_component_id(*component.id());
     let created = QualificationResolver::new(
         ctx,
-        UNSET_ID_VALUE.into(),
+        QualificationPrototypeId::NONE,
         *func.id(),
         *func_binding.id(),
         resolver_context,
@@ -117,7 +117,7 @@ async fn find_for_prototype(ctx: &DalContext) {
 
     let mut found_resolvers = QualificationResolver::find_for_prototype_and_component(
         ctx,
-        &UNSET_ID_VALUE.into(),
+        &QualificationPrototypeId::NONE,
         component.id(),
     )
     .await

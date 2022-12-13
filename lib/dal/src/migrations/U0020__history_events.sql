@@ -1,16 +1,16 @@
 CREATE TABLE history_events
 (
-    pk                          bigserial PRIMARY KEY,
+    pk                          ident primary key default ident_create_v1(),
     label                       text                     NOT NULL,
     actor                       jsonb                    NOT NULL,
     message                     text                     NOT NULL,
     data                        jsonb                    NOT NULL,
     tenancy_universal           bool,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW()
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP()
 );
 
 CREATE OR REPLACE FUNCTION history_event_create_v1(this_label text,

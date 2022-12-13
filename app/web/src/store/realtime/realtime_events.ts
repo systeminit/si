@@ -9,23 +9,23 @@ import { GlobalUpdateStatus, ComponentUpdateStatus } from "../status.store";
 // once things are working again, we should do a big review of all the realtime events coming from the backend...
 
 export type WsEventPayloadMap = {
-  ChangeSetCreated: number;
-  ChangeSetApplied: number;
-  ChangeSetWritten: number;
-  ChangeSetCancelled: number;
+  ChangeSetCreated: string;
+  ChangeSetApplied: string;
+  ChangeSetWritten: string;
+  ChangeSetCancelled: string;
 
   CheckedQualifications: {
-    prototypeId: number;
-    componentId: number;
+    prototypeId: string;
+    componentId: string;
   };
 
   CodeGenerated: {
-    componentId: number;
+    componentId: string;
   };
 
   ConfirmationStatusUpdate: {
-    componentId: number;
-    confirmationPrototypeId: number;
+    componentId: string;
+    confirmationPrototypeId: string;
     status: "success" | "running" | "pending" | "failure" | "error";
     errorMessage?: string;
   };
@@ -33,28 +33,28 @@ export type WsEventPayloadMap = {
   // NOT CURRENTLY USED - but leaving here so we remember these events exist
   // SecretCreated: number;
   // ResourceRefreshed: {
-  //   componentId: number;
+  //   componentId: string;
   // }
   // UpdatedDependentValue: {
-  //   componentId: number;
+  //   componentId: string;
   // }
-  // CommandOutput: { runId: number; output: string }
+  // CommandOutput: { runId: string; output: string }
   // CommandReturn: {
-  //   runId: number;
+  //   runId: string;
   //   resources: Resource[];
   //   output: string[];
   //   runnerState: WorkflowRunnerState;
   // };
   FixReturn: {
-    id: number;
-    batchId: number;
-    confirmationResolverId: number;
+    id: string;
+    batchId: string;
+    confirmationResolverId: string;
     action: string;
     output: string[];
     status: FixStatus;
   };
   FixBatchReturn: {
-    id: number;
+    id: string;
     status: FixStatus;
   };
 

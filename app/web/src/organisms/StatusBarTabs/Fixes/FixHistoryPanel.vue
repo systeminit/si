@@ -130,13 +130,13 @@ const sortOptions: SortOption[] = [
   { value: "o", title: "Oldest" },
 ];
 const selectedSort = ref<SortOption>(sortOptions[0]);
-const selectedFixBatchId = ref<number | null>(null);
-const selectedFixId = ref<number | null>(null);
-const selectFixBatch = (id: number) => {
+const selectedFixBatchId = ref<string | null>(null);
+const selectedFixId = ref<string | null>(null);
+const selectFixBatch = (id: string) => {
   selectedFixBatchId.value = id;
   selectedFixId.value = null;
 };
-const selectFix = (id: number) => {
+const selectFix = (id: string) => {
   selectedFixId.value = id;
 };
 const fixesStore = useFixesStore();

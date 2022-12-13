@@ -1,21 +1,21 @@
 CREATE TABLE attribute_prototype_arguments
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
+    id                          ident not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    func_argument_id            bigint                   NOT NULL,
-    attribute_prototype_id      bigint                   NOT NULL,
-    internal_provider_id        bigint                   NOT NULL,
-    external_provider_id        bigint                   NOT NULL,
-    tail_component_id           bigint                   NOT NULL,
-    head_component_id           bigint                   NOT NULL
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    func_argument_id            ident                   NOT NULL,
+    attribute_prototype_id      ident                   NOT NULL,
+    internal_provider_id        ident                   NOT NULL,
+    external_provider_id        ident                   NOT NULL,
+    tail_component_id           ident                   NOT NULL,
+    head_component_id           ident                   NOT NULL
 );
 
 CREATE UNIQUE INDEX intra_component_argument
@@ -29,9 +29,9 @@ CREATE UNIQUE INDEX intra_component_argument
                                       visibility_change_set_pk,
                                       (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
-        AND (external_provider_id = -1
-            OR head_component_id = -1
-            OR tail_component_id = -1);
+        AND (external_provider_id = ident_nil_v1()
+            OR head_component_id = ident_nil_v1()
+            OR tail_component_id = ident_nil_v1());
 
 CREATE UNIQUE INDEX inter_component_argument
     ON attribute_prototype_arguments (attribute_prototype_id,
@@ -46,7 +46,7 @@ CREATE UNIQUE INDEX inter_component_argument
                                       visibility_change_set_pk,
                                       (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
-        AND internal_provider_id = -1;
+        AND internal_provider_id = ident_nil_v1();
 
 CREATE INDEX ON attribute_prototype_arguments (attribute_prototype_id);
 CREATE INDEX ON attribute_prototype_arguments (external_provider_id);
@@ -60,12 +60,12 @@ VALUES ('attribute_prototype_arguments', 'model', 'attribute_prototype_argument'
 CREATE OR REPLACE FUNCTION attribute_prototype_argument_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_attribute_prototype_argument_id bigint,
-    this_func_argument_id bigint,
-    this_internal_provider_id bigint,
-    this_external_provider_id bigint,
-    this_tail_component_id bigint,
-    this_head_component_id bigint,
+    this_attribute_prototype_argument_id ident,
+    this_func_argument_id ident,
+    this_internal_provider_id ident,
+    this_external_provider_id ident,
+    this_tail_component_id ident,
+    this_head_component_id ident,
     OUT object json) AS
 $$
 DECLARE

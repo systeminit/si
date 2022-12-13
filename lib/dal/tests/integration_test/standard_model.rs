@@ -1,7 +1,7 @@
 use dal::{
     component::ComponentKind, standard_model, BillingAccount, BillingAccountPk,
-    BillingAccountSignup, ChangeSet, DalContext, Func, FuncBackendKind, Group, GroupId, KeyPair,
-    Schema, SchemaKind, StandardModel, User, UserId, WriteTenancy, NO_CHANGE_SET_PK,
+    BillingAccountSignup, ChangeSet, ChangeSetPk, DalContext, Func, FuncBackendKind, Group,
+    GroupId, KeyPair, Schema, SchemaKind, StandardModel, User, UserId, WriteTenancy,
 };
 use dal_test::{
     test,
@@ -62,7 +62,7 @@ async fn get_by_id(ctx: &DalContext) {
             .expect("change set object should exist but it does not");
     assert_ne!(&for_head.pk(), &for_change_set.pk());
     assert_eq!(&for_head.id(), &for_change_set.id());
-    assert_eq!(&for_head.visibility().change_set_pk, &NO_CHANGE_SET_PK,);
+    assert_eq!(&for_head.visibility().change_set_pk, &ChangeSetPk::NONE,);
 }
 
 #[test]
@@ -376,7 +376,14 @@ async fn has_many(ctx: &DalContext) {
     )
     .await
     .expect("cannot get key pair for billing account");
-    assert_eq!(&key_pairs, &vec![a_key_pair, b_key_pair]);
+    assert_eq!(key_pairs.len(), 2);
+    assert_eq!(
+        key_pairs
+            .into_iter()
+            .filter(|k| k == &a_key_pair || k == &b_key_pair)
+            .count(),
+        2
+    );
 }
 
 #[test]
@@ -503,7 +510,14 @@ async fn many_to_many(ctx: &DalContext) {
     )
     .await
     .expect("cannot get list of users for group");
-    assert_eq!(group_users, vec![user_one.clone(), user_two.clone()]);
+    assert_eq!(group_users.len(), 2);
+    assert_eq!(
+        group_users
+            .into_iter()
+            .filter(|g| g == &user_one || g == &user_two)
+            .count(),
+        2
+    );
 
     let user_one_groups: Vec<Group> = standard_model::many_to_many(
         ctx,
@@ -527,7 +541,14 @@ async fn many_to_many(ctx: &DalContext) {
     )
     .await
     .expect("cannot get list of groups for user");
-    assert_eq!(user_two_groups, vec![group_one.clone(), group_two.clone()]);
+    assert_eq!(user_two_groups.len(), 2);
+    assert_eq!(
+        user_two_groups
+            .into_iter()
+            .filter(|g| g == &group_one || g == &group_two)
+            .count(),
+        2
+    );
 
     standard_model::disassociate_many_to_many(
         ctx,
@@ -569,7 +590,14 @@ async fn many_to_many(ctx: &DalContext) {
     )
     .await
     .expect("cannot get list of groups for user");
-    assert_eq!(user_two_groups, vec![group_one.clone(), group_two.clone()]);
+    assert_eq!(user_two_groups.len(), 2);
+    assert_eq!(
+        user_two_groups
+            .into_iter()
+            .filter(|g| g == &group_one || g == &group_two)
+            .count(),
+        2
+    );
 
     standard_model::disassociate_all_many_to_many(ctx, "group_many_to_many_users", group_two.id())
         .await
@@ -638,8 +666,13 @@ async fn find_by_attr(ctx: &mut DalContext) {
             .await
             .expect("cannot find the object by name");
     assert_eq!(result.len(), 2);
-    assert_eq!(result[0], schema_one);
-    assert_eq!(result[1], schema_two);
+    assert_eq!(
+        result
+            .into_iter()
+            .filter(|r| r == &schema_one || r == &schema_two)
+            .count(),
+        2
+    );
 }
 
 #[test]

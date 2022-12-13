@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="selectedFuncId > 0"
+    v-if="selectedFuncId !== nilId()"
     class="absolute h-full w-full flex flex-col overflow-hidden"
   >
     <SiTabGroup :selected-index="0">
@@ -173,6 +173,10 @@ import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ConfirmationDetails from "./ConfirmationDetails.vue";
 import ValidationDetails from "./ValidationDetails.vue";
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 const funcStore = useFuncStore();
 const { getFuncById, selectedFuncId } = storeToRefs(funcStore);
 
@@ -182,7 +186,7 @@ const funcArgumentsIdMap = computed(() =>
     ? editingFunc?.value?.associations.arguments.reduce((idMap, arg) => {
         idMap[arg.id] = arg;
         return idMap;
-      }, {} as { [key: number]: FuncArgument })
+      }, {} as { [key: string]: FuncArgument })
     : {},
 );
 

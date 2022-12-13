@@ -1,19 +1,19 @@
 CREATE TABLE encrypted_secrets
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
+    id                          ident not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL,
     object_type                 text                     NOT NULL,
     kind                        text                     NOT NULL,
-    billing_account_id          bigint                   NOT NULL,
+    billing_account_id          ident                   NOT NULL,
     crypted                     text                     NOT NULL,
     version                     text                     NOT NULL,
     algorithm                   text                     NOT NULL
@@ -130,7 +130,7 @@ CREATE OR REPLACE FUNCTION encrypted_secret_create_v1(
     this_crypted text,
     this_version text,
     this_algorithm text,
-    this_billing_account_id bigint,
+    this_billing_account_id ident,
     OUT object json) AS
 $$
 DECLARE

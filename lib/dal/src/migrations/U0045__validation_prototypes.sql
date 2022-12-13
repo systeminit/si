@@ -1,21 +1,21 @@
 CREATE TABLE validation_prototypes
 (
-    pk                          bigserial PRIMARY KEY,
-    id                          bigserial                NOT NULL,
+    pk                          ident primary key default ident_create_v1(),
+    id                          ident not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids    bigint[],
-    tenancy_workspace_ids       bigint[],
-    visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
+    tenancy_billing_account_ids ident[],
+    tenancy_organization_ids    ident[],
+    tenancy_workspace_ids       ident[],
+    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    func_id                     bigint                   NOT NULL,
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    func_id                     ident                   NOT NULL,
     args                        jsonb                    NOT NULL,
     link                        text,
-    prop_id                     bigint                   NOT NULL,
-    schema_id                   bigint                   NOT NULL,
-    schema_variant_id           bigint                   NOT NULL
+    prop_id                     ident                   NOT NULL,
+    schema_id                   ident                   NOT NULL,
+    schema_variant_id           ident                   NOT NULL
 );
 SELECT standard_model_table_constraints_v1('validation_prototypes');
 
@@ -25,11 +25,11 @@ VALUES ('validation_prototypes', 'model', 'validation_prototype', 'Validation Pr
 CREATE OR REPLACE FUNCTION validation_prototype_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_func_id bigint,
+    this_func_id ident,
     this_args jsonb,
-    this_prop_id bigint,
-    this_schema_id bigint,
-    this_schema_variant_id bigint,
+    this_prop_id ident,
+    this_schema_id ident,
+    this_schema_variant_id ident,
     OUT object json) AS
 $$
 DECLARE

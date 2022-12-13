@@ -1,11 +1,11 @@
 use dal::action_prototype::ActionKind;
 use dal::component::ComponentKind;
 use dal::{
-    edge::EdgeKind, edge::VertexObjectKind, socket::SocketArity, ActionPrototype,
-    ActionPrototypeContext, BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext,
-    ConfirmationResolverTree, DalContext, DiagramKind, Edge, ExternalProvider, Func,
-    HasPrototypeContext, InternalProvider, Schema, SchemaError, SchemaKind, SchemaVariant, Socket,
-    StandardModel, WorkflowPrototypeId,
+    edge::EdgeKind, edge::EdgeObjectId, edge::VertexObjectKind, socket::SocketArity,
+    ActionPrototype, ActionPrototypeContext, BuiltinsResult, ConfirmationPrototype,
+    ConfirmationPrototypeContext, ConfirmationResolverTree, DalContext, DiagramKind, Edge,
+    ExternalProvider, Func, HasPrototypeContext, InternalProvider, Schema, SchemaError, SchemaKind,
+    SchemaVariant, Socket, StandardModel, WorkflowPrototypeId,
 };
 use dal_test::helpers::setup_identity_func;
 use dal_test::{helpers::create_component_and_node_for_schema, test};
@@ -107,11 +107,11 @@ async fn new(ctx: &DalContext) {
         EdgeKind::Configuration,
         *second_node.id(),
         VertexObjectKind::Configuration,
-        second.id().into(),
+        EdgeObjectId::from(*second.id()),
         *output_socket.id(),
         *first_node.id(),
         VertexObjectKind::Configuration,
-        first.id().into(),
+        EdgeObjectId::from(*first.id()),
         *input_socket.id(),
     )
     .await
@@ -121,11 +121,11 @@ async fn new(ctx: &DalContext) {
         EdgeKind::Configuration,
         *second2_node.id(),
         VertexObjectKind::Configuration,
-        second2.id().into(),
+        EdgeObjectId::from(*second2.id()),
         *output_socket.id(),
         *first_node.id(),
         VertexObjectKind::Configuration,
-        first.id().into(),
+        EdgeObjectId::from(*first.id()),
         *input_socket.id(),
     )
     .await
@@ -135,11 +135,11 @@ async fn new(ctx: &DalContext) {
         EdgeKind::Configuration,
         *third_node.id(),
         VertexObjectKind::Configuration,
-        third.id().into(),
+        EdgeObjectId::from(*third.id()),
         *output_socket.id(),
         *first_node.id(),
         VertexObjectKind::Configuration,
-        second.id().into(),
+        EdgeObjectId::from(*second.id()),
         *input_socket.id(),
     )
     .await
@@ -149,11 +149,11 @@ async fn new(ctx: &DalContext) {
         EdgeKind::Configuration,
         *third2_node.id(),
         VertexObjectKind::Configuration,
-        third2.id().into(),
+        EdgeObjectId::from(*third2.id()),
         *output_socket.id(),
         *first_node.id(),
         VertexObjectKind::Configuration,
-        second2.id().into(),
+        EdgeObjectId::from(*second2.id()),
         *input_socket.id(),
     )
     .await
@@ -209,21 +209,31 @@ async fn new(ctx: &DalContext) {
     let tree = ConfirmationResolverTree::build(ctx, resolvers)
         .await
         .expect("unable to build confirmation resolver tree");
-    let ids: Vec<_> = tree
+    let ids = tree
         .into_vec()
         .expect("unable to convert tree into vec")
         .into_iter()
-        .map(|r| r.context().component_id)
-        .collect();
+        .map(|r| r.context().component_id);
     assert_eq!(
-        ids,
-        vec![
-            *first.id(),
-            *first2.id(),
-            *second2.id(),
-            *second.id(),
-            *third2.id(),
-            *third.id(),
-        ]
+        ids.clone()
+            .take(2)
+            .filter(|i| i == first.id() || i == first2.id())
+            .count(),
+        2
+    );
+    assert_eq!(
+        ids.clone()
+            .skip(2)
+            .take(2)
+            .filter(|i| i == second.id() || i == second2.id())
+            .count(),
+        2
+    );
+    assert_eq!(
+        ids.skip(4)
+            .take(2)
+            .filter(|i| i == third.id() || i == third2.id())
+            .count(),
+        2
     );
 }

@@ -140,15 +140,3 @@ impl ValidationPrototypeContext {
         self.schema_variant_id
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::ValidationPrototypeContext;
-
-    #[test]
-    fn context_builder() {
-        let mut builder = ValidationPrototypeContext::builder();
-        builder.set_schema_id(22.into());
-        assert_eq!(builder.schema_id(), 22.into());
-    }
-}

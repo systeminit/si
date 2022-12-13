@@ -72,10 +72,8 @@ impl SocketView {
             .await?
             .into_iter()
             .map(|socket| {
-                let socket_id = *socket.id();
-                let socket_id: i64 = socket_id.into();
                 Self {
-                    id: socket_id.to_string(),
+                    id: socket.id().to_string(),
                     label: socket.name().to_owned(),
                     ty: socket.name().to_owned(),
                     // Note: it's not clear if this mapping is correct, and there is no backend support for bidirectional sockets for now
@@ -135,6 +133,7 @@ impl Size2D {
 #[serde(rename_all = "camelCase")]
 pub struct DiagramNodeView {
     id: String,
+    component_id: String,
     #[serde(rename = "type")]
     ty: Option<String>,
     title: String,
@@ -185,6 +184,7 @@ impl DiagramNodeView {
 
         Ok(Self {
             id: node.id().to_string(),
+            component_id: component.id().to_string(),
             ty: None,
             title: schema.name().to_owned(),
             category,

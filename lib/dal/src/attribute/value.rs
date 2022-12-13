@@ -272,7 +272,7 @@ impl AttributeValue {
 
     standard_model_accessor!(
         proxy_for_attribute_value_id,
-        OptionBigInt<AttributeValueId>,
+        Option<Pk(AttributeValueId)>,
         AttributeValueResult
     );
     standard_model_accessor!(sealed_proxy, bool, AttributeValueResult);
@@ -886,7 +886,7 @@ impl AttributeValue {
             Ok(row.try_get("is_for_root_prop")?)
         } else {
             // If we didn't get a row back, that means that we didn't find an InternalProvider for the
-            // InternalProviderId in our AttributeContext. Likely because it is -1, indicating that we're
+            // InternalProviderId in our AttributeContext. Likely because it is ident_nil_v1, indicating that we're
             // not for an InternalProvider at all.
             Ok(false)
         }

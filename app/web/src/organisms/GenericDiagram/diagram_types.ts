@@ -1,5 +1,6 @@
 import { Vector2d } from "konva/lib/types";
 import { IconNames } from "@/ui-lib/icons/icon_set";
+import { ComponentId } from "@/store/components.store";
 
 export type DiagramConfig = {
   // canNodesConnectToThemselves: boolean;
@@ -123,6 +124,8 @@ export type DiagramStatusIcon = {
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: DiagramElementId;
+  /** unique id of the node's component */
+  componentId: ComponentId;
   /** parent frame (or whatever) id */
   parentId?: DiagramElementId;
   /** node type within the context of the diagram */

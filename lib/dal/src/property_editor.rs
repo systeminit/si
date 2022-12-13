@@ -7,8 +7,8 @@ use si_data_pg::PgError;
 use thiserror::Error;
 
 use crate::{
-    pk, schema::variant::SchemaVariantError, AttributeValueError, ComponentError, PropId,
-    SchemaVariantId, StandardModelError, ValidationResolverError,
+    pk, schema::variant::SchemaVariantError, AttributeValueError, AttributeValueId, ComponentError,
+    PropId, SchemaVariantId, StandardModelError, ValidationResolverError,
 };
 
 pub mod schema;
@@ -49,17 +49,21 @@ pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
 pk!(PropertyEditorValueId);
 pk!(PropertyEditorPropId);
 
-impl From<&PropId> for PropertyEditorPropId {
-    fn from(prop_id: &PropId) -> Self {
-        let number: i64 = (*prop_id).into();
-        PropertyEditorPropId(number)
+impl From<AttributeValueId> for PropertyEditorValueId {
+    fn from(id: AttributeValueId) -> Self {
+        Self::from(ulid::Ulid::from(id))
     }
 }
 
-impl From<&PropertyEditorPropId> for PropId {
-    fn from(property_editor_prop_id: &PropertyEditorPropId) -> Self {
-        let number: i64 = (*property_editor_prop_id).into();
-        number.into()
+impl From<PropId> for PropertyEditorPropId {
+    fn from(prop_id: PropId) -> Self {
+        Self::from(ulid::Ulid::from(prop_id))
+    }
+}
+
+impl From<PropertyEditorPropId> for PropId {
+    fn from(property_editor_prop_id: PropertyEditorPropId) -> Self {
+        Self::from(ulid::Ulid::from(property_editor_prop_id))
     }
 }
 

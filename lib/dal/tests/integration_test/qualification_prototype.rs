@@ -251,8 +251,14 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext) {
             .expect("could not get protos for func");
 
         assert_eq!(2, prototypes.len());
-        assert_eq!(*variant.id(), prototypes[0].schema_variant_id());
-        assert_eq!(*component.id(), prototypes[1].component_id());
+        assert_eq!(
+            prototypes
+                .into_iter()
+                .filter(|p| p.schema_variant_id() == *variant.id()
+                    || p.component_id() == *component.id())
+                .count(),
+            2
+        );
     }
 
     // clear prototypes

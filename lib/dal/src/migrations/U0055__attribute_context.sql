@@ -1,9 +1,9 @@
 CREATE TYPE attribute_context_record_v1 AS
 (
-    attribute_context_prop_id              bigint,
-    attribute_context_internal_provider_id bigint,
-    attribute_context_external_provider_id bigint,
-    attribute_context_component_id         bigint
+    attribute_context_prop_id              ident,
+    attribute_context_internal_provider_id ident,
+    attribute_context_external_provider_id ident,
+    attribute_context_component_id         ident
 );
 
 CREATE OR REPLACE FUNCTION attribute_context_json_to_columns_v1(this_context jsonb,
@@ -13,10 +13,10 @@ $$
 BEGIN
     SELECT *
     FROM jsonb_to_record(this_context) AS x(
-                                            attribute_context_prop_id bigint,
-                                            attribute_context_internal_provider_id bigint,
-                                            attribute_context_external_provider_id bigint,
-                                            attribute_context_component_id bigint
+                                            attribute_context_prop_id ident,
+                                            attribute_context_internal_provider_id ident,
+                                            attribute_context_external_provider_id ident,
+                                            attribute_context_component_id ident
         )
     INTO result;
 END;
@@ -24,10 +24,10 @@ $$ LANGUAGE PLPGSQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION in_attribute_context_v1(
     check_context jsonb,
-    this_prop_id bigint,
-    this_internal_provider_id bigint,
-    this_external_provider_id bigint,
-    this_component_id bigint
+    this_prop_id ident,
+    this_internal_provider_id ident,
+    this_external_provider_id ident,
+    this_component_id ident
 )
     RETURNS bool
     LANGUAGE sql
@@ -46,32 +46,32 @@ SELECT
                             CASE
                                 WHEN check_context -> 'attribute_context_prop_id' IS NULL OR
                                      check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
-                                ELSE (check_context -> 'attribute_context_prop_id')::bigint = this_prop_id
+                                ELSE (check_context ->> 'attribute_context_prop_id') = this_prop_id
                                 END
-                            AND this_internal_provider_id = -1
-                            AND this_external_provider_id = -1
+                            AND this_internal_provider_id = ident_nil_v1()
+                            AND this_external_provider_id = ident_nil_v1()
                         )
                     -- InternalProviderId set
                     OR (
-                                this_prop_id = -1
+                                this_prop_id = ident_nil_v1()
                             AND CASE
                                     WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_internal_provider_id')::bigint =
+                                    ELSE (check_context ->> 'attribute_context_internal_provider_id') =
                                          this_internal_provider_id
                                     END
-                            AND this_external_provider_id = -1
+                            AND this_external_provider_id = ident_nil_v1()
                         )
                     -- ExternalProviderId set
                     OR (
-                                this_prop_id = -1
-                            AND this_internal_provider_id = -1
+                                this_prop_id = ident_nil_v1()
+                            AND this_internal_provider_id = ident_nil_v1()
                             AND CASE
                                     WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_external_provider_id')::bigint =
+                                    ELSE (check_context ->> 'attribute_context_external_provider_id') =
                                          this_external_provider_id
                                     END
                         )
@@ -80,7 +80,7 @@ SELECT
             AND CASE
                     WHEN check_context -> 'attribute_context_component_id' IS NULL OR
                          check_context -> 'attribute_context_component_id' = 'null'::jsonb THEN TRUE
-                    ELSE (check_context -> 'attribute_context_component_id')::bigint = this_component_id
+                    ELSE (check_context ->> 'attribute_context_component_id') = this_component_id
                 END
         )
         -- ComponentId not set
@@ -92,46 +92,46 @@ SELECT
                             CASE
                                 WHEN check_context -> 'attribute_context_prop_id' IS NULL OR
                                      check_context -> 'attribute_context_prop_id' = 'null'::jsonb THEN TRUE
-                                ELSE (check_context -> 'attribute_context_prop_id')::bigint = this_prop_id
+                                ELSE (check_context ->> 'attribute_context_prop_id') = this_prop_id
                                 END
-                            AND this_internal_provider_id = -1
-                            AND this_external_provider_id = -1
+                            AND this_internal_provider_id = ident_nil_v1()
+                            AND this_external_provider_id = ident_nil_v1()
                         )
                     -- InternalProviderId set
                     OR (
-                                this_prop_id = -1
+                                this_prop_id = ident_nil_v1()
                             AND CASE
                                     WHEN check_context -> 'attribute_context_internal_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_internal_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_internal_provider_id')::bigint =
+                                    ELSE (check_context ->> 'attribute_context_internal_provider_id') =
                                          this_internal_provider_id
                                     END
-                            AND this_external_provider_id = -1
+                            AND this_external_provider_id = ident_nil_v1()
                         )
                     -- ExternalProviderId set
                     OR (
-                                this_prop_id = -1
-                            AND this_internal_provider_id = -1
+                                this_prop_id = ident_nil_v1()
+                            AND this_internal_provider_id = ident_nil_v1()
                             AND CASE
                                     WHEN check_context -> 'attribute_context_external_provider_id' IS NULL OR
                                          check_context -> 'attribute_context_external_provider_id' = 'null'::jsonb
                                         THEN TRUE
-                                    ELSE (check_context -> 'attribute_context_external_provider_id')::bigint =
+                                    ELSE (check_context ->> 'attribute_context_external_provider_id') =
                                          this_external_provider_id
                                     END
                         )
                 )
             -- Component check
-            AND this_component_id = -1
+            AND this_component_id = ident_nil_v1()
         )
 $$;
 
 CREATE OR REPLACE FUNCTION exact_attribute_context_v1(check_context jsonb,
-                                                      this_prop_id bigint,
-                                                      this_internal_provider_id bigint,
-                                                      this_external_provider_id bigint,
-                                                      this_component_id bigint,
+                                                      this_prop_id ident,
+                                                      this_internal_provider_id ident,
+                                                      this_external_provider_id ident,
+                                                      this_component_id ident,
                                                       OUT result bool
 )
 AS
@@ -206,10 +206,10 @@ END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION exact_attribute_read_context_v1(check_context jsonb,
-                                                           this_prop_id bigint,
-                                                           this_internal_provider_id bigint,
-                                                           this_external_provider_id bigint,
-                                                           this_component_id bigint,
+                                                           this_prop_id ident,
+                                                           this_internal_provider_id ident,
+                                                           this_external_provider_id ident,
+                                                           this_component_id ident,
                                                            OUT result bool
 )
 AS
@@ -257,9 +257,9 @@ BEGIN
         END;
     RAISE DEBUG 'external_provider_check: %', external_provider_check;
 
-    least_specific_level_check := (prop_check AND this_internal_provider_id = -1 AND this_external_provider_id = -1) OR
-                                  (this_prop_id = -1 AND internal_provider_check AND this_external_provider_id = -1) OR
-                                  (this_prop_id = -1 AND this_internal_provider_id = -1 AND external_provider_check);
+    least_specific_level_check := (prop_check AND this_internal_provider_id = ident_nil_v1() AND this_external_provider_id = ident_nil_v1()) OR
+                                  (this_prop_id = ident_nil_v1() AND internal_provider_check AND this_external_provider_id = ident_nil_v1()) OR
+                                  (this_prop_id = ident_nil_v1() AND this_internal_provider_id = ident_nil_v1() AND external_provider_check);
 
     component_check := CASE
                            WHEN check_context_record.attribute_context_component_id IS NULL THEN
@@ -293,10 +293,10 @@ $$ LANGUAGE PLPGSQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION exact_or_more_attribute_read_context_v1(
     check_context jsonb,
-    this_prop_id bigint,
-    this_internal_provider_id bigint,
-    this_external_provider_id bigint,
-    this_component_id bigint,
+    this_prop_id ident,
+    this_internal_provider_id ident,
+    this_external_provider_id ident,
+    this_component_id ident,
     OUT result bool
 )
 AS
@@ -323,11 +323,11 @@ BEGIN
     component_is_most_specific := FALSE;
     least_specific_level_is_most_specific := FALSE;
 
-    IF check_context_record.attribute_context_component_id != -1 THEN
+    IF check_context_record.attribute_context_component_id != ident_nil_v1() THEN
         component_is_most_specific := TRUE;
-    ELSIF (check_context_record.attribute_context_prop_id != -1 OR
-           check_context_record.attribute_context_internal_provider_id != -1 OR
-           check_context_record.attribute_context_external_provider_id != -1) THEN
+    ELSIF (check_context_record.attribute_context_prop_id != ident_nil_v1() OR
+           check_context_record.attribute_context_internal_provider_id != ident_nil_v1() OR
+           check_context_record.attribute_context_external_provider_id != ident_nil_v1()) THEN
         least_specific_level_is_most_specific := TRUE;
     END IF;
 
@@ -374,7 +374,7 @@ BEGIN
                                                        component_check)
                   WHEN
                       least_specific_level_is_most_specific THEN (least_specific_level_check AND
-                                                                  this_component_id != -1)
+                                                                  this_component_id != ident_nil_v1())
                   ELSE
                       FALSE
                   END;

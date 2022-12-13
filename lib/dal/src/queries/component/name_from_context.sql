@@ -28,8 +28,8 @@ WHERE id IN (
     WHERE in_attribute_context_v1(
                   attribute_context_build_from_parts_v1(
                           name_prop.id, -- PropId
-                          -1, -- InternalProviderId
-                          -1, -- ExternalProviderId
+                          ident_nil_v1(), -- InternalProviderId
+                          ident_nil_v1(), -- ExternalProviderId
                           $3 -- ComponentId
                       ),
                   av
@@ -85,8 +85,8 @@ WHERE id IN (
 --             -- can only belong to one Schema.
 --             attribute_context_build_from_parts_v1(
 --                 name_prop.id, -- PropId
---                 -1, -- InternalProviderId
---                 -1, -- ExternalProviderId
+--                 ident_nil_v1(), -- InternalProviderId
+--                 ident_nil_v1(), -- ExternalProviderId
 --                 $3, -- ComponentId
 --                 $4 -- SystemId
 --             ),

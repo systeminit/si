@@ -17,7 +17,7 @@ FROM (
     WHERE
         apa.attribute_prototype_id = $3
         AND CASE
-                WHEN external_provider_id != -1 THEN
+                WHEN external_provider_id != ident_nil_v1() THEN
                     head_component_id = $4
                 ELSE
                     TRUE

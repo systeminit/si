@@ -116,21 +116,26 @@ mod tests {
     #[test]
     fn as_array() {
         let mut index_map = IndexMap::new();
-        index_map.push(1_i64.into(), None);
-        index_map.push(2_i64.into(), None);
-        assert_eq!(index_map.order(), &[1_i64.into(), 2_i64.into()]);
+        let first_id = AttributeValueId::generate();
+        let second_id = AttributeValueId::generate();
+        index_map.push(first_id, None);
+        index_map.push(second_id, None);
+        assert_eq!(index_map.order(), &[first_id, second_id]);
     }
 
     #[test]
     fn as_map() {
         let mut index_map = IndexMap::new();
-        index_map.push(1_i64.into(), Some("bleed from within".to_string()));
-        index_map.push(2_i64.into(), Some("lamb of god".to_string()));
+
+        let first_id = AttributeValueId::generate();
+        let second_id = AttributeValueId::generate();
+        index_map.push(first_id, Some("bleed from within".to_string()));
+        index_map.push(second_id, Some("lamb of god".to_string()));
         assert_eq!(
             index_map.order_as_map(),
             &[
-                ("bleed from within".to_string(), 1_i64.into()),
-                ("lamb of god".to_string(), 2_i64.into())
+                ("bleed from within".to_string(), first_id),
+                ("lamb of god".to_string(), second_id)
             ]
         );
     }

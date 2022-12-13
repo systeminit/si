@@ -39,7 +39,7 @@ impl PropertyEditorValidations {
         let mut validations = Vec::new();
         for stat in status {
             validations.push(PropertyEditorValidation {
-                value_id: i64::from(stat.attribute_value_id).into(),
+                value_id: stat.attribute_value_id.into(),
                 valid: stat.errors.is_empty(),
                 errors: stat
                     .errors

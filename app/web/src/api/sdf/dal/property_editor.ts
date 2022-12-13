@@ -68,7 +68,7 @@ export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindSecretSelect;
 
 export interface PropertyEditorProp {
-  id: number;
+  id: string;
   name: string;
   kind: PropertyEditorPropKind;
   widgetKind: PropertyEditorPropWidgetKind;
@@ -76,16 +76,16 @@ export interface PropertyEditorProp {
 }
 
 export interface PropertyEditorSchema {
-  rootPropId: number;
-  props: { [id: number]: PropertyEditorProp };
+  rootPropId: string;
+  props: { [id: string]: PropertyEditorProp };
   childProps: {
-    [key: number]: Array<number>;
+    [key: string]: Array<string>;
   };
 }
 
 export interface PropertyEditorValue {
-  id: number;
-  propId: number;
+  id: string;
+  propId: string;
   key?: string;
   value: unknown;
   isFromExternalSource: boolean;
@@ -93,21 +93,21 @@ export interface PropertyEditorValue {
 }
 
 export interface PropertyEditorValues {
-  rootValueId: number;
-  values: { [id: number]: PropertyEditorValue };
+  rootValueId: string;
+  values: { [id: string]: PropertyEditorValue };
   childValues: {
-    [key: number]: Array<number>;
+    [key: string]: Array<string>;
   };
 }
 
 export interface PropertyEditorChangeValue {
-  valueId: number;
+  valueId: string;
   changed: boolean;
 }
 
 export interface PropertyEditorChangeValues {
   changedValues: {
-    [valueId: number]: PropertyEditorChangeValue;
+    [valueId: string]: PropertyEditorChangeValue;
   };
 }
 
@@ -119,7 +119,7 @@ export interface PropertyEditorValidationError {
 }
 
 export interface PropertyEditorValidation {
-  valueId: number;
+  valueId: string;
   valid: boolean;
   errors: Array<PropertyEditorValidationError>;
 }
@@ -129,23 +129,23 @@ export interface PropertyEditorValidations {
 }
 
 export interface UpdatedProperty {
-  propId: number;
-  valueId: number;
+  propId: string;
+  valueId: string;
   value: unknown;
-  parentValueId?: number;
+  parentValueId?: string;
   key?: string;
 }
 
 export interface AddToArray {
-  propId: number;
-  valueId: number;
+  propId: string;
+  valueId: string;
   key?: string;
 }
 
 export interface AddToMap {
-  propId: number;
-  valueId: number;
-  parentValueId?: number;
+  propId: string;
+  valueId: string;
+  parentValueId?: string;
   key?: string;
 }
 
@@ -155,11 +155,11 @@ export interface PropertyPath {
 }
 
 export interface FuncWithPrototypeContext {
-  id: number;
+  id: string;
   name: string;
   displayName?: string;
   backendKind: FuncBackendKind;
   isBuiltin: boolean;
-  attributePrototypeId: number;
-  attributeContextComponentId: number;
+  attributePrototypeId: string;
+  attributeContextComponentId: string;
 }

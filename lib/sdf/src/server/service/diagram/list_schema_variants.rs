@@ -1,7 +1,7 @@
 use axum::extract::{Json, Query};
 use dal::{
     socket::{SocketEdgeKind, SocketId, SocketKind},
-    DiagramKind, ExternalProviderId, InternalProviderId, SchemaVariant, SchemaVariantId,
+    DiagramKind, ExternalProviderId, InternalProviderId, SchemaId, SchemaVariant, SchemaVariantId,
     StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
@@ -58,6 +58,7 @@ pub struct SchemaVariantView {
     id: SchemaVariantId,
     name: String,
     schema_name: String,
+    schema_id: SchemaId,
     color: i64,
     input_sockets: Vec<InputSocketView>,
     output_sockets: Vec<OutputSocketView>,
@@ -116,15 +117,15 @@ pub async fn list_schema_variants(
             }
         }
 
+        let schema = variant
+            .schema(&ctx)
+            .await?
+            .ok_or(DiagramError::SchemaNotFound)?;
         variants_view.push(SchemaVariantView {
             id: *variant.id(),
             name: variant.name().to_owned(),
-            schema_name: variant
-                .schema(&ctx)
-                .await?
-                .ok_or(DiagramError::SchemaNotFound)?
-                .name()
-                .to_owned(),
+            schema_id: *schema.id(),
+            schema_name: schema.name().to_owned(),
             color: variant.color().map_or(0x00b0bc, |c| *c),
             input_sockets,
             output_sockets,

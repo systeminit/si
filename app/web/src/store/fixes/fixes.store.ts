@@ -8,11 +8,15 @@ import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useAuthStore } from "../auth.store";
 
+function nilId(): string {
+  return "00000000000000000000000000";
+}
+
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 export type RecommendationKind = "create" | "other";
 
-export type ConfirmationId = number;
-export type ConfirmationResolverId = number;
+export type ConfirmationId = string;
+export type ConfirmationResolverId = string;
 export type Confirmation = {
   id: ConfirmationId;
   title: string;
@@ -39,7 +43,7 @@ export type Recommendation = {
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.
 // A potential temporary fix: we decide to convert the "string" from the database row into
 // a "date" object within the sdf route(s).
-export type FixId = number;
+export type FixId = string;
 export type Fix = {
   id: FixId;
   status: FixStatus;
@@ -55,7 +59,7 @@ export type Fix = {
 };
 
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.
-export type FixBatchId = number;
+export type FixBatchId = string;
 export type FixBatch = {
   id: FixBatchId;
   status: FixStatus;
@@ -183,7 +187,7 @@ export const useFixesStore = () => {
 
           return new ApiRequest<Array<Confirmation>>({
             url: "/fix/confirmations",
-            params: { visibility_change_set_pk: -1 },
+            params: { visibility_change_set_pk: nilId() },
             onSuccess: (response) => {
               this.confirmations = response;
               this.populatingFixes =
@@ -195,7 +199,7 @@ export const useFixesStore = () => {
         async LOAD_RECOMMENDATIONS() {
           return new ApiRequest<Array<Recommendation>>({
             url: "/fix/recommendations",
-            params: { visibility_change_set_pk: -1 },
+            params: { visibility_change_set_pk: nilId() },
             onSuccess: (response) => {
               this.recommendations = response;
             },
@@ -204,7 +208,7 @@ export const useFixesStore = () => {
         async LOAD_FIX_BATCHES() {
           return new ApiRequest<Array<FixBatch>>({
             url: "/fix/list",
-            params: { visibility_change_set_pk: -1 },
+            params: { visibility_change_set_pk: nilId() },
             onSuccess: (response) => {
               this.fixBatches = response;
             },
@@ -223,7 +227,7 @@ export const useFixesStore = () => {
                 componentId: fix.componentId,
                 actionName: fix.recommendation,
               })),
-              visibility_change_set_pk: -1,
+              visibility_change_set_pk: nilId(),
             },
             url: "/fix/run",
             onSuccess: (response) => {

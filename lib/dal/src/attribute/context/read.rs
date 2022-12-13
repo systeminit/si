@@ -12,12 +12,12 @@ use crate::{AttributeContext, ComponentId, ExternalProviderId, InternalProviderI
 ///
 /// ```rust
 /// # use dal::attribute::context::read::AttributeReadContext;
-/// # use dal::{ExternalProviderId, InternalProviderId};
+/// # use dal::{ExternalProviderId, InternalProviderId, ComponentId};
 /// let read_context = AttributeReadContext {
 ///     prop_id: None,
 ///     internal_provider_id: Some(InternalProviderId::NONE),
 ///     external_provider_id: Some(ExternalProviderId::NONE),
-///     component_id: Some(1.into()),
+///     component_id: Some(ComponentId::generate())
 /// };
 /// ```
 ///

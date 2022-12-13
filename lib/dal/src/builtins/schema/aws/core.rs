@@ -4,7 +4,6 @@ use crate::builtins::schema::MigrationDriver;
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
 use crate::edit_field::widget::WidgetKind;
-use crate::func::argument::FuncArgumentKind;
 use crate::property_editor::SelectWidgetOption;
 use crate::prototype_context::PrototypeContext;
 use crate::qualification_prototype::QualificationPrototypeContext;
@@ -15,9 +14,9 @@ use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, BuiltinsResult, ConfirmationPrototype,
-    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncError, InternalProvider, PropKind, QualificationPrototype,
-    SchemaError, SchemaKind, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
+    InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{AttributeValueError, SchemaVariant};
 use serde::{Deserialize, Serialize};
@@ -982,38 +981,21 @@ impl MigrationDriver {
             .ok_or(AttributeValueError::MissingAttributePrototype)?;
 
         // Create and set the func to take off a string field.
-        let mut transformation_func = Func::new(
-            ctx,
-            "si:getRegion",
-            FuncBackendKind::JsAttribute,
-            FuncBackendResponseType::String,
-        )
-        .await?;
+        let transformation_func_name = "si:getRegion";
+        let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(transformation_func_name.to_owned()))?;
 
-        let code = "function getRegion(input) {
-            const defaultName = 'region';
-            if (!input.region || input.region.length === 0) {
-                return defaultName;
-            }
-
-            return input.region;
-        }";
-        transformation_func
-            .set_code_plaintext(ctx, Some(code))
-            .await?;
-
-        transformation_func
-            .set_handler(ctx, Some("getRegion"))
-            .await?;
-
-        let transformation_func_argument = FuncArgument::new(
-            ctx,
-            "region",
-            FuncArgumentKind::String,
-            None,
-            *transformation_func.id(),
-        )
-        .await?;
+        let transformation_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "region", *transformation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        transformation_func_name.to_owned(),
+                        "region".to_string(),
+                    )
+                })?;
 
         si_name_attribute_prototype
             .set_func_id(ctx, transformation_func.id())
