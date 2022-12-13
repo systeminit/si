@@ -204,7 +204,7 @@ const computedClasses = computed(() => ({
   ...(props.size && { [`--size-${props.size}`]: true }),
   ...(props.tone && { [`--tone-${props.tone}`]: true }),
   "--rounded": !!props.rounded,
-  hoverGlow: !!props.hoverGlow,
+  "--hover-glow": !!props.hoverGlow,
 }));
 </script>
 
@@ -338,6 +338,9 @@ const computedClasses = computed(() => ({
 
   // Set up theme helpers so we can quickly add new color themes
   .button-theme-generator(@color) {
+    --button-glow-color: @color;
+    --button-glow-color-darker: darken(@color, 20%);
+
     &.--variant-solid {
       background-color: @color;
       color: contrast(
@@ -417,21 +420,39 @@ const computedClasses = computed(() => ({
   &.--rounded {
     border-radius: 9999px;
   }
-}
 
-.hoverGlow:hover {
-  animation: glow_yellow 1s ease-in-out infinite alternate;
-}
-
-@keyframes glow_yellow {
-  from {
-    box-shadow: 0 0 10px #ff0, 0 0 20px #ff0, 0 0 30px #dd0, 0 0 40px #cc0,
-      0 0 50px #cc0;
+  &.--hover-glow:hover {
+    animation: 1s glow_start, 1s glow 1s ease-in-out infinite alternate;
   }
 
-  to {
-    box-shadow: 0 0 20px #ff0, 0 0 30px #ff0, 0 0 40px #ff0, 0 0 50px #ff0,
-      0 0 60px #ff0;
+  @keyframes glow_start {
+    from {
+      box-shadow: none;
+    }
+
+    to {
+      box-shadow: 0 0 2px 1px rgba(0, 0, 0, 60%),
+        0 0 15px var(--button-glow-color), 0 0 25px var(--button-glow-color),
+        0 0 35px var(--button-glow-color), 0 0 45px var(--button-glow-color),
+        0 0 55px var(--button-glow-color);
+    }
+  }
+
+  @keyframes glow {
+    from {
+      box-shadow: 0 0 2px 1px rgba(0, 0, 0, 60%),
+        0 0 15px var(--button-glow-color), 0 0 25px var(--button-glow-color),
+        0 0 35px var(--button-glow-color), 0 0 45px var(--button-glow-color),
+        0 0 55px var(--button-glow-color);
+    }
+
+    to {
+      box-shadow: 0 0 2px 1px rgba(0, 0, 0, 60%),
+        0 0 5px var(--button-glow-color), 0 0 10px var(--button-glow-color),
+        0 0 20px var(--button-glow-color),
+        0 0 30px var(--button-glow-color-darker),
+        0 0 40px var(--button-glow-color-darker);
+    }
   }
 }
 </style>
