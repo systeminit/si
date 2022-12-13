@@ -104,13 +104,6 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
         debug!("enabling resolver endpoint");
         router = router.merge(Router::new().route("/resolver", get(handlers::ws_execute_resolver)));
     }
-    if config.enable_code_generation() {
-        debug!("enabling code generation endpoint");
-        router = router.merge(Router::new().route(
-            "/code_generation",
-            get(handlers::ws_execute_code_generation),
-        ));
-    }
     if config.enable_confirmation() {
         debug!("enabling confirmation endpoint");
         router = router

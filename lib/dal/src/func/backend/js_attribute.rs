@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use veritech_client::{
     FunctionResult, ResolverFunctionComponent, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess,
+    ResolverFunctionResponseType, ResolverFunctionResultSuccess,
 };
 
 use crate::func::backend::{
@@ -12,6 +12,7 @@ use crate::func::backend::{
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsAttributeArgs {
     pub component: ResolverFunctionComponent,
+    pub response_type: ResolverFunctionResponseType,
 }
 
 #[derive(Debug)]
@@ -37,6 +38,7 @@ impl FuncDispatch for FuncBackendJsAttribute {
             execution_id: "tomcruise".to_string(),
             handler: handler.into(),
             component: args.component,
+            response_type: args.response_type,
             code_base64: code_base64.into(),
         };
 

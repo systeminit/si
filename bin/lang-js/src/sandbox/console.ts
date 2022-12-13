@@ -1,11 +1,13 @@
 import { OutputLine } from "../function";
 
 const normalizeMessage = (msg: unknown[]): string => {
-  return msg.map((m) => {
-    if (typeof(m) === typeof("")) return m as string;
-    return JSON.stringify(m);
-  }).join(" ");
-}
+  return msg
+    .map((m) => {
+      if (typeof m === typeof "") return m as string;
+      return JSON.stringify(m);
+    })
+    .join(" ");
+};
 
 export const makeConsole = (executionId: string) => {
   function debug(...args: unknown[]): void {

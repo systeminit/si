@@ -878,14 +878,6 @@ impl Component {
         Ok(results)
     }
 
-    pub async fn veritech_code_generation_component(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<ComponentView> {
-        let view = ComponentView::new(ctx, self.id).await?;
-        Ok(view)
-    }
-
     pub async fn veritech_qualification_check_component(
         &self,
         ctx: &DalContext,

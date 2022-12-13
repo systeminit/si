@@ -14,7 +14,6 @@
 const NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT: &str = "veritech.fn.qualificationcheck";
 const NATS_CONFIRMATION_DEFAULT_SUBJECT: &str = "veritech.fn.confirmation";
 const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfunction";
-const NATS_CODE_GENERATION_DEFAULT_SUBJECT: &str = "veritech.fn.codegeneration";
 const NATS_VALIDATION_DEFAULT_SUBJECT: &str = "veritech.fn.validation";
 const NATS_WORKFLOW_RESOLVE_DEFAULT_SUBJECT: &str = "veritech.fn.workflowresolve";
 const NATS_COMMAND_RUN_DEFAULT_SUBJECT: &str = "veritech.fn.commandrun";
@@ -39,10 +38,6 @@ pub fn nats_confirmation_subject(prefix: Option<&str>) -> String {
 
 pub fn nats_resolver_function_subject(prefix: Option<&str>) -> String {
     nats_subject(prefix, NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT)
-}
-
-pub fn nats_code_generation_subject(prefix: Option<&str>) -> String {
-    nats_subject(prefix, NATS_CODE_GENERATION_DEFAULT_SUBJECT)
 }
 
 pub fn nats_validation_subject(prefix: Option<&str>) -> String {

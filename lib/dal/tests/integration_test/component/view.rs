@@ -9,7 +9,6 @@ use dal_test::{
     test_harness::{create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
-
 mod complex_func;
 mod cyclone_crypto;
 

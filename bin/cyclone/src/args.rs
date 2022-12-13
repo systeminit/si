@@ -72,14 +72,6 @@ pub(crate) struct Args {
     #[arg(long, group = "resolver")]
     pub(crate) disable_resolver: bool,
 
-    /// Enables code generation endpoint.
-    #[arg(long, group = "code_generation")]
-    pub(crate) enable_code_generation: bool,
-
-    /// Disables code generation endpoint.
-    #[arg(long, group = "code_generation")]
-    pub(crate) disable_code_generation: bool,
-
     /// Enables workflow endpoint.
     #[arg(long, group = "workflow")]
     pub(crate) enable_workflow: bool,
@@ -166,12 +158,6 @@ impl TryFrom<Args> for Config {
             builder.enable_resolver(true);
         } else if args.disable_resolver {
             builder.enable_resolver(false);
-        }
-
-        if args.enable_code_generation {
-            builder.enable_code_generation(true);
-        } else if args.disable_code_generation {
-            builder.enable_code_generation(false);
         }
 
         if args.enable_confirmation {

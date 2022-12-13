@@ -9,14 +9,13 @@ import {
   ResultFailure,
   ResultSuccess,
 } from "./function";
-import { Component } from "./component";
 import { createSandbox } from "./sandbox";
 import { createNodeVm } from "./vm";
 
 const debug = Debug("langJs:workflowResolve");
 
 export interface WorkflowResolveRequest extends RequestWithCode {
-  args: unknown
+  args: unknown;
 }
 
 export type WorkflowResolveResult =
@@ -57,16 +56,15 @@ async function execute(
   vm: NodeVM,
   code: string,
   executionId: string,
-  args: unknown,
+  args: unknown
 ): Promise<WorkflowResolveResult> {
   let workflowResolveResult: Record<string, unknown>;
   try {
     const workflowResolveRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     workflowResolveResult = await new Promise((resolve) => {
-      workflowResolveRunner(
-        args,
-        (resolution: Record<string, unknown>) => resolve(resolution)
+      workflowResolveRunner(args, (resolution: Record<string, unknown>) =>
+        resolve(resolution)
       );
     });
 

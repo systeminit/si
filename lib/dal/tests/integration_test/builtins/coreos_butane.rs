@@ -313,6 +313,7 @@ async fn get_ignition_from_qualification_output(
                 .result
                 .clone()
                 .expect("could not get result from qualification view");
+            dbg!(&qualification_result);
             assert!(qualification_result.success);
 
             // Then, find the return line. This should be the "pretty" ignition output.

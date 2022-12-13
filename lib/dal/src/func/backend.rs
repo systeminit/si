@@ -6,6 +6,7 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_client::{
     Client as VeritechClient, CommandRunResultSuccess, FunctionResult, OutputStream,
+    ResolverFunctionResponseType,
 };
 
 use crate::{label_list::ToLabelList, DalContext, Func, FuncId, PropKind, StandardModel};
@@ -15,7 +16,6 @@ pub mod boolean;
 pub mod identity;
 pub mod integer;
 pub mod js_attribute;
-pub mod js_code_generation;
 pub mod js_command;
 pub mod js_confirmation;
 pub mod js_qualification;
@@ -76,7 +76,6 @@ pub enum FuncBackendKind {
     Identity,
     Integer,
     JsQualification,
-    JsCodeGeneration,
     JsAttribute,
     JsWorkflow,
     JsConfirmation,
@@ -120,6 +119,50 @@ pub enum FuncBackendResponseType {
     Validation,
     Workflow,
     Command,
+}
+
+impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
+    fn from(value: ResolverFunctionResponseType) -> Self {
+        match value {
+            ResolverFunctionResponseType::Array => FuncBackendResponseType::Array,
+            ResolverFunctionResponseType::Boolean => FuncBackendResponseType::Boolean,
+            ResolverFunctionResponseType::Identity => FuncBackendResponseType::Identity,
+            ResolverFunctionResponseType::Integer => FuncBackendResponseType::Integer,
+            ResolverFunctionResponseType::Map => FuncBackendResponseType::Map,
+            ResolverFunctionResponseType::PropObject => FuncBackendResponseType::PropObject,
+            ResolverFunctionResponseType::Qualification => FuncBackendResponseType::Qualification,
+            ResolverFunctionResponseType::CodeGeneration => FuncBackendResponseType::CodeGeneration,
+            ResolverFunctionResponseType::Confirmation => FuncBackendResponseType::Confirmation,
+            ResolverFunctionResponseType::String => FuncBackendResponseType::String,
+            ResolverFunctionResponseType::Unset => FuncBackendResponseType::Unset,
+            ResolverFunctionResponseType::Json => FuncBackendResponseType::Json,
+            ResolverFunctionResponseType::Validation => FuncBackendResponseType::Validation,
+            ResolverFunctionResponseType::Command => FuncBackendResponseType::Command,
+            ResolverFunctionResponseType::Workflow => FuncBackendResponseType::Workflow,
+        }
+    }
+}
+
+impl From<FuncBackendResponseType> for ResolverFunctionResponseType {
+    fn from(value: FuncBackendResponseType) -> Self {
+        match value {
+            FuncBackendResponseType::Array => ResolverFunctionResponseType::Array,
+            FuncBackendResponseType::Boolean => ResolverFunctionResponseType::Boolean,
+            FuncBackendResponseType::Integer => ResolverFunctionResponseType::Integer,
+            FuncBackendResponseType::Identity => ResolverFunctionResponseType::Identity,
+            FuncBackendResponseType::Map => ResolverFunctionResponseType::Map,
+            FuncBackendResponseType::PropObject => ResolverFunctionResponseType::PropObject,
+            FuncBackendResponseType::Qualification => ResolverFunctionResponseType::Qualification,
+            FuncBackendResponseType::CodeGeneration => ResolverFunctionResponseType::CodeGeneration,
+            FuncBackendResponseType::Confirmation => ResolverFunctionResponseType::Confirmation,
+            FuncBackendResponseType::String => ResolverFunctionResponseType::String,
+            FuncBackendResponseType::Unset => ResolverFunctionResponseType::Unset,
+            FuncBackendResponseType::Json => ResolverFunctionResponseType::Json,
+            FuncBackendResponseType::Validation => ResolverFunctionResponseType::Validation,
+            FuncBackendResponseType::Command => ResolverFunctionResponseType::Command,
+            FuncBackendResponseType::Workflow => ResolverFunctionResponseType::Workflow,
+        }
+    }
 }
 
 impl ToLabelList for FuncBackendKind {}

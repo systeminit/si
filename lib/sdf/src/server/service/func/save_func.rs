@@ -2,6 +2,12 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+use super::ValidationPrototypeView;
+use super::{
+    AttributePrototypeArgumentView, AttributePrototypeView, FuncArgumentView, FuncAssociations,
+    FuncError, FuncResult,
+};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::attribute::context::AttributeContextBuilder;
 use dal::validation::prototype::context::ValidationPrototypeContext;
 use dal::{
@@ -14,14 +20,6 @@ use dal::{
     PrototypeListForFunc, QualificationPrototype, StandardModel, Visibility, WsEvent,
 };
 use dal::{SchemaVariant, ValidationPrototype};
-use telemetry::prelude::info;
-
-use super::ValidationPrototypeView;
-use super::{
-    AttributePrototypeArgumentView, AttributePrototypeView, FuncArgumentView, FuncAssociations,
-    FuncError, FuncResult,
-};
-use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -388,10 +386,6 @@ pub async fn save_func<'a>(
                 )
                 .await?;
             };
-        }
-        FuncBackendKind::JsCodeGeneration => {
-            // NOTE(nick): do nothing since everything is moving under the prop tree.
-            info!("JsCodeGeneration is currently unsupported for func authoring");
         }
         FuncBackendKind::JsConfirmation => {
             let mut associations: Vec<PrototypeContextField> = vec![];

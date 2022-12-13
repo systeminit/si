@@ -36,15 +36,6 @@ function resolverFunctionSandbox(executionId: string): Sandbox {
   };
 }
 
-function codeGenerationSandbox(executionId: string) {
-  return {
-    // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
-    YAML: { stringify: yaml.dump },
-    // definitely a risk
-    siExec: makeExec(executionId),
-  };
-}
-
 const confirmationSandbox = {};
 
 const workflowResolveSandbox = {};
@@ -72,11 +63,6 @@ export function createSandbox(
   executionId: string
 ): Sandbox {
   switch (kind) {
-    case FunctionKind.CodeGeneration:
-      return {
-        ...commonSandbox(executionId),
-        ...codeGenerationSandbox(executionId),
-      };
     case FunctionKind.QualificationCheck:
       return {
         ...commonSandbox(executionId),

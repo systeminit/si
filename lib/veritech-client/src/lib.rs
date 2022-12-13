@@ -7,24 +7,22 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_core::{
-    nats_code_generation_subject, nats_command_run_subject, nats_confirmation_subject,
-    nats_qualification_check_subject, nats_resolver_function_subject, nats_subject,
-    nats_validation_subject, nats_workflow_resolve_subject, reply_mailbox_for_output,
-    reply_mailbox_for_result,
+    nats_command_run_subject, nats_confirmation_subject, nats_qualification_check_subject,
+    nats_resolver_function_subject, nats_subject, nats_validation_subject,
+    nats_workflow_resolve_subject, reply_mailbox_for_output, reply_mailbox_for_result,
 };
 
 mod subscription;
 use subscription::{Subscription, SubscriptionError};
 
 pub use cyclone_core::{
-    CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest,
-    CommandRunResultSuccess, ComponentKind, ComponentView, ConfirmationRequest,
+    CommandRunRequest, CommandRunResultSuccess, ComponentKind, ComponentView, ConfirmationRequest,
     ConfirmationResultSuccess, EncryptionKey, EncryptionKeyError, FunctionResult,
     FunctionResultFailure, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
     QualificationCheckResultSuccess, QualificationSubCheck, QualificationSubCheckStatus,
-    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ResourceStatus, SensitiveContainer, ValidationRequest, ValidationResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
+    ResolverFunctionResultSuccess, ResourceStatus, SensitiveContainer, ValidationRequest,
+    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 
 #[derive(Error, Debug)]
@@ -141,35 +139,6 @@ impl Client {
         request: &ResolverFunctionRequest,
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
-        self.execute_request(
-            nats_subject(self.subject_prefix(), subject_suffix),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_code_generation", skip_all)]
-    pub async fn execute_code_generation(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &CodeGenerationRequest,
-    ) -> ClientResult<FunctionResult<CodeGenerationResultSuccess>> {
-        self.execute_request(
-            nats_code_generation_subject(self.subject_prefix()),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_code_generation_with_subject", skip_all)]
-    pub async fn execute_code_generation_with_subject(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &CodeGenerationRequest,
-        subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<CodeGenerationResultSuccess>> {
         self.execute_request(
             nats_subject(self.subject_prefix(), subject_suffix),
             output_tx,
@@ -436,8 +405,9 @@ mod tests {
                 },
                 parents: vec![],
             },
+            response_type: ResolverFunctionResponseType::Integer,
             code_base64: base64::encode(
-                "function numberOfInputs(input) { return Object.keys(input).length; }",
+                "function numberOfInputs(input) { return Object.keys(input)?.length ?? 0; }",
             ),
         };
 
@@ -454,6 +424,137 @@ mod tests {
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn type_checks_resolve_function() {
+        let prefix = nats_prefix();
+        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+        let client = client(prefix).await;
+
+        for response_type in [
+            ResolverFunctionResponseType::Array,
+            ResolverFunctionResponseType::Integer,
+            ResolverFunctionResponseType::Boolean,
+            ResolverFunctionResponseType::String,
+            ResolverFunctionResponseType::Map,
+            ResolverFunctionResponseType::PropObject,
+        ] {
+            let value = match response_type {
+                ResolverFunctionResponseType::Array => serde_json::json!({ "value": [1, 2, 3, 4] }),
+                ResolverFunctionResponseType::Integer => serde_json::json!({ "value": 31337 }),
+                ResolverFunctionResponseType::Boolean => serde_json::json!({ "value": true }),
+                ResolverFunctionResponseType::String => {
+                    serde_json::json!({ "value": "a string is a sequence of characters" })
+                }
+                ResolverFunctionResponseType::Map | ResolverFunctionResponseType::PropObject => {
+                    serde_json::json!({ "value": { "an_object": "has keys" } })
+                }
+                _ => serde_json::json!({ "value": null }),
+            };
+            // Not going to check output here--we aren't emitting anything
+            let (tx, mut rx) = mpsc::channel(64);
+            tokio::spawn(async move {
+                while let Some(output) = rx.recv().await {
+                    info!("output: {:?}", output)
+                }
+            });
+
+            let request = ResolverFunctionRequest {
+                execution_id: "1234".to_string(),
+                handler: "returnInputValue".to_string(),
+                component: ResolverFunctionComponent {
+                    data: ComponentView {
+                        properties: value.clone(),
+                        kind: ComponentKind::Standard,
+                    },
+                    parents: vec![],
+                },
+                response_type,
+                code_base64: base64::encode(
+                    "function returnInputValue(input) { return input.value; }",
+                ),
+            };
+
+            let result = client
+                .execute_resolver_function(tx, &request)
+                .await
+                .expect("failed to execute resolver function");
+
+            match result {
+                FunctionResult::Success(success) => {
+                    assert_eq!(success.execution_id, "1234");
+                    if let serde_json::Value::Object(inner) = value {
+                        let value = inner.get("value").expect("value should exist").clone();
+                        assert_eq!(value, success.data);
+                    } else {
+                        panic!("no value in return data :(")
+                    }
+                }
+                FunctionResult::Failure(_) => {
+                    panic!("should have failed :(");
+                }
+            }
+        }
+
+        for response_type in [
+            ResolverFunctionResponseType::Array,
+            ResolverFunctionResponseType::Integer,
+            ResolverFunctionResponseType::Boolean,
+            ResolverFunctionResponseType::String,
+            ResolverFunctionResponseType::Map,
+            ResolverFunctionResponseType::PropObject,
+        ] {
+            let value = match response_type {
+                ResolverFunctionResponseType::Array => serde_json::json!({ "value": "foo"}),
+                ResolverFunctionResponseType::Integer => serde_json::json!({ "value": "a string" }),
+                ResolverFunctionResponseType::Boolean => serde_json::json!({ "value": "a string" }),
+                ResolverFunctionResponseType::String => serde_json::json!({ "value": 12345 }),
+                ResolverFunctionResponseType::Map | ResolverFunctionResponseType::PropObject => {
+                    serde_json::json!({ "value": ["an_object", "has keys" ] })
+                }
+                _ => serde_json::json!({ "value": null }),
+            };
+            // Not going to check output here--we aren't emitting anything
+            let (tx, mut rx) = mpsc::channel(64);
+            tokio::spawn(async move {
+                while let Some(output) = rx.recv().await {
+                    info!("output: {:?}", output)
+                }
+            });
+
+            let request = ResolverFunctionRequest {
+                execution_id: "1234".to_string(),
+                handler: "returnInputValue".to_string(),
+                component: ResolverFunctionComponent {
+                    data: ComponentView {
+                        properties: value,
+                        kind: ComponentKind::Standard,
+                    },
+                    parents: vec![],
+                },
+                response_type: response_type.clone(),
+                code_base64: base64::encode(
+                    "function returnInputValue(input) { return input.value; }",
+                ),
+            };
+
+            let result = client
+                .execute_resolver_function(tx, &request)
+                .await
+                .expect("failed to execute resolver function");
+
+            match result {
+                FunctionResult::Success(success) => {
+                    dbg!(success, response_type);
+                    panic!("should have failed :(");
+                }
+                FunctionResult::Failure(failure) => {
+                    assert_eq!(failure.error.kind, "InvalidReturnType");
+                    assert_eq!(failure.execution_id, "1234");
+                }
             }
         }
     }
@@ -645,52 +746,6 @@ mod tests {
                 assert_eq!(success.execution_id, "7868");
                 assert!(!success.success);
                 assert_eq!(success.recommended_actions, vec!["vai te catar".to_owned()]);
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("function did not succeed and should have: {:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn executes_simple_code_generation() {
-        let prefix = nats_prefix();
-        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
-        let client = client(prefix).await;
-
-        // Not going to check output here--we aren't emitting anything
-        let (tx, mut rx) = mpsc::channel(64);
-        tokio::spawn(async move {
-            while let Some(output) = rx.recv().await {
-                info!("output: {:?}", output)
-            }
-        });
-
-        let request = CodeGenerationRequest {
-            execution_id: "7868".to_string(),
-            handler: "generateItOut".to_string(),
-            component: ComponentView {
-                properties: serde_json::json!({"pkg": "cider"}),
-                kind: ComponentKind::Standard,
-            },
-            code_base64: base64::encode("function generateItOut(component) { return { format: 'yaml', code: YAML.stringify(component.properties) }; }"),
-        };
-
-        let result = client
-            .execute_code_generation(tx, &request)
-            .await
-            .expect("failed to execute code generation");
-
-        match result {
-            FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "7868");
-                assert_eq!(
-                    success.data,
-                    CodeGenerated {
-                        format: "yaml".to_owned(),
-                        code: "pkg: cider\n".to_owned(),
-                    }
-                );
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)

@@ -5,8 +5,8 @@ use std::{
 };
 
 use deadpool_cyclone::{
-    CodeGenerationRequest, CommandRunRequest, ConfirmationRequest, QualificationCheckRequest,
-    ResolverFunctionRequest, ValidationRequest, WorkflowResolveRequest,
+    CommandRunRequest, ConfirmationRequest, QualificationCheckRequest, ResolverFunctionRequest,
+    ValidationRequest, WorkflowResolveRequest,
 };
 use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
@@ -16,9 +16,8 @@ use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_core::{
-    nats_code_generation_subject, nats_command_run_subject, nats_confirmation_subject,
-    nats_qualification_check_subject, nats_resolver_function_subject, nats_validation_subject,
-    nats_workflow_resolve_subject,
+    nats_command_run_subject, nats_confirmation_subject, nats_qualification_check_subject,
+    nats_resolver_function_subject, nats_validation_subject, nats_workflow_resolve_subject,
 };
 
 #[derive(Error, Debug)]
@@ -90,26 +89,6 @@ impl Subscriber {
         debug!(
             messaging.destination = &subject.as_str(),
             "subscribing for resolver function requests"
-        );
-        let inner = nats
-            .subscribe(subject)
-            .await
-            .map_err(SubscriberError::NatsSubscribe)?;
-
-        Ok(Subscription {
-            inner,
-            _phantom: PhantomData,
-        })
-    }
-
-    pub async fn code_generation(
-        nats: &NatsClient,
-        subject_prefix: Option<&str>,
-    ) -> Result<Subscription<CodeGenerationRequest>> {
-        let subject = nats_code_generation_subject(subject_prefix);
-        debug!(
-            messaging.destination = &subject.as_str(),
-            "subscribing for code generation requests"
         );
         let inner = nats
             .subscribe(subject)

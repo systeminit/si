@@ -12,7 +12,6 @@
 )]
 
 mod canonical_command;
-mod code_generation;
 mod command_run;
 mod component_view;
 mod confirmation;
@@ -28,7 +27,6 @@ mod validation;
 mod workflow_resolve;
 
 pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
-pub use code_generation::{CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess};
 pub use command_run::{CommandRunRequest, CommandRunResultSuccess, ResourceStatus};
 pub use component_view::{ComponentKind, ComponentView};
 pub use confirmation::{ConfirmationRequest, ConfirmationResultSuccess};
@@ -44,7 +42,8 @@ pub use qualification_check::{
 };
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
 pub use resolver_function::{
-    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
+    ResolverFunctionResultSuccess,
 };
 pub use sensitive_container::{SensitiveContainer, SensitiveString};
 pub use validation::{ValidationRequest, ValidationResultSuccess};
