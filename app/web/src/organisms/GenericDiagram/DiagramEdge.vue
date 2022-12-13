@@ -1,5 +1,5 @@
 <template>
-  <v-group v-if="points && !edge.def.isInvisible">
+  <v-group v-if="shouldDraw && points">
     <v-line
       :config="{
         visible: isSelected,
@@ -16,6 +16,7 @@
         stroke: strokeColor,
         strokeWidth: isHovered ? 3 : 2,
         hitStrokeWidth: 8,
+        listening: !edge.def.isInvisible,
       }"
       @mouseover="onMouseOver"
       @mouseout="onMouseOut"
@@ -33,6 +34,8 @@ import { useTheme } from "@/ui-lib/theme_tools";
 import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
 import { DiagramEdgeData } from "./diagram_types";
 import { pointAlongLine } from "./utils/math";
+
+const isDevMode = import.meta.env.DEV;
 
 const props = defineProps({
   edge: {
@@ -54,9 +57,12 @@ const emit = defineEmits(["hover:start", "hover:end"]);
 
 const { theme } = useTheme();
 
-const strokeColor = computed(() =>
-  theme.value === "dark" ? colors.shade[0] : colors.shade[100],
-);
+const strokeColor = computed(() => {
+  if (isDevMode && props.edge.def.isInvisible) {
+    return "rgba(100,50,255,0.1)";
+  }
+  return theme.value === "dark" ? colors.shade[0] : colors.shade[100];
+});
 
 const points = computed(() => {
   if (!props.fromPoint || !props.toPoint) return;
@@ -81,12 +87,18 @@ const points = computed(() => {
 function onMouseOver(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:start");
 }
+
 function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:end");
 }
+
 function onMouseDown(_e: KonvaEventObject<MouseEvent>) {
   // e.cancelBubble = true; // stops dragging of parent
 }
+
+const shouldDraw = computed(() =>
+  isDevMode ? true : !props.edge.def.isInvisible,
+);
 
 // defineExpose({ recalculatePoints });
 </script>
