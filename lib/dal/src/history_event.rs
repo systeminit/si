@@ -21,7 +21,7 @@ pub enum HistoryEventError {
 
 pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, StrumDisplay, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, StrumDisplay, Clone, Copy)]
 pub enum HistoryActor {
     User(UserId),
     SystemInit,
@@ -30,12 +30,6 @@ pub enum HistoryActor {
 impl From<UserId> for HistoryActor {
     fn from(id: UserId) -> Self {
         HistoryActor::User(id)
-    }
-}
-
-impl From<&HistoryActor> for HistoryActor {
-    fn from(history_actor: &HistoryActor) -> Self {
-        history_actor.clone()
     }
 }
 

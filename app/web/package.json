@@ -72,7 +72,7 @@
     "@types/codemirror": "^5.60.5",
     "@types/fontfaceobserver": "^2.1.0",
     "@types/javascript-time-ago": "^2.0.3",
-    "@types/lodash": "^4.14.182",
+    "@types/lodash": "^4.14.191",
     "@types/node": "^17.0.29",
     "@types/tinycolor2": "^1.4.3",
     "@types/validator": "^13.7.2",

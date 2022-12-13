@@ -9,7 +9,7 @@ use crate::{
     job::consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    DalContext, StandardModel, Visibility, WsEvent,
+    DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -94,6 +94,8 @@ impl JobConsumer for DependentValuesUpdate {
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
         let now = std::time::Instant::now();
 
+        let mut status_updater = StatusUpdater::initialize(ctx, self.attribute_value_id).await?;
+
         let mut source_attribute_value = AttributeValue::get_by_id(ctx, &self.attribute_value_id)
             .await?
             .ok_or_else(|| {
@@ -115,6 +117,10 @@ impl JobConsumer for DependentValuesUpdate {
             "DependentValuesUpdate for {:?}: dependency_graph {:?}",
             self.attribute_value_id, &dependency_graph
         );
+
+        status_updater
+            .values_queued(ctx, dependency_graph.keys().copied().collect())
+            .await?;
 
         let mut update_tasks = JoinSet::new();
 
@@ -144,6 +150,14 @@ impl JobConsumer for DependentValuesUpdate {
                 result
             });
 
+            if !satisfied_dependencies.is_empty() {
+                // Send a batched running status with all value/component ids that are being
+                // enqueued for processing
+                status_updater
+                    .values_running(ctx, satisfied_dependencies.clone())
+                    .await?;
+            }
+
             for id in satisfied_dependencies {
                 let attribute_value = AttributeValue::get_by_id(ctx, &id)
                     .await?
@@ -159,16 +173,34 @@ impl JobConsumer for DependentValuesUpdate {
                 Some(future_result) => {
                     // We get back a `Some<Result<Result<..>>>`. We've already unwrapped the
                     // `Some`, the outermost `Result` is a `JoinError` to let us know if
-                    // anything went wrong in joining the task. The innermost `Result` is
-                    // the one we're really interested in the contents of, which is why there
-                    // is the `??`.
-                    let finished_id = future_result??;
+                    // anything went wrong in joining the task.
+                    let finished_id = match future_result {
+                        // We have successfully updated a value
+                        Ok(Ok(finished_id)) => finished_id,
+                        // There was an error (with our code) when updating the value
+                        Ok(Err(err)) => {
+                            warn!(error = ?err, "error updating value");
+                            return Err(err.into());
+                        }
+                        // There was a Tokio JoinSet error when joining the task back (i.e. likely
+                        // I/O error)
+                        Err(err) => {
+                            warn!(error = ?err, "error when joining update task");
+                            return Err(err.into());
+                        }
+                    };
+
                     // Remove the `AttributeValueId` that just finished from the list of
                     // unsatisfied dependencies of all entries, so we can check what work
                     // has been unblocked.
                     for (_, val) in dependency_graph.iter_mut() {
                         val.retain(|&id| id != finished_id);
                     }
+
+                    // Send a completed status for this value and *remove* it from the hash
+                    status_updater
+                        .values_completed(ctx, vec![finished_id])
+                        .await?;
                 }
                 // If we get `None` back from the `JoinSet` that means that there are no
                 // further tasks in the `JoinSet` for us to wait on. This should only happen
@@ -182,6 +214,8 @@ impl JobConsumer for DependentValuesUpdate {
                 None => break,
             }
         }
+
+        status_updater.finish(ctx).await?;
 
         WsEvent::change_set_written(ctx).publish(ctx).await?;
 

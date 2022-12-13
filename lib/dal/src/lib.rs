@@ -58,6 +58,7 @@ pub mod socket;
 pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
+pub mod status;
 pub mod timestamp;
 pub mod user;
 pub mod validation;
@@ -99,7 +100,8 @@ pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, Ca
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{
-    resource::ResourceView, Component, ComponentError, ComponentId, ComponentView,
+    resource::ResourceView, Component, ComponentError, ComponentId, ComponentStatus, ComponentView,
+    HistoryActorTimestamp,
 };
 pub use confirmation_prototype::{
     ConfirmationPrototype, ConfirmationPrototypeContext, ConfirmationPrototypeError,
@@ -164,6 +166,9 @@ pub use secret::{
 };
 pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
+pub use status::{
+    StatusUpdate, StatusUpdateError, StatusUpdateResult, StatusUpdater, StatusUpdaterError,
+};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserId, UserPk, UserResult};
 pub use validation::prototype::{
