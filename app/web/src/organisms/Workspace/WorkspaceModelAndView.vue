@@ -169,12 +169,13 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   let parentId;
 
   if (e.parent) {
-    const parentComponent = Object.values(componentsStore.componentsById).find((c) => c.nodeId === e.parent);
+    const parentComponent = Object.values(componentsStore.componentsById).find(
+      (c) => c.nodeId === e.parent,
+    );
     if (
-      parentComponent && (
-        parentComponent.nodeType !== "aggregationFrame"
-        || schemaId === parentComponent.schemaId
-      )
+      parentComponent &&
+      (parentComponent.nodeType !== "aggregationFrame" ||
+        schemaId === parentComponent.schemaId)
     ) {
       parentId = e.parent;
     }
