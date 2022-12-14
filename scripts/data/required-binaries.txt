@@ -4,5 +4,6 @@ docker
 kubeval
 node
 npm
+pnpm
 protoc
 skopeo
