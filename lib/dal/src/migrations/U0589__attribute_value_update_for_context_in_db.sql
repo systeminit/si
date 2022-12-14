@@ -1447,11 +1447,12 @@ BEGIN
             END IF;
 
             field_context := this_update_attribute_context || jsonb_build_object('attribute_context_prop_id', object_field_prop_id);
-            attribute_value := attribute_value_find_with_parent_and_key_for_context_v1(this_read_tenancy,
-                                                                                       this_visibility,
-                                                                                       this_parent_attribute_value_id,
-                                                                                       NULL,
-                                                                                       field_context);
+            attribute_value := jsonb_populate_record(null::attribute_values,
+		                                     attribute_value_find_with_parent_and_key_for_context_v1(this_read_tenancy,
+                                                                                                             this_visibility,
+                                                                                                             this_parent_attribute_value_id,
+                                                                                                             NULL,
+                                                                                                             field_context));
             IF attribute_value IS NULL THEN
                 attribute_value := jsonb_populate_record(null::attribute_values,
                                                          attribute_value_new_v1(this_write_tenancy,
