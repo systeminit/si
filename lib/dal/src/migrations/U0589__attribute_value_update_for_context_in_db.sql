@@ -2457,8 +2457,6 @@ CREATE OR REPLACE FUNCTION jhelwig_debug_attribute_values()
         prop_name                    text,
         context_internal_provider_id ident,
         context_external_provider_id ident,
-        context_schema_id            ident,
-        context_schema_variant_id    ident,
         context_component_id         ident,
         proxy_for_attribute_value_id ident,
         sealed_proxy                 bool,
