@@ -301,11 +301,7 @@ endif
 	$(call header,$@)
 ifeq ($(shell [[ $(FORCE) == "true" && $(LOCAL_PG) == "true" ]] && echo "true"),true)
 	cd $(MAKEPATH)/deploy; $(MAKE) partial-local-pg
-
-	@echo "- waiting for postgres to boot up -"
-# still have to sleep a bit for the postgres connection to exist before checking ready
-	@sleep 2
-	pg_isready -h localhost -t 10 -U si
+	@$(MAKEPATH)/scripts/wait-for-pg.sh
 
 else ifeq ($(shell [[ $(CI) == "true" || $(FORCE) == "true" ]] && echo "true"),true)
 	cd $(MAKEPATH)/deploy; $(MAKE) partial
