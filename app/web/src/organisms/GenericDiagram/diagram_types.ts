@@ -40,6 +40,7 @@ export class DiagramNodeData extends DiagramElementData {
 
 export class DiagramGroupData extends DiagramElementData {
   public sockets?: DiagramSocketData[];
+
   constructor(readonly def: DiagramNodeDef) {
     super();
     this.sockets =
@@ -91,8 +92,7 @@ export class DiagramEdgeData extends DiagramElementData {
 
   // helpers to get the unique key of the node and sockets this edge is connected to
   get fromNodeKey() {
-    const comp =
-      useComponentsStore().componentsById[parseInt(this.def.fromNodeId)];
+    const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
     if (comp.isGroup) {
       return DiagramGroupData.generateUniqueKey(this.def.fromNodeId);
     }
@@ -100,8 +100,7 @@ export class DiagramEdgeData extends DiagramElementData {
   }
 
   get toNodeKey() {
-    const comp =
-      useComponentsStore().componentsById[parseInt(this.def.toNodeId)];
+    const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
     if (comp.isGroup) {
       return DiagramGroupData.generateUniqueKey(this.def.toNodeId);
     }
@@ -109,8 +108,7 @@ export class DiagramEdgeData extends DiagramElementData {
   }
 
   get fromSocketKey() {
-    const comp =
-      useComponentsStore().componentsById[parseInt(this.def.fromNodeId)];
+    const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
     if (comp.isGroup) {
       return DiagramSocketData.generateUniqueKey(
         DiagramGroupData.generateUniqueKey(this.def.fromNodeId),
@@ -124,8 +122,7 @@ export class DiagramEdgeData extends DiagramElementData {
   }
 
   get toSocketKey() {
-    const comp =
-      useComponentsStore().componentsById[parseInt(this.def.toNodeId)];
+    const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
     if (comp.isGroup) {
       return DiagramSocketData.generateUniqueKey(
         DiagramGroupData.generateUniqueKey(this.def.toNodeId),

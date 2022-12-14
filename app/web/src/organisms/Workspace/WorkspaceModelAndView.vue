@@ -115,17 +115,26 @@ const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 const componentsStore = useComponentsStore();
 // TODO: probably want to get more generic component data and then transform into diagram nodes
 const diagramEdges = computed(() => {
+  // Note(victor): The code below checks whether was only created implicitly, through inheritance from an aggregation frame
+  // In the future, it would make more sense for this to be stored on the database
   const edges = _.map(componentsStore.diagramEdges, (edge) => {
     edge.isInvisible = false;
-    const parentId =
-      componentsStore.componentsById[parseInt(edge.toNodeId)].parentId;
+    const parentId = componentsStore.componentsByNodeId[edge.toNodeId].parentId;
 
     if (parentId === undefined) return edge;
 
-    const parentComp = componentsStore.componentsById[parseInt(parentId)];
+    const parentComp = componentsStore.componentsByNodeId[parentId];
 
     if (parentComp.nodeType === "aggregationFrame") {
-      edge.isInvisible = true;
+      const edgesToFrame = componentsStore.edgesByToNodeId[parentId];
+
+      const sameEdgeButToParent = edgesToFrame.find(
+        (e) =>
+          e.fromSocketId === edge.fromSocketId &&
+          e.fromNodeId === edge.fromNodeId,
+      );
+
+      edge.isInvisible = sameEdgeButToParent !== undefined;
     }
 
     return edge;
@@ -183,11 +192,11 @@ async function onDrawEdge(e: DrawEdgeEvent) {
     );
 
     await componentsStore.CREATE_AGGREGATE_PROXY_CONNECTIONS(
-      parseInt(e.toSocket.parent.def.id),
-      _.map(unattachedChildIds, (s) => parseInt(s)),
-      parseInt(e.fromSocket.def.id),
-      parseInt(e.toSocket.def.id),
-      parseInt(e.fromSocket.parent.def.id),
+      e.toSocket.parent.def.id,
+      unattachedChildIds,
+      e.fromSocket.def.id,
+      e.toSocket.def.id,
+      e.fromSocket.parent.def.id,
     );
     return;
   }
@@ -316,10 +325,10 @@ watch(
 function onGroupElements({ group, elements }: GroupEvent) {
   if (group.def.nodeType === "aggregationFrame") {
     const groupSchemaId =
-      componentsStore.componentsById[group.def.id].schemaVariantId;
+      componentsStore.componentsByNodeId[group.def.id].schemaVariantId;
     elements = _.filter(elements, (e) => {
       const elementSchemaId =
-        componentsStore.componentsById[e.def.id].schemaVariantId;
+        componentsStore.componentsByNodeId[e.def.id].schemaVariantId;
 
       return elementSchemaId === groupSchemaId;
     });
