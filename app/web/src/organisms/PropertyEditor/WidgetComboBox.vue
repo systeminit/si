@@ -10,7 +10,7 @@
           :title="name"
           :doc-link="docLink"
           :disabled="disabled"
-          :validations="validations"
+          :validations="siValidations"
           always-validate
           @change="setField"
         />
@@ -46,14 +46,14 @@ const props = defineProps<{
   value: unknown;
   propId: string;
   valueId: string;
-  validation?: PropertyEditorValidation;
+  validations?: PropertyEditorValidation[];
   docLink?: string;
   disabled?: boolean;
   required?: boolean; // NOTE(victor) this was being passed down as undefined. Keeping it since we'll use it someday.
   description?: string; // NOTE(victor) this was being passed down as undefined. Keeping it since we'll use it someday.
 }>();
 
-const validation = toRef(props, "validation", undefined);
+const validations = toRef(props, "validations", undefined);
 
 const emit = defineEmits<{
   (e: "updatedProperty", v: UpdatedProperty): void;
@@ -103,5 +103,5 @@ const unsetField = () => {
   });
 };
 
-const validations = usePropertyEditorValidations(validation);
+const siValidations = usePropertyEditorValidations(validations);
 </script>

@@ -11,7 +11,7 @@
         :prop-value="pv"
         :path="paths[pv.id]"
         :collapsed-paths="collapsed"
-        :validation="validationsByValueId[pv.id]"
+        :validations="validationsByPropId[pv.propId]"
         :array-index="arrayIndicesByValueId[pv.id]"
         :array-length="arrayLengthsByPropId[pv.propId]"
         :is-first-prop="index === 0"
@@ -72,9 +72,22 @@ const validations = computed(() => props.editorContext.validations);
 const schemasByPropId = computed(() => {
   return props.editorContext.schema.props;
 });
-const validationsByValueId = computed(() => {
-  return _.keyBy(validations.value, (v) => v.valueId);
-});
+
+const validationsByPropId = computed(() =>
+  validations.value.reduce((validationsByProp, validation) => {
+    const { propId, valid, message } = validation;
+
+    if (!(propId in validationsByProp)) {
+      validationsByProp[propId] = [];
+    }
+
+    if (!valid && message) {
+      validationsByProp[propId].push(validation);
+    }
+
+    return validationsByProp;
+  }, {} as { [key: string]: PropertyEditorValidation[] }),
+);
 
 const collapsed = ref<Array<Array<string>>>([]);
 const toggleCollapsed = (path: string[]) => {

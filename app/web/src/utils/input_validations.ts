@@ -54,19 +54,13 @@ export const useValidations = (
 };
 
 export const usePropertyEditorValidations = (
-  validation: Ref<PropertyEditorValidation | undefined> | undefined,
+  validation: Ref<PropertyEditorValidation[] | undefined> | undefined,
 ) =>
-  computed(() => {
-    const results: ValidatorArray = [];
-    if (validation?.value) {
-      for (let x = 0; x < validation.value?.errors.length ?? 0; x++) {
-        const error = validation.value.errors[x];
-        results.push({
-          id: `${x}`,
-          message: error.message,
-          check: () => false,
-        });
-      }
-    }
-    return results;
-  });
+  computed(
+    () =>
+      validation?.value?.map(({ message }, idx) => ({
+        id: `${idx + 1}`,
+        message: message ?? "",
+        check: (_v: string) => false,
+      })) ?? [],
+  );

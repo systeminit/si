@@ -7,7 +7,7 @@
           v-model="currentValue"
           :title="props.name"
           :doc-link="docLink"
-          :validations="validations"
+          :validations="siValidations"
           :disabled="disabled"
           always-validate
           @blur="setField"
@@ -43,7 +43,7 @@ const props = defineProps<{
   propId: string;
   valueId: string;
   docLink?: string;
-  validation?: PropertyEditorValidation;
+  validations?: PropertyEditorValidation[];
   disabled?: boolean;
 }>();
 
@@ -51,7 +51,7 @@ const emit = defineEmits<{
   (e: "updatedProperty", v: UpdatedProperty): void;
 }>();
 
-const { name, path, collapsedPaths, valueId, propId, value, validation } =
+const { name, path, collapsedPaths, valueId, propId, value, validations } =
   toRefs(props);
 
 const currentValue = ref<boolean | undefined>(undefined);
@@ -100,5 +100,5 @@ const unsetField = () => {
   });
 };
 
-const validations = usePropertyEditorValidations(validation);
+const siValidations = usePropertyEditorValidations(validations);
 </script>

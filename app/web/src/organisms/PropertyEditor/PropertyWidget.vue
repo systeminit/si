@@ -50,7 +50,7 @@
       :value-id="propValue.id"
       :prop-kind="schemaProp.kind"
       :doc-link="schemaProp.docLink"
-      :validation="validation"
+      :validations="validations"
       :disabled="disabled"
       :func="propValue.func"
       :class="INPUT_CLASSES"
@@ -65,7 +65,7 @@
       :prop-id="propValue.propId"
       :value-id="propValue.id"
       :doc-link="schemaProp.docLink"
-      :validation="validation"
+      :validations="validations"
       :disabled="disabled"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
@@ -83,7 +83,7 @@
       :prop-id="propValue.propId"
       :value-id="propValue.id"
       :doc-link="schemaProp.docLink"
-      :validation="validation"
+      :validations="validations"
       :disabled="disabled"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
@@ -98,7 +98,7 @@
       :prop-id="propValue.propId"
       :value-id="propValue.id"
       :doc-link="schemaProp.docLink"
-      :validation="validation"
+      :validations="validations"
       :disabled="disabled"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
@@ -158,7 +158,7 @@ const INPUT_CLASSES = tw`pl-lg pr-sm pt-sm`;
 const props = defineProps<{
   schemaProp: PropertyEditorProp;
   propValue: PropertyEditorValue;
-  validation?: PropertyEditorValidation;
+  validations?: PropertyEditorValidation[];
   path?: PropertyPath;
   collapsedPaths: Array<Array<string>>;
   disabled?: boolean;

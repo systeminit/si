@@ -4,6 +4,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use dal::func::argument::FuncArgument;
 use dal::{
     attribute::context::AttributeContextBuilder,
     attribute::context::AttributeContextBuilderError,
@@ -21,10 +22,6 @@ use dal::{
     InternalProviderError, InternalProviderId, PropError, PropId, PrototypeListForFunc,
     PrototypeListForFuncError, ReadTenancyError, SchemaVariantId, StandardModel,
     StandardModelError, TransactionsError, Visibility, WriteTenancyError, WsEventError,
-};
-use dal::{
-    func::argument::FuncArgument, ValidationPrototype, ValidationPrototypeError,
-    ValidationPrototypeId,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -91,8 +88,6 @@ pub enum FuncError {
     PrototypeListForFunc(#[from] PrototypeListForFuncError),
     #[error("confirmation prototype error: {0}")]
     ConfirmationPrototype(#[from] ConfirmationPrototypeError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
 
     #[error("Function not found")]
     FuncNotFound,
@@ -128,10 +123,6 @@ pub enum FuncError {
     AttributePrototypeMissingProp(AttributePrototypeId, PropId),
     #[error("attribute prototype {0} is missing argument {1}")]
     AttributePrototypeMissingArgument(AttributePrototypeId, AttributePrototypeArgumentId),
-    #[error("validation prototype {0} schema_variant is missing")]
-    ValidationPrototypeMissingSchemaVariant(SchemaVariantId),
-    #[error("validation prototype schema is missing")]
-    ValidationPrototypeMissingSchema,
     #[error("component missing schema variant")]
     ComponentMissingSchemaVariant(ComponentId),
     #[error("schema variant missing schema")]
@@ -186,14 +177,6 @@ impl AttributePrototypeView {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ValidationPrototypeView {
-    id: ValidationPrototypeId,
-    schema_variant_id: SchemaVariantId,
-    prop_id: PropId,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum FuncAssociations {
     #[serde(rename_all = "camelCase")]
@@ -216,10 +199,6 @@ pub enum FuncAssociations {
     Confirmation {
         schema_variant_ids: Vec<SchemaVariantId>,
         component_ids: Vec<ComponentId>,
-    },
-    #[serde(rename_all = "camelCase")]
-    Validation {
-        prototypes: Vec<ValidationPrototypeView>,
     },
 }
 
@@ -336,21 +315,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                 component_ids,
             })
         }
-        FuncBackendKind::JsValidation => {
-            let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
-
-            Some(FuncAssociations::Validation {
-                prototypes: protos
-                    .iter()
-                    .map(|proto| ValidationPrototypeView {
-                        id: *proto.id(),
-                        schema_variant_id: proto.context().schema_variant_id(),
-                        prop_id: proto.context().prop_id(),
-                    })
-                    .collect(),
-            })
-        }
-
         _ => None,
     };
 

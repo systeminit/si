@@ -13,8 +13,7 @@ use cyclone_core::{
     process::{self, ShutdownError},
     CanonicalCommand, CommandRunRequest, CommandRunResultSuccess, ConfirmationRequest,
     ConfirmationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -166,21 +165,6 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .map_err(ClientError::unhealthy)?;
 
         let result = self.client.execute_resolver(request).await;
-        self.count_request();
-
-        result
-    }
-
-    async fn execute_validation(
-        &mut self,
-        request: ValidationRequest,
-    ) -> result::Result<Execution<TcpStream, ValidationRequest, ValidationResultSuccess>, ClientError>
-    {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
-        let result = self.client.execute_validation(request).await;
         self.count_request();
 
         result

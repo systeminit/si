@@ -6,6 +6,7 @@ use telemetry::prelude::*;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
+use crate::schema::variant::leaves::LeafKind;
 use crate::{
     AttributeReadContext, CodeLanguage, CodeView, ComponentError, ComponentId, DalContext,
     StandardModel, WsEvent, WsPayload,
@@ -37,7 +38,12 @@ impl Component {
         // Prepare to assemble code views and access the "/root/code" prop tree.
         let mut code_views: Vec<CodeView> = Vec::new();
         let code_map_implicit_internal_provider =
-            SchemaVariant::find_code_implicit_internal_provider(ctx, *schema_variant.id()).await?;
+            SchemaVariant::find_leaf_implicit_internal_provider(
+                ctx,
+                *schema_variant.id(),
+                LeafKind::CodeGeneration,
+            )
+            .await?;
         let code_map_attribute_read_context = AttributeReadContext {
             internal_provider_id: Some(*code_map_implicit_internal_provider.id()),
             component_id: Some(component_id),

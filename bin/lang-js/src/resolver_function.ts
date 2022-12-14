@@ -120,6 +120,28 @@ const isCodeGeneration = (value: any): TypeCheckResult => {
   return { valid: true };
 };
 
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+const isValidation = (value: any): TypeCheckResult => {
+  if (!("valid" in value) || !(typeof value.valid === "boolean")) {
+    return {
+      valid: false,
+      message: "The 'valid' field type must be a boolean",
+    };
+  }
+
+  if (
+    !(typeof value.message === "undefined") &&
+    !(typeof value.message === "string")
+  ) {
+    return {
+      valid: false,
+      message: "The 'message' field must be a string or undefined",
+    };
+  }
+
+  return { valid: true };
+};
+
 const typeChecks: {
   [key in FuncBackendResponseType]?: (
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
@@ -134,6 +156,7 @@ const typeChecks: {
   [FuncBackendResponseType.Map]: isObject, // map funcs return js objects
 
   [FuncBackendResponseType.CodeGeneration]: isCodeGeneration,
+  [FuncBackendResponseType.Validation]: isValidation,
 };
 
 const nullables: { [key in FuncBackendResponseType]?: boolean } = {
@@ -145,6 +168,7 @@ const nullables: { [key in FuncBackendResponseType]?: boolean } = {
   [FuncBackendResponseType.Map]: true,
 
   [FuncBackendResponseType.CodeGeneration]: false,
+  [FuncBackendResponseType.Validation]: false,
 };
 
 export async function executeResolverFunction(

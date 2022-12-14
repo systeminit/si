@@ -17,8 +17,8 @@ use crate::{
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
     AttributePrototypeError, AttributeValueError, BillingAccount, BillingAccountId, Component,
     DalContext, DiagramKind, FuncError, HistoryEventError, Organization, OrganizationId, PropError,
-    ReadTenancyError, StandardModel, StandardModelError, Timestamp, ValidationPrototypeError,
-    Visibility, Workspace, WorkspaceId, WsEventError,
+    ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility, Workspace,
+    WorkspaceId, WsEventError,
 };
 
 pub use ui_menu::SchemaUiMenu;
@@ -78,8 +78,6 @@ pub enum SchemaError {
     SchemaUiMenuNotFound(SchemaUiMenuId),
     #[error("schema variant error: {0}")]
     Variant(#[from] SchemaVariantError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }

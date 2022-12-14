@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use std::collections::HashMap;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -13,10 +12,7 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::code_view::CodeViewError;
-use crate::func::backend::{
-    js_validation::FuncBackendJsValidationArgs, validation::FuncBackendValidationArgs,
-};
-use crate::func::binding::{FuncBinding, FuncBindingError};
+use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::{
     FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
 };
@@ -25,19 +21,16 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::SocketEdgeKind;
 use crate::standard_model::object_from_row;
-use crate::validation::ValidationConstructorError;
 use crate::ws_event::WsEventError;
 use crate::{
     func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
-    AttributePrototypeId, AttributeReadContext, CodeLanguage, DalContext, EdgeError,
-    ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider,
-    InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError, PropId,
-    ReadTenancyError, Schema, SchemaError, SchemaId, Socket, StandardModel, StandardModelError,
-    Timestamp, TransactionsError, ValidationPrototype, ValidationPrototypeError,
-    ValidationResolver, ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError,
-    WriteTenancy,
+    AttributePrototypeId, AttributeReadContext, CodeLanguage, DalContext, EdgeError, Func,
+    HistoryEventError, InternalProvider, Node, NodeError, OrganizationError, Prop, PropError,
+    PropId, ReadTenancyError, Schema, SchemaError, SchemaId, Socket, StandardModel,
+    StandardModelError, Timestamp, TransactionsError, Visibility, WorkflowRunnerError,
+    WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationError};
 
@@ -48,6 +41,7 @@ pub mod diff;
 pub mod qualification;
 pub mod resource;
 pub mod stats;
+pub mod validation;
 pub mod view;
 
 #[derive(Error, Debug)]
@@ -82,8 +76,6 @@ pub enum ComponentError {
     InternalProviderNotFoundForProp(PropId),
     #[error("invalid context(s) provided for diff")]
     InvalidContextForDiff,
-    #[error("invalid func backend kind (0:?) for checking validations (need validation kind)")]
-    InvalidFuncBackendKindForValidations(FuncBackendKind),
     #[error("missing attribute value for id: ({0})")]
     MissingAttributeValue(AttributeValueId),
     #[error("missing index map on attribute value: {0}")]
@@ -92,12 +84,14 @@ pub enum ComponentError {
     MultipleRootProps(Vec<Prop>),
     #[error("root prop not found for schema variant: {0}")]
     RootPropNotFound(SchemaVariantId),
-    #[error("validation error: {0}")]
-    Validation(#[from] ValidationConstructorError),
     #[error("attribute value does not have a prototype: {0}")]
     MissingAttributePrototype(AttributeValueId),
     #[error("attribute prototype does not have a function: {0}")]
     MissingAttributePrototypeFunction(AttributePrototypeId),
+    #[error("ulid decode error: {0}")]
+    UlidDecode(#[from] ulid::DecodeError),
+    #[error("validation key {0} is missing PropId")]
+    ValidationKeyMissingPropId(String),
 
     // FIXME: change the below to be alphabetical and re-join with the above variants.
     #[error(transparent)]
@@ -144,12 +138,6 @@ pub enum ComponentError {
     InvalidPropValue(&'static str, Value),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
-    #[error("validation resolver error: {0}")]
-    ValidationResolver(#[from] ValidationResolverError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
-    #[error("validation prototype does not match component schema variant: {0}")]
-    ValidationPrototypeMismatch(SchemaVariantId),
     #[error("qualification error: {0}")]
     Qualification(#[from] QualificationError),
     #[error("read tenancy error: {0}")]
@@ -367,137 +355,6 @@ impl Component {
             )
             .await?;
         Ok(standard_model::object_option_from_row_option(row)?)
-    }
-
-    pub async fn check_single_validation(
-        &self,
-        ctx: &DalContext,
-        validation_prototype: &ValidationPrototype,
-        value_cache: &mut HashMap<PropId, (Option<Value>, AttributeValue)>,
-    ) -> ComponentResult<()> {
-        let base_attribute_read_context = AttributeReadContext {
-            prop_id: None,
-            external_provider_id: Some(ExternalProviderId::NONE),
-            internal_provider_id: Some(InternalProviderId::NONE),
-            component_id: Some(self.id),
-        };
-
-        let prop_id = validation_prototype.context().prop_id();
-
-        let (maybe_value, attribute_value) = match value_cache.get(&prop_id) {
-            Some((value, attribute_value)) => (value.to_owned(), attribute_value.clone()),
-            None => {
-                let attribute_read_context = AttributeReadContext {
-                    prop_id: Some(prop_id),
-                    ..base_attribute_read_context
-                };
-                let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
-                    .await?
-                    .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                        attribute_read_context,
-                    ))?;
-
-                let value = match FuncBindingReturnValue::get_by_id(
-                    ctx,
-                    &attribute_value.func_binding_return_value_id(),
-                )
-                .await?
-                {
-                    Some(func_binding_return_value) => func_binding_return_value.value().cloned(),
-                    None => None,
-                };
-
-                value_cache.insert(prop_id, (value.clone(), attribute_value.clone()));
-                (value, attribute_value)
-            }
-        };
-
-        let func = Func::get_by_id(ctx, &validation_prototype.func_id())
-            .await?
-            .ok_or_else(|| PropError::MissingFuncById(validation_prototype.func_id()))?;
-
-        let mutated_args = match func.backend_kind() {
-            FuncBackendKind::Validation => {
-                // Deserialize the args, update the "value", and serialize the mutated args.
-                let mut args = FuncBackendValidationArgs::deserialize(validation_prototype.args())?;
-                args.validation = args.validation.update_value(&maybe_value)?;
-
-                serde_json::to_value(args)?
-            }
-            FuncBackendKind::JsValidation => serde_json::to_value(FuncBackendJsValidationArgs {
-                value: maybe_value.unwrap_or(serde_json::json!(null)),
-            })?,
-            kind => {
-                return Err(ComponentError::InvalidFuncBackendKindForValidations(*kind));
-            }
-        };
-
-        // Now, we can load in the mutated args!
-        let (func_binding, _) =
-            FuncBinding::create_and_execute(ctx, mutated_args, *func.id()).await?;
-
-        let attribute_value_id = *attribute_value.id();
-
-        // Does a resolver already exist for this validation func and attribute value? If so, we
-        // need to make sure the attribute_value_func_binding_return_value_id matches the
-        // func_binding_return_value_id of the current attribute value, since it could be different
-        // *even if the value is the same*. We also need to be sure to create a resolver for each
-        // attribute_value_id, since the way func_bindings are cached means the validation func
-        // won't be created for the same validation func + value, despite running this on a
-        // completely different attribute value (or even prop).
-        match ValidationResolver::find_for_attribute_value_and_validation_func(
-            ctx,
-            attribute_value_id,
-            *func.id(),
-        )
-        .await?
-        .pop()
-        {
-            Some(mut existing_resolver) => {
-                existing_resolver
-                    .set_validation_func_binding_id(ctx, func_binding.id())
-                    .await?;
-                existing_resolver
-                    .set_attribute_value_func_binding_return_value_id(
-                        ctx,
-                        attribute_value.func_binding_return_value_id(),
-                    )
-                    .await?;
-            }
-            None => {
-                ValidationResolver::new(
-                    ctx,
-                    *validation_prototype.id(),
-                    attribute_value_id,
-                    *func_binding.id(),
-                )
-                .await?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Check validations for [`Self`].
-    pub async fn check_validations(&self, ctx: &DalContext) -> ComponentResult<()> {
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-
-        let validation_prototypes =
-            ValidationPrototype::list_for_schema_variant(ctx, *schema_variant.id()).await?;
-
-        // Cache data necessary for assembling func arguments. We do this since a prop can have
-        // multiple validation prototypes within schema variant.
-        let mut cache: HashMap<PropId, (Option<Value>, AttributeValue)> = HashMap::new();
-
-        for validation_prototype in validation_prototypes {
-            self.check_single_validation(ctx, &validation_prototype, &mut cache)
-                .await?;
-        }
-
-        Ok(())
     }
 
     #[instrument(skip_all)]

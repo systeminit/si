@@ -1,0 +1,16 @@
+{
+    "kind": "JsAttribute",
+    "arguments": [
+      {
+        "name": "value",
+        "kind": "String"
+      }
+    ],
+    "response_type": "Validation",
+    "display_name": "si:validationHasAmiPrefix",
+    "description": "Checks if the AMI image id has the 'ami-' prefix",
+    "link": null,
+    "code_file": "validationHasAmiPrefix.js",
+    "code_entrypoint": "hasAmiPrefix"
+  }
+  

@@ -78,10 +78,18 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
+
+        schema_variant.finalize(ctx).await?; // generate internal providers --- should this have a different name?
+
+        let domain_implicit_internal_provider =
+            SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+                .await?;
+
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             *code_generation_func_argument.id(),
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
@@ -232,10 +240,18 @@ impl MigrationDriver {
         let (qualification_func_id, qualification_func_argument_id) = self
             .find_func_and_single_argument_by_names(ctx, "si:qualificationKubevalYaml", "domain")
             .await?;
+
+        schema_variant.finalize(ctx).await?;
+
+        let domain_implicit_internal_provider =
+            SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+                .await?;
+
         SchemaVariant::add_leaf(
             ctx,
             qualification_func_id,
             qualification_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::Qualification,
         )
@@ -254,10 +270,16 @@ impl MigrationDriver {
                         "domain".to_string(),
                     )
                 })?;
+        schema_variant.finalize(ctx).await?;
+
+        let domain_implicit_internal_provider =
+            SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+                .await?;
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             *code_generation_func_argument.id(),
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )

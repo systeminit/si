@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::{
     pk, schema::variant::SchemaVariantError, AttributeValueError, AttributeValueId, ComponentError,
-    PropId, SchemaVariantId, StandardModelError, ValidationResolverError,
+    PropId, SchemaVariantId, StandardModelError,
 };
 
 pub mod schema;
@@ -37,8 +37,6 @@ pub enum PropertyEditorError {
     ComponentNotFound,
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("validation resolver error: {0}")]
-    ValidationResolver(#[from] ValidationResolverError),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
 }

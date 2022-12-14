@@ -39,10 +39,21 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
             .expect("could not perform func argument find")
             .expect("no func argument found");
 
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("could not generate internal providers");
+
+    let domain_implicit_internal_provider =
+        SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+            .await
+            .expect("could not find domain implicit internal provider");
+
     SchemaVariant::add_leaf(
         ctx,
         *func.id(),
         *code_generation_func_argument.id(),
+        *domain_implicit_internal_provider.id(),
         *schema_variant.id(),
         LeafKind::CodeGeneration,
     )

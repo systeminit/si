@@ -1,8 +1,8 @@
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CommandRunRequest, CommandRunResultSuccess,
     ConfirmationRequest, ConfirmationResultSuccess, CycloneClient, Manager, Pool, ProgressMessage,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
-    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use si_data_nats::NatsClient;
@@ -42,8 +42,6 @@ pub enum ServerError {
     Subscriber(#[from] SubscriberError),
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
     WrongCycloneSpec(&'static str, CycloneSpec),
-    #[error(transparent)]
-    Validation(#[from] deadpool_cyclone::ExecutionError<ValidationResultSuccess>),
     #[error(transparent)]
     WorkflowResolve(#[from] deadpool_cyclone::ExecutionError<WorkflowResolveResultSuccess>),
     #[error(transparent)]
@@ -141,12 +139,6 @@ impl Server {
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_resolver_function_requests_task(
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.cyclone_pool.clone(),
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
-            process_validation_requests_task(
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
@@ -394,118 +386,6 @@ async fn confirmation_request(
         .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
     let mut progress = client
         .execute_confirmation(cyclone_request)
-        .await?
-        .start()
-        .await?;
-
-    while let Some(msg) = progress.next().await {
-        match msg {
-            Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await?;
-            }
-            Ok(ProgressMessage::Heartbeat) => {
-                trace!("received heartbeat message");
-            }
-            Err(err) => {
-                warn!(error = ?err, "next progress message was an error, bailing out");
-                break;
-            }
-        }
-    }
-    publisher.finalize_output().await?;
-
-    let function_result = progress.finish().await?;
-    publisher.publish_result(&function_result).await?;
-
-    Ok(())
-}
-
-async fn process_validation_requests_task(
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) =
-        process_validation_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx).await
-    {
-        warn!(error = ?err, "processing confirmation requests failed");
-    }
-}
-
-async fn process_validation_requests(
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> Result<()> {
-    let mut requests = Subscriber::validation(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process validation requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Spawn a task an process the request
-                        tokio::spawn(validation_request_task(
-                            nats.clone(),
-                            cyclone_pool.clone(),
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next validation request had error");
-                    }
-                    None => {
-                        trace!("validation requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
-
-    Ok(())
-}
-
-async fn validation_request_task(
-    nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<ValidationRequest>,
-) {
-    if let Err(err) = validation_request(nats, cyclone_pool, request).await {
-        warn!(error = ?err, "validation execution failed");
-    }
-}
-
-async fn validation_request(
-    nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<ValidationRequest>,
-) -> Result<()> {
-    let (reply_mailbox, cyclone_request) = request.into_parts();
-
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool
-        .get()
-        .await
-        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
-    let mut progress = client
-        .execute_validation(cyclone_request)
         .await?
         .start()
         .await?;

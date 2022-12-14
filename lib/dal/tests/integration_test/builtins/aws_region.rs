@@ -1,7 +1,4 @@
-use dal::{
-    validation::ValidationErrorKind, DalContext, Edge, ExternalProvider, InternalProvider,
-    StandardModel, ValidationResolver,
-};
+use dal::{Component, DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
@@ -43,6 +40,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
+            .drop_validation()
             .to_value() // actual
     );
     assert_eq!(
@@ -68,6 +66,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
+            .drop_validation()
             .to_value() // actual
     );
 
@@ -113,7 +112,11 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "type": "configurationFrame"
             }
         }], // expected
-        region_payload.component_view_properties_raw(ctx).await // actual
+        region_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_validation()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -138,6 +141,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
+            .drop_validation()
             .to_value() // actual
     );
 
@@ -162,7 +166,11 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "type": "configurationFrame"
             }
         }], // expected
-        region_payload.component_view_properties_raw(ctx).await // actual
+        region_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_validation()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -188,6 +196,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             .component_view_properties(ctx)
             .await
             .drop_qualification()
+            .drop_validation()
             .to_value() // actual
     );
 }
@@ -199,13 +208,25 @@ async fn aws_region_field_validation(ctx: &DalContext) {
         .create_component(ctx, "region", Builtin::AwsRegion)
         .await;
 
-    let updated_region_attribute_value_id = region_payload
+    let _updated_region_attribute_value_id = region_payload
         .update_attribute_value_for_prop_name(
             ctx,
             "/root/domain/region",
             Some(serde_json::json!["us-poop-1"]),
         )
         .await;
+
+    let validations = Component::list_validations(ctx, region_payload.component_id)
+        .await
+        .expect("able to fetch validations");
+
+    assert_eq!(1, validations.len());
+
+    let validation_error = "'us-poop-1' is not a valid AWS region";
+    let validation = &validations[0];
+    let validation_map_key = format!("{};si:validationIsValidRegion", validation.prop_id);
+
+    assert_eq!(Some(validation_error.to_string()), validation.message);
 
     assert_eq!(
         serde_json::json![{
@@ -216,45 +237,20 @@ async fn aws_region_field_validation(ctx: &DalContext) {
 
             "domain": {
                 "region": "us-poop-1",
-            }
+            },
+
+            "validation": {
+                &validation_map_key: {
+                    "valid": false,
+                    "message": validation_error,
+                },
+            },
+
         }], // actual
         region_payload.component_view_properties_raw(ctx).await // expected
     );
 
-    let validation_statuses = ValidationResolver::find_status(ctx, region_payload.component_id)
-        .await
-        .expect("could not find status for validation(s) of a given component");
-
-    let mut expected_validation_status = None;
-    for validation_status in &validation_statuses {
-        if validation_status.attribute_value_id == updated_region_attribute_value_id {
-            if expected_validation_status.is_some() {
-                panic!(
-                    "found more than one expected validation status: {:?}",
-                    validation_statuses
-                );
-            }
-            expected_validation_status = Some(validation_status.clone());
-        }
-    }
-    let expected_validation_status =
-        expected_validation_status.expect("did not find expected validation status");
-
-    let mut found_expected_validation_error = false;
-    for validation_error in &expected_validation_status.errors {
-        if validation_error.kind == ValidationErrorKind::StringNotInStringArray {
-            if found_expected_validation_error {
-                panic!(
-                    "found more than one expected validation error: {:?}",
-                    validation_error
-                );
-            }
-            found_expected_validation_error = true;
-        }
-    }
-    assert!(found_expected_validation_error);
-
-    let updated_region_attribute_value_id = region_payload
+    let _updated_region_attribute_value_id = region_payload
         .update_attribute_value_for_prop_name(
             ctx,
             "/root/domain/region",
@@ -271,29 +267,16 @@ async fn aws_region_field_validation(ctx: &DalContext) {
 
             "domain": {
                 "region": "us-east-1"
-            }
+            },
+
+            "validation": {
+                &validation_map_key: {
+                    "valid": true,
+                },
+            },
         }], // actual
         region_payload.component_view_properties_raw(ctx).await // expected
     );
 
-    // TODO(nick): now, ensure we have the right value! Huzzah.
-    let validation_statuses = ValidationResolver::find_status(ctx, region_payload.component_id)
-        .await
-        .expect("could not find status for validation(s) of a given component");
-
-    let mut expected_validation_status = None;
-    for validation_status in &validation_statuses {
-        if validation_status.attribute_value_id == updated_region_attribute_value_id {
-            if expected_validation_status.is_some() {
-                panic!(
-                    "found more than one expected validation status: {:?}",
-                    validation_statuses
-                );
-            }
-            expected_validation_status = Some(validation_status.clone());
-        }
-    }
-    let expected_validation_status =
-        expected_validation_status.expect("did not find expected validation status");
-    assert!(expected_validation_status.errors.is_empty());
+    // assert valid = true
 }

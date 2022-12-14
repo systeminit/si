@@ -1,0 +1,16 @@
+{
+    "kind": "JsAttribute",
+    "arguments": [
+      {
+        "name": "value",
+        "kind": "String"
+      }
+    ],
+    "response_type": "Validation",
+    "display_name": "si:validationIsValidRegion",
+    "description": "Checks if region is valid for AWS",
+    "link": null,
+    "code_file": "validationIsValidRegion.js",
+    "code_entrypoint": "isValidRegion"
+  }
+  

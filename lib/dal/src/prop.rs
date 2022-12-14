@@ -20,8 +20,8 @@ use crate::{
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, standard_model_many_to_many, AttributeContext,
     AttributeContextBuilderError, AttributeReadContext, DalContext, Func, FuncId,
-    HistoryEventError, ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    HistoryEventError, InternalProvider, ReadTenancyError, SchemaVariant, SchemaVariantId,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{AttributeValueError, AttributeValueId};
 
@@ -60,6 +60,8 @@ pub enum PropError {
     ReadTenancy(#[from] ReadTenancyError),
     #[error("cannot set parent for a non object, array, or map prop: id {0} is a {1}. Bug!")]
     ParentNotAllowed(PropId, PropKind),
+    #[error("cannot find internal provider for prop id {0}: {1}")]
+    InternalProviderNotFound(PropId, String),
 }
 
 pub type PropResult<T> = Result<T, PropError>;
@@ -309,6 +311,20 @@ impl Prop {
                 .join("/"),
         ]
         .join(""))
+    }
+
+    pub async fn internal_provider(
+        &self,
+        ctx: &DalContext,
+    ) -> PropResult<Option<InternalProvider>> {
+        // some custom handling here to avoid a drop-check cycle
+        match InternalProvider::find_for_prop(ctx, *self.id()).await {
+            Ok(maybe_ip) => Ok(maybe_ip),
+            Err(err) => Err(PropError::InternalProviderNotFound(
+                *self.id(),
+                format!("{err}"),
+            )),
+        }
     }
 
     pub async fn create_default_prototypes_and_values(

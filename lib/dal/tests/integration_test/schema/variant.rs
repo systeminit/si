@@ -87,19 +87,24 @@ async fn find_implicit_internal_providers_for_root_children(ctx: &DalContext) {
         *found_domain_internal_provider.id()
     );
 
-    let found_code_internal_provider =
-        SchemaVariant::find_code_implicit_internal_provider(ctx, *schema_variant.id())
-            .await
-            .expect("could not find internal provider");
+    for (leaf_kind, expected_prop_id) in [
+        (LeafKind::CodeGeneration, root_prop.code_prop_id),
+        (LeafKind::Qualification, root_prop.qualification_prop_id),
+        (LeafKind::Validation, root_prop.validation_prop_id),
+    ] {
+        let found_ip = SchemaVariant::find_leaf_implicit_internal_provider(
+            ctx,
+            *schema_variant.id(),
+            leaf_kind,
+        )
+        .await
+        .expect("could not find internal provider");
 
-    let expected_code_internal_provider =
-        InternalProvider::find_for_prop(ctx, root_prop.code_prop_id)
+        let expected_ip = InternalProvider::find_for_prop(ctx, expected_prop_id)
             .await
             .expect("could not perform find for prop")
             .expect("internal provider not found");
 
-    assert_eq!(
-        *expected_code_internal_provider.id(),
-        *found_code_internal_provider.id()
-    );
+        assert_eq!(*expected_ip.id(), *found_ip.id());
+    }
 }

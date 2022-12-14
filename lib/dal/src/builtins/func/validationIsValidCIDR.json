@@ -1,0 +1,16 @@
+{
+    "kind": "JsAttribute",
+    "arguments": [
+      {
+        "name": "value",
+        "kind": "String"
+      }
+    ],
+    "response_type": "Validation",
+    "display_name": "si:validationIsValidCIDR",
+    "description": "Checks if the input is a valid IPV4 or IPV6 CIDR range",
+    "link": null,
+    "code_file": "validationIsValidCIDR.js",
+    "code_entrypoint": "isValidCIDR"
+  }
+  

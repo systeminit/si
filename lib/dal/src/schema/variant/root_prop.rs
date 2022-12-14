@@ -30,6 +30,9 @@ pub struct RootProp {
     /// Contains the tree of [`Props`](crate::Prop) corresponding to qualification
     /// [`Funcs`](crate::Func).
     pub qualification_prop_id: PropId,
+    /// The [`Props`](crate::Prop) corresponding to the map of validation
+    /// [`Funcs`](crate::Func) results.
+    pub validation_prop_id: PropId,
 }
 
 impl RootProp {
@@ -60,6 +63,7 @@ impl RootProp {
 
         let resource_specific_prop_id = Self::setup_resource(ctx, root_prop_id).await?;
         let code_specific_prop_id = Self::setup_code(ctx, root_prop_id).await?;
+        let validation_prop_id = Self::setup_validation(ctx, root_prop_id).await?;
         let qualification_specific_prop_id = Self::setup_qualification(ctx, root_prop_id).await?;
 
         // Now that the structure is set up, we can populate default
@@ -137,6 +141,7 @@ impl RootProp {
             resource_prop_id: resource_specific_prop_id,
             code_prop_id: code_specific_prop_id,
             qualification_prop_id: qualification_specific_prop_id,
+            validation_prop_id,
         })
     }
 
@@ -218,6 +223,28 @@ impl RootProp {
             .await?;
 
         Ok(qualification_map_prop_id)
+    }
+
+    async fn setup_validation(
+        ctx: &DalContext,
+        root_prop_id: PropId,
+    ) -> SchemaVariantResult<PropId> {
+        let (validation_map_prop_id, validation_map_item_prop_id) =
+            RootProp::insert_leaf_props(ctx, LeafKind::Validation, root_prop_id).await?;
+
+        let mut child_valid_prop = Prop::new(ctx, "valid", PropKind::Boolean, None).await?;
+        child_valid_prop.set_hidden(ctx, true).await?;
+        child_valid_prop
+            .set_parent_prop(ctx, validation_map_item_prop_id)
+            .await?;
+
+        let mut child_messages = Prop::new(ctx, "message", PropKind::String, None).await?;
+        child_messages.set_hidden(ctx, true).await?;
+        child_messages
+            .set_parent_prop(ctx, validation_map_item_prop_id)
+            .await?;
+
+        Ok(validation_map_prop_id)
     }
 
     async fn insert_leaf_props(

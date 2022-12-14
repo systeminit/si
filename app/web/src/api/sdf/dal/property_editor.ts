@@ -113,17 +113,10 @@ export interface PropertyEditorChangeValues {
   };
 }
 
-export interface PropertyEditorValidationError {
-  message: string;
-  level?: string;
-  kind?: string;
-  link?: string;
-}
-
 export interface PropertyEditorValidation {
-  valueId: string;
+  propId: string;
   valid: boolean;
-  errors: Array<PropertyEditorValidationError>;
+  message?: string;
 }
 
 export interface PropertyEditorValidations {

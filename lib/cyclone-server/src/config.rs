@@ -42,9 +42,6 @@ pub struct Config {
     #[builder(default = "true")]
     enable_confirmation: bool,
 
-    #[builder(default = "true")]
-    enable_validation: bool,
-
     #[builder(default = "IncomingStream::default()")]
     incoming_stream: IncomingStream,
 
@@ -96,12 +93,6 @@ impl Config {
     #[must_use]
     pub fn enable_confirmation(&self) -> bool {
         self.enable_confirmation
-    }
-
-    /// Gets a reference to the config's enable validation
-    #[must_use]
-    pub fn enable_validation(&self) -> bool {
-        self.enable_validation
     }
 
     /// Gets a reference to the config's incoming stream.

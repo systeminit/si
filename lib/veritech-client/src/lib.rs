@@ -8,7 +8,7 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_core::{
     nats_command_run_subject, nats_confirmation_subject, nats_resolver_function_subject,
-    nats_subject, nats_validation_subject, nats_workflow_resolve_subject, reply_mailbox_for_output,
+    nats_subject, nats_workflow_resolve_subject, reply_mailbox_for_output,
     reply_mailbox_for_result,
 };
 
@@ -21,8 +21,7 @@ pub use cyclone_core::{
     ConfirmationResultSuccess, EncryptionKey, EncryptionKeyError, FunctionResult,
     FunctionResultFailure, OutputStream, ResolverFunctionComponent, ResolverFunctionRequest,
     ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
-    SensitiveContainer, ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    SensitiveContainer, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 
 #[derive(Error, Debug)]
@@ -110,35 +109,6 @@ impl Client {
         request: &ResolverFunctionRequest,
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
-        self.execute_request(
-            nats_subject(self.subject_prefix(), subject_suffix),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_validation", skip_all)]
-    pub async fn execute_validation(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &ValidationRequest,
-    ) -> ClientResult<FunctionResult<ValidationResultSuccess>> {
-        self.execute_request(
-            nats_validation_subject(self.subject_prefix()),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_validation_with_subject", skip_all)]
-    pub async fn execute_validation_with_subject(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &ValidationResultSuccess,
-        subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<ValidationResultSuccess>> {
         self.execute_request(
             nats_subject(self.subject_prefix(), subject_suffix),
             output_tx,
@@ -563,45 +533,6 @@ mod tests {
                 assert_eq!(success.execution_id, "7868");
                 assert!(!success.success);
                 assert_eq!(success.recommended_actions, vec!["vai te catar".to_owned()]);
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("function did not succeed and should have: {:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn executes_simple_validation() {
-        let prefix = nats_prefix();
-        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
-        let client = client(prefix).await;
-
-        // Not going to check output here--we aren't emitting anything
-        let (tx, mut rx) = mpsc::channel(64);
-        tokio::spawn(async move {
-            while let Some(output) = rx.recv().await {
-                info!("output: {:?}", output)
-            }
-        });
-
-        let request = ValidationRequest {
-            execution_id: "31337".to_string(),
-            handler: "isThirtyThree".to_string(),
-            value: 33.into(),
-            code_base64: base64::encode(
-                "function isThirtyThree(value) { return { valid: value === 33 }; };",
-            ),
-        };
-
-        let result = client
-            .execute_validation(tx, &request)
-            .await
-            .expect("failed to execute validation");
-
-        match result {
-            FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "31337");
-                assert!(success.valid);
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)

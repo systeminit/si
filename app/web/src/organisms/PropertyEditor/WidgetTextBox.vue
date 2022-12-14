@@ -7,7 +7,7 @@
           v-model="currentValue"
           :title="props.name"
           :doc-link="docLink"
-          :validations="validations"
+          :validations="siValidations"
           :disabled="disabled"
           always-validate
           @blur="setField"
@@ -47,7 +47,7 @@ const props = defineProps<{
   valueId: string;
   propKind: PropertyEditorPropKind;
   docLink?: string;
-  validation?: PropertyEditorValidation;
+  validations?: PropertyEditorValidation[];
   disabled?: boolean;
 }>();
 
@@ -55,7 +55,7 @@ const emit = defineEmits<{
   (e: "updatedProperty", v: UpdatedProperty): void;
 }>();
 
-const { name, path, collapsedPaths, valueId, propId, value, validation } =
+const { name, path, collapsedPaths, valueId, propId, value, validations } =
   toRefs(props);
 
 const currentValue = ref<string>("");
@@ -118,7 +118,7 @@ const unsetField = () => {
   });
 };
 
-const validations = usePropertyEditorValidations(validation);
+const siValidations = usePropertyEditorValidations(validations);
 
 const triggerBlur = (event: KeyboardEvent) => {
   if (event?.target instanceof HTMLElement) {

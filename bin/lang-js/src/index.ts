@@ -9,7 +9,6 @@ import { executeConfirmation } from "./confirmation";
 import { executeResolverFunction } from "./resolver_function";
 import { executeWorkflowResolve } from "./workflow_resolve";
 import { executeCommandRun } from "./command_run";
-import { executeValidation } from "./validation";
 
 const debug = Debug("langJs");
 const STDIN_FD = 0;
@@ -62,9 +61,6 @@ async function main() {
         break;
       case FunctionKind.Confirmation:
         await executeConfirmation(request);
-        break;
-      case FunctionKind.Validation:
-        await executeValidation(request);
         break;
       default:
         throw Error(`Unknown Kind variant: ${kind}`);

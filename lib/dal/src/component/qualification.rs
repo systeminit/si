@@ -6,13 +6,11 @@ use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
 use crate::func::binding_return_value::FuncBindingReturnValueId;
-use crate::qualification::{
-    QualificationResult, QualificationSubCheck, QualificationSubCheckStatus, QualificationView,
-};
+use crate::qualification::QualificationView;
+use crate::schema::variant::leaves::LeafKind;
 use crate::schema::SchemaVariant;
-use crate::validation::ValidationError;
 use crate::ws_event::WsEvent;
-use crate::{AttributeReadContext, DalContext, StandardModel, ValidationResolver};
+use crate::{AttributeReadContext, DalContext, StandardModel};
 use crate::{Component, ComponentError, ComponentId};
 
 // FIXME(nick): use the formal types from the new version of function authoring instead of this
@@ -38,16 +36,17 @@ impl Component {
             .await?
             .ok_or(ComponentError::NoSchemaVariant(component_id))?;
 
-        // First, check the ephemeral and universal "All Fields Valid" qualification.
-        let all_fields_valid_qualification_view =
-            Self::all_fields_valid_qualification(ctx, component_id).await?;
-        let mut results: Vec<QualificationView> = vec![all_fields_valid_qualification_view];
+        let mut results: Vec<QualificationView> = vec![];
 
         // Prepare to assemble qualification views and access the "/root/qualification" prop tree.
         // We will use its implicit internal provider id and its corresponding prop id to do so.
         let qualification_map_implicit_internal_provider =
-            SchemaVariant::find_qualification_implicit_internal_provider(ctx, *schema_variant.id())
-                .await?;
+            SchemaVariant::find_leaf_implicit_internal_provider(
+                ctx,
+                *schema_variant.id(),
+                LeafKind::Qualification,
+            )
+            .await?;
 
         // Collect all the func binding return value ids for the child attribute values
         // (map entries) for reference later.
@@ -117,49 +116,5 @@ impl Component {
             .await?;
 
         Ok(results)
-    }
-
-    /// An ephemeral qualification (not present in the
-    /// [`prop tree`](crate::schema::variant::leaves)) that qualifies if all validations passed.
-    #[instrument(skip_all)]
-    pub async fn all_fields_valid_qualification(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<QualificationView> {
-        // TODO(nick): this function is a partial port of the original "all fields valid" logic.
-        // Use the validation prop tree once available.
-        let mut validation_errors = Vec::<(String, ValidationError)>::new();
-        for status in ValidationResolver::find_status(ctx, component_id).await? {
-            let full_name = AttributeValue::find_prop_for_value(ctx, status.attribute_value_id)
-                .await?
-                .json_pointer(ctx)
-                .await?;
-            for error in status.errors {
-                validation_errors.push((full_name.clone(), error));
-            }
-        }
-
-        let sub_checks: Vec<QualificationSubCheck> = validation_errors
-            .iter()
-            .map(|(prop_name, error)| QualificationSubCheck {
-                description: format!("validation failed for \"{}\": {}", prop_name, error.message),
-                status: QualificationSubCheckStatus::Failure,
-            })
-            .collect();
-
-        let name = "All fields are valid";
-        Ok(QualificationView {
-            title: name.to_string(),
-            output: vec![],
-            description: None,
-            link: None,
-            result: Some(QualificationResult {
-                success: sub_checks.is_empty(),
-                title: None,
-                link: None,
-                sub_checks,
-            }),
-            qualification_name: name.to_string(),
-        })
     }
 }

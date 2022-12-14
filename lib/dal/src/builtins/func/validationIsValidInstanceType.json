@@ -1,0 +1,16 @@
+{
+    "kind": "JsAttribute",
+    "arguments": [
+      {
+        "name": "value",
+        "kind": "String"
+      }
+    ],
+    "response_type": "Validation",
+    "display_name": "si:validationIsValidInstanceType",
+    "description": "Checks if instance type is valid for EC2",
+    "link": null,
+    "code_file": "validationIsValidInstanceType.js",
+    "code_entrypoint": "isValidInstanceType"
+  }
+  

@@ -40,8 +40,6 @@ const confirmationSandbox = {};
 
 const workflowResolveSandbox = {};
 
-const validationSandbox = {};
-
 function commandRunSandbox(executionId: string): Sandbox {
   return {
     siExec: makeExec(executionId),
@@ -72,11 +70,6 @@ export function createSandbox(
       return {
         ...commonSandbox(executionId),
         ...commandRunSandbox(executionId),
-      };
-    case FunctionKind.Validation:
-      return {
-        ...commonSandbox(executionId),
-        ...validationSandbox,
       };
     default:
       throw new UnknownSandboxKind(kind);

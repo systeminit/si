@@ -1,10 +1,12 @@
 use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
-use crate::validation::Validation;
+use crate::func::argument::FuncArgument;
+use crate::schema::variant::leaves::LeafKind;
 use crate::{
     schema::SchemaUiMenu, BuiltinsResult, DalContext, PropKind, SchemaError, SchemaKind,
-    StandardModel,
+    SchemaVariant, StandardModel,
 };
+use crate::{BuiltinsError, Func, InternalProvider};
 
 const FRAME_NODE_COLOR: i64 = 0xFFFFFF;
 
@@ -49,12 +51,35 @@ impl MigrationDriver {
             )
             .await?;
 
-        self.create_validation(
+        schema_variant.finalize(ctx).await?;
+        let color_ip = InternalProvider::find_for_prop(ctx, *color_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*color_prop.id())
+            })?;
+
+        let validation_func_name = "si:validationIsValidHexColor".to_string();
+        let validation_func = Func::find_by_attr(ctx, "name", &validation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(validation_func_name.to_string()))?;
+        let validation_func_arg =
+            FuncArgument::find_by_name_for_func(ctx, "value", *validation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        validation_func_name.clone(),
+                        "value".to_string(),
+                    )
+                })?;
+
+        SchemaVariant::add_leaf(
             ctx,
-            Validation::StringIsHexColor { value: None },
-            *color_prop.id(),
-            *schema.id(),
+            *validation_func.id(),
+            *validation_func_arg.id(),
+            *color_ip.id(),
             *schema_variant.id(),
+            LeafKind::Validation,
         )
         .await?;
 

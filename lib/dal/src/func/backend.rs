@@ -18,12 +18,10 @@ pub mod integer;
 pub mod js_attribute;
 pub mod js_command;
 pub mod js_confirmation;
-pub mod js_validation;
 pub mod js_workflow;
 pub mod map;
 pub mod prop_object;
 pub mod string;
-pub mod validation;
 
 #[derive(Error, Debug)]
 pub enum FuncBackendError {
@@ -78,13 +76,11 @@ pub enum FuncBackendKind {
     JsWorkflow,
     JsConfirmation,
     JsCommand,
-    JsValidation,
     Map,
     PropObject,
     String,
     Unset,
     Json,
-    Validation,
 }
 
 #[derive(

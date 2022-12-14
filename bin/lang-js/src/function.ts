@@ -3,7 +3,6 @@ export enum FunctionKind {
   WorkflowResolve = "workflowResolve",
   CommandRun = "commandRun",
   Confirmation = "confirmation",
-  Validation = "validation",
 }
 
 export function function_kinds(): Array<string> {
@@ -12,7 +11,6 @@ export function function_kinds(): Array<string> {
     FunctionKind.WorkflowResolve,
     FunctionKind.CommandRun,
     FunctionKind.Confirmation,
-    FunctionKind.Validation,
   ];
 }
 

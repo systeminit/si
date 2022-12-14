@@ -9,7 +9,6 @@ use crate::edit_field::widget::WidgetKind;
 use crate::property_editor::SelectWidgetOption;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
-use crate::validation::Validation;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
@@ -95,15 +94,35 @@ impl MigrationDriver {
             )
             .await?;
 
-        self.create_validation(
+        schema_variant.finalize(ctx).await?;
+        let image_id_ip = InternalProvider::find_for_prop(ctx, *image_id_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*image_id_prop.id())
+            })?;
+
+        let validation_func_name = "si:validationHasAmiPrefix".to_string();
+        let validation_func = Func::find_by_attr(ctx, "name", &validation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(validation_func_name.to_string()))?;
+        let validation_func_arg =
+            FuncArgument::find_by_name_for_func(ctx, "value", *validation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        validation_func_name.clone(),
+                        "value".to_string(),
+                    )
+                })?;
+
+        SchemaVariant::add_leaf(
             ctx,
-            Validation::StringHasPrefix {
-                value: None,
-                expected: "ami-".to_string(),
-            },
-            *image_id_prop.id(),
-            *schema.id(),
+            *validation_func.id(),
+            *validation_func_arg.id(),
+            *image_id_ip.id(),
             *schema_variant.id(),
+            LeafKind::Validation,
         )
         .await?;
 
@@ -122,10 +141,18 @@ impl MigrationDriver {
         let (code_generation_func_id, code_generation_func_argument_id) = self
             .find_func_and_single_argument_by_names(ctx, "si:generateAwsAmiJSON", "domain")
             .await?;
+
+        schema_variant.finalize(ctx).await?;
+
+        let domain_implicit_internal_provider =
+            SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+                .await?;
+
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             code_generation_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
@@ -173,6 +200,7 @@ impl MigrationDriver {
             ctx,
             qualification_func_id,
             qualification_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::Qualification,
         )
@@ -300,16 +328,35 @@ impl MigrationDriver {
                 Some(EC2_DOCS_URL.to_string()),
             )
             .await?;
+        schema_variant.finalize(ctx).await?;
+        let image_id_ip = InternalProvider::find_for_prop(ctx, *image_id_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*image_id_prop.id())
+            })?;
 
-        self.create_validation(
+        let validation_func_name = "si:validationHasAmiPrefix".to_string();
+        let validation_func = Func::find_by_attr(ctx, "name", &validation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(validation_func_name.to_string()))?;
+        let validation_func_arg =
+            FuncArgument::find_by_name_for_func(ctx, "value", *validation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        validation_func_name.clone(),
+                        "value".to_string(),
+                    )
+                })?;
+
+        SchemaVariant::add_leaf(
             ctx,
-            Validation::StringHasPrefix {
-                value: None,
-                expected: "ami-".to_string(),
-            },
-            *image_id_prop.id(),
-            *schema.id(),
+            *validation_func.id(),
+            *validation_func_arg.id(),
+            *image_id_ip.id(),
             *schema_variant.id(),
+            LeafKind::Validation,
         )
         .await?;
 
@@ -335,16 +382,35 @@ impl MigrationDriver {
             )
             .await?;
 
-        self.create_validation(
+        schema_variant.finalize(ctx).await?;
+        let instance_type_ip = InternalProvider::find_for_prop(ctx, *instance_type_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*instance_type_prop.id())
+            })?;
+
+        let validation_func_name = "si:validationIsValidInstanceType".to_string();
+        let validation_func = Func::find_by_attr(ctx, "name", &validation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(validation_func_name.to_string()))?;
+        let validation_func_arg =
+            FuncArgument::find_by_name_for_func(ctx, "value", *validation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        validation_func_name.clone(),
+                        "value".to_string(),
+                    )
+                })?;
+
+        SchemaVariant::add_leaf(
             ctx,
-            Validation::StringInStringArray {
-                value: None,
-                expected: expected_instance_types,
-                display_expected: false,
-            },
-            *instance_type_prop.id(),
-            *schema.id(),
+            *validation_func.id(),
+            *validation_func_arg.id(),
+            *instance_type_ip.id(),
             *schema_variant.id(),
+            LeafKind::Validation,
         )
         .await?;
 
@@ -448,10 +514,18 @@ impl MigrationDriver {
         let (code_generation_func_id, code_generation_func_argument_id) = self
             .find_func_and_single_argument_by_names(ctx, "si:generateAwsEc2JSON", "domain")
             .await?;
+
+        schema_variant.finalize(ctx).await?;
+
+        let domain_implicit_internal_provider =
+            SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+                .await?;
+
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             code_generation_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
@@ -540,6 +614,7 @@ impl MigrationDriver {
             ctx,
             qualification_func_id,
             qualification_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::Qualification,
         )
@@ -889,21 +964,36 @@ impl MigrationDriver {
             )
             .await?;
 
-        // Validation Creation
-        let expected = regions_json
-            .iter()
-            .map(|r| r.code.clone())
-            .collect::<Vec<String>>();
-        self.create_validation(
+        schema_variant.finalize(ctx).await?;
+
+        let region_ip = InternalProvider::find_for_prop(ctx, *region_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*region_prop.id())
+            })?;
+
+        let validation_func_name = "si:validationIsValidRegion".to_string();
+        let validation_func = Func::find_by_attr(ctx, "name", &validation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(validation_func_name.to_string()))?;
+        let validation_func_arg =
+            FuncArgument::find_by_name_for_func(ctx, "value", *validation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        validation_func_name.clone(),
+                        "value".to_string(),
+                    )
+                })?;
+
+        SchemaVariant::add_leaf(
             ctx,
-            Validation::StringInStringArray {
-                value: None,
-                expected,
-                display_expected: true,
-            },
-            *region_prop.id(),
-            *schema.id(),
+            *validation_func.id(),
+            *validation_func_arg.id(),
+            *region_ip.id(),
             *schema_variant.id(),
+            LeafKind::Validation,
         )
         .await?;
 
@@ -1131,10 +1221,18 @@ impl MigrationDriver {
         let (code_generation_func_id, code_generation_func_argument_id) = self
             .find_func_and_single_argument_by_names(ctx, "si:generateAwsEipJSON", "domain")
             .await?;
+
+        schema_variant.finalize(ctx).await?;
+
+        let domain_implicit_internal_provider =
+            SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+                .await?;
+
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             code_generation_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
@@ -1185,6 +1283,7 @@ impl MigrationDriver {
             ctx,
             qualification_func_id,
             qualification_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::Qualification,
         )
@@ -1502,10 +1601,18 @@ impl MigrationDriver {
         let (code_generation_func_id, code_generation_func_argument_id) = self
             .find_func_and_single_argument_by_names(ctx, "si:generateAwsKeyPairJSON", "domain")
             .await?;
+
+        schema_variant.finalize(ctx).await?;
+
+        let domain_implicit_internal_provider =
+            SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+                .await?;
+
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             code_generation_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
@@ -1557,6 +1664,7 @@ impl MigrationDriver {
             ctx,
             qualification_func_id,
             qualification_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::Qualification,
         )

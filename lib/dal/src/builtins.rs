@@ -17,8 +17,7 @@ use crate::{
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
     ConfirmationPrototypeError, DalContext, ExternalProviderId, FuncError, PropError, PropId,
-    PropKind, SchemaError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
-    WorkflowPrototypeError,
+    PropKind, SchemaError, SchemaVariantId, StandardModelError, WorkflowPrototypeError,
 };
 
 // Private builtins modules.
@@ -87,8 +86,6 @@ pub enum BuiltinsError {
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("validation prototype error: {0}")]
-    ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("Filesystem IO error: {0}")]
     FilesystemIO(#[from] std::io::Error),
     #[error("Regex parsing error: {0}")]

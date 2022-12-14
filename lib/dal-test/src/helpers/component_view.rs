@@ -20,6 +20,8 @@ pub struct ComponentViewProperties {
     code: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     qualification: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    validation: Option<serde_json::Value>,
 }
 
 #[derive(Error, Debug)]
@@ -36,6 +38,11 @@ impl ComponentViewProperties {
 
     pub fn drop_qualification(&mut self) -> &mut Self {
         self.qualification = None;
+        self
+    }
+
+    pub fn drop_validation(&mut self) -> &mut Self {
+        self.validation = None;
         self
     }
 

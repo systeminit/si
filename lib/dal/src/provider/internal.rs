@@ -81,16 +81,12 @@ use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, 
 use crate::standard_model::object_option_from_row_option;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
-    AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
-    AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView, DiagramKind,
-    FuncId, HistoryEventError, Prop, PropError, SchemaVariant, StandardModel, StandardModelError,
-    Timestamp, Visibility, WriteTenancy,
+    AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototype,
+    AttributePrototypeError, AttributePrototypeId, AttributeReadContext, AttributeValue,
+    AttributeValueError, AttributeView, ComponentId, DalContext, DiagramKind, Func, FuncBinding,
+    FuncId, HistoryEventError, Prop, PropError, PropId, SchemaId, SchemaVariant, SchemaVariantId,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
-use crate::{
-    AttributeContext, AttributeContextError, AttributeValue, DalContext, Func, FuncBinding, PropId,
-    SchemaId, SchemaVariantId,
-};
-use crate::{Component, ComponentId};
 
 const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
     include_str!("../queries/internal_provider_find_explicit_for_schema_variant_and_name.sql");
@@ -469,30 +465,6 @@ impl InternalProvider {
         target_attribute_value
             .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
             .await?;
-
-        if target_attribute_value.context.component_id().is_some() && self.prop_id().is_some() {
-            let provider_prop = Prop::get_by_id(ctx, self.prop_id())
-                .await?
-                .ok_or_else(|| InternalProviderError::PropNotFound(*self.prop_id()))?;
-
-            // NOTE(jhelwig): This whole block will go away once Qualifications/Validations become part of the Prop tree.
-            //
-            // The Root Prop won't have a parent Prop.
-            if provider_prop.parent_prop(ctx).await?.is_none() {
-                let component =
-                    Component::get_by_id(ctx, &target_attribute_value.context.component_id())
-                        .await?
-                        .ok_or_else(|| {
-                            InternalProviderError::ComponentNotFound(
-                                target_attribute_value.context.component_id(),
-                            )
-                        })?;
-                component
-                    .check_validations(ctx)
-                    .await
-                    .map_err(|e| InternalProviderError::Component(e.to_string()))?;
-            }
-        }
 
         Ok(())
     }

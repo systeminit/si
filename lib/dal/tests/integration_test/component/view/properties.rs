@@ -62,11 +62,22 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     .await
     .expect("could not create func argument");
 
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("generate internal providers");
+
+    let domain_implicit_internal_provider =
+        SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+            .await
+            .expect("get domain implicit internal provider");
+
     // Add a code generation leaf.
     SchemaVariant::add_leaf(
         ctx,
         code_generation_func_id,
         *code_generation_func_argument.id(),
+        *domain_implicit_internal_provider.id(),
         schema_variant_id,
         LeafKind::CodeGeneration,
     )
@@ -78,6 +89,7 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
         .finalize(ctx)
         .await
         .expect("unable to finalize schema variant");
+
     let (component, _) =
         Component::new_for_schema_variant_with_node(ctx, "component", &schema_variant_id)
             .await

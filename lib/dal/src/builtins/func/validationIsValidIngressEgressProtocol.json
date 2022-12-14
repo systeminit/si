@@ -1,0 +1,16 @@
+{
+    "kind": "JsAttribute",
+    "arguments": [
+      {
+        "name": "value",
+        "kind": "String"
+      }
+    ],
+    "response_type": "Validation",
+    "display_name": "si:isValidIngressEgressProtocol",
+    "description": "Checks if the input is a valid AWS ingress/egress protocol",
+    "link": null,
+    "code_file": "validationIsValidIngressEgressProtocol.js",
+    "code_entrypoint": "isValidIngressEgressProtocol"
+  }
+  

@@ -5,10 +5,8 @@ use telemetry::prelude::*;
 use crate::attribute::context::AttributeContextBuilder;
 use crate::edit_field::widget::WidgetKind;
 use crate::func::argument::{FuncArgument, FuncArgumentId};
-use crate::func::backend::validation::FuncBackendValidationArgs;
 use crate::schema::variant::definition::{PropCache, SchemaVariantDefinition};
 use crate::schema::RootProp;
-use crate::validation::Validation;
 use crate::{
     component::ComponentKind,
     func::{
@@ -16,9 +14,8 @@ use crate::{
         binding_return_value::FuncBindingReturnValueId,
     },
     AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext, Func,
-    FuncError, FuncId, Prop, PropError, PropId, PropKind, Schema, SchemaError, SchemaId,
-    SchemaKind, SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype,
-    ValidationPrototypeContext,
+    FuncError, FuncId, Prop, PropError, PropId, PropKind, Schema, SchemaError, SchemaKind,
+    SchemaVariant, StandardModel,
 };
 
 mod aws;
@@ -69,45 +66,11 @@ impl MigrationDriver {
             )
             .await?;
 
-        for builtin_func_name in ["si:validation", "si:generateYAML"] {
-            driver
-                .add_func_id(ctx, builtin_func_name.to_string())
-                .await?;
-        }
+        driver
+            .add_func_id(ctx, "si:generateYAML".to_string())
+            .await?;
 
         Ok(driver)
-    }
-
-    /// Create a [`validation`](crate::validation) for a [`Prop`](crate::Prop) within a
-    /// [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant).
-    ///
-    /// Users of this helper should provide a [`None`] value to the "value" (or similar) field.
-    pub async fn create_validation(
-        &self,
-        ctx: &DalContext,
-        validation: Validation,
-        prop_id: PropId,
-        schema_id: SchemaId,
-        schema_variant_id: SchemaVariantId,
-    ) -> BuiltinsResult<()> {
-        let validation_func_id = self
-            .get_func_id("si:validation")
-            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:validation"))?;
-
-        let mut builder = ValidationPrototypeContext::builder();
-        builder
-            .set_prop_id(prop_id)
-            .set_schema_id(schema_id)
-            .set_schema_variant_id(schema_variant_id);
-
-        ValidationPrototype::new(
-            ctx,
-            validation_func_id,
-            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
-            builder.to_context(ctx).await?,
-        )
-        .await?;
-        Ok(())
     }
 
     /// Add a `FuncCacheItem` for a given [`Func`](crate::Func) name.

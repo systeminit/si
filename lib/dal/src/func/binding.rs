@@ -16,12 +16,10 @@ use crate::func::backend::{
     js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
     js_command::FuncBackendJsCommand,
     js_confirmation::FuncBackendJsConfirmation,
-    js_validation::FuncBackendJsValidation,
     js_workflow::FuncBackendJsWorkflow,
     map::FuncBackendMap,
     prop_object::FuncBackendPropObject,
     string::FuncBackendString,
-    validation::FuncBackendValidation,
     FuncBackend, FuncDispatch, FuncDispatchContext,
 };
 use crate::func::execution::FuncExecutionPk;
@@ -217,9 +215,6 @@ impl FuncBinding {
     ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         // TODO: encrypt components
         let value = match self.backend_kind() {
-            FuncBackendKind::JsValidation => {
-                FuncBackendJsValidation::create_and_execute(context, &func, &self.args).await?
-            }
             FuncBackendKind::JsWorkflow => {
                 FuncBackendJsWorkflow::create_and_execute(context, &func, &self.args).await?
             }
@@ -261,9 +256,6 @@ impl FuncBinding {
             }
             FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await?,
             FuncBackendKind::Unset => (None, None),
-            FuncBackendKind::Validation => {
-                FuncBackendValidation::create_and_execute(&self.args).await?
-            }
         };
         Ok(value)
     }
@@ -325,13 +317,12 @@ impl FuncBinding {
             | FuncBackendKind::Map
             | FuncBackendKind::PropObject
             | FuncBackendKind::String
-            | FuncBackendKind::Unset
-            | FuncBackendKind::Validation => {}
+            | FuncBackendKind::Unset => {}
+
             FuncBackendKind::JsAttribute
             | FuncBackendKind::JsWorkflow
             | FuncBackendKind::JsCommand
             | FuncBackendKind::JsConfirmation
-            | FuncBackendKind::JsValidation
             | FuncBackendKind::Json => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Dispatch)

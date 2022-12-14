@@ -5,7 +5,6 @@ use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
-use crate::validation::Validation;
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
@@ -22,9 +21,6 @@ const SECURITY_GROUP_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html";
 const AWS_REGIONS_DOCS_URL: &str =
     "https://docs.aws.amazon.com/general/latest/gr/rande.html#region-names-codes";
-
-// Datasets
-const INGRESS_EGRESS_PROTOCOLS: &[&str; 3] = &["tcp", "udp", "icmp"];
 
 impl MigrationDriver {
     pub async fn migrate_aws_vpc(&self, ctx: &DalContext) -> BuiltinsResult<()> {
@@ -288,10 +284,18 @@ impl MigrationDriver {
         let (code_generation_func_id, code_generation_func_argument_id) = self
             .find_func_and_single_argument_by_names(ctx, "si:generateAwsIngressJSON", "domain")
             .await?;
+
+        schema_variant.finalize(ctx).await?;
+
+        let domain_implicit_internal_provider =
+            SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+                .await?;
+
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             code_generation_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
@@ -305,10 +309,12 @@ impl MigrationDriver {
                 "domain",
             )
             .await?;
+
         SchemaVariant::add_leaf(
             ctx,
             qualification_func_id,
             qualification_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::Qualification,
         )
@@ -646,20 +652,36 @@ impl MigrationDriver {
             )
             .await?;
 
-        let expected = INGRESS_EGRESS_PROTOCOLS
-            .iter()
-            .map(|p| p.to_string())
-            .collect::<Vec<String>>();
-        self.create_validation(
+        schema_variant.finalize(ctx).await?;
+
+        let protocol_internal_provider = InternalProvider::find_for_prop(ctx, *protocol_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*protocol_prop.id())
+            })?;
+
+        let validation_func_name = "si:validationIsValidIngressEgressProtocol".to_string();
+        let validation_func = Func::find_by_attr(ctx, "name", &validation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(validation_func_name.to_string()))?;
+        let validation_func_arg =
+            FuncArgument::find_by_name_for_func(ctx, "value", *validation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        validation_func_name.clone(),
+                        "value".to_string(),
+                    )
+                })?;
+
+        SchemaVariant::add_leaf(
             ctx,
-            Validation::StringInStringArray {
-                value: None,
-                expected,
-                display_expected: true,
-            },
-            *protocol_prop.id(),
-            *schema.id(),
+            *validation_func.id(),
+            *validation_func_arg.id(),
+            *protocol_internal_provider.id(),
             *schema_variant.id(),
+            LeafKind::Validation,
         )
         .await?;
 
@@ -674,16 +696,37 @@ impl MigrationDriver {
             )
             .await?;
 
-        self.create_validation(
+        let validation_func_name = "si:validationIsValidPortNumber".to_string();
+        let validation_func = Func::find_by_attr(ctx, "name", &validation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(validation_func_name.to_string()))?;
+        let validation_func_arg =
+            FuncArgument::find_by_name_for_func(ctx, "value", *validation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        validation_func_name.clone(),
+                        "value".to_string(),
+                    )
+                })?;
+
+        schema_variant.finalize(ctx).await?;
+
+        let from_port_internal_provider =
+            InternalProvider::find_for_prop(ctx, *from_port_prop.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::ImplicitInternalProviderNotFoundForProp(*from_port_prop.id())
+                })?;
+
+        SchemaVariant::add_leaf(
             ctx,
-            Validation::IntegerIsBetweenTwoIntegers {
-                value: None,
-                lower_bound: -1,
-                upper_bound: 65537,
-            },
-            *from_port_prop.id(),
-            *schema.id(),
+            *validation_func.id(),
+            *validation_func_arg.id(),
+            *from_port_internal_provider.id(),
             *schema_variant.id(),
+            LeafKind::Validation,
         )
         .await?;
 
@@ -698,16 +741,21 @@ impl MigrationDriver {
             )
             .await?;
 
-        self.create_validation(
+        schema_variant.finalize(ctx).await?;
+
+        let to_port_internal_provider = InternalProvider::find_for_prop(ctx, *to_port_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*to_port_prop.id())
+            })?;
+
+        SchemaVariant::add_leaf(
             ctx,
-            Validation::IntegerIsBetweenTwoIntegers {
-                value: None,
-                lower_bound: -1,
-                upper_bound: 65537,
-            },
-            *to_port_prop.id(),
-            *schema.id(),
+            *validation_func.id(),
+            *validation_func_arg.id(),
+            *to_port_internal_provider.id(),
             *schema_variant.id(),
+            LeafKind::Validation,
         )
         .await?;
 
@@ -722,12 +770,34 @@ impl MigrationDriver {
             )
             .await?;
 
-        self.create_validation(
+        schema_variant.finalize(ctx).await?;
+
+        let validation_func_name = "si:validationIsValidCIDR".to_string();
+        let validation_func = Func::find_by_attr(ctx, "name", &validation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(validation_func_name.to_string()))?;
+        let validation_func_arg =
+            FuncArgument::find_by_name_for_func(ctx, "value", *validation_func.id())
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        validation_func_name.clone(),
+                        "value".to_string(),
+                    )
+                })?;
+        let cidr_prop_internal_provider = InternalProvider::find_for_prop(ctx, *cidr_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*cidr_prop.id())
+            })?;
+        SchemaVariant::add_leaf(
             ctx,
-            Validation::StringIsValidIpAddr { value: None },
-            *cidr_prop.id(),
-            *schema.id(),
+            *validation_func.id(),
+            *validation_func_arg.id(),
+            *cidr_prop_internal_provider.id(),
             *schema_variant.id(),
+            LeafKind::Validation,
         )
         .await?;
 
@@ -812,10 +882,18 @@ impl MigrationDriver {
         let (code_generation_func_id, qualification_func_argument_id) = self
             .find_func_and_single_argument_by_names(ctx, "si:generateAwsEgressJSON", "domain")
             .await?;
+
+        schema_variant.finalize(ctx).await?;
+
+        let domain_implicit_internal_provider =
+            SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+                .await?;
+
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             qualification_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
@@ -833,6 +911,7 @@ impl MigrationDriver {
             ctx,
             qualification_func_id,
             qualification_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::Qualification,
         )
@@ -1221,10 +1300,18 @@ impl MigrationDriver {
                 "domain",
             )
             .await?;
+
+        schema_variant.finalize(ctx).await?;
+
+        let domain_implicit_internal_provider =
+            SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+                .await?;
+
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             code_generation_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
         )
@@ -1242,6 +1329,7 @@ impl MigrationDriver {
             ctx,
             qualification_func_id,
             qualification_func_argument_id,
+            *domain_implicit_internal_provider.id(),
             *schema_variant.id(),
             LeafKind::Qualification,
         )

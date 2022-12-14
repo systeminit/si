@@ -3,24 +3,16 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::property_editor::{PropertyEditorResult, PropertyEditorValueId};
-use crate::{ComponentId, DalContext, ValidationResolver};
+use crate::{property_editor::PropertyEditorResult, Component, ComponentId, DalContext};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PropertyEditorValidationError {
-    message: String,
-    level: Option<String>,
-    kind: Option<String>,
-    link: Option<String>,
-}
+use super::PropertyEditorPropId;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PropertyEditorValidation {
-    value_id: PropertyEditorValueId,
+    prop_id: PropertyEditorPropId,
     valid: bool,
-    errors: Vec<PropertyEditorValidationError>,
+    message: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -34,25 +26,16 @@ impl PropertyEditorValidations {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> PropertyEditorResult<Self> {
-        let status = ValidationResolver::find_status(ctx, component_id).await?;
+        let validations = Component::list_validations(ctx, component_id)
+            .await?
+            .iter()
+            .map(|validation| PropertyEditorValidation {
+                prop_id: validation.prop_id.into(),
+                valid: validation.valid,
+                message: validation.message.clone(),
+            })
+            .collect();
 
-        let mut validations = Vec::new();
-        for stat in status {
-            validations.push(PropertyEditorValidation {
-                value_id: stat.attribute_value_id.into(),
-                valid: stat.errors.is_empty(),
-                errors: stat
-                    .errors
-                    .into_iter()
-                    .map(|err| PropertyEditorValidationError {
-                        message: err.message,
-                        level: err.level,
-                        kind: Some(err.kind.as_str().to_string()),
-                        link: err.link,
-                    })
-                    .collect(),
-            });
-        }
         Ok(Self { validations })
     }
 }

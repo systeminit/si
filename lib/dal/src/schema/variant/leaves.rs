@@ -7,7 +7,8 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     AttributeValueError, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
-    FuncId, PropId, SchemaVariant, SchemaVariantId, StandardModel,
+    FuncId, InternalProvider, InternalProviderError, InternalProviderId, PropId, SchemaVariant,
+    SchemaVariantId, StandardModel,
 };
 
 /// This enum provides options for creating leaves underneath compatible subtrees of "/root" within
@@ -60,9 +61,10 @@ impl SchemaVariant {
         ctx: &DalContext,
         func_id: FuncId,
         func_argument_id: FuncArgumentId,
+        func_argument_internal_provider_id: InternalProviderId,
         schema_variant_id: SchemaVariantId,
         leaf_kind: LeafKind,
-    ) -> SchemaVariantResult<PropId> {
+    ) -> SchemaVariantResult<(PropId, String)> {
         if schema_variant_id.is_none() {
             return Err(SchemaVariantError::InvalidSchemaVariant);
         }
@@ -107,15 +109,29 @@ impl SchemaVariant {
             .set_prop_id(*item_prop.id())
             .to_context()?;
 
-        // Insert an item into the map and setup its function. The new entry is named after the func
-        // name since func names must be unique for a given tenancy and visibility. If that changes,
-        // then this will break.
+        // Insert an item into the map and setup its function. For most leaves, we'll just use the
+        // func name. But the same validation might be defined for many props on one schema
+        // variant, so we pair the prop id with the validation func name.
+        let map_key = match leaf_kind {
+            LeafKind::Validation => {
+                let internal_provider =
+                    InternalProvider::get_by_id(ctx, &func_argument_internal_provider_id)
+                        .await?
+                        .ok_or_else(|| {
+                            InternalProviderError::NotFound(func_argument_internal_provider_id)
+                        })?;
+
+                format!("{};{}", internal_provider.prop_id(), func.name())
+            }
+            _ => func.name().to_owned(),
+        };
+
         let inserted_attribute_value_id = AttributeValue::insert_for_context(
             ctx,
             insert_attribute_context,
             *map_attribute_value.id(),
             Some(serde_json::json![{}]),
-            Some(func.name().to_string()),
+            Some(map_key.clone()),
         )
         .await?;
         let inserted_attribute_value = AttributeValue::get_by_id(ctx, &inserted_attribute_value_id)
@@ -131,20 +147,35 @@ impl SchemaVariant {
             .set_func_id(ctx, func_id)
             .await?;
 
-        // NOTE(nick): there will likely need to be divergent behavior here for validations.
-        // Code generation and qualification rely on "/root/domain".
-        let domain_implicit_internal_provider =
-            SchemaVariant::find_domain_implicit_internal_provider(ctx, schema_variant_id).await?;
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
             *inserted_attribute_prototype.id(),
             func_argument_id,
-            *domain_implicit_internal_provider.id(),
+            func_argument_internal_provider_id,
         )
         .await?;
 
         // Return the prop id for the entire map so that its implicit internal provider can be
         // used for intelligence functions.
-        Ok(*map_prop.id())
+        Ok((*map_prop.id(), map_key))
+    }
+
+    /// Finds the implicit [`InternalProvider`](crate::InternalProvider)
+    /// corresponding to the
+    /// [`LeafKind`](crate::schema::variant::leaves::LeafKind), which is of kind
+    /// [`map`](crate::PropKind::Map).
+    ///
+    /// _Note: the [`SchemaVariant`](crate::SchemaVariant) must be
+    /// [`finalized`](crate::SchemaVariant::finalize()) (or [`finalized for
+    /// id`](crate::SchemaVariant::finalize_for_id())) before running this
+    /// query.
+    pub async fn find_leaf_implicit_internal_provider(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+        leaf_kind: LeafKind,
+    ) -> SchemaVariantResult<InternalProvider> {
+        let (prop_name, _) = leaf_kind.prop_names();
+
+        Self::find_root_child_implicit_internal_provider(ctx, schema_variant_id, prop_name).await
     }
 }

@@ -2,14 +2,12 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-use super::ValidationPrototypeView;
 use super::{
     AttributePrototypeArgumentView, AttributePrototypeView, FuncArgumentView, FuncAssociations,
     FuncError, FuncResult,
 };
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::attribute::context::AttributeContextBuilder;
-use dal::validation::prototype::context::ValidationPrototypeContext;
 use dal::{
     func::argument::FuncArgument,
     prototype_context::{
@@ -19,7 +17,6 @@ use dal::{
     ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBinding, FuncId,
     PrototypeListForFunc, StandardModel, Visibility, WsEvent,
 };
-use dal::{SchemaVariant, ValidationPrototype};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -274,59 +271,6 @@ async fn save_attr_func_arguments(
     Ok(())
 }
 
-async fn save_validation_func_prototypes(
-    ctx: &DalContext,
-    func: &Func,
-    prototypes: Vec<ValidationPrototypeView>,
-) -> FuncResult<()> {
-    let mut id_set = HashSet::new();
-
-    for proto_view in prototypes {
-        let mut context = ValidationPrototypeContext::builder();
-        let schema_id = *SchemaVariant::get_by_id(ctx, &proto_view.schema_variant_id)
-            .await?
-            .ok_or(FuncError::ValidationPrototypeMissingSchemaVariant(
-                proto_view.schema_variant_id,
-            ))?
-            .schema(ctx)
-            .await?
-            .ok_or(FuncError::ValidationPrototypeMissingSchema)?
-            .id();
-
-        let context = context
-            .set_prop_id(proto_view.prop_id)
-            .set_schema_variant_id(proto_view.schema_variant_id)
-            .set_schema_id(schema_id)
-            .to_context(ctx)
-            .await?;
-
-        let proto = match ValidationPrototype::find_for_context(ctx, context.clone())
-            .await?
-            .pop()
-        {
-            Some(mut existing_proto) => {
-                existing_proto.set_func_id(ctx, *func.id()).await?;
-                existing_proto
-            }
-            None => {
-                ValidationPrototype::new(ctx, *func.id(), serde_json::json!(null), context).await?
-            }
-        };
-
-        id_set.insert(*proto.id());
-    }
-
-    for proto in ValidationPrototype::list_for_func(ctx, *func.id()).await? {
-        if !id_set.contains(proto.id()) {
-            if let Some(proto) = ValidationPrototype::get_by_id(ctx, proto.id()).await? {
-                proto.delete(ctx).await?;
-            }
-        }
-    }
-
-    Ok(())
-}
-
 pub async fn save_func<'a>(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -352,11 +296,6 @@ pub async fn save_func<'a>(
     let func_id_copy = *func.id();
 
     match func.backend_kind() {
-        FuncBackendKind::JsValidation => {
-            if let Some(FuncAssociations::Validation { prototypes }) = request.associations {
-                save_validation_func_prototypes(&ctx, &func, prototypes).await?;
-            }
-        }
         FuncBackendKind::JsConfirmation => {
             let mut associations: Vec<PrototypeContextField> = vec![];
             if let Some(FuncAssociations::Confirmation {

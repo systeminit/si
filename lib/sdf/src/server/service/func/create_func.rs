@@ -60,23 +60,6 @@ pub static DEFAULT_COMMAND_CODE: &str = include_str!("./defaults/command.ts");
 pub static DEFAULT_VALIDATION_HANDLER: &str = "validate";
 pub static DEFAULT_VALIDATION_CODE: &str = include_str!("./defaults/validation.ts");
 
-async fn create_validation_func(ctx: &DalContext) -> FuncResult<Func> {
-    let mut func = Func::new(
-        ctx,
-        generate_name(),
-        FuncBackendKind::JsValidation,
-        FuncBackendResponseType::Validation,
-    )
-    .await?;
-
-    func.set_code_plaintext(ctx, Some(DEFAULT_VALIDATION_CODE))
-        .await?;
-    func.set_handler(ctx, Some(DEFAULT_VALIDATION_HANDLER))
-        .await?;
-
-    Ok(func)
-}
-
 async fn create_command_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
@@ -251,7 +234,6 @@ pub async fn create_func(
         },
         FuncBackendKind::JsConfirmation => create_confirmation_func(&ctx).await?,
         FuncBackendKind::JsCommand => create_command_func(&ctx).await?,
-        FuncBackendKind::JsValidation => create_validation_func(&ctx).await?,
         _ => Err(FuncError::FuncNotSupported)?,
     };
 

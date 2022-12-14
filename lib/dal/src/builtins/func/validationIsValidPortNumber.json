@@ -1,0 +1,16 @@
+{
+    "kind": "JsAttribute",
+    "arguments": [
+      {
+        "name": "value",
+        "kind": "Integer"
+      }
+    ],
+    "response_type": "Validation",
+    "display_name": "si:validationIsValidPortNumber",
+    "description": "Checks if the input is a valid IP port",
+    "link": null,
+    "code_file": "validationIsValidPortNumber.js",
+    "code_entrypoint": "isValidPortNumber"
+  }
+  
