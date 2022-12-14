@@ -3,12 +3,11 @@ use serde::{Deserialize, Serialize};
 
 use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
+use dal::WsEvent;
 use dal::{
-    generate_name, node_position::NodePositionView, Component, Connection, DiagramKind, Edge,
-    ExternalProvider, NodePosition, NodeTemplate, NodeView, Schema, SchemaId, SocketId,
-    StandardModel, Visibility, WorkspaceId,
+    generate_name, node_position::NodePositionView, Component, Connection, DiagramKind,
+    NodePosition, NodeTemplate, NodeView, Schema, SchemaId, StandardModel, Visibility, WorkspaceId,
 };
-use dal::{AttributeValue, WsEvent};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::diagram::connect_component_to_frame::connect_component_sockets_to_frame;
