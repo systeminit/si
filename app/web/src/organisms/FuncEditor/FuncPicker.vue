@@ -31,7 +31,7 @@
         >
           Select a function from the lists below to view or edit it.
         </div>
-        <ul class="overflow-y-auto">
+        <ul class="overflow-y-auto min-h-[200px]">
           <SiCollapsible
             v-for="(fnTypeInfo, kind) in CUSTOMIZABLE_FUNC_TYPES"
             :key="kind"
