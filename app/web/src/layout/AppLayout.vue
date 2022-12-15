@@ -18,7 +18,8 @@
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import { PropType } from "vue";
+import { computed, PropType } from "vue";
+import { useHead } from "@vueuse/head";
 
 const props = defineProps({
   pageMode: {
@@ -26,4 +27,12 @@ const props = defineProps({
     default: "fullscreen",
   },
 });
+
+useHead(
+  computed(() => ({
+    bodyAttrs: {
+      class: props.pageMode === "fullscreen" ? "overflow-hidden" : "",
+    },
+  })),
+);
 </script>
