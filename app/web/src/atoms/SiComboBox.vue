@@ -8,10 +8,11 @@
     </label>
 
     <div class="mt-1 w-full relative">
-      <Combobox v-model="inputValue">
+      <Combobox v-model="inputValue" :disabled="disabled">
         <div class="relative">
           <ComboboxButton as="div">
             <ComboboxInput
+              :disabled="disabled"
               class="placeholder-neutral-400 border border-neutral-200 dark:border-neutral-600 text-sm rounded-sm shadow-sm w-full focus:border-action-300 pr-7"
               :class="clsx(themeClasses('bg-neutral-50', 'bg-neutral-900'))"
               @change="query = $event.target.value"

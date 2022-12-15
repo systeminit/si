@@ -182,7 +182,9 @@ const emits = defineEmits<{
 // If we have a custom func attached, don't allow them to set the attribute
 const disabled = computed(
   () =>
-    props.disabled || isCustomizableFuncKind(props.propValue.func.backendKind),
+    props.disabled ||
+    isCustomizableFuncKind(props.propValue.func.backendKind) ||
+    props.schemaProp.isReadonly,
 );
 
 const { arrayIndex } = toRefs(props);
