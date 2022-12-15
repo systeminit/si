@@ -57,7 +57,9 @@ overflow hidden */
           :draw-edge-state="drawEdgeState"
           :is-hovered="elementIsHovered(group)"
           :is-selected="elementIsSelected(group)"
-          @hover:start="(target) => onGroupHoverStart(group, target)"
+          @hover:start="
+            (target, socket) => onGroupHoverStart(group, target, socket)
+          "
           @hover:end="(socket) => onElementHoverEnd(socket || group)"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
@@ -622,10 +624,11 @@ const hoveredElement = computed(() =>
 function onGroupHoverStart(
   el: DiagramElementData,
   target: "group" | "resize-handle",
+  socket: DiagramElementData,
 ) {
   if (target === "resize-handle") componentHoverAction.value = "resize";
 
-  onElementHoverStart(el);
+  onElementHoverStart(socket || el);
 }
 
 function onElementHoverStart(el: DiagramElementData) {

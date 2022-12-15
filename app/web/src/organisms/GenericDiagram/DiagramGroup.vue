@@ -72,8 +72,8 @@
         :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
         :draw-edge-state="drawEdgeState"
         :node-width="nodeWidth"
-        @hover:start="emit('hover:start', socket)"
-        @hover:end="emit('hover:end', socket)"
+        @hover:start="emit('hover:start', 'group', socket)"
+        @hover:end="emit('hover:end', 'group', socket)"
       />
     </v-group>
 
@@ -94,8 +94,8 @@
         :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
         :draw-edge-state="drawEdgeState"
         :node-width="nodeWidth"
-        @hover:start="emit('hover:start', socket)"
-        @hover:end="emit('hover:end', socket)"
+        @hover:start="emit('hover:start', 'group', socket)"
+        @hover:end="emit('hover:end', 'group', socket)"
       />
     </v-group>
 
