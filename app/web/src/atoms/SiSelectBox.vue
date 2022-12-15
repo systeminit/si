@@ -40,8 +40,6 @@
     <SiValidation
       :value="String(inputValue)"
       :validations="validations"
-      :required="required"
-      :dirty="reallyDirty"
       class="mt-2"
       @errors="setInError($event)"
     />
