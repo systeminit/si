@@ -222,6 +222,6 @@ impl ValidationResolver {
                 }
             }
         }
-        Ok(result.into_iter().map(|(_, v)| v).collect())
+        Ok(result.into_values().collect())
     }
 }

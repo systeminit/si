@@ -40,7 +40,7 @@ impl EncryptionKey {
 
     pub fn encrypt_and_encode(&self, message: impl AsRef<[u8]>) -> String {
         let crypted = sodiumoxide::crypto::sealedbox::seal(message.as_ref(), &self.public_key);
-        base64::encode_config(&crypted, base64::STANDARD_NO_PAD)
+        base64::encode_config(crypted, base64::STANDARD_NO_PAD)
     }
 }
 
