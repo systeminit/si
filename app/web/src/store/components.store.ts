@@ -490,21 +490,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async CREATE_AGGREGATE_PROXY_CONNECTIONS(
-          parentNodeId: string,
-          childNodeIds: string[],
-          fromSocketId: string,
-          toSocketId: string,
-          fromNodeId: string,
+          toNodeIds: ComponentNodeId[],
+          toSocketId: SocketId,
+          fromNodeIds: ComponentNodeId[],
+          fromSocketId: SocketId,
         ) {
           return new ApiRequest<{ node: DiagramNode }>({
             method: "post",
             url: "diagram/create_aggregate_proxy_connections",
             params: {
-              parentNodeId,
-              childNodeIds,
-              fromSocketId,
+              toNodeIds,
               toSocketId,
-              fromNodeId,
+              fromNodeIds,
+              fromSocketId,
               ...visibilityParams,
             },
             onSuccess: (response) => {

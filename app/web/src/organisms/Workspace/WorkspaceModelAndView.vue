@@ -119,22 +119,46 @@ const diagramEdges = computed(() => {
   // In the future, it would make more sense for this to be stored on the database
   const edges = _.map(componentsStore.diagramEdges, (edge) => {
     edge.isInvisible = false;
-    const parentId = componentsStore.componentsByNodeId[edge.toNodeId].parentId;
 
-    if (parentId === undefined) return edge;
+    const toNodeParentId =
+      componentsStore.componentsByNodeId[edge.toNodeId].parentId;
+    if (toNodeParentId) {
+      const toNodeParentComp =
+        componentsStore.componentsByNodeId[toNodeParentId];
 
-    const parentComp = componentsStore.componentsByNodeId[parentId];
+      if (toNodeParentComp.nodeType === "aggregationFrame") {
+        const edgesToFrame =
+          componentsStore.edgesByToNodeId[toNodeParentId] ?? [];
 
-    if (parentComp.nodeType === "aggregationFrame") {
-      const edgesToFrame = componentsStore.edgesByToNodeId[parentId];
+        const sameEdgeButToParent = edgesToFrame.find(
+          (e) =>
+            e.toSocketId === edge.toSocketId &&
+            e.fromSocketId === edge.fromSocketId &&
+            e.fromNodeId === edge.fromNodeId,
+        );
 
-      const sameEdgeButToParent = edgesToFrame.find(
-        (e) =>
-          e.fromSocketId === edge.fromSocketId &&
-          e.fromNodeId === edge.fromNodeId,
-      );
+        edge.isInvisible ||= sameEdgeButToParent !== undefined;
+      }
+    }
 
-      edge.isInvisible = sameEdgeButToParent !== undefined;
+    const fromNodeParentId =
+      componentsStore.componentsByNodeId[edge.fromNodeId].parentId;
+
+    if (fromNodeParentId) {
+      const fromParentComp =
+        componentsStore.componentsByNodeId[fromNodeParentId];
+      if (fromParentComp.nodeType === "aggregationFrame") {
+        const edgesFromFrame =
+          componentsStore.edgesByFromNodeId[fromNodeParentId] ?? [];
+
+        const sameEdgeButFromParent = edgesFromFrame.find(
+          (e) =>
+            e.fromSocketId === edge.fromSocketId &&
+            e.toSocketId === edge.toSocketId &&
+            e.toNodeId === edge.toNodeId,
+        );
+        edge.isInvisible ||= sameEdgeButFromParent !== undefined;
+      }
     }
 
     return edge;
@@ -179,27 +203,65 @@ async function onDrawEdge(e: DrawEdgeEvent) {
     e.toSocket.parent.def.nodeType === "aggregationFrame" &&
     e.toSocket.parent.def.childIds !== undefined
   ) {
-    const unattachedChildIds = _.filter(
-      e.toSocket.parent.def.childIds,
+    const frameSocket = e.toSocket;
+    const peerSocket = e.fromSocket;
+
+    const unattachedToNodeIds = _.filter(
+      frameSocket.parent.def.childIds,
       (childId) =>
         diagramEdges.value.filter(
           (edge) =>
-            edge.fromNodeId === e.fromSocket.parent.def.id &&
+            edge.fromNodeId === peerSocket.parent.def.id &&
             edge.toNodeId === childId &&
-            edge.fromSocketId === e.fromSocket.def.id &&
-            edge.toSocketId === e.toSocket.def.id,
+            edge.fromSocketId === peerSocket.def.id &&
+            edge.toSocketId === frameSocket.def.id,
         ).length === 0,
     );
 
+    // This adds the frame connection so we get a visible edge on the diagram
+    unattachedToNodeIds.push(frameSocket.parent.def.id);
+
     await componentsStore.CREATE_AGGREGATE_PROXY_CONNECTIONS(
-      e.toSocket.parent.def.id,
-      unattachedChildIds,
-      e.fromSocket.def.id,
-      e.toSocket.def.id,
-      e.fromSocket.parent.def.id,
+      unattachedToNodeIds,
+      frameSocket.def.id,
+      [peerSocket.parent.def.id],
+      peerSocket.def.id,
     );
     return;
   }
+
+  if (
+    e.fromSocket.parent instanceof DiagramGroupData &&
+    e.fromSocket.parent.def.nodeType === "aggregationFrame" &&
+    e.fromSocket.parent.def.childIds !== undefined
+  ) {
+    const frameSocket = e.fromSocket;
+    const peerSocket = e.toSocket;
+
+    const unattachedFromNodeIds = _.filter(
+      frameSocket.parent.def.childIds,
+      (childId) =>
+        diagramEdges.value.filter(
+          (edge) =>
+            edge.fromNodeId === childId &&
+            edge.toNodeId === peerSocket.parent.def.id &&
+            edge.fromSocketId === frameSocket.def.id &&
+            edge.toSocketId === peerSocket.def.id,
+        ).length === 0,
+    );
+
+    // This adds the frame connection so we get a visible edge on the diagram
+    unattachedFromNodeIds.push(frameSocket.parent.def.id);
+
+    await componentsStore.CREATE_AGGREGATE_PROXY_CONNECTIONS(
+      [peerSocket.parent.def.id],
+      peerSocket.def.id,
+      unattachedFromNodeIds,
+      frameSocket.def.id,
+    );
+    return;
+  }
+
   await componentsStore.CREATE_COMPONENT_CONNECTION(
     {
       nodeId: e.fromSocket.parent.def.id,

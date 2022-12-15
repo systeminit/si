@@ -126,6 +126,11 @@ export const useComponentAttributesStore = () => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+              if (this.selectedComponent === undefined) {
+                this.schema = response;
+                return;
+              }
+
               const props: { [id: string]: PropertyEditorProp } = {};
 
               for (const propKey in response.props) {
