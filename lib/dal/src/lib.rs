@@ -10,6 +10,7 @@ use si_data_pg::{PgError, PgPool, PgPoolError};
 use strum_macros::{Display, EnumString, EnumVariantNames};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech_client::EncryptionKey;
 
 pub mod action_prototype;
 pub mod attribute;
@@ -185,7 +186,6 @@ pub use validation::prototype::{
 pub use validation::resolver::{
     ValidationResolver, ValidationResolverError, ValidationResolverId, ValidationStatus,
 };
-use veritech_client::EncryptionKey;
 pub use visibility::{Visibility, VisibilityError};
 pub use workflow::{
     WorkflowError, WorkflowKind, WorkflowResult, WorkflowStep, WorkflowTree, WorkflowTreeStep,
@@ -303,7 +303,7 @@ pub async fn migrate_all(
     encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {
     migrate(pg).await?;
-    migrate_builtins(pg, nats, job_processor, veritech, encryption_key).await?;
+    migrate_builtins(pg, nats, job_processor, veritech, encryption_key, false).await?;
     Ok(())
 }
 
@@ -319,6 +319,7 @@ pub async fn migrate_builtins(
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
     encryption_key: &EncryptionKey,
+    skip_migrating_schemas: bool,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         pg.clone(),
@@ -330,7 +331,7 @@ pub async fn migrate_builtins(
     let dal_context = services_context.into_builder();
     let request_context = RequestContext::new_universal_head(HistoryActor::SystemInit);
     let ctx = dal_context.build(request_context).await?;
-    builtins::migrate(&ctx).await?;
+    builtins::migrate(&ctx, skip_migrating_schemas).await?;
     ctx.commit().await?;
     Ok(())
 }

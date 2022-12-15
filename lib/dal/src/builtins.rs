@@ -114,13 +114,20 @@ pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
 /// 1. [`Funcs`](crate::Func)
 /// 1. [`WorkflowPrototypes`](crate::workflow_prototype::WorkflowPrototype)
 /// 1. [`Schemas`](crate::Schema)
-pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext, skip_migrating_schemas: bool) -> BuiltinsResult<()> {
     info!("migrating functions");
     func::migrate(ctx).await?;
+
     info!("migrating workflows");
     workflow::migrate(ctx).await?;
-    info!("migrating schemas");
-    schema::migrate(ctx).await?;
+
+    if skip_migrating_schemas {
+        info!("skipping migrating schemas (this should only be possible when running integration tests)");
+    } else {
+        info!("migrating schemas");
+        schema::migrate(ctx).await?;
+    }
+
     info!("completed migrating functions, workflows and schemas");
     Ok(())
 }
