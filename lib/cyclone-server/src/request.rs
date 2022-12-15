@@ -315,7 +315,7 @@ mod tests {
 
     fn encrypt_and_encode(message: &[u8], pkey: &PublicKey) -> String {
         base64::encode_config(
-            &sodiumoxide::crypto::sealedbox::seal(message, pkey),
+            sodiumoxide::crypto::sealedbox::seal(message, pkey),
             base64::STANDARD_NO_PAD,
         )
     }
