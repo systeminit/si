@@ -46,6 +46,7 @@ const DEFAULT_PG_DBNAME: &str = "si_test";
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
+const ENV_VAR_SKIP_MIGRATING_SCHEMAS: &str = "SI_TEST_SKIP_MIGRATING_SCHEMAS";
 
 const JWT_PUBLIC_FILENAME: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/public.pem");
 const JWT_PRIVATE_FILENAME: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/private.pem");
@@ -449,6 +450,13 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
             .wrap_err("failed to commit jwt key insertion txn")?;
     }
 
+    // Check if the user would like to skip migrating schemas. This is helpful for boosting
+    // performance when running integration tests that do not rely on builtin schemas.
+    let skip_migrating_schemas = match env::var(ENV_VAR_SKIP_MIGRATING_SCHEMAS) {
+        Ok(skip_migrating_schemas_variable) => !skip_migrating_schemas_variable.is_empty(),
+        Err(_) => false,
+    };
+
     info!("creating builtins");
     dal::migrate_builtins(
         services_ctx.pg_pool(),
@@ -456,6 +464,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.job_processor(),
         services_ctx.veritech().clone(),
         services_ctx.encryption_key(),
+        skip_migrating_schemas,
     )
     .await
     .wrap_err("failed to run builtin migrations")?;

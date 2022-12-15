@@ -823,6 +823,7 @@ dependencies = [
  "sodiumoxide",
  "telemetry",
  "tempfile",
+ "thiserror",
  "tokio",
  "tracing-subscriber",
  "uuid",

@@ -17,9 +17,10 @@ si-data-pg = { path = "../../lib/si-data-pg" }
 si-std = { path = "../../lib/si-std" }
 si-test-macros = { path = "../../lib/si-test-macros" }
 sodiumoxide = "0.2.6"
-tempfile = "3.2.0"
-tokio = { version = "1.2.0", features = ["full", "tracing"] }
 telemetry = { path = "../../lib/telemetry-rs" }
+tempfile = "3.2.0"
+thiserror = "1.0.24"
+tokio = { version = "1.2.0", features = ["full", "tracing"] }
 tracing-subscriber = { version = "0.3.11", default-features = false, features = ["ansi", "env-filter", "fmt"] }
 uuid = { version = "1.0.0", features = ["v4"] }
 veritech-client = { path = "../../lib/veritech-client" }

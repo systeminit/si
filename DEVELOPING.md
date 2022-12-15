@@ -472,6 +472,18 @@ variable.
 SI_TEST_LOG=info
 ```
 
+#### Migrations Running Too Slow? Try Disabling Builtin Schema Migrations!
+
+If your integration test does not rely on builtin `Schema(s)` and `SchemaVariant(s)` (e.g. "Docker Image" and
+"AWS EC2"), you can disable their migration with an environment variable.
+
+```shell
+SI_TEST_SKIP_MIGRATING_SCHEMAS=true cargo test -p dal --test integration <your-test>
+```
+
+You will likely notice a dramatic difference in end-to-end wall clock time since the database will skip migrating
+builtin `Schema(s)` and `SchemaVariant(s)` entirely.
+
 ### Debugging Integration Tests with Database Contents
 
 Integration tests in the `lib/dal` crate typically perform their work without

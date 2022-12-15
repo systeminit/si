@@ -2,15 +2,16 @@ use dal::{
     schema::RootProp, AttributeContext, AttributeValue, Component, ComponentView, DalContext, Prop,
     PropKind, Schema, SchemaKind, SchemaVariant, StandardModel,
 };
-
 use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
     test_harness::{create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
+
 mod complex_func;
 mod cyclone_crypto;
+mod properties;
 
 /// Create a schema that looks like this:
 /// ```json
