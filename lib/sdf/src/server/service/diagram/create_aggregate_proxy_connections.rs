@@ -13,11 +13,10 @@ use super::{DiagramError, DiagramResult};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAggregateProxyConnectionRequest {
-    pub parent_node_id: NodeId,
-    pub child_node_ids: Vec<NodeId>,
-    pub from_socket_id: SocketId,
+    pub to_node_ids: Vec<NodeId>,
     pub to_socket_id: SocketId,
-    pub from_node_id: NodeId,
+    pub from_node_ids: Vec<NodeId>,
+    pub from_socket_id: SocketId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -35,62 +34,51 @@ pub async fn create_aggregate_proxy_connections(
 ) -> DiagramResult<Json<CreateAggregateProxyConnectionResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let node = Node::get_by_id(&ctx, &request.from_node_id)
-        .await?
-        .ok_or(DiagramError::NodeNotFound(request.from_node_id))?;
-
-    let component = node
-        .component(&ctx)
-        .await?
-        .ok_or(DiagramError::ComponentNotFound)?;
-
-    let from_socket_external_provider =
-        ExternalProvider::find_for_socket(&ctx, request.from_socket_id)
-            .await?
-            .ok_or(DiagramError::ExternalProviderNotFoundForSocket(
-                request.from_socket_id,
-            ))?;
-
-    let attribute_value_context = AttributeReadContext {
-        external_provider_id: Some(*from_socket_external_provider.id()),
-        component_id: Some(*component.id()),
-        ..Default::default()
-    };
-
-    let attribute_value = AttributeValue::find_for_context(&ctx, attribute_value_context)
-        .await?
-        .ok_or(DiagramError::AttributeValueNotFoundForContext(
-            attribute_value_context,
-        ))?;
-
     let mut connections = Vec::new();
 
-    let connection = Connection::new(
-        &ctx,
-        request.from_node_id,
-        request.from_socket_id,
-        request.parent_node_id,
-        request.to_socket_id,
-    )
-    .await?;
+    for from_node_id in request.from_node_ids {
+        for to_node_id in request.to_node_ids.iter() {
+            let connection = Connection::new(
+                &ctx,
+                from_node_id,
+                request.from_socket_id,
+                *to_node_id,
+                request.to_socket_id,
+            )
+            .await?;
 
-    connections.push(connection);
+            connections.push(connection);
+        }
 
-    for child in request.child_node_ids {
-        let connection = Connection::new(
-            &ctx,
-            request.from_node_id,
-            request.from_socket_id,
-            child,
-            request.to_socket_id,
-        )
-        .await?;
+        let component = Node::get_by_id(&ctx, &from_node_id)
+            .await?
+            .ok_or(DiagramError::NodeNotFound(from_node_id))?
+            .component(&ctx)
+            .await?
+            .ok_or(DiagramError::ComponentNotFound)?;
 
-        connections.push(connection);
+        let from_socket_external_provider =
+            ExternalProvider::find_for_socket(&ctx, request.from_socket_id)
+                .await?
+                .ok_or(DiagramError::ExternalProviderNotFoundForSocket(
+                    request.from_socket_id,
+                ))?;
+
+        let attribute_value_context = AttributeReadContext {
+            external_provider_id: Some(*from_socket_external_provider.id()),
+            component_id: Some(*component.id()),
+            ..Default::default()
+        };
+
+        let attribute_value = AttributeValue::find_for_context(&ctx, attribute_value_context)
+            .await?
+            .ok_or(DiagramError::AttributeValueNotFoundForContext(
+                attribute_value_context,
+            ))?;
+
+        ctx.enqueue_job(DependentValuesUpdate::new(&ctx, *attribute_value.id()))
+            .await;
     }
-
-    ctx.enqueue_job(DependentValuesUpdate::new(&ctx, *attribute_value.id()))
-        .await;
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
