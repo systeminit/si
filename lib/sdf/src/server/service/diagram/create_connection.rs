@@ -1,11 +1,11 @@
 use axum::Json;
+use dal::edge::EdgeKind;
 use dal::{
     job::definition::DependentValuesUpdate, node::NodeId, socket::SocketId, AttributeReadContext,
     AttributeValue, Connection, ExternalProvider, Node, StandardModel, Visibility, WorkspaceId,
     WsEvent,
 };
 use serde::{Deserialize, Serialize};
-use dal::edge::EdgeKind;
 
 use super::{DiagramError, DiagramResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -44,7 +44,6 @@ pub async fn create_connection(
         request.to_node_id,
         request.to_socket_id,
         EdgeKind::Configuration,
-        
     )
     .await?;
 
