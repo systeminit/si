@@ -5,6 +5,7 @@ use dal::{
     WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use dal::edge::EdgeKind;
 
 use super::{DiagramError, DiagramResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -42,6 +43,8 @@ pub async fn create_connection(
         request.from_socket_id,
         request.to_node_id,
         request.to_socket_id,
+        EdgeKind::Configuration,
+        
     )
     .await?;
 

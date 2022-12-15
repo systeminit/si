@@ -216,15 +216,18 @@ async function onDrawEdge(e: DrawEdgeEvent) {
             edge.fromSocketId === peerSocket.def.id &&
             edge.toSocketId === frameSocket.def.id,
         ).length === 0,
-    );
+    ).map((id) => ({ nodeId: id, isParent: false }));
 
     // This adds the frame connection so we get a visible edge on the diagram
-    unattachedToNodeIds.push(frameSocket.parent.def.id);
+    unattachedToNodeIds.push({
+      nodeId: frameSocket.parent.def.id,
+      isParent: true,
+    });
 
     await componentsStore.CREATE_AGGREGATE_PROXY_CONNECTIONS(
       unattachedToNodeIds,
       frameSocket.def.id,
-      [peerSocket.parent.def.id],
+      [{ nodeId: peerSocket.parent.def.id, isParent: false }],
       peerSocket.def.id,
     );
     return;
@@ -248,13 +251,16 @@ async function onDrawEdge(e: DrawEdgeEvent) {
             edge.fromSocketId === frameSocket.def.id &&
             edge.toSocketId === peerSocket.def.id,
         ).length === 0,
-    );
+    ).map((id) => ({ nodeId: id, isParent: false }));
 
     // This adds the frame connection so we get a visible edge on the diagram
-    unattachedFromNodeIds.push(frameSocket.parent.def.id);
+    unattachedFromNodeIds.push({
+      nodeId: frameSocket.parent.def.id,
+      isParent: true,
+    });
 
     await componentsStore.CREATE_AGGREGATE_PROXY_CONNECTIONS(
-      [peerSocket.parent.def.id],
+      [{ nodeId: peerSocket.parent.def.id, isParent: false }],
       peerSocket.def.id,
       unattachedFromNodeIds,
       frameSocket.def.id,

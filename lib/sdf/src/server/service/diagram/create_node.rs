@@ -8,6 +8,7 @@ use dal::{
     generate_name, node_position::NodePositionView, Component, Connection, DiagramKind,
     NodePosition, NodeTemplate, NodeView, Schema, SchemaId, StandardModel, Visibility, WorkspaceId,
 };
+use dal::edge::EdgeKind;
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::diagram::connect_component_to_frame::connect_component_sockets_to_frame;
@@ -156,6 +157,7 @@ pub async fn create_node(
                 *component_socket.id(),
                 frame_id,
                 *frame_socket.id(),
+                EdgeKind::Symbolic,
             )
             .await?;
 

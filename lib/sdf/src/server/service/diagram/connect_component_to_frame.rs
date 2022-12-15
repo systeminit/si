@@ -6,6 +6,7 @@ use dal::{
     ExternalProvider, Node, SocketId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
+use dal::edge::EdgeKind;
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
@@ -114,6 +115,8 @@ pub async fn connect_component_to_frame(
         from_socket_id,
         request.parent_node_id,
         to_socket_id,
+        EdgeKind::Symbolic,
+        
     )
     .await?;
 
@@ -169,6 +172,7 @@ pub async fn connect_component_sockets_to_frame(
                             *parent_socket.id(),
                             child_node_id,
                             *child_socket.id(),
+                            EdgeKind::Configuration,
                         )
                         .await?;
 
@@ -219,6 +223,8 @@ pub async fn connect_component_sockets_to_frame(
                             peer_socket_id,
                             child_node_id,
                             *parent_socket.id(),
+                            EdgeKind::Configuration,
+                            
                         )
                         .await?;
 
