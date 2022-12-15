@@ -73,6 +73,8 @@ export interface PropertyEditorProp {
   kind: PropertyEditorPropKind;
   widgetKind: PropertyEditorPropWidgetKind;
   docLink?: string;
+  isHidden: boolean;
+  isReadonly: boolean;
 }
 
 export interface PropertyEditorSchema {

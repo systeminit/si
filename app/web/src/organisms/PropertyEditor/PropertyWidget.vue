@@ -1,5 +1,5 @@
 <template>
-  <div class="" @keyup.stop @keydown.stop>
+  <div v-if="!schemaProp.isHidden" class="" @keyup.stop @keydown.stop>
     <!-- <div class="flex flex-row items-center w-full" @keyup.stop @keydown.stop> -->
     <WidgetHeader
       v-if="showArrayElementHeader"
