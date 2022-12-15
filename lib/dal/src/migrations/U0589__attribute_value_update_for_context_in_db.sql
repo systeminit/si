@@ -1340,14 +1340,20 @@ DECLARE
     update_read_attribute_context      jsonb;
 BEGIN
     SELECT *
-    INTO STRICT parent_attribute_value
+    INTO parent_attribute_value
     FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
     WHERE id = this_parent_attribute_value_id;
+    IF NOT FOUND THEN
+        RAISE 'Unable to find parent AttributeValue(%) with Tenancy(%) and Visibility(%)', this_parent_attribute_value_id, this_read_tenancy, this_visibility;
+    END IF;
 
     SELECT *
-    INTO STRICT parent_prop
+    INTO parent_prop
     FROM props_v1(this_read_tenancy, this_visibility)
     WHERE id = parent_attribute_value.attribute_context_prop_id;
+    IF NOT FOUND THEN
+        RAISE 'Unable to find parent Prop(%) with Tenancy(%) and Visibility(%)', parent_attribute_value.attribute_context_prop_id, this_read_tenancy, this_visibility;
+    END IF;
 
     update_read_attribute_context := this_update_attribute_context || jsonb_build_object('attribute_context_prop_id', NULL);
     FOR child_value_id IN
@@ -1579,6 +1585,12 @@ BEGIN
                                                       this_read_tenancy,
                                                       this_visibility,
                                                       found_proxy.id);
+            PERFORM unset_belongs_to_v1(
+                'attribute_value_belongs_to_attribute_prototype',
+                this_write_tenancy,
+                this_visibility,
+		found_proxy.id
+            );
             PERFORM delete_by_id_v1('attribute_values',
                                     this_read_tenancy,
                                     this_write_tenancy,
@@ -1626,7 +1638,7 @@ BEGIN
                                               this_parent_attribute_value_id);
 
     SELECT DISTINCT ON (id) attribute_prototypes.id
-    INTO STRICT attribute_prototype_id
+    INTO attribute_prototype_id
     FROM attribute_prototypes
     INNER JOIN (
         SELECT DISTINCT ON (object_id) belongs_to_id AS prototype_id
@@ -1641,6 +1653,11 @@ BEGIN
     ORDER BY id,
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC;
+    IF NOT FOUND THEN
+        RAISE 'Unable to find AttributePrototype of parent AttributeValue(%) with Tenancy(%) and Visibility(%)', this_parent_attribute_value_id,
+                                                                                                                 this_read_tenancy,
+                                                                                                                 this_visibility;
+    END IF;
 
     PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
                                 this_write_tenancy,

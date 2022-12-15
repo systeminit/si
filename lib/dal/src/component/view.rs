@@ -141,7 +141,7 @@ impl ComponentView {
                         .await?;
                     let encoded = ctx
                         .encryption_key()
-                        .encrypt_and_encode(&serde_json::to_string(&decrypted_secret.message())?);
+                        .encrypt_and_encode(serde_json::to_string(&decrypted_secret.message())?);
 
                     *value = serde_json::to_value(&decrypted_secret)?;
                     match value.pointer_mut("/message") {

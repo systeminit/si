@@ -227,7 +227,7 @@ pub async fn get_jwt_signing_key(
     let pk: JwtPk = row.try_get("pk")?;
     let nonce = secretbox::Nonce::from_slice(nonce_bytes).ok_or(JwtKeyError::BadNonce)?;
 
-    let secret_bytes = base64::decode(&encrypted_private_key)?;
+    let secret_bytes = base64::decode(encrypted_private_key)?;
     let key_bytes = secretbox::open(&secret_bytes, &nonce, &jwt_secret_key.key)
         .map_err(|()| JwtKeyError::Decrypt)?;
     let key = String::from_utf8(key_bytes)?;

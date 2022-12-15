@@ -1120,7 +1120,7 @@ impl Component {
         Self::name_from_context(ctx, context).await
     }
 
-    /// Grabs the [`AttributeValue`](crate::AttributeValue) corresponding to the "/root/<child>"
+    /// Grabs the [`AttributeValue`](crate::AttributeValue) corresponding to the `/root/<child>`
     /// [`Prop`](crate::Prop) for the given [`Component`](Self) (e.g. "/root/resource" and
     /// "/root/code").
     #[instrument(skip_all)]
