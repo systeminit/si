@@ -1,5 +1,4 @@
 export enum FunctionKind {
-  QualificationCheck = "qualificationcheck",
   ResolverFunction = "resolverfunction",
   WorkflowResolve = "workflowResolve",
   CommandRun = "commandRun",
@@ -9,7 +8,6 @@ export enum FunctionKind {
 
 export function function_kinds(): Array<string> {
   return [
-    FunctionKind.QualificationCheck,
     FunctionKind.ResolverFunction,
     FunctionKind.WorkflowResolve,
     FunctionKind.CommandRun,

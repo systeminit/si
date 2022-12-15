@@ -1,14 +1,11 @@
 use axum::Json;
-use dal::qualification_prototype::QualificationPrototypeContext;
-use dal::{
-    Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, QualificationPrototype,
-    RequestContext, StandardModel, Visibility, WsEvent,
-};
+
+use dal::{FuncBackendKind, HistoryActor, RequestContext, StandardModel, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::DevResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use crate::service::func::create_func::{CreateFuncResponse, DEFAULT_QUALIFICATION_CODE};
+use crate::service::func::create_func::CreateFuncResponse;
 use crate::service::func::FuncError;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -29,29 +26,25 @@ pub async fn create_builtin_func(
         .build(RequestContext::new_universal_head(HistoryActor::SystemInit))
         .await?;
 
+    // TODO(nick): fix this module.
+    #[allow(clippy::match_single_binding)]
     let func = match request.kind {
-        FuncBackendKind::JsQualification => {
-            let mut func = Func::new(
-                &ctx,
-                request.name,
-                FuncBackendKind::JsQualification,
-                FuncBackendResponseType::Qualification,
-            )
-            .await?;
-
-            func.set_code_plaintext(&ctx, Some(DEFAULT_QUALIFICATION_CODE))
-                .await?;
-            func.set_handler(&ctx, Some("qualification".to_owned()))
-                .await?;
-
-            let _ =
-                QualificationPrototype::new(&ctx, *func.id(), QualificationPrototypeContext::new())
-                    .await?;
-
-            func
-        }
         _ => Err(FuncError::FuncNotSupported)?,
     };
+
+    // TODO(nick): restore the ability to author qualification builtins.
+    // let mut func = Func::new(
+    //     &ctx,
+    //     request.name,
+    //     FuncBackendKind::JsAttribute,
+    //     FuncBackendResponseType::Qualification,
+    // )
+    //     .await?;
+    // func.set_code_plaintext(&ctx, Some(DEFAULT_QUALIFICATION_CODE))
+    //     .await?;
+    // func.set_handler(&ctx, Some("qualification".to_owned()))
+    //     .await?;
+    // func
 
     dal::builtins::func_persist(&ctx, &func).await?;
 

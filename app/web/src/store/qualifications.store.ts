@@ -103,7 +103,6 @@ export const useQualificationsStore = () => {
           });
         },
 
-        // TODO: check what `component/check_qualifications` endpoint is doing
         async FETCH_COMPONENT_QUALIFICATIONS(componentId: ComponentId) {
           return new ApiRequest<Qualification[]>({
             url: "component/list_qualifications",

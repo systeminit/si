@@ -16,7 +16,6 @@ use crate::func::backend::{
     js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
     js_command::FuncBackendJsCommand,
     js_confirmation::FuncBackendJsConfirmation,
-    js_qualification::FuncBackendJsQualification,
     js_validation::FuncBackendJsValidation,
     js_workflow::FuncBackendJsWorkflow,
     map::FuncBackendMap,
@@ -218,9 +217,6 @@ impl FuncBinding {
     ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         // TODO: encrypt components
         let value = match self.backend_kind() {
-            FuncBackendKind::JsQualification => {
-                FuncBackendJsQualification::create_and_execute(context, &func, &self.args).await?
-            }
             FuncBackendKind::JsValidation => {
                 FuncBackendJsValidation::create_and_execute(context, &func, &self.args).await?
             }
@@ -331,9 +327,7 @@ impl FuncBinding {
             | FuncBackendKind::String
             | FuncBackendKind::Unset
             | FuncBackendKind::Validation => {}
-
-            FuncBackendKind::JsQualification
-            | FuncBackendKind::JsAttribute
+            FuncBackendKind::JsAttribute
             | FuncBackendKind::JsWorkflow
             | FuncBackendKind::JsCommand
             | FuncBackendKind::JsConfirmation

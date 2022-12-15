@@ -16,8 +16,9 @@ use crate::{
         binding_return_value::FuncBindingReturnValueId,
     },
     AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext, Func,
-    FuncError, FuncId, Prop, PropError, PropId, PropKind, Schema, SchemaId, SchemaKind,
-    SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype, ValidationPrototypeContext,
+    FuncError, FuncId, Prop, PropError, PropId, PropKind, Schema, SchemaError, SchemaId,
+    SchemaKind, SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype,
+    ValidationPrototypeContext,
 };
 
 mod aws;
@@ -255,6 +256,9 @@ impl MigrationDriver {
         Err(PropError::ExpectedChildNotFound(child_prop_name.to_string()).into())
     }
 
+    /// A wrapper around [`SchemaVariant::finalize()`](crate::SchemaVariant::finalize()) to perform
+    /// some additional, builtin-specific work when finalizing a
+    /// [`SchemaVariant`](crate::SchemaVariant).
     pub async fn finalize_schema_variant(
         &self,
         ctx: &DalContext,
@@ -338,5 +342,29 @@ impl MigrationDriver {
             }
             _ => Err(BuiltinsError::NonPrimitivePropKind(*prop.kind())),
         }
+    }
+
+    /// Find a single [`Func`](crate::Func) and [`FuncArgument`](crate::FuncArgument) by providing
+    /// the name for each, respectively.
+    pub async fn find_func_and_single_argument_by_names(
+        &self,
+        ctx: &DalContext,
+        func_name: &str,
+        func_argument_name: &str,
+    ) -> BuiltinsResult<(FuncId, FuncArgumentId)> {
+        // NOTE(nick): we may eventually want to make "self" mutable and perform auto caching.
+        let func_name = func_name.to_string();
+        let func = Func::find_by_attr(ctx, "name", &func_name)
+            .await?
+            .pop()
+            .ok_or(SchemaError::FuncNotFound(func_name.clone()))?;
+        let func_id = *func.id();
+        let func_argument = FuncArgument::find_by_name_for_func(ctx, func_argument_name, func_id)
+            .await?
+            .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
+                func_name,
+                func_argument_name.to_string(),
+            ))?;
+        Ok((func_id, *func_argument.id()))
     }
 }

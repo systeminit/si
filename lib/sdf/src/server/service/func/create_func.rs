@@ -4,9 +4,8 @@ use crate::service::func::FuncError;
 use axum::Json;
 use dal::{
     generate_name, job::definition::DependentValuesUpdate, prototype_context::HasPrototypeContext,
-    qualification_prototype::QualificationPrototypeContext, AttributeValue, AttributeValueId,
-    CodeLanguage, ComponentId, ConfirmationPrototype, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncBindingReturnValue, FuncId, QualificationPrototype, SchemaId,
+    AttributeValue, AttributeValueId, CodeLanguage, ComponentId, ConfirmationPrototype, DalContext,
+    Func, FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, FuncId, SchemaId,
     SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
@@ -60,26 +59,6 @@ pub static DEFAULT_COMMAND_HANDLER: &str = "command";
 pub static DEFAULT_COMMAND_CODE: &str = include_str!("./defaults/command.ts");
 pub static DEFAULT_VALIDATION_HANDLER: &str = "validate";
 pub static DEFAULT_VALIDATION_CODE: &str = include_str!("./defaults/validation.ts");
-
-async fn create_qualification_func(ctx: &DalContext) -> FuncResult<Func> {
-    let mut func = Func::new(
-        ctx,
-        generate_name(),
-        FuncBackendKind::JsQualification,
-        FuncBackendResponseType::Qualification,
-    )
-    .await?;
-
-    func.set_code_plaintext(ctx, Some(DEFAULT_QUALIFICATION_CODE))
-        .await?;
-    func.set_handler(ctx, Some(DEFAULT_QUALIFICATION_HANDLER))
-        .await?;
-
-    let _ =
-        QualificationPrototype::new(ctx, *func.id(), QualificationPrototypeContext::new()).await?;
-
-    Ok(func)
-}
 
 async fn create_validation_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
@@ -270,7 +249,6 @@ pub async fn create_func(
             }) => create_attribute_func(&ctx, value_id, current_func_id).await?,
             None => create_attribute_func(&ctx, None, None).await?,
         },
-        FuncBackendKind::JsQualification => create_qualification_func(&ctx).await?,
         FuncBackendKind::JsConfirmation => create_confirmation_func(&ctx).await?,
         FuncBackendKind::JsCommand => create_command_func(&ctx).await?,
         FuncBackendKind::JsValidation => create_validation_func(&ctx).await?,

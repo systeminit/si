@@ -537,7 +537,7 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
                 "region": "us-east-1",
             }
         }], // actual
-        component_payload.component_view_properties(ctx).await // expected
+        component_payload.component_view_properties_raw(ctx).await // expected
     );
 
     // Ensure that we see exactly one expected validation status with exactly one expected

@@ -46,8 +46,7 @@ pub async fn get_components_metadata(
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
 
-        let qualifications =
-            Component::list_qualifications_by_component_id(&ctx, *component.id()).await?;
+        let qualifications = Component::list_qualifications(&ctx, *component.id()).await?;
 
         let qualified = qualifications
             .into_iter()

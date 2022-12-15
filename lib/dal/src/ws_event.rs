@@ -7,7 +7,7 @@ use crate::component::resource::ResourceRefreshId;
 use crate::confirmation_status::ConfirmationStatusUpdate;
 use crate::fix::batch::FixBatchReturn;
 use crate::fix::FixReturn;
-use crate::qualification::QualificationCheckId;
+use crate::qualification::QualificationCheckPayload;
 use crate::workflow::{CommandOutput, CommandReturn};
 use crate::{
     BillingAccountId, ChangeSetPk, ConfirmationPrototypeError, DalContext, HistoryActor,
@@ -38,7 +38,7 @@ pub enum WsPayload {
     ChangeSetWritten(ChangeSetPk),
     SchemaCreated(SchemaPk),
     ResourceRefreshed(ResourceRefreshId),
-    CheckedQualifications(QualificationCheckId),
+    CheckedQualifications(QualificationCheckPayload),
     CommandOutput(CommandOutput),
     CodeGenerated(CodeGeneratedPayload),
     CommandReturn(CommandReturn),

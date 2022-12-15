@@ -21,26 +21,32 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "soulrender"
             },
-
             "si": {
                 "name": "soulrender",
                 "type": "component"
             },
         }], // expected
-        soulrender_payload.component_view_properties(ctx).await // actual
+        soulrender_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "bloodscythe"
             },
-
             "si": {
                 "name": "bloodscythe",
                 "type": "component"
             },
         }], // expected
-        bloodscythe_payload.component_view_properties(ctx).await // actual
+        bloodscythe_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 
     // Update the "/root/si/name" value for "bloodscythe", observe that it worked, and observe
@@ -58,13 +64,16 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "soulrender"
             },
-
             "si": {
                 "name": "soulrender",
                 "type": "component"
             },
         }], // expected
-        soulrender_payload.component_view_properties(ctx).await // actual
+        soulrender_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 
     assert_eq!(
@@ -72,13 +81,16 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "bloodscythe-updated"
             },
-
             "si": {
                 "name": "bloodscythe-updated",
                 "type": "component"
             },
         }], // expected
-        bloodscythe_payload.component_view_properties(ctx).await // actual
+        bloodscythe_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 
     // Now, the "/root/si/name" value for "soulrender", observe that it worked, and observe
@@ -96,25 +108,31 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
             "domain": {
                 "image": "soulrender-updated"
             },
-
             "si": {
                 "name": "soulrender-updated",
                 "type": "component"
             },
         }], // expected
-        soulrender_payload.component_view_properties(ctx).await // actual
+        soulrender_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual // actual
     );
     assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "bloodscythe-updated"
             },
-
             "si": {
                 "name": "bloodscythe-updated",
                 "type": "component"
             },
         }], // expected
-        bloodscythe_payload.component_view_properties(ctx).await // actual
+        bloodscythe_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 }

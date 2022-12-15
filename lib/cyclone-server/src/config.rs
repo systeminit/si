@@ -31,9 +31,6 @@ pub struct Config {
     enable_ping: bool,
 
     #[builder(default = "true")]
-    enable_qualification: bool,
-
-    #[builder(default = "true")]
     enable_resolver: bool,
 
     #[builder(default = "true")]
@@ -75,12 +72,6 @@ impl Config {
     #[must_use]
     pub fn enable_ping(&self) -> bool {
         self.enable_ping
-    }
-
-    /// Gets a reference to the config's enable qualification.
-    #[must_use]
-    pub fn enable_qualification(&self) -> bool {
-        self.enable_qualification
     }
 
     /// Gets a reference to the config's enable resolver.

@@ -2,14 +2,13 @@ use std::collections::HashMap;
 
 use crate::action_prototype::ActionKind;
 use crate::builtins::schema::MigrationDriver;
+use crate::schema::variant::leaves::LeafKind;
 use crate::{
-    component::ComponentKind, edit_field::widget::*, prototype_context::PrototypeContext,
-    qualification_prototype::QualificationPrototypeContext, schema::SchemaUiMenu,
-    socket::SocketArity, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
-    AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult,
-    DalContext, DiagramKind, ExternalProvider, Func, InternalProvider, Prop, PropKind,
-    QualificationPrototype, SchemaError, SchemaKind, StandardModel, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    component::ComponentKind, edit_field::widget::*, schema::SchemaUiMenu, socket::SocketArity,
+    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, DiagramKind,
+    ExternalProvider, Func, InternalProvider, Prop, PropKind, SchemaError, SchemaKind,
+    SchemaVariant, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 // Reference: https://www.docker.com/company/newsroom/media-resources/
@@ -46,16 +45,18 @@ impl MigrationDriver {
             .set_widget_kind(ctx, WidgetKind::SecretSelect)
             .await?;
 
-        // Qualification Prototype
-        let qual_func_name = "si:qualificationDockerHubLogin".to_string();
-        let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
-            .await?
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
-        let mut qual_prototype_context = QualificationPrototypeContext::new();
-        qual_prototype_context.set_schema_variant_id(*schema_variant.id());
-
-        let _ = QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+        // Qualifications
+        let (qualification_func_id, qualification_func_argument_id) = self
+            .find_func_and_single_argument_by_names(ctx, "si:qualificationDockerHubLogin", "domain")
+            .await?;
+        SchemaVariant::add_leaf(
+            ctx,
+            qualification_func_id,
+            qualification_func_argument_id,
+            *schema_variant.id(),
+            LeafKind::Qualification,
+        )
+        .await?;
 
         let identity_func_item = self
             .get_func_item("si:identity")
@@ -181,16 +182,22 @@ impl MigrationDriver {
             .await?;
         output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        // Qualification Prototype
-        let qual_func_name = "si:qualificationDockerImageNameInspect".to_string();
-        let mut qual_funcs = Func::find_by_attr(ctx, "name", &qual_func_name).await?;
-        let qual_func = qual_funcs
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
-        let mut qual_prototype_context = QualificationPrototypeContext::new();
-        qual_prototype_context.set_schema_variant_id(*schema_variant.id());
-
-        let _ = QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
+        // Qualifications
+        let (qualification_func_id, qualification_func_argument_id) = self
+            .find_func_and_single_argument_by_names(
+                ctx,
+                "si:qualificationDockerImageNameInspect",
+                "domain",
+            )
+            .await?;
+        SchemaVariant::add_leaf(
+            ctx,
+            qualification_func_id,
+            qualification_func_argument_id,
+            *schema_variant.id(),
+            LeafKind::Qualification,
+        )
+        .await?;
 
         self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
             .await?;
@@ -268,20 +275,25 @@ impl MigrationDriver {
         )
         .await?;
 
-        let func_name = "si:dockerImageRefreshWorkflow";
-        let func = Func::find_by_attr(ctx, "name", &func_name)
+        let workflow_func_name = "si:dockerImageRefreshWorkflow";
+        let workflow_func = Func::find_by_attr(ctx, "name", &workflow_func_name)
             .await?
             .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+            .ok_or_else(|| SchemaError::FuncNotFound(workflow_func_name.to_owned()))?;
         let title = "Refresh Docker Image";
         let context = WorkflowPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id: *schema_variant.id(),
             ..Default::default()
         };
-        let workflow_prototype =
-            WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
-                .await?;
+        let workflow_prototype = WorkflowPrototype::new(
+            ctx,
+            *workflow_func.id(),
+            serde_json::Value::Null,
+            context,
+            title,
+        )
+        .await?;
 
         let name = "refresh";
         let context = ActionPrototypeContext {

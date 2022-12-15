@@ -17,8 +17,8 @@ use crate::{
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
     AttributePrototypeError, AttributeValueError, BillingAccount, BillingAccountId, Component,
     DalContext, DiagramKind, FuncError, HistoryEventError, Organization, OrganizationId, PropError,
-    QualificationPrototypeError, ReadTenancyError, StandardModel, StandardModelError, Timestamp,
-    ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WsEventError,
+    ReadTenancyError, StandardModel, StandardModelError, Timestamp, ValidationPrototypeError,
+    Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
 pub use ui_menu::SchemaUiMenu;
@@ -66,8 +66,6 @@ pub enum SchemaError {
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
-    #[error("qualification prototype error: {0}")]
-    QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
     #[error("error serializing/deserializing json: {0}")]

@@ -18,7 +18,6 @@ pub mod integer;
 pub mod js_attribute;
 pub mod js_command;
 pub mod js_confirmation;
-pub mod js_qualification;
 pub mod js_validation;
 pub mod js_workflow;
 pub mod map;
@@ -75,7 +74,6 @@ pub enum FuncBackendKind {
     /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
     Identity,
     Integer,
-    JsQualification,
     JsAttribute,
     JsWorkflow,
     JsConfirmation,

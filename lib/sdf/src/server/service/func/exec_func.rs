@@ -2,10 +2,9 @@ use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    job::definition::{DependentValuesUpdate, Qualification},
-    AttributePrototype, AttributeValue, Component, DalContext, Func, FuncBackendKind, FuncId,
-    PropId, PrototypeListForFunc, QualificationPrototype, QualificationPrototypeError,
-    StandardModel, ValidationPrototype, Visibility, WsEvent,
+    job::definition::DependentValuesUpdate, AttributePrototype, AttributeValue, Component,
+    DalContext, Func, FuncBackendKind, FuncId, PropId, StandardModel, ValidationPrototype,
+    Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -32,40 +31,6 @@ async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()>
             value.update_from_prototype_function(ctx).await?;
             ctx.enqueue_job(DependentValuesUpdate::new(ctx, *value.id()))
                 .await;
-        }
-    }
-
-    Ok(())
-}
-
-async fn run_qualifications(ctx: &DalContext, func: &Func) -> FuncResult<()> {
-    for proto in QualificationPrototype::list_for_func(ctx, *func.id()).await? {
-        let component_id = proto.component_id();
-        let schema_variant_id = proto.schema_variant_id();
-
-        if component_id.is_none() && schema_variant_id.is_none() {
-            continue;
-        }
-
-        if component_id.is_some() {
-            ctx.enqueue_job(
-                Qualification::new(ctx, component_id, *proto.id())
-                    .await
-                    .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?,
-            )
-            .await;
-        } else if schema_variant_id.is_some() {
-            for component in Component::list_for_schema_variant(ctx, schema_variant_id)
-                .await
-                .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?
-            {
-                ctx.enqueue_job(
-                    Qualification::new(ctx, *component.id(), *proto.id())
-                        .await
-                        .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?,
-                )
-                .await;
-            }
         }
     }
 
@@ -104,9 +69,6 @@ pub async fn exec_func(
     match func.backend_kind() {
         FuncBackendKind::JsAttribute => {
             update_values_for_func(&ctx, &func).await?;
-        }
-        FuncBackendKind::JsQualification => {
-            run_qualifications(&ctx, &func).await?;
         }
         FuncBackendKind::JsValidation => {
             run_validations(&ctx, &func).await?;

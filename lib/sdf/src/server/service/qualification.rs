@@ -11,9 +11,8 @@ use thiserror::Error;
 
 use dal::{qualification::QualificationSummaryError, WsEventError};
 use dal::{
-    AttributeValueError, ComponentError, ComponentId, FuncError, FuncId,
-    QualificationPrototypeError, QualificationPrototypeId, ReadTenancyError, SchemaError, SchemaId,
-    StandardModelError, TransactionsError, WriteTenancyError,
+    AttributeValueError, ComponentError, ComponentId, FuncError, FuncId, ReadTenancyError,
+    SchemaError, SchemaId, StandardModelError, TransactionsError, WriteTenancyError,
 };
 
 pub mod get_summary;
@@ -31,8 +30,6 @@ pub enum QualificationError {
     Base64Decode(#[from] base64::DecodeError),
     #[error("utf8 error: {0}")]
     Utf8(#[from] FromUtf8Error),
-    #[error("entity error: {0}")]
-    QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("attribute value error: {0}")]
@@ -65,8 +62,6 @@ pub enum QualificationError {
     ComponentNotFound(ComponentId),
     #[error("schema not found: {0}")]
     SchemaNotFound(SchemaId),
-    #[error("qualification prototype not found: {0}")]
-    PrototypeNotFound(QualificationPrototypeId),
     #[error("not writable")]
     NotWritable,
     #[error("qualification summary error: {0}")]

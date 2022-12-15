@@ -45,8 +45,7 @@ impl FunctionMetadata {
             .as_str();
 
         let extension = match f.backend_kind() {
-            FuncBackendKind::JsQualification
-            | FuncBackendKind::JsAttribute
+            FuncBackendKind::JsAttribute
             | FuncBackendKind::JsWorkflow
             | FuncBackendKind::JsCommand => Some("js"),
 

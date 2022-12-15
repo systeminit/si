@@ -1,6 +1,11 @@
 {
-  "kind": "JsQualification",
-  "arguments": [],
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "domain",
+      "kind": "Object"
+    }
+  ],
   "response_type": "Qualification",
   "display_name": "Can create security group",
   "description": null,

@@ -1,7 +1,6 @@
 use cyclone_core::{
-    CommandRunRequest, ComponentKind, ComponentView, ConfirmationRequest,
-    QualificationCheckRequest, ResolverFunctionRequest, SensitiveString, ValidationRequest,
-    WorkflowResolveRequest,
+    CommandRunRequest, ComponentKind, ComponentView, ConfirmationRequest, ResolverFunctionRequest,
+    SensitiveString, ValidationRequest, WorkflowResolveRequest,
 };
 use serde_json::Value;
 
@@ -11,6 +10,7 @@ pub trait ListSecrets {
     fn list_secrets(&self, key: &DecryptionKey)
         -> Result<Vec<SensitiveString>, DecryptionKeyError>;
 }
+
 pub trait DecryptRequest {
     fn decrypt_request(self, key: &DecryptionKey) -> Result<serde_json::Value, DecryptionKeyError>;
 }
@@ -132,52 +132,6 @@ impl DecryptRequest for ComponentView {
     }
 }
 
-impl ListSecrets for QualificationCheckRequest {
-    fn list_secrets(
-        &self,
-        key: &DecryptionKey,
-    ) -> Result<Vec<SensitiveString>, DecryptionKeyError> {
-        let mut secrets = self.component.data.list_secrets(key)?;
-        for component in &self.component.parents {
-            secrets.extend(component.list_secrets(key)?);
-        }
-        Ok(secrets)
-    }
-}
-
-impl DecryptRequest for QualificationCheckRequest {
-    fn decrypt_request(self, key: &DecryptionKey) -> Result<serde_json::Value, DecryptionKeyError> {
-        let mut value = serde_json::to_value(&self)?;
-
-        let (component, parents) = (self.component.data, self.component.parents);
-
-        match value.pointer_mut("/component/data") {
-            Some(v) => *v = component.decrypt_request(key)?,
-            None => {
-                return Err(DecryptionKeyError::JSONPointerNotFound(
-                    value,
-                    "/component/data".to_owned(),
-                ))
-            }
-        }
-
-        let mut decrypted_parents = Vec::with_capacity(parents.len());
-        for parent in parents {
-            decrypted_parents.push(parent.decrypt_request(key)?);
-        }
-        match value.pointer_mut("/component/parents") {
-            Some(v) => *v = serde_json::Value::Array(decrypted_parents),
-            None => {
-                return Err(DecryptionKeyError::JSONPointerNotFound(
-                    value,
-                    "/component/parents".to_owned(),
-                ))
-            }
-        }
-        Ok(value)
-    }
-}
-
 impl ListSecrets for ResolverFunctionRequest {
     fn list_secrets(
         &self,
@@ -203,7 +157,7 @@ impl DecryptRequest for ResolverFunctionRequest {
                 return Err(DecryptionKeyError::JSONPointerNotFound(
                     value,
                     "/component/data".to_owned(),
-                ))
+                ));
             }
         }
 
@@ -217,7 +171,7 @@ impl DecryptRequest for ResolverFunctionRequest {
                 return Err(DecryptionKeyError::JSONPointerNotFound(
                     value,
                     "/component/parents".to_owned(),
-                ))
+                ));
             }
         }
         Ok(value)
@@ -254,6 +208,7 @@ impl ListSecrets for CommandRunRequest {
         Ok(vec![])
     }
 }
+
 impl DecryptRequest for CommandRunRequest {
     fn decrypt_request(
         self,

@@ -190,7 +190,7 @@ const createBuiltinFunc = () => {
   if (funcNameHasError.value) return;
 
   emits("createFunc", {
-    kind: FuncBackendKind.JsQualification,
+    kind: FuncBackendKind.JsAttribute,
     isBuiltin: true,
     name: `si:${newBuiltinFuncName.value}`,
   });

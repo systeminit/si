@@ -105,7 +105,7 @@ async fn execute(
 
     info!(
         execution_id = &request.execution_id.as_str(),
-        "Executing qualification check"
+        "Executing workflow resolve"
     );
     let mut progress = instance
         .execute_workflow_resolve(request)

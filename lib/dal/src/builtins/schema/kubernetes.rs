@@ -1,14 +1,11 @@
 use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
-use crate::prototype_context::PrototypeContext;
-use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::schema::variant::leaves::LeafKind;
 use crate::{
     func::argument::FuncArgument, schema::SchemaUiMenu, socket::SocketArity,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func, FuncError,
-    InternalProvider, PropKind, QualificationPrototype, SchemaError, SchemaKind, SchemaVariant,
-    StandardModel,
+    BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, InternalProvider,
+    PropKind, SchemaError, SchemaKind, SchemaVariant, StandardModel,
 };
 
 mod kubernetes_deployment_spec;
@@ -231,20 +228,16 @@ impl MigrationDriver {
             .create_kubernetes_deployment_spec_prop(ctx, root_prop.domain_prop_id)
             .await?;
 
-        // Qualification Prototype
-        let qualification_func_name = "si:qualificationKubevalYaml".to_owned();
-        let mut qualification_funcs =
-            Func::find_by_attr(ctx, "name", &qualification_func_name).await?;
-        let qualification_func = qualification_funcs
-            .pop()
-            .ok_or(SchemaError::FuncNotFound(qualification_func_name))?;
-        let mut qualification_prototype_context = QualificationPrototypeContext::new();
-        qualification_prototype_context.set_schema_variant_id(*schema_variant.id());
-
-        let _ = QualificationPrototype::new(
+        // Qualifications
+        let (qualification_func_id, qualification_func_argument_id) = self
+            .find_func_and_single_argument_by_names(ctx, "si:qualificationKubevalYaml", "domain")
+            .await?;
+        SchemaVariant::add_leaf(
             ctx,
-            *qualification_func.id(),
-            qualification_prototype_context,
+            qualification_func_id,
+            qualification_func_argument_id,
+            *schema_variant.id(),
+            LeafKind::Qualification,
         )
         .await?;
 
@@ -397,27 +390,20 @@ impl MigrationDriver {
             .attribute_prototype(ctx)
             .await?
             .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
-        let transformation_func_name = "si:dockerImagesToK8sDeploymentContainerSpec".to_string();
-        let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| FuncError::NotFoundByName(transformation_func_name.clone()))?;
-        let images_arg =
-            FuncArgument::find_by_name_for_func(ctx, "images", *transformation_func.id())
-                .await?
-                .ok_or_else(|| {
-                    BuiltinsError::BuiltinMissingFuncArgument(
-                        transformation_func_name.clone(),
-                        "images".to_string(),
-                    )
-                })?;
+        let (transformation_func_id, transformation_func_argument_id) = self
+            .find_func_and_single_argument_by_names(
+                ctx,
+                "si:dockerImagesToK8sDeploymentContainerSpec",
+                "images",
+            )
+            .await?;
         containers_attribute_prototype
-            .set_func_id(ctx, *transformation_func.id())
+            .set_func_id(ctx, transformation_func_id)
             .await?;
         AttributePrototypeArgument::new_for_intra_component(
             ctx,
             *containers_attribute_prototype.id(),
-            *images_arg.id(),
+            transformation_func_argument_id,
             *docker_image_explicit_internal_provider.id(),
         )
         .await?;

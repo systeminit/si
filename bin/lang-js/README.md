@@ -7,7 +7,7 @@ This directory contains `lang-js`.
 Here is an example of testing `lang-js` locally:
 
 ```bash
-DEBUG=* npm run dev -- qualificationcheck < examples/qualificationCheckTest.json
+DEBUG=* npm run dev -- ${CHECK_NAME} < examples/${FILE_NAME}
 ```
 
 ## Encoding the Code

@@ -7,22 +7,22 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech_core::{
-    nats_command_run_subject, nats_confirmation_subject, nats_qualification_check_subject,
-    nats_resolver_function_subject, nats_subject, nats_validation_subject,
-    nats_workflow_resolve_subject, reply_mailbox_for_output, reply_mailbox_for_result,
+    nats_command_run_subject, nats_confirmation_subject, nats_resolver_function_subject,
+    nats_subject, nats_validation_subject, nats_workflow_resolve_subject, reply_mailbox_for_output,
+    reply_mailbox_for_result,
 };
 
 mod subscription;
+
 use subscription::{Subscription, SubscriptionError};
 
 pub use cyclone_core::{
     CommandRunRequest, CommandRunResultSuccess, ComponentKind, ComponentView, ConfirmationRequest,
     ConfirmationResultSuccess, EncryptionKey, EncryptionKeyError, FunctionResult,
-    FunctionResultFailure, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
-    QualificationCheckResultSuccess, QualificationSubCheck, QualificationSubCheckStatus,
-    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
-    ResolverFunctionResultSuccess, ResourceStatus, SensitiveContainer, ValidationRequest,
-    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    FunctionResultFailure, OutputStream, ResolverFunctionComponent, ResolverFunctionRequest,
+    ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
+    SensitiveContainer, ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 
 #[derive(Error, Debug)]
@@ -58,35 +58,6 @@ impl Client {
             nats,
             subject_prefix: Some(Arc::new(subject_prefix.into())),
         }
-    }
-
-    #[instrument(name = "client.execute_qualification_check", skip_all)]
-    pub async fn execute_qualification_check(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &QualificationCheckRequest,
-    ) -> ClientResult<FunctionResult<QualificationCheckResultSuccess>> {
-        self.execute_request(
-            nats_qualification_check_subject(self.subject_prefix()),
-            output_tx,
-            request,
-        )
-        .await
-    }
-
-    #[instrument(name = "client.execute_qualification_check_with_subject", skip_all)]
-    pub async fn execute_qualification_check_with_subject(
-        &self,
-        output_tx: mpsc::Sender<OutputStream>,
-        request: &QualificationCheckRequest,
-        subject_suffix: impl AsRef<str>,
-    ) -> ClientResult<FunctionResult<QualificationCheckResultSuccess>> {
-        self.execute_request(
-            nats_subject(self.subject_prefix(), subject_suffix),
-            output_tx,
-            request,
-        )
-        .await
     }
 
     #[instrument(name = "client.execute_confirmation", skip_all)]
@@ -319,7 +290,6 @@ async fn forward_output_task(
 mod tests {
     use std::env;
 
-    use indoc::indoc;
     use si_data_nats::NatsConfig;
     use test_log::test;
     use tokio::task::JoinHandle;
@@ -555,159 +525,6 @@ mod tests {
                     assert_eq!(failure.error.kind, "InvalidReturnType");
                     assert_eq!(failure.execution_id, "1234");
                 }
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn executes_simple_qualification_check() {
-        let prefix = nats_prefix();
-        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
-        let client = client(prefix).await;
-
-        // Not going to check output here--we aren't emitting anything
-        let (tx, mut rx) = mpsc::channel(64);
-        tokio::spawn(async move {
-            while let Some(output) = rx.recv().await {
-                info!("output: {:?}", output)
-            }
-        });
-
-        let mut request = QualificationCheckRequest {
-            execution_id: "5678".to_string(),
-            handler: "check".to_string(),
-            component: QualificationCheckComponent {
-                data: ComponentView {
-                    properties: serde_json::json!({
-                        "image": "systeminit/whiskers",
-                        "code": {
-                            "si:generate": {
-                                "format": "yaml",
-                                "code": "generateName: asd\nname: kubernetes_deployment\napiVersion: apps/v1\nkind: Deployment\n",
-                            },
-                        }
-                    }),
-                    kind: ComponentKind::Standard,
-                },
-                parents: Vec::new(),
-            },
-            code_base64: base64::encode(indoc! {r#"
-                async function check(component) {
-                    const skopeoChild = await siExec.waitUntilEnd("skopeo", ["inspect", `docker://docker.io/${component.data.properties.image}`]);
-
-                    const code = component.data.properties.code["si:generate"];
-                    const file = path.join(os.tmpdir(), "veritech-kubeval-test.yaml");
-                    fs.writeFileSync(file, code.code);
-
-                    try {
-                        const child = await siExec.waitUntilEnd("kubeval", [file]);
-
-                        return {
-                          qualified: skopeoChild.exitCode === 0 && child.exitCode === 0,
-                          message: JSON.stringify({ skopeoStdout: skopeoChild.stdout, skopeoStderr: skopeoChild.stderr, kubevalStdout: child.stdout, kubevalStderr: child.stderr }),
-                        };
-                    } finally {
-                        fs.unlinkSync(file);
-                    }
-                }
-            "#}),
-        };
-
-        // Run a qualified check (i.e. qualification returns qualified == true)
-        let result = client
-            .execute_qualification_check(tx.clone(), &request)
-            .await
-            .expect("failed to execute qualification check");
-
-        match result {
-            FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "5678");
-                // Note: this might be fragile, as skopeo stdout API might change (?)
-                let message = success.message.expect("no message available");
-                assert_eq!(
-                    serde_json::from_str::<serde_json::Value>(
-                        serde_json::from_str::<serde_json::Value>(&message,)
-                            .expect("Message is not json")
-                            .as_object()
-                            .expect("Message isn't an object")
-                            .get("skopeoStdout")
-                            .expect("Key skopeoStdout wasn't found")
-                            .as_str()
-                            .expect("skopeoStdout is not a string")
-                    )
-                    .expect("skopeoStdout is not json")
-                    .as_object()
-                    .expect("skopeoStdout isn't an object")
-                    .get("Name")
-                    .expect("Key Name wasn't found")
-                    .as_str(),
-                    Some("docker.io/systeminit/whiskers")
-                );
-                assert_eq!(
-                    serde_json::from_str::<serde_json::Value>(&message,)
-                        .expect("Message is not json")
-                        .as_object()
-                        .expect("Message isn't an object")
-                        .get("skopeoStderr")
-                        .expect("Key skopeoStderr wasn't found")
-                        .as_str(),
-                    Some("")
-                );
-                assert_eq!(
-                    serde_json::from_str::<serde_json::Value>(&message,)
-                        .expect("Message is not json")
-                        .as_object()
-                        .expect("Message isn't an object")
-                        .get("kubevalStdout")
-                        .expect("Key kubevalStdout wasn't found")
-                        .as_str(),
-                    Some(
-                        format!(
-                            "PASS - {} contains a valid Deployment (unknown)",
-                            std::env::temp_dir()
-                                .join("veritech-kubeval-test.yaml")
-                                .display()
-                        )
-                        .as_str()
-                    )
-                );
-                assert_eq!(
-                    serde_json::from_str::<serde_json::Value>(&message,)
-                        .expect("Message is not json")
-                        .as_object()
-                        .expect("Message isn't an object")
-                        .get("kubevalStderr")
-                        .expect("Key kubevalStderr wasn't found")
-                        .as_str(),
-                    Some("")
-                );
-                assert!(success.qualified);
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("function did not succeed and should have: {:?}", failure)
-            }
-        }
-
-        request.execution_id = "9012".to_string();
-        request.component.data = ComponentView {
-            properties: serde_json::json!({"image": "abc"}),
-            kind: ComponentKind::Standard,
-        };
-
-        // Now update the request to re-run an unqualified check (i.e. qualification returning
-        // qualified == false)
-        let result = client
-            .execute_qualification_check(tx, &request)
-            .await
-            .expect("failed to execute qualification check");
-
-        match result {
-            FunctionResult::Success(success) => {
-                assert_eq!(success.execution_id, "9012");
-                assert!(!success.qualified);
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("function did not succeed and should have: {:?}", failure)
             }
         }
     }

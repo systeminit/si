@@ -211,6 +211,12 @@ impl RootProp {
             .set_parent_prop(ctx, qualification_map_item_prop_id)
             .await?;
 
+        let mut child_message_prop = Prop::new(ctx, "message", PropKind::String, None).await?;
+        child_message_prop.set_hidden(ctx, true).await?;
+        child_message_prop
+            .set_parent_prop(ctx, qualification_map_item_prop_id)
+            .await?;
+
         Ok(qualification_map_prop_id)
     }
 

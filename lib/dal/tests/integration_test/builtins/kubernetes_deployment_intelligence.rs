@@ -118,7 +118,9 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         }], // expected
         fedora_docker_image_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -126,14 +128,15 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "name": "alpine",
                 "type": "component"
             },
-
             "domain": {
                 "image": "alpine"
             },
         }], // expected
         alpine_docker_image_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -153,7 +156,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 }
             },
         }], // expected
-        namespace_payload.component_view_properties(ctx).await // actual
+        namespace_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -174,7 +177,9 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         }], // expected
         spongebob_deployment_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -195,7 +200,9 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         }], // expected
         patrick_deployment_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 
     // Connect the fedora docker image to the spongebob deployment.
@@ -225,14 +232,15 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "name": "fedora-updated",
                 "type": "component"
             },
-
             "domain": {
                 "image": "fedora-updated"
             },
         }], // expected
         fedora_docker_image_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -240,14 +248,15 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "name": "alpine",
                 "type": "component"
             },
-
             "domain": {
                 "image": "alpine"
             },
         }], // expected
         alpine_docker_image_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -267,7 +276,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 }
             },
         }], // expected
-        namespace_payload.component_view_properties(ctx).await // actual
+        namespace_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -301,7 +310,9 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         }], // expected
         spongebob_deployment_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -322,7 +333,9 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         }], // expected
         patrick_deployment_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 
     // After the first update, let's connect alpine to the spongebob deployment.
@@ -396,7 +409,9 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         }], // expected
         fedora_docker_image_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -404,14 +419,15 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 "name": "alpine-updated",
                 "type": "component"
             },
-
             "domain": {
                 "image": "alpine-updated"
             },
         }], // expected
         alpine_docker_image_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -431,7 +447,7 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
                 }
             },
         }], // expected
-        namespace_payload.component_view_properties(ctx).await // actual
+        namespace_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -476,7 +492,9 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         }], // expected
         spongebob_deployment_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -510,6 +528,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         }], // expected
         patrick_deployment_payload
             .component_view_properties(ctx)
-            .await // actual
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 }

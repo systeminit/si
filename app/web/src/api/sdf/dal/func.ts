@@ -3,7 +3,6 @@ export enum FuncBackendKind {
   Boolean = "Boolean",
   Identity = "Identity",
   Integer = "Integer",
-  JsQualification = "JsQualification",
   JsCommand = "JsCommand",
   JsConfirmation = "JsConfirmation",
   JsAttribute = "JsAttribute",
@@ -17,11 +16,6 @@ export enum FuncBackendKind {
 }
 
 export const CUSTOMIZABLE_FUNC_TYPES = {
-  [FuncBackendKind.JsQualification]: {
-    pluralLabel: "Qualifications",
-    singularLabel: "Qualification",
-    enableBuiltIn: true,
-  },
   [FuncBackendKind.JsAttribute]: {
     pluralLabel: "Attributes",
     singularLabel: "Attribute",

@@ -11,7 +11,6 @@
     clippy::module_name_repetitions
 )]
 
-const NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT: &str = "veritech.fn.qualificationcheck";
 const NATS_CONFIRMATION_DEFAULT_SUBJECT: &str = "veritech.fn.confirmation";
 const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfunction";
 const NATS_VALIDATION_DEFAULT_SUBJECT: &str = "veritech.fn.validation";
@@ -26,10 +25,6 @@ pub fn reply_mailbox_for_output(reply_mailbox: &str) -> String {
 
 pub fn reply_mailbox_for_result(reply_mailbox: &str) -> String {
     format!("{reply_mailbox}.result")
-}
-
-pub fn nats_qualification_check_subject(prefix: Option<&str>) -> String {
-    nats_subject(prefix, NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT)
 }
 
 pub fn nats_confirmation_subject(prefix: Option<&str>) -> String {

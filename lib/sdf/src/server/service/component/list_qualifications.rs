@@ -34,8 +34,7 @@ pub async fn list_qualifications(
     if is_component_in_tenancy && !is_component_in_visibility {
         return Err(ComponentError::InvalidVisibility);
     }
-    let qualifications =
-        Component::list_qualifications_by_component_id(&ctx, request.component_id).await?;
+    let qualifications = Component::list_qualifications(&ctx, request.component_id).await?;
 
     Ok(Json(qualifications))
 }

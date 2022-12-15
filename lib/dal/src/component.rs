@@ -14,45 +14,38 @@ use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::code_view::CodeViewError;
 use crate::func::backend::{
-    js_qualification::FuncBackendJsQualificationArgs, js_validation::FuncBackendJsValidationArgs,
-    validation::FuncBackendValidationArgs,
+    js_validation::FuncBackendJsValidationArgs, validation::FuncBackendValidationArgs,
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::{
     FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
 };
-use crate::qualification::QualificationView;
-use crate::qualification_resolver::QualificationResolverContext;
+
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::SocketEdgeKind;
 use crate::standard_model::object_from_row;
-use crate::validation::{ValidationConstructorError, ValidationError};
-use crate::ws_event::{WsEvent, WsEventError};
+use crate::validation::ValidationConstructorError;
+use crate::ws_event::WsEventError;
 use crate::{
-    func::{FuncId, FuncMetadataView},
-    impl_standard_model,
-    node::NodeId,
-    pk,
-    provider::internal::InternalProviderError,
-    qualification::QualificationError,
+    func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
-    AttributePrototypeId, AttributeReadContext, CodeLanguage, DalContext, Edge, EdgeError,
+    AttributePrototypeId, AttributeReadContext, CodeLanguage, DalContext, EdgeError,
     ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider,
     InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError, PropId,
-    QualificationPrototype, QualificationPrototypeError, QualificationResolver,
-    QualificationResolverError, ReadTenancyError, Schema, SchemaError, SchemaId, Socket,
-    StandardModel, StandardModelError, Timestamp, TransactionsError, ValidationPrototype,
-    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
-    WorkflowRunnerError, WorkspaceError, WriteTenancy,
+    ReadTenancyError, Schema, SchemaError, SchemaId, Socket, StandardModel, StandardModelError,
+    Timestamp, TransactionsError, ValidationPrototype, ValidationPrototypeError,
+    ValidationResolver, ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError,
+    WriteTenancy,
 };
-use crate::{AttributeValueId, QualificationPrototypeId};
+use crate::{AttributeValueId, QualificationError};
 
 pub use view::{ComponentView, ComponentViewError};
 
 pub mod code;
 pub mod diff;
+pub mod qualification;
 pub mod resource;
 pub mod stats;
 pub mod view;
@@ -109,14 +102,8 @@ pub enum ComponentError {
     // FIXME: change the below to be alphabetical and re-join with the above variants.
     #[error(transparent)]
     ComponentView(#[from] ComponentViewError),
-    #[error("qualification prototype error: {0}")]
-    QualificationPrototype(#[from] QualificationPrototypeError),
-    #[error("qualification resolver error: {0}")]
-    QualificationResolver(#[from] QualificationResolverError),
     #[error("unable to find code generated")]
     CodeGeneratedNotFound,
-    #[error("qualification prototype not found")]
-    QualificationPrototypeNotFound,
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -163,8 +150,8 @@ pub enum ComponentError {
     ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("validation prototype does not match component schema variant: {0}")]
     ValidationPrototypeMismatch(SchemaVariantId),
-    #[error("qualification view error: {0}")]
-    QualificationView(#[from] QualificationError),
+    #[error("qualification error: {0}")]
+    Qualification(#[from] QualificationError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
     #[error("workspace not found")]
@@ -179,13 +166,14 @@ pub enum ComponentError {
     Organization(#[from] OrganizationError),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
+    #[error("found child attribute value of a map without a key: {0}")]
+    FoundMapEntryWithoutKey(AttributeValueId),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
 const FIND_FOR_NODE: &str = include_str!("./queries/component_find_for_node.sql");
 //const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
-const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("./queries/component_list_for_schema_variant.sql");
 const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
@@ -512,253 +500,6 @@ impl Component {
         Ok(())
     }
 
-    /// Creates a qualification [`FuncBinding`](crate::FuncBinding), a
-    /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) without a value and a
-    /// [`QualificationResolver`](crate::QualificationResolver). The func is not executed yet; it's
-    /// just a placeholder for some qualification that will be executed.
-    pub async fn prepare_qualification_check(
-        &self,
-        ctx: &DalContext,
-        qualification_prototype_id: QualificationPrototypeId,
-    ) -> ComponentResult<()> {
-        let prototype = QualificationPrototype::get_by_id(ctx, &qualification_prototype_id)
-            .await?
-            .ok_or(ComponentError::QualificationPrototypeNotFound)?;
-
-        let func = Func::get_by_id(ctx, &prototype.func_id())
-            .await?
-            .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
-
-        let args = FuncBackendJsQualificationArgs {
-            component: self.veritech_qualification_check_component(ctx).await?,
-        };
-
-        let json_args = serde_json::to_value(args)?;
-        let (func_binding, _func_binding_return_value) =
-            FuncBinding::create_with_existing_value(ctx, json_args, None, prototype.func_id())
-                .await?;
-        let mut existing_resolvers =
-            QualificationResolver::find_for_prototype_and_component(ctx, prototype.id(), self.id())
-                .await?;
-
-        // If we do not have one, create the qualification resolver. If we do, update the
-        // func binding id to point to the new value.
-        if let Some(mut resolver) = existing_resolvers.pop() {
-            resolver
-                .set_func_binding_id(ctx, *func_binding.id())
-                .await?;
-        } else {
-            let mut resolver_context = QualificationResolverContext::new();
-            resolver_context.set_component_id(self.id);
-            QualificationResolver::new(
-                ctx,
-                *prototype.id(),
-                *func.id(),
-                *func_binding.id(),
-                resolver_context,
-            )
-            .await?;
-        }
-
-        WsEvent::checked_qualifications(ctx, *prototype.id(), self.id)
-            .publish(ctx)
-            .await?;
-
-        Ok(())
-    }
-
-    /// Creates a qualification [`FuncBinding`](crate::FuncBinding), a
-    /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) without a value and a
-    /// [`QualificationResolver`](crate::QualificationResolver). The func is not executed yet; it's
-    /// just a placeholder for some qualification that will be executed.
-    pub async fn prepare_qualifications_check(&self, ctx: &DalContext) -> ComponentResult<()> {
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-
-        let qualification_prototypes = QualificationPrototype::find_for_component(
-            ctx,
-            self.id,
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
-
-        for prototype in qualification_prototypes {
-            let func = Func::get_by_id(ctx, &prototype.func_id())
-                .await?
-                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
-
-            let args = FuncBackendJsQualificationArgs {
-                component: self.veritech_qualification_check_component(ctx).await?,
-            };
-
-            let json_args = serde_json::to_value(args)?;
-            let (func_binding, _func_binding_return_value) =
-                FuncBinding::create_with_existing_value(ctx, json_args, None, prototype.func_id())
-                    .await?;
-
-            let mut existing_resolvers = QualificationResolver::find_for_prototype_and_component(
-                ctx,
-                prototype.id(),
-                self.id(),
-            )
-            .await?;
-
-            // If we do not have one, create the qualification resolver. If we do, update the
-            // func binding id to point to the new value.
-            if let Some(mut resolver) = existing_resolvers.pop() {
-                resolver
-                    .set_func_binding_id(ctx, *func_binding.id())
-                    .await?;
-            } else {
-                let mut resolver_context = QualificationResolverContext::new();
-                resolver_context.set_component_id(self.id);
-                QualificationResolver::new(
-                    ctx,
-                    *prototype.id(),
-                    *func.id(),
-                    *func_binding.id(),
-                    resolver_context,
-                )
-                .await?;
-            }
-
-            WsEvent::checked_qualifications(ctx, *prototype.id(), self.id)
-                .publish(ctx)
-                .await?;
-        }
-
-        Ok(())
-    }
-
-    pub async fn check_qualification(
-        &self,
-        ctx: &DalContext,
-        prototype_id: QualificationPrototypeId,
-    ) -> ComponentResult<()> {
-        let prototype = QualificationPrototype::get_by_id(ctx, &prototype_id)
-            .await?
-            .ok_or(ComponentError::QualificationPrototypeNotFound)?;
-
-        let func = Func::get_by_id(ctx, &prototype.func_id())
-            .await?
-            .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
-
-        let args = FuncBackendJsQualificationArgs {
-            component: self.veritech_qualification_check_component(ctx).await?,
-        };
-
-        let json_args = serde_json::to_value(args)?;
-        // Note for future humans - if this isn't a built in, then we need to
-        // think about execution time. Probably higher up than this? But just
-        // an FYI.
-        let (func_binding, _func_binding_return_value) =
-            FuncBinding::create_and_execute(ctx, json_args, prototype.func_id()).await?;
-
-        let mut existing_resolvers =
-            QualificationResolver::find_for_prototype_and_component(ctx, prototype.id(), self.id())
-                .await?;
-
-        // If we do not have one, create the qualification resolver. If we do, update the
-        // func binding id to point to the new value.
-        if let Some(mut resolver) = existing_resolvers.pop() {
-            resolver
-                .set_func_binding_id(ctx, *func_binding.id())
-                .await?;
-        } else {
-            let mut resolver_context = QualificationResolverContext::new();
-            resolver_context.set_component_id(self.id);
-            QualificationResolver::new(
-                ctx,
-                *prototype.id(),
-                *func.id(),
-                *func_binding.id(),
-                resolver_context,
-            )
-            .await?;
-        }
-
-        WsEvent::checked_qualifications(ctx, *prototype.id(), self.id)
-            .publish(ctx)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn check_qualifications(&self, ctx: &DalContext) -> ComponentResult<()> {
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchema(self.id))?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-
-        let qualification_prototypes = QualificationPrototype::find_for_component(
-            ctx,
-            self.id,
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
-
-        for prototype in qualification_prototypes {
-            let func = Func::get_by_id(ctx, &prototype.func_id())
-                .await?
-                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
-
-            let args = FuncBackendJsQualificationArgs {
-                component: self.veritech_qualification_check_component(ctx).await?,
-            };
-
-            let json_args = serde_json::to_value(args)?;
-            // Note for future humans - if this isn't a built in, then we need to
-            // think about execution time. Probably higher up than this? But just
-            // an FYI.
-            let (func_binding, _func_binding_return_value) =
-                FuncBinding::create_and_execute(ctx, json_args, prototype.func_id()).await?;
-
-            let mut existing_resolvers = QualificationResolver::find_for_prototype_and_component(
-                ctx,
-                prototype.id(),
-                self.id(),
-            )
-            .await?;
-
-            // If we do not have one, create the qualification resolver. If we do, update the
-            // func binding id to point to the new value.
-            if let Some(mut resolver) = existing_resolvers.pop() {
-                resolver
-                    .set_func_binding_id(ctx, *func_binding.id())
-                    .await?;
-            } else {
-                let mut resolver_context = QualificationResolverContext::new();
-                resolver_context.set_component_id(self.id);
-                QualificationResolver::new(
-                    ctx,
-                    *prototype.id(),
-                    *func.id(),
-                    *func_binding.id(),
-                    resolver_context,
-                )
-                .await?;
-            }
-
-            WsEvent::checked_qualifications(ctx, *prototype.id(), self.id)
-                .publish(ctx)
-                .await?;
-        }
-
-        Ok(())
-    }
-
     #[instrument(skip_all)]
     pub async fn is_in_tenancy(ctx: &DalContext, id: ComponentId) -> ComponentResult<bool> {
         let row = ctx
@@ -773,128 +514,6 @@ impl Component {
             )
             .await?;
         Ok(row.is_some())
-    }
-
-    #[instrument(skip_all)]
-    pub async fn list_validations_as_qualification_for_component_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<QualificationView> {
-        let mut prop_names_and_errors = Vec::<(String, ValidationError)>::new();
-        for status in ValidationResolver::find_status(ctx, component_id).await? {
-            let full_name = AttributeValue::find_prop_for_value(ctx, status.attribute_value_id)
-                .await?
-                .json_pointer(ctx)
-                .await?;
-
-            for error in status.errors {
-                prop_names_and_errors.push((full_name.clone(), error));
-            }
-        }
-        let qualification_view =
-            QualificationView::new_for_validation_errors(prop_names_and_errors);
-        Ok(qualification_view)
-    }
-
-    #[instrument(skip_all)]
-    pub async fn list_qualifications(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<Vec<QualificationView>> {
-        Self::list_qualifications_by_component_id(ctx, self.id).await
-    }
-
-    #[instrument(skip_all)]
-    pub async fn list_qualifications_by_component_id(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<Vec<QualificationView>> {
-        let mut results: Vec<QualificationView> = Vec::new();
-
-        // This is the "All Fields Valid" universal qualification
-        let validation_qualification =
-            Self::list_validations_as_qualification_for_component_id(ctx, component_id).await?;
-        results.push(validation_qualification);
-
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                LIST_QUALIFICATIONS,
-                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
-            )
-            .await?;
-        let no_qualification_results = rows.is_empty();
-        for row in rows.into_iter() {
-            let json: serde_json::Value = row.try_get("object")?;
-            let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
-
-            let json: serde_json::Value = row.try_get("func_metadata_view")?;
-            let func_metadata_view: FuncMetadataView = serde_json::from_value(json)?;
-
-            let json: serde_json::Value = row.try_get("prototype")?;
-            let prototype: QualificationPrototype = serde_json::from_value(json)?;
-            let qual_view = QualificationView::new_for_func_binding_return_value(
-                ctx,
-                prototype,
-                func_metadata_view,
-                func_binding_return_value,
-            )
-            .await?;
-            results.push(qual_view);
-        }
-        // This is inefficient, but effective
-        if no_qualification_results {
-            let component = Self::get_by_id(ctx, &component_id)
-                .await?
-                .ok_or(ComponentError::NotFound(component_id))?;
-            let schema = component
-                .schema(ctx)
-                .await?
-                .ok_or(ComponentError::NoSchema(component.id))?;
-            let schema_variant = component
-                .schema_variant(ctx)
-                .await?
-                .ok_or(ComponentError::NoSchemaVariant(component.id))?;
-            let prototypes = QualificationPrototype::find_for_component(
-                ctx,
-                component_id,
-                *schema.id(),
-                *schema_variant.id(),
-            )
-            .await?;
-            for prototype in prototypes.into_iter() {
-                let func = Func::get_by_id(ctx, &prototype.func_id())
-                    .await?
-                    .ok_or_else(|| ComponentError::FuncNotFound(prototype.func_id()))?;
-
-                let qual_view = QualificationView::new_for_qualification_prototype(
-                    prototype,
-                    func.metadata_view(),
-                );
-                results.push(qual_view);
-            }
-        }
-        Ok(results)
-    }
-
-    pub async fn veritech_qualification_check_component(
-        &self,
-        ctx: &DalContext,
-    ) -> ComponentResult<veritech_client::QualificationCheckComponent> {
-        let parent_ids = Edge::list_parents_for_component(ctx, self.id).await?;
-
-        let mut parents = Vec::new();
-        for id in parent_ids {
-            let view = ComponentView::new(ctx, id).await?;
-            parents.push(view.into());
-        }
-
-        let qualification_view = veritech_client::QualificationCheckComponent {
-            data: ComponentView::new(ctx, self.id).await?.into(),
-            parents,
-        };
-        Ok(qualification_view)
     }
 
     #[instrument(skip_all)]

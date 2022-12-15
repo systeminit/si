@@ -39,7 +39,11 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "type": "configurationFrame"
             }
         }], // expected
-        region_payload.component_view_properties(ctx).await // actual
+        region_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -60,7 +64,11 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "type": "component"
             }
         }], // expected
-        ec2_payload.component_view_properties(ctx).await // actual
+        ec2_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 
     // Find the providers we need for connection.
@@ -105,7 +113,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "type": "configurationFrame"
             }
         }], // expected
-        region_payload.component_view_properties(ctx).await // actual
+        region_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -126,7 +134,11 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "type": "component"
             }
         }], // expected
-        ec2_payload.component_view_properties(ctx).await // actual
+        ec2_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 
     // Perform update!
@@ -150,7 +162,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "type": "configurationFrame"
             }
         }], // expected
-        region_payload.component_view_properties(ctx).await // actual
+        region_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
@@ -172,7 +184,11 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                 "type": "component"
             }
         }], // expected
-        ec2_payload.component_view_properties(ctx).await // actual
+        ec2_payload
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 }
 
@@ -202,7 +218,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
                 "region": "us-poop-1",
             }
         }], // actual
-        region_payload.component_view_properties(ctx).await // expected
+        region_payload.component_view_properties_raw(ctx).await // expected
     );
 
     let validation_statuses = ValidationResolver::find_status(ctx, region_payload.component_id)
@@ -257,7 +273,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
                 "region": "us-east-1"
             }
         }], // actual
-        region_payload.component_view_properties(ctx).await // expected
+        region_payload.component_view_properties_raw(ctx).await // expected
     );
 
     // TODO(nick): now, ensure we have the right value! Huzzah.

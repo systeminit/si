@@ -19,9 +19,8 @@ use dal::{
     AttributeValueError, CodeLanguage, ComponentError, ComponentId, ConfirmationPrototype,
     ConfirmationPrototypeError, DalContext, Func, FuncBackendKind, FuncBindingError, FuncId,
     InternalProviderError, InternalProviderId, PropError, PropId, PrototypeListForFunc,
-    PrototypeListForFuncError, QualificationPrototype, QualificationPrototypeError,
-    ReadTenancyError, SchemaVariantId, StandardModel, StandardModelError, TransactionsError,
-    Visibility, WriteTenancyError, WsEventError,
+    PrototypeListForFuncError, ReadTenancyError, SchemaVariantId, StandardModel,
+    StandardModelError, TransactionsError, Visibility, WriteTenancyError, WsEventError,
 };
 use dal::{
     func::argument::FuncArgument, ValidationPrototype, ValidationPrototypeError,
@@ -58,8 +57,6 @@ pub enum FuncError {
     Func(#[from] dal::FuncError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
-    #[error(transparent)]
-    QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("attribute prototype error: {0}")]
@@ -335,17 +332,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                 prototype_context_into_schema_variants_and_components(&protos);
 
             Some(FuncAssociations::Confirmation {
-                schema_variant_ids,
-                component_ids,
-            })
-        }
-        FuncBackendKind::JsQualification => {
-            let protos = QualificationPrototype::list_for_func(ctx, *func.id()).await?;
-
-            let (schema_variant_ids, component_ids) =
-                prototype_context_into_schema_variants_and_components(&protos);
-
-            Some(FuncAssociations::Qualification {
                 schema_variant_ids,
                 component_ids,
             })

@@ -4,10 +4,12 @@ use dal::{
     Component, ComponentView, Connection, DalContext, Diagram, DiagramEdgeView, DiagramKind,
     NodePosition, NodeTemplate, NodeView, Schema, SchemaVariant, StandardModel,
 };
+use dal_test::helpers::component_view::ComponentViewProperties;
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
 };
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
@@ -29,18 +31,19 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("could not get component view");
+    let mut component_view_properties = ComponentViewProperties::try_from(component_view)
+        .expect("could not create component view properties from component view");
     assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "13700KF"
             },
-
             "si": {
                 "name": "13700KF",
                 "type": "component"
             },
         }], // expected
-        component_view.properties // actual
+        component_view_properties.drop_qualification().to_value() // actual
     );
 
     let node_template = NodeTemplate::new_from_schema_id(ctx, *schema.id())
@@ -72,18 +75,19 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("could not get component view");
+    let mut component_view_properties = ComponentViewProperties::try_from(component_view)
+        .expect("could not create component view properties from component view");
     assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "13700KF"
             },
-
             "si": {
                 "name": "13700KF",
                 "type": "component"
             },
         }], // expected
-        component_view.properties // actual
+        component_view_properties.drop_qualification().to_value() // actual
     );
 }
 

@@ -1,11 +1,3 @@
-export interface QualificationPrototype {
-  id: string;
-  title: string;
-  link?: string;
-  description?: string;
-  isComponentSpecific: boolean;
-}
-
 export interface Qualification {
   title: string;
   link?: string;

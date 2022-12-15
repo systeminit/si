@@ -95,11 +95,6 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
         debug!("enabling ping endpoint");
         router = router.merge(Router::new().route("/ping", get(handlers::ws_execute_ping)));
     }
-    if config.enable_qualification() {
-        debug!("enabling qualification endpoint");
-        router = router
-            .merge(Router::new().route("/qualification", get(handlers::ws_execute_qualification)));
-    }
     if config.enable_resolver() {
         debug!("enabling resolver endpoint");
         router = router.merge(Router::new().route("/resolver", get(handlers::ws_execute_resolver)));

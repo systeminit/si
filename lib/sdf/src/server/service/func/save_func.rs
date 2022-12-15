@@ -17,7 +17,7 @@ use dal::{
     },
     AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributeValue,
     ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBinding, FuncId,
-    PrototypeListForFunc, QualificationPrototype, StandardModel, Visibility, WsEvent,
+    PrototypeListForFunc, StandardModel, Visibility, WsEvent,
 };
 use dal::{SchemaVariant, ValidationPrototype};
 
@@ -356,36 +356,6 @@ pub async fn save_func<'a>(
             if let Some(FuncAssociations::Validation { prototypes }) = request.associations {
                 save_validation_func_prototypes(&ctx, &func, prototypes).await?;
             }
-        }
-        FuncBackendKind::JsQualification => {
-            let mut associations: Vec<PrototypeContextField> = vec![];
-            if let Some(FuncAssociations::Qualification {
-                schema_variant_ids,
-                component_ids,
-            }) = request.associations
-            {
-                associations.append(&mut schema_variant_ids.iter().map(|f| (*f).into()).collect());
-                associations.append(&mut component_ids.iter().map(|f| (*f).into()).collect());
-                let create_prototype_closure =
-                    move |ctx: DalContext, context_field: PrototypeContextField| async move {
-                        QualificationPrototype::new(
-                            &ctx,
-                            func_id_copy,
-                            QualificationPrototype::new_context_for_context_field(context_field),
-                        )
-                        .await?;
-
-                        Ok(())
-                    };
-
-                associate_prototypes(
-                    &ctx,
-                    &QualificationPrototype::list_for_func(&ctx, *func.id()).await?,
-                    &associations,
-                    Box::new(create_prototype_closure),
-                )
-                .await?;
-            };
         }
         FuncBackendKind::JsConfirmation => {
             let mut associations: Vec<PrototypeContextField> = vec![];

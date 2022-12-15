@@ -11,8 +11,7 @@ use std::{
 use async_trait::async_trait;
 use cyclone_core::{
     CommandRunRequest, CommandRunResultSuccess, ConfirmationRequest, ConfirmationResultSuccess,
-    LivenessStatus, LivenessStatusParseError, QualificationCheckRequest,
-    QualificationCheckResultSuccess, ReadinessStatus, ReadinessStatusParseError,
+    LivenessStatus, LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError,
     ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
     ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
@@ -126,14 +125,6 @@ where
     async fn readiness(&mut self) -> result::Result<ReadinessStatus, ClientError>;
 
     async fn execute_ping(&mut self) -> result::Result<PingExecution<Strm>, ClientError>;
-
-    async fn execute_qualification(
-        &mut self,
-        request: QualificationCheckRequest,
-    ) -> result::Result<
-        Execution<Strm, QualificationCheckRequest, QualificationCheckResultSuccess>,
-        ClientError,
-    >;
 
     async fn execute_confirmation(
         &mut self,
@@ -272,14 +263,6 @@ where
     async fn execute_ping(&mut self) -> Result<PingExecution<Strm>> {
         let stream = self.websocket_stream("/execute/ping").await?;
         Ok(ping::execute(stream))
-    }
-
-    async fn execute_qualification(
-        &mut self,
-        request: QualificationCheckRequest,
-    ) -> Result<Execution<Strm, QualificationCheckRequest, QualificationCheckResultSuccess>> {
-        let stream = self.websocket_stream("/execute/qualification").await?;
-        Ok(execution::execute(stream, request))
     }
 
     async fn execute_confirmation(
@@ -459,8 +442,8 @@ mod tests {
     use std::{borrow::Cow, env, path::Path};
 
     use cyclone_core::{
-        ComponentKind, ComponentView, FunctionResult, ProgressMessage, QualificationCheckComponent,
-        ResolverFunctionComponent, ValidationRequest,
+        ComponentKind, ComponentView, FunctionResult, ProgressMessage, ResolverFunctionComponent,
+        ValidationRequest,
     };
     use cyclone_server::{Config, ConfigBuilder, DecryptionKey, Server, UdsIncomingStream};
     use futures::StreamExt;
@@ -891,183 +874,6 @@ mod tests {
             FunctionResult::Success(success) => {
                 assert!(!success.unset);
                 assert_eq!(success.data, json!({"a": "b"}));
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn http_execute_qualification() {
-        let (_, key) = gen_keys();
-        let mut builder = Config::builder();
-        let mut client =
-            http_client_for_running_server(builder.enable_qualification(true), key).await;
-
-        let req = QualificationCheckRequest {
-            execution_id: "1234".to_string(),
-            handler: "checkit".to_string(),
-            component: QualificationCheckComponent {
-                data: ComponentView {
-                    properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
-                    kind: ComponentKind::Standard,
-                },
-                parents: Vec::new(),
-            },
-            code_base64: base64::encode(
-                r#"function checkit(component) {
-                    console.log('i like');
-                    console.log('my butt');
-                    if (component.data.properties.si.name == "Aipim Frito") {
-                        return { qualified: true };
-                    } else {
-                        return {
-                            qualified: false,
-                            message: "name is not tasty enough",
-                        };
-                    }
-                }"#,
-            ),
-        };
-
-        // Start the protocol
-        let mut progress = client
-            .execute_qualification(req)
-            .await
-            .expect("failed to establish websocket stream")
-            .start()
-            .await
-            .expect("failed to start protocol");
-
-        // Consume the output messages
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "i like");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-                None => panic!("output stream ended early"),
-            };
-        }
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "my butt");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-                None => panic!("output stream ended early"),
-            }
-        }
-        loop {
-            match progress.next().await {
-                None => {
-                    assert!(true);
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-            };
-        }
-        let result = progress.finish().await.expect("failed to return result");
-        match result {
-            FunctionResult::Success(success) => {
-                assert!(success.qualified);
-                assert_eq!(success.message, None);
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn uds_execute_qualification() {
-        let (_, key) = gen_keys();
-        let tmp_socket = rand_uds();
-        let mut builder = Config::builder();
-        let mut client =
-            uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket, key)
-                .await;
-
-        let req = QualificationCheckRequest {
-            execution_id: "1234".to_string(),
-            handler: "checkit".to_string(),
-            component: QualificationCheckComponent {
-                data: ComponentView {
-                    properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
-                    kind: ComponentKind::Standard,
-                },
-                parents: Vec::new(),
-            },
-            code_base64: base64::encode(
-                r#"function checkit(component) {
-                    console.log('i like');
-                    console.log('my butt');
-                    if (component.data.properties.si.name == "Aipim Frito") {
-                        return { qualified: true };
-                    } else {
-                        return {
-                            qualified: false,
-                            message: "name is not tasty enough",
-                        };
-                    }
-                }"#,
-            ),
-        };
-
-        // Start the protocol
-        let mut progress = client
-            .execute_qualification(req)
-            .await
-            .expect("failed to establish websocket stream")
-            .start()
-            .await
-            .expect("failed to start protocol");
-
-        // Consume the output messages
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "i like");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-                None => panic!("output stream ended early"),
-            };
-        }
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "my butt");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-                None => panic!("output stream ended early"),
-            };
-        }
-        loop {
-            match progress.next().await {
-                None => {
-                    assert!(true);
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-            };
-        }
-        // Get the result
-        let result = progress.finish().await.expect("failed to return result");
-        match result {
-            FunctionResult::Success(success) => {
-                assert!(success.qualified);
-                assert_eq!(success.message, None);
             }
             FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)

@@ -34,8 +34,13 @@ impl ComponentViewProperties {
         self
     }
 
-    pub fn to_value(&self) -> Result<serde_json::Value, ComponentViewPropertiesError> {
-        Ok(serde_json::to_value(self)?)
+    pub fn drop_qualification(&mut self) -> &mut Self {
+        self.qualification = None;
+        self
+    }
+
+    pub fn to_value(&self) -> serde_json::Value {
+        serde_json::to_value(self).expect("could not serialize into value")
     }
 }
 
