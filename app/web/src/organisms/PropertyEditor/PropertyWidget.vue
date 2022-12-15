@@ -1,5 +1,5 @@
 <template>
-  <div class="" @keyup.stop @keydown.stop>
+  <div v-if="!schemaProp.isHidden" class="" @keyup.stop @keydown.stop>
     <!-- <div class="flex flex-row items-center w-full" @keyup.stop @keydown.stop> -->
     <WidgetHeader
       v-if="showArrayElementHeader"
@@ -182,7 +182,9 @@ const emits = defineEmits<{
 // If we have a custom func attached, don't allow them to set the attribute
 const disabled = computed(
   () =>
-    props.disabled || isCustomizableFuncKind(props.propValue.func.backendKind),
+    props.disabled ||
+    isCustomizableFuncKind(props.propValue.func.backendKind) ||
+    props.schemaProp.isReadonly,
 );
 
 const { arrayIndex } = toRefs(props);

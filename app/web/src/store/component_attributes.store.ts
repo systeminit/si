@@ -9,6 +9,7 @@ import {
   PropertyEditorValidation,
   PropertyEditorValue,
   PropertyEditorValues,
+  PropertyEditorProp,
 } from "@/api/sdf/dal/property_editor";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 import { useChangeSetsStore } from "./change_sets.store";
@@ -23,6 +24,7 @@ export interface UpdatePropertyEditorValueArgs {
   value?: unknown;
   key?: string;
 }
+
 export interface InsertPropertyEditorValueArgs {
   parentAttributeValueId: string;
   attributeContext: AttributeContext;
@@ -110,6 +112,10 @@ export const useComponentAttributesStore = () => {
           const componentsStore = useComponentsStore();
           return componentsStore.selectedComponentId;
         },
+        selectedComponent: () => {
+          const componentsStore = useComponentsStore();
+          return componentsStore.selectedComponent;
+        },
       },
       actions: {
         async FETCH_PROPERTY_EDITOR_SCHEMA() {
@@ -120,7 +126,26 @@ export const useComponentAttributesStore = () => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
-              this.schema = response;
+              const props: { [id: string]: PropertyEditorProp } = {};
+
+              for (const propKey in response.props) {
+                const prop = response.props[propKey];
+                const isHidden =
+                  prop.name === "type" &&
+                  this.selectedComponent.schemaName === "Generic Frame";
+                const isReadonly =
+                  prop.name === "type" &&
+                  this.selectedComponent.childIds !== undefined &&
+                  this.selectedComponent.childIds.length > 0;
+
+                props[propKey] = {
+                  ...prop,
+                  isHidden,
+                  isReadonly,
+                };
+              }
+
+              this.schema = { ...response, props };
             },
           });
         },

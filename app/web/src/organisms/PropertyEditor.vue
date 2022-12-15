@@ -30,8 +30,6 @@
 import { ref, computed } from "vue";
 import _ from "lodash";
 import {
-  // PropertyEditorPropKind,
-  // PropertyEditorPropWidgetKindText,
   PropertyEditorSchema,
   PropertyEditorValues,
   PropertyEditorValue,
@@ -42,6 +40,7 @@ import {
   FuncWithPrototypeContext,
   PropertyEditorValidation,
 } from "@/api/sdf/dal/property_editor";
+import { useComponentsStore } from "@/store/components.store";
 import PropertyWidget from "./PropertyEditor/PropertyWidget.vue";
 
 export interface PropertyEditorContext {
@@ -49,6 +48,7 @@ export interface PropertyEditorContext {
   values: PropertyEditorValues;
   validations: PropertyEditorValidation[];
 }
+
 const props = defineProps<{
   editorContext: PropertyEditorContext;
   disabled?: boolean;
@@ -233,7 +233,17 @@ const determineOrder = (
 const propertyValuesInOrder = computed(() => {
   const results = determineOrder([], [values.value.rootValueId]);
 
-  // console.log("property results", { results });
+  const component = useComponentsStore().lastSelectedComponent;
+
+  if (component?.nodeType === "aggregationFrame") {
+    return _.filter(results, (r) => {
+      const path = paths.value[r.id];
+      if (!path) return false;
+      const penultimateItem = path.displayPath.at(-2);
+      return penultimateItem !== "domain";
+    });
+  }
+
   return results;
 });
 
