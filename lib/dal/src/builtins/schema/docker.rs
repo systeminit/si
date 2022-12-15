@@ -22,7 +22,7 @@ impl MigrationDriver {
     }
 
     async fn migrate_docker_hub_credential(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, mut schema_variant, root_prop, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Docker Hub Credential",
@@ -77,7 +77,7 @@ impl MigrationDriver {
         .await?;
         output_socket.set_color(ctx, Some(0x1e88d6)).await?;
 
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Note: I wasn't able to create a ui menu with two layers
@@ -91,7 +91,7 @@ impl MigrationDriver {
     }
 
     async fn migrate_docker_image(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, mut schema_variant, root_prop, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Docker Image",
@@ -199,7 +199,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Connect the "/root/si/name" field to the "/root/domain/image" field.

@@ -1,18 +1,19 @@
 CREATE TABLE schema_variants
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
+    pk                          ident primary key                 DEFAULT ident_create_v1(),
+    id                          ident                    NOT NULL DEFAULT ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
     tenancy_billing_account_ids ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
+    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL,
     link                        text,
-    color                       bigint
+    color                       bigint,
+    finalized_once              bool                     NOT NULL DEFAULT FALSE
 );
 SELECT standard_model_table_constraints_v1('schema_variants');
 SELECT belongs_to_table_create_v1('schema_variant_belongs_to_schema', 'schema_variants', 'schemas');

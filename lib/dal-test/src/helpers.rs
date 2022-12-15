@@ -7,7 +7,7 @@ use dal::{
     },
     BillingAccount, BillingAccountId, BillingAccountSignup, ChangeSet, Component, DalContext,
     DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor, JwtSecretKey, Node, Prop,
-    PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, User,
+    PropId, RequestContext, Schema, SchemaVariant, SchemaVariantId, StandardModel, User,
     Visibility,
 };
 use names::{Generator, Name};
@@ -154,23 +154,15 @@ pub async fn new_ctx_for_new_change_set(
     ctx.clone_with_new_visibility(visibility)
 }
 
-pub async fn create_component_and_node_for_schema(
+pub async fn create_component_and_node_for_schema_variant(
     ctx: &DalContext,
-    schema_id: &SchemaId,
+    schema_variant_id: SchemaVariantId,
 ) -> (Component, Node) {
     let name = generate_fake_name();
-    let (component, node) = Component::new_for_schema_with_node(ctx, &name, schema_id)
+    let (component, node) = Component::new(ctx, &name, schema_variant_id)
         .await
         .expect("cannot create component");
     (component, node)
-}
-
-pub async fn create_component_for_schema(ctx: &DalContext, schema_id: &SchemaId) -> Component {
-    let name = generate_fake_name();
-    let (component, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
-        .await
-        .expect("cannot create component");
-    component
 }
 
 pub async fn find_schema_by_name(ctx: &DalContext, schema_name: impl AsRef<str>) -> Schema {

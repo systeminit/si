@@ -84,9 +84,14 @@ impl SchemaVariant {
             ));
         }
 
-        // NOTE(nick): perhaps, considering only finalizing once and outside of this method. We only
-        // need to finalize once if multiple leaves are added.
-        SchemaVariant::finalize_for_id(ctx, schema_variant_id).await?;
+        // We only need to finalize once since we are adding a leaf to a known descendant of the
+        // root prop.
+        let mut schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
+            .await?
+            .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
+        if !schema_variant.finalized_once() {
+            schema_variant.finalize(ctx).await?;
+        }
 
         // Assemble the values we need to insert an object into the map.
         let item_prop =

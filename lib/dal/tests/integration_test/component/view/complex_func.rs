@@ -18,7 +18,7 @@ use pretty_assertions_sorted::assert_eq;
 async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
     // Create and setup the schema and schema variant.
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -182,10 +182,9 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
     .await;
 
     // Now that everything is set up, create the component.
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "god-of-war", schema_variant.id())
-            .await
-            .expect("unable to create component");
+    let (component, _) = Component::new(ctx, "god-of-war", *schema_variant.id())
+        .await
+        .expect("unable to create component");
 
     // Confirm the component view renders what we expect
     let component_view = ComponentView::new(ctx, *component.id())
@@ -286,7 +285,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
 #[test]
 async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -451,13 +450,9 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
 
     // Create the component and cache what we need to insert into the map.
     // prototype argument for each item.
-    let (component, _) = Component::new_for_schema_variant_with_node(
-        ctx,
-        "the-game-awards-2022",
-        schema_variant.id(),
-    )
-    .await
-    .expect("unable to create component");
+    let (component, _) = Component::new(ctx, "the-game-awards-2022", *schema_variant.id())
+        .await
+        .expect("unable to create component");
     let component_id = *component.id();
     let insert_context = AttributeContext::builder()
         .set_prop_id(map_prop_id)

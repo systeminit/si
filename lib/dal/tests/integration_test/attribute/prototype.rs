@@ -9,7 +9,9 @@ use dal::{
 use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
-    test_harness::{create_component_for_schema, create_schema, create_schema_variant_with_root},
+    test_harness::{
+        create_component_for_schema_variant, create_schema, create_schema_variant_with_root,
+    },
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -21,10 +23,14 @@ async fn new_attribute_prototype(ctx: &DalContext) {
         .pop()
         .expect("no docker image found");
 
-    let default_variant = schema
+    let mut default_variant = schema
         .default_variant(ctx)
         .await
         .expect("cannot find default variant");
+    default_variant
+        .finalize(ctx)
+        .await
+        .expect("could not finalize schema variant");
 
     let first_prop = default_variant
         .props(ctx)
@@ -33,7 +39,7 @@ async fn new_attribute_prototype(ctx: &DalContext) {
         .pop()
         .expect("no prop found");
 
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    let component = create_component_for_schema_variant(ctx, *default_variant.id()).await;
 
     let func = Func::new(
         ctx,
@@ -79,11 +85,15 @@ async fn new_attribute_prototype(ctx: &DalContext) {
 #[test]
 async fn list_for_context_with_a_hash(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("could not finalize schema variant");
     let base_prototype_context = AttributeContext::builder();
 
     // {
@@ -209,7 +219,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
         .expect("cannot retrieve AttributePrototype")
         .expect("cannot retrieve AttributePrototype");
 
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    let component = create_component_for_schema_variant(ctx, *schema_variant.id()).await;
 
     let component_album_prototype_context = AttributeContextBuilder::from(album_prototype_context)
         .clone()
@@ -351,7 +361,7 @@ async fn remove_least_specific(ctx: &DalContext) {
 #[test]
 async fn remove_component_specific(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -363,7 +373,7 @@ async fn remove_component_specific(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())
+    let (component, _) = Component::new(ctx, "toddhoward", *schema_variant.id())
         .await
         .expect("cannot create component");
     let component_view = ComponentView::new(ctx, *component.id())

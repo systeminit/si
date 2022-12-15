@@ -2,7 +2,7 @@ use dal::{
     confirmation_resolver::ConfirmationResolverContext, ActionPrototype, ConfirmationPrototype,
     ConfirmationResolver, DalContext, FuncBindingId, FuncId, Schema, StandardModel,
 };
-use dal_test::{test, test_harness::create_component_for_schema};
+use dal_test::{test, test_harness::create_component_for_schema_variant};
 
 #[test]
 async fn new(ctx: &DalContext) {
@@ -11,7 +11,11 @@ async fn new(ctx: &DalContext) {
         .expect("unable to find schema")
         .pop()
         .expect("unable to find schema");
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    let default_variant = schema
+        .default_variant(ctx)
+        .await
+        .expect("could not find default variant");
+    let component = create_component_for_schema_variant(ctx, *default_variant.id()).await;
 
     let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id())
         .await
@@ -63,7 +67,11 @@ async fn find_for_prototype(ctx: &DalContext) {
         .expect("unable to find schema")
         .pop()
         .expect("unable to find schema");
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    let default_variant = schema
+        .default_variant(ctx)
+        .await
+        .expect("could not find default variant");
+    let component = create_component_for_schema_variant(ctx, *default_variant.id()).await;
 
     let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id())
         .await

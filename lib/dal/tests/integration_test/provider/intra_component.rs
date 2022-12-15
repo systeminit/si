@@ -17,7 +17,7 @@ use pretty_assertions_sorted::assert_eq;
 #[test]
 async fn intra_component_identity_update(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -39,7 +39,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "starfield", schema.id())
+    let (component, _) = Component::new(ctx, "starfield", *schema_variant.id())
         .await
         .expect("unable to create component");
 
@@ -284,7 +284,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
 #[test]
 async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -376,10 +376,9 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
     .await
     .expect("could not create attribute prototype argument");
 
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "valkyrie-queen", schema_variant.id())
-            .await
-            .expect("unable to create component");
+    let (component, _) = Component::new(ctx, "valkyrie-queen", *schema_variant.id())
+        .await
+        .expect("unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context.set_component_id(*component.id());

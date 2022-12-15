@@ -18,15 +18,14 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         .expect("could not perform schema find by attr")
         .pop()
         .expect("docker image schema not found");
-    let schema_variant_id = schema
+    let schema_variant_id = *schema
         .default_schema_variant_id()
         .expect("could not find default schema variant id");
     let name = "13700KF".to_string();
 
-    let (component, node) =
-        Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
-            .await
-            .expect("could not create component");
+    let (component, node) = Component::new(ctx, &name, schema_variant_id)
+        .await
+        .expect("could not create component");
 
     let component_view = ComponentView::new(ctx, *component.id())
         .await

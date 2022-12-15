@@ -20,7 +20,7 @@ use std::collections::HashMap;
 async fn check_validations_for_component(ctx: &DalContext) {
     // Setup the schema and schema variant and create a validation for a string field.
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -97,10 +97,9 @@ async fn check_validations_for_component(ctx: &DalContext) {
         .expect("cannot finalize SchemaVariant");
 
     // Once setup is complete, create a component and update the target field to an "invalid" value.
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "hundo_gecs", schema_variant.id())
-            .await
-            .expect("could not create component");
+    let (component, _) = Component::new(ctx, "hundo_gecs", *schema_variant.id())
+        .await
+        .expect("could not create component");
 
     let base_attribute_read_context = AttributeReadContext {
         component_id: Some(*component.id()),
@@ -284,7 +283,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
 #[test]
 async fn check_js_validation_for_component(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -336,10 +335,9 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         .await
         .expect("could not finalize");
 
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "Danoth", schema_variant.id())
-            .await
-            .expect("could not create component");
+    let (component, _) = Component::new(ctx, "Danoth", *schema_variant.id())
+        .await
+        .expect("could not create component");
 
     let base_attribute_read_context = AttributeReadContext {
         component_id: Some(*component.id()),

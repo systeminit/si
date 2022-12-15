@@ -5,7 +5,7 @@ use dal::{
 use dal_test::{
     test,
     test_harness::{
-        create_component_and_schema, create_node, create_schema, create_schema_variant,
+        create_component_and_schema_with_variant, create_node, create_schema, create_schema_variant,
     },
 };
 
@@ -21,7 +21,7 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn component_relationships(ctx: &DalContext) {
-    let component = create_component_and_schema(ctx).await;
+    let component = create_component_and_schema_with_variant(ctx).await;
     let node = create_node(ctx, &NodeKind::Configuration).await;
     node.set_component(ctx, component.id())
         .await

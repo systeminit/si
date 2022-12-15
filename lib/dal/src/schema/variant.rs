@@ -124,16 +124,20 @@ pk!(SchemaVariantId);
 pub struct SchemaVariant {
     pk: SchemaVariantPk,
     id: SchemaVariantId,
-    name: String,
-    link: Option<String>,
-    // NOTE(nick): we should consider whether or not we want to keep the color.
-    color: Option<i64>,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
     visibility: Visibility,
+
+    name: String,
+    link: Option<String>,
+    // NOTE(nick): we should consider whether or not we want to keep the color.
+    color: Option<i64>,
+    // NOTE(nick): we may want to replace this with a better solution. We use this temporarily to
+    // ensure components are not created unless the variant has been finalized at least once.
+    finalized_once: bool,
 }
 
 impl_standard_model! {
@@ -241,11 +245,6 @@ impl SchemaVariant {
         Ok((object, root_prop))
     }
 
-    /// Calls [`Self::finalize_for_id()`]. Refer to the aforementioned method for more information.
-    pub async fn finalize(&self, ctx: &DalContext) -> SchemaVariantResult<()> {
-        Self::finalize_for_id(ctx, self.id).await
-    }
-
     /// This _idempotent_ function "finalizes" a [`SchemaVariant`].
     ///
     /// Once a [`SchemaVariant`] has had all of its [`Props`](crate::Prop) created, there are a few
@@ -260,12 +259,12 @@ impl SchemaVariant {
     /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
     /// [`SchemaVariant`]. It can be called multiple times while [`Props`](Prop) are being created,
     /// but it must be called once after all [`Props`](Prop) have been created.
-    pub async fn finalize_for_id(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<()> {
-        Self::create_default_prototypes_and_values(ctx, schema_variant_id).await?;
-        Self::create_implicit_internal_providers(ctx, schema_variant_id).await?;
+    pub async fn finalize(&mut self, ctx: &DalContext) -> SchemaVariantResult<()> {
+        Self::create_default_prototypes_and_values(ctx, self.id).await?;
+        Self::create_implicit_internal_providers(ctx, self.id).await?;
+        if !self.finalized_once() {
+            self.set_finalized_once(ctx, true).await?;
+        }
         Ok(())
     }
 
@@ -325,6 +324,7 @@ impl SchemaVariant {
     standard_model_accessor!(name, String, SchemaVariantResult);
     standard_model_accessor!(link, Option<String>, SchemaVariantResult);
     standard_model_accessor!(color, OptionBigInt<i64>, SchemaVariantResult);
+    standard_model_accessor!(finalized_once, bool, SchemaVariantResult);
 
     standard_model_belongs_to!(
         lookup_fn: schema,

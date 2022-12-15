@@ -300,7 +300,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
 // 38.805354552534816, -77.05091482877533
 async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -327,7 +327,7 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
     prop_map.insert("/root/domain/object/source", *source_prop.id());
     prop_map.insert("/root/domain/object/intermediate", *intermediate_prop.id());
 
-    let (component, node) = Component::new_for_schema_with_node(ctx, "esp", schema.id())
+    let (component, node) = Component::new(ctx, "esp", *schema_variant.id())
         .await
         .expect("unable to create component");
 
@@ -370,7 +370,7 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
 // 38.82091849697006, -77.05236860190759
 async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -395,7 +395,7 @@ async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
     let mut prop_map = HashMap::new();
     prop_map.insert("/root/domain/destination", *destination_prop.id());
 
-    let (component, node) = Component::new_for_schema_with_node(ctx, "swings", schema.id())
+    let (component, node) = Component::new(ctx, "swings", *schema_variant.id())
         .await
         .expect("unable to create component");
 
@@ -427,7 +427,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     ) = setup_identity_func(ctx).await;
 
     let mut source_schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (source_schema_variant, source_root) =
+    let (mut source_schema_variant, source_root) =
         create_schema_variant_with_root(ctx, *source_schema.id()).await;
     source_schema
         .set_default_schema_variant_id(ctx, Some(*source_schema_variant.id()))
@@ -490,7 +490,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .expect("cannot create source external provider attribute prototype argument");
 
     let mut destination_schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (destination_schema_variant, destination_root) =
+    let (mut destination_schema_variant, destination_root) =
         create_schema_variant_with_root(ctx, *destination_schema.id()).await;
     destination_schema
         .set_default_schema_variant_id(ctx, Some(*destination_schema_variant.id()))
@@ -571,7 +571,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .expect("cannot create prototype argument for destination");
 
     let (source_component, _) =
-        Component::new_for_schema_with_node(ctx, "Source Component", source_schema.id())
+        Component::new(ctx, "Source Component", *source_schema_variant.id())
             .await
             .expect("Unable to create source component");
 
@@ -598,7 +598,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     );
 
     let (destination_component, _) =
-        Component::new_for_schema_with_node(ctx, "Destination Component", destination_schema.id())
+        Component::new(ctx, "Destination Component", *source_schema_variant.id())
             .await
             .expect("Unable to create destination component");
 
@@ -707,7 +707,6 @@ async fn with_deep_data_structure(ctx: &DalContext) {
                 "si": {
                     "name": "Destination Component",
                 },
-
                 "domain": {
                     "parent_object": {
                         "base_object": {

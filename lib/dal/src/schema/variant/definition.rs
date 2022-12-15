@@ -184,23 +184,23 @@ impl SchemaVariant {
                 }
             },
             PropKind::Map => todo!("maps not yet implemented simply because nick didn't need them yet and didn't want an untested solution"),
-            _ => match (definition.entry.is_some(), definition.children.is_empty()) {
-                (true, false) => {
+            _ => match (definition.entry.is_none(), definition.children.is_empty()) {
+                (false, false) => {
                     return Err(SchemaVariantError::FoundChildrenAndEntryForPrimitive(
                         definition.name.clone(),
                     ));
                 }
-                (true, true) => {
+                (false, true) => {
                     return Err(SchemaVariantError::FoundEntryForPrimitive(
                         definition.name.clone(),
                     ));
                 }
-                (false, false) => {
+                (true, false) => {
                     return Err(SchemaVariantError::FoundChildrenForPrimitive(
                         definition.name.clone(),
                     ));
                 }
-                (false, true) => {}
+                (true, true) => {}
             },
         }
 

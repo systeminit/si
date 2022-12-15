@@ -55,8 +55,7 @@ pub async fn create_node(
         return Err(DiagramError::InvalidDiagramKind(diagram_kind));
     }
 
-    let (component, node) =
-        Component::new_for_schema_variant_with_node(&ctx, &name, schema_variant_id).await?;
+    let (component, node) = Component::new(&ctx, &name, *schema_variant_id).await?;
 
     let component_id = *component.id();
 

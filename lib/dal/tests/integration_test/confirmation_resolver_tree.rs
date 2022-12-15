@@ -8,7 +8,7 @@ use dal::{
     SchemaVariant, Socket, StandardModel, WorkflowPrototypeId,
 };
 use dal_test::helpers::setup_identity_func;
-use dal_test::{helpers::create_component_and_node_for_schema, test};
+use dal_test::{helpers::create_component_and_node_for_schema_variant, test};
 
 async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket, Socket)> {
     let mut schema = Schema::new(
@@ -18,7 +18,7 @@ async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket
         &ComponentKind::Standard,
     )
     .await?;
-    let (schema_variant, _root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    let (mut schema_variant, _root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;
@@ -94,13 +94,22 @@ async fn new(ctx: &DalContext) {
     let (schema, input_socket, output_socket) = create_dummy_schema(ctx)
         .await
         .expect("unable to create dummy schema");
+    let schema_variant_id = *schema
+        .default_schema_variant_id()
+        .expect("no default variant");
 
-    let (first, first_node) = create_component_and_node_for_schema(ctx, schema.id()).await;
-    let (first2, _first2_node) = create_component_and_node_for_schema(ctx, schema.id()).await;
-    let (second, second_node) = create_component_and_node_for_schema(ctx, schema.id()).await;
-    let (second2, second2_node) = create_component_and_node_for_schema(ctx, schema.id()).await;
-    let (third, third_node) = create_component_and_node_for_schema(ctx, schema.id()).await;
-    let (third2, third2_node) = create_component_and_node_for_schema(ctx, schema.id()).await;
+    let (first, first_node) =
+        create_component_and_node_for_schema_variant(ctx, schema_variant_id).await;
+    let (first2, _first2_node) =
+        create_component_and_node_for_schema_variant(ctx, schema_variant_id).await;
+    let (second, second_node) =
+        create_component_and_node_for_schema_variant(ctx, schema_variant_id).await;
+    let (second2, second2_node) =
+        create_component_and_node_for_schema_variant(ctx, schema_variant_id).await;
+    let (third, third_node) =
+        create_component_and_node_for_schema_variant(ctx, schema_variant_id).await;
+    let (third2, third2_node) =
+        create_component_and_node_for_schema_variant(ctx, schema_variant_id).await;
 
     Edge::new(
         ctx,

@@ -3,7 +3,7 @@ use dal::{
     Schema, SchemaId, SchemaVariantId, StandardModel, WorkflowKind, WorkflowPrototype,
     WorkflowTreeStep,
 };
-use dal_test::{test, test_harness::create_component_for_schema};
+use dal_test::{test, test_harness::create_component_for_schema_variant};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
@@ -91,7 +91,11 @@ async fn resolve(ctx: &DalContext) {
         .expect("unable to find docker image schema")
         .pop()
         .expect("unable to find docker image");
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    let default_variant = schema
+        .default_variant(ctx)
+        .await
+        .expect("could not find default variant");
+    let component = create_component_for_schema_variant(ctx, *default_variant.id()).await;
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("unable to generate component view for docker image component");
@@ -133,7 +137,15 @@ async fn run(ctx: &DalContext) {
         .expect("unable to find docker image schema")
         .pop()
         .expect("unable to find docker image");
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    let mut default_variant = schema
+        .default_variant(ctx)
+        .await
+        .expect("could not find default variant");
+    default_variant
+        .finalize(ctx)
+        .await
+        .expect("could not finalize schema variant");
+    let component = create_component_for_schema_variant(ctx, *default_variant.id()).await;
 
     let tree = prototype
         .resolve(ctx, *component.id())

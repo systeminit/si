@@ -121,7 +121,7 @@ impl SchemaBuiltinsTestHarness {
         prop_map: HashMap<&'static str, PropId>,
         name: impl AsRef<str>,
     ) -> ComponentPayload {
-        let (component, node) = Component::new_for_schema_with_node(ctx, name, &schema_id)
+        let (component, node) = Component::new(ctx, name, schema_variant_id)
             .await
             .expect("unable to create component");
 

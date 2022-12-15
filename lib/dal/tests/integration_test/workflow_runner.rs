@@ -5,7 +5,7 @@ use dal::{
     Component, DalContext, Func, Schema, StandardModel, WorkflowPrototype, WorkflowPrototypeId,
     WorkflowResolverId, WorkflowRunner,
 };
-use dal_test::{test, test_harness::create_component_and_schema};
+use dal_test::{test, test_harness::create_component_and_schema_with_variant};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -103,7 +103,7 @@ async fn fail(ctx: &DalContext) {
         .pop()
         .unwrap_or_else(|| panic!("function not found: {}", name));
 
-    let component = create_component_and_schema(ctx).await;
+    let component = create_component_and_schema_with_variant(ctx).await;
     let schema = component
         .schema(ctx)
         .await
@@ -153,10 +153,17 @@ async fn run(ctx: &DalContext) {
         .expect("unable to find docker image schema")
         .pop()
         .expect("unable to find docker image");
-    let (component, _) =
-        Component::new_for_schema_with_node(ctx, "systeminit/whiskers", schema.id())
-            .await
-            .expect("cannot create component");
+    let mut default_variant = schema
+        .default_variant(ctx)
+        .await
+        .expect("could not find default variant");
+    default_variant
+        .finalize(ctx)
+        .await
+        .expect("could not finalize schema variant");
+    let (component, _) = Component::new(ctx, "systeminit/whiskers", *default_variant.id())
+        .await
+        .expect("cannot create component");
 
     assert!(component
         .resource(ctx)

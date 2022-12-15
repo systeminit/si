@@ -61,7 +61,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS AMI`](https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html).
     async fn migrate_ami(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, mut schema_variant, root_prop, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "AMI",
@@ -179,7 +179,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Connect the props to providers.
@@ -267,7 +267,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS EC2`](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html).
     async fn migrate_ec2(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, mut schema_variant, root_prop, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "EC2 Instance",
@@ -546,7 +546,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Set Defaults
@@ -848,7 +848,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Region`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html).
     async fn migrate_region(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, mut schema_variant, root_prop, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Region",
@@ -927,7 +927,7 @@ impl MigrationDriver {
         output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // set the component as a configuration frame
@@ -1057,7 +1057,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS EIP`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eip.html).
     async fn migrate_eip(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, mut schema_variant, root_prop, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Elastic IP",
@@ -1191,7 +1191,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Set Defaults
@@ -1392,7 +1392,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Key Pair`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html).
     async fn migrate_keypair(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, mut schema_variant, root_prop, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Key Pair",
@@ -1563,7 +1563,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Set Defaults

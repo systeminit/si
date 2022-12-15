@@ -25,7 +25,7 @@ impl MigrationDriver {
     async fn migrate_butane(&self, ctx: &DalContext) -> BuiltinsResult<()> {
         let definition: SchemaVariantDefinition = serde_json::from_str(BUTANE_DEFINITION)?;
 
-        let (schema, schema_variant, root_prop, maybe_prop_cache) = match self
+        let (schema, mut schema_variant, root_prop, maybe_prop_cache) = match self
             .create_schema_and_variant(
                 ctx,
                 "Butane",
@@ -112,7 +112,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Collect the props we need.

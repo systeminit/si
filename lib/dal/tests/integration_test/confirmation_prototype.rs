@@ -2,7 +2,7 @@ use dal::{
     confirmation_prototype::ConfirmationPrototypeContext, ConfirmationPrototype, DalContext, Func,
     Schema, StandardModel,
 };
-use dal_test::{test, test_harness::create_component_for_schema};
+use dal_test::{test, test_harness::create_component_for_schema_variant};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -30,7 +30,7 @@ async fn find_for_component(ctx: &DalContext) {
         .default_variant(ctx)
         .await
         .expect("unable to find default schema variant");
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    let component = create_component_for_schema_variant(ctx, *schema_variant.id()).await;
 
     let func_name = "si:resourceExistsConfirmation";
     let func = Func::find_by_attr(ctx, "name", &func_name)
@@ -62,7 +62,11 @@ async fn run(ctx: &DalContext) {
         .expect("unable to find schema")
         .pop()
         .expect("unable to find schema");
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    let default_variant = schema
+        .default_variant(ctx)
+        .await
+        .expect("could not find default variant");
+    let component = create_component_for_schema_variant(ctx, *default_variant.id()).await;
 
     let prototype = ConfirmationPrototype::list_for_component(ctx, *component.id())
         .await

@@ -8,13 +8,15 @@ use dal::{
 use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
-    test_harness::{create_component_for_schema, create_schema, create_schema_variant_with_root},
+    test_harness::{
+        create_component_for_schema_variant, create_schema, create_schema_variant_with_root,
+    },
 };
 
 #[test]
 async fn new(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -51,7 +53,11 @@ async fn new(ctx: &DalContext) {
     .await
     .expect("unable to create validation prototype");
 
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("could not finalize schema variant");
+    let component = create_component_for_schema_variant(ctx, *schema_variant.id()).await;
 
     let args = FuncBackendValidationArgs::new(Validation::StringEquals {
         value: Some("".to_string()),
@@ -101,7 +107,7 @@ async fn new(ctx: &DalContext) {
 #[test]
 async fn find_errors(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -172,7 +178,11 @@ async fn find_errors(ctx: &DalContext) {
         .await
         .expect("failed to execute func binding");
 
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("could not finalize schema variant");
+    let component = create_component_for_schema_variant(ctx, *schema_variant.id()).await;
 
     // Note: This is kinda wrong, the func_binding_return_value (and the func_binding) will point to the validation execution
     // But we want the actual inner value that was used in the validation

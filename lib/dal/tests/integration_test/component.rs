@@ -8,7 +8,7 @@ use dal_test::{
     helpers::setup_identity_func,
     test,
     test_harness::{
-        create_component_and_schema, create_component_for_schema_variant,
+        create_component_and_schema_with_variant, create_component_for_schema_variant,
         create_prop_and_set_parent, create_schema, create_schema_variant,
         create_schema_variant_with_root,
     },
@@ -23,18 +23,21 @@ mod view;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let _component = create_component_and_schema(ctx).await;
+    let _component = create_component_and_schema_with_variant(ctx).await;
 }
 
 #[test]
 async fn new_for_schema_variant_with_node(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
+    let mut schema_variant = create_schema_variant(ctx, *schema.id()).await;
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("could not finalize schema variant");
 
-    let (component, node) =
-        Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
-            .await
-            .expect("cannot create component");
+    let (component, node) = Component::new(ctx, "mastodon", *schema_variant.id())
+        .await
+        .expect("cannot create component");
 
     // Test the find for node query.
     let found_component = Component::find_for_node(ctx, *node.id())
@@ -50,20 +53,27 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext) {
 #[test]
 async fn schema_relationships(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
-    let _component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
+    let mut schema_variant = create_schema_variant(ctx, *schema.id()).await;
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("could not finalize schema variant");
+    let _component = create_component_for_schema_variant(ctx, *schema_variant.id()).await;
 }
 
 #[test]
 async fn name_from_context(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
+    let mut schema_variant = create_schema_variant(ctx, *schema.id()).await;
+    schema_variant
+        .finalize(ctx)
+        .await
+        .expect("could not finalize schema variant");
 
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
-            .await
-            .expect("cannot create component");
-    let _ = Component::new_for_schema_variant_with_node(ctx, "wooly mammoth", schema_variant.id())
+    let (component, _) = Component::new(ctx, "mastodon", *schema_variant.id())
+        .await
+        .expect("cannot create component");
+    let _ = Component::new(ctx, "wooly mammoth", *schema_variant.id())
         .await
         .expect("cannot create second component");
 
@@ -84,7 +94,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
 
     // Create "ekwb" schema.
     let ekwb_schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (ekwb_schema_variant, ekwb_root_prop) =
+    let (mut ekwb_schema_variant, ekwb_root_prop) =
         create_schema_variant_with_root(ctx, *ekwb_schema.id()).await;
     ekwb_schema_variant
         .finalize(ctx)
@@ -93,7 +103,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
 
     // Create "noctua" schema.
     let noctua_schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let (noctua_schema_variant, noctua_root_prop) =
+    let (mut noctua_schema_variant, noctua_root_prop) =
         create_schema_variant_with_root(ctx, *noctua_schema.id()).await;
     let u12a_prop = create_prop_and_set_parent(
         ctx,
@@ -193,14 +203,12 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         .expect("could not create new change set");
     ctx.update_visibility(Visibility::new(new_change_set.pk, None));
 
-    let (ekwb_component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "ekwb", ekwb_schema_variant.id())
-            .await
-            .expect("cannot create component");
-    let (noctua_component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "noctua", noctua_schema_variant.id())
-            .await
-            .expect("cannot create component");
+    let (ekwb_component, _) = Component::new(ctx, "ekwb", *ekwb_schema_variant.id())
+        .await
+        .expect("cannot create component");
+    let (noctua_component, _) = Component::new(ctx, "noctua", *noctua_schema_variant.id())
+        .await
+        .expect("cannot create component");
     let ekwb_component_id = *ekwb_component.id();
     let noctua_component_id = *noctua_component.id();
 

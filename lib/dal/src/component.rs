@@ -168,6 +168,8 @@ pub enum ComponentError {
     BadAttributeReadContext(String),
     #[error("found child attribute value of a map without a key: {0}")]
     FoundMapEntryWithoutKey(AttributeValueId),
+    #[error("schema variant has not been finalized at least once: {0}")]
+    SchemaVariantNotFinalized(SchemaVariantId),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -237,35 +239,25 @@ impl_standard_model! {
 
 impl Component {
     #[instrument(skip_all)]
-    pub async fn new_for_schema_with_node(
+    pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
-        schema_id: &SchemaId,
+        schema_variant_id: SchemaVariantId,
     ) -> ComponentResult<(Self, Node)> {
-        let schema = Schema::get_by_id(ctx, schema_id)
+        let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
             .await?
-            .ok_or(SchemaError::NotFound(*schema_id))?;
+            .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
 
-        let schema_variant_id = schema
-            .default_schema_variant_id()
-            .ok_or(SchemaError::NoDefaultVariant(*schema_id))?;
+        // NOTE(nick): we may want to replace this with a better solution. We use this temporarily to
+        // ensure components are not created unless the variant has been finalized at least once.
+        if !schema_variant.finalized_once() {
+            return Err(ComponentError::SchemaVariantNotFinalized(schema_variant_id));
+        }
 
-        Self::new_for_schema_variant_with_node(ctx, name, schema_variant_id).await
-    }
-
-    #[instrument(skip_all)]
-    pub async fn new_for_schema_variant_with_node(
-        ctx: &DalContext,
-        name: impl AsRef<str>,
-        schema_variant_id: &SchemaVariantId,
-    ) -> ComponentResult<(Self, Node)> {
-        let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id)
-            .await?
-            .ok_or(SchemaVariantError::NotFound(*schema_variant_id))?;
         let schema = schema_variant
             .schema(ctx)
             .await?
-            .ok_or(SchemaVariantError::MissingSchema(*schema_variant_id))?;
+            .ok_or(SchemaVariantError::MissingSchema(schema_variant_id))?;
 
         let row = ctx
             .txns()
@@ -283,7 +275,7 @@ impl Component {
         let component: Component = standard_model::finish_create_from_row(ctx, row).await?;
         component.set_schema(ctx, schema.id()).await?;
         component
-            .set_schema_variant(ctx, schema_variant.id())
+            .set_schema_variant(ctx, &schema_variant_id)
             .await?;
 
         // Need to flesh out node so that the template data is also included in the node we

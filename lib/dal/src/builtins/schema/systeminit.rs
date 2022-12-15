@@ -15,7 +15,7 @@ impl MigrationDriver {
     }
 
     async fn migrate_generic_frame(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, mut schema_variant, root_prop, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Generic Frame",
@@ -58,7 +58,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // set the component as a configuration frame
