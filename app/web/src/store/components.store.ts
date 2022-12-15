@@ -218,6 +218,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             (ci) => ci,
           ) as Record<string, Component>;
         },
+        componentsByNodeId(): Record<ComponentNodeId, Component> {
+          return _.keyBy(_.values(this.componentsById), (c) => c.nodeId);
+        },
         allComponents(): Component[] {
           return _.values(this.componentsById);
         },
@@ -274,6 +277,14 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         // allConnections: (state) => _.values(state.connectionsById),
+
+        edgesByFromNodeId(): Record<ComponentNodeId, DiagramEdgeDef[]> {
+          return _.groupBy(this.diagramEdges, (e) => e.fromNodeId);
+        },
+
+        edgesByToNodeId(): Record<ComponentNodeId, DiagramEdgeDef[]> {
+          return _.groupBy(this.diagramEdges, (e) => e.toNodeId);
+        },
 
         schemaVariants: (state) => _.values(state.schemaVariantsById),
 
@@ -471,6 +482,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               parentId,
               x: position.x.toString(),
               y: position.y.toString(),
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // TODO: store component details rather than waiting for re-fetch
+            },
+          });
+        },
+        async CREATE_AGGREGATE_PROXY_CONNECTIONS(
+          parentNodeId: string,
+          childNodeIds: string[],
+          fromSocketId: string,
+          toSocketId: string,
+          fromNodeId: string,
+        ) {
+          return new ApiRequest<{ node: DiagramNode }>({
+            method: "post",
+            url: "diagram/create_aggregate_proxy_connections",
+            params: {
+              parentNodeId,
+              childNodeIds,
+              fromSocketId,
+              toSocketId,
+              fromNodeId,
               ...visibilityParams,
             },
             onSuccess: (response) => {

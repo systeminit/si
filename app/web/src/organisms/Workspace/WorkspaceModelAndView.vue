@@ -114,7 +114,34 @@ const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const componentsStore = useComponentsStore();
 // TODO: probably want to get more generic component data and then transform into diagram nodes
-const diagramEdges = computed(() => componentsStore.diagramEdges);
+const diagramEdges = computed(() => {
+  // Note(victor): The code below checks whether was only created implicitly, through inheritance from an aggregation frame
+  // In the future, it would make more sense for this to be stored on the database
+  const edges = _.map(componentsStore.diagramEdges, (edge) => {
+    edge.isInvisible = false;
+    const parentId = componentsStore.componentsByNodeId[edge.toNodeId].parentId;
+
+    if (parentId === undefined) return edge;
+
+    const parentComp = componentsStore.componentsByNodeId[parentId];
+
+    if (parentComp.nodeType === "aggregationFrame") {
+      const edgesToFrame = componentsStore.edgesByToNodeId[parentId];
+
+      const sameEdgeButToParent = edgesToFrame.find(
+        (e) =>
+          e.fromSocketId === edge.fromSocketId &&
+          e.fromNodeId === edge.fromNodeId,
+      );
+
+      edge.isInvisible = sameEdgeButToParent !== undefined;
+    }
+
+    return edge;
+  });
+
+  return edges;
+});
 const diagramNodes = computed(() => componentsStore.diagramNodes);
 
 const selectedComponentId = computed(() => componentsStore.selectedComponentId);
@@ -147,6 +174,32 @@ watch([diagramNodes, diagramEdges], () => {
 });
 
 async function onDrawEdge(e: DrawEdgeEvent) {
+  if (
+    e.toSocket.parent instanceof DiagramGroupData &&
+    e.toSocket.parent.def.nodeType === "aggregationFrame" &&
+    e.toSocket.parent.def.childIds !== undefined
+  ) {
+    const unattachedChildIds = _.filter(
+      e.toSocket.parent.def.childIds,
+      (childId) =>
+        diagramEdges.value.filter(
+          (edge) =>
+            edge.fromNodeId === e.fromSocket.parent.def.id &&
+            edge.toNodeId === childId &&
+            edge.fromSocketId === e.fromSocket.def.id &&
+            edge.toSocketId === e.toSocket.def.id,
+        ).length === 0,
+    );
+
+    await componentsStore.CREATE_AGGREGATE_PROXY_CONNECTIONS(
+      e.toSocket.parent.def.id,
+      unattachedChildIds,
+      e.fromSocket.def.id,
+      e.toSocket.def.id,
+      e.fromSocket.parent.def.id,
+    );
+    return;
+  }
   await componentsStore.CREATE_COMPONENT_CONNECTION(
     {
       nodeId: e.fromSocket.parent.def.id,
@@ -272,10 +325,10 @@ watch(
 function onGroupElements({ group, elements }: GroupEvent) {
   if (group.def.nodeType === "aggregationFrame") {
     const groupSchemaId =
-      componentsStore.componentsById[group.def.id].schemaVariantId;
+      componentsStore.componentsByNodeId[group.def.id].schemaVariantId;
     elements = _.filter(elements, (e) => {
       const elementSchemaId =
-        componentsStore.componentsById[e.def.id].schemaVariantId;
+        componentsStore.componentsByNodeId[e.def.id].schemaVariantId;
 
       return elementSchemaId === groupSchemaId;
     });

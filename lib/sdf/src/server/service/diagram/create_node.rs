@@ -1,17 +1,18 @@
-use crate::server::extract::{AccessBuilder, HandlerContext};
-use crate::service::diagram::DiagramError::ExternalProviderNotFoundForSocket;
-use crate::service::diagram::{DiagramError, DiagramResult};
-use crate::service::schema::SchemaError;
 use axum::Json;
-use dal::job::definition::DependentValuesUpdate;
+use serde::{Deserialize, Serialize};
+
 use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
+use dal::WsEvent;
 use dal::{
     generate_name, node_position::NodePositionView, Component, Connection, DiagramKind,
     NodePosition, NodeTemplate, NodeView, Schema, SchemaId, StandardModel, Visibility, WorkspaceId,
 };
-use dal::{AttributeReadContext, AttributeValue, WsEvent};
-use serde::{Deserialize, Serialize};
+
+use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::service::diagram::connect_component_to_frame::connect_component_sockets_to_frame;
+use crate::service::diagram::{DiagramError, DiagramResult};
+use crate::service::schema::SchemaError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -94,10 +95,8 @@ pub async fn create_node(
     let positions = vec![NodePositionView::from(position)];
     let node_view = NodeView::new(name, &node, component_id, positions, node_template);
 
-    if let Some(parent_id) = request.parent_id {
-        let frame = Component::find_for_node(&ctx, parent_id).await?;
-
-        if let Some(f) = frame {
+    if let Some(frame_id) = request.parent_id {
+        if let Some(frame) = Component::find_for_node(&ctx, frame_id).await? {
             let component_socket = {
                 let sockets = component
                     .schema_variant(&ctx)
@@ -125,7 +124,7 @@ pub async fn create_node(
             };
 
             let frame_socket = {
-                let frame_schema_variant = f
+                let frame_schema_variant = frame
                     .schema_variant(&ctx)
                     .await?
                     .ok_or(DiagramError::SchemaVariantNotFound)?;
@@ -155,76 +154,12 @@ pub async fn create_node(
                 &ctx,
                 *node.id(),
                 *component_socket.id(),
-                parent_id,
+                frame_id,
                 *frame_socket.id(),
             )
             .await?;
 
-            // Create all valid connections between parent output and child inputs
-            // TODO(victor,paul) We should tidy up this section after the feature stabilizes a bit
-            {
-                let frame_schema_variant = f
-                    .schema_variant(&ctx)
-                    .await?
-                    .ok_or(DiagramError::SchemaVariantNotFound)?;
-
-                let parent_sockets = frame_schema_variant.sockets(&ctx).await?;
-
-                let component_sockets = component
-                    .schema_variant(&ctx)
-                    .await?
-                    .ok_or(DiagramError::SchemaVariantNotFound)?
-                    .sockets(&ctx)
-                    .await?;
-
-                for parent_socket in parent_sockets {
-                    if parent_socket.name() != "Frame"
-                        && *parent_socket.edge_kind() == SocketEdgeKind::ConfigurationOutput
-                    {
-                        let parent_provider = parent_socket
-                            .external_provider(&ctx)
-                            .await?
-                            .ok_or_else(|| {
-                                ExternalProviderNotFoundForSocket(*parent_socket.id())
-                            })?;
-
-                        for component_socket in &component_sockets {
-                            if component_socket.name() == parent_socket.name()
-                                && *component_socket.edge_kind()
-                                    == SocketEdgeKind::ConfigurationInput
-                            {
-                                Connection::new(
-                                    &ctx,
-                                    parent_id,
-                                    *parent_socket.id(),
-                                    *node.id(),
-                                    *component_socket.id(),
-                                )
-                                .await?;
-
-                                let attribute_value_context = AttributeReadContext {
-                                    component_id: Some(*f.id()),
-                                    external_provider_id: Some(*parent_provider.id()),
-                                    ..Default::default()
-                                };
-
-                                let attribute_value =
-                                    AttributeValue::find_for_context(&ctx, attribute_value_context)
-                                        .await?
-                                        .ok_or(DiagramError::AttributeValueNotFoundForContext(
-                                            attribute_value_context,
-                                        ))?;
-
-                                ctx.enqueue_job(DependentValuesUpdate::new(
-                                    &ctx,
-                                    *attribute_value.id(),
-                                ))
-                                .await;
-                            }
-                        }
-                    }
-                }
-            }
+            connect_component_sockets_to_frame(&ctx, frame_id, *node.id()).await?;
         }
     }
 

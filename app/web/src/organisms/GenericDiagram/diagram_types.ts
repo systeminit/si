@@ -1,6 +1,6 @@
 import { Vector2d } from "konva/lib/types";
 import { IconNames } from "@/ui-lib/icons/icon_set";
-import { ComponentId } from "@/store/components.store";
+import { useComponentsStore, ComponentId } from "@/store/components.store";
 
 export type DiagramConfig = {
   // canNodesConnectToThemselves: boolean;
@@ -39,8 +39,12 @@ export class DiagramNodeData extends DiagramElementData {
 }
 
 export class DiagramGroupData extends DiagramElementData {
+  public sockets?: DiagramSocketData[];
+
   constructor(readonly def: DiagramNodeDef) {
     super();
+    this.sockets =
+      def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
   }
 
   static generateUniqueKey(id: string | number) {
@@ -88,14 +92,29 @@ export class DiagramEdgeData extends DiagramElementData {
 
   // helpers to get the unique key of the node and sockets this edge is connected to
   get fromNodeKey() {
+    const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
+    if (comp.isGroup) {
+      return DiagramGroupData.generateUniqueKey(this.def.fromNodeId);
+    }
     return DiagramNodeData.generateUniqueKey(this.def.fromNodeId);
   }
 
   get toNodeKey() {
+    const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
+    if (comp.isGroup) {
+      return DiagramGroupData.generateUniqueKey(this.def.toNodeId);
+    }
     return DiagramNodeData.generateUniqueKey(this.def.toNodeId);
   }
 
   get fromSocketKey() {
+    const comp = useComponentsStore().componentsByNodeId[this.def.fromNodeId];
+    if (comp.isGroup) {
+      return DiagramSocketData.generateUniqueKey(
+        DiagramGroupData.generateUniqueKey(this.def.fromNodeId),
+        this.def.fromSocketId,
+      );
+    }
     return DiagramSocketData.generateUniqueKey(
       DiagramNodeData.generateUniqueKey(this.def.fromNodeId),
       this.def.fromSocketId,
@@ -103,6 +122,13 @@ export class DiagramEdgeData extends DiagramElementData {
   }
 
   get toSocketKey() {
+    const comp = useComponentsStore().componentsByNodeId[this.def.toNodeId];
+    if (comp.isGroup) {
+      return DiagramSocketData.generateUniqueKey(
+        DiagramGroupData.generateUniqueKey(this.def.toNodeId),
+        this.def.toSocketId,
+      );
+    }
     return DiagramSocketData.generateUniqueKey(
       DiagramNodeData.generateUniqueKey(this.def.toNodeId),
       this.def.toSocketId,
@@ -194,6 +220,7 @@ export type DiagramEdgeDef = {
   isBidirectional?: boolean;
   // color
   // thickness
+  isInvisible?: boolean;
 };
 
 // specific features... likely will move these as the diagram functionality gets broken up
