@@ -36,7 +36,7 @@ impl FuncBackend for FuncBackendValidation {
     ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         let mut validation_errors = Vec::new();
         let value_must_be_present_error = ValidationError {
-            message: "value must be present".to_string(),
+            message: "This field is required".to_owned(),
             kind: ValidationErrorKind::ValueMustBePresent,
             link: None,
             level: None,
