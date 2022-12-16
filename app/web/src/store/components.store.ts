@@ -490,9 +490,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async CREATE_AGGREGATE_PROXY_CONNECTIONS(
-          toNodeIds: ComponentNodeId[],
+          toNodeIds: { nodeId: ComponentNodeId; isParent: boolean }[],
           toSocketId: SocketId,
-          fromNodeIds: ComponentNodeId[],
+          fromNodeIds: { nodeId: ComponentNodeId; isParent: boolean }[],
           fromSocketId: SocketId,
         ) {
           return new ApiRequest<{ node: DiagramNode }>({

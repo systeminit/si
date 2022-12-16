@@ -1,4 +1,5 @@
 use axum::Json;
+use dal::edge::EdgeKind;
 use dal::job::definition::DependentValuesUpdate;
 use dal::{
     node::NodeId, AttributeReadContext, AttributeValue, Connection, ExternalProvider, Node,
@@ -12,10 +13,17 @@ use super::{DiagramError, DiagramResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct AggregateNodePayload {
+    pub node_id: NodeId,
+    pub is_parent: bool,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateAggregateProxyConnectionRequest {
-    pub to_node_ids: Vec<NodeId>,
+    pub to_node_ids: Vec<AggregateNodePayload>,
     pub to_socket_id: SocketId,
-    pub from_node_ids: Vec<NodeId>,
+    pub from_node_ids: Vec<AggregateNodePayload>,
     pub from_socket_id: SocketId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -36,23 +44,30 @@ pub async fn create_aggregate_proxy_connections(
 
     let mut connections = Vec::new();
 
-    for from_node_id in request.from_node_ids {
-        for to_node_id in request.to_node_ids.iter() {
+    for from_node in request.from_node_ids {
+        for to_node in request.to_node_ids.iter() {
+            let edge_kind = if from_node.is_parent || to_node.is_parent {
+                EdgeKind::Symbolic
+            } else {
+                EdgeKind::Configuration
+            };
+
             let connection = Connection::new(
                 &ctx,
-                from_node_id,
+                from_node.node_id,
                 request.from_socket_id,
-                *to_node_id,
+                to_node.node_id,
                 request.to_socket_id,
+                edge_kind,
             )
             .await?;
 
             connections.push(connection);
         }
 
-        let component = Node::get_by_id(&ctx, &from_node_id)
+        let component = Node::get_by_id(&ctx, &from_node.node_id)
             .await?
-            .ok_or(DiagramError::NodeNotFound(from_node_id))?
+            .ok_or(DiagramError::NodeNotFound(from_node.node_id))?
             .component(&ctx)
             .await?
             .ok_or(DiagramError::ComponentNotFound)?;

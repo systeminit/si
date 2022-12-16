@@ -1,6 +1,7 @@
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
+use dal::edge::EdgeKind;
 use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
 use dal::WsEvent;
@@ -156,6 +157,7 @@ pub async fn create_node(
                 *component_socket.id(),
                 frame_id,
                 *frame_socket.id(),
+                EdgeKind::Symbolic,
             )
             .await?;
 

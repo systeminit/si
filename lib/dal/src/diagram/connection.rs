@@ -30,10 +30,17 @@ impl Connection {
         from_socket_id: SocketId,
         to_node_id: NodeId,
         to_socket_id: SocketId,
+        edge_kind: EdgeKind,
     ) -> DiagramResult<Self> {
-        let edge =
-            Edge::new_for_connection(ctx, to_node_id, to_socket_id, from_node_id, from_socket_id)
-                .await?;
+        let edge = Edge::new_for_connection(
+            ctx,
+            to_node_id,
+            to_socket_id,
+            from_node_id,
+            from_socket_id,
+            edge_kind,
+        )
+        .await?;
         Ok(Connection::from_edge(&edge))
     }
 

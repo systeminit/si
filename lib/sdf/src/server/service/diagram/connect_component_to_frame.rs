@@ -1,4 +1,5 @@
 use axum::Json;
+use dal::edge::EdgeKind;
 use dal::job::definition::DependentValuesUpdate;
 use dal::socket::SocketEdgeKind;
 use dal::{
@@ -114,6 +115,7 @@ pub async fn connect_component_to_frame(
         from_socket_id,
         request.parent_node_id,
         to_socket_id,
+        EdgeKind::Symbolic,
     )
     .await?;
 
@@ -156,86 +158,102 @@ pub async fn connect_component_sockets_to_frame(
         .await?;
 
     for parent_socket in parent_sockets {
-        // Connect all parent output sockets to the children's input sockets (except the frame sockets)
-        if let Some(parent_provider) = parent_socket.external_provider(ctx).await? {
-            for child_socket in &child_sockets {
-                if let Some(child_provider) = child_socket.internal_provider(ctx).await? {
-                    if parent_provider.name() != "Frame"
-                        && parent_provider.name() == child_provider.name()
-                    {
-                        Connection::new(
-                            ctx,
-                            parent_node_id,
-                            *parent_socket.id(),
-                            child_node_id,
-                            *child_socket.id(),
-                        )
-                        .await?;
+        if parent_socket.name() == "Frame" {
+            continue;
+        }
 
-                        let attribute_value_context =
-                            AttributeReadContext::default_with_external_provider(
-                                *parent_provider.id(),
-                            );
+        let frame_type_opt = parent_component
+            .find_value_by_json_pointer::<String>(ctx, "/root/si/type")
+            .await?;
 
-                        let attribute_value =
-                            AttributeValue::find_for_context(ctx, attribute_value_context)
+        // TODO(victor) This could be improved, frame_type should be compared to an enum
+        if let Some(frame_type) = frame_type_opt {
+            if frame_type == "aggregationFrame" {
+                match *parent_socket.edge_kind() {
+                    SocketEdgeKind::ConfigurationInput => {
+                        // TODO(victor): implement query based Edges::list_with_filter()
+                        let sockets_connected_to_parent_socket = Edge::list(ctx)
+                            .await?
+                            .iter()
+                            .filter(|e| {
+                                e.head_node_id() == parent_node_id
+                                    && e.head_socket_id() == *parent_socket.id()
+                            })
+                            .map(|e| (e.tail_node_id(), e.tail_socket_id()))
+                            .collect::<Vec<(NodeId, SocketId)>>();
+
+                        for (peer_node_id, peer_socket_id) in sockets_connected_to_parent_socket {
+                            Connection::new(
+                                ctx,
+                                peer_node_id,
+                                peer_socket_id,
+                                child_node_id,
+                                *parent_socket.id(),
+                                EdgeKind::Configuration,
+                            )
+                            .await?;
+
+                            let peer_external_provider =
+                                ExternalProvider::find_for_socket(ctx, peer_socket_id)
+                                    .await?
+                                    .ok_or(DiagramError::ExternalProviderNotFoundForSocket(
+                                        peer_socket_id,
+                                    ))?;
+
+                            let peer_component = Component::find_for_node(ctx, peer_node_id)
                                 .await?
-                                .ok_or(DiagramError::AttributeValueNotFoundForContext(
-                                    attribute_value_context,
-                                ))?;
+                                .ok_or(DiagramError::ComponentNotFound)?;
 
-                        ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
-                            .await;
+                            let attribute_value_context = AttributeReadContext {
+                                component_id: Some(*peer_component.id()),
+                                external_provider_id: Some(*peer_external_provider.id()),
+                                ..Default::default()
+                            };
+
+                            let attribute_value =
+                                AttributeValue::find_for_context(ctx, attribute_value_context)
+                                    .await?
+                                    .ok_or(DiagramError::AttributeValueNotFoundForContext(
+                                        attribute_value_context,
+                                    ))?;
+
+                            ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
+                                .await;
+                        }
                     }
-                }
-            }
-        } else {
-            // If aggregation frame, connect all implicit edges
-            let frame_type_opt = parent_component
-                .find_value_by_json_pointer::<String>(ctx, "/root/si/type")
-                .await?;
+                    SocketEdgeKind::ConfigurationOutput => {
+                        let sockets_connected_from_parent_socket = Edge::list(ctx)
+                            .await?
+                            .iter()
+                            .filter(|e| {
+                                e.tail_node_id() == parent_node_id
+                                    && e.tail_socket_id() == *parent_socket.id()
+                            })
+                            .map(|e| (e.head_node_id(), e.head_socket_id()))
+                            .collect::<Vec<(NodeId, SocketId)>>();
 
-            // TODO(victor) This could be improved, frame_type should be compared to an enum
-            if let Some(frame_type) = frame_type_opt {
-                if frame_type == "aggregationFrame"
-                    && parent_socket.name() != "Frame"
-                    && *parent_socket.edge_kind() == SocketEdgeKind::ConfigurationInput
-                {
-                    // TODO(victor): implement query based Edges::list_with_filter()
-                    let sockets_connected_to_parent_socket = Edge::list(ctx)
-                        .await?
-                        .iter()
-                        .filter(|e| {
-                            e.head_node_id() == parent_node_id
-                                && e.head_socket_id() == *parent_socket.id()
-                        })
-                        .map(|e| (e.tail_node_id(), e.tail_socket_id()))
-                        .collect::<Vec<(NodeId, SocketId)>>();
+                        for (peer_node_id, peer_socket_id) in sockets_connected_from_parent_socket {
+                            Connection::new(
+                                ctx,
+                                child_node_id,
+                                *parent_socket.id(),
+                                peer_node_id,
+                                peer_socket_id,
+                                EdgeKind::Configuration,
+                            )
+                            .await?;
+                        }
 
-                    for (peer_node_id, peer_socket_id) in sockets_connected_to_parent_socket {
-                        Connection::new(
-                            ctx,
-                            peer_node_id,
-                            peer_socket_id,
-                            child_node_id,
-                            *parent_socket.id(),
-                        )
-                        .await?;
-
-                        let peer_external_provider =
-                            ExternalProvider::find_for_socket(ctx, peer_socket_id)
+                        let parent_external_provider =
+                            ExternalProvider::find_for_socket(ctx, *parent_socket.id())
                                 .await?
                                 .ok_or(DiagramError::ExternalProviderNotFoundForSocket(
-                                    peer_socket_id,
+                                    *parent_socket.id(),
                                 ))?;
 
-                        let peer_component = Component::find_for_node(ctx, peer_node_id)
-                            .await?
-                            .ok_or(DiagramError::ComponentNotFound)?;
-
                         let attribute_value_context = AttributeReadContext {
-                            component_id: Some(*peer_component.id()),
-                            external_provider_id: Some(*peer_external_provider.id()),
+                            component_id: Some(*child_component.id()),
+                            external_provider_id: Some(*parent_external_provider.id()),
                             ..Default::default()
                         };
 
@@ -248,6 +266,39 @@ pub async fn connect_component_sockets_to_frame(
 
                         ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
                             .await;
+                    }
+                }
+            } else if let Some(parent_provider) = parent_socket.external_provider(ctx).await? {
+                for child_socket in &child_sockets {
+                    if let Some(child_provider) = child_socket.internal_provider(ctx).await? {
+                        if parent_provider.name() != "Frame"
+                            && parent_provider.name() == child_provider.name()
+                        {
+                            Connection::new(
+                                ctx,
+                                parent_node_id,
+                                *parent_socket.id(),
+                                child_node_id,
+                                *child_socket.id(),
+                                EdgeKind::Configuration,
+                            )
+                            .await?;
+
+                            let attribute_value_context =
+                                AttributeReadContext::default_with_external_provider(
+                                    *parent_provider.id(),
+                                );
+
+                            let attribute_value =
+                                AttributeValue::find_for_context(ctx, attribute_value_context)
+                                    .await?
+                                    .ok_or(DiagramError::AttributeValueNotFoundForContext(
+                                        attribute_value_context,
+                                    ))?;
+
+                            ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
+                                .await;
+                        }
                     }
                 }
             }

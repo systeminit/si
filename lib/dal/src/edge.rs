@@ -85,6 +85,7 @@ pub enum VertexObjectKind {
 pub enum EdgeKind {
     /// Used to connect a configuration to another configuration.
     Configuration,
+    Symbolic,
 }
 
 pk!(EdgeId);
@@ -192,6 +193,7 @@ impl Edge {
         head_socket_id: SocketId,
         tail_node_id: NodeId,
         tail_socket_id: SocketId,
+        edge_kind: EdgeKind,
     ) -> EdgeResult<Self> {
         let head_component = Component::find_for_node(ctx, head_node_id)
             .await
@@ -210,20 +212,23 @@ impl Edge {
             .await?
             .ok_or(EdgeError::ExternalProviderNotFoundForSocket(tail_socket_id))?;
 
-        // TODO(nick): allow for more transformation functions.
-        Self::connect_providers_for_components(
-            ctx,
-            *head_explicit_internal_provider.id(),
-            *head_component.id(),
-            *tail_external_provider.id(),
-            *tail_component.id(),
-        )
-        .await?;
+        // We don't want to connect the provider when we are not using configuration edge kind
+        if edge_kind == EdgeKind::Configuration {
+            // TODO(nick): allow for more transformation functions.
+            Self::connect_providers_for_components(
+                ctx,
+                *head_explicit_internal_provider.id(),
+                *head_component.id(),
+                *tail_external_provider.id(),
+                *tail_component.id(),
+            )
+            .await?;
+        }
 
         // NOTE(nick): a lot of hardcoded values here that'll likely need to be adjusted.
         let edge = Edge::new(
             ctx,
-            EdgeKind::Configuration,
+            edge_kind,
             head_node_id,
             VertexObjectKind::Configuration,
             EdgeObjectId::from(*head_component.id()),

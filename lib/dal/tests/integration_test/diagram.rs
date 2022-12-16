@@ -1,3 +1,4 @@
+use dal::edge::EdgeKind;
 use dal::node_position::NodePositionView;
 use dal::{
     socket::{SocketArity, SocketEdgeKind, SocketKind},
@@ -181,6 +182,7 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
         *output_socket.id(),
         to_docker_image.node_id,
         *input_socket.id(),
+        EdgeKind::Configuration,
     )
     .await
     .expect("could not create connection");

@@ -1,4 +1,5 @@
 use axum::Json;
+use dal::edge::EdgeKind;
 use dal::{
     job::definition::DependentValuesUpdate, node::NodeId, socket::SocketId, AttributeReadContext,
     AttributeValue, Connection, ExternalProvider, Node, StandardModel, Visibility, WorkspaceId,
@@ -42,6 +43,7 @@ pub async fn create_connection(
         request.from_socket_id,
         request.to_node_id,
         request.to_socket_id,
+        EdgeKind::Configuration,
     )
     .await?;
 
