@@ -142,11 +142,11 @@ impl Prop {
         ctx: &DalContext,
         name: impl AsRef<str>,
         kind: PropKind,
-        widget_kind_and_options: Option<(WidgetKind, Value)>,
+        widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
     ) -> PropResult<Self> {
         let name = name.as_ref();
         let (widget_kind, widget_options) = match widget_kind_and_options {
-            Some((kind, options)) => (kind, Some(options)),
+            Some((kind, options)) => (kind, options),
             None => (WidgetKind::from(kind), None),
         };
 

@@ -37,6 +37,10 @@ export interface PropertyEditorPropWidgetKindText {
   kind: "text";
 }
 
+export interface PropertyEditorPropWidgetKindTextArea {
+  kind: "textArea";
+}
+
 export interface PropertyEditorPropWidgetKindInteger {
   kind: "integer";
 }
@@ -58,6 +62,7 @@ export interface PropertyEditorPropWidgetKindSecretSelect {
 
 export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindText
+  | PropertyEditorPropWidgetKindTextArea
   | PropertyEditorPropWidgetKindCheckBox
   | PropertyEditorPropWidgetKindMap
   | PropertyEditorPropWidgetKindInteger

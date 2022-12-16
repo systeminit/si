@@ -9,6 +9,7 @@
           :doc-link="docLink"
           :validations="validations"
           :disabled="disabled"
+          :text-area="props.textArea"
           always-validate
           @blur="setField"
           @keyup.enter="triggerBlur($event)"
@@ -49,6 +50,7 @@ const props = defineProps<{
   docLink?: string;
   validation?: PropertyEditorValidation;
   disabled?: boolean;
+  textArea?: boolean;
 }>();
 
 const emit = defineEmits<{

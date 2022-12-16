@@ -222,7 +222,7 @@ impl MigrationDriver {
         ctx: &DalContext,
         prop_name: &str,
         prop_kind: PropKind,
-        widget_kind_and_options: Option<(WidgetKind, Value)>,
+        widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         parent_prop_id: Option<PropId>,
         doc_link: Option<String>,
     ) -> BuiltinsResult<Prop> {

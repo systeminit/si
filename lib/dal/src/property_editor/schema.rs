@@ -134,6 +134,7 @@ pub enum PropertyEditorPropWidgetKind {
     Select { options: Option<Value> },
     ComboBox { options: Option<Value> },
     Text,
+    TextArea,
 }
 
 impl PropertyEditorPropWidgetKind {
@@ -160,6 +161,7 @@ impl PropertyEditorPropWidgetKind {
                 ),
             },
             WidgetKind::Text => Self::Text,
+            WidgetKind::TextArea => Self::TextArea,
             WidgetKind::ComboBox => Self::ComboBox {
                 options: widget_options,
             },

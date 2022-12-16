@@ -329,7 +329,7 @@ impl MigrationDriver {
                 ctx,
                 "InstanceType",
                 PropKind::String,
-                Some((WidgetKind::ComboBox, instance_types_option_list_json)),
+                Some((WidgetKind::ComboBox, Some(instance_types_option_list_json))),
                 Some(root_prop.domain_prop_id),
                 Some(EC2_INSTANCE_TYPES_URL.to_string()),
             )
@@ -414,7 +414,7 @@ impl MigrationDriver {
                 ctx,
                 "UserData",
                 PropKind::String,
-                None,
+                Some((WidgetKind::TextArea, None)),
                 Some(root_prop.domain_prop_id),
                 Some(EC2_DOCS_URL.to_string()),
             )
@@ -883,7 +883,7 @@ impl MigrationDriver {
                 ctx,
                 "region",
                 PropKind::String,
-                Some((WidgetKind::ComboBox, regions_dropdown_options_json)),
+                Some((WidgetKind::ComboBox, Some(regions_dropdown_options_json))),
                 Some(root_prop.domain_prop_id),
                 Some(AWS_REGIONS_DOCS_URL.to_string()),
             )
@@ -1434,7 +1434,7 @@ impl MigrationDriver {
                 PropKind::String,
                 Some((
                     WidgetKind::Select,
-                    serde_json::json!([
+                    Some(serde_json::json!([
                         {
                             "label": "rsa",
                             "value": "rsa",
@@ -1443,7 +1443,7 @@ impl MigrationDriver {
                             "label": "ed25519",
                             "value": "ed25519",
                         },
-                    ]),
+                    ])),
                 )),
                 Some(root_prop.domain_prop_id),
                 Some(KEY_PAIR_DOCS_URL.to_string()),
