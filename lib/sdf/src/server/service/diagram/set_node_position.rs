@@ -82,7 +82,10 @@ pub async fn set_node_position(
     )
     .await?;
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

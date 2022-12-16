@@ -627,7 +627,10 @@ pub async fn save_func<'a>(
     let is_revertible = super::is_func_revertible(&ctx, &func).await?;
     let associations = super::get_func_view(&ctx, &func).await?.associations;
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
     ctx.commit().await?;
 
     Ok(Json(SaveFuncResponse {

@@ -10,6 +10,7 @@ use crate::{
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     ws_event::{WsEvent, WsPayload},
     Component, ComponentError, ComponentId, DalContext, StandardModel, StandardModelError,
+    WsEventResult,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -248,10 +249,14 @@ pub struct QualificationCheckPayload {
 }
 
 impl WsEvent {
-    pub fn checked_qualifications(ctx: &DalContext, component_id: ComponentId) -> Self {
+    pub async fn checked_qualifications(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::CheckedQualifications(QualificationCheckPayload { component_id }),
         )
+        .await
     }
 }

@@ -6,6 +6,7 @@ use telemetry::prelude::*;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
+use crate::WsEventResult;
 use crate::{
     AttributeReadContext, CodeLanguage, CodeView, ComponentError, ComponentId, DalContext,
     StandardModel, WsEvent, WsPayload,
@@ -96,10 +97,14 @@ pub struct CodeGeneratedPayload {
 
 // NOTE(nick): consider moving this somewhere else.
 impl WsEvent {
-    pub fn code_generated(ctx: &DalContext, component_id: ComponentId) -> Self {
+    pub async fn code_generated(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::CodeGenerated(CodeGeneratedPayload { component_id }),
         )
+        .await
     }
 }

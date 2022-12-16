@@ -9,7 +9,8 @@ use crate::fix::{FixCompletionStatus, FixError, FixResult};
 use crate::standard_model::objects_from_rows;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
-    DalContext, Fix, StandardModel, Timestamp, Visibility, WriteTenancy, WsEvent, WsPayload,
+    DalContext, Fix, StandardModel, Timestamp, Visibility, WriteTenancy, WsEvent, WsEventResult,
+    WsPayload,
 };
 
 const LIST_FINISHED: &str = include_str!("../queries/fix_batch_list_finished.sql");
@@ -159,11 +160,11 @@ pub struct FixBatchReturn {
 }
 
 impl WsEvent {
-    pub fn fix_batch_return(
+    pub async fn fix_batch_return(
         ctx: &DalContext,
         id: FixBatchId,
         completion_status: FixCompletionStatus,
-    ) -> Self {
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::FixBatchReturn(FixBatchReturn {
@@ -171,5 +172,6 @@ impl WsEvent {
                 completion_status,
             }),
         )
+        .await
     }
 }

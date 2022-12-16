@@ -1,7 +1,7 @@
 //! This module contains the status of a confirmation execution as well as how to publish
 //! the status in a [`WsEvent`](crate::WsEvent).
 
-use crate::{ComponentId, ConfirmationPrototypeId, DalContext, WsEvent, WsPayload};
+use crate::{ComponentId, ConfirmationPrototypeId, DalContext, WsEvent, WsEventResult, WsPayload};
 use serde::{Deserialize, Serialize};
 
 /// The status of an execution using a [`ConfirmationPrototype`](crate::ConfirmationPrototype).
@@ -41,13 +41,13 @@ pub struct ConfirmationStatusUpdate {
 }
 
 impl WsEvent {
-    pub fn confirmation_status_update(
+    pub async fn confirmation_status_update(
         ctx: &DalContext,
         component_id: ComponentId,
         confirmation_prototype_id: ConfirmationPrototypeId,
         status: ConfirmationStatus,
         error_message: Option<String>,
-    ) -> Self {
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::ConfirmationStatusUpdate(ConfirmationStatusUpdate {
@@ -57,5 +57,6 @@ impl WsEvent {
                 error_message,
             }),
         )
+        .await
     }
 }

@@ -18,7 +18,7 @@ use crate::{
     StandardModelError, Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError,
     WorkflowRunnerId, WorkflowRunnerStatus, WriteTenancy, WsEvent, WsPayload,
 };
-use crate::{FixBatch, WorkflowRunner};
+use crate::{FixBatch, WorkflowRunner, WsEventResult};
 
 /// Contains the ability to group fixes together.
 pub mod batch;
@@ -356,7 +356,7 @@ pub struct FixReturn {
 }
 
 impl WsEvent {
-    pub fn fix_return(
+    pub async fn fix_return(
         ctx: &DalContext,
         id: FixId,
         batch_id: FixBatchId,
@@ -364,7 +364,7 @@ impl WsEvent {
         action: String,
         status: FixCompletionStatus,
         output: Vec<String>,
-    ) -> Self {
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::FixReturn(FixReturn {
@@ -376,5 +376,6 @@ impl WsEvent {
                 output,
             }),
         )
+        .await
     }
 }

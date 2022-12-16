@@ -1,12 +1,11 @@
 use axum::extract::Query;
 use axum::Json;
 use chrono::{DateTime, Utc};
-use dal::status::StatusUpdateActor;
 use dal::{
     node::Node, ComponentId, DiagramKind, LabelEntry, LabelList, ResourceView, SchemaId,
     SchemaVariantId, StandardModel, Visibility, WorkspaceId,
 };
-use dal::{ComponentStatus, DalContext, HistoryActorTimestamp};
+use dal::{ActorView, ComponentStatus, DalContext, HistoryActorTimestamp};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -24,7 +23,7 @@ pub struct ListComponentsIdentificationRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListComponentsIdentificationItemTimestamp {
-    actor: StatusUpdateActor,
+    actor: ActorView,
     timestamp: DateTime<Utc>,
 }
 
@@ -33,7 +32,7 @@ impl ListComponentsIdentificationItemTimestamp {
         ctx: &DalContext,
         value: HistoryActorTimestamp,
     ) -> ComponentResult<Self> {
-        let actor = StatusUpdateActor::from_history_actor(ctx, value.actor).await?;
+        let actor = ActorView::from_history_actor(ctx, value.actor).await?;
 
         Ok(Self {
             actor,

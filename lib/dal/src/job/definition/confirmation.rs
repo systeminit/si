@@ -144,6 +144,7 @@ impl JobConsumer for Confirmation {
             status,
             error_message,
         )
+        .await?
         .publish(ctx)
         .await?;
         Ok(())
