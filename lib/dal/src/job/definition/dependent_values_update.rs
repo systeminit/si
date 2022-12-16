@@ -217,7 +217,7 @@ impl JobConsumer for DependentValuesUpdate {
 
         status_updater.finish(ctx).await?;
 
-        WsEvent::change_set_written(ctx).publish(ctx).await?;
+        WsEvent::change_set_written(ctx).await?.publish(ctx).await?;
 
         let elapsed_time = now.elapsed();
         info!(

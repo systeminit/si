@@ -1,4 +1,4 @@
-use crate::DalContext;
+use crate::{DalContext, WsEventResult};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
@@ -89,6 +89,7 @@ impl ChangeSet {
             HistoryEvent::new(ctx, "change_set.create", "Change Set created", &json).await?;
         let object: Self = serde_json::from_value(json)?;
         WsEvent::change_set_created(ctx, object.pk)
+            .await?
             .publish(ctx)
             .await?;
         Ok(object)
@@ -119,6 +120,7 @@ impl ChangeSet {
         ctx.enqueue_job(Confirmations::new(ctx)).await;
 
         WsEvent::change_set_applied(ctx, self.pk)
+            .await?
             .publish(ctx)
             .await?;
 
@@ -152,22 +154,32 @@ impl ChangeSet {
 }
 
 impl WsEvent {
-    pub fn change_set_created(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {
-        WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_pk))
+    pub async fn change_set_created(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_pk)).await
     }
 
-    pub fn change_set_applied(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {
-        WsEvent::new(ctx, WsPayload::ChangeSetApplied(change_set_pk))
+    pub async fn change_set_applied(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::ChangeSetApplied(change_set_pk)).await
     }
 
-    pub fn change_set_canceled(ctx: &DalContext, change_set_pk: ChangeSetPk) -> Self {
-        WsEvent::new(ctx, WsPayload::ChangeSetCanceled(change_set_pk))
+    pub async fn change_set_canceled(
+        ctx: &DalContext,
+        change_set_pk: ChangeSetPk,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::ChangeSetCanceled(change_set_pk)).await
     }
 
-    pub fn change_set_written(ctx: &DalContext) -> Self {
+    pub async fn change_set_written(ctx: &DalContext) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::ChangeSetWritten(ctx.visibility().change_set_pk),
         )
+        .await
     }
 }

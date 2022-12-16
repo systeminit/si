@@ -51,7 +51,10 @@ pub async fn create_builtin_func(
     // Update the ctx with the account details for proper WS signaling
     ctx.update_from_request_context(request_ctx.build(request.visibility));
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

@@ -218,6 +218,7 @@ impl JobConsumer for FixesJob {
             completion_status,
             logs,
         )
+        .await?
         .publish(ctx)
         .await?;
 
@@ -271,6 +272,7 @@ async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()>
         .ok_or(JobConsumerError::MissingFixBatch(id))?;
     let batch_completion_status = batch.stamp_finished(ctx).await?;
     WsEvent::fix_batch_return(ctx, *batch.id(), batch_completion_status)
+        .await?
         .publish(ctx)
         .await?;
 

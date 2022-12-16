@@ -13,6 +13,7 @@ use thiserror::Error;
 use veritech_client::{Client, EncryptionKey};
 
 pub mod action_prototype;
+pub mod actor_view;
 pub mod attribute;
 pub mod billing_account;
 pub mod builtins;
@@ -74,6 +75,7 @@ pub mod ws_event;
 pub use action_prototype::{
     ActionPrototype, ActionPrototypeContext, ActionPrototypeError, ActionPrototypeId,
 };
+pub use actor_view::ActorView;
 pub use attribute::value::view::AttributeView;
 pub use attribute::{
     context::{
@@ -193,7 +195,7 @@ pub use workflow_runner::workflow_runner_state::{
 pub use workflow_runner::{WorkflowRunner, WorkflowRunnerError, WorkflowRunnerId};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
 pub use write_tenancy::{WriteTenancy, WriteTenancyError};
-pub use ws_event::{WsEvent, WsEventError, WsPayload};
+pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 #[cfg(debug_assertions)]
 const REQUIRED_BINARIES: &str = include_str!("../../../scripts/data/required-binaries.txt");

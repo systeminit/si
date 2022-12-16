@@ -113,6 +113,7 @@ impl Component {
         }
 
         WsEvent::checked_qualifications(ctx, component_id)
+            .await?
             .publish(ctx)
             .await?;
 

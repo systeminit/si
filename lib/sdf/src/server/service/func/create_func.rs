@@ -255,7 +255,10 @@ pub async fn create_func(
         _ => Err(FuncError::FuncNotSupported)?,
     };
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
     ctx.commit().await?;
 
     Ok(Json(CreateFuncResponse {

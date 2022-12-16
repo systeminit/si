@@ -121,7 +121,10 @@ pub async fn connect_component_to_frame(
 
     connect_component_sockets_to_frame(&ctx, request.parent_node_id, request.child_node_id).await?;
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

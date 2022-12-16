@@ -2,17 +2,16 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use thiserror::Error;
 
-use crate::component::code::CodeGeneratedPayload;
-use crate::component::resource::ResourceRefreshId;
-use crate::confirmation_status::ConfirmationStatusUpdate;
-use crate::fix::batch::FixBatchReturn;
-use crate::fix::FixReturn;
-use crate::qualification::QualificationCheckPayload;
-use crate::status::StatusMessage;
-use crate::workflow::{CommandOutput, CommandReturn};
 use crate::{
-    AttributeValueId, BillingAccountId, ChangeSetPk, ComponentId, ConfirmationPrototypeError,
-    DalContext, HistoryActor, PropId, ReadTenancy, SchemaPk, SocketId, StandardModelError,
+    component::{code::CodeGeneratedPayload, resource::ResourceRefreshId},
+    confirmation_status::ConfirmationStatusUpdate,
+    fix::{batch::FixBatchReturn, FixReturn},
+    qualification::QualificationCheckPayload,
+    status::StatusMessage,
+    workflow::{CommandOutput, CommandReturn},
+    ActorView, AttributeValueId, BillingAccountId, ChangeSetPk, ComponentId,
+    ConfirmationPrototypeError, DalContext, PropId, ReadTenancy, SchemaPk, SocketId,
+    StandardModelError,
 };
 
 #[derive(Error, Debug)]
@@ -86,24 +85,24 @@ impl AttributeValueStatusUpdate {
 pub struct WsEvent {
     version: i64,
     billing_account_ids: Vec<BillingAccountId>,
-    history_actor: HistoryActor,
+    actor: ActorView,
     change_set_pk: ChangeSetPk,
     payload: WsPayload,
 }
 
 impl WsEvent {
-    pub fn new(ctx: &DalContext, payload: WsPayload) -> Self {
+    pub async fn new(ctx: &DalContext, payload: WsPayload) -> WsEventResult<Self> {
         let billing_account_ids = Self::billing_account_id_from_tenancy(ctx.read_tenancy());
-        let history_actor = *ctx.history_actor();
         let change_set_pk = ctx.visibility().change_set_pk;
+        let actor = ActorView::from_history_actor(ctx, *ctx.history_actor()).await?;
 
-        WsEvent {
+        Ok(WsEvent {
             version: 1,
             billing_account_ids,
-            history_actor,
+            actor,
             change_set_pk,
             payload,
-        }
+        })
     }
 
     pub fn billing_account_id_from_tenancy(tenancy: &ReadTenancy) -> Vec<BillingAccountId> {

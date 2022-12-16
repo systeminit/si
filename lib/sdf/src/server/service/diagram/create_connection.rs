@@ -87,7 +87,10 @@ pub async fn create_connection(
     ctx.enqueue_job(DependentValuesUpdate::new(&ctx, *attribute_value.id()))
         .await;
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

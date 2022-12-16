@@ -12,12 +12,12 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    pk, schema::variant::leaves::LeafKind, standard_model::objects_from_rows, AttributeValue,
-    AttributeValueError, AttributeValueId, ChangeSetPk, Component, ComponentError, ComponentId,
-    ComponentStatus, DalContext, ExternalProvider, ExternalProviderError, HistoryActor,
+    pk, schema::variant::leaves::LeafKind, standard_model::objects_from_rows, ActorView,
+    AttributeValue, AttributeValueError, AttributeValueId, ChangeSetPk, Component, ComponentError,
+    ComponentId, ComponentStatus, DalContext, ExternalProvider, ExternalProviderError,
     InternalProvider, InternalProviderError, Prop, PropError, PropId, SchemaVariant, SocketId,
-    StandardModel, StandardModelError, Timestamp, User, UserId, WriteTenancy, WsEvent,
-    WsEventError, WsPayload,
+    StandardModel, StandardModelError, Timestamp, UserId, WriteTenancy, WsEvent, WsEventError,
+    WsEventResult, WsPayload,
 };
 
 const MODEL_TABLE: &str = "status_updates";
@@ -63,91 +63,10 @@ pk!(
     StatusUpdatePk
 );
 
-/// The actor entitiy that initiates an activitiy--this could represent be a person, service, etc.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-pub enum StatusUpdateActor {
-    /// Represents a human by their [`UserId`]
-    User {
-        /// A user's ID
-        id: UserId,
-        /// A display label
-        label: String,
-    },
-    /// Represents a system-generated activity
-    System {
-        /// A display label
-        #[serde(default = "StatusUpdateActor::system_label")]
-        label: String,
-    },
-}
-
-impl StatusUpdateActor {
-    fn system_label() -> String {
-        "system".to_string()
-    }
-
-    /// Converts a [`HistoryActor`] and returns an `StatusUpdateActor`.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Err`] if a user cannot be determined given a user id or if there is a aconnection
-    /// issue with the database.
-    pub async fn from_history_actor(
-        ctx: &DalContext,
-        history_actor: HistoryActor,
-    ) -> Result<Self, StandardModelError> {
-        match history_actor {
-            HistoryActor::User(user_id) => {
-                let user = User::get_by_id(ctx, &user_id).await?.ok_or_else(|| {
-                    StandardModelError::ModelMissing("User".to_string(), user_id.to_string())
-                })?;
-                Ok(Self::User {
-                    id: *user.id(),
-                    label: user.name().to_string(),
-                })
-            }
-            HistoryActor::SystemInit => Ok(Self::System {
-                label: Self::system_label(),
-            }),
-        }
-    }
-}
-
-impl postgres_types::ToSql for StatusUpdateActor {
-    fn to_sql(
-        &self,
-        ty: &postgres_types::Type,
-        out: &mut postgres_types::private::BytesMut,
-    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
-    where
-        Self: Sized,
-    {
-        let json = serde_json::to_value(self)?;
-        postgres_types::ToSql::to_sql(&json, ty, out)
-    }
-
-    fn accepts(ty: &postgres_types::Type) -> bool
-    where
-        Self: Sized,
-    {
-        ty == &postgres_types::Type::JSONB
-    }
-
-    fn to_sql_checked(
-        &self,
-        ty: &postgres_types::Type,
-        out: &mut postgres_types::private::BytesMut,
-    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        let json = serde_json::to_value(self)?;
-        postgres_types::ToSql::to_sql(&json, ty, out)
-    }
-}
-
 /// The internal state data of a [`StatusUpdate`].
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct StatusUpdateData {
-    actor: StatusUpdateActor,
+    actor: ActorView,
     /// The initial/causal/initiaing value id that triggered the depdendent value job
     attribute_value_id: AttributeValueId,
     dependent_values_metadata: HashMap<AttributeValueId, AttributeValueMetadata>,
@@ -216,7 +135,7 @@ impl StatusUpdate {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> StatusUpdateResult<Self> {
-        let actor = StatusUpdateActor::from_history_actor(ctx, *ctx.history_actor()).await?;
+        let actor = ActorView::from_history_actor(ctx, *ctx.history_actor()).await?;
 
         // This query explicitly uses its own connection to bypass/avoid a ctx's database
         // transaction--status updates live outside of transactions!
@@ -549,6 +468,7 @@ impl StatusUpdater {
         let model = StatusUpdate::new(ctx, attribute_value_id).await?;
 
         WsEvent::status_update(ctx, model.pk, StatusMessageState::StatusStarted, vec![])
+            .await?
             .publish_immediately(ctx)
             .await?;
 
@@ -739,6 +659,7 @@ impl StatusUpdater {
             StatusMessageState::Queued,
             queued_values.into_iter().collect(),
         )
+        .await?
         .publish_immediately(ctx)
         .await?;
 
@@ -767,6 +688,7 @@ impl StatusUpdater {
             StatusMessageState::Running,
             running_values,
         )
+        .await?
         .publish_immediately(ctx)
         .await?;
 
@@ -808,6 +730,7 @@ impl StatusUpdater {
             StatusMessageState::Completed,
             completed_values,
         )
+        .await?
         .publish_immediately(ctx)
         .await?;
 
@@ -863,6 +786,7 @@ impl StatusUpdater {
             StatusMessageState::StatusFinished,
             vec![],
         )
+        .await?
         .publish_immediately(ctx)
         .await?;
 
@@ -877,15 +801,16 @@ impl WsEvent {
     ///
     /// Returns [`Err`] if no user exists for a user id or if there is a connection issue with the
     /// database.
-    pub fn status_update(
+    pub async fn status_update(
         ctx: &DalContext,
         pk: StatusUpdatePk,
         status: StatusMessageState,
         values: Vec<AttributeValueMetadata>,
-    ) -> Self {
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::StatusUpdate(StatusMessage { pk, status, values }),
         )
+        .await
     }
 }
