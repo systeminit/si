@@ -283,7 +283,7 @@ const applyChangeSet = async () => {
   // when the change set is done done, check if the change set apply was successful
   if (changeSetMergeStatus.value.isSuccess) {
     await jsConfetti.addConfetti(_.sample(confettis));
-    wipeRef.value.close();
+    wipeRef.value?.close();
     await navigateToFixMode();
   }
 };
