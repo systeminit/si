@@ -291,6 +291,7 @@ impl AttributePrototype {
                 argument.hard_delete(ctx).await?;
             }
         }
+        // TODO: hard unset all AttributeValue belongs_to
         if attribute_prototype.visibility().in_change_set() {
             attribute_prototype.hard_delete(ctx).await?;
         }
@@ -325,6 +326,7 @@ impl AttributePrototype {
                         argument.hard_delete(ctx).await?;
                     }
                 }
+                // TODO: hard unset all AttributeValue belongs_to
                 if current_prototype.visibility().in_change_set() {
                     current_prototype.hard_delete(ctx).await?;
                 }
@@ -338,6 +340,7 @@ impl AttributePrototype {
                     ),
                 );
             }
+            // TODO: hard unset AttributePrototype belongs_to
             if current_value.visibility().in_change_set() {
                 current_value.hard_delete(ctx).await?;
             }
@@ -382,6 +385,12 @@ impl AttributePrototype {
         {
             argument.delete(ctx).await?;
         }
+        standard_model::unset_all_belongs_to(
+            ctx,
+            "attribute_value_belongs_to_attribute_prototype",
+            attribute_prototype.id(),
+        )
+        .await?;
         attribute_prototype.delete(ctx).await?;
 
         // Start with the initial value(s) from the prototype and build a work queue based on the
@@ -412,6 +421,12 @@ impl AttributePrototype {
                 {
                     argument.delete(ctx).await?;
                 }
+                standard_model::unset_all_belongs_to(
+                    ctx,
+                    "attribute_value_belongs_to_attribute_prototype",
+                    current_prototype.id(),
+                )
+                .await?;
                 current_prototype.delete(ctx).await?;
             }
 
@@ -423,6 +438,7 @@ impl AttributePrototype {
                     ),
                 );
             }
+            current_value.unset_attribute_prototype(ctx).await?;
             current_value.delete(ctx).await?;
         }
         Ok(())
