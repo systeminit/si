@@ -65,6 +65,10 @@ type SocketId = string;
 type SchemaId = string;
 type SchemaVariantId = string;
 
+export type ComponentTreeNode = {
+  children?: ComponentTreeNode[];
+} & Component;
+
 export type MenuSchema = {
   id: SchemaId;
   displayName: string;
@@ -223,6 +227,32 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
         allComponents(): Component[] {
           return _.values(this.componentsById);
+        },
+        hierarchicalComponentOrder(): Component[] {
+          const treeView: ComponentTreeNode[] = [];
+          const queue: ComponentTreeNode[] = [];
+          const unusedComps: Record<string, Component> = {};
+          for (const comp of this.allComponents) {
+            if (comp.parentId === undefined) {
+              treeView.push(comp);
+              queue.push(comp);
+            } else {
+              unusedComps[comp.nodeId] = comp;
+            }
+          }
+          while (queue.length > 0) {
+            const item = queue.shift();
+            if (!item) continue;
+            for (const children of item.childIds ?? []) {
+              if (item.children === undefined) {
+                item.children = [];
+              }
+              const child = unusedComps[children];
+              item.children.push(child);
+              queue.push(child);
+            }
+          }
+          return treeView;
         },
 
         selectedComponent(): Component {
