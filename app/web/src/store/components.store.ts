@@ -159,6 +159,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         selectedComponentId: null as ComponentId | null,
         lastSelectedComponentId: null as ComponentId | null,
 
+        panTargetComponentId: null as ComponentId | null,
+
         // used by the diagram to track which schema is selected for insertion
         selectedInsertSchemaId: null as SchemaId | null,
       }),

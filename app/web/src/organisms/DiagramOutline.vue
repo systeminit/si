@@ -10,6 +10,7 @@
     <ComponentTree
       :tree-data="hierarchicalOrder"
       @select="(componentId) => emit('select', componentId)"
+      @pan="(componentId) => emit('pan', componentId)"
     />
   </div>
 </template>
@@ -26,11 +27,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "select", componentId: string): void;
+  (e: "pan", componentId: string): void;
 }>();
 
 const componentsStore = useComponentsStore();
 
 const filterString = ref("");
+
 function onSearchUpdated(newFilterString: string) {
   filterString.value = newFilterString;
 }

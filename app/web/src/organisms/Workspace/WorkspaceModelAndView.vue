@@ -22,6 +22,7 @@
             <DiagramOutline
               :selected-component-id="selectedComponentId ?? undefined"
               @select="onOutlineSelectComponent"
+              @pan="onOutlinePanToComponent"
             />
           </TabPanel>
         </template>
@@ -364,6 +365,10 @@ function onDiagramDelete(_e: DeleteElementsEvent) {
 
 function onOutlineSelectComponent(id: string) {
   componentsStore.setSelectedComponentId(id);
+}
+
+function onOutlinePanToComponent(id: string) {
+  componentsStore.panTargetComponentId = id;
 }
 
 function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {

@@ -2,22 +2,19 @@
   <li
     class="border-b-2 dark:border-neutral-600 cursor-pointer"
     @click.stop="emit('select', component.id)"
+    @dblclick.stop="emit('pan', component.id)"
   >
     <template v-if="component.children">
       <Disclosure v-if="component.matchesFilter" v-slot="{ open }" default-open>
-        <div class="flex flex-row">
-          <DisclosureButton
-            :class="
-              clsx(
-                'flex py-2 text-left font-medium focus:outline-none items-center',
-                {
-                  sm: 'text-sm',
-                  md: 'text-base',
-                  lg: 'text-lg',
-                }['sm'],
-              )
-            "
-          >
+        <div
+          class="flex flex-row"
+          :class="
+            selectedComponentId === component.id
+              ? ['bg-action-500 text-white']
+              : ['hover:bg-action-400 hover:text-white']
+          "
+        >
+          <DisclosureButton>
             <Icon
               :name="open ? 'chevron--down' : 'chevron--right'"
               size="sm"
@@ -76,6 +73,7 @@
             :tree-data="component.children"
             class="pl-8"
             @select="(componentId) => emit('select', componentId)"
+            @pan="(componentId) => emit('pan', componentId)"
           />
         </DisclosurePanel>
       </Disclosure>
@@ -84,16 +82,20 @@
           :tree-data="component.children"
           class="pl-8"
           @select="(componentId) => emit('select', componentId)"
+          @pan="(componentId) => emit('pan', componentId)"
         />
       </template>
     </template>
-    <div v-else-if="component.matchesFilter" class="flex flex-row items-center">
+    <div
+      v-else-if="component.matchesFilter"
+      class="flex flex-row items-center"
+      :class="
+        selectedComponentId === component.id
+          ? ['bg-action-500 text-white']
+          : ['hover:bg-action-400 hover:text-white']
+      "
+    >
       <span
-        :class="
-          selectedComponentId === component.id
-            ? ['bg-action-500 text-white']
-            : ['hover:bg-action-400 hover:text-white']
-        "
         :style="{
           'border-color': component.color || colors.neutral[400],
         }"
@@ -154,6 +156,7 @@ const props = defineProps<{ component: ComponentTreeNode }>();
 
 const emit = defineEmits<{
   (e: "select", componentId: string): void;
+  (e: "pan", componentId: string): void;
 }>();
 
 const componentsStore = useComponentsStore();

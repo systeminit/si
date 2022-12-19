@@ -160,6 +160,7 @@ import { Vector2d, IRect } from "konva/lib/types";
 import tinycolor from "tinycolor2";
 import { useCustomFontsLoaded } from "@/composables/useFontLoaded";
 import DiagramGroup from "@/organisms/GenericDiagram/DiagramGroup.vue";
+import { useComponentsStore } from "@/store/components.store";
 import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DeleteElementsEvent,
@@ -683,6 +684,29 @@ function onDragToPanMove() {
 function endDragToPan() {
   dragToPanActive.value = false;
 }
+
+// AUTO PAN (pan using click and drag while space bar is held down) ////////////////////////////////////
+const panTarget = computed((_) => useComponentsStore().panTargetComponentId);
+watch(panTarget, () => {
+  if (!panTarget.value) return;
+
+  const node = props.nodes.find((n) => n.componentId === panTarget.value);
+  if (!node) return;
+
+  const key =
+    node.nodeType === "component"
+      ? DiagramNodeData.generateUniqueKey(node.id)
+      : DiagramGroupData.generateUniqueKey(node.id);
+
+  const position = movedElementPositions[key] ?? _.clone(node.position);
+  if (node.nodeType !== "component" && node.size) {
+    position.y = node.position.y + node.size.height / 2;
+  }
+
+  gridOrigin.value = position;
+
+  useComponentsStore().panTargetComponentId = null;
+});
 
 // ELEMENT SELECTION /////////////////////////////////////////////////////////////////////////////////
 const _rawSelectionKeys = ref<DiagramElementUniqueKey[]>([]);
