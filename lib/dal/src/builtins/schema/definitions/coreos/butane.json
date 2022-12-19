@@ -40,6 +40,7 @@
               {
                 "name": "contents",
                 "kind": "string",
+                "widget": { "kind": "textArea" },
                 "docLinkRef": "default"
               }
             ]

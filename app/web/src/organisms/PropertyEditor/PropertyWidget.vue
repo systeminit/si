@@ -56,6 +56,23 @@
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
+    <WidgetTextBox
+      v-else-if="schemaProp.widgetKind.kind === 'textArea'"
+      text-area
+      :name="schemaProp.name"
+      :path="path"
+      :collapsed-paths="collapsedPaths"
+      :value="propValue.value"
+      :prop-id="propValue.propId"
+      :value-id="propValue.id"
+      :prop-kind="schemaProp.kind"
+      :doc-link="schemaProp.docLink"
+      :validation="validation"
+      :disabled="disabled"
+      :func="propValue.func"
+      :class="INPUT_CLASSES"
+      @updated-property="updatedProperty($event)"
+    />
     <WidgetCheckBox
       v-else-if="schemaProp.widgetKind.kind === 'checkbox'"
       :name="schemaProp.name"

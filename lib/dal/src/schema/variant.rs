@@ -191,7 +191,7 @@ impl SchemaVariant {
             PropKind::String,
             Some((
                 WidgetKind::Select,
-                serde_json::json!([
+                Some(serde_json::json!([
                     {
                         "label": "component",
                         "value": "component",
@@ -204,7 +204,7 @@ impl SchemaVariant {
                         "label": "aggregationFrame",
                         "value": "aggregationFrame",
                     },
-                ]),
+                ])),
             )),
         )
         .await?;

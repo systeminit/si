@@ -3,10 +3,14 @@
 
 use async_recursion::async_recursion;
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashMap;
 
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
-use crate::{DalContext, Prop, PropId, PropKind, RootProp, SchemaId, SchemaVariant, StandardModel};
+use crate::{
+    edit_field::widget::WidgetKind, DalContext, Prop, PropId, PropKind, RootProp, SchemaId,
+    SchemaVariant, StandardModel,
+};
 
 /// A cache of [`PropIds`](crate::Prop) where the _key_ is a tuple corresponding to the
 /// [`Prop`](crate::Prop) name and the _parent_ [`PropId`](crate::Prop) who's child is the
@@ -66,6 +70,16 @@ pub struct SchemaVariantDefinition {
     props: Vec<PropDefinition>,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropWidgetDefinition {
+    /// The [`kind`](crate::edit_field::widget::WidgetKind) of the [`Prop`](crate::Prop) to be created.
+    kind: WidgetKind,
+    /// The `Option<Value>` of the [`kind`](crate::edit_field::widget::WidgetKind) to be created.
+    #[serde(default)]
+    options: Option<Value>,
+}
+
 /// The definition for a [`Prop`](crate::Prop) in a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -86,6 +100,9 @@ pub struct PropDefinition {
     /// If our [`kind`](crate::PropKind) is [`Array`](crate::PropKind::Array), specify the entry
     /// definition.
     entry: Option<Box<PropDefinition>>,
+    /// The [`WidgetDefinition`](crate::schema::variant::definition::PropWidgetDefinition) of the [`Prop`](crate::Prop) to be created.
+    #[serde(default)]
+    widget: Option<PropWidgetDefinition>,
 }
 
 impl SchemaVariant {
@@ -129,7 +146,11 @@ impl SchemaVariant {
         doc_links: &HashMap<String, String>,
     ) -> SchemaVariantResult<()> {
         // Start by creating the prop and setting the parent. We cache the id for later.
-        let mut prop = Prop::new(ctx, definition.name.clone(), definition.kind, None).await?;
+        let widget = match definition.widget {
+            Some(widget) => Some((widget.kind, widget.options)),
+            None => None,
+        };
+        let mut prop = Prop::new(ctx, definition.name.clone(), definition.kind, widget).await?;
         prop.set_parent_prop(ctx, parent_prop_id).await?;
         let prop_id = *prop.id();
 
