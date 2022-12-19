@@ -5,7 +5,15 @@ const TONES = {
     bgColorClass: tw`bg-action-500`,
     textColorClass: tw`text-action-500`,
   },
+  info: {
+    bgColorClass: tw`bg-action-500`,
+    textColorClass: tw`text-action-500`,
+  },
   destructive: {
+    bgColorClass: tw`bg-destructive-500`,
+    textColorClass: tw`text-destructive-500`,
+  },
+  error: {
     bgColorClass: tw`bg-destructive-500`,
     textColorClass: tw`text-destructive-500`,
   },
@@ -30,6 +38,7 @@ export type Tones = keyof typeof TONES;
 export function getToneBgColorClass(tone: Tones) {
   return TONES[tone].bgColorClass;
 }
+
 export function getToneTextColorClass(tone: Tones) {
   return TONES[tone].textColorClass;
 }

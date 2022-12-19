@@ -50,6 +50,26 @@
               Frame
             </i>
           </span>
+          <div class="flex flex-row items-center">
+            <Icon
+              v-if="statusIcons.change"
+              :name="statusIcons.change.icon"
+              :tone="statusIcons.change.tone"
+            />
+            <div v-else class="w-6 h-6" />
+            <Icon
+              v-if="statusIcons.qualification"
+              :name="statusIcons.qualification.icon"
+              :tone="statusIcons.qualification.tone"
+            />
+            <div v-else class="w-6 h-6" />
+            <Icon
+              v-if="statusIcons.confirmation"
+              :name="statusIcons.confirmation.icon"
+              :tone="statusIcons.confirmation.tone"
+            />
+            <div v-else class="w-6 h-6" />
+          </div>
         </div>
         <DisclosurePanel>
           <Tree
@@ -67,33 +87,54 @@
         />
       </template>
     </template>
-    <span
-      v-else-if="component.matchesFilter"
-      :class="
-        selectedComponentId === component.id
-          ? ['bg-action-500 text-white']
-          : ['hover:bg-action-400 hover:text-white']
-      "
-      :style="{
-        'border-color': component.color || colors.neutral[400],
-      }"
-      class="w-full px-2 py-2 border-l-8 group flex flex-col items-baseline ml-5"
-    >
+    <div v-else-if="component.matchesFilter" class="flex flex-row items-center">
       <span
-        class="whitespace-nowrap text-ellipsis overflow-hidden shrink leading-tight"
-        >{{ component.displayName || "si-123" }}</span
-      >
-      <i
         :class="
           selectedComponentId === component.id
             ? ['bg-action-500 text-white']
-            : ['text-neutral-500 group-hover:text-white']
+            : ['hover:bg-action-400 hover:text-white']
         "
-        class="text-sm pl-1 flex-none"
+        :style="{
+          'border-color': component.color || colors.neutral[400],
+        }"
+        class="w-full px-2 py-2 border-l-8 group flex flex-col items-baseline ml-5"
       >
-        {{ component.schemaName }}
-      </i>
-    </span>
+        <span
+          class="whitespace-nowrap text-ellipsis overflow-hidden shrink leading-tight"
+          >{{ component.displayName || "si-123" }}</span
+        >
+        <i
+          :class="
+            selectedComponentId === component.id
+              ? ['bg-action-500 text-white']
+              : ['text-neutral-500 group-hover:text-white']
+          "
+          class="text-sm pl-1 flex-none"
+        >
+          {{ component.schemaName }}
+        </i>
+      </span>
+      <div class="flex flex-row items-center">
+        <Icon
+          v-if="statusIcons.change"
+          :name="statusIcons.change.icon"
+          :tone="statusIcons.change.tone"
+        />
+        <div v-else class="w-6 h-6" />
+        <Icon
+          v-if="statusIcons.qualification"
+          :name="statusIcons.qualification.icon"
+          :tone="statusIcons.qualification.tone"
+        />
+        <div v-else class="w-6 h-6" />
+        <Icon
+          v-if="statusIcons.confirmation"
+          :name="statusIcons.confirmation.icon"
+          :tone="statusIcons.confirmation.tone"
+        />
+        <div v-else class="w-6 h-6" />
+      </div>
+    </div>
   </li>
 </template>
 
@@ -118,4 +159,6 @@ const emit = defineEmits<{
 const componentsStore = useComponentsStore();
 
 const selectedComponentId = computed(() => componentsStore.selectedComponentId);
+
+const statusIcons = computed(() => props.component.statusIcons ?? {});
 </script>

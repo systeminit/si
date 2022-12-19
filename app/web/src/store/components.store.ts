@@ -68,6 +68,12 @@ type SchemaVariantId = string;
 
 export type ComponentTreeNode = {
   children?: ComponentTreeNode[];
+  typeIcon?: string;
+  statusIcons?: {
+    change?: DiagramStatusIcon;
+    qualification?: DiagramStatusIcon;
+    confirmation?: DiagramStatusIcon;
+  };
 } & Component;
 
 export type MenuSchema = {
@@ -230,6 +236,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           return _.values(this.componentsById);
         },
         filteredComponentTree() {
+          const qualificationsStore = useQualificationsStore();
+          const fixesStore = useFixesStore();
+
           return (filter: string | "") => {
             const searchTerm = filter?.toLowerCase();
             const treeView: ComponentTreeNode[] = [];
@@ -237,12 +246,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const unusedComps: Record<string, Component> = {};
             const compList = _.map(this.allComponents, (c) => {
               const matchesFilter =
-                c.displayName.toLowerCase().includes(filter) ||
-                c.schemaName.toLowerCase().includes(filter);
+                c.displayName.toLowerCase().includes(searchTerm) ||
+                c.schemaName.toLowerCase().includes(searchTerm);
+
+              const qualificationStatus =
+                qualificationsStore.qualificationStatusByComponentId[c.id];
+              const confirmationStatus = fixesStore.statusByComponentId[c.id];
+              const changeStatus = this.componentChangeStatusById[c.id];
 
               return {
                 ...c,
                 matchesFilter,
+                typeIcon: c?.icon || "logo-si",
+                statusIcons: {
+                  change: changeStatusToIconMap[changeStatus],
+                  qualification:
+                    qualificationStatusToIconMap[qualificationStatus],
+                  confirmation: confirmationStatusToIconMap[
+                    confirmationStatus
+                  ] || {
+                    icon: "minus",
+                    tone: "neutral",
+                  },
+                },
               };
             });
             for (const comp of compList) {
@@ -267,9 +293,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             }
             return treeView;
           };
-        },
-        componentTree(): ComponentTreeNode[] {
-          return this.filteredComponentTree("");
         },
         selectedComponent(): Component {
           return this.componentsById[this.selectedComponentId || 0];
@@ -322,7 +345,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             };
           });
         },
-        // allConnections: (state) => _.values(state.connectionsById),
 
         edgesByFromNodeId(): Record<ComponentNodeId, DiagramEdgeDef[]> {
           return _.groupBy(this.diagramEdges, (e) => e.fromNodeId);

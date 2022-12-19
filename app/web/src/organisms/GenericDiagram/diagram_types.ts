@@ -142,7 +142,14 @@ export type DiagramStatusIcon = {
   /* name/id of icon (registered in diagram config) */
   icon: IconNames;
   /* tone of icon - gets mapped to some preset colors */
-  tone?: "success" | "error" | "warning" | "info" | "neutral";
+  tone?:
+    | "success"
+    | "error"
+    | "destructive"
+    | "warning"
+    | "info"
+    | "action"
+    | "neutral";
   /* set to override specific hex color */
   color?: string;
 };
