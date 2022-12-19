@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import _ from "lodash";
+import _, { isUndefined } from "lodash";
 import { Vector2d } from "konva/lib/types";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 
@@ -58,6 +58,7 @@ type Component = {
   changeStatus?: ComponentChangeStatus;
   // TODO: probably want to move this to a different store and not load it all the time
   resource: Resource;
+  matchesFilter: boolean;
 };
 
 type SocketId = string;
@@ -228,33 +229,48 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         allComponents(): Component[] {
           return _.values(this.componentsById);
         },
-        hierarchicalComponentOrder(): Component[] {
-          const treeView: ComponentTreeNode[] = [];
-          const queue: ComponentTreeNode[] = [];
-          const unusedComps: Record<string, Component> = {};
-          for (const comp of this.allComponents) {
-            if (comp.parentId === undefined) {
-              treeView.push(comp);
-              queue.push(comp);
-            } else {
-              unusedComps[comp.nodeId] = comp;
-            }
-          }
-          while (queue.length > 0) {
-            const item = queue.shift();
-            if (!item) continue;
-            for (const children of item.childIds ?? []) {
-              if (item.children === undefined) {
-                item.children = [];
-              }
-              const child = unusedComps[children];
-              item.children.push(child);
-              queue.push(child);
-            }
-          }
-          return treeView;
-        },
+        filteredComponentTree() {
+          return (filter: string | "") => {
+            const searchTerm = filter?.toLowerCase();
+            const treeView: ComponentTreeNode[] = [];
+            const queue: ComponentTreeNode[] = [];
+            const unusedComps: Record<string, Component> = {};
+            const compList = _.map(this.allComponents, (c) => {
+              const matchesFilter =
+                c.displayName.toLowerCase().includes(filter) ||
+                c.schemaName.toLowerCase().includes(filter);
 
+              return {
+                ...c,
+                matchesFilter,
+              };
+            });
+            for (const comp of compList) {
+              if (comp.parentId === undefined) {
+                treeView.push(comp);
+                queue.push(comp);
+              } else {
+                unusedComps[comp.nodeId] = comp;
+              }
+            }
+            while (queue.length > 0) {
+              const item = queue.shift();
+              if (!item) continue;
+              for (const children of item.childIds ?? []) {
+                if (item.children === undefined) {
+                  item.children = [];
+                }
+                const child = unusedComps[children];
+                item.children.push(child);
+                queue.push(child);
+              }
+            }
+            return treeView;
+          };
+        },
+        componentTree(): ComponentTreeNode[] {
+          return this.filteredComponentTree("");
+        },
         selectedComponent(): Component {
           return this.componentsById[this.selectedComponentId || 0];
         },

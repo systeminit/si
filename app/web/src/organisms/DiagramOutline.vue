@@ -1,7 +1,11 @@
 <template>
   <div>
+    <SiSearch auto-search @search="onSearchUpdated" />
     <template v-if="!hierarchicalOrder.length">
       <div class="p-2 text-neutral-500">No components</div>
+    </template>
+    <template v-else-if="hierarchicalOrder.length === 0 && filterString !== ''">
+      <div class="p-2 text-neutral-500">No components matching your search</div>
     </template>
     <ComponentTree
       :tree-data="hierarchicalOrder"
@@ -11,7 +15,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import SiSearch from "@/molecules/SiSearch.vue";
 import ComponentTree from "@/organisms/Tree.vue";
 import { useComponentsStore } from "@/store/components.store";
 
@@ -25,7 +30,14 @@ const emit = defineEmits<{
 
 const componentsStore = useComponentsStore();
 
-const hierarchicalOrder = computed(
-  () => componentsStore.hierarchicalComponentOrder,
-);
+const filterString = ref("");
+function onSearchUpdated(newFilterString: string) {
+  filterString.value = newFilterString;
+}
+
+const hierarchicalOrder = computed(() => {
+  return componentsStore.filteredComponentTree(
+    filterString.value.toLowerCase() || "",
+  );
+});
 </script>
