@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import _ from "lodash";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 import { ApiRequest } from "@/utils/pinia_api_tools";
+import { ActorView } from "@/api/sdf/dal/history_actor";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
@@ -24,14 +25,9 @@ export type GlobalUpdateStatus = {
   lastStepCompletedAt: Date; // timestamp of latest processed update within this cascade of updates
 };
 
-export type Actor = {
-  type: "system" | "user";
-  label: string;
-  id?: number;
-};
-
 export type ComponentUpdateStatus = {
   componentId: string;
+  componentLabel: string;
 
   isUpdating: boolean; // note - might change to enum if more states appear
 
@@ -41,7 +37,7 @@ export type ComponentUpdateStatus = {
   statusMessage: string; // ex: updating attributes
 
   lastUpdateAt: Date;
-  lastUpdateBy?: Actor;
+  lastUpdateBy?: ActorView;
 };
 
 export type StatusUpdatePk = string;
@@ -93,7 +89,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
         updateMetadataByPk: {} as Record<
           StatusUpdatePk,
           {
-            actor: Actor;
+            actor: ActorView;
           }
         >,
         rawStatusesByValueId: {} as Record<
@@ -175,12 +171,14 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
           return _.mapValues(componentsStore.componentsById, (component) => {
             const valueStatuses =
               valueStatusesGroupedByComponentId[component.id];
+            const componentLabel = `${component.schemaName} '${component.displayName}'`;
 
             // creates a dummy status entry for all components in the changeset
             // using timestamps from the list components endpoint
             if (!valueStatuses) {
               return {
                 componentId: component.id,
+                componentLabel,
                 isUpdating: false,
                 stepsCountCurrent: 0,
                 stepsCountTotal: 0,
@@ -249,6 +247,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
 
             return {
               componentId: component.id,
+              componentLabel,
               isUpdating,
               stepsCountCurrent,
               stepsCountTotal,
@@ -330,7 +329,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
           if (!this.globalStatus.isUpdating) return;
           const latestUpdate = this.latestComponentUpdate;
           if (!latestUpdate) return;
-          return `${latestUpdate.statusMessage} - component ${latestUpdate.componentId}`;
+          return `${latestUpdate.statusMessage} - ${latestUpdate.componentLabel}`;
         },
       },
       actions: {
@@ -340,7 +339,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
               pk: StatusUpdatePk;
               data: {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                actor: Actor;
+                actor: ActorView;
                 attributeValueId: AttributeValueId; // id of attribute that kicked off the update
                 dependendValuesMetadata: Record<
                   AttributeValueId,
@@ -433,23 +432,7 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
             callback: (update, metadata) => {
               // fill in update metadata if this the first time we're seeing this specific update
               if (!this.updateMetadataByPk[update.pk]) {
-                // TODO: this should come back from the backend in a better format and include the label
-                if (metadata.history_actor === "SystemInit") {
-                  this.updateMetadataByPk[update.pk] = {
-                    actor: {
-                      type: "system",
-                      label: "System",
-                    },
-                  };
-                } else {
-                  this.updateMetadataByPk[update.pk] = {
-                    actor: {
-                      type: "user",
-                      label: `User ${metadata.history_actor.User}`,
-                      id: metadata.history_actor.User,
-                    },
-                  };
-                }
+                this.updateMetadataByPk[update.pk] = { actor: metadata.actor };
               }
 
               if (update.status === "statusStarted") {

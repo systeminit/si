@@ -2,14 +2,14 @@ import { StandardModel } from "@/api/sdf/dal/standard_model";
 import { DiagramKind } from "@/api/sdf/dal/diagram";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { Resource } from "@/api/sdf/dal/resource";
-import { Actor } from "@/store/status.store";
+import { ActorView } from "@/api/sdf/dal/history_actor";
 
 export interface Component extends StandardModel {
   name: string;
 }
 
 export interface ComponentIdentificationTimestamp {
-  actor: Actor;
+  actor: ActorView;
   timestamp: string;
 }
 

@@ -3,7 +3,7 @@ import _ from "lodash";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { computed, reactive, ref, watch } from "vue";
 import { API_WS_URL } from "@/utils/api";
-import { HistoryActor } from "@/api/sdf/dal/history_actor";
+import { ActorView } from "@/api/sdf/dal/history_actor";
 import { useAuthStore } from "../auth.store";
 import { WsEventPayloadMap } from "./realtime_events";
 
@@ -36,7 +36,7 @@ type TrackedSubscription = EventTypeAndCallback & {
 type RealtimeEventMetadata = {
   version: number;
   billing_account_ids: Array<number>;
-  history_actor: HistoryActor;
+  actor: ActorView;
 };
 
 export const useRealtimeStore = defineStore("realtime", () => {
@@ -187,25 +187,10 @@ export const useRealtimeStore = defineStore("realtime", () => {
     console.log("ws error", errorEvent.error, errorEvent.message);
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function mockEvent<K extends keyof WsEventPayloadMap>(
-    eventKind: K,
-    eventData: WsEventPayloadMap[K],
-  ) {
-    handleEvent(eventKind, eventData, {
-      // TODO: this metadata is not currently used for anything... but need to make it more realistic if it is
-      version: 1,
-      billing_account_ids: [1],
-      history_actor: { User: 1 },
-    });
-  }
-
   return {
     connectionStatus,
     // subscriptions, // can expose here to show in devtools
     subscribe,
     unsubscribe,
-
-    mockEvent,
   };
 });
