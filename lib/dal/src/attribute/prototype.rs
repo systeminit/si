@@ -292,6 +292,12 @@ impl AttributePrototype {
             }
         }
         if attribute_prototype.visibility().in_change_set() {
+            standard_model::hard_unset_all_belongs_to_in_change_set(
+                ctx,
+                "attribute_value_belongs_to_attribute_prototype",
+                attribute_prototype.id(),
+            )
+            .await?;
             attribute_prototype.hard_delete(ctx).await?;
         }
 
@@ -326,6 +332,12 @@ impl AttributePrototype {
                     }
                 }
                 if current_prototype.visibility().in_change_set() {
+                    standard_model::hard_unset_all_belongs_to_in_change_set(
+                        ctx,
+                        "attribute_value_belongs_to_attribute_prototype",
+                        current_prototype.id(),
+                    )
+                    .await?;
                     current_prototype.hard_delete(ctx).await?;
                 }
             }
@@ -339,6 +351,24 @@ impl AttributePrototype {
                 );
             }
             if current_value.visibility().in_change_set() {
+                standard_model::hard_unset_belongs_to_in_change_set(
+                    ctx,
+                    "attribute_value_belongs_to_attribute_prototype",
+                    current_value.id(),
+                )
+                .await?;
+                standard_model::hard_unset_belongs_to_in_change_set(
+                    ctx,
+                    "attribute_value_belongs_to_attribute_value",
+                    current_value.id(),
+                )
+                .await?;
+                standard_model::hard_unset_all_belongs_to_in_change_set(
+                    ctx,
+                    "attribute_value_belongs_to_attribute_value",
+                    current_value.id(),
+                )
+                .await?;
                 current_value.hard_delete(ctx).await?;
             }
         }
@@ -382,6 +412,12 @@ impl AttributePrototype {
         {
             argument.delete(ctx).await?;
         }
+        standard_model::unset_all_belongs_to(
+            ctx,
+            "attribute_value_belongs_to_attribute_prototype",
+            attribute_prototype.id(),
+        )
+        .await?;
         attribute_prototype.delete(ctx).await?;
 
         // Start with the initial value(s) from the prototype and build a work queue based on the
@@ -412,6 +448,12 @@ impl AttributePrototype {
                 {
                     argument.delete(ctx).await?;
                 }
+                standard_model::unset_all_belongs_to(
+                    ctx,
+                    "attribute_value_belongs_to_attribute_prototype",
+                    current_prototype.id(),
+                )
+                .await?;
                 current_prototype.delete(ctx).await?;
             }
 
@@ -423,6 +465,14 @@ impl AttributePrototype {
                     ),
                 );
             }
+            current_value.unset_attribute_prototype(ctx).await?;
+            current_value.unset_parent_attribute_value(ctx).await?;
+            standard_model::unset_all_belongs_to(
+                ctx,
+                "attribute_value_belongs_to_attribute_value",
+                current_value.id(),
+            )
+            .await?;
             current_value.delete(ctx).await?;
         }
         Ok(())

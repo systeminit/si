@@ -1664,26 +1664,6 @@ BEGIN
                                 this_visibility,
                                 this_parent_attribute_value_id);
 
-    -- Need the aggregation to happen _after_ the `DISTINCT ON`, which is why there's the sub-select.
-    SELECT count(x.value_id)
-    INTO attribute_value_count
-    FROM (
-        SELECT DISTINCT ON (object_id) object_id AS value_id
-        FROM attribute_value_belongs_to_attribute_prototype
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
-              AND belongs_to_id = attribute_prototype_id
-        ORDER BY object_id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS x;
-    IF attribute_value_count = 0 THEN
-        PERFORM delete_by_id_v1('attribute_prototypes',
-                                this_read_tenancy,
-                                this_write_tenancy,
-                                this_visibility,
-                                attribute_prototype_id);
-    END IF;
-
     PERFORM delete_by_id_v1('attribute_values',
                             this_read_tenancy,
                             this_write_tenancy,
