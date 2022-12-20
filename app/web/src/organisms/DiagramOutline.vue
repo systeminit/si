@@ -10,6 +10,7 @@
     <ComponentTree
       :tree-data="hierarchicalOrder"
       @select="(componentId) => emit('select', componentId)"
+      @multiselect="(componentId) => emit('multiselect', componentId)"
       @pan="(componentId) => emit('pan', componentId)"
     />
   </div>
@@ -27,6 +28,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "select", componentId: string): void;
+  (e: "multiselect", componentId: string): void;
   (e: "pan", componentId: string): void;
 }>();
 

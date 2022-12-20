@@ -1,7 +1,9 @@
 <template>
   <li
     class="border-b-2 dark:border-neutral-600 cursor-pointer"
-    @click.stop="emit('select', component.id)"
+    @click.exact.stop="emit('select', component.id)"
+    @click.meta.stop="emit('multiselect', component.id)"
+    @click.ctrl.stop="emit('multiselect', component.id)"
     @dblclick.stop="emit('pan', component.id)"
   >
     <template v-if="component.children">
@@ -9,7 +11,7 @@
         <div
           class="flex flex-row"
           :class="
-            selectedComponentId === component.id
+            isSelected
               ? ['bg-action-500 text-white']
               : ['hover:bg-action-400 hover:text-white']
           "
@@ -23,7 +25,7 @@
           </DisclosureButton>
           <span
             :class="
-              selectedComponentId === component.id
+              isSelected
                 ? ['bg-action-500 text-white']
                 : ['hover:bg-action-400 hover:text-white']
             "
@@ -38,7 +40,7 @@
             >
             <i
               :class="
-                selectedComponentId === component.id
+                isSelected
                   ? ['bg-action-500 text-white']
                   : ['text-neutral-500 group-hover:text-white']
               "
@@ -73,6 +75,7 @@
             :tree-data="component.children"
             class="pl-8"
             @select="(componentId) => emit('select', componentId)"
+            @multiselect="(componentId) => emit('multiselect', componentId)"
             @pan="(componentId) => emit('pan', componentId)"
           />
         </DisclosurePanel>
@@ -82,6 +85,7 @@
           :tree-data="component.children"
           class="pl-8"
           @select="(componentId) => emit('select', componentId)"
+          @multiselect="(componentId) => emit('multiselect', componentId)"
           @pan="(componentId) => emit('pan', componentId)"
         />
       </template>
@@ -90,7 +94,7 @@
       v-else-if="component.matchesFilter"
       class="flex flex-row items-center"
       :class="
-        selectedComponentId === component.id
+        isSelected
           ? ['bg-action-500 text-white']
           : ['hover:bg-action-400 hover:text-white']
       "
@@ -107,7 +111,7 @@
         >
         <i
           :class="
-            selectedComponentId === component.id
+            isSelected
               ? ['bg-action-500 text-white']
               : ['text-neutral-500 group-hover:text-white']
           "
@@ -144,6 +148,7 @@
 import { computed } from "vue";
 import { Disclosure, DisclosurePanel, DisclosureButton } from "@headlessui/vue";
 import clsx from "clsx";
+import _ from "lodash";
 import {
   ComponentTreeNode,
   useComponentsStore,
@@ -156,12 +161,16 @@ const props = defineProps<{ component: ComponentTreeNode }>();
 
 const emit = defineEmits<{
   (e: "select", componentId: string): void;
+  (e: "multiselect", componentId: string): void;
   (e: "pan", componentId: string): void;
 }>();
 
 const componentsStore = useComponentsStore();
 
 const selectedComponentId = computed(() => componentsStore.selectedComponentId);
+const isSelected = computed(() => {
+  return _.includes(componentsStore.selectedComponentIds, props.component.id);
+});
 
 const statusIcons = computed(() => props.component.statusIcons ?? {});
 </script>
