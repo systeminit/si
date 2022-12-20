@@ -357,14 +357,13 @@ impl MigrationDriver {
         let func = Func::find_by_attr(ctx, "name", &func_name)
             .await?
             .pop()
-            .ok_or(SchemaError::FuncNotFound(func_name.clone()))?;
+            .ok_or_else(|| SchemaError::FuncNotFound(func_name.clone()))?;
         let func_id = *func.id();
         let func_argument = FuncArgument::find_by_name_for_func(ctx, func_argument_name, func_id)
             .await?
-            .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
-                func_name,
-                func_argument_name.to_string(),
-            ))?;
+            .ok_or_else(|| {
+                BuiltinsError::BuiltinMissingFuncArgument(func_name, func_argument_name.to_string())
+            })?;
         Ok((func_id, *func_argument.id()))
     }
 }

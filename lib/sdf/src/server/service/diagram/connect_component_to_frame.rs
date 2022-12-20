@@ -247,9 +247,11 @@ pub async fn connect_component_sockets_to_frame(
                         let parent_external_provider =
                             ExternalProvider::find_for_socket(ctx, *parent_socket.id())
                                 .await?
-                                .ok_or(DiagramError::ExternalProviderNotFoundForSocket(
-                                    *parent_socket.id(),
-                                ))?;
+                                .ok_or_else(|| {
+                                    DiagramError::ExternalProviderNotFoundForSocket(
+                                        *parent_socket.id(),
+                                    )
+                                })?;
 
                         let attribute_value_context = AttributeReadContext {
                             component_id: Some(*child_component.id()),
