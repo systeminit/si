@@ -1147,6 +1147,35 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
+CREATE OR REPLACE FUNCTION hard_unset_belongs_to_in_change_set_v1(this_table_name text,
+                                                                  this_tenancy jsonb,
+                                                                  this_visibility jsonb,
+                                                                  this_object_id ident
+) RETURNS VOID AS
+$$
+DECLARE
+    update_query text;
+BEGIN
+
+    update_query :=
+            format('DELETE FROM %1$I '
+                   '  WHERE object_id = %2$L '
+                   '        AND visibility_change_set_pk = (%4$L ->> visibility_change_set_pk)::ident '
+                   '        AND in_tenancy_v1(%3$L, '
+                   '                        %1$I.tenancy_universal, '
+                   '                        %1$I.tenancy_billing_account_ids, '
+                   '                        %1$I.tenancy_organization_ids, '
+                   '                        %1$I.tenancy_workspace_ids)',
+                   this_table_name,
+                   this_object_id,
+                   this_tenancy,
+                   this_visibility
+                );
+    RAISE DEBUG 'unset belongs to: %', update_query;
+    EXECUTE update_query;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
+
 CREATE OR REPLACE FUNCTION unset_all_belongs_to_v1(this_table_name text,
                                                    this_tenancy jsonb,
                                                    this_visibility jsonb,
@@ -1168,6 +1197,35 @@ BEGIN
                    '    AND is_visible_v1(%4$L, '
                    '                    %1$I.visibility_change_set_pk, '
                    '                    %1$I.visibility_deleted_at)',
+                   this_table_name,
+                   this_belongs_to_id,
+                   this_tenancy,
+                   this_visibility
+                );
+    RAISE DEBUG 'unset belongs to: %', update_query;
+    EXECUTE update_query;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION hard_unset_all_belongs_to_in_change_set_v1(this_table_name text,
+                                                                      this_tenancy jsonb,
+                                                                      this_visibility jsonb,
+                                                                      this_belongs_to_id ident
+) RETURNS VOID AS
+$$
+DECLARE
+    update_query text;
+BEGIN
+
+    update_query :=
+            format('DELETE FROM %1$I '
+                   '  WHERE belongs_to_id = %2$L '
+                   '        AND visibility_change_set_pk = (%4$L ->> visibility_change_set_pk)::ident '
+                   '        AND in_tenancy_v1(%3$L, '
+                   '                        %1$I.tenancy_universal, '
+                   '                        %1$I.tenancy_billing_account_ids, '
+                   '                        %1$I.tenancy_organization_ids, '
+                   '                        %1$I.tenancy_workspace_ids)',
                    this_table_name,
                    this_belongs_to_id,
                    this_tenancy,

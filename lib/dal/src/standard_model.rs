@@ -245,6 +245,22 @@ pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
 }
 
 #[instrument(skip(ctx))]
+pub async fn hard_unset_belongs_to_in_change_set<ObjectId: Send + Sync + ToSql>(
+    ctx: &DalContext,
+    table: &str,
+    object_id: &ObjectId,
+) -> StandardModelResult<()> {
+    ctx.txns()
+        .pg()
+        .query_one(
+            "SELECT hard_unset_belongs_to_in_change_set_v1($1, $2, $3, $4)",
+            &[&table, ctx.write_tenancy(), ctx.visibility(), &object_id],
+        )
+        .await?;
+    Ok(())
+}
+
+#[instrument(skip(ctx))]
 pub async fn unset_all_belongs_to<BelongsToId: Send + Sync + ToSql>(
     ctx: &DalContext,
     table: &str,
@@ -254,6 +270,27 @@ pub async fn unset_all_belongs_to<BelongsToId: Send + Sync + ToSql>(
         .pg()
         .query_one(
             "SELECT unset_all_belongs_to_v1($1, $2, $3, $4)",
+            &[
+                &table,
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                &belongs_to_id,
+            ],
+        )
+        .await?;
+    Ok(())
+}
+
+#[instrument(skip(ctx))]
+pub async fn hard_unset_all_belongs_to_in_change_set<BelongsToId: Send + Sync + ToSql>(
+    ctx: &DalContext,
+    table: &str,
+    belongs_to_id: &BelongsToId,
+) -> StandardModelResult<()> {
+    ctx.txns()
+        .pg()
+        .query_one(
+            "SELECT hard_unset_all_belongs_to_in_change_set_v1($1, $2, $3, $4)",
             &[
                 &table,
                 ctx.write_tenancy(),
