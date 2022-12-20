@@ -38,7 +38,11 @@ import {
   useQualificationsStore,
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
-import { useFixesStore } from "./fixes/fixes.store";
+import {
+  ConfirmationStats,
+  ConfirmationStatus,
+  useFixesStore,
+} from "./fixes/fixes.store";
 import { useStatusStore } from "./status.store";
 
 export type ComponentId = string;
@@ -256,10 +260,77 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 c.displayName.toLowerCase().includes(searchTerm) ||
                 c.schemaName.toLowerCase().includes(searchTerm);
 
-              const qualificationStatus =
+              let qualificationStatus =
                 qualificationsStore.qualificationStatusByComponentId[c.id];
-              const confirmationStatus = fixesStore.statusByComponentId[c.id];
+              let confirmationStatus: ConfirmationStatus | undefined =
+                fixesStore.confirmationStatusByComponentId[c.id];
               const changeStatus = this.componentChangeStatusById[c.id];
+
+              if (c.isGroup) {
+                // eslint-disable-next-line @typescript-eslint/no-this-alias
+                const compStore = this;
+                qualificationStatus = (function calculateQualificationStatus(
+                  comp: Component,
+                ): QualificationStatus {
+                  return _.reduce(
+                    comp.childIds,
+                    (collector, childId) => {
+                      const childComp = compStore.componentsByNodeId[childId];
+                      let childQualificationStatus =
+                        qualificationsStore.qualificationStatusByComponentId[
+                          childComp.id
+                        ];
+                      if (childComp.isGroup) {
+                        childQualificationStatus =
+                          calculateQualificationStatus(childComp);
+                      }
+
+                      switch (collector) {
+                        case "failure":
+                          return collector;
+                        case "running":
+                          return childQualificationStatus === "failure"
+                            ? "failure"
+                            : collector;
+                        case "success":
+                        default:
+                          return childQualificationStatus;
+                      }
+                    },
+                    "success" as QualificationStatus,
+                  );
+                })(c);
+
+                confirmationStatus = (function calculateConfirmationStatus(
+                  comp: Component,
+                ): ConfirmationStatus | undefined {
+                  return _.reduce(
+                    comp.childIds,
+                    (collector: ConfirmationStatus | undefined, childId) => {
+                      const childComp = compStore.componentsByNodeId[childId];
+                      let childConfirmation: ConfirmationStatus | undefined =
+                        fixesStore.confirmationStatusByComponentId[
+                          childComp.id
+                        ];
+
+                      if (childComp.isGroup) {
+                        childConfirmation =
+                          calculateConfirmationStatus(childComp);
+                      }
+
+                      if (collector === "failure") return collector;
+                      else if (collector === "running")
+                        return childConfirmation === "failure"
+                          ? "failure"
+                          : collector;
+                      else if (collector === "success")
+                        return childConfirmation ?? "success";
+                      else return childConfirmation;
+                    },
+                    undefined,
+                  );
+                })(c);
+              }
 
               return {
                 ...c,
@@ -268,9 +339,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 statusIcons: {
                   change: changeStatusToIconMap[changeStatus],
                   qualification:
-                    qualificationStatusToIconMap[qualificationStatus],
+                    qualificationStatusToIconMap[
+                      qualificationStatus as QualificationStatus
+                    ],
                   confirmation: confirmationStatusToIconMap[
-                    confirmationStatus
+                    confirmationStatus as QualificationStatus
                   ] || {
                     icon: "minus",
                     tone: "neutral",

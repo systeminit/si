@@ -76,6 +76,7 @@ export interface ConfirmationStats {
   total: number;
 }
 
+export type ConfirmationStatus = "success" | "failure" | "running";
 export const useFixesStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspaceId;
@@ -102,6 +103,34 @@ export const useFixesStore = () => {
           }
           return obj;
         },
+        confirmationStatusByComponentId(): Record<
+          ComponentId,
+          ConfirmationStatus | undefined
+        > {
+          const obj: Record<ComponentId, ConfirmationStatus | undefined> = {};
+          for (const compId in this.confirmationsByComponentId) {
+            const confirmations = this.confirmationsByComponentId[compId];
+            if (!obj[compId]) {
+              obj[compId] = _.reduce(
+                confirmations,
+                (collector: ConfirmationStatus | undefined, confirmation) => {
+                  if (confirmation === undefined) return;
+                  if (collector === "failure") return collector;
+                  else if (collector === "running")
+                    return confirmation.status === "failure"
+                      ? "failure"
+                      : collector;
+                  else if (collector === "success")
+                    return confirmation.status ?? "success";
+                  else return confirmation.status;
+                },
+                undefined,
+              );
+            }
+          }
+
+          return obj;
+        },
         confirmationStats(): ConfirmationStats {
           const obj = { failure: 0, success: 0, running: 0, total: 0 };
           for (const confirmation of this.confirmations) {
@@ -110,19 +139,15 @@ export const useFixesStore = () => {
           }
           return obj;
         },
-        workspaceStatus(): "running" | "failure" | "success" {
+        workspaceStatus(): ConfirmationStatus {
           for (const confirmation of this.confirmations) {
             if (confirmation.status === "running") return "running";
             if (confirmation.status === "failure") return "failure";
           }
           return "success";
         },
-        statusByComponentId(): Record<
-          ComponentId,
-          "success" | "failure" | "running"
-        > {
-          const map: Record<ComponentId, "success" | "failure" | "running"> =
-            {};
+        statusByComponentId(): Record<ComponentId, ConfirmationStatus> {
+          const map: Record<ComponentId, ConfirmationStatus> = {};
           for (const fixes of this.fixesOnRunningBatch) {
             switch (fixes.status) {
               case "success":
