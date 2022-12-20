@@ -1,6 +1,6 @@
-use crate::builtins::schema::MigrationDriver;
-use crate::component::ComponentKind;
 use crate::schema::variant::leaves::LeafKind;
+use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInputLocation};
+use crate::{component::ComponentKind, schema::variant::leaves::LeafInput};
 use crate::{
     func::argument::FuncArgument, schema::SchemaUiMenu, socket::SocketArity,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
@@ -81,9 +81,12 @@ impl MigrationDriver {
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
-            *code_generation_func_argument.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
+            vec![LeafInput {
+                location: LeafInputLocation::Domain,
+                arg_id: *code_generation_func_argument.id(),
+            }],
         )
         .await?;
 
@@ -230,14 +233,17 @@ impl MigrationDriver {
 
         // Qualifications
         let (qualification_func_id, qualification_func_argument_id) = self
-            .find_func_and_single_argument_by_names(ctx, "si:qualificationKubevalYaml", "domain")
+            .find_func_and_single_argument_by_names(ctx, "si:qualificationKubevalYaml", "code")
             .await?;
         SchemaVariant::add_leaf(
             ctx,
             qualification_func_id,
-            qualification_func_argument_id,
             *schema_variant.id(),
             LeafKind::Qualification,
+            vec![LeafInput {
+                location: LeafInputLocation::Code,
+                arg_id: qualification_func_argument_id,
+            }],
         )
         .await?;
 
@@ -257,9 +263,12 @@ impl MigrationDriver {
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
-            *code_generation_func_argument.id(),
             *schema_variant.id(),
             LeafKind::CodeGeneration,
+            vec![LeafInput {
+                location: LeafInputLocation::Domain,
+                arg_id: *code_generation_func_argument.id(),
+            }],
         )
         .await?;
 

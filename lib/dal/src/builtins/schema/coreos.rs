@@ -1,8 +1,11 @@
-use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
 use crate::schema::variant::definition::SchemaVariantDefinition;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
+use crate::{
+    builtins::schema::MigrationDriver,
+    schema::variant::leaves::{LeafInput, LeafInputLocation},
+};
 use crate::{
     schema::SchemaUiMenu, AttributePrototype, AttributePrototypeArgument, AttributePrototypeError,
     AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext, DiagramKind,
@@ -54,9 +57,12 @@ impl MigrationDriver {
         let code_map_prop_id = SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
-            code_generation_func_argument_id,
             *schema_variant.id(),
             LeafKind::CodeGeneration,
+            vec![LeafInput {
+                location: LeafInputLocation::Domain,
+                arg_id: code_generation_func_argument_id,
+            }],
         )
         .await?;
 
@@ -105,9 +111,12 @@ impl MigrationDriver {
         SchemaVariant::add_leaf(
             ctx,
             qualification_func_id,
-            qualification_func_argument_id,
             *schema_variant.id(),
             LeafKind::Qualification,
+            vec![LeafInput {
+                location: LeafInputLocation::Domain,
+                arg_id: qualification_func_argument_id,
+            }],
         )
         .await?;
 

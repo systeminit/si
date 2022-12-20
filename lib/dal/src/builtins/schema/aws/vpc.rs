@@ -1,11 +1,10 @@
-use crate::action_prototype::ActionKind;
-use crate::builtins::schema::aws::{AWS_NODE_COLOR, EC2_DOCS_URL, EC2_TAG_DOCS_URL};
 use crate::builtins::schema::MigrationDriver;
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
 use crate::validation::Validation;
+use crate::{action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation};
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
@@ -13,6 +12,10 @@ use crate::{
     ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider,
     Func, FuncBinding, InternalProvider, PropKind, SchemaError, SchemaKind, SchemaVariant,
     StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+};
+use crate::{
+    builtins::schema::aws::{AWS_NODE_COLOR, EC2_DOCS_URL, EC2_TAG_DOCS_URL},
+    schema::variant::leaves::LeafInput,
 };
 
 // VPC documentation URLs
@@ -291,26 +294,44 @@ impl MigrationDriver {
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
-            code_generation_func_argument_id,
             *schema_variant.id(),
             LeafKind::CodeGeneration,
+            vec![LeafInput {
+                location: LeafInputLocation::Domain,
+                arg_id: code_generation_func_argument_id,
+            }],
         )
         .await?;
 
         // Qualifications
-        let (qualification_func_id, qualification_func_argument_id) = self
-            .find_func_and_single_argument_by_names(
-                ctx,
-                "si:qualificationIngressCanCreate",
-                "domain",
-            )
+        let qualification_func_name = "si:qualificationIngressCanCreate";
+        let (qualification_func_id, domain_func_argument_id) = self
+            .find_func_and_single_argument_by_names(ctx, qualification_func_name, "domain")
             .await?;
+        let code_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "code", qualification_func_id)
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        qualification_func_name.to_string(),
+                        "code".to_string(),
+                    )
+                })?;
         SchemaVariant::add_leaf(
             ctx,
             qualification_func_id,
-            qualification_func_argument_id,
             *schema_variant.id(),
             LeafKind::Qualification,
+            vec![
+                LeafInput {
+                    location: LeafInputLocation::Domain,
+                    arg_id: domain_func_argument_id,
+                },
+                LeafInput {
+                    location: LeafInputLocation::Code,
+                    arg_id: *code_func_argument.id(),
+                },
+            ],
         )
         .await?;
 
@@ -809,32 +830,50 @@ impl MigrationDriver {
         input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Code Generation
-        let (code_generation_func_id, qualification_func_argument_id) = self
+        let (code_generation_func_id, code_generation_func_argument_id) = self
             .find_func_and_single_argument_by_names(ctx, "si:generateAwsEgressJSON", "domain")
             .await?;
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
-            qualification_func_argument_id,
             *schema_variant.id(),
             LeafKind::CodeGeneration,
+            vec![LeafInput {
+                location: LeafInputLocation::Domain,
+                arg_id: code_generation_func_argument_id,
+            }],
         )
         .await?;
 
         // Qualifications
+        let qualification_func_name = "si:qualificationEgressCanCreate";
         let (qualification_func_id, qualification_func_argument_id) = self
-            .find_func_and_single_argument_by_names(
-                ctx,
-                "si:qualificationEgressCanCreate",
-                "domain",
-            )
+            .find_func_and_single_argument_by_names(ctx, qualification_func_name, "domain")
             .await?;
+        let code_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "code", qualification_func_id)
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        qualification_func_name.to_string(),
+                        "code".to_string(),
+                    )
+                })?;
         SchemaVariant::add_leaf(
             ctx,
             qualification_func_id,
-            qualification_func_argument_id,
             *schema_variant.id(),
             LeafKind::Qualification,
+            vec![
+                LeafInput {
+                    location: LeafInputLocation::Domain,
+                    arg_id: qualification_func_argument_id,
+                },
+                LeafInput {
+                    location: LeafInputLocation::Code,
+                    arg_id: *code_func_argument.id(),
+                },
+            ],
         )
         .await?;
 
@@ -1224,26 +1263,44 @@ impl MigrationDriver {
         SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
-            code_generation_func_argument_id,
             *schema_variant.id(),
             LeafKind::CodeGeneration,
+            vec![LeafInput {
+                location: LeafInputLocation::Domain,
+                arg_id: code_generation_func_argument_id,
+            }],
         )
         .await?;
 
         // Qualifications
+        let qualification_func_name = "si:qualificationSecurityGroupCanCreate";
         let (qualification_func_id, qualification_func_argument_id) = self
-            .find_func_and_single_argument_by_names(
-                ctx,
-                "si:qualificationSecurityGroupCanCreate",
-                "domain",
-            )
+            .find_func_and_single_argument_by_names(ctx, qualification_func_name, "domain")
             .await?;
+        let code_func_argument =
+            FuncArgument::find_by_name_for_func(ctx, "code", qualification_func_id)
+                .await?
+                .ok_or_else(|| {
+                    BuiltinsError::BuiltinMissingFuncArgument(
+                        qualification_func_name.to_string(),
+                        "code".to_string(),
+                    )
+                })?;
         SchemaVariant::add_leaf(
             ctx,
             qualification_func_id,
-            qualification_func_argument_id,
             *schema_variant.id(),
             LeafKind::Qualification,
+            vec![
+                LeafInput {
+                    location: LeafInputLocation::Domain,
+                    arg_id: qualification_func_argument_id,
+                },
+                LeafInput {
+                    location: LeafInputLocation::Code,
+                    arg_id: *code_func_argument.id(),
+                },
+            ],
         )
         .await?;
 

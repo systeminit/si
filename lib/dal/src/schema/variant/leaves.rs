@@ -29,6 +29,18 @@ pub enum LeafKind {
     Validation,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum LeafInputLocation {
+    Code,
+    Domain,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct LeafInput {
+    pub location: LeafInputLocation,
+    pub arg_id: FuncArgumentId,
+}
+
 impl LeafKind {
     pub fn prop_names(&self) -> (&'static str, &'static str) {
         match self {
@@ -59,9 +71,9 @@ impl SchemaVariant {
     pub async fn add_leaf(
         ctx: &DalContext,
         func_id: FuncId,
-        func_argument_id: FuncArgumentId,
         schema_variant_id: SchemaVariantId,
         leaf_kind: LeafKind,
+        inputs: Vec<LeafInput>,
     ) -> SchemaVariantResult<PropId> {
         if schema_variant_id.is_none() {
             return Err(SchemaVariantError::InvalidSchemaVariant);
@@ -131,17 +143,25 @@ impl SchemaVariant {
             .set_func_id(ctx, func_id)
             .await?;
 
-        // NOTE(nick): there will likely need to be divergent behavior here for validations.
-        // Code generation and qualification rely on "/root/domain".
-        let domain_implicit_internal_provider =
-            SchemaVariant::find_domain_implicit_internal_provider(ctx, schema_variant_id).await?;
-        AttributePrototypeArgument::new_for_intra_component(
-            ctx,
-            *inserted_attribute_prototype.id(),
-            func_argument_id,
-            *domain_implicit_internal_provider.id(),
-        )
-        .await?;
+        for input in inputs {
+            let input_internal_provider = match input.location {
+                LeafInputLocation::Code => {
+                    SchemaVariant::find_code_implicit_internal_provider(ctx, schema_variant_id)
+                        .await?
+                }
+                LeafInputLocation::Domain => {
+                    SchemaVariant::find_domain_implicit_internal_provider(ctx, schema_variant_id)
+                        .await?
+                }
+            };
+            AttributePrototypeArgument::new_for_intra_component(
+                ctx,
+                *inserted_attribute_prototype.id(),
+                input.arg_id,
+                *input_internal_provider.id(),
+            )
+            .await?;
+        }
 
         // Return the prop id for the entire map so that its implicit internal provider can be
         // used for intelligence functions.

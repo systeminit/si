@@ -99,7 +99,7 @@ pub enum BuiltinsError {
     ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error("Func Metadata error: {0}")]
     FuncMetadata(String),
-    #[error("builtin {0} missing func argument {0}")]
+    #[error("builtin {0} missing func argument {1}")]
     BuiltinMissingFuncArgument(String, String),
     #[error("prop cache not found: {0}")]
     PropCacheNotFound(SchemaVariantId),

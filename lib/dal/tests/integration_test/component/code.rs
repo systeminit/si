@@ -1,6 +1,9 @@
-use dal::attribute::context::AttributeContextBuilder;
 use dal::func::argument::FuncArgument;
 use dal::schema::variant::leaves::LeafKind;
+use dal::{
+    attribute::context::AttributeContextBuilder,
+    schema::variant::leaves::{LeafInput, LeafInputLocation},
+};
 use dal::{
     AttributeReadContext, AttributeValue, CodeLanguage, Component, ComponentView, DalContext, Func,
     PropKind, SchemaKind, SchemaVariant, StandardModel,
@@ -42,9 +45,12 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
     SchemaVariant::add_leaf(
         ctx,
         *func.id(),
-        *code_generation_func_argument.id(),
         *schema_variant.id(),
         LeafKind::CodeGeneration,
+        vec![LeafInput {
+            location: LeafInputLocation::Domain,
+            arg_id: *code_generation_func_argument.id(),
+        }],
     )
     .await
     .expect("could not add code generation");

@@ -4,6 +4,10 @@
     {
       "name": "domain",
       "kind": "Object"
+    },
+    {
+      "name": "code",
+      "kind": "Object"
     }
   ],
   "response_type": "Qualification",

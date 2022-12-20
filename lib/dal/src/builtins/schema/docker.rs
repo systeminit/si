@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::action_prototype::ActionKind;
-use crate::builtins::schema::MigrationDriver;
 use crate::schema::variant::leaves::LeafKind;
+use crate::{action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation};
+use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput};
 use crate::{
     component::ComponentKind, edit_field::widget::*, schema::SchemaUiMenu, socket::SocketArity,
     ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
@@ -52,9 +52,12 @@ impl MigrationDriver {
         SchemaVariant::add_leaf(
             ctx,
             qualification_func_id,
-            qualification_func_argument_id,
             *schema_variant.id(),
             LeafKind::Qualification,
+            vec![LeafInput {
+                location: LeafInputLocation::Domain,
+                arg_id: qualification_func_argument_id,
+            }],
         )
         .await?;
 
@@ -193,9 +196,12 @@ impl MigrationDriver {
         SchemaVariant::add_leaf(
             ctx,
             qualification_func_id,
-            qualification_func_argument_id,
             *schema_variant.id(),
             LeafKind::Qualification,
+            vec![LeafInput {
+                location: LeafInputLocation::Domain,
+                arg_id: qualification_func_argument_id,
+            }],
         )
         .await?;
 
