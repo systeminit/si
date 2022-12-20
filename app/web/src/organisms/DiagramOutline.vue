@@ -1,6 +1,8 @@
 <template>
-  <div>
-    <SiSearch auto-search @search="onSearchUpdated" />
+  <div class="p-3 flex flex-col gap-2">
+    <div class="border dark:border-neutral-600 mb-2">
+      <SiSearch auto-search @search="onSearchUpdated" />
+    </div>
     <template v-if="!hierarchicalOrder.length">
       <div class="p-2 text-neutral-500">No components</div>
     </template>
@@ -8,6 +10,9 @@
       <div class="p-2 text-neutral-500">No components matching your search</div>
     </template>
     <ComponentTree
+      v-else
+      class="flex flex-col gap-2"
+      node-class="border"
       :tree-data="hierarchicalOrder"
       @select="(componentId) => emit('select', componentId)"
       @multiselect="(componentId) => emit('multiselect', componentId)"
@@ -19,7 +24,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import SiSearch from "@/molecules/SiSearch.vue";
-import ComponentTree from "@/organisms/Tree.vue";
+import ComponentTree from "@/organisms/ComponentTree.vue";
 import { useComponentsStore } from "@/store/components.store";
 
 const props = defineProps<{

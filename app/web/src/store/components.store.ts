@@ -72,14 +72,16 @@ type SocketId = string;
 type SchemaId = string;
 type SchemaVariantId = string;
 
+export type StatusIconsSet = {
+  change?: DiagramStatusIcon;
+  qualification?: DiagramStatusIcon;
+  confirmation?: DiagramStatusIcon;
+};
+
 export type ComponentTreeNode = {
   children?: ComponentTreeNode[];
   typeIcon?: string;
-  statusIcons?: {
-    change?: DiagramStatusIcon;
-    qualification?: DiagramStatusIcon;
-    confirmation?: DiagramStatusIcon;
-  };
+  statusIcons?: StatusIconsSet;
 } & Component;
 
 export type MenuSchema = {

@@ -81,6 +81,9 @@ import SiLogo from "@/assets/images/si-logo-wts.svg?raw";
 import DockerLogo from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
 import KubernetesLogo from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
 
+// carbon
+import Hashtag from "~icons/carbon/hashtag";
+
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
 export const ICONS = Object.freeze({
@@ -111,6 +114,7 @@ export const ICONS = Object.freeze({
   "git-commit": GitCommit,
   "git-merge": GitMerge,
   globe: Globe,
+  hashtag: Hashtag,
   "help-circle": QuestionMarkCircle,
   hide: EyeOff,
   link: Link,
