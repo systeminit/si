@@ -1,6 +1,9 @@
-use dal::attribute::context::AttributeContextBuilder;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::schema::variant::leaves::LeafKind;
+use dal::{
+    attribute::context::AttributeContextBuilder,
+    schema::variant::leaves::{LeafInput, LeafInputLocation},
+};
 use dal::{
     AttributeReadContext, AttributeValue, Component, ComponentView, DalContext, Func,
     FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind, SchemaVariant, StandardModel,
@@ -61,9 +64,12 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
     SchemaVariant::add_leaf(
         ctx,
         qualification_func_id,
-        *qualified_func_argument.id(),
         schema_variant_id,
         LeafKind::Qualification,
+        vec![LeafInput {
+            location: LeafInputLocation::Domain,
+            arg_id: *qualified_func_argument.id(),
+        }],
     )
     .await
     .expect("could not add qualification");

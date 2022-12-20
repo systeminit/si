@@ -1,6 +1,9 @@
-use dal::attribute::context::AttributeContextBuilder;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::schema::variant::leaves::LeafKind;
+use dal::{
+    attribute::context::AttributeContextBuilder,
+    schema::variant::leaves::{LeafInput, LeafInputLocation},
+};
 
 use dal::{
     AttributeReadContext, AttributeValue, Component, ComponentView, DalContext, Func,
@@ -66,9 +69,12 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     SchemaVariant::add_leaf(
         ctx,
         code_generation_func_id,
-        *code_generation_func_argument.id(),
         schema_variant_id,
         LeafKind::CodeGeneration,
+        vec![LeafInput {
+            location: LeafInputLocation::Domain,
+            arg_id: *code_generation_func_argument.id(),
+        }],
     )
     .await
     .expect("could not add code generation");
