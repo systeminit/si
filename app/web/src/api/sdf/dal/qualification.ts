@@ -10,9 +10,9 @@ export interface Qualification {
 export interface QualificationResult {
   title?: string;
   link?: string;
-  success: boolean;
+  status: "success" | "warning" | "failure" | "unknown";
   sub_checks: Array<{
-    status: "Success" | "Failure" | "Unknown";
+    status: "success" | "warning" | "failure" | "unknown";
     description: string;
   }>;
 }

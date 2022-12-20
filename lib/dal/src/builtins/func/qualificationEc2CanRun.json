@@ -11,6 +11,7 @@
     }
   ],
   "response_type": "Qualification",
+  "hidden": false,
   "display_name": "Ec2 can run",
   "description": null,
   "link": null,

@@ -40,7 +40,7 @@
       :selected="route.name === 'workspace-fix'"
       :link-to="{ name: 'workspace-fix' }"
     >
-      <Icon name="globe" />
+      <Icon name="tools" />
     </NavbarButton>
   </div>
 </template>

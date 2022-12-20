@@ -1,6 +1,9 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{Component, ComponentId, StandardModel, Visibility, WorkspaceId};
+use dal::{
+    qualification::QualificationSubCheckStatus, Component, ComponentId, StandardModel, Visibility,
+    WorkspaceId,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -50,7 +53,10 @@ pub async fn get_components_metadata(
 
         let qualified = qualifications
             .into_iter()
-            .map(|q| q.result.map(|r| r.success))
+            .map(|q| {
+                q.result
+                    .map(|r| r.status == QualificationSubCheckStatus::Success)
+            })
             .reduce(|q, acc| acc.and_then(|acc| q.map(|q| acc && q)))
             .and_then(|opt| opt);
 

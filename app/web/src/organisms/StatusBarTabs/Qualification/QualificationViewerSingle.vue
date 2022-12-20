@@ -6,8 +6,14 @@
 
     <div class="w-full flex flex-col px-3 py-3 gap-2 text-sm">
       <StatusMessageBox :status="qualificationStatus">
-        <template v-if="qualificationStatus === 'failure'">
-          Something went wrong! Click "View Details" to see the output.
+        <span
+          v-if="qualificationStatus === 'failure'"
+          :title="titleFailedSubchecks"
+        >
+          {{ truncatedFailedSubchecks }}
+        </span>
+        <template v-else-if="qualificationStatus === 'warning'">
+          {{ truncatedFailedSubchecks }}
         </template>
         <template v-else-if="qualificationStatus === 'success'">
           Passed!
@@ -97,16 +103,14 @@ const qualification = toRef(props, "qualification");
 const failedSubchecks = computed(
   () =>
     qualification.value.result?.sub_checks.filter(
-      (subCheck) => subCheck.status === "Failure",
+      (subCheck) =>
+        subCheck.status === "failure" || subCheck.status === "warning",
     ) ?? [],
 );
 
 const qualificationStatus = computed(() => {
   if (_.isNil(props.qualification.result)) return "running";
-
-  if (props.qualification.result.success) return "success";
-
-  return "failure";
+  return props.qualification.result.status;
 });
 
 const modalOpen = ref(false);
@@ -118,4 +122,19 @@ const openModal = () => {
 const closeModal = () => {
   modalOpen.value = false;
 };
+
+const titleFailedSubchecks = computed(() => {
+  return failedSubchecks.value.length
+    ? failedSubchecks.value.map((c) => c.description).join(" ")
+    : 'Something went wrong! Click "View Details" to see the output.';
+});
+
+const truncatedFailedSubchecks = computed(() => {
+  const maxLength = 300;
+  const message = failedSubchecks.value.length
+    ? failedSubchecks.value.map((c) => c.description).join(" ")
+    : 'Something went wrong! Click "View Details" to see the output.';
+  if (message.length <= maxLength + 3) return message;
+  return `${message.slice(0, maxLength)}...`;
+});
 </script>

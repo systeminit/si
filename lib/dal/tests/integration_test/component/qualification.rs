@@ -2,9 +2,8 @@ use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::schema::variant::leaves::LeafKind;
 use dal::{
     attribute::context::AttributeContextBuilder,
+    qualification::QualificationSubCheckStatus,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
-};
-use dal::{
     AttributeReadContext, AttributeValue, Component, ComponentView, DalContext, Func,
     FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind, SchemaVariant, StandardModel,
 };
@@ -39,7 +38,7 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
     let qualification_func_id = *qualification_func.id();
     let code = "function isQualified(input) {
         return {
-            qualified: input.domain?.poop ?? false
+            result: (input.domain?.poop ?? false) ? 'success' : 'failure'
         };
     }";
     qualification_func
@@ -129,7 +128,7 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
                 },
                 "qualification": {
                     "test:qualification": {
-                        "qualified": true
+                        "result": "success",
                     },
                 }
         }], // expected
@@ -167,16 +166,18 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
         all_fields_valid_qualification.expect("could not find all fields valid qualification");
     let test_qualification = test_qualification.expect("could not find test qualification");
 
-    assert!(
+    assert_eq!(
         all_fields_valid_qualification
             .result
             .expect("could not get result")
-            .success
+            .status,
+        QualificationSubCheckStatus::Success,
     );
-    assert!(
+    assert_eq!(
         test_qualification
             .result
             .expect("could not get result")
-            .success
+            .status,
+        QualificationSubCheckStatus::Success,
     );
 }

@@ -7,12 +7,13 @@ import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { ComponentId } from "./components.store";
 
-export type QualificationStatus = "success" | "failure" | "running";
+export type QualificationStatus = "success" | "failure" | "running" | "warning";
 
 // TODO: align these key names with the status (ex: succeeded -> success)
 type QualificationStats = {
   total: number;
   succeeded: number;
+  warned: number;
   failed: number;
   running: number;
 };
@@ -44,6 +45,7 @@ export const useQualificationsStore = () => {
           return _.mapValues(this.qualificationStatsByComponentId, (cs) => {
             if (cs.running) return "running";
             if (cs.failed > 0) return "failure";
+            if (cs.warned > 0) return "warning";
             return "success";
           });
         },
@@ -54,6 +56,7 @@ export const useQualificationsStore = () => {
           return {
             failure: grouped.failure?.length || 0,
             success: grouped.success?.length || 0,
+            warning: grouped.warning?.length || 0,
             running: grouped.running?.length || 0,
             total: _.keys(this.qualificationStatusByComponentId).length,
           };
@@ -71,11 +74,13 @@ export const useQualificationsStore = () => {
           return new ApiRequest<{
             total: number;
             succeeded: number;
+            warned: number;
             failed: number;
             components: {
               componentId: string;
               componentName: string;
               total: number;
+              warned: number;
               succeeded: number;
               failed: number;
             }[];
@@ -94,8 +99,9 @@ export const useQualificationsStore = () => {
                     // transform the data slightly to add "running" so we can avoid recalculating again elsewhere
                     total: cs.total,
                     succeeded: cs.succeeded,
+                    warned: cs.warned,
                     failed: cs.failed,
-                    running: cs.total - cs.succeeded - cs.failed,
+                    running: cs.total - cs.succeeded - cs.failed - cs.warned,
                   };
                 },
               );

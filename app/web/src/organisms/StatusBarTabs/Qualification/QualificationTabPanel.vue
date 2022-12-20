@@ -59,6 +59,10 @@ const filterOptions: FilterOption[] = [
     title: "Success",
   },
   {
+    value: "warning",
+    title: "Warning",
+  },
+  {
     value: "failure",
     title: "Failure",
   },
@@ -80,6 +84,8 @@ const filteredComponentsList = computed(() => {
   if (selectedFilter.value.value === "all") return componentsList.value;
   if (selectedFilter.value.value === "success")
     return _.filter(componentsList.value, { status: "success" });
+  if (selectedFilter.value.value === "warning")
+    return _.filter(componentsList.value, { status: "warning" });
   if (selectedFilter.value.value === "failure")
     return _.filter(componentsList.value, { status: "failure" });
   return [];

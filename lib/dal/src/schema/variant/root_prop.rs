@@ -205,7 +205,7 @@ impl RootProp {
         let (qualification_map_prop_id, qualification_map_item_prop_id) =
             RootProp::insert_leaf_props(ctx, LeafKind::Qualification, root_prop_id).await?;
 
-        let mut child_qualified_prop = Prop::new(ctx, "qualified", PropKind::Boolean, None).await?;
+        let mut child_qualified_prop = Prop::new(ctx, "result", PropKind::String, None).await?;
         child_qualified_prop.set_hidden(ctx, true).await?;
         child_qualified_prop
             .set_parent_prop(ctx, qualification_map_item_prop_id)

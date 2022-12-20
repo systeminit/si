@@ -19,7 +19,7 @@ use crate::{Component, ComponentError, ComponentId};
 // struct. This struct is a temporary stopgap until that's implemented.
 #[derive(Deserialize, Debug)]
 pub struct QualificationEntry {
-    pub qualified: bool,
+    pub result: QualificationSubCheckStatus,
     pub message: Option<String>,
 }
 
@@ -154,7 +154,11 @@ impl Component {
             description: None,
             link: None,
             result: Some(QualificationResult {
-                success: sub_checks.is_empty(),
+                status: if sub_checks.is_empty() {
+                    QualificationSubCheckStatus::Success
+                } else {
+                    QualificationSubCheckStatus::Failure
+                },
                 title: None,
                 link: None,
                 sub_checks,

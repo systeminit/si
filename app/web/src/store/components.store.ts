@@ -98,6 +98,7 @@ const qualificationStatusToIconMap: Record<
   DiagramStatusIcon
 > = {
   success: { icon: "check-circle", tone: "success" },
+  warning: { icon: "exclamation-circle", tone: "warning" },
   failure: { icon: "x-circle", tone: "error" },
   running: { icon: "loader", tone: "info" },
 };
@@ -342,9 +343,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     qualificationStatusToIconMap[
                       qualificationStatus as QualificationStatus
                     ],
-                  confirmation: confirmationStatusToIconMap[
-                    confirmationStatus as QualificationStatus
-                  ] || {
+                  confirmation: (confirmationStatus
+                    ? confirmationStatusToIconMap[confirmationStatus]
+                    : undefined) ?? {
                     icon: "minus",
                     tone: "neutral",
                   },
