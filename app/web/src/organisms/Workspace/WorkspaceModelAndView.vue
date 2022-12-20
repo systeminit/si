@@ -22,6 +22,7 @@
             <DiagramOutline
               :selected-component-id="selectedComponentId ?? undefined"
               @select="onOutlineSelectComponent"
+              @multiselect="onOutlineMultiSelectComponent"
               @pan="onOutlinePanToComponent"
             />
           </TabPanel>
@@ -170,6 +171,9 @@ const diagramEdges = computed(() => {
 const diagramNodes = computed(() => componentsStore.diagramNodes);
 
 const selectedComponentId = computed(() => componentsStore.selectedComponentId);
+const selectedComponentIds = computed(
+  () => componentsStore.selectedComponentIds,
+);
 
 const diagramCustomConfig = {};
 
@@ -340,22 +344,16 @@ function onDiagramMoveElement(e: MoveElementEvent) {
 }
 
 function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
-  // for now, we dont support multiselect anywhere outside the diagram, so we just act like nothing is selected
-  if (newSelection.elements.length !== 1) {
-    componentsStore.setSelectedComponentId(null);
-    return;
-  }
+  const validComponentIds = _.compact(
+    newSelection.elements.map((el) => {
+      if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
+        return el.def.componentId;
+      }
+      return undefined;
+    }),
+  );
 
-  const selectedElement = newSelection.elements[0];
-  // we also dont support selecting things other than nodes outside the diagram
-  if (
-    selectedElement instanceof DiagramNodeData ||
-    selectedElement instanceof DiagramGroupData
-  ) {
-    componentsStore.setSelectedComponentId(selectedElement.def.componentId);
-  } else {
-    componentsStore.setSelectedComponentId(null);
-  }
+  componentsStore.setSelectedComponentId(validComponentIds);
 }
 
 function onDiagramDelete(_e: DeleteElementsEvent) {
@@ -365,6 +363,12 @@ function onDiagramDelete(_e: DeleteElementsEvent) {
 
 function onOutlineSelectComponent(id: string) {
   componentsStore.setSelectedComponentId(id);
+}
+
+function onOutlineMultiSelectComponent(id: string) {
+  const selectedComponentIds = componentsStore.selectedComponentIds;
+  selectedComponentIds.push(id);
+  componentsStore.setSelectedComponentId(_.uniq(selectedComponentIds));
 }
 
 function onOutlinePanToComponent(id: string) {
@@ -379,16 +383,18 @@ function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
 }
 
 watch(
-  () => selectedComponentId.value,
+  () => selectedComponentIds.value,
   () => {
-    if (selectedComponentId.value) {
-      const component =
-        componentsStore.componentsById[selectedComponentId.value];
-      diagramRef.value?.setSelection(
-        selectedComponent.value.isGroup
+    if (selectedComponentIds.value.length > 0) {
+      const selectedComponentsKeys = _.map(selectedComponentIds.value, (c) => {
+        const component = componentsStore.componentsById[c];
+
+        return component.isGroup
           ? DiagramGroupData.generateUniqueKey(component.nodeId)
-          : DiagramNodeData.generateUniqueKey(component.nodeId),
-      );
+          : DiagramNodeData.generateUniqueKey(component.nodeId);
+      });
+
+      diagramRef.value?.setSelection(selectedComponentsKeys);
     } else {
       diagramRef.value?.clearSelection();
     }

@@ -10,6 +10,8 @@ import {
   DiagramNodeDef,
   DiagramStatusIcon,
   Size2D,
+  DiagramNodeData,
+  DiagramGroupData,
 } from "@/organisms/GenericDiagram/diagram_types";
 import { MenuItem } from "@/api/sdf/dal/menu";
 import {
@@ -158,6 +160,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         selectedComponentId: null as ComponentId | null,
         lastSelectedComponentId: null as ComponentId | null,
+
+        selectedComponentIds: [] as ComponentId[],
+        lastSelectedComponentIds: [] as ComponentId[],
 
         panTargetComponentId: null as ComponentId | null,
 
@@ -645,15 +650,33 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
 
-        setSelectedComponentId(id: ComponentId | null) {
-          if (!id) this.selectedComponentId = null;
-          else {
-            this.lastSelectedComponentId = id;
-            if (this.componentsById[id]) {
-              this.selectedComponentId = id;
+        setSelectedComponentId(selection: ComponentId | ComponentId[] | null) {
+          if (!selection) {
+            this.selectedComponentId = null;
+            this.selectedComponentIds = [];
+          } else {
+            if (_.isArray(selection)) {
+              const validSelection = selection.filter(
+                (id) => this.componentsById[id] !== undefined,
+              );
+
+              if (validSelection.length === 1) {
+                this.selectedComponentId = validSelection[0];
+                this.lastSelectedComponentId = this.selectedComponentId;
+              } else {
+                this.selectedComponentId = null;
+              }
+
+              this.selectedComponentIds = validSelection;
             } else {
-              // TODO: not sure... do we throw an error? Do we select the id anyway?
-              this.selectedComponentId = null;
+              if (this.componentsById[selection]) {
+                this.selectedComponentId = selection;
+                this.lastSelectedComponentId = selection;
+                this.selectedComponentIds = [selection];
+              } else {
+                // TODO: not sure... do we throw an error? Do we select the id anyway?
+                this.selectedComponentId = null;
+              }
             }
           }
         },

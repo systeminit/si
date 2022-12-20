@@ -5,6 +5,7 @@
       :key="index"
       :component="node"
       @select="(componentId) => emit('select', componentId)"
+      @multiselect="(componentId) => emit('multiselect', componentId)"
       @pan="(componentId) => emit('pan', componentId)"
     />
   </ul>
@@ -18,6 +19,7 @@ const props = defineProps<{ treeData: ComponentTreeNode[] }>();
 
 const emit = defineEmits<{
   (e: "select", componentId: string): void;
+  (e: "multiselect", componentId: string): void;
   (e: "pan", componentId: string): void;
 }>();
 </script>
