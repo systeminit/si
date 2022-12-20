@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -17,6 +18,7 @@ pub struct QualificationSummaryForComponent {
     component_id: ComponentId,
     component_name: String,
     total: i64,
+    warned: i64,
     succeeded: i64,
     failed: i64,
 }
@@ -26,6 +28,7 @@ pub struct QualificationSummaryForComponent {
 pub struct QualificationSummary {
     total: i64,
     succeeded: i64,
+    warned: i64,
     failed: i64,
     components: Vec<QualificationSummaryForComponent>,
 }
@@ -52,6 +55,7 @@ impl QualificationSummary {
     pub async fn get_summary(ctx: &DalContext) -> QualificationSummaryResult<QualificationSummary> {
         let mut component_summaries = Vec::new();
         let mut components_succeeded = 0;
+        let mut components_warned = 0;
         let mut components_failed = 0;
         let mut total = 0;
 
@@ -61,12 +65,15 @@ impl QualificationSummary {
 
             let individual_total = qualifications.len() as i64;
             let mut succeeded = 0;
+            let mut warned = 0;
             let mut failed = 0;
             for qualification in qualifications {
                 if let Some(result) = qualification.result {
-                    match result.success {
-                        true => succeeded += 1,
-                        false => failed += 1,
+                    match result.status {
+                        QualificationSubCheckStatus::Success => succeeded += 1,
+                        QualificationSubCheckStatus::Warning => warned += 1,
+                        QualificationSubCheckStatus::Failure => failed += 1,
+                        QualificationSubCheckStatus::Unknown => {}
                     }
                 }
             }
@@ -76,12 +83,15 @@ impl QualificationSummary {
                 component_name: component.name(ctx).await?,
                 total: individual_total,
                 succeeded,
+                warned,
                 failed,
             };
 
             // Update counters for all components.
             if failed > 0 {
                 components_failed += 1;
+            } else if warned > 0 {
+                components_warned += 1;
             } else {
                 components_succeeded += 1;
             }
@@ -93,6 +103,7 @@ impl QualificationSummary {
         Ok(QualificationSummary {
             total,
             succeeded: components_succeeded,
+            warned: components_warned,
             failed: components_failed,
             components: component_summaries,
         })
@@ -113,7 +124,7 @@ pub enum QualificationError {
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]
 pub struct QualificationResult {
-    pub success: bool,
+    pub status: QualificationSubCheckStatus,
     pub title: Option<String>,
     pub link: Option<String>,
     pub sub_checks: Vec<QualificationSubCheck>,
@@ -172,13 +183,10 @@ impl QualificationView {
                 Some(message) => message,
                 None => String::from("no description provided"),
             },
-            status: match qualification_entry.qualified {
-                true => QualificationSubCheckStatus::Success,
-                false => QualificationSubCheckStatus::Failure,
-            },
+            status: qualification_entry.result,
         };
         let result = Some(QualificationResult {
-            success: qualification_entry.qualified,
+            status: qualification_entry.result,
             title: Some(func_metadata.display_name.clone()),
             link: None,
             sub_checks: vec![sub_check],
@@ -195,9 +203,24 @@ impl QualificationView {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    AsRefStr,
+    Clone,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    EnumString,
+    Eq,
+    PartialEq,
+    Serialize,
+    Copy,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
 pub enum QualificationSubCheckStatus {
     Success,
+    Warning,
     Failure,
     Unknown,
 }

@@ -29,6 +29,8 @@ const divClasses = computed(() => {
   switch (true) {
     case props.status === "success":
       return "border-success-600 text-success-500";
+    case props.status === "warning":
+      return "border-warning-600 text-warning-500";
     case props.status === "failure":
       return "border-destructive-600 text-destructive-500";
     case props.status === "running":

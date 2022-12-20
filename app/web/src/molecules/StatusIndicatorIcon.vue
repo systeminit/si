@@ -12,6 +12,8 @@ import { Tones } from "@/ui-lib/helpers/tones";
 export type Status =
   | "success"
   | "failure"
+  | "unknown"
+  | "warning"
   | "running"
   | "added"
   | "modified"
@@ -32,6 +34,7 @@ const CONFIG = {
   },
   qualification: {
     success: { iconName: "check-circle", tone: "success" },
+    warning: { iconName: "exclamation-circle", tone: "warning" },
     failure: { iconName: "x-circle", tone: "destructive" },
     running: { iconName: "loader", tone: "action" },
   },

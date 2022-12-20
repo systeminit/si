@@ -1,5 +1,6 @@
 use dal::{
-    Component, ComponentId, DalContext, Edge, ExternalProvider, InternalProvider, StandardModel,
+    qualification::QualificationSubCheckStatus, Component, ComponentId, DalContext, Edge,
+    ExternalProvider, InternalProvider, StandardModel,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
@@ -312,7 +313,10 @@ async fn get_ignition_from_qualification_output(
                 .result
                 .clone()
                 .expect("could not get result from qualification view");
-            assert!(qualification_result.success);
+            assert_eq!(
+                qualification_result.status,
+                QualificationSubCheckStatus::Success
+            );
 
             // Find the output in the sub check. Ensure there's only one sub check.
             let sub_check = qualification_result

@@ -32,13 +32,13 @@
  * }
  *
  * interface Qualification {
- *   qualified: boolean;
+ *   result: 'success' | 'warning' | 'failure';
  *   message: string;
  * }
  */
 async function qualification(component) {
   return {
-    qualified: true,
+    result: 'success',
     message: 'Component qualified'
  };
 }

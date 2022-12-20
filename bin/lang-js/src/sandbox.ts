@@ -31,8 +31,13 @@ function resolverFunctionSandbox(executionId: string): Sandbox {
   return {
     // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
     YAML: { stringify: yaml.dump },
+    fetch,
     // definitely a risk
+    // lol
     siExec: makeExec(executionId),
+    os, // This certainly is bad
+    fs, // This certainly is bad
+    path, // This certainly is bad
   };
 }
 
