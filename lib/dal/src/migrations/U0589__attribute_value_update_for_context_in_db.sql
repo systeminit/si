@@ -148,7 +148,7 @@ AS $$
     -- Even though these fields are numeric, when we extract their values we either get a jsonb, or text. We'd
     -- have to further use jsonb_typeof(...)  to make sure it's actually a 'number' before doing a conversion,
     -- but checking against a string is good enough for now.
-    SELECT  this_context ->> 'attribute_context_component_id'      = ident_nil_v1()
+    SELECT  (this_context ->> 'attribute_context_component_id')::ident      = ident_nil_v1()
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_value_set_parent_attribute_value_v1(this_write_tenancy             jsonb,
@@ -181,7 +181,7 @@ BEGIN
     IF attribute_contexts_match_v1(attribute_value_context, potential_duplicate_child_for_parent) THEN
         RAISE 'Found duplicate child (AttributeValue(%)) when trying to set parent (AttributeValue(%)) for '
               'AttributeValue(%), Tenancy(%), Visibility(%)',
-              potential_duplicate_child_for_parent ->> 'id',
+              (potential_duplicate_child_for_parent ->> 'id')::ident,
               this_parent_attribute_value_id,
               this_attribute_value_id,
               this_write_tenancy,
@@ -406,7 +406,7 @@ DECLARE
     new_attribute_prototype_id             ident;
     original_attribute_prototype_id        ident;
 BEGIN
-    SELECT ap.object ->> 'id'
+    SELECT (ap.object ->> 'id')::ident
     INTO new_attribute_prototype_id
     FROM attribute_prototype_create_v1(this_write_tenancy,
                                        this_visibility,
@@ -423,7 +423,7 @@ BEGIN
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC NULLS FIRST;
 
-    SELECT av.object ->> 'id'
+    SELECT (av.object ->> 'id')::ident
     INTO attribute_value_id
     FROM attribute_value_create_v1(this_write_tenancy,
                                    this_visibility,
@@ -463,7 +463,7 @@ BEGIN
         IF NOT (existing_attribute_value_proxy_context IS NOT NULL
                 AND exact_attribute_context_v1(this_attribute_context, existing_attribute_value_proxy_context))
         THEN
-            SELECT ap.found_attribute_prototype ->> 'id'
+            SELECT (ap.found_attribute_prototype ->> 'id')::ident
             INTO original_attribute_prototype_id
             FROM ap_find_with_parent_value_and_key_for_context_v1(this_read_tenancy,
                                                                   this_visibility,
@@ -497,7 +497,7 @@ CREATE OR REPLACE FUNCTION attribute_prototype_new_with_attribute_value_v1(this_
 AS
 $$
 BEGIN
-    SELECT ap.object ->> 'id'
+    SELECT (ap.object ->> 'id')::ident
     INTO new_attribute_prototype_id
     FROM attribute_prototype_create_v1(this_write_tenancy,
                                        this_visibility,
@@ -542,8 +542,8 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE
 AS $$
-    SELECT this_attribute_context ->> 'attribute_context_internal_provider_id' != ident_nil_v1()
-        OR this_attribute_context ->> 'attribtue_context_external_provider_id' != ident_nil_v1()
+    SELECT (this_attribute_context ->> 'attribute_context_internal_provider_id')::ident != ident_nil_v1()
+        OR (this_attribute_context ->> 'attribtue_context_external_provider_id')::ident != ident_nil_v1()
 $$;
 
 CREATE OR REPLACE FUNCTION exact_attribute_context_v1(
@@ -946,6 +946,8 @@ BEGIN
         ON avbtap.belongs_to_id = ap.id
             AND avbtap.object_id = given_attribute_value.id;
     IF original_attribute_prototype IS NULL THEN
+	SELECT INTO func_binding_id FROM attribute_value_belongs_to_attribute_prototype as avbtap where avbtap.object_id = given_attribute_value.id;
+	RAISE WARNING '%', func_binding_id;
         RAISE 'Unable to find AttributePrototype for AttributeValue(%), Tenancy(%), Visibility(%)', given_attribute_value.id,
                                                                                                     this_read_tenancy,
                                                                                                     this_visibility;
@@ -999,7 +1001,7 @@ BEGIN
             attribute_value_id := maybe_attribute_value.id;
         ELSE
             -- We haven't found an appropriate AttributeValue to use, so we need to make one.
-            SELECT av.object ->> 'id'
+            SELECT (av.object ->> 'id')::ident
             INTO attribute_value_id
             FROM attribute_value_create_v1(this_write_tenancy,
                                            this_visibility,
@@ -1040,7 +1042,7 @@ BEGIN
     END IF;
 
     RAISE DEBUG 'attribute_value_update_for_context_raw_v1: this_attribute_context - %', this_attribute_context;
-    IF this_attribute_context ->> 'attribute_context_prop_id' = ident_nil_v1() THEN
+    IF (this_attribute_context ->> 'attribute_context_prop_id')::ident = ident_nil_v1() THEN
         typeof_value := jsonb_typeof(this_new_value);
 
         -- jsonb_typeof returns: 'object', 'array', 'string', 'number', 'boolean', 'null' and SQL NULL
@@ -1724,7 +1726,7 @@ BEGIN
             AND func_binding_belongs_to_func.object_id = func_binding.id;
     RAISE DEBUG 'func_binding_execute_v1: Found Func(%)', func;
 
-    SELECT fe.object ->> 'pk'
+    SELECT (fe.object ->> 'pk')::ident
     INTO STRICT func_execution_pk
     FROM func_execution_create_v1(
         universal_write_tenancy,
@@ -1769,7 +1771,7 @@ BEGIN
     END CASE;
 
     -- binding.postprocess_execution
-    fbrv_id := func_binding_return_value_create_v1(
+    fbrv_id := (func_binding_return_value_create_v1(
         this_write_tenancy,
         this_visibility,
         result_value,
@@ -1777,7 +1779,7 @@ BEGIN
         func.id,
         func_binding.id,
         func_execution_pk
-    ) ->> 'id';
+    ) ->> 'id')::ident;
     RAISE DEBUG 'func_binding_execute_v1: Created FuncBindingReturnValue(%)', fbrv_id;
     -- execution.process_return_value
     PERFORM func_execution_set_return_value_v1(
@@ -1912,14 +1914,14 @@ LANGUAGE sql
 IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
 AS $$
     SELECT attribute_contexts_match_v1(
-        record_a ->> 'attribute_context_prop_id',
-        record_a ->> 'attribute_context_internal_provider_id',
-        record_a ->> 'attribute_context_external_provider_id',
-        record_a ->> 'attribute_context_component_id',
-        record_b ->> 'attribute_context_prop_id',
-        record_b ->> 'attribute_context_internal_provider_id',
-        record_b ->> 'attribute_context_external_provider_id',
-        record_b ->> 'attribute_context_component_id'
+        (record_a ->> 'attribute_context_prop_id')::ident,
+        (record_a ->> 'attribute_context_internal_provider_id')::ident,
+        (record_a ->> 'attribute_context_external_provider_id')::ident,
+        (record_a ->> 'attribute_context_component_id')::ident,
+        (record_b ->> 'attribute_context_prop_id')::ident,
+        (record_b ->> 'attribute_context_internal_provider_id')::ident,
+        (record_b ->> 'attribute_context_external_provider_id')::ident,
+        (record_b ->> 'attribute_context_component_id')::ident
     )
 $$;
 
@@ -2112,7 +2114,7 @@ BEGIN
     IF
         new_attribute_value_id != attribute_value.id
         -- Providers don't have Proxy values, only AttributeValues directly for Props.
-        AND this_attribute_context ->> 'attribute_context_prop_id' != ident_nil_v1()
+        AND (this_attribute_context ->> 'attribute_context_prop_id')::ident != ident_nil_v1()
     THEN
         PERFORM update_by_id_v1(
             'attribute_values',
