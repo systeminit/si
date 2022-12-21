@@ -10,9 +10,9 @@
     {{ label }}
     <DropdownMenu ref="menuRef">
       <DropdownMenuItem
-        v-for="(fnLabel, fnKind) in fnTypes"
-        :key="fnKind"
-        @select="emit('selectedFuncKind', fnKind)"
+        v-for="(fnLabel, fnVariant) in fnTypes"
+        :key="fnVariant"
+        @select="emit('selectedFuncVariant', fnVariant)"
       >
         <template #icon><FuncSkeleton /></template>
         {{ fnLabel }}
@@ -24,7 +24,7 @@
 <script setup lang="ts">
 import { PropType, ref } from "vue";
 import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
-import { FuncBackendKind } from "@/api/sdf/dal/func";
+import { FuncVariant } from "@/api/sdf/dal/func";
 import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
@@ -32,13 +32,13 @@ import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 const props = defineProps({
   label: { type: String, required: true },
   fnTypes: {
-    type: Object as PropType<{ [key in FuncBackendKind]?: string }>,
+    type: Object as PropType<{ [key in FuncVariant]?: string }>,
     required: true,
   },
 });
 
 const emit = defineEmits<{
-  (e: "selectedFuncKind", kind: FuncBackendKind): void;
+  (e: "selectedFuncVariant", kind: FuncVariant): void;
 }>();
 
 const menuRef = ref<InstanceType<typeof DropdownMenu>>();

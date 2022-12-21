@@ -56,7 +56,7 @@ const menuItemClasses =
   "w-full flex relative flex-row whitespace-nowrap items-center py-2 px-4 cursor-pointer gap-2 hover:bg-action-500 hover:text-white";
 
 const hasExistingCustomFunction = computed(() =>
-  isCustomizableFuncKind(props.func.backendKind),
+  isCustomizableFuncKind(props.func.variant),
 );
 
 const props = defineProps<{

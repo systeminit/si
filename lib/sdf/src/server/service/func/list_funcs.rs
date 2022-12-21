@@ -1,4 +1,4 @@
-use super::FuncResult;
+use super::{FuncError, FuncResult, FuncVariant};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility};
@@ -16,7 +16,7 @@ pub struct ListFuncsRequest {
 pub struct ListedFuncView {
     pub id: FuncId,
     pub handler: Option<String>,
-    pub kind: FuncBackendKind,
+    pub variant: FuncVariant,
     pub name: String,
     pub is_builtin: bool,
 }
@@ -34,7 +34,7 @@ pub async fn list_funcs(
 ) -> FuncResult<Json<ListFuncsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let funcs = Func::find_by_attr_in(
+    let try_func_views: Vec<Result<ListedFuncView, FuncError>> = Func::find_by_attr_in(
         &ctx,
         "backend_kind",
         &[
@@ -46,18 +46,28 @@ pub async fn list_funcs(
     )
     .await?
     .iter()
-    .filter(|func| !func.hidden())
-    .map(|func| ListedFuncView {
-        id: func.id().to_owned(),
-        handler: func.handler().map(|handler| handler.to_owned()),
-        kind: func.backend_kind().to_owned(),
-        name: func
-            .display_name()
-            .unwrap_or_else(|| func.name())
-            .to_owned(),
-        is_builtin: func.is_builtin(),
+    .filter(|f| !f.hidden())
+    .map(|func| {
+        Ok(ListedFuncView {
+            id: func.id().to_owned(),
+            handler: func.handler().map(|handler| handler.to_owned()),
+            variant: func.try_into()?,
+            name: func
+                .display_name()
+                .unwrap_or_else(|| func.name())
+                .to_owned(),
+            is_builtin: func.is_builtin(),
+        })
     })
     .collect();
+
+    let mut funcs = vec![];
+    for func_view in try_func_views {
+        match func_view {
+            Ok(func_view) => funcs.push(func_view),
+            Err(err) => Err(err)?,
+        }
+    }
 
     Ok(Json(ListFuncsResponse { funcs }))
 }

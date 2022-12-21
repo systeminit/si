@@ -58,9 +58,8 @@ pub async fn create_builtin_func(
     Ok(Json(CreateFuncResponse {
         id: func.id().to_owned(),
         handler: func.handler().map(|h| h.to_owned()),
-        kind: func.backend_kind().to_owned(),
+        variant: (&func).try_into()?,
         name: func.name().to_owned(),
         code: func.code_plaintext()?,
-        schema_variants: vec![],
     }))
 }

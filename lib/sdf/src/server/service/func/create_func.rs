@@ -1,12 +1,11 @@
-use super::FuncResult;
+use super::{FuncResult, FuncVariant};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::func::FuncError;
 use axum::Json;
 use dal::{
-    generate_name, job::definition::DependentValuesUpdate, prototype_context::HasPrototypeContext,
-    AttributeValue, AttributeValueId, CodeLanguage, ComponentId, ConfirmationPrototype, DalContext,
-    Func, FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, FuncId, SchemaId,
-    SchemaVariantId, StandardModel, Visibility, WsEvent,
+    generate_name, prototype_context::HasPrototypeContext, AttributeValueId, ComponentId,
+    ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncId,
+    SchemaId, SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +26,7 @@ pub enum CreateFuncOptions {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateFuncRequest {
-    kind: FuncBackendKind,
+    variant: FuncVariant,
     options: Option<CreateFuncOptions>,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -38,18 +37,14 @@ pub struct CreateFuncRequest {
 pub struct CreateFuncResponse {
     pub id: FuncId,
     pub handler: Option<String>,
-    pub kind: FuncBackendKind,
+    pub variant: FuncVariant,
     pub name: String,
     pub code: Option<String>,
-    pub schema_variants: Vec<SchemaVariantId>,
 }
 
-pub static ATTRIBUTE_CODE_HANDLER_PLACEHOLDER: &str = "HANDLER";
-pub static ATTRIBUTE_CODE_DEFAULT_HANDLER: &str = "attribute";
-pub static ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER: &str = "FUNCTION_RETURN_VALUE";
-pub static DEFAULT_ATTRIBUTE_CODE_TEMPLATE: &str = include_str!("./defaults/attribute_template.ts");
+pub static DEFAULT_ATTRIBUTE_CODE_HANDLER: &str = "setAttribute";
+pub static DEFAULT_ATTRIBUTE_CODE: &str = include_str!("./defaults/attribute.ts");
 pub static DEFAULT_CODE_GENERATION_HANDLER: &str = "generateCode";
-pub static DEFAULT_CODE_GENERATION_FORMAT: CodeLanguage = CodeLanguage::Json;
 pub static DEFAULT_CODE_GENERATION_CODE: &str = include_str!("./defaults/code_generation.ts");
 pub static DEFAULT_QUALIFICATION_HANDLER: &str = "qualification";
 pub static DEFAULT_QUALIFICATION_CODE: &str = include_str!("./defaults/qualification.ts");
@@ -93,24 +88,6 @@ async fn create_command_func(ctx: &DalContext) -> FuncResult<Func> {
     Ok(func)
 }
 
-async fn copy_attribute_func(ctx: &DalContext, func_to_copy: &Func) -> FuncResult<Func> {
-    let mut func = Func::new(
-        ctx,
-        generate_name(),
-        FuncBackendKind::JsAttribute,
-        *func_to_copy.backend_response_type(),
-    )
-    .await?;
-
-    func.set_handler(ctx, func_to_copy.handler()).await?;
-    func.set_display_name(ctx, func_to_copy.display_name())
-        .await?;
-    func.set_code_base64(ctx, func_to_copy.code_base64())
-        .await?;
-
-    Ok(func)
-}
-
 async fn create_confirmation_func(ctx: &DalContext) -> FuncResult<Func> {
     let mut func = Func::new(
         ctx,
@@ -136,99 +113,34 @@ async fn create_confirmation_func(ctx: &DalContext) -> FuncResult<Func> {
     Ok(func)
 }
 
-async fn create_default_attribute_func(
-    ctx: &DalContext,
-    value_id: Option<AttributeValueId>,
-    current_func: Option<&Func>,
-) -> FuncResult<Func> {
-    let default_code = DEFAULT_ATTRIBUTE_CODE_TEMPLATE.replace(
-        ATTRIBUTE_CODE_HANDLER_PLACEHOLDER,
-        ATTRIBUTE_CODE_DEFAULT_HANDLER,
-    );
-
-    // if we were given an existing AttributeValue, generate a function with that value as the
-    // default return value
-    let default_code = if let Some(current_value_id) = value_id {
-        let current_value = AttributeValue::get_by_id(ctx, &current_value_id)
-            .await?
-            .ok_or(FuncError::AttributeValueMissing)?;
-
-        let fbrv_id = current_value.func_binding_return_value_id();
-        let fbrv = FuncBindingReturnValue::get_by_id(ctx, &fbrv_id)
-            .await?
-            .ok_or(FuncError::FuncBindingReturnValueMissing)?;
-
-        let current_value_value = fbrv.unprocessed_value();
-
-        default_code.replace(
-            ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER,
-            &serde_json::to_string_pretty(&current_value_value)?,
-        )
-    } else {
-        default_code.replace(ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER, "null")
-    };
-
-    let backend_response_type = match current_func {
-        Some(func) => *func.backend_response_type(),
-        None => FuncBackendResponseType::Unset,
-    };
-
-    let mut func = Func::new(
-        ctx,
-        generate_name(),
-        FuncBackendKind::JsAttribute,
-        backend_response_type,
-    )
-    .await?;
-
-    func.set_code_plaintext(ctx, Some(&default_code)).await?;
-    func.set_handler(ctx, Some(ATTRIBUTE_CODE_DEFAULT_HANDLER.to_owned()))
-        .await?;
-
-    Ok(func)
-}
-
-async fn create_attribute_func(
-    ctx: &DalContext,
-    value_id: Option<AttributeValueId>,
-    current_func_id: Option<FuncId>,
-) -> FuncResult<Func> {
-    let current_func = match current_func_id {
-        Some(current_func_id) => Some(
-            Func::get_by_id(ctx, &current_func_id)
-                .await?
-                .ok_or(FuncError::FuncNotFound)?,
+async fn create_attribute_func(ctx: &DalContext, variant: FuncVariant) -> FuncResult<Func> {
+    let (code, handler, response_type) = match variant {
+        FuncVariant::Attribute => (
+            DEFAULT_ATTRIBUTE_CODE,
+            DEFAULT_ATTRIBUTE_CODE_HANDLER,
+            FuncBackendResponseType::Unset,
         ),
-        None => None,
-    };
-
-    let should_copy_existing = match current_func {
-        Some(ref current_func) => {
-            if let FuncBackendKind::JsAttribute = current_func.backend_kind() {
-                current_func.is_builtin()
-            } else {
-                false
-            }
+        FuncVariant::CodeGeneration => (
+            DEFAULT_CODE_GENERATION_CODE,
+            DEFAULT_CODE_GENERATION_HANDLER,
+            FuncBackendResponseType::CodeGeneration,
+        ),
+        FuncVariant::Qualification => (
+            DEFAULT_QUALIFICATION_CODE,
+            DEFAULT_QUALIFICATION_HANDLER,
+            FuncBackendResponseType::Qualification,
+        ),
+        _ => {
+            return Err(FuncError::UnexpectedFuncVariantCreatingAttributeFunc(
+                variant,
+            ))
         }
-        None => false,
     };
 
-    let func = if should_copy_existing {
-        // expect is safe from panic here, should_copy_existing will only ever be true if current_func is Some()
-        copy_attribute_func(ctx, current_func.as_ref().expect("current_func was None")).await?
-    } else {
-        create_default_attribute_func(ctx, value_id, current_func.as_ref()).await?
-    };
+    let mut func = Func::new(ctx, generate_name(), variant.into(), response_type).await?;
 
-    // If we were given a value, update that value with the new function
-    if let Some(value_id) = value_id {
-        let mut value = AttributeValue::get_by_id(ctx, &value_id)
-            .await?
-            .ok_or(FuncError::AttributeValueMissing)?;
-        value.update_from_prototype_function(ctx).await?;
-        ctx.enqueue_job(DependentValuesUpdate::new(ctx, value_id))
-            .await;
-    }
+    func.set_code_plaintext(ctx, Some(code)).await?;
+    func.set_handler(ctx, Some(handler)).await?;
 
     Ok(func)
 }
@@ -240,19 +152,17 @@ pub async fn create_func(
 ) -> FuncResult<Json<CreateFuncResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let func = match request.kind {
-        FuncBackendKind::JsAttribute => match request.options {
-            Some(CreateFuncOptions::AttributeOptions {
-                value_id,
-                current_func_id,
-                ..
-            }) => create_attribute_func(&ctx, value_id, current_func_id).await?,
-            None => create_attribute_func(&ctx, None, None).await?,
-        },
-        FuncBackendKind::JsConfirmation => create_confirmation_func(&ctx).await?,
-        FuncBackendKind::JsCommand => create_command_func(&ctx).await?,
-        FuncBackendKind::JsValidation => create_validation_func(&ctx).await?,
-        _ => Err(FuncError::FuncNotSupported)?,
+    let func = match request.variant {
+        FuncVariant::Attribute => create_attribute_func(&ctx, FuncVariant::Attribute).await?,
+        FuncVariant::CodeGeneration => {
+            create_attribute_func(&ctx, FuncVariant::CodeGeneration).await?
+        }
+        FuncVariant::Confirmation => create_confirmation_func(&ctx).await?,
+        FuncVariant::Command => create_command_func(&ctx).await?,
+        FuncVariant::Validation => create_validation_func(&ctx).await?,
+        FuncVariant::Qualification => {
+            create_attribute_func(&ctx, FuncVariant::Qualification).await?
+        }
     };
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
@@ -261,9 +171,8 @@ pub async fn create_func(
     Ok(Json(CreateFuncResponse {
         id: func.id().to_owned(),
         handler: func.handler().map(|h| h.to_owned()),
-        kind: func.backend_kind().to_owned(),
+        variant: (&func).try_into()?,
         name: func.name().to_owned(),
         code: func.code_plaintext()?,
-        schema_variants: vec![],
     }))
 }

@@ -183,10 +183,14 @@ impl QualificationView {
                 Some(message) => message,
                 None => String::from("no description provided"),
             },
-            status: qualification_entry.result,
+            status: qualification_entry
+                .result
+                .unwrap_or(QualificationSubCheckStatus::Unknown),
         };
         let result = Some(QualificationResult {
-            status: qualification_entry.result,
+            status: qualification_entry
+                .result
+                .unwrap_or(QualificationSubCheckStatus::Unknown),
             title: Some(func_metadata.display_name.clone()),
             link: None,
             sub_checks: vec![sub_check],

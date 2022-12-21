@@ -1,5 +1,4 @@
 import { FuncArgument } from "@/api/sdf/dal/func";
-import { CodeLanguage } from "@/api/sdf/dal/code_view";
 import { GetFuncResponse } from "./requests/get_func";
 
 export type EditingFunc = GetFuncResponse;
@@ -8,7 +7,6 @@ export interface CodeGenerationAssociations {
   type: "codeGeneration";
   schemaVariantIds: string[];
   componentIds: string[];
-  format: CodeLanguage;
 }
 
 export interface ConfirmationAssociations {

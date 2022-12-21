@@ -54,10 +54,11 @@ impl MigrationDriver {
         let (code_generation_func_id, code_generation_func_argument_id) = self
             .find_func_and_single_argument_by_names(ctx, "si:generateButaneIgnition", "domain")
             .await?;
-        let code_map_prop_id = SchemaVariant::add_leaf(
+        let (code_map_prop_id, _) = SchemaVariant::add_leaf(
             ctx,
             code_generation_func_id,
             *schema_variant.id(),
+            None,
             LeafKind::CodeGeneration,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,
@@ -112,6 +113,7 @@ impl MigrationDriver {
             ctx,
             qualification_func_id,
             *schema_variant.id(),
+            None,
             LeafKind::Qualification,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,

@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
 
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { FuncArgument, FuncBackendKind } from "@/api/sdf/dal/func";
+import { FuncArgument, FuncVariant } from "@/api/sdf/dal/func";
 
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
@@ -33,7 +33,7 @@ function nilId(): string {
 export const nullEditingFunc: EditingFunc = {
   id: nilId(),
   handler: "",
-  kind: FuncBackendKind.Unset,
+  variant: FuncVariant.Attribute,
   name: "",
   code: "",
   isBuiltin: false,
@@ -188,7 +188,7 @@ export const useFuncStore = () => {
           ...createFuncRequest,
         });
       },
-      async CREATE_BUIILTIN_FUNC(createFuncRequest: CreateBuiltinFuncRequest) {
+      async CREATE_BUILTIN_FUNC(createFuncRequest: CreateBuiltinFuncRequest) {
         return createBuiltinFunc({
           ...visibility, // seems odd the backend is asking for this?
           ...createFuncRequest,

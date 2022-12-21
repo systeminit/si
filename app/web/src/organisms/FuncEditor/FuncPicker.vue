@@ -1,5 +1,5 @@
 <template>
-  <SiTabGroup :selected-index="0">
+  <SiTabGroup>
     <template #tabs>
       <SiTabHeader :key="0">FUNCTIONS</SiTabHeader>
     </template>
@@ -11,14 +11,14 @@
           <NewFuncDropdown
             label="Function"
             :fn-types="CREATE_OPTIONS"
-            @selected-func-kind="createFunc"
+            @selected-func-variant="createFunc"
           />
 
           <NewFuncDropdown
             v-if="isDevMode"
             label="Builtin"
             :fn-types="BUILTIN_CREATE_OPTIONS"
-            @selected-func-kind="openFuncNameModal"
+            @selected-func-variant="openFuncNameModal"
           />
         </div>
         <SiSearch
@@ -33,8 +33,8 @@
         </div>
         <ul class="overflow-y-auto min-h-[200px]">
           <SiCollapsible
-            v-for="(fnTypeInfo, kind) in CUSTOMIZABLE_FUNC_TYPES"
-            :key="kind"
+            v-for="(fnTypeInfo, variant) in CUSTOMIZABLE_FUNC_TYPES"
+            :key="variant"
             as="li"
             class="w-full"
             content-as="ul"
@@ -47,7 +47,7 @@
               </div>
             </template>
             <template #default>
-              <li v-for="func in funcsByKind[kind] ?? []" :key="func.id">
+              <li v-for="func in funcsByVariant[variant] ?? []" :key="func.id">
                 <SiFuncSprite
                   :class="
                     selectedFuncId === func.id
@@ -111,7 +111,7 @@ import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
-import { CUSTOMIZABLE_FUNC_TYPES, FuncBackendKind } from "@/api/sdf/dal/func";
+import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
 import NewFuncDropdown from "@/organisms/NewFuncDropdown.vue";
 import Modal from "@/ui-lib/Modal.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
@@ -145,35 +145,35 @@ const filteredList = computed(() =>
     : funcList.value,
 );
 
-const funcsByKind = computed(() =>
+const funcsByVariant = computed(() =>
   filteredList.value.reduce(
     (funcMap, func) =>
-      typeof funcMap[func.kind] === "undefined"
-        ? { ...funcMap, [func.kind]: [func] }
-        : { ...funcMap, [func.kind]: [...funcMap[func.kind], func] },
-    {} as { [key in FuncBackendKind]-?: typeof filteredList.value },
+      typeof funcMap[func.variant] === "undefined"
+        ? { ...funcMap, [func.variant]: [func] }
+        : { ...funcMap, [func.variant]: [...funcMap[func.variant], func] },
+    {} as { [key in FuncVariant]-?: typeof filteredList.value },
   ),
 );
 
 const emits = defineEmits<{
   (
     e: "createFunc",
-    v: { kind: FuncBackendKind; isBuiltin: boolean; name?: string },
+    v: { variant: FuncVariant; isBuiltin: boolean; name?: string },
   ): void;
 }>();
 
-const createFunc = (kind: FuncBackendKind) => {
-  emits("createFunc", { kind, isBuiltin: false });
+const createFunc = (variant: FuncVariant) => {
+  emits("createFunc", { variant, isBuiltin: false });
 };
 
 const funcNameModalOpen = ref(false);
 const newBuiltinFuncName = ref("");
-const newBuiltinFuncKind = ref<FuncBackendKind>();
+const newBuiltinFuncVariant = ref<FuncVariant>();
 
-const openFuncNameModal = (kind: FuncBackendKind) => {
+const openFuncNameModal = (variant: FuncVariant) => {
   newBuiltinFuncName.value = "";
   funcNameModalOpen.value = true;
-  newBuiltinFuncKind.value = kind;
+  newBuiltinFuncVariant.value = variant;
 };
 
 const closeFuncNameModal = () => {
@@ -190,7 +190,7 @@ const createBuiltinFunc = () => {
   if (funcNameHasError.value) return;
 
   emits("createFunc", {
-    kind: FuncBackendKind.JsAttribute,
+    variant: FuncVariant.Attribute,
     isBuiltin: true,
     name: `si:${newBuiltinFuncName.value}`,
   });

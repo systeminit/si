@@ -154,7 +154,7 @@ const inputValue = computed<string | number | undefined>({
   },
 });
 
-const { reallyDirty, inError, setInError, setDirty } = useValidations(
+const { inError, setInError, setDirty } = useValidations(
   alwaysValidate,
   () => {},
   (inError: boolean) => emit("error", inError),

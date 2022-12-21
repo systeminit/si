@@ -68,6 +68,20 @@ impl AttributeReadContext {
         }
     }
 
+    pub fn default_with_prop_and_component_id(
+        prop_id: PropId,
+        component_id: Option<ComponentId>,
+    ) -> Self {
+        Self {
+            prop_id: Some(prop_id),
+            component_id: match component_id {
+                Some(component_id) => Some(component_id),
+                None => Some(ComponentId::NONE),
+            },
+            ..Self::default()
+        }
+    }
+
     /// Creates a [`read context`](Self) with a given [`InternalProviderId`](crate::InternalProvider)
     /// and all other fields set to their defaults.
     pub fn default_with_internal_provider(internal_provider_id: InternalProviderId) -> Self {

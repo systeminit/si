@@ -6,7 +6,7 @@
 
 import { LabelList } from "@/api/sdf/dal/label_list";
 
-import { FuncBackendKind } from "@/api/sdf/dal/func";
+import { FuncVariant } from "@/api/sdf/dal/func";
 
 export enum PropertyEditorPropKind {
   Array = "array",
@@ -165,7 +165,7 @@ export interface FuncWithPrototypeContext {
   id: string;
   name: string;
   displayName?: string;
-  backendKind: FuncBackendKind;
+  variant: FuncVariant;
   isBuiltin: boolean;
   attributePrototypeId: string;
   attributeContextComponentId: string;

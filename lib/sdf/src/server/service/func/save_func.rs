@@ -1,4 +1,6 @@
 use axum::Json;
+use dal::func::argument::FuncArgumentKind;
+use dal::schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -8,18 +10,19 @@ use super::{
     FuncError, FuncResult,
 };
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use dal::attribute::context::AttributeContextBuilder;
-use dal::validation::prototype::context::ValidationPrototypeContext;
 use dal::{
+    attribute::context::AttributeContextBuilder,
     func::argument::FuncArgument,
     prototype_context::{
         associate_prototypes, HasPrototypeContext, PrototypeContextError, PrototypeContextField,
     },
-    AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributeValue,
-    ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBinding, FuncId,
-    PrototypeListForFunc, StandardModel, Visibility, WsEvent,
+    validation::prototype::context::ValidationPrototypeContext,
+    AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributePrototypeId,
+    AttributeValue, Component, ComponentId, ConfirmationPrototype, DalContext, Func,
+    FuncBackendKind, FuncBinding, FuncId, InternalProviderId, PrototypeListForFunc,
+    SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
-use dal::{SchemaVariant, ValidationPrototype};
+use dal::{FuncBackendResponseType, SchemaVariant, ValidationPrototype};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -123,17 +126,28 @@ async fn save_attr_func_proto_arguments(
     Ok(())
 }
 
+// What should we do with the prototypes and values that are currently associated with function but
+// that we want to remove the association?
+enum RemovedPrototypeOp {
+    Reset, // Reset to the builtin value functions and set the value to the existing value, this is
+    // what we want to do with functions on "normal" props under the domain
+    Delete, // Delete the prototype and the values. This what we want to do for map entries in
+            // special props like "qualification" and "code"
+}
+
 async fn save_attr_func_prototypes(
     ctx: &DalContext,
     func: &Func,
     prototypes: Vec<AttributePrototypeView>,
+    remoted_protoype_op: RemovedPrototypeOp,
+    key: Option<String>,
 ) -> FuncResult<()> {
     let mut id_set = HashSet::new();
     for proto_view in prototypes {
         let context = proto_view.to_attribute_context()?;
 
         let (mut existing_value_proto, need_to_create) =
-            match AttributePrototype::find_for_context(ctx, context)
+            match AttributePrototype::find_for_context_and_key(ctx, context, &key)
                 .await?
                 .pop()
             {
@@ -144,10 +158,14 @@ async fn save_attr_func_prototypes(
                         .to_context()?;
 
                     (
-                        AttributePrototype::find_for_context(ctx, default_value_context)
-                            .await?
-                            .pop()
-                            .ok_or(FuncError::AttributePrototypeMissing)?,
+                        AttributePrototype::find_for_context_and_key(
+                            ctx,
+                            default_value_context,
+                            &key,
+                        )
+                        .await?
+                        .pop()
+                        .ok_or(FuncError::AttributePrototypeMissing)?,
                         true,
                     )
                 }
@@ -183,7 +201,7 @@ async fn save_attr_func_prototypes(
                 *func_binding.id(),
                 *fbrv.id(),
                 context,
-                None,
+                key.clone(),
                 maybe_parent_attribute_value.map(|mpav| *mpav.id()),
             )
             .await?
@@ -198,9 +216,137 @@ async fn save_attr_func_prototypes(
     // TODO: should use a custom query to fetch for *not in* id_set only
     for proto in AttributePrototype::find_for_func(ctx, func.id()).await? {
         if !id_set.contains(proto.id()) {
-            reset_prototype_and_value_to_builtin_function(ctx, &proto, proto.context).await?
+            match remoted_protoype_op {
+                RemovedPrototypeOp::Reset => {
+                    reset_prototype_and_value_to_builtin_function(ctx, &proto, proto.context)
+                        .await?
+                }
+                RemovedPrototypeOp::Delete => AttributePrototype::remove(ctx, proto.id()).await?,
+            }
         }
     }
+
+    Ok(())
+}
+
+async fn attribute_view_for_leaf_func(
+    ctx: &DalContext,
+    func: &Func,
+    schema_variant_id: SchemaVariantId,
+    component_id: Option<ComponentId>,
+
+    leaf_kind: LeafKind,
+) -> FuncResult<AttributePrototypeView> {
+    let prop = SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
+
+    let mut prototype_view = AttributePrototypeView {
+        id: AttributePrototypeId::NONE,
+        component_id,
+        prop_id: *prop.id(),
+        prototype_arguments: vec![],
+    };
+
+    let context = prototype_view.to_attribute_context()?;
+
+    let key = Some(func.name().to_string());
+
+    let existing_proto = match AttributePrototype::find_for_context_and_key(ctx, context, &key)
+        .await?
+        .pop()
+    {
+        Some(existing_proto) => existing_proto,
+        None => {
+            let arg = match FuncArgument::list_for_func(ctx, *func.id()).await?.pop() {
+                Some(arg) => arg,
+                None => {
+                    FuncArgument::new(ctx, "domain", FuncArgumentKind::Object, None, *func.id())
+                        .await?
+                }
+            };
+
+            let (_, new_proto) = SchemaVariant::add_leaf(
+                ctx,
+                *func.id(),
+                schema_variant_id,
+                component_id,
+                leaf_kind,
+                vec![LeafInput {
+                    location: LeafInputLocation::Domain,
+                    arg_id: *arg.id(),
+                }],
+            )
+            .await?;
+
+            new_proto
+        }
+    };
+
+    let arguments =
+        FuncArgument::list_for_func_with_prototype_arguments(ctx, *func.id(), *existing_proto.id())
+            .await?;
+
+    let mut argument_views = vec![];
+
+    for (func_argument, maybe_proto_arg) in arguments {
+        let proto_arg = maybe_proto_arg.ok_or_else(|| {
+            FuncError::FuncArgumentMissingPrototypeArgument(
+                *func_argument.id(),
+                *existing_proto.id(),
+            )
+        })?;
+
+        if proto_arg.internal_provider_id() == InternalProviderId::NONE {
+            return Err(FuncError::AttributePrototypeMissingInternalProviderId(
+                *proto_arg.id(),
+            ));
+        }
+
+        argument_views.push(AttributePrototypeArgumentView {
+            func_argument_id: *func_argument.id(),
+            id: Some(*proto_arg.id()),
+            internal_provider_id: Some(proto_arg.internal_provider_id()),
+        });
+    }
+
+    prototype_view.id = *existing_proto.id();
+    prototype_view.prototype_arguments = argument_views;
+
+    Ok(prototype_view)
+}
+
+async fn save_leaf_prototypes(
+    ctx: &DalContext,
+    func: &Func,
+    schema_variant_ids: Vec<SchemaVariantId>,
+    component_ids: Vec<ComponentId>,
+    leaf_kind: LeafKind,
+) -> FuncResult<()> {
+    let mut attribute_views = vec![];
+
+    for schema_variant_id in schema_variant_ids {
+        attribute_views.push(
+            attribute_view_for_leaf_func(ctx, func, schema_variant_id, None, leaf_kind).await?,
+        );
+    }
+
+    for component_id in component_ids {
+        let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+
+        attribute_views.push(
+            attribute_view_for_leaf_func(
+                ctx,
+                func,
+                schema_variant_id,
+                Some(component_id),
+                leaf_kind,
+            )
+            .await?,
+        );
+    }
+
+    let key = Some(func.name().to_string());
+
+    save_attr_func_prototypes(ctx, func, attribute_views, RemovedPrototypeOp::Delete, key).await?;
 
     Ok(())
 }
@@ -392,16 +538,57 @@ pub async fn save_func<'a>(
                 .await?;
             }
         }
-        FuncBackendKind::JsAttribute => {
-            if let Some(FuncAssociations::Attribute {
-                prototypes,
-                arguments,
-            }) = request.associations
-            {
-                save_attr_func_prototypes(&ctx, &func, prototypes).await?;
-                save_attr_func_arguments(&ctx, &func, arguments).await?;
+        FuncBackendKind::JsAttribute => match func.backend_response_type() {
+            FuncBackendResponseType::CodeGeneration => {
+                if let Some(FuncAssociations::CodeGeneration {
+                    schema_variant_ids,
+                    component_ids,
+                }) = request.associations
+                {
+                    save_leaf_prototypes(
+                        &ctx,
+                        &func,
+                        schema_variant_ids,
+                        component_ids,
+                        LeafKind::CodeGeneration,
+                    )
+                    .await?;
+                }
             }
-        }
+            FuncBackendResponseType::Qualification => {
+                if let Some(FuncAssociations::Qualification {
+                    schema_variant_ids,
+                    component_ids,
+                }) = request.associations
+                {
+                    save_leaf_prototypes(
+                        &ctx,
+                        &func,
+                        schema_variant_ids,
+                        component_ids,
+                        LeafKind::Qualification,
+                    )
+                    .await?;
+                }
+            }
+            _ => {
+                if let Some(FuncAssociations::Attribute {
+                    prototypes,
+                    arguments,
+                }) = request.associations
+                {
+                    save_attr_func_prototypes(
+                        &ctx,
+                        &func,
+                        prototypes,
+                        RemovedPrototypeOp::Reset,
+                        None,
+                    )
+                    .await?;
+                    save_attr_func_arguments(&ctx, &func, arguments).await?;
+                }
+            }
+        },
         _ => {}
     }
 

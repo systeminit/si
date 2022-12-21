@@ -1,4 +1,4 @@
-import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
+import { Func, FuncVariant } from "@/api/sdf/dal/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 import { FuncAssociations } from "../types";
@@ -30,7 +30,7 @@ function nilId(): string {
 export const nullFunc: GetFuncResponse = {
   id: nilId(),
   handler: "",
-  kind: FuncBackendKind.Unset,
+  variant: FuncVariant.Attribute,
   name: "",
   code: undefined,
   isBuiltin: false,

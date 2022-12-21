@@ -1,4 +1,4 @@
-import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
+import { Func, FuncVariant } from "@/api/sdf/dal/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 
@@ -15,7 +15,7 @@ export interface AttributeOptions {
 }
 
 export interface CreateFuncRequest {
-  kind: FuncBackendKind;
+  variant: FuncVariant;
   options?: AttributeOptions;
 }
 
@@ -26,7 +26,7 @@ function nilId(): string {
 export const nullFunc: CreateFuncResponse = {
   id: nilId(),
   handler: "",
-  kind: FuncBackendKind.Unset,
+  variant: FuncVariant.Attribute,
   name: "",
   code: undefined,
   isBuiltin: false,
@@ -45,7 +45,7 @@ export const createFunc = (
 
 export interface CreateBuiltinFuncRequest {
   name: string;
-  kind: FuncBackendKind;
+  variant: FuncVariant;
 }
 
 // might want to combine with above (like we do with saveFunc)?

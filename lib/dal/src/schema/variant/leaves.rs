@@ -5,9 +5,10 @@
 use crate::func::argument::FuncArgumentId;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
-    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
-    FuncId, PropId, SchemaVariant, SchemaVariantId, StandardModel,
+    AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, AttributeValueError, ComponentId, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncError, FuncId, PropId, SchemaVariant, SchemaVariantId,
+    StandardModel,
 };
 
 /// This enum provides options for creating leaves underneath compatible subtrees of "/root" within
@@ -72,9 +73,10 @@ impl SchemaVariant {
         ctx: &DalContext,
         func_id: FuncId,
         schema_variant_id: SchemaVariantId,
+        component_id: Option<ComponentId>,
         leaf_kind: LeafKind,
         inputs: Vec<LeafInput>,
-    ) -> SchemaVariantResult<PropId> {
+    ) -> SchemaVariantResult<(PropId, AttributePrototype)> {
         if schema_variant_id.is_none() {
             return Err(SchemaVariantError::InvalidSchemaVariant);
         }
@@ -109,7 +111,8 @@ impl SchemaVariant {
             .parent_prop(ctx)
             .await?
             .ok_or_else(|| SchemaVariantError::ParentPropNotFound(*item_prop.id()))?;
-        let map_attribute_read_context = AttributeReadContext::default_with_prop(*map_prop.id());
+        let map_attribute_read_context =
+            AttributeReadContext::default_with_prop_and_component_id(*map_prop.id(), component_id);
         let map_attribute_value = AttributeValue::find_for_context(ctx, map_attribute_read_context)
             .await?
             .ok_or(AttributeValueError::NotFoundForReadContext(
@@ -117,6 +120,7 @@ impl SchemaVariant {
             ))?;
         let insert_attribute_context = AttributeContext::builder()
             .set_prop_id(*item_prop.id())
+            .set_component_id(component_id.unwrap_or(ComponentId::NONE))
             .to_context()?;
 
         // Insert an item into the map and setup its function. The new entry is named after the func
@@ -165,6 +169,6 @@ impl SchemaVariant {
 
         // Return the prop id for the entire map so that its implicit internal provider can be
         // used for intelligence functions.
-        Ok(*map_prop.id())
+        Ok((*map_prop.id(), inserted_attribute_prototype))
     }
 }

@@ -1,46 +1,64 @@
-export enum FuncBackendKind {
+export enum FuncVariant {
+  Attribute = "Attribute",
+  Validation = "Validation",
+  Qualification = "Qualification",
+  CodeGeneration = "CodeGeneration",
+  Confirmation = "Confirmation",
+  Command = "Command",
+}
+
+export enum FuncBackendResponseType {
   Array = "Array",
   Boolean = "Boolean",
   Identity = "Identity",
   Integer = "Integer",
-  JsCommand = "JsCommand",
-  JsConfirmation = "JsConfirmation",
-  JsAttribute = "JsAttribute",
-  JsValidation = "JsValidation",
   Map = "Map",
   PropObject = "PropObject",
+  Qualification = "Qualification",
+  CodeGeneration = "CodeGeneration",
+  Confirmation = "Confirmation",
   String = "String",
   Unset = "Unset",
   Json = "Json",
-  ValidateStringValue = "ValidateStringValue",
+  Validation = "Validation",
+  Workflow = "Workflow",
+  Command = "Command",
 }
 
 export const CUSTOMIZABLE_FUNC_TYPES = {
-  [FuncBackendKind.JsAttribute]: {
+  [FuncVariant.Attribute]: {
     pluralLabel: "Attributes",
     singularLabel: "Attribute",
   },
-  [FuncBackendKind.JsConfirmation]: {
+  [FuncVariant.CodeGeneration]: {
+    pluralLabel: "Code Generations",
+    singularLabel: "Code Generation",
+  },
+  [FuncVariant.Confirmation]: {
     pluralLabel: "Confirmations",
     singularLabel: "Confirmation",
   },
-  [FuncBackendKind.JsCommand]: {
+  [FuncVariant.Command]: {
     pluralLabel: "Commands",
     singularLabel: "Command",
   },
-  [FuncBackendKind.JsValidation]: {
+  [FuncVariant.Qualification]: {
+    pluralLabel: "Qualifications",
+    singularLabel: "Qualification",
+  },
+  [FuncVariant.Validation]: {
     pluralLabel: "Validations",
     singularLabel: "Validation",
   },
 };
 
-export const isCustomizableFuncKind = (f: FuncBackendKind) =>
+export const isCustomizableFuncKind = (f: FuncVariant) =>
   f in CUSTOMIZABLE_FUNC_TYPES;
 
 export interface Func {
   id: string;
   handler: string;
-  kind: FuncBackendKind;
+  variant: FuncVariant;
   name: string;
   description?: string;
   code?: string;
