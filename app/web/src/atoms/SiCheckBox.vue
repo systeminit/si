@@ -1,13 +1,13 @@
 <template>
   <div>
-    <label
-      :for="props.id"
-      class="block text-sm font-medium text-neutral-800 dark:text-neutral-50"
-    >
-      {{ props.title }} <span v-if="required">(required)</span>
-    </label>
+    <div class="flex flex-row">
+      <label
+        :for="props.id"
+        class="block text-sm font-medium text-neutral-800 dark:text-neutral-50"
+      >
+        {{ props.title }} <span v-if="required">(required)</span>
+      </label>
 
-    <div class="mt-1 w-full relative">
       <input
         :id="props.id"
         v-model="inputValue"
@@ -19,9 +19,10 @@
         :disabled="props.disabled"
         :indeterminate.prop="isIndeterminate"
         required
+        class="ml-2"
         :class="
           clsx(
-            'appearance-none block px-5 py-4 border border-neutral-300 dark:border-neutral-500 rounded-sm shadow-xs focus:outline-none sm:text-sm dark:bg-shade-100 bg-neutral-50 indeterminate:bg-neutral-500 indeterminate:dark:bg-neutral-500',
+            'appearance-none block px-2 py-2 border border-neutral-300 dark:border-neutral-500 rounded-sm shadow-xs focus:outline-none sm:text-sm dark:bg-shade-100 bg-neutral-50 indeterminate:bg-neutral-500 indeterminate:dark:bg-neutral-500',
             inError
               ? 'border-destructive-400 focus:ring-destructive-400 focus:border-destructive-400 checked:border-destructive-400 indeterminate:border-destructive-400'
               : 'border-neutral-600 checked:dark:border-neutral-600 checked:border-neutral-200 indeterminate:dark:border-neutral-500 indeterminate:border-neutral-500',
@@ -29,6 +30,7 @@
         "
         @blur="setDirty"
       />
+
       <div
         v-if="inError"
         class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-destructive-400"
