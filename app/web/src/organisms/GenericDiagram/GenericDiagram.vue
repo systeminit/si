@@ -115,6 +115,7 @@ overflow hidden */
             }"
           />
         </template>
+
         <!-- drag to select selection box -->
         <v-rect
           v-if="dragSelectActive && dragSelectStartPos && dragSelectEndPos"
@@ -128,6 +129,7 @@ overflow hidden */
             stroke: SELECTION_COLOR,
           }"
         />
+
         <!-- new edge being drawn -->
         <DiagramNewEdge
           v-if="drawEdgeActive"
@@ -185,6 +187,8 @@ import {
   GroupEvent,
   Size2D,
   ResizeElementEvent,
+  MouseOverEventType,
+  ResizeEventType,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramEdge from "./DiagramEdge.vue";
@@ -605,14 +609,24 @@ const cursor = computed(() => {
   if (drawEdgeActive.value) return "cell";
   if (dragElementsActive.value) return "move";
   if (insertElementActive.value) return "copy"; // not sure about this...
-  if (componentHoverAction.value === "resize" || resizeElementActive.value)
-    return "nwse-resize";
+  if (componentHoverAction.value === "resize" || resizeElementActive.value) {
+    switch (componentResizeMode.value) {
+      case "resize-left":
+      case "resize-right":
+        return "ew-resize";
+      case "resize-bottom":
+        return "ns-resize";
+      default:
+        return "auto";
+    }
+  }
   return "auto";
 });
 
 // hovering behaviour
 
 const componentHoverAction = ref<"move" | "resize" | undefined>();
+const componentResizeMode = ref<ResizeEventType | undefined>();
 const hoveredElementKey = ref<string>();
 const hoveredElement = computed(() =>
   hoveredElementKey.value
@@ -624,17 +638,18 @@ const hoveredElement = computed(() =>
 
 function onGroupHoverStart(
   el: DiagramElementData,
-  target: "group" | "resize-handle",
+  target: MouseOverEventType,
   socket: DiagramElementData,
 ) {
-  if (target === "resize-handle") componentHoverAction.value = "resize";
+  if (target !== "group" && !resizeElementActive.value) {
+    componentHoverAction.value = "resize";
+    componentResizeMode.value = target;
+  }
 
   onElementHoverStart(socket || el);
 }
 
 function onElementHoverStart(el: DiagramElementData) {
-  // console.log("hover", el.uniqueKey);
-
   if (!componentHoverAction.value) componentHoverAction.value = "move";
 
   hoveredElementKey.value = el.uniqueKey;
@@ -871,8 +886,9 @@ const movedElementParent = reactive<Record<DiagramElementUniqueKey, string>>(
   {},
 );
 
-const draggedElementsPositionsPreDrag =
-  ref<Record<DiagramElementUniqueKey, Vector2d>>();
+const draggedElementsPositionsPreDrag = ref<
+  Record<DiagramElementUniqueKey, Vector2d>
+>({});
 const totalScrolledDuringDrag = ref<Vector2d>({ x: 0, y: 0 });
 
 function beginDragElements() {
@@ -1221,6 +1237,7 @@ const lastResizedElement = ref<DiagramGroupData>();
 
 const frameBoundingBoxes = ref<Record<string, IRect>>({});
 
+// Calculate content bounding boxes for every group
 watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
   if (!kStage) return;
 
@@ -1283,8 +1300,6 @@ watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
   frameBoundingBoxes.value = boxDictionary;
 });
 
-const resizePositionCache = reactive<Record<string, Vector2d>>({});
-
 function beginResizeElement() {
   if (!hoveredElement.value) return;
 
@@ -1295,12 +1310,13 @@ function beginResizeElement() {
 
   resizeElementActive.value = true;
   lastResizedElement.value = hoveredElement.value;
-  resizedElementSizesPreResize[hoveredElement.value.uniqueKey] =
-    resizedElementSizes[lastResizedElement.value.uniqueKey] || node.size;
 
-  resizePositionCache[hoveredElement.value.uniqueKey] =
-    movedElementPositions[hoveredElement.value.uniqueKey] ||
-    hoveredElement.value.def.position;
+  const resizeTargetKey = hoveredElement.value.uniqueKey;
+  resizedElementSizesPreResize[resizeTargetKey] =
+    resizedElementSizes[resizeTargetKey] || node.size;
+
+  draggedElementsPositionsPreDrag.value[resizeTargetKey] =
+    movedElementPositions[resizeTargetKey] || node.position;
 }
 function endResizeElement() {
   if (!lastResizedElement.value) return;
@@ -1316,15 +1332,19 @@ function endResizeElement() {
   resizeElementActive.value = false;
   lastResizedElement.value = undefined;
 }
+
 function onResizeMove() {
   if (!lastResizedElement.value) return;
+  const resizeTargetKey = lastResizedElement.value.uniqueKey;
+
+  if (!componentResizeMode.value) return;
 
   const node = lastResizedElement.value.def as DiagramNodeDef;
 
   if (!node.size) return;
   if (!containerPointerPos.value) return;
   if (!lastMouseDownContainerPointerPos.value) return;
-  const delta: Vector2d = {
+  const sizeDelta: Vector2d = {
     x: Math.round(
       (containerPointerPos.value.x -
         lastMouseDownContainerPointerPos.value.x +
@@ -1339,102 +1359,182 @@ function onResizeMove() {
     ),
   };
 
-  const presentSize =
-    resizedElementSizesPreResize[lastResizedElement.value.uniqueKey] ||
-    node.size;
+  const positionDelta: Vector2d = {
+    x: 0,
+    y: 0,
+  };
 
-  const newWidth = presentSize.width + delta.x * 2; // This is *2 because the coordinates system has x=0 on the center
-  const newHeight = presentSize.height + delta.y;
+  const minNodeDimension = NODE_WIDTH + 20 * 2;
+  const presentSize = resizedElementSizesPreResize[resizeTargetKey];
+  const presentPosition =
+    draggedElementsPositionsPreDrag.value[resizeTargetKey];
+
+  const rightBound = presentPosition.x + presentSize.width / 2;
+
+  switch (componentResizeMode.value) {
+    case "resize-bottom":
+      {
+        sizeDelta.x = 0;
+        const minDelta = minNodeDimension - presentSize.height;
+        if (sizeDelta.y < minDelta) {
+          sizeDelta.y = minDelta;
+        }
+      }
+      break;
+    case "resize-left":
+      {
+        sizeDelta.y = 0;
+        sizeDelta.x = -sizeDelta.x;
+        const minDelta = minNodeDimension - presentSize.width;
+        if (sizeDelta.x < minDelta) {
+          sizeDelta.x = minDelta;
+        }
+        positionDelta.x = -sizeDelta.x;
+      }
+      break;
+    case "resize-right":
+      {
+        sizeDelta.y = 0;
+        const minDelta = minNodeDimension - presentSize.width;
+        if (sizeDelta.x < minDelta) {
+          sizeDelta.x = minDelta;
+        }
+        positionDelta.x = sizeDelta.x;
+      }
+      break;
+
+    default:
+      // Note(victor,paul): This code handles resizing from the center. It is temporarily disabled.
+      //   {
+      //     const minXDelta = minNodeDimension * 2 - presentSize.width;
+      //     if (sizeDelta.x < minXDelta) {
+      //       sizeDelta.x = minXDelta;
+      //     }
+      //     const minYDelta = minNodeDimension - presentSize.height;
+      //     if (sizeDelta.y < minYDelta) {
+      //       sizeDelta.y = minYDelta;
+      //     }
+      //
+      //     sizeDelta.x *= 2;
+      //   }
+      break;
+  }
+
   const newNodeSize = {
-    width: Math.max(newWidth, NODE_WIDTH + 20 * 2),
-    height: Math.max(newHeight, NODE_WIDTH + 20 * 2),
+    width: presentSize.width + sizeDelta.x,
+    height: presentSize.height + sizeDelta.y,
   };
 
   // Get the correctly cached position for the element being resized
-  const nodePosition = resizePositionCache[lastResizedElement.value.uniqueKey];
+  const newNodePosition = {
+    x: presentPosition.x + positionDelta.x / 2,
+    y: presentPosition.y + positionDelta.y,
+  };
 
   // Make sure the frame doesn't shrink to be smaller than it's children
-  const contentsBox =
-    frameBoundingBoxes.value[lastResizedElement.value.uniqueKey];
+  const contentsBox = frameBoundingBoxes.value[resizeTargetKey];
 
   if (contentsBox) {
     // Resized element with top-left corner xy coordinates instead of top-center
     const newNodeRect = {
-      ...nodePosition,
+      ...newNodePosition,
       ...newNodeSize,
-      x: nodePosition.x - newNodeSize.width / 2,
+      x: newNodePosition.x - newNodeSize.width / 2,
     };
 
     // if resized was going to get smaller than children bounding box, set it to minimum necessary dimensions
-    const contentBottomY = contentsBox.y + contentsBox.height;
-    const minimumAcceptedHeight = contentBottomY - newNodeRect.y;
-    newNodeSize.height = Math.round(
-      Math.max(newNodeSize.height, minimumAcceptedHeight),
-    );
+    {
+      const contentBottomY = contentsBox.y + contentsBox.height;
+      const minimumAcceptedHeight = contentBottomY - newNodeRect.y;
+      newNodeRect.height = Math.round(
+        Math.max(newNodeSize.height, minimumAcceptedHeight),
+      );
+    }
 
-    const contentRightX = contentsBox.x + contentsBox.width;
-    const minimumSizeFromTheRight =
-      contentRightX - (newNodeRect.x + newNodeRect.width / 2);
+    // Check right collision
+    {
+      const internalX = contentsBox.x + contentsBox.width;
+      const externalX = newNodeRect.x + newNodeRect.width;
+      if (internalX > externalX) {
+        const minimumWidth = internalX - newNodeRect.x;
+        newNodeRect.width = minimumWidth;
+      }
+    }
 
-    const contentLeftX = contentsBox.x;
-    const minimumSizeFromTheLeft =
-      newNodeRect.x + newNodeRect.width / 2 - contentLeftX;
+    // Check left collision
+    {
+      const internalX = contentsBox.x;
+      const externalX = newNodeRect.x;
 
-    // Since we resize from the center, we need to limit the operation from left and right at once
-    const minimumAcceptedWidth =
-      Math.max(minimumSizeFromTheLeft, minimumSizeFromTheRight) * 2;
+      if (internalX < externalX) {
+        newNodeRect.x = internalX;
+        newNodeRect.width = rightBound - newNodeRect.x;
+      }
+    }
 
-    newNodeSize.width = Math.round(
-      Math.max(newNodeSize.width, minimumAcceptedWidth),
-    );
+    newNodePosition.x = newNodeRect.x + newNodeRect.width / 2;
+    newNodePosition.y = newNodeRect.y;
+    newNodeSize.width = newNodeRect.width;
+    newNodeSize.height = newNodeRect.height;
   }
 
   // Make sure the frame doesn't get larger than parent
-  const parentId =
-    movedElementParent[lastResizedElement.value.uniqueKey] || node.parentId;
+  const parentId = movedElementParent[resizeTargetKey] || node.parentId;
 
   if (parentId) {
-    // Resized element with top-left corner xy coordinates instead of top-center (recalculated in case nodeNewSize changed)
+    // Resized element with top-left corner xy coordinates instead of top-center
     const newNodeRect = {
-      ...nodePosition,
+      ...newNodePosition,
       ...newNodeSize,
-      x: nodePosition.x - newNodeSize.width / 2,
+      x: newNodePosition.x - newNodeSize.width / 2,
     };
 
     const parent = groups.value.find((g) => g.def.id === parentId);
     const parentShape = kStage.findOne(`#${parent?.uniqueKey}--bg`);
     if (parent && parentShape) {
-      const position =
+      const parentPosition =
         movedElementPositions[parent.uniqueKey] ?? parent.def.position;
 
       const parentContentRect = {
-        x: position.x - parentShape.width() / 2 + GROUP_INTERNAL_PADDING,
-        y: position.y + GROUP_INTERNAL_PADDING,
+        x: parentPosition.x - parentShape.width() / 2 + GROUP_INTERNAL_PADDING,
+        y: parentPosition.y + GROUP_INTERNAL_PADDING,
         width: parentShape.width() - GROUP_INTERNAL_PADDING * 2,
         height: parentShape.height() - GROUP_INTERNAL_PADDING * 2,
       };
 
+      // Bottom collision
       const bottom = parentContentRect.y + parentContentRect.height;
       if (bottom < newNodeRect.y + newNodeRect.height) {
-        newNodeSize.height = bottom - newNodeRect.y;
+        newNodeRect.height = bottom - newNodeRect.y;
       }
 
-      const nodeXCenter = nodePosition.x;
-      const left = parentContentRect.x;
-      const right = parentContentRect.x + parentContentRect.width;
+      // Right collision
+      const parentRight = parentContentRect.x + parentContentRect.width;
+      const childRight = newNodeRect.x + newNodeRect.width;
+      if (childRight > parentRight) {
+        newNodeRect.width = parentRight - newNodeRect.x;
+      }
 
-      if (newNodeRect.x < left || newNodeRect.x + newNodeRect.width > right) {
-        const rightSize = (right - nodeXCenter) * 2;
-        const leftSize = (nodeXCenter - left) * 2;
-        newNodeSize.width = Math.min(rightSize, leftSize);
+      // Left collision
+      const parentLeft = parentContentRect.x;
+      const childLeft = newNodeRect.x;
+      if (childLeft < parentLeft) {
+        newNodeRect.x = parentLeft;
+        newNodeRect.width = rightBound - parentLeft;
       }
     }
+
+    newNodePosition.x = newNodeRect.x + newNodeRect.width / 2;
+    newNodePosition.y = newNodeRect.y;
+    newNodeSize.width = newNodeRect.width;
+    newNodeSize.height = newNodeRect.height;
   }
 
-  resizedElementSizes[lastResizedElement.value.uniqueKey] = newNodeSize;
+  resizedElementSizes[resizeTargetKey] = newNodeSize;
+  movedElementPositions[resizeTargetKey] = newNodePosition;
   emit("resize-element", {
     element: lastResizedElement.value,
-    position: lastResizedElement.value.def.position,
+    position: newNodePosition,
     size: newNodeSize,
     isFinal: false,
   });
