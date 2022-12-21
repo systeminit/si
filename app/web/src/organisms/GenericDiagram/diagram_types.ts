@@ -12,6 +12,10 @@ export type GridPoint = { x: number; y: number };
 export type Size2D = { width: number; height: number };
 export type Direction = "up" | "down" | "left" | "right";
 
+export type ResizeEventType = "resize-left" | "resize-right" | "resize-bottom";
+
+export type MouseOverEventType = "group" | ResizeEventType;
+
 export type DiagramElementTypes = "node" | "socket" | "edge";
 
 export type DiagramElementUniqueKey = string;

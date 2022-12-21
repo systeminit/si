@@ -175,8 +175,8 @@
       />
     </v-group>
 
-    <!-- resize handle -->
-    <v-group
+    <!-- resize handles -->
+    <!--v-group
       :config="{
         x: size.width / 2 - RESIZE_HANDLE_SIZE,
         y: size.height - RESIZE_HANDLE_SIZE,
@@ -201,7 +201,41 @@
         @mouseover="onMouseOver('resize-handle', $event)"
         @mouseout="onMouseOut"
       />
-    </v-group>
+    </v-group-->
+
+    <!--  left side handle  -->
+    <v-rect
+      :config="{
+        width: GROUP_INTERNAL_PADDING * 2,
+        height: nodeBodyHeight - GROUP_INTERNAL_PADDING * 2,
+        x: -nodeWidth / 2 - GROUP_INTERNAL_PADDING,
+        y: GROUP_INTERNAL_PADDING,
+        hitStrokeWidth: 0,
+      }"
+      @mouseover="onMouseOver('resize-left', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- right side handle   -->
+    <v-rect
+      :config="{
+        width: GROUP_INTERNAL_PADDING * 2,
+        height: nodeBodyHeight - GROUP_INTERNAL_PADDING * 2,
+        x: nodeWidth / 2 - GROUP_INTERNAL_PADDING,
+        y: GROUP_INTERNAL_PADDING,
+      }"
+      @mouseover="onMouseOver('resize-right', $event)"
+      @mouseout="onMouseOut"
+    />
+    <v-rect
+      :config="{
+        width: nodeWidth - GROUP_INTERNAL_PADDING * 2,
+        height: GROUP_INTERNAL_PADDING * 2,
+        x: -nodeWidth / 2 + GROUP_INTERNAL_PADDING,
+        y: nodeBodyHeight - GROUP_INTERNAL_PADDING,
+      }"
+      @mouseover="onMouseOver('resize-bottom', $event)"
+      @mouseout="onMouseOut"
+    />
   </v-group>
 </template>
 
@@ -225,6 +259,7 @@ import {
   GROUP_HEADER_BOTTOM_MARGIN,
   GROUP_TITLE_FONT_SIZE,
   RESIZE_HANDLE_SIZE,
+  GROUP_INTERNAL_PADDING,
 } from "@/organisms/GenericDiagram/diagram_constants";
 import {
   DiagramDrawEdgeState,
@@ -232,6 +267,7 @@ import {
   DiagramElementUniqueKey,
   DiagramGroupData,
   Size2D,
+  MouseOverEventType,
 } from "./diagram_types";
 
 import DiagramIcon from "./DiagramIcon.vue";
@@ -370,7 +406,7 @@ watch([() => props.group.def.isLoading, overlay], ([isLoading]) => {
 });
 
 function onMouseOver(
-  target: "group" | "resize-handle",
+  target: MouseOverEventType,
   evt: KonvaEventObject<MouseEvent>,
 ) {
   evt.cancelBubble = true;
