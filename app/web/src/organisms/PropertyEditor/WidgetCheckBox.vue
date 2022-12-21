@@ -1,23 +1,22 @@
 <template>
   <div v-show="isShown" class="flex content-center">
-    <div class="flex grow">
-      <div class="w-full">
-        <SiCheckBox
-          :id="fieldId"
-          v-model="currentValue"
-          :title="props.name"
-          :doc-link="docLink"
-          :validations="validations"
-          :disabled="disabled"
-          always-validate
-          @blur="setField"
-        />
-      </div>
+    <div class="w-full">
+      <SiCheckBox
+        :id="fieldId"
+        v-model="currentValue"
+        :title="props.name"
+        :doc-link="docLink"
+        :validations="validations"
+        :disabled="disabled"
+        always-validate
+        @blur="setField"
+      />
     </div>
     <UnsetButton
       v-if="!disabled"
       :disabled="disableUnset"
       @click="unsetField"
+      class="-mt-0.5"
     />
   </div>
 </template>
