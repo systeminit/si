@@ -28,7 +28,7 @@
         </span>
         <StatusIndicatorIcon
           type="confirmation"
-          :status="fixesStore.statusByComponentId[componentId]"
+          :status="fixesStore.confirmationStatusByComponentId[componentId]"
         />
       </div>
     </div>

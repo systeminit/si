@@ -945,7 +945,7 @@ BEGIN
     INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility) AS avbtap
         ON avbtap.belongs_to_id = ap.id
             AND avbtap.object_id = given_attribute_value.id;
-    IF NOT FOUND THEN
+    IF original_attribute_prototype IS NULL THEN
         RAISE 'Unable to find AttributePrototype for AttributeValue(%), Tenancy(%), Visibility(%)', given_attribute_value.id,
                                                                                                     this_read_tenancy,
                                                                                                     this_visibility;
@@ -1653,7 +1653,7 @@ BEGIN
     ORDER BY id,
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC;
-    IF NOT FOUND THEN
+    IF attribute_prototype_id IS NULL THEN
         RAISE 'Unable to find AttributePrototype of parent AttributeValue(%) with Tenancy(%) and Visibility(%)', this_parent_attribute_value_id,
                                                                                                                  this_read_tenancy,
                                                                                                                  this_visibility;
