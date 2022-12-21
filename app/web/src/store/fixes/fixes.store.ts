@@ -147,7 +147,10 @@ export const useFixesStore = () => {
           return "success";
         },
         statusByComponentId(): Record<ComponentId, ConfirmationStatus> {
-          const map: Record<ComponentId, ConfirmationStatus> = {};
+          const map = _.pickBy(
+            this.confirmationStatusByComponentId,
+            (c) => !!c,
+          ) as Record<ComponentId, ConfirmationStatus>;
           for (const fixes of this.fixesOnRunningBatch) {
             switch (fixes.status) {
               case "success":
