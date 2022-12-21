@@ -74,6 +74,8 @@ pub enum Validation {
     StringIsValidIpAddr { value: Option<String> },
     /// Validate that the "value" string is a Hex Color.
     StringIsHexColor { value: Option<String> },
+    /// Validate that the "value" is not empty
+    StringIsNotEmpty { value: Option<String> },
 }
 
 impl Validation {
@@ -111,6 +113,9 @@ impl Validation {
                 value: Self::value_as_string(value)?,
             },
             Validation::StringIsHexColor { value: _ } => Validation::StringIsHexColor {
+                value: Self::value_as_string(value)?,
+            },
+            Validation::StringIsNotEmpty { value: _ } => Validation::StringIsNotEmpty {
                 value: Self::value_as_string(value)?,
             },
         };
