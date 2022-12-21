@@ -1132,13 +1132,23 @@ impl MigrationDriver {
             .await?;
 
         // Prop Creation
-        self.create_prop(
+        let description_prop = self
+            .create_prop(
+                ctx,
+                "Description",
+                PropKind::String,
+                None,
+                Some(root_prop.domain_prop_id),
+                Some(SECURITY_GROUP_DOCS_URL.to_string()),
+            )
+            .await?;
+
+        self.create_validation(
             ctx,
-            "Description",
-            PropKind::String,
-            None,
-            Some(root_prop.domain_prop_id),
-            Some(SECURITY_GROUP_DOCS_URL.to_string()),
+            Validation::StringIsNotEmpty { value: None },
+            *description_prop.id(),
+            *schema.id(),
+            *schema_variant.id(),
         )
         .await?;
 
