@@ -193,15 +193,15 @@ impl SchemaVariant {
                 WidgetKind::Select,
                 Some(serde_json::json!([
                     {
-                        "label": "component",
+                        "label": "Component",
                         "value": "component",
                     },
                     {
-                        "label": "configurationFrame",
+                        "label": "Configuration Frame",
                         "value": "configurationFrame",
                     },
                     {
-                        "label": "aggregationFrame",
+                        "label": "Aggregation Frame",
                         "value": "aggregationFrame",
                     },
                 ])),

@@ -88,7 +88,7 @@ impl FuncBackend for FuncBackendValidation {
                         })
                     }
                 },
-                None => Some(value_must_be_present_error),
+                None => None,
             },
             Validation::StringEquals { value, expected } => match value {
                 Some(value) => match value == expected {
