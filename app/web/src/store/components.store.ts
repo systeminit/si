@@ -603,15 +603,22 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           position: Vector2d,
           size?: Size2D,
         ) {
+          let width;
+          let height;
+          if (size) {
+            width = Math.round(size.width).toString();
+            height = Math.round(size.height).toString();
+          }
+
           return new ApiRequest<{ componentStats: ComponentStats }>({
             method: "post",
             url: "diagram/set_node_position",
             params: {
               nodeId,
-              x: position.x.toString(),
-              y: position.y.toString(),
-              width: size?.width.toString(),
-              height: size?.height.toString(),
+              x: Math.round(position.x).toString(),
+              y: Math.round(position.y).toString(),
+              width,
+              height,
               diagramKind: "configuration",
               ...visibilityParams,
             },

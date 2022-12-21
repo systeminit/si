@@ -226,6 +226,7 @@
       @mouseover="onMouseOver('resize-right', $event)"
       @mouseout="onMouseOut"
     />
+    <!-- Bottom Handle -->
     <v-rect
       :config="{
         width: nodeWidth - GROUP_INTERNAL_PADDING * 2,
@@ -234,6 +235,28 @@
         y: nodeBodyHeight - GROUP_INTERNAL_PADDING,
       }"
       @mouseover="onMouseOver('resize-bottom', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Bottom Left Handle -->
+    <v-rect
+      :config="{
+        width: GROUP_INTERNAL_PADDING * 2,
+        height: GROUP_INTERNAL_PADDING * 2,
+        x: -nodeWidth / 2 - GROUP_INTERNAL_PADDING,
+        y: nodeBodyHeight - GROUP_INTERNAL_PADDING,
+      }"
+      @mouseover="onMouseOver('resize-bl', $event)"
+      @mouseout="onMouseOut"
+    />
+    <!-- Bottom Right Handle -->
+    <v-rect
+      :config="{
+        width: GROUP_INTERNAL_PADDING * 2,
+        height: GROUP_INTERNAL_PADDING * 2,
+        x: +nodeWidth / 2 - GROUP_INTERNAL_PADDING,
+        y: nodeBodyHeight - GROUP_INTERNAL_PADDING,
+      }"
+      @mouseover="onMouseOver('resize-br', $event)"
       @mouseout="onMouseOut"
     />
   </v-group>
