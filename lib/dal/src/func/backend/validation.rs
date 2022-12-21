@@ -55,6 +55,13 @@ impl FuncBackend for FuncBackendValidation {
                 },
                 None => Some(value_must_be_present_error),
             },
+            Validation::StringIsNotEmpty { value} => match value {
+                Some(value) => match !value.is_empty() {
+                    true => None,
+                    false => Some(value_must_be_present_error),
+                },
+                None => Some(value_must_be_present_error),
+            },
             Validation::StringIsValidIpAddr { value } => match value {
                 Some(value) => match IpAddr::from_str(&value) {
                     Ok(_) => None,
