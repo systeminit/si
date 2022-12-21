@@ -616,6 +616,10 @@ const cursor = computed(() => {
         return "ew-resize";
       case "resize-bottom":
         return "ns-resize";
+      case "resize-bl":
+        return "nesw-resize";
+      case "resize-br":
+        return "nwse-resize";
       default:
         return "auto";
     }
@@ -1402,21 +1406,35 @@ function onResizeMove() {
         positionDelta.x = sizeDelta.x;
       }
       break;
+    case "resize-bl":
+      {
+        const minYDelta = minNodeDimension - presentSize.height;
+        if (sizeDelta.y < minYDelta) {
+          sizeDelta.y = minYDelta;
+        }
 
+        sizeDelta.x = -sizeDelta.x;
+        const minXDelta = minNodeDimension - presentSize.width;
+        if (sizeDelta.x < minXDelta) {
+          sizeDelta.x = minXDelta;
+        }
+        positionDelta.x = -sizeDelta.x;
+      }
+      break;
+    case "resize-br":
+      {
+        const minYDelta = minNodeDimension - presentSize.height;
+        if (sizeDelta.y < minYDelta) {
+          sizeDelta.y = minYDelta;
+        }
+        const minXDelta = minNodeDimension - presentSize.width;
+        if (sizeDelta.x < minXDelta) {
+          sizeDelta.x = minXDelta;
+        }
+        positionDelta.x = sizeDelta.x;
+      }
+      break;
     default:
-      // Note(victor,paul): This code handles resizing from the center. It is temporarily disabled.
-      //   {
-      //     const minXDelta = minNodeDimension * 2 - presentSize.width;
-      //     if (sizeDelta.x < minXDelta) {
-      //       sizeDelta.x = minXDelta;
-      //     }
-      //     const minYDelta = minNodeDimension - presentSize.height;
-      //     if (sizeDelta.y < minYDelta) {
-      //       sizeDelta.y = minYDelta;
-      //     }
-      //
-      //     sizeDelta.x *= 2;
-      //   }
       break;
   }
 
