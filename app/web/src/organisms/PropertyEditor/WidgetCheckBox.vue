@@ -15,8 +15,8 @@
     <UnsetButton
       v-if="!disabled"
       :disabled="disableUnset"
-      @click="unsetField"
       class="-mt-0.5"
+      @click="unsetField"
     />
   </div>
 </template>
