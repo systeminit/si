@@ -23,7 +23,7 @@ use crate::{
     HistoryEventError, ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel,
     StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
-use crate::{AttributeValueError, AttributeValueId};
+use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType};
 
 const ALL_ANCESTOR_PROPS: &str = include_str!("./queries/prop_all_ancestor_props.sql");
 const FIND_ROOT_FOR_SCHEMA_VARIANT: &str =
@@ -101,6 +101,19 @@ impl From<PropKind> for WidgetKind {
             PropKind::String | PropKind::Integer => Self::Text,
             PropKind::Object => Self::Header,
             PropKind::Map => Self::Map,
+        }
+    }
+}
+
+impl From<PropKind> for FuncBackendResponseType {
+    fn from(prop: PropKind) -> Self {
+        match prop {
+            PropKind::Array => Self::Array,
+            PropKind::Boolean => Self::Boolean,
+            PropKind::Integer => Self::Integer,
+            PropKind::Object => Self::PropObject,
+            PropKind::Map => Self::Map,
+            PropKind::String => Self::String,
         }
     }
 }

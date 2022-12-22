@@ -140,6 +140,8 @@ pub enum FuncError {
     FuncCannotBeTurnedIntoVariant(FuncId),
     #[error("unexpected func variant ({0:?}) creating attribute func")]
     UnexpectedFuncVariantCreatingAttributeFunc(FuncVariant),
+    #[error("cannot bind func to different prop kinds")]
+    FuncDestinationPropKindMismatch,
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;
