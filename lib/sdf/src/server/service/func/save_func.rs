@@ -19,10 +19,10 @@ use dal::{
     validation::prototype::context::ValidationPrototypeContext,
     AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributePrototypeId,
     AttributeValue, Component, ComponentId, ConfirmationPrototype, DalContext, Func,
-    FuncBackendKind, FuncBinding, FuncId, InternalProviderId, PrototypeListForFunc,
+    FuncBackendKind, FuncBinding, FuncId, InternalProviderId, Prop, PrototypeListForFunc,
     SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
-use dal::{FuncBackendResponseType, SchemaVariant, ValidationPrototype};
+use dal::{FuncBackendResponseType, PropKind, SchemaVariant, ValidationPrototype};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -126,13 +126,17 @@ async fn save_attr_func_proto_arguments(
     Ok(())
 }
 
-// What should we do with the prototypes and values that are currently associated with function but
-// that we want to remove the association?
+/// Determines what we should do with the [`AttributePrototype`](crate::AttributePrototype) and
+/// [`AttributeValues`](crate:AttributeValue) that are currently associated with a function but
+/// that are having their association removed.
+///
+/// `RemovedPrototypeOp::Reset` takes the currenty value and resets the prototype to set it to that
+/// value using a builtin value function, like `si:setString`, etc.
+///
+/// `RemovedPrototypeOp::Delete` deletes the prototype and its values.
 enum RemovedPrototypeOp {
-    Reset, // Reset to the builtin value functions and set the value to the existing value, this is
-    // what we want to do with functions on "normal" props under the domain
-    Delete, // Delete the prototype and the values. This what we want to do for map entries in
-            // special props like "qualification" and "code"
+    Reset,
+    Delete,
 }
 
 async fn save_attr_func_prototypes(
@@ -141,8 +145,10 @@ async fn save_attr_func_prototypes(
     prototypes: Vec<AttributePrototypeView>,
     remoted_protoype_op: RemovedPrototypeOp,
     key: Option<String>,
-) -> FuncResult<()> {
+) -> FuncResult<Option<PropKind>> {
     let mut id_set = HashSet::new();
+    let mut prop_kind: Option<PropKind> = None;
+
     for proto_view in prototypes {
         let context = proto_view.to_attribute_context()?;
 
@@ -209,6 +215,17 @@ async fn save_attr_func_prototypes(
 
         id_set.insert(*proto.id());
 
+        let prop = Prop::get_by_id(ctx, &proto.context.prop_id())
+            .await?
+            .ok_or(FuncError::PropNotFound)?;
+        if let Some(prop_kind) = prop_kind {
+            if prop_kind != *prop.kind() {
+                return Err(FuncError::FuncDestinationPropKindMismatch);
+            }
+        } else {
+            prop_kind = Some(*prop.kind());
+        }
+
         save_attr_func_proto_arguments(ctx, &proto, proto_view.prototype_arguments, need_to_create)
             .await?;
     }
@@ -226,7 +243,7 @@ async fn save_attr_func_prototypes(
         }
     }
 
-    Ok(())
+    Ok(prop_kind)
 }
 
 async fn attribute_view_for_leaf_func(
@@ -577,7 +594,7 @@ pub async fn save_func<'a>(
                     arguments,
                 }) = request.associations
                 {
-                    save_attr_func_prototypes(
+                    let prop_kind = save_attr_func_prototypes(
                         &ctx,
                         &func,
                         prototypes,
@@ -586,6 +603,21 @@ pub async fn save_func<'a>(
                     )
                     .await?;
                     save_attr_func_arguments(&ctx, &func, arguments).await?;
+
+                    match prop_kind {
+                        Some(prop_kind) => {
+                            func.set_backend_response_type(
+                                &ctx,
+                                Into::<FuncBackendResponseType>::into(prop_kind),
+                            )
+                            .await?
+                        }
+                        // If we're removing all associations there won't be a prop kind
+                        None => {
+                            func.set_backend_response_type(&ctx, FuncBackendResponseType::Unset)
+                                .await?
+                        }
+                    };
                 }
             }
         },

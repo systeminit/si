@@ -51,6 +51,8 @@ const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
 const FIND_FOR_FUNC: &str = include_str!("../queries/attribute_prototype_find_for_func.sql");
 const FIND_FOR_CONTEXT_AND_KEY: &str =
     include_str!("../queries/attribute_prototype_find_for_context_and_key.sql");
+const FIND_FOR_CONTEXT_NULL_KEY: &str =
+    include_str!("../queries/attribute_prototype_find_for_context_null_key.sql");
 const FIND_FOR_FUNC_AS_VARIANT_AND_COMPONENT: &str =
     include_str!("../queries/attribute_prototype/find_for_func_as_variant_and_component.sql");
 
@@ -801,22 +803,38 @@ impl AttributePrototype {
         context: AttributeContext,
         key: &Option<String>,
     ) -> AttributePrototypeResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                FIND_FOR_CONTEXT_AND_KEY,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &context.prop_id(),
-                    &context.internal_provider_id(),
-                    &context.external_provider_id(),
-                    &context.component_id(),
-                    &key,
-                ],
-            )
-            .await?;
+        let rows = if key.is_some() {
+            ctx.txns()
+                .pg()
+                .query(
+                    FIND_FOR_CONTEXT_AND_KEY,
+                    &[
+                        ctx.read_tenancy(),
+                        ctx.visibility(),
+                        &context.prop_id(),
+                        &context.internal_provider_id(),
+                        &context.external_provider_id(),
+                        &context.component_id(),
+                        &key,
+                    ],
+                )
+                .await?
+        } else {
+            ctx.txns()
+                .pg()
+                .query(
+                    FIND_FOR_CONTEXT_NULL_KEY,
+                    &[
+                        ctx.read_tenancy(),
+                        ctx.visibility(),
+                        &context.prop_id(),
+                        &context.internal_provider_id(),
+                        &context.external_provider_id(),
+                        &context.component_id(),
+                    ],
+                )
+                .await?
+        };
 
         Ok(standard_model::objects_from_rows(rows)?)
     }
