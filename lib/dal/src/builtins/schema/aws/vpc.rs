@@ -14,17 +14,19 @@ use crate::{
     StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{
-    builtins::schema::aws::{AWS_NODE_COLOR, EC2_DOCS_URL, EC2_TAG_DOCS_URL},
+    builtins::schema::aws::{AWS_NODE_COLOR, EC2_TAG_DOCS_URL},
     schema::variant::leaves::LeafInput,
 };
 
 // VPC documentation URLs
-const INGRESS_EGRESS_DOCS_URL: &str =
-    "https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html";
-const SECURITY_GROUP_DOCS_URL: &str =
-    "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-security-groups.html";
 const AWS_REGIONS_DOCS_URL: &str =
     "https://docs.aws.amazon.com/general/latest/gr/rande.html#region-names-codes";
+const EC2_SECURITY_GROUP_INGRESS_PROPERTIES_DOCS_URL: &str =
+    "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-ingress.html#aws-properties-ec2-security-group-ingress-properties";
+const EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL: &str =
+    "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-egress.html#aws-properties-ec2-security-group-egress-properties";
+const EC2_SECURITY_GROUP_PROPERTIES_DOCS_URL: &str =
+    "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html#aws-properties-ec2-security-group-properties";
 
 // Datasets
 const INGRESS_EGRESS_PROTOCOLS: &[&str; 3] = &["tcp", "udp", "icmp"];
@@ -69,7 +71,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_INGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -80,7 +82,7 @@ impl MigrationDriver {
                 PropKind::Array,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                None,
             )
             .await?;
 
@@ -91,7 +93,7 @@ impl MigrationDriver {
                 PropKind::Object,
                 None,
                 Some(*ip_permissions_prop.id()),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                None,
             )
             .await?;
 
@@ -102,7 +104,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(*ip_permission_prop.id()),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_INGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -131,7 +133,7 @@ impl MigrationDriver {
                 PropKind::Integer,
                 None,
                 Some(*ip_permission_prop.id()),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_INGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -156,7 +158,7 @@ impl MigrationDriver {
                 PropKind::Integer,
                 None,
                 Some(*ip_permission_prop.id()),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_INGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -181,7 +183,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(*ip_permission_prop.id()),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_INGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -213,7 +215,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
+                None,
             )
             .await?;
 
@@ -652,7 +654,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -663,7 +665,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -691,7 +693,7 @@ impl MigrationDriver {
                 PropKind::Integer,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -715,7 +717,7 @@ impl MigrationDriver {
                 PropKind::Integer,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -739,7 +741,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(INGRESS_EGRESS_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -770,7 +772,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
+                None,
             )
             .await?;
 
@@ -1139,7 +1141,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(SECURITY_GROUP_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -1159,7 +1161,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(SECURITY_GROUP_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -1170,7 +1172,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(SECURITY_GROUP_DOCS_URL.to_string()),
+                Some(EC2_SECURITY_GROUP_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -1214,7 +1216,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
+                None,
             )
             .await?;
 

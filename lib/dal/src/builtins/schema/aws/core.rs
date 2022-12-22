@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::builtins::schema::aws::{AWS_NODE_COLOR, EC2_DOCS_URL, EC2_TAG_DOCS_URL};
+use crate::builtins::schema::aws::{AWS_NODE_COLOR, EC2_INSTANCE_TYPES_URL, EC2_TAG_DOCS_URL};
 use crate::builtins::schema::MigrationDriver;
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
@@ -25,13 +25,15 @@ use crate::{AttributeValueError, SchemaVariant};
 
 // Core documentation URLs
 const AMI_DOCS_URL: &str =
-    "https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html";
+    "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/finding-an-ami.html";
 const AWS_REGIONS_DOCS_URL: &str =
     "https://docs.aws.amazon.com/general/latest/gr/rande.html#region-names-codes";
-const EC2_INSTANCE_TYPES_URL: &str =
-    "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html";
-const KEY_PAIR_DOCS_URL: &str =
-    "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html";
+const EC2_INSTANCE_PROPERTIES_DOCS_URL: &str =
+    "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-instance.html#aws-properties-ec2-instance-properties";
+// const EC2_EIP_PROPERTIES_DOCS_URL: &str =
+//     "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eip.html#aws-resource-ec2-eip-properties";
+const EC2_KEYPAIR_PROPERTIES_DOCS_URL: &str =
+    "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html#aws-resource-ec2-keypair-properties";
 
 // Datasets
 const REGIONS_JSON_STR: &str = include_str!("../data/aws_regions.json");
@@ -306,7 +308,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
+                Some(AMI_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -365,7 +367,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
+                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -377,7 +379,7 @@ impl MigrationDriver {
                 PropKind::Array,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
+                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -389,7 +391,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(*security_groups_prop.id()),
-                Some(EC2_DOCS_URL.to_string()),
+                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -425,7 +427,7 @@ impl MigrationDriver {
                 PropKind::String,
                 Some((WidgetKind::TextArea, None)),
                 Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
+                Some(EC2_INSTANCE_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -437,7 +439,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
+                None,
             )
             .await?;
 
@@ -1142,7 +1144,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
+                None,
             )
             .await?;
 
@@ -1475,7 +1477,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(KEY_PAIR_DOCS_URL.to_string()),
+                Some(EC2_KEYPAIR_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -1499,7 +1501,7 @@ impl MigrationDriver {
                     ])),
                 )),
                 Some(root_prop.domain_prop_id),
-                Some(KEY_PAIR_DOCS_URL.to_string()),
+                Some(EC2_KEYPAIR_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
@@ -1535,7 +1537,7 @@ impl MigrationDriver {
                 PropKind::String,
                 None,
                 Some(root_prop.domain_prop_id),
-                Some(EC2_DOCS_URL.to_string()),
+                None,
             )
             .await?;
 
