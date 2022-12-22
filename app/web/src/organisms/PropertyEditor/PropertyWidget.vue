@@ -200,7 +200,7 @@ const emits = defineEmits<{
 const disabled = computed(
   () =>
     props.disabled ||
-    isCustomizableFuncKind(props.propValue.func.backendKind) ||
+    isCustomizableFuncKind(props.propValue.func.variant) ||
     props.schemaProp.isReadonly,
 );
 

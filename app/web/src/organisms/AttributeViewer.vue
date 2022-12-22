@@ -7,7 +7,6 @@
       @updated-property="updateProperty"
       @add-to-array="addToArray"
       @add-to-map="addToMap"
-      @create-attribute-func="onCreateAttributeFunc"
     />
     <div v-else class="p-md text-center text-lg">Loading...</div>
   </div>
@@ -19,17 +18,10 @@ import {
   UpdatedProperty,
   AddToArray,
   AddToMap,
-  FuncWithPrototypeContext,
 } from "@/api/sdf/dal/property_editor";
-import { FuncBackendKind } from "@/api/sdf/dal/func";
-import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { useComponentsStore } from "@/store/components.store";
-import { useFuncStore } from "@/store/func/funcs.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
 import PropertyEditor from "./PropertyEditor.vue";
-
-const funcStore = useFuncStore();
-const routeToFunc = useRouteToFunc();
 
 const props = defineProps<{
   disabled?: boolean;
@@ -88,27 +80,5 @@ const addToMap = (event: AddToMap) => {
       attributeContext: getAttributeContext(event.propId),
     },
   });
-};
-
-const onCreateAttributeFunc = async (
-  currentFunc: FuncWithPrototypeContext,
-  valueId: string,
-  parentValueId?: string,
-) => {
-  const res = await funcStore.CREATE_FUNC({
-    kind: FuncBackendKind.JsAttribute,
-    options: {
-      valueId,
-      parentValueId,
-      componentId: lastSelectedComponent.value.id,
-      schemaVariantId: lastSelectedComponent.value.schemaVariantId,
-      schemaId: lastSelectedComponent.value.schemaId,
-      currentFuncId: currentFunc.id,
-      type: "attributeOptions",
-    },
-  });
-  if (res.result.success) {
-    routeToFunc(res.result.data.id);
-  }
 };
 </script>

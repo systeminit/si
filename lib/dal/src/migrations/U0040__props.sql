@@ -63,3 +63,53 @@ BEGIN
     object := row_to_json(this_new_row);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
+
+CREATE OR REPLACE FUNCTION find_schema_variant_id_for_prop_v1(
+    this_tenancy jsonb,
+   this_visibility jsonb,
+    prop_id ident,
+    OUT schema_variant_id ident) AS
+$$
+DECLARE
+    root_prop_id ident;
+BEGIN
+    SELECT find_root_prop_id_v1(
+        this_tenancy,
+        this_visibility,
+        prop_id
+    )
+    INTO STRICT root_prop_id;
+
+    SELECT right_object_id
+    INTO STRICT schema_variant_id
+    FROM prop_many_to_many_schema_variants_v1($1, $2) as pmtmsv
+    WHERE pmtmsv.left_object_id = root_prop_id;
+END;
+$$ LANGUAGE PLPGSQL STABLE;
+
+CREATE OR REPLACE FUNCTION find_root_prop_id_v1(
+    this_tenancy jsonb,
+    this_visibility jsonb,
+    prop_id ident,
+    OUT root_prop_id ident) AS
+$$
+DECLARE
+    current_prop_id ident;
+BEGIN
+    current_prop_id := prop_id;
+    root_prop_id := current_prop_id;
+    LOOP
+        SELECT belongs_to_id
+        INTO current_prop_id
+        FROM prop_belongs_to_prop_v1($1, $2)  
+        WHERE object_id=current_prop_id;
+
+        IF NOT FOUND THEN
+            EXIT;
+        END IF;
+
+        root_prop_id := current_prop_id;
+    END LOOP;
+END;
+$$ LANGUAGE PLPGSQL STABLE;
+

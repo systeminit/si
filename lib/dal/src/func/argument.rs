@@ -11,7 +11,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 const LIST_FOR_FUNC: &str = include_str!("../queries/func_argument_list_for_func.sql");
-const LIST_FOR_FUNC_WITH_PROTOTTYPE_ARGUMENTS: &str =
+const LIST_FOR_FUNC_WITH_PROTOTYPE_ARGUMENTS: &str =
     include_str!("../queries/func_argument_list_for_func_with_prototype_arguments.sql");
 const FIND_BY_NAME_FOR_FUNC: &str =
     include_str!("../queries/func_argument_find_by_name_for_func.sql");
@@ -163,7 +163,7 @@ impl FuncArgument {
             .txns()
             .pg()
             .query(
-                LIST_FOR_FUNC_WITH_PROTOTTYPE_ARGUMENTS,
+                LIST_FOR_FUNC_WITH_PROTOTYPE_ARGUMENTS,
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),

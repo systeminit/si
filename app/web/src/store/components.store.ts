@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import _, { isUndefined } from "lodash";
+import _ from "lodash";
 import { Vector2d } from "konva/lib/types";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 

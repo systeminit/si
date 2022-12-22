@@ -19,7 +19,7 @@ use crate::{Component, ComponentError, ComponentId};
 // struct. This struct is a temporary stopgap until that's implemented.
 #[derive(Deserialize, Debug)]
 pub struct QualificationEntry {
-    pub result: QualificationSubCheckStatus,
+    pub result: Option<QualificationSubCheckStatus>,
     pub message: Option<String>,
 }
 

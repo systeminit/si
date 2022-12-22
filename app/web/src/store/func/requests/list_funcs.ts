@@ -1,4 +1,4 @@
-import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
+import { Func, FuncVariant } from "@/api/sdf/dal/func";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 import { Visibility } from "@/api/sdf/dal/visibility";
 
@@ -15,7 +15,7 @@ function nilId(): string {
 export const nullListFunc: ListedFuncView = {
   id: nilId(),
   handler: "",
-  kind: FuncBackendKind.Unset,
+  variant: FuncVariant.Attribute,
   name: "",
   isBuiltin: false,
 };

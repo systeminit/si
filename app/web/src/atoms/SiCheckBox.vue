@@ -85,7 +85,7 @@ const emit = defineEmits(["update:modelValue", "error", "blur"]);
 
 const alwaysValidate = toRef(props, "alwaysValidate", false);
 
-const { inError, reallyDirty, setDirty, setInError } = useValidations(
+const { inError, setDirty, setInError } = useValidations(
   alwaysValidate,
   () => emit("blur", inputValue),
   (inError: boolean) => emit("error", inError),

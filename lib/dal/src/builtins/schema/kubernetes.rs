@@ -82,6 +82,7 @@ impl MigrationDriver {
             ctx,
             code_generation_func_id,
             *schema_variant.id(),
+            None,
             LeafKind::CodeGeneration,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,
@@ -239,6 +240,7 @@ impl MigrationDriver {
             ctx,
             qualification_func_id,
             *schema_variant.id(),
+            None,
             LeafKind::Qualification,
             vec![LeafInput {
                 location: LeafInputLocation::Code,
@@ -264,6 +266,7 @@ impl MigrationDriver {
             ctx,
             code_generation_func_id,
             *schema_variant.id(),
+            None,
             LeafKind::CodeGeneration,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,

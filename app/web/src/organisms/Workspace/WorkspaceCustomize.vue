@@ -38,7 +38,7 @@ import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
 import FuncEditorTabs from "@/organisms/FuncEditor/FuncEditorTabs.vue";
 import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
 import { ListedFuncView } from "@/store/func/requests/list_funcs";
-import { FuncBackendKind } from "@/api/sdf/dal/func";
+import { FuncVariant } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { useFuncStore } from "@/store/func/funcs.store";
 
@@ -81,20 +81,20 @@ watch(
 
 const createFunc = async ({
   isBuiltin,
-  kind,
+  variant,
   name,
 }: {
-  kind: FuncBackendKind;
+  variant: FuncVariant;
   isBuiltin: boolean;
   name?: string;
 }) => {
   let func;
 
   if (isDevMode && isBuiltin && !_.isNil(name)) {
-    const res = await funcStore.CREATE_BUIILTIN_FUNC({ name, kind });
+    const res = await funcStore.CREATE_BUILTIN_FUNC({ name, variant });
     func = res.result.success && res.result.data;
   } else {
-    const res = await funcStore.CREATE_FUNC({ kind });
+    const res = await funcStore.CREATE_FUNC({ variant });
     func = res.result.success && res.result.data;
   }
 

@@ -53,6 +53,7 @@ impl MigrationDriver {
             ctx,
             qualification_func_id,
             *schema_variant.id(),
+            None,
             LeafKind::Qualification,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,
@@ -197,6 +198,7 @@ impl MigrationDriver {
             ctx,
             qualification_func_id,
             *schema_variant.id(),
+            None,
             LeafKind::Qualification,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,

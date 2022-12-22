@@ -3,10 +3,10 @@
     v-if="selectedFuncId !== nilId()"
     class="absolute h-full w-full flex flex-col overflow-hidden"
   >
-    <SiTabGroup :selected-index="0">
+    <SiTabGroup>
       <template #tabs>
         <SiTabHeader>Properties</SiTabHeader>
-        <SiTabHeader v-if="editingFunc.kind === FuncBackendKind.JsAttribute"
+        <SiTabHeader v-if="editingFunc.variant === FuncVariant.Attribute"
           >Bindings
         </SiTabHeader>
       </template>
@@ -76,8 +76,10 @@
           </SiCollapsible>
           <SiCollapsible
             v-if="
-              editingFunc.kind === FuncBackendKind.JsConfirmation ||
-              editingFunc.kind === FuncBackendKind.JsValidation
+              editingFunc.variant === FuncVariant.CodeGeneration ||
+              editingFunc.variant === FuncVariant.Confirmation ||
+              editingFunc.variant === FuncVariant.Qualification ||
+              editingFunc.variant === FuncVariant.Validation
             "
             label="Run On"
             default-open
@@ -120,7 +122,7 @@
             />
           </SiCollapsible>
           <SiCollapsible
-            v-if="editingFunc.kind === FuncBackendKind.JsAttribute"
+            v-if="editingFunc.variant === FuncVariant.Attribute"
             label="Arguments"
             default-open
           >
@@ -136,7 +138,7 @@
           </SiCollapsible>
         </TabPanel>
 
-        <TabPanel v-if="editingFunc.kind === FuncBackendKind.JsAttribute">
+        <TabPanel v-if="editingFunc.variant === FuncVariant.Attribute">
           <AttributeBindings
             v-if="
               editingFunc.associations &&
@@ -163,7 +165,7 @@ import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
-import { FuncBackendKind, FuncArgument } from "@/api/sdf/dal/func";
+import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, nullEditingFunc } from "@/store/func/funcs.store";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";

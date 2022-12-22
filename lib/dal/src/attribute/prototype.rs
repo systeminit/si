@@ -29,8 +29,8 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, ComponentId,
     DalContext, ExternalProviderId, HistoryEventError, InternalProviderId, PropError, PropKind,
-    ReadTenancy, ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility,
-    WriteTenancy,
+    ReadTenancy, ReadTenancyError, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
+    Visibility, WriteTenancy,
 };
 
 pub mod argument;
@@ -49,7 +49,10 @@ const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list
 const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_prototype_find_with_parent_value_and_key_for_context.sql");
 const FIND_FOR_FUNC: &str = include_str!("../queries/attribute_prototype_find_for_func.sql");
-const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_find_for_context.sql");
+const FIND_FOR_CONTEXT_AND_KEY: &str =
+    include_str!("../queries/attribute_prototype_find_for_context_and_key.sql");
+const FIND_FOR_FUNC_AS_VARIANT_AND_COMPONENT: &str =
+    include_str!("../queries/attribute_prototype/find_for_func_as_variant_and_component.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
@@ -769,15 +772,40 @@ impl AttributePrototype {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    pub async fn find_for_context(
+    pub async fn find_for_func_as_variant_and_component(
+        ctx: &DalContext,
+        func_id: FuncId,
+    ) -> AttributePrototypeResult<Vec<(SchemaVariantId, ComponentId)>> {
+        let mut result = vec![];
+
+        let rows = ctx
+            .pg_txn()
+            .query(
+                FIND_FOR_FUNC_AS_VARIANT_AND_COMPONENT,
+                &[ctx.read_tenancy(), ctx.visibility(), &func_id],
+            )
+            .await?;
+
+        for row in rows.into_iter() {
+            let schema_variant_id: SchemaVariantId = row.try_get("schema_variant_id")?;
+            let component_id: ComponentId = row.try_get("component_id")?;
+
+            result.push((schema_variant_id, component_id));
+        }
+
+        Ok(result)
+    }
+
+    pub async fn find_for_context_and_key(
         ctx: &DalContext,
         context: AttributeContext,
+        key: &Option<String>,
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .pg()
             .query(
-                FIND_FOR_CONTEXT,
+                FIND_FOR_CONTEXT_AND_KEY,
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
@@ -785,6 +813,7 @@ impl AttributePrototype {
                     &context.internal_provider_id(),
                     &context.external_provider_id(),
                     &context.component_id(),
+                    &key,
                 ],
             )
             .await?;

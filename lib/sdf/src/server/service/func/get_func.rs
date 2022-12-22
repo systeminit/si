@@ -1,7 +1,7 @@
-use super::{FuncAssociations, FuncError, FuncResult};
+use super::{FuncAssociations, FuncError, FuncResult, FuncVariant};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility};
+use dal::{Func, FuncId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -17,7 +17,7 @@ pub struct GetFuncRequest {
 pub struct GetFuncResponse {
     pub id: FuncId,
     pub handler: Option<String>,
-    pub kind: FuncBackendKind,
+    pub variant: FuncVariant,
     pub name: String,
     pub description: Option<String>,
     pub code: Option<String>,

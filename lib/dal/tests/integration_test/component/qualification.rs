@@ -64,6 +64,7 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
         ctx,
         qualification_func_id,
         schema_variant_id,
+        None,
         LeafKind::Qualification,
         vec![LeafInput {
             location: LeafInputLocation::Domain,

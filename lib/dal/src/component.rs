@@ -809,4 +809,22 @@ impl Component {
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
     }
+
+    pub async fn schema_variant_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<SchemaVariantId> {
+        let row = ctx
+            .pg_txn()
+            .query_one(
+                "select belongs_to_id as schema_variant_id from 
+                    component_belongs_to_schema_variant_v1($1, $2)
+                    where object_id = $3
+                ",
+                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+
+        Ok(row.try_get("schema_variant_id")?)
+    }
 }

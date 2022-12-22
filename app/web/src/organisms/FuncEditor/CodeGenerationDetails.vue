@@ -24,26 +24,15 @@
       :disabled="props.disabled"
       @change="updateAssociations"
     />
-    <h2 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50">
-      Type of code generated:
-    </h2>
-    <SelectMenu
-      v-model="selectedFormat"
-      class="w-4/5"
-      :options="formatOptions"
-      :disabledi="props.disabled"
-      @change="updateAssociations"
-    />
   </div>
 </template>
 
 <script lang="ts" setup>
 import { ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
+import { Option } from "@/molecules/SelectMenu.vue";
 import { CodeGenerationAssociations } from "@/store/func/types";
 import { toOptionValues } from "@/organisms/FuncEditor/utils";
-import { CodeLanguage } from "@/api/sdf/dal/code_view";
 import { useFuncStore } from "@/store/func/funcs.store";
 import RunOnSelector from "./RunOnSelector.vue";
 
@@ -55,36 +44,12 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
-const formatOptions: Option[] = [
-  {
-    label: "Diff",
-    value: "diff",
-  },
-  {
-    label: "Json",
-    value: "json",
-  },
-  {
-    label: "Unknown",
-    value: "unknown",
-  },
-  {
-    label: "YAML",
-    value: "yaml",
-  },
-];
-
-const getFormatOption = (format: CodeLanguage): Option =>
-  formatOptions.find(({ value }) => value === (format as string)) ??
-  formatOptions[2];
-
 const selectedVariants = ref<Option[]>(
   toOptionValues(schemaVariantOptions.value, props.modelValue.schemaVariantIds),
 );
 const selectedComponents = ref<Option[]>(
   toOptionValues(componentOptions.value, props.modelValue.componentIds),
 );
-const selectedFormat = ref<Option>(getFormatOption(props.modelValue.format));
 
 const emit = defineEmits<{
   (e: "update:modelValue", v: CodeGenerationAssociations): void;
@@ -102,7 +67,6 @@ watch(
       componentOptions.value,
       mv.componentIds,
     );
-    selectedFormat.value = getFormatOption(props.modelValue.format);
   },
   { immediate: true },
 );
@@ -113,7 +77,6 @@ const updateAssociations = () => {
     schemaVariantIds: selectedVariants.value.map(
       ({ value }) => value as string,
     ),
-    format: selectedFormat.value.value as CodeLanguage,
     type: "codeGeneration",
   };
 

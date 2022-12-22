@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, toRefs, computed } from "vue";
+import { ref, watch, toRefs } from "vue";
 import _ from "lodash";
 import { ValidatorArray, ErrorsArray } from "@/utils/input_validations";
 

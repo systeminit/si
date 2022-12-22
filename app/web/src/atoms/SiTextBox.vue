@@ -124,7 +124,7 @@ const inputValue = computed<string>({
   },
 });
 
-const { inError, reallyDirty, setInError, setDirty } = useValidations(
+const { inError, setInError, setDirty } = useValidations(
   alwaysValidate,
   () => emit("blur", inputValue),
   (inError: boolean) => emit("error", inError),

@@ -12,12 +12,10 @@ use crate::{
 };
 use crate::{Component, SchemaVariant};
 
-// FIXME(nick): use the formal types from the new version of function authoring instead of this
-// struct. This struct is a temporary stopgap until that's implemented.
 #[derive(Deserialize, Debug)]
 struct CodeGenerationEntry {
-    pub code: String,
-    pub format: String,
+    pub code: Option<String>,
+    pub format: Option<String>,
 }
 
 impl Component {
@@ -57,18 +55,29 @@ impl Component {
                 serde_json::from_value(code_map_value)?;
 
             for entry in code_map.values() {
-                let language = if entry.format.is_empty() {
+                // When a new code gen function is craeted the code/format entries will not yet be
+                // set, so just ignore them in the loop here. Function return value type checking
+                // should ensure that the executed function does not unset these itself.
+                if entry.format.is_none() || entry.code.is_none() {
+                    continue;
+                }
+
+                // Safe unwraps because of the above check
+                let format = entry.format.as_ref().unwrap();
+                let code = entry.code.as_ref().unwrap();
+
+                let language = if format.is_empty() {
                     CodeLanguage::Unknown
                 } else {
-                    CodeLanguage::try_from(entry.format.clone())?
+                    CodeLanguage::try_from(format.to_owned())?
                 };
 
                 // TODO(nick): determine how we handle empty code generation or generation in
                 // progress. Maybe we never need to? Just re-run?
-                let code = if entry.code.is_empty() {
+                let code = if code.is_empty() {
                     None
                 } else {
-                    Some(entry.code.clone())
+                    Some(code.clone())
                 };
 
                 code_views.push(CodeView::new(language, code));
