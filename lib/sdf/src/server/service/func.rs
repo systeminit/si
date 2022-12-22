@@ -189,9 +189,6 @@ impl TryFrom<&Func> for FuncVariant {
             (FuncBackendKind::JsAttribute, response_type) => match response_type {
                 FuncBackendResponseType::CodeGeneration => Ok(FuncVariant::CodeGeneration),
                 FuncBackendResponseType::Qualification => Ok(FuncVariant::Qualification),
-                FuncBackendResponseType::Unset => {
-                    Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id()))
-                }
                 _ => Ok(FuncVariant::Attribute),
             },
             (FuncBackendKind::JsConfirmation, _) => Ok(FuncVariant::Confirmation),
