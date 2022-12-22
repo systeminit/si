@@ -93,7 +93,7 @@ pub async fn list_input_sources(
         })
         .collect();
 
-    let props = prop_tree_to_list(&PropTree::new(&ctx).await?);
+    let props = prop_tree_to_list(&PropTree::new(&ctx, false).await?);
 
     Ok(Json(ListInputSourcesResponse { sockets, props }))
 }

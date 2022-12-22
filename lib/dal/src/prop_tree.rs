@@ -52,7 +52,7 @@ fn insert_prop_into(root: &mut PropTreeNode, node: &PropTreeNode) {
 }
 
 impl PropTree {
-    pub async fn new(ctx: &DalContext) -> PropTreeResult<Self> {
+    pub async fn new(ctx: &DalContext, include_hidden: bool) -> PropTreeResult<Self> {
         let mut root_props = vec![];
 
         let rows = ctx
@@ -66,6 +66,9 @@ impl PropTree {
         for row in rows {
             let prop_json: serde_json::Value = row.try_get("object")?;
             let prop: Prop = serde_json::from_value(prop_json)?;
+            if prop.hidden() && !include_hidden {
+                continue;
+            }
             let parent_id: PropId = row.try_get("parent_id")?;
             let schema_variant_id: SchemaVariantId = row.try_get("schema_variant_id")?;
             let internal_provider_id: Option<InternalProviderId> =
