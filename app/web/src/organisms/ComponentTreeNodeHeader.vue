@@ -3,8 +3,12 @@
     class="flex flex-row items-center"
     :class="
       isSelected
-        ? ['bg-action-500 text-white']
-        : ['hover:bg-action-400 hover:text-white']
+        ? [
+            'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300',
+          ]
+        : [
+            'border border-transparent hover:border-action-500 dark:hover:border-action-300',
+          ]
     "
   >
     <slot />
@@ -12,11 +16,7 @@
     <Icon :name="icon" />
 
     <span
-      :class="
-        isSelected
-          ? ['bg-action-500 text-white']
-          : ['hover:bg-action-400 hover:text-white']
-      "
+      :class="isSelected ? ['bg-action-100 dark:bg-action-700'] : []"
       class="px-2 py-2 group flex flex-col items-baseline w-full"
     >
       <span
@@ -26,8 +26,8 @@
       <i
         :class="
           isSelected
-            ? ['bg-action-500 text-white']
-            : ['text-neutral-500 group-hover:text-white']
+            ? ['bg-action-100 dark:bg-action-700']
+            : ['text-neutral-500']
         "
         class="text-sm flex-none"
       >
