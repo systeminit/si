@@ -1,10 +1,11 @@
 use axum::Json;
-use dal::edge::EdgeKind;
+use dal::edge::{EdgeKind, EdgeObjectId, VertexObjectKind};
 use dal::job::definition::DependentValuesUpdate;
 use dal::socket::SocketEdgeKind;
 use dal::{
     node::NodeId, AttributeReadContext, AttributeValue, Component, Connection, DalContext, Edge,
-    ExternalProvider, Node, SocketId, StandardModel, Visibility, WsEvent,
+    EdgeError, ExternalProvider, InternalProvider, Node, SocketId, StandardModel, Visibility,
+    WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -174,55 +175,45 @@ pub async fn connect_component_sockets_to_frame(
             if frame_type == "aggregationFrame" {
                 match *parent_socket.edge_kind() {
                     SocketEdgeKind::ConfigurationInput => {
-                        // TODO(victor): implement query based Edges::list_with_filter()
-                        let sockets_connected_to_parent_socket = Edge::list(ctx)
-                            .await?
-                            .iter()
-                            .filter(|e| {
-                                e.head_node_id() == parent_node_id
-                                    && e.head_socket_id() == *parent_socket.id()
-                            })
-                            .map(|e| (e.tail_node_id(), e.tail_socket_id()))
-                            .collect::<Vec<(NodeId, SocketId)>>();
+                        // Connection::new(
+                        //     ctx,
+                        //     parent_node_id,
+                        //     *parent_socket.id(),
+                        //     child_node_id,
+                        //     *parent_socket.id(),
+                        //     EdgeKind::Configuration,
+                        // )
+                        //     .await?;
 
-                        for (peer_node_id, peer_socket_id) in sockets_connected_to_parent_socket {
-                            Connection::new(
-                                ctx,
-                                peer_node_id,
-                                peer_socket_id,
-                                child_node_id,
-                                *parent_socket.id(),
-                                EdgeKind::Configuration,
-                            )
-                            .await?;
-
-                            let peer_external_provider =
-                                ExternalProvider::find_for_socket(ctx, peer_socket_id)
-                                    .await?
-                                    .ok_or(DiagramError::ExternalProviderNotFoundForSocket(
-                                        peer_socket_id,
-                                    ))?;
-
-                            let peer_component = Component::find_for_node(ctx, peer_node_id)
+                        let internal_provider =
+                            InternalProvider::find_explicit_for_socket(ctx, *parent_socket.id())
                                 .await?
-                                .ok_or(DiagramError::ComponentNotFound)?;
+                                .ok_or(EdgeError::InternalProviderNotFoundForSocket(
+                                    *parent_socket.id(),
+                                ))?;
 
-                            let attribute_value_context = AttributeReadContext {
-                                component_id: Some(*peer_component.id()),
-                                external_provider_id: Some(*peer_external_provider.id()),
-                                ..Default::default()
-                            };
+                        // We don't want to connect the provider when we are not using configuration edge kind
+                        Edge::connect_internal_providers_for_components(
+                            ctx,
+                            *internal_provider.id(),
+                            *child_component.id(),
+                            *parent_component.id(),
+                        )
+                        .await?;
 
-                            let attribute_value =
-                                AttributeValue::find_for_context(ctx, attribute_value_context)
-                                    .await?
-                                    .ok_or(DiagramError::AttributeValueNotFoundForContext(
-                                        attribute_value_context,
-                                    ))?;
-
-                            ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
-                                .await;
-                        }
+                        Edge::new(
+                            ctx,
+                            EdgeKind::Configuration,
+                            child_node_id,
+                            VertexObjectKind::Configuration,
+                            EdgeObjectId::from(*child_component.id()),
+                            *parent_socket.id(),
+                            parent_node_id,
+                            VertexObjectKind::Configuration,
+                            EdgeObjectId::from(*parent_component.id()),
+                            *parent_socket.id(),
+                        )
+                        .await?;
                     }
                     SocketEdgeKind::ConfigurationOutput => {
                         let sockets_connected_from_parent_socket = Edge::list(ctx)

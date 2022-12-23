@@ -7,9 +7,9 @@ use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
-    DiagramError as DalDiagramError, InternalProviderError, NodeError, NodeKind, NodeMenuError,
-    NodePositionError, ReadTenancyError, SchemaError as DalSchemaError, SchemaVariantId,
-    StandardModelError, TransactionsError,
+    DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError, NodeKind,
+    NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
+    SchemaVariantId, StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
@@ -40,6 +40,8 @@ pub enum DiagramError {
     ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]
     InternalProvider(#[from] InternalProviderError),
+    #[error(transparent)]
+    Edge(#[from] EdgeError),
     #[error("dal schema error: {0}")]
     DalSchema(#[from] DalSchemaError),
     #[error("attribute value error: {0}")]

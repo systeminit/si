@@ -46,11 +46,9 @@ pub async fn create_aggregate_proxy_connections(
 
     for from_node in request.from_node_ids {
         for to_node in request.to_node_ids.iter() {
-            let edge_kind = if from_node.is_parent || to_node.is_parent {
-                EdgeKind::Symbolic
-            } else {
-                EdgeKind::Configuration
-            };
+            if !to_node.is_parent {
+                continue;
+            }
 
             let connection = Connection::new(
                 &ctx,
@@ -58,7 +56,7 @@ pub async fn create_aggregate_proxy_connections(
                 request.from_socket_id,
                 to_node.node_id,
                 request.to_socket_id,
-                edge_kind,
+                EdgeKind::Configuration,
             )
             .await?;
 
