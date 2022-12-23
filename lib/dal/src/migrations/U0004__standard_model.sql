@@ -275,7 +275,7 @@ BEGIN
 END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
--- update_by_id_v1 (BOOL)
+-- update_by_id_v1 (jsonb)
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
                                            this_read_tenancy jsonb,
@@ -298,7 +298,7 @@ BEGIN
 END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
--- update_by_id_v1 (BOOL)
+-- update_by_id_v1 (bool)
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
                                            this_read_tenancy jsonb,
@@ -329,6 +329,29 @@ CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_visibility jsonb,
                                            this_id ident,
                                            this_value bigint,
+                                           OUT updated_at timestamp with time zone)
+AS
+$$
+BEGIN
+    SELECT update_by_id_v1(this_table_text,
+                           this_column,
+                           this_read_tenancy,
+                           this_write_tenancy,
+                           this_visibility,
+                           this_id,
+                           CAST(this_value as text))
+    INTO updated_at;
+END ;
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+-- update_by_id_v1 (timestamp with time zone)
+CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
+                                           this_column text,
+                                           this_read_tenancy jsonb,
+                                           this_write_tenancy jsonb,
+                                           this_visibility jsonb,
+                                           this_id ident,
+                                           this_value timestamp with time zone,
                                            OUT updated_at timestamp with time zone)
 AS
 $$

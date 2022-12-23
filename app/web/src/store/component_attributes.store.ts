@@ -209,6 +209,12 @@ export const useComponentAttributesStore = () => {
           ) {
             return;
           }
+
+          // tell the status store we've begun an update, even if we dont know how big it is yet
+          // TODO: we may rely on backend events instead? although it would not be quite as fast
+          const statusStore = useStatusStore();
+          statusStore.markUpdateStarted();
+
           return new ApiRequest<{ success: true }>({
             method: "post",
             url: isInsert
@@ -218,20 +224,10 @@ export const useComponentAttributesStore = () => {
               ...(isInsert ? updatePayload.insert : updatePayload.update),
               ...visibilityParams,
             },
-            onSuccess() {
-              // TODO: remove all of this...
-              // TRIGGERING MOCK UPDATE STATUS FLOW
-              const componentsStore = useComponentsStore();
-              const statusStore = useStatusStore();
-
-              if (componentsStore.selectedComponentId) {
-                const updatedComponentIds =
-                  componentsStore.getDependentComponents(
-                    componentsStore.selectedComponentId,
-                  );
-
-                statusStore.triggerMockUpdateFlow(updatedComponentIds);
-              }
+            // onSuccess() {},
+            onFail() {
+              // may not work exactly right with concurrent updates... but I dont think will be a problem
+              statusStore.cancelUpdateStarted();
             },
           });
         },

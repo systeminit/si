@@ -40,7 +40,10 @@ pub async fn create_schema(
     let schema = Schema::new(&ctx, &request.name, &request.kind, &ComponentKind::Standard).await?;
     let response = CreateSchemaResponse { schema };
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

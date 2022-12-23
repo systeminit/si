@@ -27,6 +27,7 @@ import { LabelList } from "@/api/sdf/dal/label_list";
 import {
   ComponentDiff,
   ComponentIdentification,
+  ComponentIdentificationTimestamp,
 } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
@@ -65,9 +66,11 @@ type Component = {
   // TODO: probably want to move this to a different store and not load it all the time
   resource: Resource;
   matchesFilter: boolean;
+  createdAt: ComponentIdentificationTimestamp;
+  updatedAt: ComponentIdentificationTimestamp;
 };
 
-type SocketId = string;
+export type SocketId = string;
 
 type SchemaId = string;
 type SchemaVariantId = string;
@@ -238,6 +241,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 changeStatus: this.componentChangeStatusById[ci.componentId],
                 nodeType: diagramNode?.nodeType,
                 isGroup: diagramNode?.nodeType !== "component",
+                createdAt: ci.createdAt,
+                updatedAt: ci.updatedAt,
               } as Component;
             }),
             (ci) => ci,

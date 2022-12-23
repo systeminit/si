@@ -13,6 +13,7 @@ use thiserror::Error;
 use veritech_client::{Client, EncryptionKey};
 
 pub mod action_prototype;
+pub mod actor_view;
 pub mod attribute;
 pub mod billing_account;
 pub mod builtins;
@@ -58,6 +59,7 @@ pub mod socket;
 pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
+pub mod status;
 pub mod timestamp;
 pub mod user;
 pub mod validation;
@@ -73,6 +75,7 @@ pub mod ws_event;
 pub use action_prototype::{
     ActionPrototype, ActionPrototypeContext, ActionPrototypeError, ActionPrototypeId,
 };
+pub use actor_view::ActorView;
 pub use attribute::value::view::AttributeView;
 pub use attribute::{
     context::{
@@ -99,7 +102,8 @@ pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, Ca
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{
-    resource::ResourceView, Component, ComponentError, ComponentId, ComponentView,
+    resource::ResourceView, Component, ComponentError, ComponentId, ComponentStatus, ComponentView,
+    HistoryActorTimestamp,
 };
 pub use confirmation_prototype::{
     ConfirmationPrototype, ConfirmationPrototypeContext, ConfirmationPrototypeError,
@@ -164,6 +168,9 @@ pub use secret::{
 };
 pub use socket::{Socket, SocketArity, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
+pub use status::{
+    StatusUpdate, StatusUpdateError, StatusUpdateResult, StatusUpdater, StatusUpdaterError,
+};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserId, UserPk, UserResult};
 pub use validation::prototype::{
@@ -188,7 +195,7 @@ pub use workflow_runner::workflow_runner_state::{
 pub use workflow_runner::{WorkflowRunner, WorkflowRunnerError, WorkflowRunnerId};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
 pub use write_tenancy::{WriteTenancy, WriteTenancyError};
-pub use ws_event::{WsEvent, WsEventError, WsPayload};
+pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 #[cfg(debug_assertions)]
 const REQUIRED_BINARIES: &str = include_str!("../../../scripts/data/required-binaries.txt");

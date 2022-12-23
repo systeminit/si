@@ -10,6 +10,7 @@ use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::ws_event::WsEvent;
+use crate::WsEventResult;
 use crate::{
     func::backend::js_command::CommandRunResult, ActionPrototype, AttributeReadContext, Component,
     ComponentError, ComponentId, DalContext, InternalProvider, StandardModel, WorkflowRunner,
@@ -131,6 +132,7 @@ impl Component {
             WorkflowRunner::run(ctx, run_id, *prototype.id(), self.id, true).await?;
         if !resources.is_empty() {
             WsEvent::resource_refreshed(ctx, self.id)
+                .await?
                 .publish(ctx)
                 .await?;
         }
@@ -165,10 +167,14 @@ pub struct ResourceRefreshId {
 }
 
 impl WsEvent {
-    pub fn resource_refreshed(ctx: &DalContext, component_id: ComponentId) -> Self {
+    pub async fn resource_refreshed(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::ResourceRefreshed(ResourceRefreshId { component_id }),
         )
+        .await
     }
 }

@@ -87,7 +87,7 @@ const devAutofill = true;
 // local dev prefills signup and login
 const loginPayload = reactive({
   billingAccountName: import.meta.env.DEV && devAutofill ? "systeminit" : "",
-  userEmail: import.meta.env.DEV && devAutofill ? "example@systeminit.com" : "",
+  userEmail: import.meta.env.DEV && devAutofill ? "sally@systeminit.com" : "",
   userPassword: import.meta.env.DEV && devAutofill ? "Password123!" : "",
 });
 

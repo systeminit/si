@@ -54,7 +54,10 @@ pub async fn revert_func(
 
         func.hard_delete(&ctx).await?;
 
-        WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+        WsEvent::change_set_written(&ctx)
+            .await?
+            .publish(&ctx)
+            .await?;
 
         ctx.commit().await?;
 

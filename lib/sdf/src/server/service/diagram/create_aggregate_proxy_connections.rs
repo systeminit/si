@@ -95,7 +95,10 @@ pub async fn create_aggregate_proxy_connections(
             .await;
     }
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

@@ -76,7 +76,10 @@ pub async fn exec_func(
         _ => {}
     }
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

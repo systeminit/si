@@ -130,6 +130,7 @@ impl JobConsumer for WorkflowRun {
             runner_state,
             logs,
         )
+        .await?
         .publish(ctx)
         .await?;
         Ok(())

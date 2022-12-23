@@ -38,7 +38,10 @@ pub async fn insert_property_editor_value(
     )
     .await?;
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
 
     ctx.commit().await?;
 

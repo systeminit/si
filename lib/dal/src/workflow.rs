@@ -14,7 +14,8 @@ use crate::{
     workflow_runner::workflow_runner_state::WorkflowRunnerState, Connections, DalContext,
     DalContextBuilder, Func, FuncBackendKind, FuncBinding, FuncBindingError,
     FuncBindingReturnValue, PgPoolError, RequestContext, ResourceView, ServicesContext,
-    StandardModel, StandardModelError, TransactionsError, WsEvent, WsEventError, WsPayload,
+    StandardModel, StandardModelError, TransactionsError, WsEvent, WsEventError, WsEventResult,
+    WsPayload,
 };
 
 #[derive(Error, Debug)]
@@ -248,7 +249,7 @@ impl WorkflowTree {
                 read_tenancy: ctx.read_tenancy().clone(),
                 write_tenancy: ctx.write_tenancy().clone(),
                 visibility: *ctx.visibility(),
-                history_actor: ctx.history_actor().clone(),
+                history_actor: *ctx.history_actor(),
             };
             let conns = services_context.connections().await?;
 
@@ -271,6 +272,7 @@ impl WorkflowTree {
                         output.push(stream);
 
                         WsEvent::command_output(&ctx, run_id, text)
+                            .await?
                             .publish(&ctx)
                             .await?;
                         conns = ctx.commit_into_conns().await?;
@@ -519,20 +521,25 @@ pub struct CommandReturn {
 }
 
 impl WsEvent {
-    pub fn command_output(ctx: &DalContext, run_id: usize, output: String) -> Self {
+    pub async fn command_output(
+        ctx: &DalContext,
+        run_id: usize,
+        output: String,
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::CommandOutput(CommandOutput { run_id, output }),
         )
+        .await
     }
 
-    pub fn command_return(
+    pub async fn command_return(
         ctx: &DalContext,
         run_id: usize,
         resources: Vec<ResourceView>,
         runner_state: WorkflowRunnerState,
         output: Vec<String>,
-    ) -> Self {
+    ) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
             WsPayload::CommandReturn(CommandReturn {
@@ -542,6 +549,7 @@ impl WsEvent {
                 output,
             }),
         )
+        .await
     }
 }
 

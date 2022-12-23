@@ -91,6 +91,7 @@ impl JobConsumer for Confirmations {
                     ConfirmationStatus::Running,
                     None,
                 )
+                .await?
                 .publish(ctx)
                 .await?;
                 ctx.enqueue_job(Confirmation::new(ctx, *component.id(), *prototype.id()))
