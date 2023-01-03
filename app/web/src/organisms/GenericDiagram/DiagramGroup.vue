@@ -350,6 +350,7 @@ const rightSockets = computed(() =>
     props.group.sockets,
     (s) =>
       s.def.nodeSide === "right" &&
+      s.def.label !== "Frame" &&
       s.parent.def.nodeType !== "configurationFrame",
   ),
 );
