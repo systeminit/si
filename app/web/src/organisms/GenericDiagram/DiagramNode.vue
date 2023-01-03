@@ -276,7 +276,10 @@ const leftSockets = computed(() =>
   ),
 );
 const rightSockets = computed(() =>
-  _.filter(props.node.sockets, (s) => s.def.nodeSide === "right"),
+  _.filter(
+    props.node.sockets,
+    (s) => s.def.nodeSide === "right" && s.def.label !== "Frame",
+  ),
 );
 
 const connectedEdgesBySocketKey = computed(() => {
