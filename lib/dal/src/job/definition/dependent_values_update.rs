@@ -105,7 +105,7 @@ impl JobConsumer for DependentValuesUpdate {
 
         // NOTE(nick,jacob): uncomment this for debugging.
         // Save printed output to a file and execute the following: "dot <file> -Tsvg -o <newfile>.svg"
-        println!("{}", dependency_graph_to_dot(ctx, &dependency_graph).await?);
+        // println!("{}", dependency_graph_to_dot(ctx, &dependency_graph).await?);
 
         // Remove the `AttributeValueId` from the list of values that are in the dependencies,
         // as we consider that one to have already been updated. This lets us check for
