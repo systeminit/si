@@ -245,25 +245,6 @@ BEGIN
                 -- We found an AttributeValue for an ExternalProvider
                 RAISE DEBUG 'attribute_value_affected_graph_v1: AttributeValue(%) is ExternalProvider(%)', attribute_value.id, attribute_value.attribute_context_external_provider_id;
 
-                -- TODO(jhelwig): This combined with `exact_or_more_attribute_read_context_v1` isn't quite what we want.
-                --                We need a function that can tell us:
-                --                  * Is AttributeContext A set to the same level of specificity as AttributeContext B.
-                --                  * Are any parts of the AttributeContext more specific than Component, that are set
-                --                    in BOTH A & B identical.
-                --                  * If any parts of the AttributeContext more specific than Component that are in B,
-                --                    that are NOT in A, they count as being "or more".
-                --
-                -- Build up an AttributeReadContext appropriate for finding InternalProviders
-                -- that are using this ExternalProvider as one of their arguments.
-                tmp_attribute_context := jsonb_build_object(
-                        'attribute_context_prop_id', ident_nil_v1(),
-                    -- The InternalProvider is likely to be for some other SchemaVariant, and is
-                    -- pretty much guaranteed to be for a different Component, so we need to be
-                    -- looking at any possible values there.
-                        'attribute_context_internal_provider_id', NULL,
-                        'attribute_context_external_provider_id', ident_nil_v1(),
-                        'attribute_context_component_id', NULL
-                    );
 
                 -- TODO(jhelwig): This can, strictly speaking, find more AttributeValues that it considers
                 --                depending on this specific AttributeValue for the ExternalProvider than
@@ -290,9 +271,6 @@ BEGIN
                                         AND apa.head_component_id = av.attribute_context_component_id
                      -- For an AttributeValue to actually be using an ExternalProvider, it _must_ be (at least) for a Component.
                 WHERE av.attribute_context_component_id != ident_nil_v1();
-                -- See the TODO above tmp_attribute_context for why this is commented out.
-                --
-                -- WHERE exact_or_more_attribute_read_context_v1(tmp_attribute_context, av)
 
                 IF tmp_record_ids IS NOT NULL THEN
                     RAISE DEBUG 'attribute_value_affected_graph_v1: Found InternalProviders that use this ExternalProvider(%)', attribute_value.attribute_context_external_provider_id;

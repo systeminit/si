@@ -190,7 +190,48 @@ impl AttributePrototypeArgument {
         }
 
         // For inter component connections, the internal provider id field must be unset.
-        let external_provider_id = InternalProviderId::NONE;
+        let external_provider_id = ExternalProviderId::NONE;
+
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &attribute_prototype_id,
+                    &func_argument_id,
+                    &internal_provider_id,
+                    &external_provider_id,
+                    &tail_component_id,
+                    &head_component_id,
+                ],
+            )
+            .await?;
+        Ok(standard_model::finish_create_from_row(ctx, row).await?)
+    }
+
+    /// Create a new [`AttributePrototypeArgument`] for _inter_ [`Component`](crate::Component) use.
+    #[instrument(skip_all)]
+    pub async fn new_external_to_external_inter_component(
+        ctx: &DalContext,
+        attribute_prototype_id: AttributePrototypeId,
+        func_argument_id: FuncArgumentId,
+        head_component_id: ComponentId,
+        tail_component_id: ComponentId,
+        external_provider_id: ExternalProviderId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        // Ensure the value fields are what we expect.
+        if external_provider_id == ExternalProviderId::NONE
+            || tail_component_id == ComponentId::NONE
+            || head_component_id == ComponentId::NONE
+        {
+            return Err(AttributePrototypeArgumentError::RequiredValueFieldsUnset);
+        }
+
+        // For inter component connections, the internal provider id field must be unset.
+        let internal_provider_id = InternalProviderId::NONE;
 
         let row = ctx
             .txns()

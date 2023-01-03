@@ -17,7 +17,6 @@ use thiserror::Error;
 use crate::service::schema::SchemaError;
 
 mod connect_component_to_frame;
-pub mod create_aggregate_proxy_connections;
 pub mod create_connection;
 pub mod create_node;
 pub mod get_diagram;
@@ -134,10 +133,6 @@ pub fn routes() -> Router {
         .route(
             "/create_connection",
             post(create_connection::create_connection),
-        )
-        .route(
-            "/create_aggregate_proxy_connections",
-            post(create_aggregate_proxy_connections::create_aggregate_proxy_connections),
         )
         .route(
             "/connect_component_to_frame",

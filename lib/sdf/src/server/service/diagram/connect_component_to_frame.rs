@@ -4,8 +4,7 @@ use dal::job::definition::DependentValuesUpdate;
 use dal::socket::SocketEdgeKind;
 use dal::{
     node::NodeId, AttributeReadContext, AttributeValue, Component, Connection, DalContext, Edge,
-    EdgeError, ExternalProvider, InternalProvider, Node, SocketId, StandardModel, Visibility,
-    WsEvent,
+    EdgeError, ExternalProvider, InternalProvider, Node, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -175,17 +174,7 @@ pub async fn connect_component_sockets_to_frame(
             if frame_type == "aggregationFrame" {
                 match *parent_socket.edge_kind() {
                     SocketEdgeKind::ConfigurationInput => {
-                        // Connection::new(
-                        //     ctx,
-                        //     parent_node_id,
-                        //     *parent_socket.id(),
-                        //     child_node_id,
-                        //     *parent_socket.id(),
-                        //     EdgeKind::Configuration,
-                        // )
-                        //     .await?;
-
-                        let internal_provider =
+                        let provider =
                             InternalProvider::find_explicit_for_socket(ctx, *parent_socket.id())
                                 .await?
                                 .ok_or(EdgeError::InternalProviderNotFoundForSocket(
@@ -195,7 +184,7 @@ pub async fn connect_component_sockets_to_frame(
                         // We don't want to connect the provider when we are not using configuration edge kind
                         Edge::connect_internal_providers_for_components(
                             ctx,
-                            *internal_provider.id(),
+                            *provider.id(),
                             *child_component.id(),
                             *parent_component.id(),
                         )
@@ -214,42 +203,55 @@ pub async fn connect_component_sockets_to_frame(
                             *parent_socket.id(),
                         )
                         .await?;
+
+                        let attribute_value_context = AttributeReadContext {
+                            component_id: Some(*parent_component.id()),
+                            internal_provider_id: Some(*provider.id()),
+                            ..Default::default()
+                        };
+
+                        let attribute_value =
+                            AttributeValue::find_for_context(ctx, attribute_value_context)
+                                .await?
+                                .ok_or(DiagramError::AttributeValueNotFoundForContext(
+                                    attribute_value_context,
+                                ))?;
+
+                        ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
+                            .await;
                     }
                     SocketEdgeKind::ConfigurationOutput => {
-                        let sockets_connected_from_parent_socket = Edge::list(ctx)
+                        let provider = ExternalProvider::find_for_socket(ctx, *parent_socket.id())
                             .await?
-                            .iter()
-                            .filter(|e| {
-                                e.tail_node_id() == parent_node_id
-                                    && e.tail_socket_id() == *parent_socket.id()
-                            })
-                            .map(|e| (e.head_node_id(), e.head_socket_id()))
-                            .collect::<Vec<(NodeId, SocketId)>>();
-
-                        for (peer_node_id, peer_socket_id) in sockets_connected_from_parent_socket {
-                            Connection::new(
-                                ctx,
-                                child_node_id,
+                            .ok_or(EdgeError::ExternalProviderNotFoundForSocket(
                                 *parent_socket.id(),
-                                peer_node_id,
-                                peer_socket_id,
-                                EdgeKind::Configuration,
-                            )
-                            .await?;
-                        }
+                            ))?;
 
-                        let parent_external_provider =
-                            ExternalProvider::find_for_socket(ctx, *parent_socket.id())
-                                .await?
-                                .ok_or_else(|| {
-                                    DiagramError::ExternalProviderNotFoundForSocket(
-                                        *parent_socket.id(),
-                                    )
-                                })?;
+                        Edge::connect_external_providers_for_components(
+                            ctx,
+                            *provider.id(),
+                            *child_component.id(),
+                            *parent_component.id(),
+                        )
+                        .await?;
+
+                        Edge::new(
+                            ctx,
+                            EdgeKind::Configuration,
+                            parent_node_id,
+                            VertexObjectKind::Configuration,
+                            EdgeObjectId::from(*parent_component.id()),
+                            *parent_socket.id(),
+                            child_node_id,
+                            VertexObjectKind::Configuration,
+                            EdgeObjectId::from(*child_component.id()),
+                            *parent_socket.id(),
+                        )
+                        .await?;
 
                         let attribute_value_context = AttributeReadContext {
                             component_id: Some(*child_component.id()),
-                            external_provider_id: Some(*parent_external_provider.id()),
+                            external_provider_id: Some(*provider.id()),
                             ..Default::default()
                         };
 

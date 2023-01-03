@@ -160,6 +160,7 @@ DECLARE
     current_attribute_value_ids   ident[];
     current_internal_provider_id  ident;
     desired_attribute_context     jsonb;
+    external_provider_id          ident;
     head_component_id             ident;
     head_schema_id                ident;
     head_schema_variant_id        ident;
@@ -547,20 +548,22 @@ BEGIN
                     head_schema_variant_id,
                     head_component_id,
                     internal_provider_id,
+                    external_provider_id,
                     attribute_prototype_id
                     IN
-                    SELECT cbts.belongs_to_id                     AS head_schema_id,
-                           cbtsv.belongs_to_id                    AS head_schema_variant_id,
+                    SELECT cbts.belongs_to_id                        AS head_schema_id,
+                           cbtsv.belongs_to_id                       AS head_schema_variant_id,
                            apa.head_component_id,
-                           attribute_context_internal_provider_id AS internal_provider_id,
-                           ap.id                                  AS attribute_prototype_id
+                           ap.attribute_context_internal_provider_id AS internal_provider_id,
+                           ap.attribute_context_external_provider_id AS external_provider_id,
+                           ap.id                                     AS attribute_prototype_id
                     FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
                              INNER JOIN attribute_prototype_arguments_v1(this_read_tenancy, this_visibility) AS apa
                                         ON apa.attribute_prototype_id = ap.id
-                                            AND external_provider_id =
+                                            AND apa.external_provider_id =
                                                 source_attribute_value.attribute_context_external_provider_id
                                             AND
-                                           tail_component_id = source_attribute_value.attribute_context_component_id
+                                           apa.tail_component_id = source_attribute_value.attribute_context_component_id
                              INNER JOIN component_belongs_to_schema_v1(this_read_tenancy, this_visibility) AS cbts
                                         ON cbts.object_id = apa.head_component_id
                              INNER JOIN component_belongs_to_schema_variant_v1(this_read_tenancy,
@@ -569,13 +572,13 @@ BEGIN
                     WHERE in_attribute_context_v1(tmp_attribute_context, ap)
                 LOOP
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: AttributePrototype(%) uses ExternalProvider(%)', attribute_prototype, source_attribute_value.attribute_context_external_provider_id;
+
                     -- The AttributeContext that we want to ensure an AttributeValue exists for will be identical to the
-                    -- source AttributeValue, except that it will be for an InternalProvider, instead of an ExternalProvider,
-                    -- and that it will be associated with a different Component.
+                    -- source AttributeValue, except that it will be associated with a different Component.
                     insertion_attribute_context := tmp_attribute_context
                         || jsonb_build_object(
                                                            'attribute_context_external_provider_id',
-                                                           ident_nil_v1(),
+                                                           external_provider_id,
                                                            'attribute_context_internal_provider_id',
                                                            internal_provider_id,
                                                            'attribute_context_component_id', head_component_id
@@ -595,6 +598,35 @@ BEGIN
                                 )
                         );
                 END LOOP;
+
+                --                 FOR head_schema_id,
+--                     head_schema_variant_id,
+--                     head_component_id,
+--                     internal_provider_id,
+--                     attribute_prototype_id
+--                     IN
+--                     SELECT cbts.belongs_to_id                     AS head_schema_id,
+--                            cbtsv.belongs_to_id                    AS head_schema_variant_id,
+--                            apa.head_component_id,
+--                            attribute_context_internal_provider_id AS internal_provider_id,
+--                            ap.id                                  AS attribute_prototype_id
+--                     FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
+--                              INNER JOIN attribute_prototype_arguments_v1(this_read_tenancy, this_visibility) AS apa
+--                                         ON apa.attribute_prototype_id = ap.id
+--                                             AND external_provider_id =
+--                                                 source_attribute_value.attribute_context_external_provider_id
+--                                             AND
+--                                            tail_component_id = source_attribute_value.attribute_context_component_id
+--                              INNER JOIN component_belongs_to_schema_v1(this_read_tenancy, this_visibility) AS cbts
+--                                         ON cbts.object_id = apa.head_component_id
+--                              INNER JOIN component_belongs_to_schema_variant_v1(this_read_tenancy,
+--                                                                                this_visibility) cbtsv
+--                                         ON cbtsv.object_id = apa.head_component_id
+--                     WHERE in_attribute_context_v1(tmp_attribute_context, ap)
+--                 LOOP
+--
+--                 end loop;
+
             ELSE
                 -- No idea what kind of AttributeValue this is, but it can't be good.
                 RAISE 'attribute_value_create_new_affected_values_v1: Found an AttributeValue(%) of unknown type. Tenancy(%), Visibility(%)',

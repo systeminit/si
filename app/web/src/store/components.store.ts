@@ -652,27 +652,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
-        async CREATE_AGGREGATE_PROXY_CONNECTIONS(
-          toNodeIds: { nodeId: ComponentNodeId; isParent: boolean }[],
-          toSocketId: SocketId,
-          fromNodeIds: { nodeId: ComponentNodeId; isParent: boolean }[],
-          fromSocketId: SocketId,
-        ) {
-          return new ApiRequest<{ node: DiagramNode }>({
-            method: "post",
-            url: "diagram/create_aggregate_proxy_connections",
-            params: {
-              toNodeIds,
-              toSocketId,
-              fromNodeIds,
-              fromSocketId,
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              // TODO: store component details rather than waiting for re-fetch
-            },
-          });
-        },
         async CREATE_COMPONENT_CONNECTION(
           from: { nodeId: ComponentNodeId; socketId: SocketId },
           to: { nodeId: ComponentNodeId; socketId: SocketId },

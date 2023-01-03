@@ -380,4 +380,40 @@ impl Edge {
         .await?;
         Ok(())
     }
+
+    pub async fn connect_external_providers_for_components(
+        ctx: &DalContext,
+        external_provider_id: ExternalProviderId,
+        head_component_id: ComponentId,
+        tail_component_id: ComponentId,
+    ) -> EdgeResult<()> {
+        let provider = ExternalProvider::get_by_id(ctx, &external_provider_id)
+            .await?
+            .ok_or(EdgeError::ExternalProviderNotFound(external_provider_id))?;
+
+        let attribute_prototype_id = provider
+            .attribute_prototype_id()
+            .ok_or(InternalProviderError::EmptyAttributePrototype)?;
+
+        let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
+            .await?
+            .pop()
+            .ok_or(EdgeError::IdentityFuncNotFound)?;
+        let identity_func_arg =
+            FuncArgument::find_by_name_for_func(ctx, "identity", *identity_func.id())
+                .await?
+                .ok_or(EdgeError::IdentityFuncArgNotFound)?;
+
+        // Now, we can create the inter component attribute prototype argument.
+        AttributePrototypeArgument::new_external_to_external_inter_component(
+            ctx,
+            *attribute_prototype_id,
+            *identity_func_arg.id(),
+            head_component_id,
+            tail_component_id,
+            external_provider_id,
+        )
+        .await?;
+        Ok(())
+    }
 }
