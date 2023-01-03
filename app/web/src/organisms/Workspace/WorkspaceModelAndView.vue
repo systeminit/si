@@ -124,22 +124,15 @@ const diagramEdges = computed(() => {
 
     const toNodeParentId =
       componentsStore.componentsByNodeId[edge.toNodeId].parentId;
+
     if (toNodeParentId) {
       const toNodeParentComp =
         componentsStore.componentsByNodeId[toNodeParentId];
 
       if (toNodeParentComp.nodeType === "aggregationFrame") {
-        const edgesToFrame =
-          componentsStore.edgesByToNodeId[toNodeParentId] ?? [];
-
-        const sameEdgeButToParent = edgesToFrame.find(
-          (e) =>
-            e.toSocketId === edge.toSocketId &&
-            e.fromSocketId === edge.fromSocketId &&
-            e.fromNodeId === edge.fromNodeId,
-        );
-
-        edge.isInvisible ||= sameEdgeButToParent !== undefined;
+        if (edge.fromNodeId === toNodeParentComp.nodeId) {
+          edge.isInvisible ||= true;
+        }
       }
     }
 
@@ -150,16 +143,9 @@ const diagramEdges = computed(() => {
       const fromParentComp =
         componentsStore.componentsByNodeId[fromNodeParentId];
       if (fromParentComp.nodeType === "aggregationFrame") {
-        const edgesFromFrame =
-          componentsStore.edgesByFromNodeId[fromNodeParentId] ?? [];
-
-        const sameEdgeButFromParent = edgesFromFrame.find(
-          (e) =>
-            e.fromSocketId === edge.fromSocketId &&
-            e.toSocketId === edge.toSocketId &&
-            e.toNodeId === edge.toNodeId,
-        );
-        edge.isInvisible ||= sameEdgeButFromParent !== undefined;
+        if (edge.toNodeId === fromParentComp.nodeId) {
+          edge.isInvisible ||= true;
+        }
       }
     }
 
