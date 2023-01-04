@@ -103,6 +103,10 @@ pub enum BuiltinsError {
     BuiltinMissingFuncArgument(String, String),
     #[error("prop cache not found: {0}")]
     PropCacheNotFound(SchemaVariantId),
+    #[error("explicit internal provider not found by name: {0}")]
+    ExplicitInternalProviderNotFound(String),
+    #[error("external provider not found by name: {0}")]
+    ExternalProviderNotFound(String),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;

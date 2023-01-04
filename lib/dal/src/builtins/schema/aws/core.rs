@@ -66,7 +66,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS AMI`](https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html).
     async fn migrate_ami(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "AMI",
@@ -280,7 +280,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS EC2`](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html).
     async fn migrate_ec2(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "EC2 Instance",
@@ -885,7 +885,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Region`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html).
     async fn migrate_region(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Region",
@@ -1094,7 +1094,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS EIP`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eip.html).
     async fn migrate_eip(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Elastic IP",
@@ -1453,7 +1453,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Key Pair`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html).
     async fn migrate_keypair(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Key Pair",

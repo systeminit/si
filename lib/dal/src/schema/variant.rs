@@ -87,6 +87,8 @@ pub enum SchemaVariantError {
     InvalidSchemaVariant,
     #[error("parent prop not found for prop id: {0}")]
     ParentPropNotFound(PropId),
+    #[error("identity func not found by name")]
+    IdentityFuncNotFoundByName,
 
     // Errors related to definitions.
     #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
