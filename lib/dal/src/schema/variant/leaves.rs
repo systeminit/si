@@ -25,9 +25,6 @@ pub enum LeafKind {
     /// This variant corresponds to the "/root/qualification" subtree whose leaves leverage
     /// qualification [`Funcs`](crate::Func).
     Qualification,
-    /// This variant corresponds to the "/root/validation" subtree whose leaves store
-    /// validation [`Func`](crate::Func) output
-    Validation,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -47,7 +44,6 @@ impl LeafKind {
         match self {
             LeafKind::CodeGeneration => ("code", "codeItem"),
             LeafKind::Qualification => ("qualification", "qualificationItem"),
-            LeafKind::Validation => ("validation", "validationItem"),
         }
     }
 }
@@ -57,7 +53,6 @@ impl From<LeafKind> for FuncBackendResponseType {
         match leaf_kind {
             LeafKind::CodeGeneration => FuncBackendResponseType::CodeGeneration,
             LeafKind::Qualification => FuncBackendResponseType::Qualification,
-            LeafKind::Validation => FuncBackendResponseType::Validation,
         }
     }
 }
