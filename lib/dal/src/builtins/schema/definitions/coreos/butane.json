@@ -40,13 +40,25 @@
               {
                 "name": "contents",
                 "kind": "string",
-                "widget": { "kind": "textArea" },
+                "widget": {
+                  "kind": "textArea"
+                },
                 "docLinkRef": "default"
               }
             ]
           }
         }
       ]
+    }
+  ],
+  "inputSockets": [
+    {
+      "name": "Container Image"
+    }
+  ],
+  "outputSockets": [
+    {
+      "name": "User Data"
     }
   ]
 }

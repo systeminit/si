@@ -15,10 +15,10 @@ use crate::{
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
-    AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext, Func,
-    FuncError, FuncId, Prop, PropError, PropId, PropKind, Schema, SchemaError, SchemaId,
-    SchemaKind, SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype,
-    ValidationPrototypeContext,
+    AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext,
+    ExternalProvider, Func, FuncError, FuncId, InternalProvider, Prop, PropError, PropId, PropKind,
+    Schema, SchemaError, SchemaId, SchemaKind, SchemaVariant, SchemaVariantId, StandardModel,
+    ValidationPrototype, ValidationPrototypeContext,
 };
 
 mod aws;
@@ -174,7 +174,16 @@ impl MigrationDriver {
         component_kind: ComponentKind,
         node_color: Option<i64>,
         definition: Option<SchemaVariantDefinition>,
-    ) -> BuiltinsResult<Option<(Schema, SchemaVariant, RootProp, Option<PropCache>)>> {
+    ) -> BuiltinsResult<
+        Option<(
+            Schema,
+            SchemaVariant,
+            RootProp,
+            Option<PropCache>,
+            Vec<InternalProvider>,
+            Vec<ExternalProvider>,
+        )>,
+    > {
         let name = name.as_ref();
 
         // NOTE(nick): There's one issue here. If the schema kind has changed, then this check will be
@@ -193,15 +202,27 @@ impl MigrationDriver {
         // NOTE(nick): D.R.Y. not desired, but feel free to do so.
         let mut schema = Schema::new(ctx, name, &kind, &component_kind).await?;
         if let Some(definition) = definition {
-            let (mut schema_variant, root_prop, prop_cache) =
-                SchemaVariant::new_with_definition(ctx, *schema.id(), definition).await?;
+            let (
+                mut schema_variant,
+                root_prop,
+                prop_cache,
+                explicit_internal_providers,
+                external_providers,
+            ) = SchemaVariant::new_with_definition(ctx, *schema.id(), definition).await?;
             if node_color.is_some() {
                 schema_variant.set_color(ctx, node_color).await?;
             }
             schema
                 .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
                 .await?;
-            Ok(Some((schema, schema_variant, root_prop, Some(prop_cache))))
+            Ok(Some((
+                schema,
+                schema_variant,
+                root_prop,
+                Some(prop_cache),
+                explicit_internal_providers,
+                external_providers,
+            )))
         } else {
             let (mut schema_variant, root_prop) =
                 SchemaVariant::new(ctx, *schema.id(), "v0").await?;
@@ -211,7 +232,14 @@ impl MigrationDriver {
             schema
                 .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
                 .await?;
-            Ok(Some((schema, schema_variant, root_prop, None)))
+            Ok(Some((
+                schema,
+                schema_variant,
+                root_prop,
+                None,
+                vec![],
+                vec![],
+            )))
         }
     }
 

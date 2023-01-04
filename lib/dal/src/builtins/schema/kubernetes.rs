@@ -38,7 +38,7 @@ impl MigrationDriver {
     }
 
     async fn migrate_kubernetes_namespace(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, mut schema_variant, root_prop, _) = match self
+        let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Kubernetes Namespace",
@@ -171,7 +171,7 @@ impl MigrationDriver {
     }
 
     async fn migrate_kubernetes_deployment(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, mut schema_variant, root_prop, _) = match self
+        let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Kubernetes Deployment",

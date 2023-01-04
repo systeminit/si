@@ -15,7 +15,7 @@ impl MigrationDriver {
     }
 
     async fn migrate_generic_frame(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _) = match self
+        let (schema, schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Generic Frame",

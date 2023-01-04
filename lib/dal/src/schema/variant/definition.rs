@@ -8,8 +8,9 @@ use std::collections::HashMap;
 
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
-    edit_field::widget::WidgetKind, DalContext, Prop, PropId, PropKind, RootProp, SchemaId,
-    SchemaVariant, StandardModel,
+    edit_field::widget::WidgetKind, DalContext, DiagramKind, ExternalProvider, Func, FuncBinding,
+    InternalProvider, Prop, PropId, PropKind, RootProp, SchemaId, SchemaVariant, SocketArity,
+    StandardModel,
 };
 
 /// A cache of [`PropIds`](crate::Prop) where the _key_ is a tuple corresponding to the
@@ -68,6 +69,16 @@ pub struct SchemaVariantDefinition {
     /// The immediate child [`Props`](crate::Prop) underneath "/root/domain".
     #[serde(default)]
     props: Vec<PropDefinition>,
+    /// The input [`Sockets`](crate::Socket) and corresponding
+    /// explicit [`InternalProviders`](crate::InternalProvider) created for the
+    /// [`variant`](crate::SchemaVariant).
+    #[serde(default)]
+    input_sockets: Vec<SocketDefinition>,
+    /// The output [`Sockets`](crate::Socket) and corresponding
+    /// [`ExternalProviders`](crate::ExternalProvider) created for the
+    /// [`variant`](crate::SchemaVariant).
+    #[serde(default)]
+    output_sockets: Vec<SocketDefinition>,
 }
 
 #[derive(Deserialize)]
@@ -100,9 +111,22 @@ pub struct PropDefinition {
     /// If our [`kind`](crate::PropKind) is [`Array`](crate::PropKind::Array), specify the entry
     /// definition.
     entry: Option<Box<PropDefinition>>,
-    /// The [`WidgetDefinition`](crate::schema::variant::definition::PropWidgetDefinition) of the [`Prop`](crate::Prop) to be created.
+    /// The [`WidgetDefinition`](crate::schema::variant::definition::PropWidgetDefinition) of the
+    /// [`Prop`](crate::Prop) to be created.
     #[serde(default)]
     widget: Option<PropWidgetDefinition>,
+}
+
+/// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`](crate::SchemaVariant).
+/// A corresponding [`provider`](crate::provider) will be created as well.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SocketDefinition {
+    /// The name of the [`Socket`](crate::Socket) to be created.
+    name: String,
+    /// The [`arity`](https://en.wikipedia.org/wiki/Arity) of the [`Socket`](crate::Socket).
+    /// Defaults to [`SocketArity::Many`](crate::SocketArity::Many) if nothing is provided.
+    arity: Option<SocketArity>,
 }
 
 impl SchemaVariant {
@@ -113,12 +137,19 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_id: SchemaId,
         schema_variant_definition: SchemaVariantDefinition,
-    ) -> SchemaVariantResult<(Self, RootProp, PropCache)> {
+    ) -> SchemaVariantResult<(
+        Self,
+        RootProp,
+        PropCache,
+        Vec<InternalProvider>,
+        Vec<ExternalProvider>,
+    )> {
         let name = match schema_variant_definition.name {
             Some(name) => name,
             None => "v0".to_string(),
         };
         let (schema_variant, root_prop) = Self::new(ctx, schema_id, name).await?;
+        let schema_variant_id = *schema_variant.id();
 
         // NOTE(nick): allow users to use a definition without props... just in case, I guess.
         let mut prop_cache = PropCache::new();
@@ -132,7 +163,78 @@ impl SchemaVariant {
             )
             .await?;
         }
-        Ok((schema_variant, root_prop, prop_cache))
+
+        // Only find the identity func if we have sockets to create.
+        // FIXME(nick,wendy): allow other funcs to be specified in the definition manifest(s).
+        let mut explicit_internal_providers = Vec::new();
+        let mut external_providers = Vec::new();
+
+        if !schema_variant_definition.input_sockets.is_empty()
+            || !schema_variant_definition.output_sockets.is_empty()
+        {
+            let identity_func = Func::find_by_attr(ctx, "name", &"si:identity".to_string())
+                .await?
+                .pop()
+                .ok_or(SchemaVariantError::IdentityFuncNotFoundByName)?;
+            let identity_func_id = *identity_func.id();
+            let (identity_func_binding, identity_func_binding_return_value) =
+                FuncBinding::create_and_execute(
+                    ctx,
+                    serde_json::json![{ "identity": null }],
+                    identity_func_id,
+                )
+                .await?;
+            let identity_func_binding_id = *identity_func_binding.id();
+            let identity_func_binding_return_value_id = *identity_func_binding_return_value.id();
+
+            for input_socket_definition in schema_variant_definition.input_sockets {
+                let arity = match input_socket_definition.arity {
+                    Some(found_arity) => found_arity,
+                    None => SocketArity::Many,
+                };
+                let (explicit_internal_provider, _) = InternalProvider::new_explicit_with_socket(
+                    ctx,
+                    schema_variant_id,
+                    input_socket_definition.name,
+                    identity_func_id,
+                    identity_func_binding_id,
+                    identity_func_binding_return_value_id,
+                    arity,
+                    DiagramKind::Configuration,
+                )
+                .await?;
+                explicit_internal_providers.push(explicit_internal_provider);
+            }
+
+            for output_socket_definition in schema_variant_definition.output_sockets {
+                let arity = match output_socket_definition.arity {
+                    Some(found_arity) => found_arity,
+                    None => SocketArity::Many,
+                };
+                let (external_provider, _) = ExternalProvider::new_with_socket(
+                    ctx,
+                    schema_id,
+                    schema_variant_id,
+                    output_socket_definition.name,
+                    None,
+                    identity_func_id,
+                    identity_func_binding_id,
+                    identity_func_binding_return_value_id,
+                    arity,
+                    DiagramKind::Configuration,
+                )
+                .await?;
+                external_providers.push(external_provider);
+            }
+        }
+
+        Ok((
+            schema_variant,
+            root_prop,
+            prop_cache,
+            explicit_internal_providers,
+            external_providers,
+        ))
     }
 
     /// A recursive walk of [`PropDefinition`] that populates the [`cache`](PropCache) as each
@@ -205,23 +307,23 @@ impl SchemaVariant {
                 }
             },
             PropKind::Map => todo!("maps not yet implemented simply because nick didn't need them yet and didn't want an untested solution"),
-            _ => match (definition.entry.is_some(), definition.children.is_empty()) {
-                (true, false) => {
+            _ => match (definition.entry.is_none(), definition.children.is_empty()) {
+                (false, false) => {
                     return Err(SchemaVariantError::FoundChildrenAndEntryForPrimitive(
                         definition.name.clone(),
                     ));
                 }
-                (true, true) => {
+                (false, true) => {
                     return Err(SchemaVariantError::FoundEntryForPrimitive(
                         definition.name.clone(),
                     ));
                 }
-                (false, false) => {
+                (true, false) => {
                     return Err(SchemaVariantError::FoundChildrenForPrimitive(
                         definition.name.clone(),
                     ));
                 }
-                (false, true) => {}
+                (true, true) => {}
             },
         }
 

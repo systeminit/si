@@ -1,15 +1,15 @@
 use crate::component::ComponentKind;
 use crate::schema::variant::definition::SchemaVariantDefinition;
 use crate::schema::variant::leaves::LeafKind;
-use crate::socket::SocketArity;
 use crate::{
     builtins::schema::MigrationDriver,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
+    ExternalProvider,
 };
 use crate::{
     schema::SchemaUiMenu, AttributePrototype, AttributePrototypeArgument, AttributePrototypeError,
-    AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext, DiagramKind,
-    ExternalProvider, InternalProvider, SchemaError, SchemaKind, SchemaVariant, StandardModel,
+    AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext,
+    InternalProvider, SchemaError, SchemaKind, SchemaVariant, StandardModel,
 };
 
 // Definitions
@@ -28,7 +28,14 @@ impl MigrationDriver {
     async fn migrate_butane(&self, ctx: &DalContext) -> BuiltinsResult<()> {
         let definition: SchemaVariantDefinition = serde_json::from_str(BUTANE_DEFINITION)?;
 
-        let (schema, schema_variant, root_prop, maybe_prop_cache) = match self
+        let (
+            schema,
+            schema_variant,
+            root_prop,
+            maybe_prop_cache,
+            explicit_internal_providers,
+            external_providers,
+        ) = match self
             .create_schema_and_variant(
                 ctx,
                 "Butane",
@@ -67,40 +74,6 @@ impl MigrationDriver {
         )
         .await?;
 
-        // Sockets
-        let identity_func_item = self
-            .get_func_item("si:identity")
-            .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-
-        let (user_data_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
-            ctx,
-            *schema.id(),
-            *schema_variant.id(),
-            "User Data",
-            None,
-            identity_func_item.func_id,
-            identity_func_item.func_binding_id,
-            identity_func_item.func_binding_return_value_id,
-            SocketArity::Many,
-            DiagramKind::Configuration,
-        )
-        .await?;
-        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
-
-        let (docker_image_explicit_internal_provider, mut input_socket) =
-            InternalProvider::new_explicit_with_socket(
-                ctx,
-                *schema_variant.id(),
-                "Container Image",
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
-
         // Qualifications
         let (qualification_func_id, qualification_func_argument_id) = self
             .find_func_and_single_argument_by_names(
@@ -133,6 +106,28 @@ impl MigrationDriver {
         let version_prop_id = prop_cache.get("version", root_prop.domain_prop_id)?;
         let systemd_prop_id = prop_cache.get("systemd", root_prop.domain_prop_id)?;
         let units_prop_id = prop_cache.get("units", systemd_prop_id)?;
+
+        // FIXME(nick,wendy): use a hash map or something more elegant with O(1) lookup.
+        let docker_image_explicit_internal_provider_name = "Container Image";
+        let docker_image_explicit_internal_provider = explicit_internal_providers
+            .into_iter()
+            .filter(|p| p.name() == docker_image_explicit_internal_provider_name)
+            .collect::<Vec<InternalProvider>>()
+            .pop()
+            .ok_or(BuiltinsError::ExplicitInternalProviderNotFound(
+                docker_image_explicit_internal_provider_name.to_string(),
+            ))?;
+
+        // FIXME(nick,wendy): use a hash map or something more elegant with O(1) lookup.
+        let user_data_external_provider_name = "User Data";
+        let user_data_external_provider = external_providers
+            .into_iter()
+            .filter(|p| p.name() == user_data_external_provider_name)
+            .collect::<Vec<ExternalProvider>>()
+            .pop()
+            .ok_or(BuiltinsError::ExternalProviderNotFound(
+                user_data_external_provider_name.to_string(),
+            ))?;
 
         // Set default values after finalization.
         self.set_default_value_for_prop(ctx, variant_prop_id, serde_json::json!["fcos"])
