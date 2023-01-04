@@ -3,7 +3,7 @@ use dal::{
     func::backend::validation::FuncBackendValidationArgs,
     validation::{Validation, ValidationError, ValidationErrorKind},
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentView, DalContext,
-    Func, FuncBackendKind, FuncBackendResponseType, PropId, PropKind, SchemaKind, StandardModel,
+    Func, FuncBackendKind, FuncBackendResponseType, PropId, PropKind, StandardModel,
     ValidationPrototype, ValidationPrototypeContext, ValidationResolver, ValidationStatus,
 };
 use dal_test::test_harness::create_prop_and_set_parent;
@@ -19,7 +19,7 @@ use std::collections::HashMap;
 #[test]
 async fn check_validations_for_component(ctx: &DalContext) {
     // Setup the schema and schema variant and create a validation for a string field.
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -283,7 +283,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
 
 #[test]
 async fn check_js_validation_for_component(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

@@ -1,7 +1,6 @@
 use dal::{
-    component::ComponentKind,
-    schema::{SchemaKind, SchemaUiMenu},
-    BillingAccountSignup, DalContext, DiagramKind, JwtSecretKey, Schema, StandardModel,
+    component::ComponentKind, schema::SchemaUiMenu, BillingAccountSignup, DalContext, JwtSecretKey,
+    Schema, StandardModel,
 };
 
 use dal_test::{
@@ -14,27 +13,17 @@ pub mod variant;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let _schema = Schema::new(
-        ctx,
-        "mastodon",
-        &SchemaKind::Configuration,
-        &ComponentKind::Standard,
-    )
-    .await
-    .expect("cannot create schema");
+    let _schema = Schema::new(ctx, "mastodon", &ComponentKind::Standard)
+        .await
+        .expect("cannot create schema");
 }
 
 #[test]
 async fn billing_accounts(ctx: &DalContext, jwt_secret_key: &JwtSecretKey) {
     let (nba, _token) = billing_account_signup(ctx, jwt_secret_key).await;
-    let schema = Schema::new(
-        ctx,
-        "mastodon",
-        &SchemaKind::Configuration,
-        &ComponentKind::Standard,
-    )
-    .await
-    .expect("cannot create schema");
+    let schema = Schema::new(ctx, "mastodon", &ComponentKind::Standard)
+        .await
+        .expect("cannot create schema");
     schema
         .add_billing_account(ctx, nba.billing_account.id())
         .await
@@ -59,14 +48,9 @@ async fn billing_accounts(ctx: &DalContext, jwt_secret_key: &JwtSecretKey) {
 
 #[test]
 async fn organizations(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let schema = Schema::new(
-        ctx,
-        "mastodon",
-        &SchemaKind::Configuration,
-        &ComponentKind::Standard,
-    )
-    .await
-    .expect("cannot create schema");
+    let schema = Schema::new(ctx, "mastodon", &ComponentKind::Standard)
+        .await
+        .expect("cannot create schema");
     schema
         .add_organization(ctx, nba.organization.id())
         .await
@@ -91,14 +75,9 @@ async fn organizations(ctx: &DalContext, nba: &BillingAccountSignup) {
 
 #[test]
 async fn workspaces(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let schema = Schema::new(
-        ctx,
-        "mastodon",
-        &SchemaKind::Configuration,
-        &ComponentKind::Standard,
-    )
-    .await
-    .expect("cannot create schema");
+    let schema = Schema::new(ctx, "mastodon", &ComponentKind::Standard)
+        .await
+        .expect("cannot create schema");
     schema
         .add_workspace(ctx, nba.workspace.id())
         .await
@@ -117,8 +96,8 @@ async fn workspaces(ctx: &DalContext, nba: &BillingAccountSignup) {
 
 #[test]
 async fn ui_menus(ctx: &DalContext) {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let schema_ui_menu = SchemaUiMenu::new(ctx, "visa", "m.i.a.", &DiagramKind::Configuration)
+    let schema = create_schema(ctx).await;
+    let schema_ui_menu = SchemaUiMenu::new(ctx, "visa", "m.i.a.")
         .await
         .expect("cannot create schema ui menu");
     schema_ui_menu

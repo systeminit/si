@@ -4,9 +4,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
-use crate::{
-    DalContext, DiagramError, Node, NodePosition, SchemaError, SchemaVariant, StandardModel,
-};
+use crate::{DalContext, DiagramError, Node, NodePosition, SchemaVariant, StandardModel};
 
 #[derive(
     AsRefStr,
@@ -162,13 +160,10 @@ impl DiagramNodeView {
             .schema(ctx)
             .await?
             .ok_or(DiagramError::SchemaNotFound)?;
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let category =
-            SchemaUiMenu::get_by_schema_and_diagram_kind(ctx, *schema.id(), diagram_kind)
-                .await?
-                .map(|um| um.category().to_string());
+
+        let category = SchemaUiMenu::find_for_schema(ctx, *schema.id())
+            .await?
+            .map(|um| um.category().to_string());
 
         let size = if let (Some(w), Some(h)) = (position.width(), position.height()) {
             Some(Size2D {

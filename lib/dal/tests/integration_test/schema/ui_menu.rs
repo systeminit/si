@@ -1,19 +1,14 @@
-use dal::{
-    schema::{SchemaKind, SchemaUiMenu},
-    DalContext, DiagramKind, StandardModel,
-};
+use dal::{schema::SchemaUiMenu, DalContext, StandardModel};
 use dal_test::{test, test_harness::create_schema};
 
 #[test]
 async fn new_and_set_schema(ctx: &DalContext) {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
-    let schema_ui_menu =
-        SchemaUiMenu::new(ctx, "riot", "awaken, my love!", &DiagramKind::Configuration)
-            .await
-            .expect("cannot create schema ui menu");
+    let schema = create_schema(ctx).await;
+    let schema_ui_menu = SchemaUiMenu::new(ctx, "riot", "awaken, my love!")
+        .await
+        .expect("cannot create schema ui menu");
     assert_eq!(schema_ui_menu.name(), "riot");
     assert_eq!(schema_ui_menu.category(), "awaken, my love!");
-    assert_eq!(schema_ui_menu.diagram_kind(), DiagramKind::Configuration);
 
     schema_ui_menu
         .set_schema(ctx, schema.id())

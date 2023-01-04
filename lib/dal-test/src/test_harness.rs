@@ -11,10 +11,10 @@ use dal::{
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    BillingAccount, BillingAccountId, ChangeSet, ChangeSetPk, Component, DalContext,
+    BillingAccount, BillingAccountId, ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind,
     EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
-    Node, Organization, Prop, PropId, PropKind, Schema, SchemaId, SchemaKind, SchemaVariantId,
-    Secret, SecretKind, SecretObjectType, StandardModel, User, Visibility, Workspace, WriteTenancy,
+    Node, Organization, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariantId, Secret,
+    SecretKind, SecretObjectType, StandardModel, User, Visibility, Workspace, WriteTenancy,
 };
 use lazy_static::lazy_static;
 use names::{Generator, Name};
@@ -298,9 +298,9 @@ pub async fn billing_account_signup(
     (nba, auth_token)
 }
 
-pub async fn create_schema(ctx: &DalContext, kind: &SchemaKind) -> Schema {
+pub async fn create_schema(ctx: &DalContext) -> Schema {
     let name = generate_fake_name();
-    Schema::new(ctx, &name, kind, &ComponentKind::Standard)
+    Schema::new(ctx, &name, &ComponentKind::Standard)
         .await
         .expect("cannot create schema")
 }
@@ -318,22 +318,13 @@ pub async fn create_schema_variant_with_root(
         .await
         .expect("cannot create schema variant");
 
-    let schema = variant
-        .schema(ctx)
-        .await
-        .expect("cannot find schema")
-        .expect("schema not found");
-    let diagram_kind = schema
-        .diagram_kind()
-        .expect("no diagram kind for schema kind");
-
     let input_socket = Socket::new(
         ctx,
         "input",
         SocketKind::Provider,
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::Many,
-        &diagram_kind,
+        &DiagramKind::Configuration,
     )
     .await
     .expect("Unable to create socket");
@@ -348,7 +339,7 @@ pub async fn create_schema_variant_with_root(
         SocketKind::Provider,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
-        &diagram_kind,
+        &DiagramKind::Configuration,
     )
     .await
     .expect("Unable to create socket");
@@ -361,7 +352,7 @@ pub async fn create_schema_variant_with_root(
 }
 
 pub async fn create_component_and_schema(ctx: &DalContext) -> Component {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(ctx).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
         .finalize(ctx)

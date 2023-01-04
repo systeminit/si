@@ -46,8 +46,7 @@ pub type NodeResult<T> = Result<T, NodeError>;
 pk!(NodePk);
 pk!(NodeId);
 
-/// The kind of a given [`Node`](Node). It is based on the [`SchemaKind`](crate::SchemaKind) of
-/// what object the [`Node`](Node) represents.
+/// The kind of a given [`Node`](Node) that corresponds to the [`DiagramKind`](crate::DiagramKind).
 #[derive(
     Deserialize,
     Serialize,
@@ -64,7 +63,8 @@ pk!(NodeId);
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum NodeKind {
-    /// The [`Node`](Node) created for a [`SchemaKind::Configuration`](crate::SchemaKind::Configuration).
+    /// The [`Node`](Node) used within [`configuration`](crate::DiagramKind::Configuration)
+    /// diagrams.
     Configuration,
 }
 
@@ -130,19 +130,18 @@ pub struct NodeTemplate {
 }
 
 impl NodeTemplate {
-    pub async fn new_from_schema_id(ctx: &DalContext, schema_id: SchemaId) -> NodeResult<Self> {
+    /// Creates [`self`](Self) for a given [`SchemaId`](crate::Schema). The resulting template will
+    /// be of [`DiagramKind::Configuration`](crate::DiagramKind::Configuration).
+    pub async fn new_for_schema(ctx: &DalContext, schema_id: SchemaId) -> NodeResult<Self> {
         let schema = Schema::get_by_id(ctx, &schema_id)
             .await?
             .ok_or(NodeError::SchemaIdNotFound)?;
         let schema_variant_id = *schema
             .default_schema_variant_id()
             .ok_or(NodeError::SchemaMissingDefaultVariant)?;
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
 
         Ok(NodeTemplate {
-            kind: diagram_kind,
+            kind: DiagramKind::Configuration,
             title: schema.name().to_owned(),
             name: generate_name(),
             schema_variant_id,

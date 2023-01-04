@@ -7,9 +7,9 @@ use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
-    DiagramError as DalDiagramError, DiagramKind, InternalProviderError, NodeError, NodeKind,
-    NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
-    SchemaVariantId, StandardModelError, TransactionsError,
+    DiagramError as DalDiagramError, InternalProviderError, NodeError, NodeKind, NodeMenuError,
+    NodePositionError, ReadTenancyError, SchemaError as DalSchemaError, SchemaVariantId,
+    StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
@@ -88,8 +88,6 @@ pub enum DiagramError {
     NotAuthorized,
     #[error("invalid system")]
     InvalidSystem,
-    #[error("invalid diagram kind {0}")]
-    InvalidDiagramKind(DiagramKind),
     #[error("parent node not found {0}")]
     ParentNodeNotFound(NodeId),
     #[error("invalid parent node kind {0:?}")]

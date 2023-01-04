@@ -2,8 +2,7 @@ use dal::{
     func::{backend::validation::FuncBackendValidationArgs, binding::FuncBinding},
     validation::Validation,
     AttributeContext, AttributeValue, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    PropKind, SchemaKind, StandardModel, ValidationPrototype, ValidationPrototypeContext,
-    ValidationResolver,
+    PropKind, StandardModel, ValidationPrototype, ValidationPrototypeContext, ValidationResolver,
 };
 use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
@@ -13,7 +12,7 @@ use dal_test::{
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -100,7 +99,7 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn find_errors(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

@@ -2,16 +2,13 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_belongs_to, DalContext, DiagramKind,
-    StandardModel, Timestamp, Visibility, WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_belongs_to, DalContext, StandardModel,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 use super::{Schema, SchemaId, SchemaResult};
 
-const UI_MENU_GET_BY_SCHEMA_AND_DIAGRAM_KIND: &str =
-    include_str!("../queries/ui_menus_get_by_schema_and_diagram_kind.sql");
-const UI_MENUS_LIST_FOR_DIAGRAM_KIND: &str =
-    include_str!("../queries/ui_menus_list_for_diagram_kind.sql");
+const FIND_FOR_SCHEMA: &str = include_str!("../queries/ui_menus_find_for_schema.sql");
 
 pk!(SchemaUiMenuPk);
 pk!(SchemaUiMenuId);
@@ -22,7 +19,6 @@ pub struct SchemaUiMenu {
     id: SchemaUiMenuId,
     name: String,
     category: String,
-    diagram_kind: DiagramKind,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -46,7 +42,6 @@ impl SchemaUiMenu {
         ctx: &DalContext,
         name: impl AsRef<str>,
         category: impl AsRef<str>,
-        diagram_kind: &DiagramKind,
     ) -> SchemaResult<Self> {
         let name = name.as_ref();
         let category = category.as_ref();
@@ -55,13 +50,12 @@ impl SchemaUiMenu {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM schema_ui_menu_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM schema_ui_menu_create_v1($1, $2, $3, $4)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &(name.to_string()),
                     &(category.to_string()),
-                    &diagram_kind.as_ref(),
                 ],
             )
             .await?;
@@ -77,10 +71,6 @@ impl SchemaUiMenu {
         &self.category
     }
 
-    pub fn diagram_kind(&self) -> DiagramKind {
-        self.diagram_kind
-    }
-
     standard_model_belongs_to!(
         lookup_fn: schema,
         set_fn: set_schema,
@@ -93,48 +83,21 @@ impl SchemaUiMenu {
     );
 
     #[instrument(skip_all)]
-    pub async fn list_for_diagram_kind(
-        ctx: &DalContext,
-        diagram_kind: DiagramKind,
-    ) -> SchemaResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                UI_MENUS_LIST_FOR_DIAGRAM_KIND,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &(diagram_kind.to_string()),
-                ],
-            )
-            .await?;
-        let objects: Vec<Self> = standard_model::objects_from_rows(rows)?;
-        Ok(objects)
-    }
-
-    #[instrument(skip_all)]
-    pub async fn get_by_schema_and_diagram_kind(
+    pub async fn find_for_schema(
         ctx: &DalContext,
         schema_id: SchemaId,
-        diagram_kind: DiagramKind,
     ) -> SchemaResult<Option<Self>> {
         let maybe_row = ctx
             .txns()
             .pg()
             .query_opt(
-                UI_MENU_GET_BY_SCHEMA_AND_DIAGRAM_KIND,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &schema_id,
-                    &(diagram_kind.to_string()),
-                ],
+                FIND_FOR_SCHEMA,
+                &[ctx.read_tenancy(), ctx.visibility(), &schema_id],
             )
             .await?;
 
         // NOTE(nick): currently, we are assuming there can only be one "schema_ui_menu" for a given
-        // schema id and a given diagram kind. This might not always be the case.
+        // schema id. This might not always be the case.
         let maybe_object: Option<Self> = standard_model::option_object_from_row(maybe_row)?;
         Ok(maybe_object)
     }

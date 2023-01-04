@@ -3,8 +3,7 @@ use dal::{
     attribute::prototype::AttributePrototype,
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
     AttributePrototypeError, AttributeValue, Component, ComponentView, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, Schema, SchemaKind, SchemaVariant,
-    StandardModel,
+    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, Schema, SchemaVariant, StandardModel,
 };
 use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
@@ -78,7 +77,7 @@ async fn new_attribute_prototype(ctx: &DalContext) {
 
 #[test]
 async fn list_for_context_with_a_hash(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -350,7 +349,7 @@ async fn remove_least_specific(ctx: &DalContext) {
 /// Test attribute prototype removal corresponding to a component-specific context.
 #[test]
 async fn remove_component_specific(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

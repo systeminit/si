@@ -1,6 +1,5 @@
 use dal::{
-    socket::SocketArity, DalContext, DiagramKind, ExternalProvider, InternalProvider, SchemaKind,
-    StandardModel,
+    socket::SocketArity, DalContext, DiagramKind, ExternalProvider, InternalProvider, StandardModel,
 };
 use dal_test::{
     helpers::setup_identity_func,
@@ -13,7 +12,7 @@ mod intra_component;
 
 #[test]
 async fn new_external(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, _root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -50,7 +49,7 @@ async fn new_external(ctx: &DalContext) {
 
 #[test]
 async fn new_implicit_internal(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, _root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

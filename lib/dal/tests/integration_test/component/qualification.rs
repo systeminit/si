@@ -5,7 +5,7 @@ use dal::{
     qualification::QualificationSubCheckStatus,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
     AttributeReadContext, AttributeValue, Component, ComponentView, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind, SchemaVariant, StandardModel,
+    FuncBackendKind, FuncBackendResponseType, PropKind, SchemaVariant, StandardModel,
 };
 use dal_test::test;
 use dal_test::test_harness::{
@@ -15,7 +15,7 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn add_and_list_qualifications(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     let schema_variant_id = *schema_variant.id();
     schema

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use dal::{Component, SchemaKind, StandardModel, Visibility};
+use dal::{Component, StandardModel, Visibility};
 use dal_test::{
     test,
     test_harness::{create_component_for_schema_variant, create_schema, create_schema_variant},
@@ -33,7 +33,7 @@ async fn list_components_identification() {
         _faktory,
     );
 
-    let schema = create_schema(&dal_ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(&dal_ctx).await;
     let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
     schema_variant
         .finalize(&dal_ctx)
@@ -145,7 +145,7 @@ async fn get_components_metadata() {
     );
     let visibility = Visibility::new_head(false);
 
-    let schema = create_schema(&dal_ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(&dal_ctx).await;
 
     let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
     schema_variant

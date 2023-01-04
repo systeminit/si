@@ -1,10 +1,7 @@
 use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
 use crate::validation::Validation;
-use crate::{
-    schema::SchemaUiMenu, BuiltinsResult, DalContext, PropKind, SchemaError, SchemaKind,
-    StandardModel,
-};
+use crate::{schema::SchemaUiMenu, BuiltinsResult, DalContext, PropKind, StandardModel};
 
 const FRAME_NODE_COLOR: i64 = 0xFFFFFF;
 
@@ -19,7 +16,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Generic Frame",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(FRAME_NODE_COLOR),
                 None,
@@ -31,10 +27,8 @@ impl MigrationDriver {
         };
 
         // Diagram and UI Menu
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Generic Frame", "Frames", &diagram_kind).await?;
+
+        let ui_menu = SchemaUiMenu::new(ctx, "Generic Frame", "Frames").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop and validation creation

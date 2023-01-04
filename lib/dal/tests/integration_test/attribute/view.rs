@@ -1,6 +1,6 @@
 use dal::{
     attribute::context::AttributeContextBuilder, AttributeReadContext, AttributeValue,
-    AttributeView, DalContext, PropKind, SchemaKind, SchemaVariant, StandardModel,
+    AttributeView, DalContext, PropKind, SchemaVariant, StandardModel,
 };
 use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
@@ -12,7 +12,7 @@ use pretty_assertions_sorted::assert_eq;
 #[test]
 async fn schema_variant_specific(ctx: &DalContext) {
     // "name": String
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

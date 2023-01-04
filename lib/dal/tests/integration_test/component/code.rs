@@ -6,7 +6,7 @@ use dal::{
 };
 use dal::{
     AttributeReadContext, AttributeValue, CodeLanguage, Component, ComponentView, DalContext, Func,
-    PropKind, SchemaKind, SchemaVariant, StandardModel,
+    PropKind, SchemaVariant, StandardModel,
 };
 use dal_test::test;
 use dal_test::test_harness::{
@@ -16,7 +16,7 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

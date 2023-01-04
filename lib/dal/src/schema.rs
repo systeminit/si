@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -12,11 +11,11 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::WriteTenancy;
 use crate::{
-    component::ComponentKind, func::binding::FuncBindingError, impl_standard_model, node::NodeKind,
-    pk, schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
+    component::ComponentKind, func::binding::FuncBindingError, impl_standard_model, pk,
+    schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
     AttributePrototypeError, AttributeValueError, BillingAccount, BillingAccountId, Component,
-    DalContext, DiagramKind, FuncError, HistoryEventError, Organization, OrganizationId, PropError,
+    DalContext, FuncError, HistoryEventError, Organization, OrganizationId, PropError,
     ReadTenancyError, StandardModel, StandardModelError, Timestamp, ValidationPrototypeError,
     Visibility, Workspace, WorkspaceId, WsEventError,
 };
@@ -56,8 +55,6 @@ pub enum SchemaError {
     Nats(#[from] NatsError),
     #[error("no default variant for schema id: {0}")]
     NoDefaultVariant(SchemaId),
-    #[error("no diagram kind for schema kind {0}")]
-    NoDiagramKindForSchemaKind(SchemaKind),
     #[error("schema not found: {0}")]
     NotFound(SchemaId),
     #[error("schema not found by name: {0}")]
@@ -89,32 +86,11 @@ pub type SchemaResult<T> = Result<T, SchemaError>;
 pk!(SchemaPk);
 pk!(SchemaId);
 
-/// The kind of a [`Schema`](Schema). This provides the ability to categorize [`Schemas`](Schema)
-/// and create kind-specific graphs (using [`Edges`](crate::Edge) and [`Nodes`](crate::Node).
-#[derive(
-    AsRefStr, Copy, Clone, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
-)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum SchemaKind {
-    /// Low level model of a particular external domain (docker image, k8s deployment...).
-    Configuration,
-}
-
-impl From<SchemaKind> for NodeKind {
-    fn from(kind: SchemaKind) -> Self {
-        match kind {
-            SchemaKind::Configuration => Self::Configuration,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Schema {
     pk: SchemaPk,
     id: SchemaId,
     name: String,
-    kind: SchemaKind,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -141,7 +117,6 @@ impl Schema {
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
-        kind: &SchemaKind,
         component_kind: &ComponentKind,
     ) -> SchemaResult<Self> {
         let name = name.as_ref();
@@ -149,12 +124,11 @@ impl Schema {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM schema_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM schema_create_v1($1, $2, $3, $4)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &name,
-                    &kind.as_ref(),
                     &component_kind.as_ref(),
                 ],
             )
@@ -164,7 +138,6 @@ impl Schema {
     }
 
     standard_model_accessor!(name, String, SchemaResult);
-    standard_model_accessor!(kind, Enum(SchemaKind), SchemaResult);
     standard_model_accessor!(component_kind, Enum(ComponentKind), SchemaResult);
     standard_model_accessor!(ui_hidden, bool, SchemaResult);
     standard_model_accessor!(
@@ -280,11 +253,5 @@ impl Schema {
             .ok_or_else(|| SchemaError::NoDefaultVariant(*schema.id()))?;
 
         Ok(*schema_variant_id)
-    }
-
-    pub fn diagram_kind(&self) -> Option<DiagramKind> {
-        match self.kind {
-            SchemaKind::Configuration => Some(DiagramKind::Configuration),
-        }
     }
 }

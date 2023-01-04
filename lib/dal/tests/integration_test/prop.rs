@@ -1,6 +1,4 @@
-use dal::{
-    DalContext, HistoryActor, Prop, PropKind, SchemaKind, StandardModel, Visibility, WriteTenancy,
-};
+use dal::{DalContext, HistoryActor, Prop, PropKind, StandardModel, Visibility, WriteTenancy};
 use dal_test::helpers::generate_fake_name;
 use dal_test::{
     test,
@@ -22,7 +20,7 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn schema_variants(ctx: &DalContext) {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(ctx).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     let prop = Prop::new(ctx, generate_fake_name(), PropKind::String, None)
         .await

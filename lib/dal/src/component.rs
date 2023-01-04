@@ -30,7 +30,6 @@ use crate::standard_model::object_from_row;
 use crate::standard_model::TypeHint;
 use crate::validation::ValidationConstructorError;
 use crate::ws_event::WsEventError;
-use crate::UserId;
 use crate::{
     func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
@@ -44,6 +43,7 @@ use crate::{
     WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationError};
+use crate::{NodeKind, UserId};
 
 pub use view::{ComponentView, ComponentViewError};
 
@@ -300,7 +300,7 @@ impl Component {
 
         // Need to flesh out node so that the template data is also included in the node we
         // persist. But it isn't, - our node is anemic.
-        let node = Node::new(ctx, &(*schema.kind()).into()).await?;
+        let node = Node::new(ctx, &NodeKind::Configuration).await?;
         node.set_component(ctx, component.id()).await?;
         component.set_name(ctx, Some(name.as_ref())).await?;
 

@@ -1,6 +1,6 @@
 use dal::{
     schema::RootProp, AttributeContext, AttributeValue, Component, ComponentView, DalContext, Prop,
-    PropKind, Schema, SchemaKind, SchemaVariant, StandardModel,
+    PropKind, Schema, SchemaVariant, StandardModel,
 };
 use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
@@ -22,7 +22,7 @@ pub async fn create_schema_with_object_and_string_prop(
 ) -> (Schema, SchemaVariant, Prop, Prop, Prop, RootProp) {
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -69,7 +69,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
 ) {
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -118,7 +118,7 @@ pub async fn create_schema_with_string_props(
 ) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -153,7 +153,7 @@ pub async fn create_schema_with_array_of_string_props(
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
 
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -195,7 +195,7 @@ pub async fn create_schema_with_nested_array_objects(
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
 
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -244,7 +244,7 @@ pub async fn create_schema_with_nested_array_objects(
 pub async fn create_simple_map(ctx: &DalContext) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -286,7 +286,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
 
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

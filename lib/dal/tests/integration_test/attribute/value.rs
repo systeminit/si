@@ -1,7 +1,7 @@
 use dal::{
     attribute::context::AttributeContextBuilder, component::view::ComponentView, generate_name,
     AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
-    Schema, SchemaKind, StandardModel,
+    Schema, StandardModel,
 };
 use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
@@ -13,7 +13,7 @@ use pretty_assertions_sorted::assert_eq;
 #[test]
 async fn update_for_context_simple(ctx: &DalContext) {
     // "name": String
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -141,7 +141,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
 
 #[test]
 async fn insert_for_context_simple(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -220,7 +220,7 @@ async fn insert_for_context_simple(ctx: &DalContext) {
 
 #[test]
 async fn update_for_context_object(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -409,7 +409,7 @@ async fn update_for_context_object(ctx: &DalContext) {
 
 #[test]
 async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

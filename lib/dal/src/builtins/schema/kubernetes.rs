@@ -5,7 +5,7 @@ use crate::{
     func::argument::FuncArgument, schema::SchemaUiMenu, socket::SocketArity,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
     BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, InternalProvider,
-    PropKind, SchemaError, SchemaKind, SchemaVariant, StandardModel,
+    PropKind, SchemaVariant, StandardModel,
 };
 
 mod kubernetes_deployment_spec;
@@ -42,7 +42,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Kubernetes Namespace",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(KUBERNETES_NODE_COLOR),
                 None,
@@ -55,10 +54,7 @@ impl MigrationDriver {
 
         schema_variant.set_link(ctx, Some("https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/".to_owned())).await?;
 
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Namespace", "Kubernetes", &diagram_kind).await?;
+        let ui_menu = SchemaUiMenu::new(ctx, "Namespace", "Kubernetes").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         let metadata_prop = self
@@ -175,7 +171,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Kubernetes Deployment",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(KUBERNETES_NODE_COLOR),
                 None,
@@ -307,10 +302,7 @@ impl MigrationDriver {
             .await?;
         input_socket.set_color(ctx, Some(0x85c9a3)).await?;
 
-        let diagram_kind = schema
-            .diagram_kind()
-            .expect("no diagram kind for schema kind");
-        let ui_menu = SchemaUiMenu::new(ctx, "Deployment", "Kubernetes", &diagram_kind).await?;
+        let ui_menu = SchemaUiMenu::new(ctx, "Deployment", "Kubernetes").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         self.finalize_schema_variant(ctx, &schema_variant, &root_prop)

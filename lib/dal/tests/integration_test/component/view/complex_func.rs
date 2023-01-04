@@ -3,8 +3,7 @@ use dal::job::definition::DependentValuesUpdate;
 use dal::{
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
     ComponentView, DalContext, DiagramKind, ExternalProvider, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncBinding, InternalProvider, PropKind, SchemaKind, SocketArity,
-    StandardModel,
+    FuncBackendResponseType, FuncBinding, InternalProvider, PropKind, SocketArity, StandardModel,
 };
 use dal_test::helpers::setup_identity_func;
 use dal_test::test_harness::create_prop_and_set_parent;
@@ -17,7 +16,7 @@ use pretty_assertions_sorted::assert_eq;
 #[test]
 async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
     // Create and setup the schema and schema variant.
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -285,7 +284,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
 
 #[test]
 async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

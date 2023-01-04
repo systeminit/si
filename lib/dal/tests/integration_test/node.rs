@@ -1,6 +1,6 @@
 use dal::{
     node::{NodeKind, NodeTemplate},
-    DalContext, HistoryActor, Node, SchemaKind, StandardModel, Visibility, WriteTenancy,
+    DalContext, HistoryActor, Node, StandardModel, Visibility, WriteTenancy,
 };
 use dal_test::{
     test,
@@ -36,14 +36,14 @@ async fn component_relationships(ctx: &DalContext) {
 
 #[test]
 async fn new_node_template(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
 
-    let node_template = NodeTemplate::new_from_schema_id(ctx, *schema.id())
+    let node_template = NodeTemplate::new_for_schema(ctx, *schema.id())
         .await
         .expect("cannot create node template");
     assert_eq!(node_template.title, schema.name());

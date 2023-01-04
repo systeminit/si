@@ -1,7 +1,7 @@
 use dal::{
     component::ComponentKind, standard_model, BillingAccount, BillingAccountPk,
     BillingAccountSignup, ChangeSet, ChangeSetPk, DalContext, Func, FuncBackendKind, Group,
-    GroupId, KeyPair, Schema, SchemaKind, StandardModel, User, UserId, WriteTenancy,
+    GroupId, KeyPair, Schema, StandardModel, User, UserId, WriteTenancy,
 };
 use dal_test::{
     test,
@@ -643,7 +643,7 @@ async fn find_by_attr(ctx: &mut DalContext) {
     let _billing_account = create_billing_account(ctx).await;
     ctx.update_to_universal_head();
 
-    let schema_one = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema_one = create_schema(ctx).await;
 
     let result: Vec<Schema> =
         standard_model::find_by_attr(ctx, "schemas", "name", &schema_one.name().to_string())
@@ -652,14 +652,9 @@ async fn find_by_attr(ctx: &mut DalContext) {
     assert_eq!(result.len(), 1);
     assert_eq!(result[0], schema_one);
 
-    let schema_two = Schema::new(
-        ctx,
-        schema_one.name(),
-        schema_one.kind(),
-        &ComponentKind::Standard,
-    )
-    .await
-    .expect("cannot create another schema with the same name");
+    let schema_two = Schema::new(ctx, schema_one.name(), &ComponentKind::Standard)
+        .await
+        .expect("cannot create another schema with the same name");
 
     let result: Vec<Schema> =
         standard_model::find_by_attr(ctx, "schemas", "name", &schema_one.name().to_string())

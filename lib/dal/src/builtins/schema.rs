@@ -17,7 +17,7 @@ use crate::{
     },
     AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext,
     ExternalProvider, Func, FuncError, FuncId, InternalProvider, Prop, PropError, PropId, PropKind,
-    Schema, SchemaError, SchemaId, SchemaKind, SchemaVariant, SchemaVariantId, StandardModel,
+    Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
     ValidationPrototype, ValidationPrototypeContext,
 };
 
@@ -163,14 +163,11 @@ impl MigrationDriver {
         self.func_id_cache.get(name.as_ref()).copied()
     }
 
-    /// Create a [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant). In addition, set the node
-    /// color for the given [`SchemaKind`](crate::SchemaKind) (which may correspond to a
-    /// [`DiagramKind`](crate::DiagramKind)).
+    /// Create a [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant).
     pub async fn create_schema_and_variant(
         &self,
         ctx: &DalContext,
         name: impl AsRef<str>,
-        kind: SchemaKind,
         component_kind: ComponentKind,
         node_color: Option<i64>,
         definition: Option<SchemaVariantDefinition>,
@@ -200,7 +197,7 @@ impl MigrationDriver {
         info!("migrating {name} schema");
 
         // NOTE(nick): D.R.Y. not desired, but feel free to do so.
-        let mut schema = Schema::new(ctx, name, &kind, &component_kind).await?;
+        let mut schema = Schema::new(ctx, name, &component_kind).await?;
         if let Some(definition) = definition {
             let (
                 mut schema_variant,

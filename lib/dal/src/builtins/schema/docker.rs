@@ -7,8 +7,8 @@ use crate::{
     component::ComponentKind, edit_field::widget::*, schema::SchemaUiMenu, socket::SocketArity,
     ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, DiagramKind,
-    ExternalProvider, Func, InternalProvider, Prop, PropKind, SchemaError, SchemaKind,
-    SchemaVariant, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    ExternalProvider, Func, InternalProvider, Prop, PropKind, SchemaError, SchemaVariant,
+    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 // Reference: https://www.docker.com/company/newsroom/media-resources/
@@ -26,7 +26,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Docker Hub Credential",
-                SchemaKind::Configuration,
                 ComponentKind::Credential,
                 Some(DOCKER_NODE_COLOR),
                 None,
@@ -85,10 +84,8 @@ impl MigrationDriver {
             .await?;
 
         // Note: I wasn't able to create a ui menu with two layers
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Credential", "Docker", &diagram_kind).await?;
+
+        let ui_menu = SchemaUiMenu::new(ctx, "Credential", "Docker").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         Ok(())
@@ -99,7 +96,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Docker Image",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(DOCKER_NODE_COLOR),
                 None,
@@ -110,10 +106,7 @@ impl MigrationDriver {
             None => return Ok(()),
         };
 
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Image", "Docker", &diagram_kind).await?;
+        let ui_menu = SchemaUiMenu::new(ctx, "Image", "Docker").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         let image_prop = Prop::new(ctx, "image", PropKind::String, None).await?;
