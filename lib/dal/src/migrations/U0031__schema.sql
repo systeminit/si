@@ -1,17 +1,16 @@
 CREATE TABLE schemas
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
+    pk                          ident primary key                 default ident_create_v1(),
+    id                          ident                    not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
     tenancy_billing_account_ids ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
+    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL,
-    kind                        text                     NOT NULL,
     ui_menu_name                text,
     ui_menu_category            ltree,
     ui_hidden                   boolean                  NOT NULL DEFAULT false,
@@ -38,7 +37,6 @@ CREATE OR REPLACE FUNCTION schema_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_name text,
-    this_kind text,
     this_component_kind text,
     OUT object json) AS
 $$
@@ -52,11 +50,11 @@ BEGIN
 
     INSERT INTO schemas (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                          tenancy_workspace_ids,
-                         visibility_change_set_pk, visibility_deleted_at, name, kind, component_kind)
+                         visibility_change_set_pk, visibility_deleted_at, name, component_kind)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at,
-            this_name, this_kind, this_component_kind)
+            this_name, this_component_kind)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, Component, ComponentView, DalContext, DiagramKind, Edge, ExternalProvider,
-    InternalProvider, PropKind, SchemaKind, StandardModel,
+    InternalProvider, PropKind, StandardModel,
 };
 use dal_test::{
     helpers::{component_payload::ComponentPayload, setup_identity_func},
@@ -299,7 +299,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
 
 // 38.805354552534816, -77.05091482877533
 async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -369,7 +369,7 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
 
 // 38.82091849697006, -77.05236860190759
 async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -426,7 +426,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         id_func_arg_id,
     ) = setup_identity_func(ctx).await;
 
-    let mut source_schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut source_schema = create_schema(ctx).await;
     let (source_schema_variant, source_root) =
         create_schema_variant_with_root(ctx, *source_schema.id()).await;
     source_schema
@@ -489,7 +489,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     .await
     .expect("cannot create source external provider attribute prototype argument");
 
-    let mut destination_schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut destination_schema = create_schema(ctx).await;
     let (destination_schema_variant, destination_root) =
         create_schema_variant_with_root(ctx, *destination_schema.id()).await;
     destination_schema

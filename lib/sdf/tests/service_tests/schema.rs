@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use axum::http::Method;
-use dal::{SchemaKind, StandardModel, Visibility};
+use dal::{StandardModel, Visibility};
 use dal_test::{test, test_harness::create_schema as dal_create_schema};
 use sdf::service::schema::{
     create_schema::{CreateSchemaRequest, CreateSchemaResponse},
@@ -35,7 +35,6 @@ async fn create_schema() {
     let visibility = Visibility::new_head(false);
     let request = CreateSchemaRequest {
         name: "fancyPants".to_string(),
-        kind: SchemaKind::Configuration,
         visibility,
     };
     let response: CreateSchemaResponse = api_request_auth_json_body(
@@ -47,7 +46,6 @@ async fn create_schema() {
     )
     .await;
     assert_eq!(response.schema.name(), "fancyPants");
-    assert_eq!(response.schema.kind(), &SchemaKind::Configuration);
 }
 
 #[test]
@@ -70,9 +68,9 @@ async fn list_schemas() {
     );
     dal_ctx.update_to_universal_head();
 
-    let rand_schema1 = dal_create_schema(&dal_ctx, &SchemaKind::Configuration).await;
+    let rand_schema1 = dal_create_schema(&dal_ctx).await;
     let rand_schema1_name = rand_schema1.name();
-    let rand_schema2 = dal_create_schema(&dal_ctx, &SchemaKind::Configuration).await;
+    let rand_schema2 = dal_create_schema(&dal_ctx).await;
     let rand_schema2_name = rand_schema2.name();
 
     dal_ctx.commit().await.expect("cannot commit txn");
@@ -120,7 +118,7 @@ async fn get_schemas() {
     );
     dal_ctx.update_to_universal_head();
 
-    let schema_one = dal_create_schema(&dal_ctx, &SchemaKind::Configuration).await;
+    let schema_one = dal_create_schema(&dal_ctx).await;
 
     dal_ctx.commit().await.expect("cannot commit txn");
 

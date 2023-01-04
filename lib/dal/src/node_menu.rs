@@ -9,7 +9,7 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use crate::schema::SchemaUiMenu;
-use crate::{DalContext, DiagramKind};
+use crate::DalContext;
 use crate::{SchemaError, SchemaId, StandardModel, StandardModelError};
 
 #[allow(clippy::large_enum_variant)]
@@ -209,9 +209,11 @@ pub struct GenerateMenuItem {
 
 impl GenerateMenuItem {
     /// Generates raw items and initializes menu items as an empty vec.
-    pub async fn new(ctx: &DalContext, diagram_kind: DiagramKind) -> NodeMenuResult<Self> {
+    pub async fn new(ctx: &DalContext) -> NodeMenuResult<Self> {
         let mut item_list = Vec::new();
-        let mut ui_menus = SchemaUiMenu::list_for_diagram_kind(ctx, diagram_kind).await?;
+
+        // NOTE(nick): currently, we only generate ui menus for schemas.
+        let mut ui_menus = SchemaUiMenu::list(ctx).await?;
 
         // Ensure the names and categories are alphabetically sorted.
         ui_menus.sort_by(|a, b| a.name().cmp(b.name()));

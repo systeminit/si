@@ -18,7 +18,7 @@ use crate::{
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, BuiltinsResult, ConfirmationPrototype,
     ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func,
-    InternalProvider, PropKind, SchemaError, SchemaKind, StandardModel, WorkflowPrototype,
+    InternalProvider, PropKind, SchemaError, StandardModel, WorkflowPrototype,
     WorkflowPrototypeContext,
 };
 use crate::{AttributeValueError, SchemaVariant};
@@ -70,7 +70,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "AMI",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -82,10 +81,8 @@ impl MigrationDriver {
         };
 
         // Diagram and UI Menu
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "AMI", "AWS", &diagram_kind).await?;
+
+        let ui_menu = SchemaUiMenu::new(ctx, "AMI", "AWS").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop and validation creation
@@ -284,7 +281,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "EC2 Instance",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -296,10 +292,8 @@ impl MigrationDriver {
         };
 
         // Diagram and UI Menu
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "EC2 Instance", "AWS", &diagram_kind).await?;
+
+        let ui_menu = SchemaUiMenu::new(ctx, "EC2 Instance", "AWS").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop: /root/domain/ImageId
@@ -889,7 +883,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Region",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -901,10 +894,8 @@ impl MigrationDriver {
         };
 
         // Diagram and UI Menu
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Region", "AWS", &diagram_kind).await?;
+
+        let ui_menu = SchemaUiMenu::new(ctx, "Region", "AWS").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop Creation
@@ -1098,7 +1089,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Elastic IP",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -1110,10 +1100,8 @@ impl MigrationDriver {
         };
 
         // Diagram and UI Menu
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Elastic IP", "AWS", &diagram_kind).await?;
+
+        let ui_menu = SchemaUiMenu::new(ctx, "Elastic IP", "AWS").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop: /root/domain/tags
@@ -1457,7 +1445,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Key Pair",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -1469,10 +1456,8 @@ impl MigrationDriver {
         };
 
         // Diagram and UI Menu
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Key Pair", "AWS", &diagram_kind).await?;
+
+        let ui_menu = SchemaUiMenu::new(ctx, "Key Pair", "AWS").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop: /root/domain/KeyName

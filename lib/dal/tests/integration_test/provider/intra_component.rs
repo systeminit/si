@@ -5,7 +5,7 @@ use dal::{
     provider::internal::InternalProvider,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
     ComponentView, DalContext, DiagramKind, ExternalProvider, Func, FuncBackendKind,
-    FuncBackendResponseType, PropKind, SchemaKind, SocketArity, StandardModel,
+    FuncBackendResponseType, PropKind, SocketArity, StandardModel,
 };
 use dal_test::{
     helpers::setup_identity_func,
@@ -16,7 +16,7 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn intra_component_identity_update(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -283,7 +283,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
 
 #[test]
 async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

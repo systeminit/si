@@ -4,20 +4,14 @@ use dal::{
     edge::EdgeKind, edge::EdgeObjectId, edge::VertexObjectKind, socket::SocketArity,
     ActionPrototype, ActionPrototypeContext, BuiltinsResult, ConfirmationPrototype,
     ConfirmationPrototypeContext, ConfirmationResolverTree, DalContext, DiagramKind, Edge,
-    ExternalProvider, Func, HasPrototypeContext, InternalProvider, Schema, SchemaError, SchemaKind,
+    ExternalProvider, Func, HasPrototypeContext, InternalProvider, Schema, SchemaError,
     SchemaVariant, Socket, StandardModel, WorkflowPrototypeId,
 };
 use dal_test::helpers::setup_identity_func;
 use dal_test::{helpers::create_component_and_node_for_schema, test};
 
 async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket, Socket)> {
-    let mut schema = Schema::new(
-        ctx,
-        "Dummy Schema",
-        &SchemaKind::Configuration,
-        &ComponentKind::Standard,
-    )
-    .await?;
+    let mut schema = Schema::new(ctx, "Dummy Schema", &ComponentKind::Standard).await?;
     let (schema_variant, _root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

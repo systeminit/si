@@ -1,13 +1,13 @@
 use dal::{
     schema::{variant::leaves::LeafKind, SchemaVariant},
-    DalContext, InternalProvider, SchemaKind, StandardModel,
+    DalContext, InternalProvider, StandardModel,
 };
 use dal_test::{test, test_harness::create_schema};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(ctx).await;
 
     let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "ringo")
         .await
@@ -17,7 +17,7 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn set_schema(ctx: &DalContext) {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(ctx).await;
     let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0")
         .await
         .expect("cannot create schema variant");
@@ -39,7 +39,7 @@ async fn set_schema(ctx: &DalContext) {
 
 #[test]
 async fn find_code_item_prop(ctx: &DalContext) {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0")
         .await
         .expect("cannot create schema variant");
@@ -62,7 +62,7 @@ async fn find_code_item_prop(ctx: &DalContext) {
 
 #[test]
 async fn find_implicit_internal_providers_for_root_children(ctx: &DalContext) {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0")
         .await
         .expect("cannot create schema variant");

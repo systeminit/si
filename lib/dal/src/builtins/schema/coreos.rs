@@ -9,7 +9,7 @@ use crate::{
 use crate::{
     schema::SchemaUiMenu, AttributePrototype, AttributePrototypeArgument, AttributePrototypeError,
     AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext,
-    InternalProvider, SchemaError, SchemaKind, SchemaVariant, StandardModel,
+    InternalProvider, SchemaVariant, StandardModel,
 };
 
 // Definitions
@@ -39,7 +39,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Butane",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(COREOS_NODE_COLOR),
                 Some(definition),
@@ -51,10 +50,7 @@ impl MigrationDriver {
         };
 
         // Diagram and UI Menu
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Butane", "CoreOS", &diagram_kind).await?;
+        let ui_menu = SchemaUiMenu::new(ctx, "Butane", "CoreOS").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Code generation

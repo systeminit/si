@@ -13,7 +13,6 @@ use dal::{
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::diagram::connect_component_to_frame::connect_component_sockets_to_frame;
 use crate::service::diagram::{DiagramError, DiagramResult};
-use crate::service::schema::SchemaError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -49,19 +48,12 @@ pub async fn create_node(
         .default_schema_variant_id()
         .ok_or(DiagramError::SchemaVariantNotFound)?;
 
-    let diagram_kind = schema
-        .diagram_kind()
-        .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-    if diagram_kind != DiagramKind::Configuration {
-        return Err(DiagramError::InvalidDiagramKind(diagram_kind));
-    }
-
     let (component, node) =
         Component::new_for_schema_variant_with_node(&ctx, &name, schema_variant_id).await?;
 
     let component_id = *component.id();
 
-    let node_template = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;
+    let node_template = NodeTemplate::new_for_schema(&ctx, request.schema_id).await?;
 
     let (width, height) = {
         let sockets = component
@@ -83,10 +75,11 @@ pub async fn create_node(
         size
     };
 
+    // NOTE(nick): we currently assume all nodes created through this route are configuration nodes.
     let position = NodePosition::new(
         &ctx,
         *node.id(),
-        diagram_kind,
+        DiagramKind::Configuration,
         request.x.clone(),
         request.y.clone(),
         width,

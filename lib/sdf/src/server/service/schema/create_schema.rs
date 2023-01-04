@@ -1,14 +1,13 @@
 use super::SchemaResult;
 use crate::server::extract::{Authorization, HandlerContext, HistoryActor, Tenancy};
 use axum::Json;
-use dal::{component::ComponentKind, Schema, SchemaKind, Visibility, WriteTenancy, WsEvent};
+use dal::{component::ComponentKind, Schema, Visibility, WriteTenancy, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateSchemaRequest {
     pub name: String,
-    pub kind: SchemaKind,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -37,7 +36,7 @@ pub async fn create_schema(
         )
         .await?;
 
-    let schema = Schema::new(&ctx, &request.name, &request.kind, &ComponentKind::Standard).await?;
+    let schema = Schema::new(&ctx, &request.name, &ComponentKind::Standard).await?;
     let response = CreateSchemaResponse { schema };
 
     WsEvent::change_set_written(&ctx)

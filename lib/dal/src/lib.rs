@@ -159,9 +159,7 @@ pub use qualification::{QualificationError, QualificationView};
 pub use read_tenancy::{ReadTenancy, ReadTenancyError};
 pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
 pub use schema::variant::root_prop::RootProp;
-pub use schema::{
-    Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
-};
+pub use schema::{Schema, SchemaError, SchemaId, SchemaPk, SchemaVariant, SchemaVariantId};
 pub use secret::{
     DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretKind,
     SecretObjectType, SecretPk, SecretResult, SecretVersion,

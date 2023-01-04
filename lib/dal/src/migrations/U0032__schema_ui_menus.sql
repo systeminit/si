@@ -1,24 +1,22 @@
 CREATE TABLE schema_ui_menus
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
+    pk                          ident primary key                 default ident_create_v1(),
+    id                          ident                    not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
     tenancy_billing_account_ids ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
+    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL,
-    category                    text                     NOT NULL,
-    diagram_kind                text                     NOT NULL
+    category                    text                     NOT NULL
 );
 
 CREATE UNIQUE INDEX unique_schema_ui_menus
     ON schema_ui_menus (name,
                         category,
-                        diagram_kind,
                         tenancy_universal,
                         tenancy_billing_account_ids,
                         tenancy_organization_ids,
@@ -40,7 +38,6 @@ CREATE OR REPLACE FUNCTION schema_ui_menu_create_v1(
     this_visibility jsonb,
     this_name text,
     this_category text,
-    this_diagram_kind text,
     OUT object json) AS
 $$
 DECLARE
@@ -54,11 +51,11 @@ BEGIN
     INSERT INTO schema_ui_menus (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                                  tenancy_workspace_ids,
                                  visibility_change_set_pk, visibility_deleted_at,
-                                 name, category, diagram_kind)
+                                 name, category)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at,
-            this_name, this_category, this_diagram_kind)
+            this_name, this_category)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

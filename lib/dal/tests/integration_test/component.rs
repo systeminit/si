@@ -1,8 +1,8 @@
 use dal::{
     func::backend::js_command::CommandRunResult, generate_name, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentView,
-    DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider, PropKind, SchemaKind,
-    SocketArity, StandardModel, Visibility, WorkspaceId,
+    DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider, PropKind, SocketArity,
+    StandardModel, Visibility, WorkspaceId,
 };
 use dal_test::{
     helpers::setup_identity_func,
@@ -28,7 +28,7 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn new_for_schema_variant_with_node(ctx: &DalContext) {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(ctx).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
     let (component, node) =
@@ -49,14 +49,14 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext) {
 
 #[test]
 async fn schema_relationships(ctx: &DalContext) {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(ctx).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     let _component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 }
 
 #[test]
 async fn name_from_context(ctx: &DalContext) {
-    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let schema = create_schema(ctx).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
     let (component, _) =
@@ -83,7 +83,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     ctx.update_to_universal_head();
 
     // Create "ekwb" schema.
-    let ekwb_schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let ekwb_schema = create_schema(ctx).await;
     let (ekwb_schema_variant, ekwb_root_prop) =
         create_schema_variant_with_root(ctx, *ekwb_schema.id()).await;
     ekwb_schema_variant
@@ -92,7 +92,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         .expect("unable to finalize schema variant");
 
     // Create "noctua" schema.
-    let noctua_schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let noctua_schema = create_schema(ctx).await;
     let (noctua_schema_variant, noctua_root_prop) =
         create_schema_variant_with_root(ctx, *noctua_schema.id()).await;
     let u12a_prop = create_prop_and_set_parent(

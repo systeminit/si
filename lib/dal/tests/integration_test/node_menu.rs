@@ -1,4 +1,4 @@
-use dal::{node_menu::GenerateMenuItem, DalContext, DiagramKind};
+use dal::{node_menu::GenerateMenuItem, DalContext};
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
@@ -11,9 +11,7 @@ async fn get_node_menu(ctx: &DalContext) {
         .create_component(ctx, "valorant", Builtin::DockerImage)
         .await;
 
-    let gmi = GenerateMenuItem::new(ctx, DiagramKind::Configuration)
-        .await
-        .expect("cannot get items");
+    let gmi = GenerateMenuItem::new(ctx).await.expect("cannot get items");
     let items = gmi.raw_items;
 
     let docker_image_item = items.iter().find(|(path, item)| {

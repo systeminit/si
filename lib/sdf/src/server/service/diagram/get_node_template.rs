@@ -25,7 +25,7 @@ pub async fn get_node_template(
 ) -> DiagramResult<Json<GetNodeTemplateResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let response = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;
+    let response = NodeTemplate::new_for_schema(&ctx, request.schema_id).await?;
 
     Ok(Json(response))
 }

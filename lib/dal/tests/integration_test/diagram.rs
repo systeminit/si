@@ -47,16 +47,14 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         component_view_properties.drop_qualification().to_value() // actual
     );
 
-    let node_template = NodeTemplate::new_from_schema_id(ctx, *schema.id())
+    let node_template = NodeTemplate::new_for_schema(ctx, *schema.id())
         .await
         .expect("could not create node template");
-    let diagram_kind = schema.diagram_kind().expect("no diagram kind for schema");
-    assert_eq!(diagram_kind, DiagramKind::Configuration);
 
     let position = NodePosition::new(
         ctx,
         *node.id(),
-        diagram_kind,
+        DiagramKind::Configuration,
         "0",
         "0",
         Some("500"),

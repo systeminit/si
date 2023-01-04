@@ -7,7 +7,7 @@ use dal::{
 
 use dal::{
     AttributeReadContext, AttributeValue, Component, ComponentView, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind, SchemaVariant, StandardModel,
+    FuncBackendKind, FuncBackendResponseType, PropKind, SchemaVariant, StandardModel,
 };
 
 use dal_test::helpers::component_view::ComponentViewProperties;
@@ -21,7 +21,7 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
-    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
+    let mut schema = create_schema(ctx).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     let schema_variant_id = *schema_variant.id();
     schema

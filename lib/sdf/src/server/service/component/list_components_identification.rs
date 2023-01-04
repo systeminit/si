@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use crate::service::schema::SchemaError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -89,9 +88,6 @@ pub async fn list_components_identification(
             .schema(&ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
 
         let created_at = ListComponentsIdentificationItemTimestamp::from_history_actor_timestamp(
             &ctx,
@@ -110,7 +106,7 @@ pub async fn list_components_identification(
             schema_variant_name: schema_variant.name().to_owned(),
             schema_id: *schema.id(),
             schema_name: schema.name().to_owned(),
-            diagram_kind,
+            diagram_kind: DiagramKind::Configuration,
             resource,
             created_at,
             updated_at,

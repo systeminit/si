@@ -10,8 +10,8 @@ use crate::{
     schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsResult,
     ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider,
-    Func, FuncBinding, InternalProvider, PropKind, SchemaError, SchemaKind, SchemaVariant,
-    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    Func, FuncBinding, InternalProvider, PropKind, SchemaError, SchemaVariant, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{
     builtins::schema::aws::{AWS_NODE_COLOR, EC2_TAG_DOCS_URL},
@@ -45,7 +45,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Ingress",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -57,10 +56,8 @@ impl MigrationDriver {
         };
 
         // Diagram and UI Menu
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Ingress", "AWS", &diagram_kind).await?;
+
+        let ui_menu = SchemaUiMenu::new(ctx, "Ingress", "AWS").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop Creation
@@ -630,7 +627,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Egress",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -642,10 +638,8 @@ impl MigrationDriver {
         };
 
         // Diagram and UI Menu
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        let ui_menu = SchemaUiMenu::new(ctx, "Egress", "AWS", &diagram_kind).await?;
+
+        let ui_menu = SchemaUiMenu::new(ctx, "Egress", "AWS").await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop Creation
@@ -1117,7 +1111,6 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Security Group",
-                SchemaKind::Configuration,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -1129,10 +1122,8 @@ impl MigrationDriver {
         };
 
         // Diagram and UI Menu
-        let diagram_kind = schema
-            .diagram_kind()
-            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
-        SchemaUiMenu::new(ctx, "Security Group", "AWS", &diagram_kind)
+
+        SchemaUiMenu::new(ctx, "Security Group", "AWS")
             .await?
             .set_schema(ctx, schema.id())
             .await?;
