@@ -230,8 +230,8 @@ pub async fn connect_component_sockets_to_frame(
                         Edge::connect_external_providers_for_components(
                             ctx,
                             *provider.id(),
-                            *child_component.id(),
                             *parent_component.id(),
+                            *child_component.id(),
                         )
                         .await?;
 

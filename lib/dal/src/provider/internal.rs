@@ -99,6 +99,8 @@ const FIND_EXPLICIT_FOR_SOCKET: &str =
     include_str!("../queries/internal_provider_find_explicit_for_socket.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/internal_provider_list_for_schema_variant.sql");
+const LIST_EXPLICIT_FOR_SCHEMA_VARIANT: &str =
+    include_str!("../queries/internal_provider_list_explicit_for_schema_variant.sql");
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
     include_str!("../queries/internal_provider_list_for_attribute_prototype.sql");
 const LIST_FOR_INPUT_SOCKETS: &str =
@@ -517,6 +519,23 @@ impl InternalProvider {
             .pg()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
+                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find all [`Self`] for a given [`SchemaVariant`](crate::SchemaVariant).
+    #[tracing::instrument(skip(ctx))]
+    pub async fn list_explicit_for_schema_variant(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> InternalProviderResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_EXPLICIT_FOR_SCHEMA_VARIANT,
                 &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
