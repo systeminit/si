@@ -8,9 +8,12 @@ CREATE OR REPLACE FUNCTION attribute_value_create_appropriate_for_prototype_and_
 ) AS
 $$
 DECLARE
-    attribute_value        attribute_values%ROWTYPE;
-    tmp_attribute_value    attribute_values%ROWTYPE;
-    new_attribute_value_id ident;
+    attribute_value              attribute_values%ROWTYPE;
+    tmp_attribute_value          attribute_values%ROWTYPE;
+    new_attribute_value_id       ident;
+    func_id                      ident;
+    func_binding_id              ident;
+    func_binding_return_value_id ident;
 BEGIN
     RAISE DEBUG 'attribute_value_create_appropriate_for_prototype_and_context_v1(%, %)',
         this_attribute_prototype_id,
@@ -70,14 +73,52 @@ BEGIN
         -- back to this AttributeValue, since it now "exists" in the more specific context (even though,
         -- it might have a different value due to the function that generates its value having different
         --- inputs).
-        new_attribute_value_id := attribute_value_vivify_value_and_parent_values_raw_v1(
-                this_write_tenancy,
-                this_read_tenancy,
-                this_visibility,
-                this_attribute_context,
-                attribute_value.id,
-                false
-            );
+
+        IF (this_attribute_context ->> 'attribute_context_prop_id')::ident != ident_nil_v1() THEN
+            new_attribute_value_id := attribute_value_vivify_value_and_parent_values_raw_v1(
+                    this_write_tenancy,
+                    this_read_tenancy,
+                    this_visibility,
+                    this_attribute_context,
+                    attribute_value.id,
+                    false
+                );
+        ELSE
+
+            SELECT id
+            INTO func_id
+            FROM funcs_v1(this_read_tenancy, this_visibility)
+            WHERE name = 'si:unset';
+            IF NOT FOUND THEN
+                RAISE 'Unable to find Func(%) in Tenancy(%), Visibility(%)', 'si:unset',
+                    this_read_tenancy,
+                    this_visibility;
+            END IF;
+
+
+            SELECT new_func_binding_id, new_func_binding_return_value_id
+            INTO func_binding_id, func_binding_return_value_id
+            FROM func_binding_create_and_execute_v1(
+                    this_write_tenancy,
+                    this_read_tenancy,
+                    this_visibility,
+                    'null'::jsonb,
+                    func_id
+                );
+
+
+            SELECT (new_av ->> 'id')::ident
+            INTO new_attribute_value_id
+            FROM attribute_value_new_v1(
+                         this_write_tenancy,
+                         this_read_tenancy,
+                         this_visibility,
+                         func_binding_id,
+                         func_binding_return_value_id,
+                         this_attribute_context,
+                         NULL
+                     ) as av(new_av);
+        END IF;
         PERFORM set_belongs_to_v1(
                 'attribute_value_belongs_to_attribute_prototype',
                 this_read_tenancy,
@@ -461,6 +502,16 @@ BEGIN
                                                            );
                         RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Ensuring AttributeValue exists for ExternalProvider at AttributeContext(%)', insertion_attribute_context;
                         -- This AttributePrototype is directly associated with an ExternalProvider
+
+                        PERFORM *
+                        FROM attribute_values_v1(this_read_tenancy, this_visibility) as av
+                        WHERE exact_attribute_context_v1(insertion_attribute_context, av);
+
+                        IF FOUND THEN
+                            CONTINUE;
+                        END IF;
+
+
                         next_attribute_value_ids := array_cat(
                                 next_attribute_value_ids,
                                 attribute_value_create_appropriate_for_prototype_and_context_v1(
@@ -532,15 +583,14 @@ BEGIN
 
                 -- Only InternalProviders can use ExternalProviders, so those are what we need to be looking for
                 -- on what will be using this AttributeValue.
-                tmp_attribute_context := attribute_context_from_record_v1(source_attribute_value)
-                    || jsonb_build_object(
-                                                 'attribute_context_prop_id', ident_nil_v1(),
-                                                 'attribute_context_internal_provider_id', NULL,
-                                                 'attribute_context_external_provider_id', ident_nil_v1(),
-                                             -- The InternalProviders that use this Attribute value can be for any Component,
-                                             -- and will not likely have the same ComponentId as the source AttributeValue
-                                                 'attribute_context_component_id', NULL
-                                             );
+                tmp_attribute_context := jsonb_build_object(
+                        'attribute_context_prop_id', ident_nil_v1(),
+                        'attribute_context_internal_provider_id', NULL,
+                        'attribute_context_external_provider_id', NULL,
+                    -- The InternalProviders that use this Attribute value can be for any Component,
+                    -- and will not likely have the same ComponentId as the source AttributeValue
+                        'attribute_context_component_id', NULL
+                    );
                 RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Looking in AttributeContext(%)', tmp_attribute_context;
                 -- AttributePrototypes that "use" this ExternalProvider will have the ExternalProviderId set AND have the
                 -- same tail_component_id as source_attribute_value.attribute_context_component_id.
@@ -584,6 +634,15 @@ BEGIN
                                                            'attribute_context_component_id', head_component_id
                                                        );
 
+                    PERFORM *
+                    FROM attribute_values_v1(this_read_tenancy, this_visibility) as av
+                    WHERE exact_attribute_context_v1(insertion_attribute_context, av);
+
+                    IF FOUND THEN
+                        CONTINUE;
+                    END IF;
+
+
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Source AttributeValue(%) destination AttributeContext(%)',
                         source_attribute_value,
                         insertion_attribute_context;
@@ -598,35 +657,6 @@ BEGIN
                                 )
                         );
                 END LOOP;
-
-                --                 FOR head_schema_id,
---                     head_schema_variant_id,
---                     head_component_id,
---                     internal_provider_id,
---                     attribute_prototype_id
---                     IN
---                     SELECT cbts.belongs_to_id                     AS head_schema_id,
---                            cbtsv.belongs_to_id                    AS head_schema_variant_id,
---                            apa.head_component_id,
---                            attribute_context_internal_provider_id AS internal_provider_id,
---                            ap.id                                  AS attribute_prototype_id
---                     FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
---                              INNER JOIN attribute_prototype_arguments_v1(this_read_tenancy, this_visibility) AS apa
---                                         ON apa.attribute_prototype_id = ap.id
---                                             AND external_provider_id =
---                                                 source_attribute_value.attribute_context_external_provider_id
---                                             AND
---                                            tail_component_id = source_attribute_value.attribute_context_component_id
---                              INNER JOIN component_belongs_to_schema_v1(this_read_tenancy, this_visibility) AS cbts
---                                         ON cbts.object_id = apa.head_component_id
---                              INNER JOIN component_belongs_to_schema_variant_v1(this_read_tenancy,
---                                                                                this_visibility) cbtsv
---                                         ON cbtsv.object_id = apa.head_component_id
---                     WHERE in_attribute_context_v1(tmp_attribute_context, ap)
---                 LOOP
---
---                 end loop;
-
             ELSE
                 -- No idea what kind of AttributeValue this is, but it can't be good.
                 RAISE 'attribute_value_create_new_affected_values_v1: Found an AttributeValue(%) of unknown type. Tenancy(%), Visibility(%)',

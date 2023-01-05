@@ -12,8 +12,9 @@ use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::node::NodeId;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
-    ComponentId, ExternalProviderError, Func, HistoryEventError, InternalProviderError,
-    ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
+    Func, HistoryEventError, InternalProviderError, PropId, ReadTenancyError, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
@@ -47,9 +48,15 @@ pub enum EdgeError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
 
     #[error("component error: {0}")]
     Component(String),
+    #[error("attribute value not found")]
+    AttributeValueNotFound,
+    #[error("attribute prototype not found")]
+    AttributePrototypeNotFound,
     #[error("external provider not found for id: {0}")]
     ExternalProviderNotFound(ExternalProviderId),
     #[error("external provider not found for socket id: {0}")]
@@ -310,10 +317,22 @@ impl Edge {
                 *head_explicit_internal_provider.id(),
             ));
         }
-        let head_explicit_internal_provider_attribute_prototype_id =
-            head_explicit_internal_provider
-                .attribute_prototype_id()
-                .ok_or(InternalProviderError::EmptyAttributePrototype)?;
+
+        let attr_read_context = AttributeReadContext {
+            prop_id: Some(PropId::NONE),
+            internal_provider_id: Some(head_explicit_internal_provider_id),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(head_component_id),
+        };
+
+        let attribute_value = AttributeValue::find_for_context(ctx, attr_read_context)
+            .await?
+            .ok_or(EdgeError::AttributeValueNotFound)?;
+
+        let attribute_prototype = attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(EdgeError::AttributePrototypeNotFound)?;
 
         let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
             .await?
@@ -327,7 +346,7 @@ impl Edge {
         // Now, we can create the inter component attribute prototype argument.
         AttributePrototypeArgument::new_for_inter_component(
             ctx,
-            *head_explicit_internal_provider_attribute_prototype_id,
+            *attribute_prototype.id(),
             *identity_func_arg.id(),
             head_component_id,
             tail_component_id,
@@ -343,21 +362,21 @@ impl Edge {
         head_component_id: ComponentId,
         tail_component_id: ComponentId,
     ) -> EdgeResult<()> {
-        let internal_provider: InternalProvider =
-            InternalProvider::get_by_id(ctx, &internal_provider_id)
-                .await?
-                .ok_or(EdgeError::InternalProviderNotFound(internal_provider_id))?;
+        let attr_read_context = AttributeReadContext {
+            prop_id: Some(PropId::NONE),
+            internal_provider_id: Some(internal_provider_id),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(head_component_id),
+        };
 
-        // Check that the explicit internal provider is actually explicit and find its attribute
-        // prototype id.
-        if internal_provider.is_internal_consumer() {
-            return Err(EdgeError::FoundImplicitInternalProvider(
-                internal_provider_id,
-            ));
-        }
-        let attribute_prototype_id = internal_provider
-            .attribute_prototype_id()
-            .ok_or(InternalProviderError::EmptyAttributePrototype)?;
+        let attribute_value = AttributeValue::find_for_context(ctx, attr_read_context)
+            .await?
+            .ok_or(EdgeError::AttributeValueNotFound)?;
+
+        let attribute_prototype = attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(EdgeError::AttributePrototypeNotFound)?;
 
         let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
             .await?
@@ -371,7 +390,7 @@ impl Edge {
         // Now, we can create the inter component attribute prototype argument.
         AttributePrototypeArgument::new_explicit_internal_to_explicit_internal_inter_component(
             ctx,
-            *attribute_prototype_id,
+            *attribute_prototype.id(),
             *identity_func_arg.id(),
             head_component_id,
             tail_component_id,
@@ -387,13 +406,21 @@ impl Edge {
         head_component_id: ComponentId,
         tail_component_id: ComponentId,
     ) -> EdgeResult<()> {
-        let provider = ExternalProvider::get_by_id(ctx, &external_provider_id)
-            .await?
-            .ok_or(EdgeError::ExternalProviderNotFound(external_provider_id))?;
+        let attr_read_context = AttributeReadContext {
+            prop_id: Some(PropId::NONE),
+            internal_provider_id: Some(InternalProviderId::NONE),
+            external_provider_id: Some(external_provider_id),
+            component_id: Some(head_component_id),
+        };
 
-        let attribute_prototype_id = provider
-            .attribute_prototype_id()
-            .ok_or(InternalProviderError::EmptyAttributePrototype)?;
+        let attribute_value = AttributeValue::find_for_context(ctx, attr_read_context)
+            .await?
+            .ok_or(EdgeError::AttributeValueNotFound)?;
+
+        let attribute_prototype = attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(EdgeError::AttributePrototypeNotFound)?;
 
         let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
             .await?
@@ -407,7 +434,7 @@ impl Edge {
         // Now, we can create the inter component attribute prototype argument.
         AttributePrototypeArgument::new_external_to_external_inter_component(
             ctx,
-            *attribute_prototype_id,
+            *attribute_prototype.id(),
             *identity_func_arg.id(),
             head_component_id,
             tail_component_id,
