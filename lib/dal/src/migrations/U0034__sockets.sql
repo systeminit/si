@@ -1,12 +1,12 @@
 CREATE TABLE sockets
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
+    pk                          ident primary key                 default ident_create_v1(),
+    id                          ident                    not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
     tenancy_billing_account_ids ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
+    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
@@ -14,9 +14,8 @@ CREATE TABLE sockets
     kind                        text                     NOT NULL,
     edge_kind                   text                     NOT NULL,
     arity                       text                     NOT NULL,
-    diagram_kind              text                     NOT NULL,
-    required                    bool                     NOT NULL DEFAULT false,
-    color                       bigint
+    diagram_kind                text                     NOT NULL,
+    required                    bool                     NOT NULL DEFAULT false
 );
 SELECT standard_model_table_constraints_v1('sockets');
 SELECT many_to_many_table_create_v1('socket_many_to_many_schema_variants', 'sockets', 'schema_variants');

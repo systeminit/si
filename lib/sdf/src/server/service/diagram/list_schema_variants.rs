@@ -23,7 +23,6 @@ pub type ProviderMetadata = String;
 pub struct OutputProviderView {
     id: ExternalProviderId,
     ty: ProviderMetadata,
-    color: i64,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -40,7 +39,6 @@ pub struct OutputSocketView {
 pub struct InputProviderView {
     id: InternalProviderId,
     ty: ProviderMetadata,
-    color: i64,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -94,7 +92,6 @@ pub async fn list_schema_variants(
                             provider: OutputProviderView {
                                 id: *provider.id(),
                                 ty: socket.name().to_owned(),
-                                color: socket.color().map_or(0x00b0bc, |c| *c),
                             },
                         })
                     }
@@ -109,7 +106,6 @@ pub async fn list_schema_variants(
                             provider: InputProviderView {
                                 id: *provider.id(),
                                 ty: socket.name().to_owned(),
-                                color: socket.color().map_or(0x00b0bc, |c| *c),
                             },
                         })
                     }

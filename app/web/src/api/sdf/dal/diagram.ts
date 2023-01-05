@@ -7,7 +7,6 @@ export type DiagramProviderMetadata = string;
 export interface DiagramOutputProvider {
   id: string;
   ty: DiagramProviderMetadata;
-  color: number;
 }
 
 export interface DiagramOutputSocket {
@@ -20,7 +19,6 @@ export interface DiagramOutputSocket {
 export interface DiagramInputProvider {
   id: string;
   ty: DiagramProviderMetadata;
-  color: number;
 }
 
 export interface DiagramInputSocket {

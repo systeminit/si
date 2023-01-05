@@ -7,9 +7,9 @@ use crate::{
     ExternalProvider,
 };
 use crate::{
-    schema::SchemaUiMenu, AttributePrototype, AttributePrototypeArgument, AttributePrototypeError,
-    AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext,
-    InternalProvider, SchemaVariant, StandardModel,
+    AttributePrototype, AttributePrototypeArgument, AttributePrototypeError, AttributeReadContext,
+    AttributeValue, BuiltinsError, BuiltinsResult, DalContext, InternalProvider, SchemaVariant,
+    StandardModel,
 };
 
 // Definitions
@@ -20,16 +20,16 @@ const COREOS_NODE_COLOR: i64 = 0xE26B70;
 
 impl MigrationDriver {
     pub async fn migrate_coreos(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        self.migrate_butane(ctx).await?;
+        self.migrate_butane(ctx, "CoreOS").await?;
         Ok(())
     }
 
     /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).
-    async fn migrate_butane(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_butane(&self, ctx: &DalContext, ui_menu_category: &str) -> BuiltinsResult<()> {
         let definition: SchemaVariantDefinition = serde_json::from_str(BUTANE_DEFINITION)?;
 
         let (
-            schema,
+            _schema,
             mut schema_variant,
             root_prop,
             maybe_prop_cache,
@@ -39,6 +39,8 @@ impl MigrationDriver {
             .create_schema_and_variant(
                 ctx,
                 "Butane",
+                None,
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(COREOS_NODE_COLOR),
                 Some(definition),
@@ -48,10 +50,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        // Diagram and UI Menu
-        let ui_menu = SchemaUiMenu::new(ctx, "Butane", "CoreOS").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Code generation
         let (code_generation_func_id, code_generation_func_argument_id) = self

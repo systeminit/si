@@ -2,10 +2,10 @@ use crate::schema::variant::leaves::LeafKind;
 use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInputLocation};
 use crate::{component::ComponentKind, schema::variant::leaves::LeafInput};
 use crate::{
-    func::argument::FuncArgument, schema::SchemaUiMenu, socket::SocketArity,
-    AttributePrototypeArgument, AttributeReadContext, AttributeValue, AttributeValueError,
-    BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, InternalProvider,
-    PropKind, SchemaVariant, StandardModel,
+    func::argument::FuncArgument, socket::SocketArity, AttributePrototypeArgument,
+    AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult,
+    DalContext, DiagramKind, ExternalProvider, InternalProvider, PropKind, SchemaVariant,
+    StandardModel,
 };
 
 mod kubernetes_deployment_spec;
@@ -32,16 +32,25 @@ pub fn doc_url(path: impl AsRef<str>) -> String {
 
 impl MigrationDriver {
     pub async fn migrate_kubernetes(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        self.migrate_kubernetes_namespace(ctx).await?;
-        self.migrate_kubernetes_deployment(ctx).await?;
+        let ui_menu_category = "Kubernetes";
+        self.migrate_kubernetes_namespace(ctx, ui_menu_category)
+            .await?;
+        self.migrate_kubernetes_deployment(ctx, ui_menu_category)
+            .await?;
         Ok(())
     }
 
-    async fn migrate_kubernetes_namespace(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_kubernetes_namespace(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+    ) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Kubernetes Namespace",
+                Some(String::from("Namespace")),
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(KUBERNETES_NODE_COLOR),
                 None,
@@ -53,9 +62,6 @@ impl MigrationDriver {
         };
 
         schema_variant.set_link(ctx, Some("https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/".to_owned())).await?;
-
-        let ui_menu = SchemaUiMenu::new(ctx, "Namespace", "Kubernetes").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         let metadata_prop = self
             .create_kubernetes_metadata_prop(ctx, true, root_prop.domain_prop_id)
@@ -92,7 +98,7 @@ impl MigrationDriver {
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
-        let (external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+        let (external_provider, _output_socket) = ExternalProvider::new_with_socket(
             ctx,
             *schema.id(),
             *schema_variant.id(),
@@ -105,7 +111,6 @@ impl MigrationDriver {
             DiagramKind::Configuration,
         )
         .await?;
-        output_socket.set_color(ctx, Some(0x85c9a3)).await?;
 
         self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
@@ -166,11 +171,17 @@ impl MigrationDriver {
         Ok(())
     }
 
-    async fn migrate_kubernetes_deployment(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, mut schema_variant, root_prop, _, _, _) = match self
+    async fn migrate_kubernetes_deployment(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+    ) -> BuiltinsResult<()> {
+        let (_schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Kubernetes Deployment",
+                Some(String::from("Deployment")),
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(KUBERNETES_NODE_COLOR),
                 None,
@@ -274,7 +285,7 @@ impl MigrationDriver {
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
-        let (docker_image_explicit_internal_provider, mut input_socket) =
+        let (docker_image_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -286,9 +297,8 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        let (kubernetes_namespace_explicit_internal_provider, mut input_socket) =
+        let (kubernetes_namespace_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -300,10 +310,6 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0x85c9a3)).await?;
-
-        let ui_menu = SchemaUiMenu::new(ctx, "Deployment", "Kubernetes").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;

@@ -6,12 +6,11 @@ use crate::socket::SocketArity;
 use crate::validation::Validation;
 use crate::{action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation};
 use crate::{
-    attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
-    schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
-    AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsResult,
-    ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider,
-    Func, FuncBinding, InternalProvider, PropKind, SchemaError, SchemaVariant, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
+    ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
+    AttributeValueError, BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext,
+    DalContext, DiagramKind, ExternalProvider, Func, FuncBinding, InternalProvider, PropKind,
+    SchemaError, SchemaVariant, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{
     builtins::schema::aws::{AWS_NODE_COLOR, EC2_TAG_DOCS_URL},
@@ -32,19 +31,29 @@ const EC2_SECURITY_GROUP_PROPERTIES_DOCS_URL: &str =
 const INGRESS_EGRESS_PROTOCOLS: &[&str; 3] = &["tcp", "udp", "icmp"];
 
 impl MigrationDriver {
-    pub async fn migrate_aws_vpc(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        self.migrate_ingress(ctx).await?;
-        self.migrate_egress(ctx).await?;
-        self.migrate_security_group(ctx).await?;
+    pub async fn migrate_aws_vpc(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+    ) -> BuiltinsResult<()> {
+        self.migrate_ingress(ctx, ui_menu_category).await?;
+        self.migrate_egress(ctx, ui_menu_category).await?;
+        self.migrate_security_group(ctx, ui_menu_category).await?;
         Ok(())
     }
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Ingress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
-    async fn migrate_ingress(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_ingress(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+    ) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Ingress",
+                None,
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -54,11 +63,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        // Diagram and UI Menu
-
-        let ui_menu = SchemaUiMenu::new(ctx, "Ingress", "AWS").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop Creation
         let group_id_prop = self
@@ -243,7 +247,7 @@ impl MigrationDriver {
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
         // Input Socket
-        let (group_id_internal_provider, mut input_socket) =
+        let (group_id_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -255,10 +259,9 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Input Socket
-        let (exposed_ports_internal_provider, mut input_socket) =
+        let (exposed_ports_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -270,9 +273,8 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        let (region_explicit_internal_provider, mut input_socket) =
+        let (region_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -284,7 +286,6 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Code Generation
         let (code_generation_func_id, code_generation_func_argument_id) = self
@@ -622,11 +623,13 @@ impl MigrationDriver {
     }
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Egress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
-    async fn migrate_egress(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_egress(&self, ctx: &DalContext, ui_menu_category: &str) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Egress",
+                None,
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -636,11 +639,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        // Diagram and UI Menu
-
-        let ui_menu = SchemaUiMenu::new(ctx, "Egress", "AWS").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop Creation
         let group_id_prop = self
@@ -799,7 +797,7 @@ impl MigrationDriver {
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
         // Input Socket
-        let (group_id_internal_provider, mut input_socket) =
+        let (group_id_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -811,9 +809,8 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        let (region_explicit_internal_provider, mut input_socket) =
+        let (region_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -825,7 +822,6 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Code Generation
         let (code_generation_func_id, code_generation_func_argument_id) = self
@@ -1106,11 +1102,17 @@ impl MigrationDriver {
     }
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Security Group`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
-    async fn migrate_security_group(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_security_group(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+    ) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Security Group",
+                None,
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -1120,13 +1122,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        // Diagram and UI Menu
-
-        SchemaUiMenu::new(ctx, "Security Group", "AWS")
-            .await?
-            .set_schema(ctx, schema.id())
-            .await?;
 
         // Prop Creation
         let description_prop = self
@@ -1219,7 +1214,7 @@ impl MigrationDriver {
         let identity_func_item = self
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-        let (region_explicit_internal_provider, mut input_socket) =
+        let (region_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -1231,7 +1226,6 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         let transformation_func_name = "si:awsSecurityGroupIdFromResource";
         let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
@@ -1243,7 +1237,7 @@ impl MigrationDriver {
             FuncBinding::create_and_execute(ctx, serde_json::json!({}), transformation_func_id)
                 .await?;
 
-        let (security_group_id_external_provider, mut output_socket) =
+        let (security_group_id_external_provider, _output_socket) =
             ExternalProvider::new_with_socket(
                 ctx,
                 *schema.id(),
@@ -1257,7 +1251,6 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Code Generation
         let (code_generation_func_id, code_generation_func_argument_id) = self
