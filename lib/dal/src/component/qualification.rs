@@ -12,7 +12,7 @@ use crate::qualification::{
 use crate::schema::SchemaVariant;
 use crate::validation::ValidationError;
 use crate::ws_event::WsEvent;
-use crate::{AttributeReadContext, DalContext, StandardModel, ValidationResolver};
+use crate::{AttributeReadContext, DalContext, RootPropChild, StandardModel, ValidationResolver};
 use crate::{Component, ComponentError, ComponentId};
 
 // FIXME(nick): use the formal types from the new version of function authoring instead of this
@@ -46,8 +46,12 @@ impl Component {
         // Prepare to assemble qualification views and access the "/root/qualification" prop tree.
         // We will use its implicit internal provider id and its corresponding prop id to do so.
         let qualification_map_implicit_internal_provider =
-            SchemaVariant::find_qualification_implicit_internal_provider(ctx, *schema_variant.id())
-                .await?;
+            SchemaVariant::find_root_child_implicit_internal_provider(
+                ctx,
+                *schema_variant.id(),
+                RootPropChild::Qualification,
+            )
+            .await?;
 
         // Collect all the func binding return value ids for the child attribute values
         // (map entries) for reference later.

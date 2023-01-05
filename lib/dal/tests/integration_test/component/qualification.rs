@@ -68,7 +68,7 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
         LeafKind::Qualification,
         vec![LeafInput {
             location: LeafInputLocation::Domain,
-            arg_id: *qualified_func_argument.id(),
+            func_argument_id: *qualified_func_argument.id(),
         }],
     )
     .await

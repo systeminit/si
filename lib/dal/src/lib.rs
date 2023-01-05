@@ -126,6 +126,7 @@ pub use edge::{Edge, EdgeError, EdgeResult};
 pub use fix::batch::{FixBatch, FixBatchId};
 pub use fix::resolver::{FixResolver, FixResolverContext, FixResolverError, FixResolverId};
 pub use fix::{Fix, FixCompletionStatus, FixId};
+pub use func::argument::FuncArgument;
 pub use func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 pub use func::{
     backend::{FuncBackendError, FuncBackendKind, FuncBackendResponseType},
@@ -158,7 +159,11 @@ pub use provider::internal::{InternalProvider, InternalProviderError, InternalPr
 pub use qualification::{QualificationError, QualificationView};
 pub use read_tenancy::{ReadTenancy, ReadTenancyError};
 pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
+pub use schema::variant::leaves::LeafInput;
+pub use schema::variant::leaves::LeafInputLocation;
+pub use schema::variant::leaves::LeafKind;
 pub use schema::variant::root_prop::RootProp;
+pub use schema::variant::root_prop::RootPropChild;
 pub use schema::{Schema, SchemaError, SchemaId, SchemaPk, SchemaVariant, SchemaVariantId};
 pub use secret::{
     DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretKind,

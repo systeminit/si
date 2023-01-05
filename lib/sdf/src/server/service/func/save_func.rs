@@ -289,7 +289,7 @@ async fn attribute_view_for_leaf_func(
                 leaf_kind,
                 vec![LeafInput {
                     location: LeafInputLocation::Domain,
-                    arg_id: *arg.id(),
+                    func_argument_id: *arg.id(),
                 }],
             )
             .await?;

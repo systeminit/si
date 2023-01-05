@@ -1,6 +1,11 @@
 {
-  "kind": "JsConfirmation",
-  "arguments": [],
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "resource",
+      "kind": "Object"
+    }
+  ],
   "response_type": "Confirmation",
   "display_name": "si:resourceExistsConfirmation",
   "description": null,

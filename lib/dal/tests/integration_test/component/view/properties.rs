@@ -74,7 +74,7 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
         LeafKind::CodeGeneration,
         vec![LeafInput {
             location: LeafInputLocation::Domain,
-            arg_id: *code_generation_func_argument.id(),
+            func_argument_id: *code_generation_func_argument.id(),
         }],
     )
     .await
