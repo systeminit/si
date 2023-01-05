@@ -581,8 +581,6 @@ BEGIN
                     source_attribute_value.attribute_context_external_provider_id;
                 -- This AttributeValue is directly for an ExternalProvider.
 
-                -- Only InternalProviders can use ExternalProviders, so those are what we need to be looking for
-                -- on what will be using this AttributeValue.
                 tmp_attribute_context := jsonb_build_object(
                         'attribute_context_prop_id', ident_nil_v1(),
                         'attribute_context_internal_provider_id', NULL,
