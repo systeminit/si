@@ -2,12 +2,11 @@ use std::{any::TypeId, panic::AssertUnwindSafe, sync::Arc, time::Duration};
 
 use color_eyre::Result;
 use dal::{
-    job::consumer::{JobConsumer, JobConsumerError},
+    job::consumer::{JobConsumer, JobConsumerError, JobInfo},
     job::definition::{Confirmation, Confirmations, DependentValuesUpdate, FixesJob, WorkflowRun},
-    CycloneKeyPair, DalContext, DalContextBuilder, FaktoryProcessor, JobFailure, JobFailureError,
-    JobQueueProcessor, ServicesContext, TransactionsError,
+    CycloneKeyPair, DalContext, DalContextBuilder, JobFailure, JobFailureError, JobQueueProcessor,
+    ServicesContext, TransactionsError,
 };
-use faktory_async::{BeatState, Client, FailConfig};
 use futures::{future::FutureExt, Future};
 use si_data_nats::NatsClient;
 use si_data_pg::{PgPool, PgPoolError};
@@ -19,12 +18,20 @@ use tokio::{
     sync::{mpsc, watch},
     task::JoinError,
 };
-use uuid::Uuid;
 
 mod args;
 mod config;
+mod transport;
+
+use transport::{connect, fetch, post_process, subscribe, Processor, Subscription};
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
+
+pub enum ExecutionState {
+    Process(JobInfo),
+    Idle,
+    Stop,
+}
 
 fn main() {
     std::thread::Builder::new()
@@ -137,41 +144,39 @@ async fn run(
 
     let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
 
-    info!("Creating faktory connection");
-    let config = faktory_async::Config::from_uri(
-        &config.faktory().url,
-        Some("pinga".to_string()),
-        Some(Uuid::new_v4().to_string()),
-    );
+    info!("Creating transport connection");
 
-    let client = Client::new(config.clone(), 256);
-    info!("Spawned faktory connection.");
+    let client = connect(&config).await?;
+
+    info!("Spawned transport connection.");
+
+    let job_processor = Box::new(Processor::new(client.clone(), alive_marker))
+        as Box<dyn JobQueueProcessor + Send + Sync>;
 
     const NUM_TASKS: usize = 10;
     let mut handles = Vec::with_capacity(NUM_TASKS);
-
     for _ in 0..NUM_TASKS {
         handles.push(tokio::task::spawn(start_job_executor(
-            client.clone(),
+            subscribe(&client).await?,
             pg_pool.clone(),
             nats.clone(),
             veritech.clone(),
+            job_processor.clone(),
             encryption_key,
             shutdown_request_rx.clone(),
-            alive_marker.clone(),
         )));
     }
-    drop(alive_marker);
+    drop(job_processor);
 
     futures::future::join_all(handles).await;
 
-    // Blocks until all FaktoryProcessors are gone so we don't skip jobs that are still being sent to faktory_async
-    info!("Waiting for all faktory processors to finish pushing jobs");
+    // Blocks until all JobProcessors are gone so we don't skip jobs that are still being sent to transport
+    info!("Waiting for all job processors to finish pushing jobs");
     let _ = job_processor_shutdown_rx.recv().await;
 
-    info!("Closing faktory-async client connection");
+    info!("Closing transport client connection");
     if let Err(err) = client.close().await {
-        error!("Error closing fakory-async client connection: {err}");
+        error!("Error closing transport client connection: {err}");
     }
 
     // Receiver can never be dropped as our caller owns it
@@ -179,18 +184,16 @@ async fn run(
     Ok(())
 }
 
-/// Start the faktory job executor
+/// Start the job executor
 async fn start_job_executor(
-    client: Client,
+    mut subscription: Subscription,
     pg: PgPool,
     nats: NatsClient,
     veritech: veritech_client::Client,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     encryption_key: veritech_client::EncryptionKey,
     mut shutdown_request_rx: watch::Receiver<()>,
-    alive_marker: mpsc::Sender<()>,
 ) {
-    let job_processor = Box::new(FaktoryProcessor::new(client.clone(), alive_marker))
-        as Box<dyn JobQueueProcessor + Send + Sync>;
     let services_context = ServicesContext::new(
         pg.clone(),
         nats.clone(),
@@ -203,68 +206,13 @@ async fn start_job_executor(
     loop {
         tokio::time::sleep(Duration::from_millis(10)).await;
 
-        match client.last_beat().await {
-            Ok(BeatState::Ok) => {
-                let job = tokio::select! {
-                    job = client.fetch(vec!["default".into()]) => match job {
-                        Ok(Some(job)) => job,
-                        Ok(None) => continue,
-                        Err(err) => {
-                            error!("Unable to fetch from faktory: {err}");
-                            continue;
-                        }
-                    },
-                    _ = shutdown_request_rx.changed() => {
-                        info!("Worker task received shutdown notification: stopping");
-                        break;
-                    }
-                };
-
-                let jid = job.id().to_owned();
-                match execute_job_fallible(job, ctx_builder.clone()).await {
-                    Ok(()) => match client.ack(jid).await {
-                        Ok(()) => {}
-                        Err(err) => {
-                            error!("Ack failed: {err}");
-                            continue;
-                        }
-                    },
-                    Err(err) => {
-                        error!("Job execution failed: {err}");
-                        // TODO: pass backtrace here
-                        match client
-                            .fail(FailConfig::new(
-                                jid,
-                                format!("{err:?}"),
-                                err.to_string(),
-                                None,
-                            ))
-                            .await
-                        {
-                            Ok(()) => {}
-                            Err(err) => {
-                                error!("Fail failed: {err}");
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
-            Ok(BeatState::Quiet) => {
-                // Getting a "quiet" state from the faktory server means that
-                // someone has gone to the faktory UI and requested that this
-                // particular worker finish what it's doing, and gracefully
-                // shut down.
-                info!("Gracefully shutting down from Faktory request.");
-                break;
-            }
-            Ok(BeatState::Terminate) => {
-                warn!("Faktory asked us to terminate");
-                break;
-            }
-            Err(err) => {
-                error!("Internal error in faktory-async, bailing out: {err}");
-                break;
+        match fetch(&mut subscription, &mut shutdown_request_rx, &ctx_builder).await {
+            ExecutionState::Stop => break,
+            ExecutionState::Idle => {}
+            ExecutionState::Process(job) => {
+                let jid = job.id.to_owned();
+                let result = execute_job_fallible(job, ctx_builder.clone()).await;
+                post_process(&subscription, jid, result).await;
             }
         }
     }
@@ -282,7 +230,7 @@ macro_rules! job_match {
 }
 
 async fn execute_job_fallible(
-    job: faktory_async::Job,
+    job: JobInfo,
     ctx_builder: DalContextBuilder,
 ) -> Result<(), JobError> {
     info!("Processing {job:?}");
@@ -357,7 +305,7 @@ async fn panic_wrapper<
 }
 
 #[derive(Debug, thiserror::Error)]
-enum JobError {
+pub enum JobError {
     #[error("unknown job kind {0}")]
     UnknownJobKind(String),
     #[error("execution failed for {0}: {1}")]
@@ -370,11 +318,11 @@ enum JobError {
     #[error(transparent)]
     FailureReporting(#[from] JobFailureError),
     #[error(transparent)]
+    Nats(#[from] si_data_nats::Error),
+    #[error(transparent)]
     Pg(#[from] PgPoolError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
-    #[error(transparent)]
-    Faktory(#[from] faktory_async::Error),
     #[error(transparent)]
     JobConsumer(#[from] JobConsumerError),
     #[error(transparent)]

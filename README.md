@@ -57,7 +57,7 @@ There are other components and paradigms that aren't displayed, but this diagram
 - **[web](./app/web/):** the primary frontend web application for SI
 - **[sdf](./bin/sdf/):** the backend webserver for communicating with `web`
 - **[dal](./lib/dal/):** the library used by `sdf` routes to "make stuff happen" (the keystone of SI)
-- **[pinga](./bin/pinga/):** the job queueing service used by the `dal` to execute non-trivial jobs via `faktory`
+- **[pinga](./bin/pinga/):** the job queueing service used by the `dal` to execute non-trivial jobs via `nats` or `faktory`
 - **[faktory](https://github.com/contribsys/faktory):** the job queueing mechanism used by `pinga` to execute non-trivial jobs
 - **[postgres](https://postgresql.org):** the database for storing SI data
 - **[veritech](./bin/veritech/):** a backend webserver for dispatching functions in secure runtime environments

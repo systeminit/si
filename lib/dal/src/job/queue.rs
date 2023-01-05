@@ -15,15 +15,11 @@ impl JobQueue {
     }
 
     pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
-        let already_enqueued = self
-            .queue
-            .lock()
-            .await
-            .iter()
-            .any(|j| j.identity() == job.identity());
+        let mut lock = self.queue.lock().await;
+        let already_enqueued = lock.iter().any(|j| j.identity() == job.identity());
 
         if !already_enqueued {
-            self.queue.lock().await.push_back(job);
+            lock.push_back(job);
         }
     }
 

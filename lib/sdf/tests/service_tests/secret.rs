@@ -24,7 +24,7 @@ async fn create_secret() {
         nba,
         auth_token,
         dal_ctx,
-        _faktory,
+        _job_processor,
     );
 
     let visibility = Visibility::new_head(false);

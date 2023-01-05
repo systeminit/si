@@ -1,4 +1,4 @@
-use std::{collections::HashMap, convert::TryFrom};
+use std::collections::HashMap;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -74,7 +74,7 @@ impl From<JobConsumerError> for std::io::Error {
 pub type JobConsumerResult<T> = Result<T, JobConsumerError>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FaktoryJobInfo {
+pub struct JobInfo {
     pub id: String,
     pub kind: String,
     pub queue: Option<String>,
@@ -82,26 +82,17 @@ pub struct FaktoryJobInfo {
     pub enqueued_at: Option<DateTime<Utc>>,
     pub at: Option<DateTime<Utc>>,
     pub args: Vec<Value>,
+    pub retry: Option<isize>,
     pub custom: JobConsumerCustomPayload,
 }
 
-impl TryFrom<faktory_async::Job> for FaktoryJobInfo {
-    type Error = JobConsumerError;
+impl JobInfo {
+    pub fn args(&self) -> &[Value] {
+        &self.args
+    }
 
-    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
-        let custom: JobConsumerCustomPayload =
-            serde_json::from_value(serde_json::to_value(job.custom.clone())?)?;
-
-        Ok(FaktoryJobInfo {
-            id: job.id().to_string(),
-            kind: job.kind().to_string(),
-            queue: job.queue.clone(),
-            created_at: job.created_at,
-            enqueued_at: job.enqueued_at,
-            at: job.at,
-            args: job.args().to_vec(),
-            custom,
-        })
+    pub fn kind(&self) -> &str {
+        &self.kind
     }
 }
 

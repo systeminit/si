@@ -2,8 +2,9 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::{collections::HashMap, convert::TryFrom};
 use thiserror::Error;
+use uuid::Uuid;
 
-use super::consumer::JobConsumer;
+use super::consumer::{JobConsumer, JobConsumerCustomPayload, JobInfo};
 
 #[derive(Error, Debug)]
 pub enum JobProducerError {
@@ -32,25 +33,28 @@ pub struct JobMeta {
     pub custom: HashMap<String, serde_json::Value>,
 }
 
-impl TryFrom<Box<dyn JobProducer + Send + Sync>> for faktory_async::Job {
+impl TryFrom<Box<dyn JobProducer + Send + Sync>> for JobInfo {
     type Error = JobProducerError;
 
     fn try_from(job_producer: Box<dyn JobProducer + Send + Sync>) -> Result<Self, Self::Error> {
         let job_producer_meta = job_producer.meta()?;
 
-        let mut faktory_job = faktory_async::Job::new(
-            job_producer.type_name(),
-            vec![
+        Ok(JobInfo {
+            id: Uuid::new_v4().to_string(),
+            kind: job_producer.type_name(),
+            queue: None,
+            created_at: Some(Utc::now()),
+            enqueued_at: None,
+            at: job_producer_meta.at,
+            args: vec![
                 job_producer.args()?,
                 serde_json::to_value(job_producer.access_builder())?,
                 serde_json::to_value(job_producer.visibility())?,
             ],
-        );
-
-        faktory_job.retry = job_producer_meta.retry;
-        faktory_job.at = job_producer_meta.at;
-        faktory_job.custom = job_producer_meta.custom;
-
-        Ok(faktory_job)
+            retry: job_producer_meta.retry,
+            custom: JobConsumerCustomPayload {
+                extra: job_producer_meta.custom,
+            },
+        })
     }
 }

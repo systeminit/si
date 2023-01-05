@@ -1,10 +1,7 @@
 #![recursion_limit = "256"]
 
 use color_eyre::Result;
-use sdf::{
-    Config, FaktoryProcessor, IncomingStream, JobQueueProcessor, MigrationMode, Server,
-    SyncProcessor,
-};
+use sdf::{Config, IncomingStream, JobQueueProcessor, MigrationMode, Server, SyncProcessor};
 use telemetry_application::{
     prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
     TelemetryClient, TelemetryConfig,
@@ -87,13 +84,17 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     let encryption_key = Server::load_encryption_key(config.cyclone_encryption_key_path()).await?;
 
     let nats = Server::connect_to_nats(config.nats()).await?;
-
-    let faktory_client = faktory_async::Client::new(
-        faktory_async::Config::from_uri(&config.faktory().url, Some("sdf".to_string()), None),
-        256,
-    );
     let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
-    let job_processor = Box::new(FaktoryProcessor::new(faktory_client.clone(), alive_marker))
+
+    // let job_client = faktory_async::Client::new(
+    //     faktory_async::Config::from_uri(&config.faktory().url, Some("sdf".to_string()), None),
+    //     256,
+    // );
+    // let job_processor = Box::new(sdf::FaktoryProcessor::new(job_client.clone(), alive_marker))
+    //     as Box<dyn JobQueueProcessor + Send + Sync>;
+
+    let job_client = nats.clone();
+    let job_processor = Box::new(sdf::NatsProcessor::new(job_client.clone(), alive_marker))
         as Box<dyn JobQueueProcessor + Send + Sync>;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
@@ -193,8 +194,8 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     info!("Waiting for all faktory processors to finish pushing jobs");
     let _ = job_processor_shutdown_rx.recv().await;
 
-    info!("Shutting down the faktory client");
-    if let Err(err) = faktory_client.close().await {
+    info!("Shutting down the job processor client");
+    if let Err(err) = job_client.close().await {
         error!("Failed to close faktory client: {err}");
     }
 

@@ -9,7 +9,7 @@ use crate::confirmation_status::ConfirmationStatus;
 
 use crate::{
     job::{
-        consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
+        consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, ComponentId, ConfirmationPrototype, ConfirmationPrototypeError,
@@ -36,7 +36,7 @@ impl From<Confirmation> for ConfirmationArgs {
 pub struct Confirmation {
     access_builder: AccessBuilder,
     visibility: Visibility,
-    faktory_job: Option<FaktoryJobInfo>,
+    job: Option<JobInfo>,
     component_id: ComponentId,
     confirmation_prototype_id: ConfirmationPrototypeId,
 }
@@ -53,7 +53,7 @@ impl Confirmation {
         Box::new(Self {
             access_builder,
             visibility,
-            faktory_job: None,
+            job: None,
             component_id,
             confirmation_prototype_id,
         })
@@ -151,10 +151,10 @@ impl JobConsumer for Confirmation {
     }
 }
 
-impl TryFrom<faktory_async::Job> for Confirmation {
+impl TryFrom<JobInfo> for Confirmation {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
                 r#"[{ component_id: ComponentId, confirmation_prototype_id: ConfirmationPrototypeId }, <AccessBuilder>, <Visibility>]"#.to_string(),
@@ -165,12 +165,10 @@ impl TryFrom<faktory_async::Job> for Confirmation {
         let access_builder: AccessBuilder = serde_json::from_value(job.args()[1].clone())?;
         let visibility: Visibility = serde_json::from_value(job.args()[2].clone())?;
 
-        let faktory_job_info = FaktoryJobInfo::try_from(job)?;
-
         Ok(Self {
             access_builder,
             visibility,
-            faktory_job: Some(faktory_job_info),
+            job: Some(job),
             component_id: args.component_id,
             confirmation_prototype_id: args.confirmation_prototype_id,
         })

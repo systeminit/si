@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     job::{
-        consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
+        consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
     AccessBuilder, ComponentId, DalContext, ResourceView, Visibility, WorkflowPrototypeId,
@@ -36,7 +36,7 @@ pub struct WorkflowRun {
     component_id: ComponentId,
     access_builder: AccessBuilder,
     visibility: Visibility,
-    faktory_job: Option<FaktoryJobInfo>,
+    job: Option<JobInfo>,
 }
 
 impl WorkflowRun {
@@ -55,7 +55,7 @@ impl WorkflowRun {
             component_id,
             access_builder,
             visibility,
-            faktory_job: None,
+            job: None,
         })
     }
 }
@@ -137,10 +137,10 @@ impl JobConsumer for WorkflowRun {
     }
 }
 
-impl TryFrom<faktory_async::Job> for WorkflowRun {
+impl TryFrom<JobInfo> for WorkflowRun {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
                 r#"[{ "component_id": <ComponentId>, "prototype_id": [WorkflowPrototypeId], "run_id": usize }, <AccessBuilder>, <Visibility>]"#.to_string(),
@@ -151,15 +151,13 @@ impl TryFrom<faktory_async::Job> for WorkflowRun {
         let access_builder: AccessBuilder = serde_json::from_value(job.args()[1].clone())?;
         let visibility: Visibility = serde_json::from_value(job.args()[2].clone())?;
 
-        let faktory_job_info = FaktoryJobInfo::try_from(job)?;
-
         Ok(Self {
             component_id: args.component_id,
             prototype_id: args.prototype_id,
             run_id: args.run_id,
             access_builder,
             visibility,
-            faktory_job: Some(faktory_job_info),
+            job: Some(job),
         })
     }
 }

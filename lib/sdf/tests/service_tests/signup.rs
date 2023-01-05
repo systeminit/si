@@ -14,14 +14,14 @@ use tower::ServiceExt;
 async fn create_account() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;
-    let (pg, nats, faktory, _veritech, encr_key, jwt_secret_key) = ctx.entries();
+    let (pg, nats, job_processor, _veritech, encr_key, jwt_secret_key) = ctx.entries();
     let veritech = veritech_client::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
     let (app, _, _) = sdf::build_service(
         telemetry,
         pg.clone(),
         nats.clone(),
-        faktory,
+        job_processor,
         veritech,
         *encr_key,
         jwt_secret_key.clone(),
@@ -61,14 +61,14 @@ async fn create_account() {
 async fn create_account_invalid_signup_secret() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;
-    let (pg, nats, faktory, _veritech, encr_key, jwt_secret_key) = ctx.entries();
+    let (pg, nats, job_processor, _veritech, encr_key, jwt_secret_key) = ctx.entries();
     let veritech = veritech_client::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
     let (app, _, _) = sdf::build_service(
         telemetry,
         pg.clone(),
         nats.clone(),
-        faktory,
+        job_processor,
         veritech,
         *encr_key,
         jwt_secret_key.clone(),

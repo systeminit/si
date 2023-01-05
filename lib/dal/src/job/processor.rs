@@ -6,12 +6,15 @@ use super::producer::{JobProducer, JobProducerError};
 use crate::DalContext;
 
 pub mod faktory_processor;
+pub mod nats_processor;
 pub mod sync_processor;
 
 #[derive(Error, Debug)]
 pub enum JobQueueProcessorError {
     #[error(transparent)]
-    Faktory(#[from] faktory_async::Error),
+    Serde(#[from] serde_json::Error),
+    #[error(transparent)]
+    Transport(Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
 }

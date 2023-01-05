@@ -5,11 +5,15 @@ use telemetry::prelude::*;
 use tokio::sync::mpsc;
 
 use crate::{
-    job::{producer::JobProducer, queue::JobQueue},
+    job::{
+        consumer::{JobConsumerCustomPayload, JobConsumerError, JobInfo},
+        producer::JobProducer,
+        queue::JobQueue,
+    },
     DalContext,
 };
 
-use super::{JobQueueProcessor, JobQueueProcessorResult};
+use super::{JobQueueProcessor, JobQueueProcessorError, JobQueueProcessorResult};
 
 #[derive(Clone, Debug)]
 pub struct FaktoryProcessor {
@@ -34,10 +38,10 @@ impl FaktoryProcessor {
 
     async fn push_all_jobs(&self) -> JobQueueProcessorResult<()> {
         while let Some(job) = self.queue.fetch_job().await {
-            let faktory_job = job.try_into()?;
-            if let Err(err) = self.client.push(faktory_job).await {
+            let job_info: JobInfo = job.try_into()?;
+            if let Err(err) = self.client.push(job_info.into()).await {
                 error!("Faktory push failed, some jobs will be dropped");
-                return Err(err.into());
+                return Err(JobQueueProcessorError::Transport(Box::new(err)));
             }
         }
         Ok(())
@@ -59,5 +63,38 @@ impl JobQueueProcessor for FaktoryProcessor {
         });
 
         Ok(())
+    }
+}
+
+impl From<JobInfo> for faktory_async::Job {
+    fn from(job: JobInfo) -> Self {
+        let mut faktory_job = faktory_async::Job::new(job.kind, job.args);
+
+        faktory_job.retry = job.retry;
+        faktory_job.at = job.at;
+        faktory_job.custom = job.custom.extra;
+
+        faktory_job
+    }
+}
+
+impl TryFrom<faktory_async::Job> for JobInfo {
+    type Error = JobConsumerError;
+
+    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
+        let custom: JobConsumerCustomPayload =
+            serde_json::from_value(serde_json::to_value(job.custom.clone())?)?;
+
+        Ok(JobInfo {
+            id: job.id().to_string(),
+            kind: job.kind().to_string(),
+            queue: job.queue.clone(),
+            created_at: job.created_at,
+            enqueued_at: job.enqueued_at,
+            at: job.at,
+            args: job.args().to_vec(),
+            retry: job.retry,
+            custom,
+        })
     }
 }
