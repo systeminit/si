@@ -14,12 +14,11 @@ use crate::{
     schema::variant::leaves::{LeafInput, LeafInputLocation},
 };
 use crate::{
-    attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
-    schema::SchemaUiMenu, ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument,
-    AttributeReadContext, AttributeValue, BuiltinsResult, ConfirmationPrototype,
-    ConfirmationPrototypeContext, DalContext, DiagramKind, ExternalProvider, Func,
-    InternalProvider, PropKind, SchemaError, StandardModel, WorkflowPrototype,
-    WorkflowPrototypeContext,
+    attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
+    ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
+    BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind,
+    ExternalProvider, Func, InternalProvider, PropKind, SchemaError, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{AttributeValueError, SchemaVariant};
 
@@ -55,21 +54,27 @@ impl From<&AwsRegion> for SelectWidgetOption {
 }
 
 impl MigrationDriver {
-    pub async fn migrate_aws_core(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        self.migrate_ami(ctx).await?;
-        self.migrate_ec2(ctx).await?;
-        self.migrate_region(ctx).await?;
-        self.migrate_eip(ctx).await?;
-        self.migrate_keypair(ctx).await?;
+    pub async fn migrate_aws_core(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+    ) -> BuiltinsResult<()> {
+        self.migrate_ami(ctx, ui_menu_category).await?;
+        self.migrate_ec2(ctx, ui_menu_category).await?;
+        self.migrate_region(ctx, ui_menu_category).await?;
+        self.migrate_eip(ctx, ui_menu_category).await?;
+        self.migrate_keypair(ctx, ui_menu_category).await?;
         Ok(())
     }
 
     /// A [`Schema`](crate::Schema) migration for [`AWS AMI`](https://docs.aws.amazon.com/imagebuilder/latest/APIReference/API_Ami.html).
-    async fn migrate_ami(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_ami(&self, ctx: &DalContext, ui_menu_category: &str) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "AMI",
+                None,
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -79,11 +84,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        // Diagram and UI Menu
-
-        let ui_menu = SchemaUiMenu::new(ctx, "AMI", "AWS").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop and validation creation
         let image_id_prop = self
@@ -142,7 +142,7 @@ impl MigrationDriver {
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
-        let (image_id_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+        let (image_id_external_provider, _output_socket) = ExternalProvider::new_with_socket(
             ctx,
             *schema.id(),
             *schema_variant.id(),
@@ -155,9 +155,8 @@ impl MigrationDriver {
             DiagramKind::Configuration,
         )
         .await?;
-        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        let (region_explicit_internal_provider, mut input_socket) =
+        let (region_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -169,7 +168,6 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Qualifications
         let (qualification_func_id, qualification_func_argument_id) = self
@@ -276,11 +274,13 @@ impl MigrationDriver {
     }
 
     /// A [`Schema`](crate::Schema) migration for [`AWS EC2`](https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html).
-    async fn migrate_ec2(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_ec2(&self, ctx: &DalContext, ui_menu_category: &str) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "EC2 Instance",
+                None,
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -290,11 +290,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        // Diagram and UI Menu
-
-        let ui_menu = SchemaUiMenu::new(ctx, "EC2 Instance", "AWS").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop: /root/domain/ImageId
         let image_id_prop = self
@@ -473,7 +468,7 @@ impl MigrationDriver {
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
-        let (image_id_explicit_internal_provider, mut input_socket) =
+        let (image_id_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -485,9 +480,8 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        let (security_group_ids_explicit_internal_provider, mut input_socket) =
+        let (security_group_ids_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -499,9 +493,8 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        let (keyname_explicit_internal_provider, mut input_socket) =
+        let (keyname_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -513,9 +506,8 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        let (region_explicit_internal_provider, mut input_socket) =
+        let (region_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -527,9 +519,8 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?; // TODO(wendy) - Can an EC2 instance have multiple regions? Idk!
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-        let (user_data_explicit_internal_provider, mut input_socket) =
+        let (user_data_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -541,7 +532,6 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Qualifications
         let qualification_func_name = "si:qualificationEc2CanRun";
@@ -878,11 +868,13 @@ impl MigrationDriver {
     }
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Region`](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html).
-    async fn migrate_region(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_region(&self, ctx: &DalContext, ui_menu_category: &str) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Region",
+                None,
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -892,11 +884,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        // Diagram and UI Menu
-
-        let ui_menu = SchemaUiMenu::new(ctx, "Region", "AWS").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop Creation
         let regions_json: Vec<AwsRegion> = serde_json::from_str(REGIONS_JSON_STR)?;
@@ -939,7 +926,7 @@ impl MigrationDriver {
         let identity_func_item = self
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-        let (region_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+        let (region_external_provider, _output_socket) = ExternalProvider::new_with_socket(
             ctx,
             *schema.id(),
             *schema_variant.id(),
@@ -952,7 +939,6 @@ impl MigrationDriver {
             DiagramKind::Configuration,
         )
         .await?;
-        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Wrap it up.
         self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
@@ -1084,11 +1070,13 @@ impl MigrationDriver {
     }
 
     /// A [`Schema`](crate::Schema) migration for [`AWS EIP`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-eip.html).
-    async fn migrate_eip(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_eip(&self, ctx: &DalContext, ui_menu_category: &str) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Elastic IP",
+                None,
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -1098,11 +1086,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        // Diagram and UI Menu
-
-        let ui_menu = SchemaUiMenu::new(ctx, "Elastic IP", "AWS").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop: /root/domain/tags
         let tags_map_prop = self
@@ -1173,26 +1156,24 @@ impl MigrationDriver {
         let identity_func_item = self
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-        let (_allocation_id_external_provider, mut output_socket) =
-            ExternalProvider::new_with_socket(
-                ctx,
-                *schema.id(),
-                *schema_variant.id(),
-                "Allocation ID",
-                None,
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
+        let (_allocation_id_external_provider, _output_socket) = ExternalProvider::new_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "Allocation ID",
+            None,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
 
         // Input Socket
         // PAUL: There are currently no options to create a different type of EIP
         // we may wat to allow passing in an address to specify coming from a pool
-        let (region_explicit_internal_provider, mut input_socket) =
+        let (region_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -1204,7 +1185,6 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Qualifications
         let qualification_func_name = "si:qualificationEipCanCreate";
@@ -1440,11 +1420,17 @@ impl MigrationDriver {
     }
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Key Pair`](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-keypair.html).
-    async fn migrate_keypair(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_keypair(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+    ) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Key Pair",
+                None,
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(AWS_NODE_COLOR),
                 None,
@@ -1454,11 +1440,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        // Diagram and UI Menu
-
-        let ui_menu = SchemaUiMenu::new(ctx, "Key Pair", "AWS").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop: /root/domain/KeyName
         let key_name_prop = self
@@ -1565,7 +1546,7 @@ impl MigrationDriver {
         let identity_func_item = self
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
-        let (key_name_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
+        let (key_name_external_provider, _output_socket) = ExternalProvider::new_with_socket(
             ctx,
             *schema.id(),
             *schema_variant.id(),
@@ -1578,10 +1559,9 @@ impl MigrationDriver {
             DiagramKind::Configuration,
         )
         .await?;
-        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Input Socket
-        let (region_explicit_internal_provider, mut input_socket) =
+        let (region_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -1593,7 +1573,6 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?; // TODO(wendy) - Can a key pair have multiple regions? Idk!
-        input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
         // Qualifications
         let qualification_func_name = "si:qualificationKeyPairCanCreate";

@@ -4,11 +4,11 @@ use crate::schema::variant::leaves::LeafKind;
 use crate::{action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation};
 use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput};
 use crate::{
-    component::ComponentKind, edit_field::widget::*, schema::SchemaUiMenu, socket::SocketArity,
-    ActionPrototype, ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, DiagramKind,
-    ExternalProvider, Func, InternalProvider, Prop, PropKind, SchemaError, SchemaVariant,
-    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    component::ComponentKind, edit_field::widget::*, socket::SocketArity, ActionPrototype,
+    ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
+    AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider,
+    Func, InternalProvider, Prop, PropKind, SchemaError, SchemaVariant, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 // Reference: https://www.docker.com/company/newsroom/media-resources/
@@ -16,16 +16,24 @@ const DOCKER_NODE_COLOR: i64 = 0x4695E7;
 
 impl MigrationDriver {
     pub async fn migrate_docker(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        self.migrate_docker_hub_credential(ctx).await?;
-        self.migrate_docker_image(ctx).await?;
+        let ui_menu_category = "Docker";
+        self.migrate_docker_hub_credential(ctx, ui_menu_category)
+            .await?;
+        self.migrate_docker_image(ctx, ui_menu_category).await?;
         Ok(())
     }
 
-    async fn migrate_docker_hub_credential(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_docker_hub_credential(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+    ) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Docker Hub Credential",
+                Some(String::from("Credential")),
+                ui_menu_category,
                 ComponentKind::Credential,
                 Some(DOCKER_NODE_COLOR),
                 None,
@@ -65,7 +73,7 @@ impl MigrationDriver {
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
-        let (_output_provider, mut output_socket) = ExternalProvider::new_with_socket(
+        let (_output_provider, _output_socket) = ExternalProvider::new_with_socket(
             ctx,
             *schema.id(),
             *schema_variant.id(),
@@ -78,24 +86,23 @@ impl MigrationDriver {
             DiagramKind::Configuration,
         )
         .await?;
-        output_socket.set_color(ctx, Some(0x1e88d6)).await?;
 
         self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
-
-        // Note: I wasn't able to create a ui menu with two layers
-
-        let ui_menu = SchemaUiMenu::new(ctx, "Credential", "Docker").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
-
         Ok(())
     }
 
-    async fn migrate_docker_image(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_docker_image(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+    ) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Docker Image",
+                Some(String::from("Image")),
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(DOCKER_NODE_COLOR),
                 None,
@@ -105,9 +112,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        let ui_menu = SchemaUiMenu::new(ctx, "Image", "Docker").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         let image_prop = Prop::new(ctx, "image", PropKind::String, None).await?;
         image_prop
@@ -133,7 +137,7 @@ impl MigrationDriver {
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
-        let (_docker_hub_credential_explicit_internal_provider, mut input_socket) =
+        let (_docker_hub_credential_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
@@ -145,39 +149,34 @@ impl MigrationDriver {
                 DiagramKind::Configuration,
             )
             .await?;
-        input_socket.set_color(ctx, Some(0x1e88d6)).await?;
 
-        let (docker_image_external_provider, mut output_socket) =
-            ExternalProvider::new_with_socket(
-                ctx,
-                *schema.id(),
-                *schema_variant.id(),
-                "Container Image",
-                None,
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
+        let (docker_image_external_provider, _output_socket) = ExternalProvider::new_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "Container Image",
+            None,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
 
-        let (exposed_ports_external_provider, mut output_socket) =
-            ExternalProvider::new_with_socket(
-                ctx,
-                *schema.id(),
-                *schema_variant.id(),
-                "Exposed Ports",
-                None,
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                DiagramKind::Configuration,
-            )
-            .await?;
-        output_socket.set_color(ctx, Some(0xd61e8c)).await?;
+        let (exposed_ports_external_provider, _output_socket) = ExternalProvider::new_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "Exposed Ports",
+            None,
+            identity_func_item.func_id,
+            identity_func_item.func_binding_id,
+            identity_func_item.func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
 
         // Qualifications
         let (qualification_func_id, qualification_func_argument_id) = self

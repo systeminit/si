@@ -7,7 +7,7 @@ use crate::edit_field::widget::WidgetKind;
 use crate::func::argument::{FuncArgument, FuncArgumentId};
 use crate::func::backend::validation::FuncBackendValidationArgs;
 use crate::schema::variant::definition::{PropCache, SchemaVariantDefinition};
-use crate::schema::RootProp;
+use crate::schema::{RootProp, SchemaUiMenu};
 use crate::validation::Validation;
 use crate::{
     component::ComponentKind,
@@ -164,10 +164,16 @@ impl MigrationDriver {
     }
 
     /// Create a [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant).
+    ///
+    /// If a UI menu name is not provided, we will fallback to the provided
+    /// [`Schema`](crate::Schema) name.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_schema_and_variant(
         &self,
         ctx: &DalContext,
-        name: impl AsRef<str>,
+        schema_name: impl AsRef<str>,
+        override_ui_menu_name: Option<String>,
+        ui_menu_category: impl AsRef<str>,
         component_kind: ComponentKind,
         node_color: Option<i64>,
         definition: Option<SchemaVariantDefinition>,
@@ -181,23 +187,31 @@ impl MigrationDriver {
             Vec<ExternalProvider>,
         )>,
     > {
-        let name = name.as_ref();
+        let schema_name = schema_name.as_ref();
 
         // NOTE(nick): There's one issue here. If the schema kind has changed, then this check will be
         // inaccurate. As a result, we will be unable to re-create the schema without manual intervention.
         // This should be fine since this code should likely only last as long as default schemas need to
         // be created... which is hopefully not long.... hopefully...
-        let default_schema_exists = !Schema::find_by_attr(ctx, "name", &name.to_string())
+        let default_schema_exists = !Schema::find_by_attr(ctx, "name", &schema_name.to_string())
             .await?
             .is_empty();
         if default_schema_exists {
-            info!("skipping {name} schema (already migrated)");
+            info!("skipping {schema_name} schema (already migrated)");
             return Ok(None);
         }
-        info!("migrating {name} schema");
+        info!("migrating {schema_name} schema");
+
+        // Create the schema and a ui menu.
+        let mut schema = Schema::new(ctx, schema_name, &component_kind).await?;
+        let ui_menu_name = match override_ui_menu_name {
+            Some(provided_override) => provided_override,
+            None => schema_name.to_string(),
+        };
+        let ui_menu = SchemaUiMenu::new(ctx, ui_menu_name, ui_menu_category).await?;
+        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // NOTE(nick): D.R.Y. not desired, but feel free to do so.
-        let mut schema = Schema::new(ctx, name, &component_kind).await?;
         if let Some(definition) = definition {
             let (
                 mut schema_variant,

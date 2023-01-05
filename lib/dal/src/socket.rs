@@ -89,7 +89,6 @@ pub struct Socket {
     kind: SocketKind,
     edge_kind: SocketEdgeKind,
     diagram_kind: DiagramKind,
-    color: Option<i64>,
     arity: SocketArity,
     required: bool,
     #[serde(flatten)]
@@ -147,7 +146,6 @@ impl Socket {
     standard_model_accessor!(arity, Enum(SocketArity), SocketResult);
     standard_model_accessor!(diagram_kind, Enum(DiagramKind), SocketResult);
     standard_model_accessor!(required, bool, SocketResult);
-    standard_model_accessor!(color, OptionBigInt<i64>, SocketResult);
 
     standard_model_many_to_many!(
         lookup_fn: types,

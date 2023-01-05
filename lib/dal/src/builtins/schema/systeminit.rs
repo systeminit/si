@@ -1,21 +1,27 @@
 use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
 use crate::validation::Validation;
-use crate::{schema::SchemaUiMenu, BuiltinsResult, DalContext, PropKind, StandardModel};
+use crate::{BuiltinsResult, DalContext, PropKind, StandardModel};
 
 const FRAME_NODE_COLOR: i64 = 0xFFFFFF;
 
 impl MigrationDriver {
     pub async fn migrate_systeminit(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        self.migrate_generic_frame(ctx).await?;
+        self.migrate_generic_frame(ctx, "Frames").await?;
         Ok(())
     }
 
-    async fn migrate_generic_frame(&self, ctx: &DalContext) -> BuiltinsResult<()> {
+    async fn migrate_generic_frame(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+    ) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Generic Frame",
+                None,
+                ui_menu_category,
                 ComponentKind::Standard,
                 Some(FRAME_NODE_COLOR),
                 None,
@@ -25,11 +31,6 @@ impl MigrationDriver {
             Some(tuple) => tuple,
             None => return Ok(()),
         };
-
-        // Diagram and UI Menu
-
-        let ui_menu = SchemaUiMenu::new(ctx, "Generic Frame", "Frames").await?;
-        ui_menu.set_schema(ctx, schema.id()).await?;
 
         // Prop and validation creation
         let color_prop = self

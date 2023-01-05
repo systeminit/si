@@ -15,8 +15,9 @@ const EC2_INSTANCE_TYPES_URL: &str =
 
 impl MigrationDriver {
     pub async fn migrate_aws(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        self.migrate_aws_core(ctx).await?;
-        self.migrate_aws_vpc(ctx).await?;
+        let ui_menu_category = "AWS";
+        self.migrate_aws_core(ctx, ui_menu_category).await?;
+        self.migrate_aws_vpc(ctx, ui_menu_category).await?;
         Ok(())
     }
 }
