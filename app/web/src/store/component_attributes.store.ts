@@ -231,6 +231,25 @@ export const useComponentAttributesStore = () => {
             },
           });
         },
+
+        async SET_COMPONENT_TYPE(payload: UpdatePropertyEditorValueArgs) {
+          const statusStore = useStatusStore();
+          statusStore.markUpdateStarted();
+
+          return new ApiRequest<{ success: true }>({
+            method: "post",
+            url: "component/set_type",
+            params: {
+              ...payload,
+              ...visibilityParams,
+            },
+            // onSuccess() {},
+            onFail() {
+              // may not work exactly right with concurrent updates... but I dont think will be a problem
+              statusStore.cancelUpdateStarted();
+            },
+          });
+        },
       },
       onActivated() {
         this.reloadPropertyEditorData();

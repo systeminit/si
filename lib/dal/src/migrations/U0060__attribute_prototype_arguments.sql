@@ -1,22 +1,37 @@
 CREATE TABLE attribute_prototype_arguments
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
+    pk                          ident primary key                 default ident_create_v1(),
+    id                          ident                    not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
     tenancy_billing_account_ids ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
+    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    func_argument_id            ident                   NOT NULL,
-    attribute_prototype_id      ident                   NOT NULL,
-    internal_provider_id        ident                   NOT NULL,
-    external_provider_id        ident                   NOT NULL,
-    tail_component_id           ident                   NOT NULL,
-    head_component_id           ident                   NOT NULL
+    func_argument_id            ident                    NOT NULL,
+    attribute_prototype_id      ident                    NOT NULL,
+    internal_provider_id        ident                    NOT NULL,
+    external_provider_id        ident                    NOT NULL,
+    tail_component_id           ident                    NOT NULL,
+    head_component_id           ident                    NOT NULL
 );
+
+CREATE UNIQUE INDEX intra_component_argument_with_two_internal_providers
+    ON attribute_prototype_arguments (attribute_prototype_id,
+                                      func_argument_id,
+                                      internal_provider_id,
+                                      head_component_id,
+                                      tail_component_id,
+                                      tenancy_universal,
+                                      tenancy_billing_account_ids,
+                                      tenancy_organization_ids,
+                                      tenancy_workspace_ids,
+                                      visibility_change_set_pk,
+                                      (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL
+        AND external_provider_id = ident_nil_v1();
 
 CREATE UNIQUE INDEX intra_component_argument
     ON attribute_prototype_arguments (attribute_prototype_id,
@@ -29,9 +44,8 @@ CREATE UNIQUE INDEX intra_component_argument
                                       visibility_change_set_pk,
                                       (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
-        AND (external_provider_id = ident_nil_v1()
-            OR head_component_id = ident_nil_v1()
-            OR tail_component_id = ident_nil_v1());
+        AND (head_component_id = ident_nil_v1()
+            AND tail_component_id = ident_nil_v1());
 
 CREATE UNIQUE INDEX inter_component_argument
     ON attribute_prototype_arguments (attribute_prototype_id,

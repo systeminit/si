@@ -53,15 +53,27 @@ const getAttributeContext = (propId: string) => ({
 });
 
 const updateProperty = (event: UpdatedProperty) => {
-  componentAttributesStore.UPDATE_PROPERTY_VALUE({
-    update: {
+  const prop = editorContext.value?.schema.props[event.propId];
+
+  if (prop?.name === "type") {
+    componentAttributesStore.SET_COMPONENT_TYPE({
       attributeValueId: event.valueId,
       parentAttributeValueId: event.parentValueId,
       value: event.value,
       key: event.key,
       attributeContext: getAttributeContext(event.propId),
-    },
-  });
+    });
+  } else {
+    componentAttributesStore.UPDATE_PROPERTY_VALUE({
+      update: {
+        attributeValueId: event.valueId,
+        parentAttributeValueId: event.parentValueId,
+        value: event.value,
+        key: event.key,
+        attributeContext: getAttributeContext(event.propId),
+      },
+    });
+  }
 };
 
 const addToArray = (event: AddToArray) => {

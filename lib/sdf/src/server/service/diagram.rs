@@ -7,9 +7,9 @@ use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
-    DiagramError as DalDiagramError, InternalProviderError, NodeError, NodeKind, NodeMenuError,
-    NodePositionError, ReadTenancyError, SchemaError as DalSchemaError, SchemaVariantId,
-    StandardModelError, TransactionsError,
+    DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError, NodeKind,
+    NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
+    SchemaVariantId, StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
@@ -17,7 +17,6 @@ use thiserror::Error;
 use crate::service::schema::SchemaError;
 
 mod connect_component_to_frame;
-pub mod create_aggregate_proxy_connections;
 pub mod create_connection;
 pub mod create_node;
 pub mod get_diagram;
@@ -40,6 +39,8 @@ pub enum DiagramError {
     ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]
     InternalProvider(#[from] InternalProviderError),
+    #[error(transparent)]
+    Edge(#[from] EdgeError),
     #[error("dal schema error: {0}")]
     DalSchema(#[from] DalSchemaError),
     #[error("attribute value error: {0}")]
@@ -132,10 +133,6 @@ pub fn routes() -> Router {
         .route(
             "/create_connection",
             post(create_connection::create_connection),
-        )
-        .route(
-            "/create_aggregate_proxy_connections",
-            post(create_aggregate_proxy_connections::create_aggregate_proxy_connections),
         )
         .route(
             "/connect_component_to_frame",

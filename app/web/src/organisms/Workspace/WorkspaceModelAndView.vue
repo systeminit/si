@@ -124,22 +124,15 @@ const diagramEdges = computed(() => {
 
     const toNodeParentId =
       componentsStore.componentsByNodeId[edge.toNodeId].parentId;
+
     if (toNodeParentId) {
       const toNodeParentComp =
         componentsStore.componentsByNodeId[toNodeParentId];
 
       if (toNodeParentComp.nodeType === "aggregationFrame") {
-        const edgesToFrame =
-          componentsStore.edgesByToNodeId[toNodeParentId] ?? [];
-
-        const sameEdgeButToParent = edgesToFrame.find(
-          (e) =>
-            e.toSocketId === edge.toSocketId &&
-            e.fromSocketId === edge.fromSocketId &&
-            e.fromNodeId === edge.fromNodeId,
-        );
-
-        edge.isInvisible ||= sameEdgeButToParent !== undefined;
+        if (edge.fromNodeId === toNodeParentComp.nodeId) {
+          edge.isInvisible ||= true;
+        }
       }
     }
 
@@ -150,16 +143,9 @@ const diagramEdges = computed(() => {
       const fromParentComp =
         componentsStore.componentsByNodeId[fromNodeParentId];
       if (fromParentComp.nodeType === "aggregationFrame") {
-        const edgesFromFrame =
-          componentsStore.edgesByFromNodeId[fromNodeParentId] ?? [];
-
-        const sameEdgeButFromParent = edgesFromFrame.find(
-          (e) =>
-            e.fromSocketId === edge.fromSocketId &&
-            e.toSocketId === edge.toSocketId &&
-            e.toNodeId === edge.toNodeId,
-        );
-        edge.isInvisible ||= sameEdgeButFromParent !== undefined;
+        if (edge.toNodeId === fromParentComp.nodeId) {
+          edge.isInvisible ||= true;
+        }
       }
     }
 
@@ -203,76 +189,6 @@ watch([diagramNodes, diagramEdges], () => {
 });
 
 async function onDrawEdge(e: DrawEdgeEvent) {
-  if (
-    e.toSocket.parent instanceof DiagramGroupData &&
-    e.toSocket.parent.def.nodeType === "aggregationFrame" &&
-    e.toSocket.parent.def.childIds !== undefined
-  ) {
-    const frameSocket = e.toSocket;
-    const peerSocket = e.fromSocket;
-
-    const unattachedToNodeIds = _.filter(
-      frameSocket.parent.def.childIds,
-      (childId) =>
-        diagramEdges.value.filter(
-          (edge) =>
-            edge.fromNodeId === peerSocket.parent.def.id &&
-            edge.toNodeId === childId &&
-            edge.fromSocketId === peerSocket.def.id &&
-            edge.toSocketId === frameSocket.def.id,
-        ).length === 0,
-    ).map((id) => ({ nodeId: id, isParent: false }));
-
-    // This adds the frame connection so we get a visible edge on the diagram
-    unattachedToNodeIds.push({
-      nodeId: frameSocket.parent.def.id,
-      isParent: true,
-    });
-
-    await componentsStore.CREATE_AGGREGATE_PROXY_CONNECTIONS(
-      unattachedToNodeIds,
-      frameSocket.def.id,
-      [{ nodeId: peerSocket.parent.def.id, isParent: false }],
-      peerSocket.def.id,
-    );
-    return;
-  }
-
-  if (
-    e.fromSocket.parent instanceof DiagramGroupData &&
-    e.fromSocket.parent.def.nodeType === "aggregationFrame" &&
-    e.fromSocket.parent.def.childIds !== undefined
-  ) {
-    const frameSocket = e.fromSocket;
-    const peerSocket = e.toSocket;
-
-    const unattachedFromNodeIds = _.filter(
-      frameSocket.parent.def.childIds,
-      (childId) =>
-        diagramEdges.value.filter(
-          (edge) =>
-            edge.fromNodeId === childId &&
-            edge.toNodeId === peerSocket.parent.def.id &&
-            edge.fromSocketId === frameSocket.def.id &&
-            edge.toSocketId === peerSocket.def.id,
-        ).length === 0,
-    ).map((id) => ({ nodeId: id, isParent: false }));
-
-    // This adds the frame connection so we get a visible edge on the diagram
-    unattachedFromNodeIds.push({
-      nodeId: frameSocket.parent.def.id,
-      isParent: true,
-    });
-
-    await componentsStore.CREATE_AGGREGATE_PROXY_CONNECTIONS(
-      [{ nodeId: peerSocket.parent.def.id, isParent: false }],
-      peerSocket.def.id,
-      unattachedFromNodeIds,
-      frameSocket.def.id,
-    );
-    return;
-  }
-
   await componentsStore.CREATE_COMPONENT_CONNECTION(
     {
       nodeId: e.fromSocket.parent.def.id,

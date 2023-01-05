@@ -283,10 +283,13 @@ async fn dependency_graph_to_dot(
         let attr_val = AttributeValue::get_by_id(ctx, attr_val_id)
             .await?
             .ok_or_else(|| AttributeValueError::NotFound(*attr_val_id, *ctx.visibility()))?;
+        let prop_id = attr_val.context.prop_id();
+        let internal_provider_id = attr_val.context.internal_provider_id();
+        let external_provider_id = attr_val.context.external_provider_id();
+        let component_id = attr_val.context.component_id();
         node_definitions.push_str(&format!(
-            "{node_id}[label=\"\\l{node_id:?}\\n\\n{context:#?}\"];",
+            "\"{node_id}\"[label=\"\\lAttribute Value: {node_id}\\n\\lProp: {prop_id}\\lInternal Provider: {internal_provider_id}\\lExternal Provider: {external_provider_id}\\lComponent: {component_id}\"];",
             node_id = attr_val_id,
-            context = attr_val.context,
         ));
     }
 
@@ -296,11 +299,11 @@ async fn dependency_graph_to_dot(
             "{{{dep_list}}}",
             dep_list = inputs
                 .iter()
-                .map(|i| i.to_string())
+                .map(|i| format!("\"{i}\""))
                 .collect::<Vec<String>>()
                 .join(" ")
         );
-        let dependency_line = format!("{attr_val} -> {dependencies};",);
+        let dependency_line = format!("{dependencies} -> \"{attr_val}\";",);
         node_graph.push_str(&dependency_line);
     }
 

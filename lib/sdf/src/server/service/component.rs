@@ -5,9 +5,11 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    node::NodeError, property_editor::PropertyEditorError, AttributeValueError,
-    ComponentError as DalComponentError, DiagramError, ReadTenancyError,
-    SchemaError as DalSchemaError, StandardModelError, TransactionsError, WsEventError,
+    node::NodeError, property_editor::PropertyEditorError, AttributeContextBuilderError,
+    AttributePrototypeArgumentError, AttributePrototypeError, AttributeValueError,
+    ComponentError as DalComponentError, DiagramError, ExternalProviderError, FuncBindingError,
+    InternalProviderError, ReadTenancyError, SchemaError as DalSchemaError, StandardModelError,
+    TransactionsError, WsEventError,
 };
 use thiserror::Error;
 
@@ -22,6 +24,7 @@ pub mod get_property_editor_values;
 pub mod insert_property_editor_value;
 pub mod list_components_identification;
 pub mod list_qualifications;
+pub mod set_type;
 pub mod update_property_editor_value;
 
 #[derive(Debug, Error)]
@@ -49,6 +52,24 @@ pub enum ComponentError {
     #[error("diagram error: {0}")]
     Diagram(#[from] DiagramError),
 
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute context builder error: {0}")]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
+    #[error("identity func not found")]
+    IdentityFuncNotFound,
+    #[error("attribute value not found")]
+    AttributeValueNotFound,
+    #[error("attribute prototype not found")]
+    AttributePrototypeNotFound,
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema not found")]
@@ -123,4 +144,5 @@ pub fn routes() -> Router {
             "/get_property_editor_validations",
             get(get_property_editor_validations::get_property_editor_validations),
         )
+        .route("/set_type", post(set_type::set_type))
 }
