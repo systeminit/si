@@ -3,7 +3,7 @@ use dal::{
     attribute::prototype::AttributePrototype,
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
     AttributePrototypeError, AttributeValue, Component, ComponentView, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, Schema, SchemaVariant, StandardModel,
+    FuncBackendKind, FuncBackendResponseType, Prop, PropKind, Schema, StandardModel,
 };
 use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
@@ -78,7 +78,7 @@ async fn new_attribute_prototype(ctx: &DalContext) {
 #[test]
 async fn list_for_context_with_a_hash(ctx: &DalContext) {
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -96,10 +96,10 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
         create_prop_and_set_parent(ctx, PropKind::Map, "album_object", *albums_prop.id()).await;
     let hash_key_prop =
         create_prop_and_set_parent(ctx, PropKind::String, "album_hash_key", *album_prop.id()).await;
-
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes and values for schema variant");
+        .expect("could not finalize schema variant");
 
     let domain_context = base_prototype_context
         .clone()
@@ -350,7 +350,7 @@ async fn remove_least_specific(ctx: &DalContext) {
 #[test]
 async fn remove_component_specific(ctx: &DalContext) {
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -362,9 +362,10 @@ async fn remove_component_specific(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())
-        .await
-        .expect("cannot create component");
+    let (component, _) =
+        Component::new_for_default_variant_from_schema(ctx, "toddhoward", *schema.id())
+            .await
+            .expect("cannot create component");
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("cannot get component view");

@@ -159,7 +159,7 @@ pub async fn create_component_and_node_for_schema(
     schema_id: &SchemaId,
 ) -> (Component, Node) {
     let name = generate_fake_name();
-    let (component, node) = Component::new_for_schema_with_node(ctx, &name, schema_id)
+    let (component, node) = Component::new_for_default_variant_from_schema(ctx, &name, *schema_id)
         .await
         .expect("cannot create component");
     (component, node)
@@ -167,7 +167,7 @@ pub async fn create_component_and_node_for_schema(
 
 pub async fn create_component_for_schema(ctx: &DalContext, schema_id: &SchemaId) -> Component {
     let name = generate_fake_name();
-    let (component, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
+    let (component, _) = Component::new_for_default_variant_from_schema(ctx, &name, *schema_id)
         .await
         .expect("cannot create component");
     component

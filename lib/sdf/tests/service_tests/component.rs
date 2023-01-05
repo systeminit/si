@@ -34,7 +34,7 @@ async fn list_components_identification() {
     );
 
     let schema = create_schema(&dal_ctx).await;
-    let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
+    let mut schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
     schema_variant
         .finalize(&dal_ctx)
         .await
@@ -43,19 +43,17 @@ async fn list_components_identification() {
     let component_name1 = "poop";
     let component_name2 = "ilikemybutt";
     for name in &[component_name1, component_name2] {
-        let _component =
-            Component::new_for_schema_variant_with_node(&dal_ctx, &name, schema_variant.id())
-                .await
-                .expect("cannot create new component");
+        let _component = Component::new(&dal_ctx, &name, *schema_variant.id())
+            .await
+            .expect("cannot create new component");
     }
 
     let component_name3 = "bobão";
     let component_name4 = "comédia";
     for name in &[component_name3, component_name4] {
-        let _component =
-            Component::new_for_schema_variant_with_node(&dal_ctx, &name, schema_variant.id())
-                .await
-                .expect("cannot create new component");
+        let _component = Component::new(&dal_ctx, &name, *schema_variant.id())
+            .await
+            .expect("cannot create new component");
     }
 
     let visibility = *dal_ctx.visibility();
@@ -147,7 +145,7 @@ async fn get_components_metadata() {
 
     let schema = create_schema(&dal_ctx).await;
 
-    let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
+    let mut schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
     schema_variant
         .finalize(&dal_ctx)
         .await

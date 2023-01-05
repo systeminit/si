@@ -16,7 +16,7 @@ use pretty_assertions_sorted::assert_eq;
 #[test]
 async fn add_and_list_qualifications(ctx: &DalContext) {
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     let schema_variant_id = *schema_variant.id();
     schema
         .set_default_schema_variant_id(ctx, Some(schema_variant_id))
@@ -80,10 +80,9 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
         .await
         .expect("unable to finalize schema variant");
 
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "component", &schema_variant_id)
-            .await
-            .expect("cannot create component");
+    let (component, _) = Component::new(ctx, "component", schema_variant_id)
+        .await
+        .expect("cannot create component");
 
     // Set a value on the prop to check if our qualification works as intended.
     let read_context = AttributeReadContext {

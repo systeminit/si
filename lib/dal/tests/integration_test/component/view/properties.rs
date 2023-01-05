@@ -22,7 +22,7 @@ use pretty_assertions_sorted::assert_eq;
 #[test]
 async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     let schema_variant_id = *schema_variant.id();
     schema
         .set_default_schema_variant_id(ctx, Some(schema_variant_id))
@@ -85,10 +85,9 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
         .finalize(ctx)
         .await
         .expect("unable to finalize schema variant");
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "component", &schema_variant_id)
-            .await
-            .expect("cannot create component");
+    let (component, _) = Component::new(ctx, "component", schema_variant_id)
+        .await
+        .expect("cannot create component");
 
     // Check the view and properties before updating the poop field.
     let component_view = ComponentView::new(ctx, *component.id())
