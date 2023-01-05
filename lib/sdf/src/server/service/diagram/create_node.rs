@@ -48,8 +48,7 @@ pub async fn create_node(
         .default_schema_variant_id()
         .ok_or(DiagramError::SchemaVariantNotFound)?;
 
-    let (component, node) =
-        Component::new_for_schema_variant_with_node(&ctx, &name, schema_variant_id).await?;
+    let (component, node) = Component::new(&ctx, &name, *schema_variant_id).await?;
 
     let component_id = *component.id();
 

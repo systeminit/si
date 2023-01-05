@@ -23,7 +23,7 @@ pub async fn create_schema_with_object_and_string_prop(
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -70,7 +70,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -119,7 +119,7 @@ pub async fn create_schema_with_string_props(
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -154,7 +154,7 @@ pub async fn create_schema_with_array_of_string_props(
     let ctx = &octx;
 
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -196,7 +196,7 @@ pub async fn create_schema_with_nested_array_objects(
     let ctx = &octx;
 
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -245,7 +245,7 @@ pub async fn create_simple_map(ctx: &DalContext) -> (Schema, SchemaVariant, Prop
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -287,7 +287,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
     let ctx = &octx;
 
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -337,10 +337,9 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
 async fn only_string_props(ctx: &DalContext) {
     let (_schema, schema_variant, bohemian_prop, killer_prop, root_prop) =
         create_schema_with_string_props(ctx).await;
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "capoeira", schema_variant.id())
-            .await
-            .expect("Unable to create component");
+    let (component, _) = Component::new(ctx, "capoeira", *schema_variant.id())
+        .await
+        .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context.set_component_id(*component.id());
@@ -419,10 +418,9 @@ async fn only_string_props(ctx: &DalContext) {
 async fn one_object_prop(ctx: &DalContext) {
     let (_schema, schema_variant, queen_prop, killer_prop, bohemian_prop, root_prop) =
         create_schema_with_object_and_string_prop(ctx).await;
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "santos dumont", schema_variant.id())
-            .await
-            .expect("Unable to create component");
+    let (component, _) = Component::new(ctx, "santos dumont", *schema_variant.id())
+        .await
+        .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context.set_component_id(*component.id());
@@ -528,10 +526,9 @@ async fn nested_object_prop(ctx: &DalContext) {
         dust_prop,
         root_prop,
     ) = create_schema_with_nested_objects_and_string_prop(ctx).await;
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "free ronaldinho", schema_variant.id())
-            .await
-            .expect("Unable to create component");
+    let (component, _) = Component::new(ctx, "free ronaldinho", *schema_variant.id())
+        .await
+        .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context.set_component_id(*component.id());
@@ -677,10 +674,9 @@ async fn simple_array_of_strings(ctx: &DalContext) {
     let (_schema, schema_variant, sammy_prop, album_prop, root_prop) =
         create_schema_with_array_of_string_props(ctx).await;
 
-    let (component, _) =
-        Component::new_for_schema_variant_with_node(ctx, "tim maia", schema_variant.id())
-            .await
-            .expect("Unable to create component");
+    let (component, _) = Component::new(ctx, "tim maia", *schema_variant.id())
+        .await
+        .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context.set_component_id(*component.id());
@@ -772,10 +768,10 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
         song_name_prop,
         root_prop,
     ) = create_schema_with_nested_array_objects(ctx).await;
-    let (component, _) = Component::new_for_schema_variant_with_node(
+    let (component, _) = Component::new(
         ctx,
         "An Integralist Doesn't Run, It Flies",
-        schema_variant.id(),
+        *schema_variant.id(),
     )
     .await
     .expect("Unable to create component");
@@ -1014,13 +1010,9 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
 async fn simple_map(ctx: &DalContext) {
     let (_schema, schema_variant, album_prop, album_item_prop, root_prop) =
         create_simple_map(ctx).await;
-    let (component, _) = Component::new_for_schema_variant_with_node(
-        ctx,
-        "E como isso afeta o Grêmio?",
-        schema_variant.id(),
-    )
-    .await
-    .expect("Unable to create component");
+    let (component, _) = Component::new(ctx, "E como isso afeta o Grêmio?", *schema_variant.id())
+        .await
+        .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context.set_component_id(*component.id());
@@ -1112,13 +1104,9 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
         song_map_item_prop,
         root_prop,
     ) = create_schema_with_nested_array_objects_and_a_map(ctx).await;
-    let (component, _) = Component::new_for_schema_variant_with_node(
-        ctx,
-        "E como isso afeta o Grêmio?",
-        schema_variant.id(),
-    )
-    .await
-    .expect("Unable to create component");
+    let (component, _) = Component::new(ctx, "E como isso afeta o Grêmio?", *schema_variant.id())
+        .await
+        .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context.set_component_id(*component.id());

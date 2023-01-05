@@ -63,7 +63,7 @@ async fn find_code_item_prop(ctx: &DalContext) {
 #[test]
 async fn find_implicit_internal_providers_for_root_children(ctx: &DalContext) {
     let schema = create_schema(ctx).await;
-    let (schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0")
+    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0")
         .await
         .expect("cannot create schema variant");
     schema_variant

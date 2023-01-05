@@ -472,10 +472,25 @@ variable.
 SI_TEST_LOG=info
 ```
 
+#### Want To See The Live Log Stream?
+
+If you'd like to see a live log stream during test execution, use the `SI_TEST_LOG` variable in conjunction with
+the `--nocapture` flag for `cargo test`.
+
+```shell
+SI_TEST_LOG=info cargo test -p dal --test integration <your-test> -- --nocapture
+```
+
+You can combine this with the `DEBUG` environment variable for `lang-js` for even more information.
+
+```shell
+DEBUG=* SI_TEST_LOG=info cargo test -p dal --test integration <your-test> -- --nocapture
+```
+
 #### Migrations Running Too Slow? Try Disabling Builtin Schema Migrations!
 
 If your integration test does not rely on builtin `Schema(s)` and `SchemaVariant(s)` (e.g. "Docker Image" and
-"AWS EC2"), you can disable their migration with an environment variable.
+"AWS EC2"), you can disable migrating them  with an environment variable.
 
 ```shell
 SI_TEST_SKIP_MIGRATING_SCHEMAS=true cargo test -p dal --test integration <your-test>

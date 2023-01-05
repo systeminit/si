@@ -41,7 +41,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Ingress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
     async fn migrate_ingress(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _, _, _) = match self
+        let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Ingress",
@@ -337,7 +337,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Set Defaults
@@ -623,7 +623,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Egress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
     async fn migrate_egress(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _, _, _) = match self
+        let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Egress",
@@ -878,7 +878,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Set Defaults
@@ -1107,7 +1107,7 @@ impl MigrationDriver {
 
     /// A [`Schema`](crate::Schema) migration for [`AWS Security Group`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
     async fn migrate_security_group(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        let (schema, schema_variant, root_prop, _, _, _) = match self
+        let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 "Security Group",
@@ -1314,7 +1314,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up!
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Set Defaults

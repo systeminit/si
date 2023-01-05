@@ -30,7 +30,7 @@ impl MigrationDriver {
 
         let (
             schema,
-            schema_variant,
+            mut schema_variant,
             root_prop,
             maybe_prop_cache,
             explicit_internal_providers,
@@ -92,7 +92,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &schema_variant, &root_prop)
+        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
             .await?;
 
         // Collect the props we need.

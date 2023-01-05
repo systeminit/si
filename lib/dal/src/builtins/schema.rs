@@ -287,7 +287,7 @@ impl MigrationDriver {
     pub async fn finalize_schema_variant(
         &self,
         ctx: &DalContext,
-        schema_variant: &SchemaVariant,
+        schema_variant: &mut SchemaVariant,
         root_prop: &RootProp,
     ) -> BuiltinsResult<()> {
         schema_variant.finalize(ctx).await?;

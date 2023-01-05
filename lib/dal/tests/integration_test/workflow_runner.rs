@@ -154,7 +154,7 @@ async fn run(ctx: &DalContext) {
         .pop()
         .expect("unable to find docker image");
     let (component, _) =
-        Component::new_for_schema_with_node(ctx, "systeminit/whiskers", schema.id())
+        Component::new_for_default_variant_from_schema(ctx, "systeminit/whiskers", *schema.id())
             .await
             .expect("cannot create component");
 

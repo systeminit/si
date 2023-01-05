@@ -353,16 +353,16 @@ pub async fn create_schema_variant_with_root(
 
 pub async fn create_component_and_schema(ctx: &DalContext) -> Component {
     let schema = create_schema(ctx).await;
-    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
+    let mut schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
         .finalize(ctx)
         .await
         .expect("unable to finalize schema variant");
     let name = generate_fake_name();
-    let (entity, _) = Component::new_for_schema_variant_with_node(ctx, &name, schema_variant.id())
+    let (component, _) = Component::new(ctx, &name, *schema_variant.id())
         .await
         .expect("cannot create component");
-    entity
+    component
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -371,7 +371,7 @@ pub async fn create_component_for_schema_variant(
     schema_variant_id: &SchemaVariantId,
 ) -> Component {
     let name = generate_fake_name();
-    let (component, _) = Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
+    let (component, _) = Component::new(ctx, &name, *schema_variant_id)
         .await
         .expect("cannot create component");
     component
@@ -380,7 +380,7 @@ pub async fn create_component_for_schema_variant(
 #[allow(clippy::too_many_arguments)]
 pub async fn create_component_for_schema(ctx: &DalContext, schema_id: &SchemaId) -> Component {
     let name = generate_fake_name();
-    let (component, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
+    let (component, _) = Component::new_for_default_variant_from_schema(ctx, &name, *schema_id)
         .await
         .expect("cannot create component");
     component

@@ -14,7 +14,7 @@ use pretty_assertions_sorted::assert_eq;
 async fn update_for_context_simple(ctx: &DalContext) {
     // "name": String
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -26,9 +26,10 @@ async fn update_for_context_simple(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
-        .await
-        .expect("Unable to create component");
+    let (component, _) =
+        Component::new_for_default_variant_from_schema(ctx, "Basic component", *schema.id())
+            .await
+            .expect("Unable to create component");
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -142,7 +143,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
 #[test]
 async fn insert_for_context_simple(ctx: &DalContext) {
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -157,9 +158,10 @@ async fn insert_for_context_simple(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "Array Component", schema.id())
-        .await
-        .expect("Unable to create component");
+    let (component, _) =
+        Component::new_for_default_variant_from_schema(ctx, "Array Component", *schema.id())
+            .await
+            .expect("Unable to create component");
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -221,7 +223,7 @@ async fn insert_for_context_simple(ctx: &DalContext) {
 #[test]
 async fn update_for_context_object(ctx: &DalContext) {
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -247,9 +249,10 @@ async fn update_for_context_object(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
-        .await
-        .expect("Unable to create component");
+    let (component, _) =
+        Component::new_for_default_variant_from_schema(ctx, "Basic component", *schema.id())
+            .await
+            .expect("Unable to create component");
 
     let component_view = ComponentView::new(ctx, *component.id())
         .await
@@ -410,7 +413,7 @@ async fn update_for_context_object(ctx: &DalContext) {
 #[test]
 async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
     let mut schema = create_schema(ctx).await;
-    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -425,9 +428,10 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         .await
         .expect("cannot finalize SchemaVariant");
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "Array Component", schema.id())
-        .await
-        .expect("Unable to create component");
+    let (component, _) =
+        Component::new_for_default_variant_from_schema(ctx, "Array Component", *schema.id())
+            .await
+            .expect("Unable to create component");
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -515,10 +519,9 @@ async fn list_payload(ctx: &DalContext) {
         .default_schema_variant_id()
         .expect("missing default schema variant id");
     let name = generate_name();
-    let (component, _node) =
-        Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
-            .await
-            .expect("could not create component");
+    let (component, _node) = Component::new(ctx, &name, *schema_variant_id)
+        .await
+        .expect("could not create component");
 
     let payloads = AttributeValue::list_payload_for_read_context(
         ctx,

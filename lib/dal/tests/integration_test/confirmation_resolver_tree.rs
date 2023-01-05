@@ -12,7 +12,7 @@ use dal_test::{helpers::create_component_and_node_for_schema, test};
 
 async fn create_dummy_schema(ctx: &DalContext) -> BuiltinsResult<(Schema, Socket, Socket)> {
     let mut schema = Schema::new(ctx, "Dummy Schema", &ComponentKind::Standard).await?;
-    let (schema_variant, _root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    let (mut schema_variant, _root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await?;
