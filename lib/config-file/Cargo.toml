@@ -33,7 +33,7 @@ serde_json = { version = "1.0.79", optional = true }
 serde_toml = { package = "toml", version = "0.5.8", optional = true }
 serde_yaml = { version = "0.9.10", optional = true }
 thiserror = "1.0.30"
-tokio = { version = "1.17.0", features = ["fs", "io-util"], optional = true }
+tokio = { version = "1.23.1", features = ["fs", "io-util"], optional = true }
 tracing = "0.1"
 
 [dev-dependencies]

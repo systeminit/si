@@ -9,5 +9,5 @@ publish = false
 async-trait = { version = "0.1.51" }
 opentelemetry = { version = "0.18.0", features = ["rt-tokio", "trace"] }
 thiserror = { version = "1.0" }
-tokio = { version = "1.12.0", features = ["rt", "signal", "sync"] }
+tokio = { version = "1.23.1", features = ["rt", "signal", "sync"] }
 tracing = { version = "0.1" }

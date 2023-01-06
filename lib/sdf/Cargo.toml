@@ -32,7 +32,7 @@ strum = "0.24.0"
 strum_macros = "0.24.0"
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { version = "1.0" }
-tokio = { version = "1.12.0", features = ["full"] }
+tokio = { version = "1.23.1", features = ["full"] }
 tokio-tungstenite = "0.17.1"
 tower = { version = "0.4.10" }
 tower-http = { version = "0.3", features = ["trace"] }

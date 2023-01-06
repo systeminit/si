@@ -15,4 +15,4 @@ tracing-subscriber = { version = "0.3.11", features = ['env-filter', 'std'] }
 telemetry = { path = "../../lib/telemetry-rs" }
 
 thiserror = { version = "1.0" }
-tokio = { version = "1.12.0", features = ["rt", "signal", "sync"] }
+tokio = { version = "1.23.1", features = ["rt", "signal", "sync"] }

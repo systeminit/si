@@ -17,7 +17,7 @@ serde_json = { version = "1.0.64", features = ["preserve_order"] }
 si-data-nats = { path = "../../lib/si-data-nats" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { version = "1.0" }
-tokio = { version = "1.2.0", features = ["full"] }
+tokio = { version = "1.23.1", features = ["full"] }
 veritech-core = { path = "../../lib/veritech-core" }
 
 [dev-dependencies]
