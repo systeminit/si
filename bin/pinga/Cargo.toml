@@ -29,3 +29,5 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
 si-settings = { path = "../../lib/si-settings" }
 uuid = { version = "1.1.2", features = ["serde", "v4"] }
+
+async-trait = "0.1.51"

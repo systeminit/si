@@ -10,6 +10,7 @@ pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 mod config;
 pub(crate) mod extract;
 mod handlers;
+pub(crate) mod job_processor;
 mod routes;
 mod server;
 pub mod service;
