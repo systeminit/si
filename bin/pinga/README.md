@@ -1,6 +1,6 @@
 # Pinga
 
-Job Queue Executor integrated with [Faktory](https://contribsys.com/faktory/)
+Job Queue Executor integrated with both [Nats](https://nats.io/) and [Faktory](https://contribsys.com/faktory/)
 
 ![pinga](./docs/pinga.png)
 

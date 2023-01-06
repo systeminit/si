@@ -26,7 +26,7 @@ pub struct ServicesContext {
     pg_pool: PgPool,
     /// A connected NATS client
     nats_conn: NatsClient,
-    /// A connected faktory client
+    /// A connected job processor client
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A Veritech client, connected via a NATS connection.
     veritech: VeritechClient,
@@ -625,8 +625,6 @@ impl DalContextBuilder {
 
 #[derive(Debug, Error)]
 pub enum TransactionsError {
-    #[error("faktory error: {0}")]
-    Faktory(#[from] faktory_async::Error),
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error(transparent)]

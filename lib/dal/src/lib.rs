@@ -136,7 +136,10 @@ pub use func::{
 pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use index_map::IndexMap;
-pub use job::processor::{faktory_processor::FaktoryProcessor, JobQueueProcessor};
+pub use job::processor::{
+    faktory_processor::FaktoryProcessor, nats_processor::NatsProcessor,
+    sync_processor::SyncProcessor, JobQueueProcessor,
+};
 pub use job_failure::{JobFailure, JobFailureError, JobFailureResult};
 pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};

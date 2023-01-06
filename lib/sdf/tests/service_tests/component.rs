@@ -30,7 +30,7 @@ async fn list_components_identification() {
         nba,
         auth_token,
         dal_ctx,
-        _faktory,
+        _job_processor,
     );
 
     let schema = create_schema(&dal_ctx).await;
@@ -139,7 +139,7 @@ async fn get_components_metadata() {
         nba,
         auth_token,
         dal_ctx,
-        _faktory,
+        _job_processor,
     );
     let visibility = Visibility::new_head(false);
 

@@ -14,7 +14,7 @@ pub(crate) fn parse() -> Args {
 
 /// The System Initiative API service.
 ///
-/// Pinga queue executor system that handles whatever job comes from Faktory.
+/// Pinga queue executor system that handles whatever job comes from Nats or Faktory.
 /// It means "drip" in portuguese and also is a name for Cachaça
 #[derive(Parser, Debug)]
 #[command(name = NAME, max_term_width = 100)]

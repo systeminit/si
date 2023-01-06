@@ -6,7 +6,7 @@ use telemetry::prelude::*;
 use tokio::task::JoinSet;
 
 use crate::{
-    job::consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
+    job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
     DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
@@ -30,7 +30,7 @@ pub struct DependentValuesUpdate {
     attribute_value_id: AttributeValueId,
     access_builder: AccessBuilder,
     visibility: Visibility,
-    faktory_job: Option<FaktoryJobInfo>,
+    job: Option<JobInfo>,
 }
 
 impl DependentValuesUpdate {
@@ -42,7 +42,7 @@ impl DependentValuesUpdate {
             attribute_value_id,
             access_builder,
             visibility,
-            faktory_job: None,
+            job: None,
         })
     }
 }
@@ -247,10 +247,10 @@ async fn update_value(
     Ok(*attribute_value.id())
 }
 
-impl TryFrom<faktory_async::Job> for DependentValuesUpdate {
+impl TryFrom<JobInfo> for DependentValuesUpdate {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
                 r#"[{ "attribute_value_id": <AttributeValueId> }, <AccessBuilder>, <Visibility>]"#
@@ -262,13 +262,11 @@ impl TryFrom<faktory_async::Job> for DependentValuesUpdate {
         let access_builder: AccessBuilder = serde_json::from_value(job.args()[1].clone())?;
         let visibility: Visibility = serde_json::from_value(job.args()[2].clone())?;
 
-        let faktory_job_info = FaktoryJobInfo::try_from(job)?;
-
         Ok(Self {
             attribute_value_id: args.attribute_value_id,
             access_builder,
             visibility,
-            faktory_job: Some(faktory_job_info),
+            job: Some(job),
         })
     }
 }

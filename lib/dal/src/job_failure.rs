@@ -25,7 +25,7 @@ pub type JobFailureResult<T, E = JobFailureError> = Result<T, E>;
 pk!(JobFailurePk);
 pk!(JobFailureId);
 
-/// Background tasks, enqueued with `faktory`, executed by `pinga` may fail.
+/// Background tasks, enqueued on the dynamic transport layer, executed by `pinga` may fail.
 /// And not all failure can be reported to the user by the regular path, so
 /// any fatal failure, like a panic or an `Err` propagated from the `dal will
 /// be stored in the database in the form of a `JobFailure`
