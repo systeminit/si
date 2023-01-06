@@ -503,14 +503,15 @@ BEGIN
                         RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Ensuring AttributeValue exists for ExternalProvider at AttributeContext(%)', insertion_attribute_context;
                         -- This AttributePrototype is directly associated with an ExternalProvider
 
-                        PERFORM *
+                        SELECT id
+                        INTO new_attribute_value_id
                         FROM attribute_values_v1(this_read_tenancy, this_visibility) as av
                         WHERE exact_attribute_context_v1(insertion_attribute_context, av);
 
                         IF FOUND THEN
+                            next_attribute_value_ids := array_cat(next_attribute_value_ids, ARRAY [new_attribute_value_id]);
                             CONTINUE;
                         END IF;
-
 
                         next_attribute_value_ids := array_cat(
                                 next_attribute_value_ids,
@@ -632,14 +633,15 @@ BEGIN
                                                            'attribute_context_component_id', head_component_id
                                                        );
 
-                    PERFORM *
+                    SELECT id
+                    INTO new_attribute_value_id
                     FROM attribute_values_v1(this_read_tenancy, this_visibility) as av
                     WHERE exact_attribute_context_v1(insertion_attribute_context, av);
 
                     IF FOUND THEN
+                        next_attribute_value_ids := array_cat(next_attribute_value_ids, ARRAY [new_attribute_value_id]);
                         CONTINUE;
                     END IF;
-
 
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Source AttributeValue(%) destination AttributeContext(%)',
                         source_attribute_value,
