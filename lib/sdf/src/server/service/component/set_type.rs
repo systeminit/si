@@ -46,19 +46,25 @@ pub async fn set_type(
     )
     .await?;
 
+    let component_id = request.attribute_context.component_id();
+
+    let component = Component::get_by_id(&ctx, &component_id)
+        .await?
+        .ok_or(ComponentError::ComponentNotFound)?;
+
+    let schema_variant = component
+        .schema_variant(&ctx)
+        .await?
+        .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+    let external_providers =
+        ExternalProvider::list_for_schema_variant(&ctx, *schema_variant.id()).await?;
+
+    let internal_providers =
+        InternalProvider::list_explicit_for_schema_variant(&ctx, *schema_variant.id()).await?;
+
     if let Some(value) = request.value {
         if value == "aggregationFrame" {
-            let component_id = request.attribute_context.component_id();
-
-            let component = Component::get_by_id(&ctx, &component_id)
-                .await?
-                .ok_or(ComponentError::ComponentNotFound)?;
-
-            let schema_variant = component
-                .schema_variant(&ctx)
-                .await?
-                .ok_or(ComponentError::SchemaVariantNotFound)?;
-
             let func_id = *Func::find_by_attr(&ctx, "name", &"si:identity")
                 .await?
                 .first()
@@ -71,9 +77,6 @@ pub async fn set_type(
                 func_id,
             )
             .await?;
-
-            let external_providers =
-                ExternalProvider::list_for_schema_variant(&ctx, *schema_variant.id()).await?;
 
             for external_provider in external_providers {
                 let attribute_read_context = AttributeReadContext {
@@ -114,10 +117,6 @@ pub async fn set_type(
                     .await?;
                 };
             }
-
-            let internal_providers =
-                InternalProvider::list_explicit_for_schema_variant(&ctx, *schema_variant.id())
-                    .await?;
 
             for internal_provider in internal_providers {
                 let attribute_read_context = AttributeReadContext {
@@ -180,6 +179,44 @@ pub async fn set_type(
                         argument.external_provider_id(),
                     )
                     .await?;
+                }
+            }
+        } else {
+            for external_provider in external_providers {
+                let attribute_read_context = AttributeReadContext {
+                    prop_id: Some(PropId::NONE),
+                    internal_provider_id: Some(InternalProviderId::NONE),
+                    external_provider_id: Some(*external_provider.id()),
+                    component_id: Some(component_id),
+                };
+
+                let attribute_value =
+                    AttributeValue::find_for_context(&ctx, attribute_read_context)
+                        .await?
+                        .ok_or(ComponentError::AttributeValueNotFound)?;
+
+                if !attribute_value.context.is_component_unset() {
+                    attribute_value.unset_attribute_prototype(&ctx).await?;
+                    attribute_value.delete(&ctx).await?;
+                }
+            }
+
+            for internal_provider in internal_providers {
+                let attribute_read_context = AttributeReadContext {
+                    prop_id: Some(PropId::NONE),
+                    internal_provider_id: Some(*internal_provider.id()),
+                    external_provider_id: Some(ExternalProviderId::NONE),
+                    component_id: Some(component_id),
+                };
+
+                let attribute_value =
+                    AttributeValue::find_for_context(&ctx, attribute_read_context)
+                        .await?
+                        .ok_or(ComponentError::AttributeValueNotFound)?;
+
+                if !attribute_value.context.is_component_unset() {
+                    attribute_value.unset_attribute_prototype(&ctx).await?;
+                    attribute_value.delete(&ctx).await?;
                 }
             }
         }

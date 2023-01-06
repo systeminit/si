@@ -179,7 +179,7 @@ BEGIN
         END;
     RAISE DEBUG 'external_provider_check: %', external_provider_check;
 
-    least_specific_level_check := prop_check OR internal_provider_check OR external_provider_check;
+    least_specific_level_check := prop_check AND internal_provider_check AND external_provider_check;
 
     component_check := (check_context_record.attribute_context_component_id = this_component_id);
     RAISE DEBUG 'component_check: %', component_check;
@@ -257,9 +257,12 @@ BEGIN
         END;
     RAISE DEBUG 'external_provider_check: %', external_provider_check;
 
-    least_specific_level_check := (prop_check AND this_internal_provider_id = ident_nil_v1() AND this_external_provider_id = ident_nil_v1()) OR
-                                  (this_prop_id = ident_nil_v1() AND internal_provider_check AND this_external_provider_id = ident_nil_v1()) OR
-                                  (this_prop_id = ident_nil_v1() AND this_internal_provider_id = ident_nil_v1() AND external_provider_check);
+    least_specific_level_check := (prop_check AND this_internal_provider_id = ident_nil_v1() AND
+                                   this_external_provider_id = ident_nil_v1()) OR
+                                  (this_prop_id = ident_nil_v1() AND internal_provider_check AND
+                                   this_external_provider_id = ident_nil_v1()) OR
+                                  (this_prop_id = ident_nil_v1() AND this_internal_provider_id = ident_nil_v1() AND
+                                   external_provider_check);
 
     component_check := CASE
                            WHEN check_context_record.attribute_context_component_id IS NULL THEN
