@@ -1,7 +1,10 @@
 #![recursion_limit = "256"]
 
 use color_eyre::Result;
-use sdf::{Config, IncomingStream, JobQueueProcessor, MigrationMode, Server, SyncProcessor};
+use sdf::{
+    Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
+    SyncProcessor,
+};
 use telemetry_application::{
     prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
     TelemetryClient, TelemetryConfig,
@@ -9,6 +12,10 @@ use telemetry_application::{
 use tokio::sync::mpsc;
 
 mod args;
+
+/// `sdf::FaktoryProcessor` and `sdf::SyncProcessor` are also available
+type JobProcessor = sdf::NatsProcessor;
+// type JobProcessor = sdf::FaktoryProcessor;
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 
@@ -86,16 +93,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     let nats = Server::connect_to_nats(config.nats()).await?;
     let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
 
-    // let job_client = faktory_async::Client::new(
-    //     faktory_async::Config::from_uri(&config.faktory().url, Some("sdf".to_string()), None),
-    //     256,
-    // );
-    // let job_processor = Box::new(sdf::FaktoryProcessor::new(job_client.clone(), alive_marker))
-    //     as Box<dyn JobQueueProcessor + Send + Sync>;
-
-    let job_client = nats.clone();
-    let job_processor = Box::new(sdf::NatsProcessor::new(job_client.clone(), alive_marker))
-        as Box<dyn JobQueueProcessor + Send + Sync>;
+    let (job_client, job_processor) = JobProcessor::connect(&config, alive_marker).await?;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
@@ -195,7 +193,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     let _ = job_processor_shutdown_rx.recv().await;
 
     info!("Shutting down the job processor client");
-    if let Err(err) = job_client.close().await {
+    if let Err(err) = (&job_client as &dyn JobProcessorClientCloser).close().await {
         error!("Failed to close faktory client: {err}");
     }
 

@@ -37,6 +37,7 @@ tokio-tungstenite = "0.17.1"
 tower = { version = "0.4.10" }
 tower-http = { version = "0.3", features = ["trace"] }
 veritech-client = { path = "../../lib/veritech-client" }
+async-trait = "0.1.51"
 
 [build-dependencies]
 thiserror = { version = "1.0" }

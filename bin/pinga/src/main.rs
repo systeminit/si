@@ -23,15 +23,13 @@ mod args;
 mod config;
 mod transport;
 
-use transport::{connect, fetch, post_process, subscribe, Processor, Subscription};
+use transport::{Consumer, ExecutionState};
+
+/// `faktory_async::Client` is also available
+type Transport = si_data_nats::Subscription;
+// type Transport = faktory_async::Client;
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
-
-pub enum ExecutionState {
-    Process(JobInfo),
-    Idle,
-    Stop,
-}
 
 fn main() {
     std::thread::Builder::new()
@@ -146,18 +144,17 @@ async fn run(
 
     info!("Creating transport connection");
 
-    let client = connect(&config).await?;
+    let client = Transport::connect(&config).await?;
 
     info!("Spawned transport connection.");
 
-    let job_processor = Box::new(Processor::new(client.clone(), alive_marker))
-        as Box<dyn JobQueueProcessor + Send + Sync>;
+    let job_processor = Transport::new_processor(client.clone(), alive_marker);
 
     const NUM_TASKS: usize = 10;
     let mut handles = Vec::with_capacity(NUM_TASKS);
     for _ in 0..NUM_TASKS {
         handles.push(tokio::task::spawn(start_job_executor(
-            subscribe(&client).await?,
+            Transport::subscribe(&client).await?,
             pg_pool.clone(),
             nats.clone(),
             veritech.clone(),
@@ -175,7 +172,7 @@ async fn run(
     let _ = job_processor_shutdown_rx.recv().await;
 
     info!("Closing transport client connection");
-    if let Err(err) = client.close().await {
+    if let Err(err) = Transport::end(client).await {
         error!("Error closing transport client connection: {err}");
     }
 
@@ -186,7 +183,7 @@ async fn run(
 
 /// Start the job executor
 async fn start_job_executor(
-    mut subscription: Subscription,
+    mut subscription: Transport,
     pg: PgPool,
     nats: NatsClient,
     veritech: veritech_client::Client,
@@ -206,13 +203,13 @@ async fn start_job_executor(
     loop {
         tokio::time::sleep(Duration::from_millis(10)).await;
 
-        match fetch(&mut subscription, &mut shutdown_request_rx, &ctx_builder).await {
+        match subscription.fetch_next(&mut shutdown_request_rx).await {
             ExecutionState::Stop => break,
             ExecutionState::Idle => {}
             ExecutionState::Process(job) => {
                 let jid = job.id.to_owned();
                 let result = execute_job_fallible(job, ctx_builder.clone()).await;
-                post_process(&subscription, jid, result).await;
+                subscription.post_process(jid, result).await;
             }
         }
     }
@@ -319,6 +316,8 @@ pub enum JobError {
     FailureReporting(#[from] JobFailureError),
     #[error(transparent)]
     Nats(#[from] si_data_nats::Error),
+    #[error(transparent)]
+    Faktory(#[from] faktory_async::Error),
     #[error(transparent)]
     Pg(#[from] PgPoolError),
     #[error(transparent)]
