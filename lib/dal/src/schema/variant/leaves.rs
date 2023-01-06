@@ -7,8 +7,8 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, AttributeValueError, ComponentId, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, PropId, SchemaVariant, SchemaVariantId,
-    StandardModel,
+    FuncBackendResponseType, FuncError, FuncId, PropId, RootPropChild, SchemaVariant,
+    SchemaVariantId, StandardModel,
 };
 
 /// This enum provides options for creating leaves underneath compatible subtrees of "/root" within
@@ -25,25 +25,58 @@ pub enum LeafKind {
     /// This variant corresponds to the "/root/qualification" subtree whose leaves leverage
     /// qualification [`Funcs`](crate::Func).
     Qualification,
+    /// This variant corresponds to the "/root/confirmation" subtree whose leaves leverage
+    /// confirmation [`Funcs`](crate::Func).
+    Confirmation,
 }
 
+/// This enum provides available child [`Prop`](crate::Prop) trees of [`RootProp`](crate::RootProp)
+/// that can be used as "inputs" for [`Funcs`](crate::Func) on leaves.
+///
+/// _Note: not all [`children`](crate::RootPropChild) of [`RootProp`](crate::RootProp) can be used
+/// as "inputs" in order to prevent cycles. This enum provides an approved subset of those
+/// children_.
 #[derive(Clone, Copy, Debug)]
 pub enum LeafInputLocation {
+    /// The input location corresponding to "/root/code".
     Code,
+    /// The input location corresponding to "/root/domain".
     Domain,
+    /// The input location corresponding to "/root/resource".
+    Resource,
 }
 
+// We only want to allow converting an input location into a root prop child and root the other
+// way around.
+#[allow(clippy::from_over_into)]
+impl Into<RootPropChild> for LeafInputLocation {
+    fn into(self) -> RootPropChild {
+        match self {
+            LeafInputLocation::Code => RootPropChild::Code,
+            LeafInputLocation::Domain => RootPropChild::Domain,
+            LeafInputLocation::Resource => RootPropChild::Resource,
+        }
+    }
+}
+
+/// This struct provides the metadata necessary to provide "inputs" to [`Funcs`](crate::Func)
+/// on leaves.
 #[derive(Clone, Copy, Debug)]
 pub struct LeafInput {
+    /// The source location of the input.
     pub location: LeafInputLocation,
-    pub arg_id: FuncArgumentId,
+    /// The corresponding [`FuncArgumentId`](crate::FuncArgument) for the [`Func`](crate::Func).
+    pub func_argument_id: FuncArgumentId,
 }
 
 impl LeafKind {
+    /// Provides the names of the [`Map`](crate::PropKind::Map) and the child entry
+    /// [`Props`](crate::Prop), respectively, for [`self`](Self).
     pub fn prop_names(&self) -> (&'static str, &'static str) {
         match self {
             LeafKind::CodeGeneration => ("code", "codeItem"),
             LeafKind::Qualification => ("qualification", "qualificationItem"),
+            LeafKind::Confirmation => ("confirmation", "confirmationItem"),
         }
     }
 }
@@ -53,6 +86,7 @@ impl From<LeafKind> for FuncBackendResponseType {
         match leaf_kind {
             LeafKind::CodeGeneration => FuncBackendResponseType::CodeGeneration,
             LeafKind::Qualification => FuncBackendResponseType::Qualification,
+            LeafKind::Confirmation => FuncBackendResponseType::Confirmation,
         }
     }
 }
@@ -76,16 +110,15 @@ impl SchemaVariant {
             return Err(SchemaVariantError::InvalidSchemaVariant);
         }
 
+        // Ensure the func matches what we need.
         let func = Func::get_by_id(ctx, &func_id)
             .await?
             .ok_or(FuncError::NotFound(func_id))?;
-
         if func.backend_kind() != &FuncBackendKind::JsAttribute {
             return Err(SchemaVariantError::LeafFunctionMustBeJsAttribute(
                 *func.id(),
             ));
         }
-
         if func.backend_response_type() != &leaf_kind.into() {
             return Err(SchemaVariantError::LeafFunctionMismatch(
                 *func.backend_response_type(),
@@ -148,20 +181,17 @@ impl SchemaVariant {
             .await?;
 
         for input in inputs {
-            let input_internal_provider = match input.location {
-                LeafInputLocation::Code => {
-                    SchemaVariant::find_code_implicit_internal_provider(ctx, schema_variant_id)
-                        .await?
-                }
-                LeafInputLocation::Domain => {
-                    SchemaVariant::find_domain_implicit_internal_provider(ctx, schema_variant_id)
-                        .await?
-                }
-            };
+            let input_internal_provider =
+                SchemaVariant::find_root_child_implicit_internal_provider(
+                    ctx,
+                    schema_variant_id,
+                    input.location.into(),
+                )
+                .await?;
             AttributePrototypeArgument::new_for_intra_component(
                 ctx,
                 *inserted_attribute_prototype.id(),
-                input.arg_id,
+                input.func_argument_id,
                 *input_internal_provider.id(),
             )
             .await?;

@@ -1,6 +1,6 @@
 use dal::{
     schema::{variant::leaves::LeafKind, SchemaVariant},
-    DalContext, InternalProvider, StandardModel,
+    DalContext, InternalProvider, RootPropChild, StandardModel,
 };
 use dal_test::{test, test_harness::create_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -71,35 +71,34 @@ async fn find_implicit_internal_providers_for_root_children(ctx: &DalContext) {
         .await
         .expect("cannot finalize schema variant");
 
-    let found_domain_internal_provider =
-        SchemaVariant::find_domain_implicit_internal_provider(ctx, *schema_variant.id())
+    let children = [
+        (RootPropChild::Si, root_prop.si_prop_id),
+        (RootPropChild::Domain, root_prop.domain_prop_id),
+        (RootPropChild::Resource, root_prop.resource_prop_id),
+        (RootPropChild::Code, root_prop.code_prop_id),
+        (
+            RootPropChild::Qualification,
+            root_prop.qualification_prop_id,
+        ),
+        (RootPropChild::Confirmation, root_prop.confirmation_prop_id),
+    ];
+
+    for (child, prop_id) in children {
+        let found_implicit_internal_provider =
+            SchemaVariant::find_root_child_implicit_internal_provider(
+                ctx,
+                *schema_variant.id(),
+                child,
+            )
             .await
             .expect("could not find internal provider");
-
-    let expected_domain_internal_provider =
-        InternalProvider::find_for_prop(ctx, root_prop.domain_prop_id)
+        let expected_implicit_internal_provider = InternalProvider::find_for_prop(ctx, prop_id)
             .await
             .expect("could not perform find for prop")
             .expect("internal provider not found");
-
-    assert_eq!(
-        *expected_domain_internal_provider.id(),
-        *found_domain_internal_provider.id()
-    );
-
-    let found_code_internal_provider =
-        SchemaVariant::find_code_implicit_internal_provider(ctx, *schema_variant.id())
-            .await
-            .expect("could not find internal provider");
-
-    let expected_code_internal_provider =
-        InternalProvider::find_for_prop(ctx, root_prop.code_prop_id)
-            .await
-            .expect("could not perform find for prop")
-            .expect("internal provider not found");
-
-    assert_eq!(
-        *expected_code_internal_provider.id(),
-        *found_code_internal_provider.id()
-    );
+        assert_eq!(
+            *expected_implicit_internal_provider.id(),
+            *found_implicit_internal_provider.id()
+        );
+    }
 }

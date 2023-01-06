@@ -50,7 +50,7 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
         LeafKind::CodeGeneration,
         vec![LeafInput {
             location: LeafInputLocation::Domain,
-            arg_id: *code_generation_func_argument.id(),
+            func_argument_id: *code_generation_func_argument.id(),
         }],
     )
     .await

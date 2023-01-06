@@ -132,7 +132,7 @@ impl MigrationDriver {
             LeafKind::CodeGeneration,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,
-                arg_id: code_generation_func_argument_id,
+                func_argument_id: code_generation_func_argument_id,
             }],
         )
         .await?;
@@ -181,7 +181,7 @@ impl MigrationDriver {
             LeafKind::Qualification,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,
-                arg_id: qualification_func_argument_id,
+                func_argument_id: qualification_func_argument_id,
             }],
         )
         .await?;
@@ -458,7 +458,7 @@ impl MigrationDriver {
             LeafKind::CodeGeneration,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,
-                arg_id: code_generation_func_argument_id,
+                func_argument_id: code_generation_func_argument_id,
             }],
         )
         .await?;
@@ -556,11 +556,11 @@ impl MigrationDriver {
             vec![
                 LeafInput {
                     location: LeafInputLocation::Domain,
-                    arg_id: qualification_func_argument_id,
+                    func_argument_id: qualification_func_argument_id,
                 },
                 LeafInput {
                     location: LeafInputLocation::Code,
-                    arg_id: *code_func_argument.id(),
+                    func_argument_id: *code_func_argument.id(),
                 },
             ],
         )
@@ -1147,7 +1147,7 @@ impl MigrationDriver {
             LeafKind::CodeGeneration,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,
-                arg_id: code_generation_func_argument_id,
+                func_argument_id: code_generation_func_argument_id,
             }],
         )
         .await?;
@@ -1209,11 +1209,11 @@ impl MigrationDriver {
             vec![
                 LeafInput {
                     location: LeafInputLocation::Domain,
-                    arg_id: qualification_func_argument_id,
+                    func_argument_id: qualification_func_argument_id,
                 },
                 LeafInput {
                     location: LeafInputLocation::Code,
-                    arg_id: *code_func_argument.id(),
+                    func_argument_id: *code_func_argument.id(),
                 },
             ],
         )
@@ -1537,7 +1537,7 @@ impl MigrationDriver {
             LeafKind::CodeGeneration,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,
-                arg_id: code_generation_func_argument_id,
+                func_argument_id: code_generation_func_argument_id,
             }],
         )
         .await?;
@@ -1597,11 +1597,11 @@ impl MigrationDriver {
             vec![
                 LeafInput {
                     location: LeafInputLocation::Domain,
-                    arg_id: qualification_func_argument_id,
+                    func_argument_id: qualification_func_argument_id,
                 },
                 LeafInput {
                     location: LeafInputLocation::Code,
-                    arg_id: *code_func_argument.id(),
+                    func_argument_id: *code_func_argument.id(),
                 },
             ],
         )

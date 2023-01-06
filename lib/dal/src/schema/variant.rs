@@ -9,6 +9,7 @@ use crate::edit_field::widget::WidgetKind;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::internal::InternalProviderError;
 use crate::standard_model::object_from_row;
+use crate::RootPropChild;
 use crate::{
     func::binding::FuncBindingError,
     impl_standard_model, pk,
@@ -410,53 +411,22 @@ impl SchemaVariant {
         Ok(object_from_row(row)?)
     }
 
-    /// Finds the implicit [`InternalProvider`](crate::InternalProvider) corresponding to
-    /// "/root/domain", which is of kind [`object`](crate::PropKind::Object).
-    ///
-    /// _Note: the [`SchemaVariant`](crate::SchemaVariant) must be
-    /// [`finalized`](crate::SchemaVariant::finalize()) before running this query._
-    pub async fn find_domain_implicit_internal_provider(
+    /// Find the implicit [`InternalProvider`](crate::InternalProvider) corresponding to a provided,
+    /// [`direct child`](crate::RootPropChild) of [`RootProp`](crate::RootProp).
+    pub async fn find_root_child_implicit_internal_provider(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
+        root_prop_child: RootPropChild,
     ) -> SchemaVariantResult<InternalProvider> {
-        Self::find_root_child_implicit_internal_provider(ctx, schema_variant_id, "domain").await
-    }
+        let root_prop_child_name = match root_prop_child {
+            RootPropChild::Si => "si",
+            RootPropChild::Domain => "domain",
+            RootPropChild::Resource => "resource",
+            RootPropChild::Code => "code",
+            RootPropChild::Qualification => "qualification",
+            RootPropChild::Confirmation => "confirmation",
+        };
 
-    /// Finds the implicit [`InternalProvider`](crate::InternalProvider) corresponding to
-    /// "/root/code", which is of kind [`map`](crate::PropKind::Map).
-    ///
-    /// _Note: the [`SchemaVariant`](crate::SchemaVariant) must be
-    /// [`finalized`](crate::SchemaVariant::finalize()) before running this query._
-    pub async fn find_code_implicit_internal_provider(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<InternalProvider> {
-        Self::find_root_child_implicit_internal_provider(ctx, schema_variant_id, "code").await
-    }
-
-    /// Finds the implicit [`InternalProvider`](crate::InternalProvider) corresponding to
-    /// "/root/qualification", which is of kind [`map`](crate::PropKind::Map).
-    ///
-    /// _Note: the [`SchemaVariant`](crate::SchemaVariant) must be
-    /// [`finalized`](crate::SchemaVariant::finalize()) before running this query._
-    pub async fn find_qualification_implicit_internal_provider(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> SchemaVariantResult<InternalProvider> {
-        Self::find_root_child_implicit_internal_provider(ctx, schema_variant_id, "qualification")
-            .await
-    }
-
-    /// This private method takes in a provided name for a direct child [`Prop`](crate::Prop)
-    /// of "/root" in order to find the child's implicit
-    /// [`InternalProvider`](crate::InternalProvider).
-    ///
-    /// This method is private to ensure compile time safety.
-    async fn find_root_child_implicit_internal_provider(
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-        direct_child_of_root_prop_name: &str,
-    ) -> SchemaVariantResult<InternalProvider> {
         let row = ctx
             .txns()
             .pg()
@@ -466,7 +436,7 @@ impl SchemaVariant {
                     ctx.read_tenancy(),
                     ctx.visibility(),
                     &schema_variant_id,
-                    &direct_child_of_root_prop_name,
+                    &root_prop_child_name,
                 ],
             )
             .await?;

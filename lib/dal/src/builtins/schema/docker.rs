@@ -64,7 +64,7 @@ impl MigrationDriver {
             LeafKind::Qualification,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,
-                arg_id: qualification_func_argument_id,
+                func_argument_id: qualification_func_argument_id,
             }],
         )
         .await?;
@@ -194,7 +194,7 @@ impl MigrationDriver {
             LeafKind::Qualification,
             vec![LeafInput {
                 location: LeafInputLocation::Domain,
-                arg_id: qualification_func_argument_id,
+                func_argument_id: qualification_func_argument_id,
             }],
         )
         .await?;
