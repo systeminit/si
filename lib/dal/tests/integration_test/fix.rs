@@ -1,10 +1,10 @@
 use dal::action_prototype::ActionKind;
 use dal::{
     workflow_runner::workflow_runner_state::WorkflowRunnerStatus, ActionPrototype,
-    ActionPrototypeContext, ConfirmationPrototype, ConfirmationPrototypeContext,
-    ConfirmationResolver, ConfirmationResolverId, DalContext, Fix, FixBatch, FixCompletionStatus,
-    Func, StandardModel, WorkflowPrototype, WorkflowPrototypeContext, WorkflowPrototypeId,
-    WorkflowRunner,
+    ActionPrototypeContext, ChangeSet, ChangeSetStatus, ConfirmationPrototype,
+    ConfirmationPrototypeContext, ConfirmationResolver, ConfirmationResolverId, DalContext, Fix,
+    FixBatch, FixCompletionStatus, Func, StandardModel, Visibility, WorkflowPrototype,
+    WorkflowPrototypeContext, WorkflowPrototypeId, WorkflowRunner,
 };
 use dal_test::helpers::component_payload::ComponentPayload;
 use dal_test::{
@@ -13,9 +13,21 @@ use dal_test::{
 };
 
 #[test]
-async fn confirmation_to_action(ctx: &DalContext) {
+async fn confirmation_to_action(ctx: &mut DalContext) {
     let (payload, _confirmation_resolver_id, action_workflow_prototype_id, _action_name) =
         setup_confirmation_resolver_and_get_action_prototype(ctx).await;
+
+    // Apply the change set.
+    let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
+        .await
+        .expect("could not perform get by pk")
+        .expect("could not get change set");
+    change_set
+        .apply(ctx)
+        .await
+        .expect("cannot apply change set");
+    assert_eq!(&change_set.status, &ChangeSetStatus::Applied);
+    ctx.update_visibility(Visibility::new_head(false));
 
     let run_id = rand::random();
     let (_runner, runner_state, func_binding_return_values, _resources) = WorkflowRunner::run(
@@ -45,9 +57,21 @@ async fn confirmation_to_action(ctx: &DalContext) {
 }
 
 #[test]
-async fn confirmation_to_fix(ctx: &DalContext) {
+async fn confirmation_to_fix(ctx: &mut DalContext) {
     let (payload, confirmation_resolver_id, action_workflow_prototype_id, action_name) =
         setup_confirmation_resolver_and_get_action_prototype(ctx).await;
+
+    // Apply the change set.
+    let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
+        .await
+        .expect("could not perform get by pk")
+        .expect("could not get change set");
+    change_set
+        .apply(ctx)
+        .await
+        .expect("cannot apply change set");
+    assert_eq!(&change_set.status, &ChangeSetStatus::Applied);
+    ctx.update_visibility(Visibility::new_head(false));
 
     // Create the batch.
     let mut batch = FixBatch::new(ctx, "toddhoward@systeminit.com")

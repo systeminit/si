@@ -1,12 +1,10 @@
-use crate::{DalContext, WsEventResult};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use strum_macros::{Display, EnumString};
-use thiserror::Error;
-
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use strum_macros::{Display, EnumString};
 use telemetry::prelude::*;
+use thiserror::Error;
 
 use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
@@ -15,12 +13,15 @@ use crate::{
     job::definition::Confirmations, pk, HistoryEvent, HistoryEventError, LabelListError,
     StandardModelError, Timestamp, WriteTenancy,
 };
+use crate::{Component, ComponentError, DalContext, WsEventResult};
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
 const CHANGE_SET_GET_BY_PK: &str = include_str!("./queries/change_set_get_by_pk.sql");
 
 #[derive(Error, Debug)]
 pub enum ChangeSetError {
+    #[error(transparent)]
+    Component(#[from] ComponentError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
@@ -97,6 +98,9 @@ impl ChangeSet {
 
     #[instrument(skip(ctx))]
     pub async fn apply(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
+        // Before performing "apply", run all confirmations.
+        Component::run_all_confirmations(ctx).await?;
+
         let actor = serde_json::to_value(ctx.history_actor())?;
         let row = ctx
             .txns()
@@ -117,6 +121,7 @@ impl ChangeSet {
         )
         .await?;
 
+        // TODO(nick): delete once prop tree confirmations are ready.
         ctx.enqueue_job(Confirmations::new(ctx)).await;
 
         WsEvent::change_set_applied(ctx, self.pk)

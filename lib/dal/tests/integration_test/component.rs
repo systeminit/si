@@ -16,6 +16,7 @@ use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
 
 mod code;
+mod confirmation;
 mod qualification;
 mod validation;
 mod view;

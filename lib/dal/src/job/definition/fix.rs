@@ -12,7 +12,7 @@ use crate::{
     },
     AccessBuilder, ActionPrototype, Component, ComponentId, ConfirmationResolverId, DalContext,
     Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, FixResolverContext,
-    StandardModel, Visibility, WsEvent,
+    RootPropChild, StandardModel, Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,8 +199,8 @@ impl JobConsumer for FixesJob {
         if !resources.is_empty() {
             let attribute_value = Component::root_child_attribute_value_for_component(
                 ctx,
-                "resource",
                 *component.id(),
+                RootPropChild::Resource,
             )
             .await?;
 

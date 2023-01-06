@@ -418,15 +418,6 @@ impl SchemaVariant {
         schema_variant_id: SchemaVariantId,
         root_prop_child: RootPropChild,
     ) -> SchemaVariantResult<InternalProvider> {
-        let root_prop_child_name = match root_prop_child {
-            RootPropChild::Si => "si",
-            RootPropChild::Domain => "domain",
-            RootPropChild::Resource => "resource",
-            RootPropChild::Code => "code",
-            RootPropChild::Qualification => "qualification",
-            RootPropChild::Confirmation => "confirmation",
-        };
-
         let row = ctx
             .txns()
             .pg()
@@ -436,7 +427,7 @@ impl SchemaVariant {
                     ctx.read_tenancy(),
                     ctx.visibility(),
                     &schema_variant_id,
-                    &root_prop_child_name,
+                    &root_prop_child.as_str(),
                 ],
             )
             .await?;

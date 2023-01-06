@@ -29,8 +29,8 @@ async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
 async fn apply(ctx: &mut DalContext) {
     let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
         .await
-        .unwrap()
-        .unwrap();
+        .expect("could not perform get by pk")
+        .expect("could not get change set");
 
     let group = create_group(ctx).await;
 
