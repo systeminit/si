@@ -4,7 +4,8 @@ use dal::job::definition::DependentValuesUpdate;
 use dal::socket::SocketEdgeKind;
 use dal::{
     node::NodeId, AttributeReadContext, AttributeValue, Component, Connection, DalContext, Edge,
-    EdgeError, ExternalProvider, InternalProvider, Node, StandardModel, Visibility, WsEvent,
+    EdgeError, ExternalProvider, InternalProvider, InternalProviderId, Node, PropId, StandardModel,
+    Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -282,16 +283,18 @@ pub async fn connect_component_sockets_to_frame(
                             )
                             .await?;
 
-                            let attribute_value_context =
-                                AttributeReadContext::default_with_external_provider(
-                                    *parent_provider.id(),
-                                );
+                            let attribute_read_context = AttributeReadContext {
+                                prop_id: Some(PropId::NONE),
+                                internal_provider_id: Some(InternalProviderId::NONE),
+                                external_provider_id: Some(*parent_provider.id()),
+                                component_id: Some(*parent_component.id()),
+                            };
 
                             let attribute_value =
-                                AttributeValue::find_for_context(ctx, attribute_value_context)
+                                AttributeValue::find_for_context(ctx, attribute_read_context)
                                     .await?
                                     .ok_or(DiagramError::AttributeValueNotFoundForContext(
-                                        attribute_value_context,
+                                        attribute_read_context,
                                     ))?;
 
                             ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
