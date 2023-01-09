@@ -34,9 +34,9 @@ The diagram (created with [asciiflow](https://asciiflow.com)) below illustrates 
 There are other components and paradigms that aren't displayed, but this diagram is purely meant to show the overall flow from "mouse-click" onwards.
 
 ```
-                   ┌───────┐
-                   │ pinga │
-                   └───┬───┘
+                   ┌───────┐   ┌─────────┐
+                   │ pinga ├───│ council │
+                   └───┬───┘   └─────────┘
                        │   ┌─────────┐
                        ├───┤ faktory │
                        │   └─────────┘
@@ -58,7 +58,8 @@ There are other components and paradigms that aren't displayed, but this diagram
 - **[sdf](./bin/sdf/):** the backend webserver for communicating with `web`
 - **[dal](./lib/dal/):** the library used by `sdf` routes to "make stuff happen" (the keystone of SI)
 - **[pinga](./bin/pinga/):** the job queueing service used by the `dal` to execute non-trivial jobs via `nats` or `faktory`
-- **[faktory](https://github.com/contribsys/faktory):** the job queueing mechanism used by `pinga` to execute non-trivial jobs
+- **[council](./bin/council/):** the job queueing service used by the `dal` to execute non-trivial jobs via `nats` or `faktory`
+- **[faktory](https://github.com/contribsys/faktory):** one of the job queueing mechanism that can be used by `pinga` to execute non-trivial jobs
 - **[postgres](https://postgresql.org):** the database for storing SI data
 - **[veritech](./bin/veritech/):** a backend webserver for dispatching functions in secure runtime environments
 - **[deadpool-cyclone](./lib/deadpool-cyclone/):** a library used for managing a pool of `cyclone` instances of varying "types" (i.e. HTTP, UDS)

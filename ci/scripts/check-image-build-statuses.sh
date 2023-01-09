@@ -5,6 +5,7 @@ echo "CHECK_CHANGES_STATUS='${CHECK_CHANGES_STATUS}'"
 echo "NATS_RUN='${NATS_RUN}'"
 echo "OTELCOL_RUN='${OTELCOL_RUN}'"
 echo "PINGA_RUN='${PINGA_RUN}'"
+echo "COUNCIL_RUN='${COUNCIL_RUN}'"
 echo "POSTGRES_RUN='${POSTGRES_RUN}'"
 echo "SDF_RUN='${SDF_RUN}'"
 echo "VERITECH_RUN='${VERITECH_RUN}'"
@@ -12,6 +13,7 @@ echo "WEB_RUN='${WEB_RUN}'"
 echo "NATS_STATUS='${NATS_STATUS}'"
 echo "OTELCOL_STATUS='${OTELCOL_STATUS}'"
 echo "PINGA_STATUS='${PINGA_STATUS}'"
+echo "COUNCIL_STATUS='${COUNCIL_STATUS}'"
 echo "POSTGRES_STATUS='${POSTGRES_STATUS}'"
 echo "SDF_STATUS='${SDF_STATUS}'"
 echo "VERITECH_STATUS='${VERITECH_STATUS}'"
@@ -63,6 +65,16 @@ if [ "${PINGA_RUN}" == "true" ]; then
   echo "::group::Pinga build check"
   set -x
   if [ "${PINGA_STATUS}" != "success" ]; then
+    EXIT_STATUS=1
+  fi
+  set +x
+  echo "::endgroup::"
+fi
+
+if [ "${COUNCIL_RUN}" == "true" ]; then
+  echo "::group::Council build check"
+  set -x
+  if [ "${COUNCIL_STATUS}" != "success" ]; then
     EXIT_STATUS=1
   fi
   set +x

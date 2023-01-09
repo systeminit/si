@@ -90,6 +90,23 @@ services:
       - nats
     restart: "unless-stopped"
 
+  council:
+    image: "index.docker.io/systeminit/council:stable"
+    profiles:
+      - si
+      - si-watchtower
+      - council
+    environment:
+      - "SI_COUNCIL__NATS__URL=nats"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
+    extra_hosts:
+      - "nats:${GATEWAY:-I like my butt}"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    depends_on:
+      - nats
+    restart: "unless-stopped"
+
   pg:
     image: "index.docker.io/systeminit/postgres:stable"
     environment:

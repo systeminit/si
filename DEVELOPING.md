@@ -178,6 +178,12 @@ In another terminal pane, run `pinga`.
 make run//bin/pinga
 ```
 
+In another terminal pane, run `council`.
+
+```bash
+make run//bin/council
+```
+
 In a final terminal pane, execute the following command:
 
 ```bash
@@ -548,4 +554,5 @@ database.
   - `pnpm run dev:sdf`
   - `pnpm run dev:veritech`
   - `pnpm run dev:pinga`
+  - `pnpm run dev:council`
 - `pnpm run dev:frontend` - boots frontend for dev - uses vite, autoreload and HMR enabled...
