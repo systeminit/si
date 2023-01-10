@@ -15,9 +15,8 @@ use crate::{
     WriteTenancy,
 };
 
-const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("./queries/billing_account_get_by_name.sql");
-const BILLING_ACCOUNT_GET_DEFAULTS: &str =
-    include_str!("./queries/billing_account_get_defaults.sql");
+const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("queries/billing_account/get_by_name.sql");
+const BILLING_ACCOUNT_GET_DEFAULTS: &str = include_str!("queries/billing_account/get_defaults.sql");
 
 #[derive(Error, Debug)]
 pub enum BillingAccountError {

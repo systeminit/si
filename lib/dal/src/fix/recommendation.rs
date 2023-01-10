@@ -4,8 +4,8 @@ use serde::Serialize;
 use crate::action_prototype::ActionKind;
 use crate::fix::FixResult;
 use crate::{
-    AttributeReadContext, Component, ComponentId, ConfirmationResolver, ConfirmationResolverId,
-    ConfirmationResolverTree, Fix, FixResolver, FixResolverContext, StandardModel,
+    Component, ComponentId, ConfirmationResolver, ConfirmationResolverId, ConfirmationResolverTree,
+    Fix, FixResolver, FixResolverContext, StandardModel,
 };
 use crate::{ComponentError, DalContext};
 
@@ -81,14 +81,7 @@ impl Recommendation {
                     id: *resolver.id(),
                     name: workflow_prototype.title().to_owned(),
                     schema_name: schema.name().to_owned(),
-                    component_name: Component::name_from_context(
-                        ctx,
-                        AttributeReadContext {
-                            component_id: Some(component_id),
-                            ..AttributeReadContext::any()
-                        },
-                    )
-                    .await?,
+                    component_name: Component::find_name(ctx, component_id).await?,
                     component_id,
                     recommendation: action.name().to_owned(),
                     recommendation_kind: action.kind().to_owned(),

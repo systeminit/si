@@ -17,10 +17,10 @@ use tokio::{
 
 use crate::{pk, BillingAccountPk, DalContext, UserClaim, UserPk};
 
-const JWT_KEY_EXISTS: &str = include_str!("./queries/jwt_key_exists.sql");
+const JWT_KEY_EXISTS: &str = include_str!("queries/jwt_key/exists.sql");
 const JWT_KEY_GET_LATEST_PRIVATE_KEY: &str =
-    include_str!("./queries/jwt_key_get_latest_private_key.sql");
-const JWT_KEY_GET_PUBLIC_KEY: &str = include_str!("./queries/jwt_key_get_public_key.sql");
+    include_str!("queries/jwt_key/get_latest_private_key.sql");
+const JWT_KEY_GET_PUBLIC_KEY: &str = include_str!("queries/jwt_key/get_public_key.sql");
 
 #[derive(Error, Debug)]
 pub enum JwtKeyError {

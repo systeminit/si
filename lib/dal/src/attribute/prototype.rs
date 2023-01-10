@@ -39,20 +39,20 @@ const ARGUMENT_VALUES_BY_NAME_FOR_HEAD_COMPONENT_ID: &str = include_str!(
     "../queries/attribute_prototype/argument_values_by_name_for_head_component_id.sql"
 );
 const ATTRIBUTE_VALUES_IN_CONTEXT_OR_GREATER: &str =
-    include_str!("../queries/attribute_prototype_attribute_values_in_context_or_greater.sql");
+    include_str!("../queries/attribute_prototype/attribute_values_in_context_or_greater.sql");
 const LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL: &str = include_str!(
-    "../queries/attribute_prototype_list_by_head_from_external_provider_use_with_tail.sql"
+    "../queries/attribute_prototype/list_by_head_from_external_provider_use_with_tail.sql"
 );
 const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
-    include_str!("../queries/attribute_prototype_list_from_internal_provider_use.sql");
-const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
+    include_str!("../queries/attribute_prototype/list_from_internal_provider_use.sql");
+const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype/list_for_context.sql");
 const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
-    include_str!("../queries/attribute_prototype_find_with_parent_value_and_key_for_context.sql");
-const FIND_FOR_FUNC: &str = include_str!("../queries/attribute_prototype_find_for_func.sql");
+    include_str!("../queries/attribute_prototype/find_with_parent_value_and_key_for_context.sql");
+const FIND_FOR_FUNC: &str = include_str!("../queries/attribute_prototype/find_for_func.sql");
 const FIND_FOR_CONTEXT_AND_KEY: &str =
-    include_str!("../queries/attribute_prototype_find_for_context_and_key.sql");
+    include_str!("../queries/attribute_prototype/find_for_context_and_key.sql");
 const FIND_FOR_CONTEXT_NULL_KEY: &str =
-    include_str!("../queries/attribute_prototype_find_for_context_null_key.sql");
+    include_str!("../queries/attribute_prototype/find_for_context_null_key.sql");
 const FIND_FOR_FUNC_AS_VARIANT_AND_COMPONENT: &str =
     include_str!("../queries/attribute_prototype/find_for_func_as_variant_and_component.sql");
 

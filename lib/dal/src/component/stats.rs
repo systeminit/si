@@ -9,9 +9,9 @@ use telemetry::prelude::*;
 use crate::component::ComponentResult;
 use crate::{ComponentId, DalContext};
 
-const LIST_MODIFIED: &str = include_str!("../queries/component_stats_list_modified.sql");
-const LIST_ADDED: &str = include_str!("../queries/component_stats_list_added.sql");
-const LIST_DELETED: &str = include_str!("../queries/component_stats_list_deleted.sql");
+const LIST_MODIFIED: &str = include_str!("../queries/component/stats_list_modified.sql");
+const LIST_ADDED: &str = include_str!("../queries/component/stats_list_added.sql");
+const LIST_DELETED: &str = include_str!("../queries/component/stats_list_deleted.sql");
 
 /// A collection of statistics for [`Components`](crate::Component) in the current
 /// [`ChangeSet`](crate::ChangeSet).

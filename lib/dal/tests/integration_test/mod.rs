@@ -13,6 +13,7 @@ mod edge;
 mod fix;
 mod func;
 mod func_execution;
+mod graph;
 mod group;
 mod history_event;
 mod jwt_key;

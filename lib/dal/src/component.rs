@@ -183,13 +183,12 @@ pub enum ComponentError {
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
-const FIND_FOR_NODE: &str = include_str!("./queries/component_find_for_node.sql");
-//const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
-const LIST_FOR_SCHEMA_VARIANT: &str =
-    include_str!("./queries/component_list_for_schema_variant.sql");
+const FIND_FOR_NODE: &str = include_str!("queries/component/find_for_node.sql");
+//const GET_RESOURCE: &str = include_str!("./queries/get_resource.sql");
+const LIST_FOR_SCHEMA_VARIANT: &str = include_str!("queries/component/list_for_schema_variant.sql");
 const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
-    include_str!("queries/component_list_sockets_for_socket_edge_kind.sql");
-const NAME_FROM_CONTEXT: &str = include_str!("./queries/component/name_from_context.sql");
+    include_str!("queries/component/list_sockets_for_socket_edge_kind.sql");
+const FIND_NAME: &str = include_str!("queries/component/find_name.sql");
 const ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT: &str =
     include_str!("queries/component/root_child_attribute_value_for_component.sql");
 const LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE: &str =
@@ -198,7 +197,7 @@ const LIST_ALL_RESOURCE_IMPLICIT_INTERNAL_PROVIDER_ATTRIBUTE_VALUES: &str = incl
     "queries/component/list_all_resource_implicit_internal_provider_attribute_values.sql"
 );
 const COMPONENT_STATUS_UPDATE_BY_PK: &str =
-    include_str!("queries/component_status_update_by_pk.sql");
+    include_str!("queries/component/status_update_by_pk.sql");
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -778,39 +777,23 @@ impl Component {
         Ok(value)
     }
 
-    /// Return the name of the [`Component`][Self] that corresponds to the provided [`AttributeReadContext`][AttributeReadContext].
-    ///
-    /// While this takes a full [`AttributeReadContext`][AttributeReadContext], it is only concerned with the [`ComponentId`][ComponentId],
-    /// and anything more specific than that.
+    /// Return the name of the [`Component`](Self) for the provided [`ComponentId`](Self).
     #[instrument(skip_all)]
-    pub async fn name_from_context(
-        ctx: &DalContext,
-        attribute_read_context: AttributeReadContext,
-    ) -> ComponentResult<String> {
-        let component_id = attribute_read_context.component_id().ok_or_else(|| {
-            ComponentError::BadAttributeReadContext(
-                "Must specify ComponentId to retrieve the name of a Component".to_string(),
-            )
-        })?;
+    pub async fn find_name(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<String> {
         let row = ctx
             .pg_txn()
             .query_one(
-                NAME_FROM_CONTEXT,
+                FIND_NAME,
                 &[ctx.read_tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
         let value: serde_json::Value = row.try_get("component_name")?;
         let component_name: String = serde_json::from_value(value)?;
-
         Ok(component_name)
     }
 
     pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
-        let context = AttributeReadContext {
-            component_id: Some(self.id),
-            ..AttributeReadContext::any()
-        };
-        Self::name_from_context(ctx, context).await
+        Self::find_name(ctx, self.id).await
     }
 
     /// Grabs the [`AttributeValue`](crate::AttributeValue) corresponding to the

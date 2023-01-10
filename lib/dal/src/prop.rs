@@ -25,9 +25,9 @@ use crate::{
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType};
 
-const ALL_ANCESTOR_PROPS: &str = include_str!("./queries/prop_all_ancestor_props.sql");
+const ALL_ANCESTOR_PROPS: &str = include_str!("queries/prop/all_ancestor_props.sql");
 const FIND_ROOT_FOR_SCHEMA_VARIANT: &str =
-    include_str!("./queries/prop_find_root_for_schema_variant.sql");
+    include_str!("queries/prop/find_root_for_schema_variant.sql");
 
 #[derive(Error, Debug)]
 pub enum PropError {

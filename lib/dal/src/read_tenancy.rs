@@ -7,8 +7,8 @@ use crate::{
     BillingAccountId, OrganizationId, StandardModelError, Visibility, WorkspaceError, WorkspaceId,
 };
 
-const GET_WORKSPACE: &str = include_str!("./queries/read_tenancy_get_workspace.sql");
-const GET_ORGANIZATION: &str = include_str!("./queries/read_tenancy_get_organization.sql");
+const GET_WORKSPACE: &str = include_str!("queries/read_tenancy/get_workspace.sql");
+const GET_ORGANIZATION: &str = include_str!("queries/read_tenancy/get_organization.sql");
 
 #[derive(Error, Debug)]
 pub enum ReadTenancyError {
