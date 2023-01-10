@@ -2,8 +2,8 @@ use dal::{
     func::binding::FuncBinding,
     workflow_prototype::WorkflowPrototypeContext,
     workflow_runner::{workflow_runner_state::WorkflowRunnerStatus, WorkflowRunnerContext},
-    Component, DalContext, Func, Schema, StandardModel, WorkflowPrototype, WorkflowPrototypeId,
-    WorkflowResolverId, WorkflowRunner,
+    ChangeSet, ChangeSetStatus, Component, DalContext, Func, Schema, StandardModel, Visibility,
+    WorkflowPrototype, WorkflowPrototypeId, WorkflowResolverId, WorkflowRunner,
 };
 use dal_test::{test, test_harness::create_component_and_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -95,7 +95,7 @@ async fn find_for_prototype(ctx: &DalContext) {
 }
 
 #[test]
-async fn fail(ctx: &DalContext) {
+async fn fail(ctx: &mut DalContext) {
     let name = "si:failureWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
@@ -129,6 +129,18 @@ async fn fail(ctx: &DalContext) {
     .await
     .expect("cannot create new prototype");
 
+    // Apply the change set.
+    let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
+        .await
+        .expect("could not perform get by pk")
+        .expect("could not get change set");
+    change_set
+        .apply(ctx)
+        .await
+        .expect("cannot apply change set");
+    assert_eq!(&change_set.status, &ChangeSetStatus::Applied);
+    ctx.update_visibility(Visibility::new_head(false));
+
     let (_, state, _, _) = WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id(), true)
         .await
         .expect("unable to run workflow");
@@ -140,7 +152,7 @@ async fn fail(ctx: &DalContext) {
 }
 
 #[test]
-async fn run(ctx: &DalContext) {
+async fn run(ctx: &mut DalContext) {
     let title = "Refresh Docker Image";
     let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
@@ -164,6 +176,18 @@ async fn run(ctx: &DalContext) {
         .expect("unable to fetch resource")
         .value
         .is_none());
+
+    // Apply the change set.
+    let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
+        .await
+        .expect("could not perform get by pk")
+        .expect("could not get change set");
+    change_set
+        .apply(ctx)
+        .await
+        .expect("cannot apply change set");
+    assert_eq!(&change_set.status, &ChangeSetStatus::Applied);
+    ctx.update_visibility(Visibility::new_head(false));
 
     let (_runner, state, _func_bindings, _) =
         WorkflowRunner::run(ctx, 0, *prototype.id(), *component.id(), true)

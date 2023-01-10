@@ -10,12 +10,12 @@ use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::ws_event::WsEvent;
-use crate::WsEventResult;
 use crate::{
     func::backend::js_command::CommandRunResult, ActionPrototype, AttributeReadContext, Component,
     ComponentError, ComponentId, DalContext, InternalProvider, StandardModel, WorkflowRunner,
     WsPayload,
 };
+use crate::{RootPropChild, WsEventResult};
 
 impl Component {
     pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<CommandRunResult> {
@@ -70,18 +70,29 @@ impl Component {
 
     /// Sets the "string" field, "/root/resource" with a given value. After that, ensure dependent
     /// [`AttributeValues`](crate::AttributeValue) are updated.
+    ///
+    /// Returns "true" if the resource tree has been updated. Returns "false" if the cached
+    /// value is used.
     pub async fn set_resource(
         &self,
         ctx: &DalContext,
         result: CommandRunResult,
     ) -> ComponentResult<bool> {
+        if !ctx.visibility().is_head() {
+            return Err(ComponentError::CannotUpdateResourceTreeInChangeSet);
+        }
+
         // No need to update if the cached value is there
         if self.resource(ctx).await? == result {
             return Ok(false);
         }
 
-        let resource_attribute_value =
-            Component::root_child_attribute_value_for_component(ctx, "resource", self.id).await?;
+        let resource_attribute_value = Component::root_child_attribute_value_for_component(
+            ctx,
+            self.id,
+            RootPropChild::Resource,
+        )
+        .await?;
 
         let root_attribute_value = resource_attribute_value
             .parent_attribute_value(ctx)

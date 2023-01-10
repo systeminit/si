@@ -157,7 +157,7 @@ async fn hard_delete(ctx: &DalContext, nba: &BillingAccountSignup) {
         standard_model::get_by_pk::<BillingAccountPk, BillingAccount>(
             ctx,
             "billing_accounts",
-            hard_deleted.pk()
+            hard_deleted.pk(),
         )
         .await
         .is_err()
@@ -698,17 +698,17 @@ async fn find_by_attr_in(ctx: &mut DalContext) {
         .await
         .expect("cannot set func backend kind");
 
-    let result: Vec<Func> = dbg!(standard_model::find_by_attr_in(
+    let result: Vec<Func> = standard_model::find_by_attr_in(
         ctx,
         "funcs",
         "backend_kind",
         &[
             &FuncBackendKind::JsWorkflow.as_ref().to_string(),
-            &FuncBackendKind::JsAttribute.as_ref().to_string()
+            &FuncBackendKind::JsAttribute.as_ref().to_string(),
         ],
     )
     .await
-    .expect("cannot find objects by backend_kind in slice"));
+    .expect("cannot find objects by backend_kind in slice");
 
     assert_eq!(2, result.len() - first_result.len());
 

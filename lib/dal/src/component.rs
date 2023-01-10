@@ -12,6 +12,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::code_view::CodeViewError;
@@ -22,7 +23,6 @@ use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::{
     FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
 };
-
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::SocketEdgeKind;
@@ -34,13 +34,13 @@ use crate::{
     func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
-    AttributePrototypeId, AttributeReadContext, CodeLanguage, DalContext, EdgeError,
-    ExternalProviderId, Func, FuncBackendKind, HistoryActor, HistoryEventError, InternalProvider,
-    InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError, PropId,
-    ReadTenancyError, Schema, SchemaError, SchemaId, Socket, StandardModel, StandardModelError,
-    Timestamp, TransactionsError, ValidationPrototype, ValidationPrototypeError,
-    ValidationResolver, ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError,
-    WriteTenancy,
+    AttributePrototype, AttributePrototypeError, AttributePrototypeId, AttributeReadContext,
+    CodeLanguage, DalContext, EdgeError, ExternalProviderId, Func, FuncBackendKind, HistoryActor,
+    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, OrganizationError,
+    Prop, PropError, PropId, ReadTenancyError, RootPropChild, Schema, SchemaError, SchemaId,
+    Socket, StandardModel, StandardModelError, Timestamp, TransactionsError, ValidationPrototype,
+    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
+    WorkflowRunnerError, WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{NodeKind, UserId};
@@ -48,6 +48,7 @@ use crate::{NodeKind, UserId};
 pub use view::{ComponentView, ComponentViewError};
 
 pub mod code;
+pub mod confirmation;
 pub mod diff;
 pub mod qualification;
 pub mod resource;
@@ -60,6 +61,8 @@ pub enum ComponentError {
     AttributeContext(#[from] AttributeContextError),
     #[error("attribute context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
+    #[error(transparent)]
+    AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found for context: {0:?}")]
@@ -174,6 +177,8 @@ pub enum ComponentError {
     FoundMapEntryWithoutKey(AttributeValueId),
     #[error("schema variant has not been finalized at least once: {0}")]
     SchemaVariantNotFinalized(SchemaVariantId),
+    #[error("cannot update the resource tree when in a change set")]
+    CannotUpdateResourceTreeInChangeSet,
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -189,7 +194,9 @@ const ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT: &str =
     include_str!("queries/component/root_child_attribute_value_for_component.sql");
 const LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE: &str =
     include_str!("queries/component/list_connected_input_sockets_for_attribute_value.sql");
-
+const LIST_ALL_RESOURCE_IMPLICIT_INTERNAL_PROVIDER_ATTRIBUTE_VALUES: &str = include_str!(
+    "queries/component/list_all_resource_implicit_internal_provider_attribute_values.sql"
+);
 const COMPONENT_STATUS_UPDATE_BY_PK: &str =
     include_str!("queries/component_status_update_by_pk.sql");
 
@@ -301,6 +308,44 @@ impl Component {
         let node = Node::new(ctx, &NodeKind::Configuration).await?;
         node.set_component(ctx, component.id()).await?;
         component.set_name(ctx, Some(name.as_ref())).await?;
+
+        // Ensure we have an attribute value and prototype for the resource tree in our exact
+        // context. We need this in order to run confirmations upon applying a change set.
+        let resource_implicit_internal_provider =
+            SchemaVariant::find_root_child_implicit_internal_provider(
+                ctx,
+                schema_variant_id,
+                RootPropChild::Resource,
+            )
+            .await?;
+        let resource_attribute_read_context = AttributeReadContext {
+            internal_provider_id: Some(*resource_implicit_internal_provider.id()),
+            component_id: Some(*component.id()),
+            ..AttributeReadContext::default()
+        };
+        let resource_attribute_value =
+            AttributeValue::find_for_context(ctx, resource_attribute_read_context)
+                .await?
+                .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                    resource_attribute_read_context,
+                ))?;
+        let resource_attribute_prototype = resource_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(ComponentError::MissingAttributePrototype(
+                *resource_attribute_value.id(),
+            ))?;
+        AttributePrototype::update_for_context(
+            ctx,
+            *resource_attribute_prototype.id(),
+            AttributeContextBuilder::from(resource_attribute_read_context).to_context()?,
+            resource_attribute_prototype.func_id(),
+            resource_attribute_value.func_binding_id(),
+            resource_attribute_value.func_binding_return_value_id(),
+            None,
+            None,
+        )
+        .await?;
 
         Ok((component, node))
     }
@@ -768,16 +813,15 @@ impl Component {
         Self::name_from_context(ctx, context).await
     }
 
-    /// Grabs the [`AttributeValue`](crate::AttributeValue) corresponding to the `/root/<child>`
-    /// [`Prop`](crate::Prop) for the given [`Component`](Self) (e.g. "/root/resource" and
-    /// "/root/code").
+    /// Grabs the [`AttributeValue`](crate::AttributeValue) corresponding to the
+    /// [`RootPropChild`](crate::RootPropChild) [`Prop`](crate::Prop) for the given
+    /// [`Component`](Self).
     #[instrument(skip_all)]
     pub async fn root_child_attribute_value_for_component(
         ctx: &DalContext,
-        root_child_prop_name: impl AsRef<str>,
         component_id: ComponentId,
+        root_prop_child: RootPropChild,
     ) -> ComponentResult<AttributeValue> {
-        let root_child_prop_name = root_child_prop_name.as_ref();
         let row = ctx
             .pg_txn()
             .query_one(
@@ -785,7 +829,7 @@ impl Component {
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
-                    &root_child_prop_name,
+                    &root_prop_child.as_str(),
                     &component_id,
                 ],
             )

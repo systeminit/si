@@ -110,7 +110,10 @@ impl AttributeView {
                 break;
             }
             let (root_id, json_pointer) = root_stack.pop().ok_or_else(|| {
-                dbg!(&work_queue);
+                error!(
+                    "unexpected empty root stack, current work queue state: {:?}",
+                    work_queue
+                );
                 AttributeValueError::UnexpectedEmptyRootStack
             })?;
 
@@ -191,11 +194,13 @@ impl AttributeView {
         }
 
         if let Some(root_attribute_value_id) = root_attribute_value_id {
-            let root_json_pointer =
-                match json_pointer_for_attribute_value_id.get(&root_attribute_value_id) {
-                    Some(pointer) => pointer,
-                    None => {
-                        let root_av = AttributeValue::get_by_id(ctx, &root_attribute_value_id)
+            let root_json_pointer = match json_pointer_for_attribute_value_id
+                .get(&root_attribute_value_id)
+            {
+                Some(pointer) => pointer,
+                None => {
+                    let root_attribute_value =
+                        AttributeValue::get_by_id(ctx, &root_attribute_value_id)
                             .await?
                             .ok_or_else(|| {
                                 AttributeValueError::NotFound(
@@ -203,20 +208,22 @@ impl AttributeView {
                                     *ctx.visibility(),
                                 )
                             })?;
-                        let root_prop = Prop::get_by_id(ctx, &root_av.context.prop_id())
-                            .await?
-                            .ok_or_else(|| {
-                                PropError::NotFound(root_av.context.prop_id(), *ctx.visibility())
-                            })?;
-                        // Likely what happened here is that we tried to build an AttributeView
-                        // for an AttributeValue/Prop that is Unset, so the `properties` object
-                        // is empty, and does not contain a key matching our Prop's name.
-                        dbg!(&properties, root_av, root_prop);
-                        return Ok(Self {
-                            value: serde_json::Value::Null,
-                        });
-                    }
-                };
+                    let root_prop = Prop::get_by_id(ctx, &root_attribute_value.context.prop_id())
+                        .await?
+                        .ok_or_else(|| {
+                            PropError::NotFound(
+                                root_attribute_value.context.prop_id(),
+                                *ctx.visibility(),
+                            )
+                        })?;
+                    debug!("\
+                        likely tried to build an attribute view for an attribute value that is unset, \
+                        so the \"properties\" object is empty ({:?}), and does not contain a key matching \
+                        our prop's name (root attribute value ({:?}) and root prop ({:?}))", properties, root_attribute_value, root_prop
+                    );
+                    return Ok(Self { value: Value::Null });
+                }
+            };
 
             let properties = properties
                 .pointer(root_json_pointer)

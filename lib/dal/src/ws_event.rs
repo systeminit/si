@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use thiserror::Error;
 
+use crate::component::confirmation::ConfirmationRunPayload;
 use crate::{
     component::{code::CodeGeneratedPayload, resource::ResourceRefreshId},
     confirmation_status::ConfirmationStatusUpdate,
@@ -38,6 +39,7 @@ pub enum WsPayload {
     ChangeSetWritten(ChangeSetPk),
     SchemaCreated(SchemaPk),
     ResourceRefreshed(ResourceRefreshId),
+    RanConfirmations(ConfirmationRunPayload),
     CheckedQualifications(QualificationCheckPayload),
     CommandOutput(CommandOutput),
     CodeGenerated(CodeGeneratedPayload),

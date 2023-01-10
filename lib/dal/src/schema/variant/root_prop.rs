@@ -26,6 +26,19 @@ pub enum RootPropChild {
     Confirmation,
 }
 
+impl RootPropChild {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Si => "si",
+            Self::Domain => "domain",
+            Self::Resource => "resource",
+            Self::Code => "code",
+            Self::Qualification => "qualification",
+            Self::Confirmation => "confirmation",
+        }
+    }
+}
+
 /// Contains the root [`PropId`](crate::Prop) and its immediate children for a
 /// [`SchemaVariant`](crate::SchemaVariant). These [`Props`](crate::Prop) are also those that
 /// correspond to the "root" [`Props`](crate::Prop) on the [`ComponentView`](crate::ComponentView)
