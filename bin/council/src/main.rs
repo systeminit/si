@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    time::Duration,
+};
 
 use color_eyre::Result;
 use futures::StreamExt;
@@ -118,10 +121,33 @@ async fn run(
     Ok(())
 }
 
+// Note: All messages from Pinga include the change set ID.
+//
+// | Pinga                                                                      | Council                                                                                                                                                                                                                        |
+// | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+// | Pull job from queue                                                        | N/A                                                                                 |
+// |                                                                            |                                                                                     |
+// | Inform Council it would like to attribute_value_create_dependent_values_v1 | Add Pinga job ID to create dependent values queue                                   |
+// |                                                                            |                                                                                     |
+// | Wait for "proceed to create values" message from Council                   | Pop job IDs off queue as "finished creating values" messages are received to inform |
+// |                                                                            | the popped ID it can proceed to create                                              |
+// |                                                                            |                                                                                     |
+// | Generate dependent values graph & send to council                          | Merge graph data into "global" state for change set ID                              |
+// |                                                                            |                                                                                     |
+// | Wait                                                                       | Check graph data for AttributeValueIds that have an empty "depends_on" list and no  |
+// |                                                                            | "processing by" job id, inform first "wanted_by" job id it can process the          |
+// |                                                                            | AttributeValueId, store job id in "processing by" for that node.                    |
+// |                                                                            |                                                                                     |
+// | Process any AttributeValueIds that Council informs us we should process,   | Always unset "processing by", pop job id from "wanted by" list. Remove              |
+// | and notify Council when we're done.                                        | AttributeValueId from graph data if "depends on" is empty (both as a key in hash    |
+// |                                                                            | map, and as value in "depends on" for all entries in the hash map).                 |
+// |                                                                            |                                                                                     |
+// | Goto: Wait                                                                 | Goto: Check graph data.                                                             |
+
 async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch::Receiver<()>) {
     let mut subscription = loop {
         // TODO: have a queue per workspace
-        match nats.subscribe("council").await {
+        match nats.subscribe("council.*").await {
             Ok(sub) => break sub,
             Err(err) => {
                 error!("Unable to subscribe to the council request channel on nats: {err}");
@@ -130,16 +156,17 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
         }
     };
 
-    let mut complete_graph = Graph::default();
+    let mut value_create_queue = ValueCreationQueue::default();
+    let mut complete_graph = WorkspaceGraph::default();
     loop {
         tokio::time::sleep(Duration::from_millis(10)).await;
 
-        let request = tokio::select! {
+        let (subject, request) = tokio::select! {
             req = subscription.next() => match req {
                 None => continue,
                 Some(result) => match result {
                     Ok(msg) => match serde_json::from_slice::<Request>(msg.data()) {
-                        Ok(req) => req,
+                        Ok(req) => (msg.subject().to_owned(), req),
                         Err(err) => {
                             error!("Unable to deserialize request: {err}");
                             continue;
@@ -157,13 +184,50 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
             }
         };
 
+        let job_id = Ulid::from_string(subject.split('.').last().unwrap()).unwrap();
+
         match request {
-            Request::CreateValues { request_id, graph } => todo!(),
-            Request::Process { request_id, graph } => {
-                // Check if graph has intersection with global_graph defined above the loop
-                if let Err(err) = nats.publish(format!("council-{request_id}"), "no go").await {
-                    panic!("{err}: what do?");
-                }
+            Request::CreateValues => {
+                // Move to a falible wrapper
+                let _ = job_would_like_to_create_attribute_values(
+                    &nats,
+                    &mut value_create_queue,
+                    job_id,
+                )
+                .await;
+            }
+            Request::ValueCreationDone => {
+                let _ = job_finished_value_creation(&nats, &mut value_create_queue, job_id).await;
+            }
+            Request::ValueDependencyGraph {
+                change_set_id,
+                dependency_graph: Graph,
+            } => {
+                let _ = register_graph_from_job(&nats, &mut complete_graph, job_id, change_set_id)
+                    .await;
+            }
+            Request::ProcessedValue {
+                change_set_id,
+                node_id,
+            } => {
+                let _ = job_processed_a_value(
+                    &nats,
+                    &mut complete_graph,
+                    job_id,
+                    change_set_id,
+                    node_id,
+                )
+                .await;
+            }
+            Request::Bye { change_set_id } => {
+                let _ = job_is_going_away(
+                    &nats,
+                    &mut complete_graph,
+                    &mut value_create_queue,
+                    job_id,
+                    change_set_id,
+                )
+                .await;
             }
         };
     }
@@ -172,15 +236,165 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
 pub type Id = Ulid;
 pub type Graph = HashMap<Id, Vec<Id>>;
 
+#[derive(Default, Debug)]
+pub struct ValueCreationQueue {
+    processing: Option<Id>,
+    queue: VecDeque<Id>,
+}
+
+impl ValueCreationQueue {
+    pub fn push(&mut self, new_job_id: Id) {
+        self.queue.push_back(new_job_id);
+    }
+
+    pub fn is_busy(&self) -> bool {
+        self.processing.is_some()
+    }
+
+    pub fn fetch_next(&mut self) -> Option<Id> {
+        if self.is_busy() {
+            return None;
+        }
+        let next_id = self.queue.pop_front();
+        self.processing = next_id;
+
+        next_id
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct WorkspaceGraph {
+    workspace_data: HashMap<Id, ChangeSetGraph>,
+}
+
+impl WorkspaceGraph {
+    pub fn new() -> Self {
+        WorkspaceGraph::default()
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct ChangeSetGraph {
+    dependency_data: HashMap<Id, HashMap<Id, NodeMetadata>>,
+}
+
+#[derive(Default, Debug)]
+pub struct NodeMetadata {
+    wanted_by: Vec<Id>,
+    processing: Option<Id>,
+    depends_on: HashSet<Id>,
+}
+
+impl NodeMetadata {
+    pub fn merge_metadata(&mut self, job_id: Id, dependencies: &Vec<Id>) {
+        self.wanted_by.push(job_id);
+        self.depends_on.extend(dependencies);
+    }
+}
+
+impl ChangeSetGraph {
+    pub fn merge_dependency_graph(
+        &mut self,
+        job_id: Id,
+        new_dependency_data: Graph,
+        change_set_id: Id,
+    ) -> Result<(), Error> {
+        let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
+
+        for (attribute_value_id, dependencies) in new_dependency_data {
+            change_set_graph_data
+                .entry(attribute_value_id)
+                .and_modify(|node| {
+                    node.merge_metadata(job_id, &dependencies);
+                })
+                .or_insert_with(|| {
+                    let mut new_metadata = NodeMetadata::default();
+                    new_metadata.merge_metadata(job_id, &dependencies);
+
+                    new_metadata
+                });
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Request {
-    CreateValues { request_id: Id, graph: Graph },
-    Process { request_id: Id, graph: Graph },
+    CreateValues,
+    ValueCreationDone,
+    ValueDependencyGraph {
+        change_set_id: Id,
+        dependency_graph: Graph,
+    },
+    ProcessedValue {
+        change_set_id: Id,
+        node_id: Id,
+    },
+    Bye {
+        change_set_id: Id,
+    },
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum Response {
+    OkToCreate,
+    OkToProcess { node_ids: Vec<Id> },
+    BeenProcessed { node_id: Id },
+    Shutdown,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
     Nats(#[from] si_data_nats::Error),
+}
+
+pub async fn job_would_like_to_create_attribute_values(
+    nats: &NatsClient,
+    value_create_queue: &mut ValueCreationQueue,
+    job_id: Id,
+) -> Result<(), Error> {
+    value_create_queue.push(job_id);
+
+    Ok(())
+}
+
+pub async fn job_finished_value_creation(
+    nats: &NatsClient,
+    value_create_queue: &mut ValueCreationQueue,
+    job_id: Id,
+) -> Result<(), Error> {
+    todo!()
+}
+
+pub async fn register_graph_from_job(
+    nats: &NatsClient,
+    complete_graph: &mut WorkspaceGraph,
+    job_id: Id,
+    change_set_id: Id,
+) -> Result<(), Error> {
+    todo!()
+}
+
+pub async fn job_processed_a_value(
+    nats: &NatsClient,
+    complete_graph: &mut WorkspaceGraph,
+    job_id: Id,
+    change_set_id: Id,
+    node_id: Id,
+) -> Result<(), Error> {
+    todo!()
+}
+
+pub async fn job_is_going_away(
+    nats: &NatsClient,
+    complete_graph: &mut WorkspaceGraph,
+    value_create_queue: &mut ValueCreationQueue,
+    job_id: Id,
+    change_set_id: Id,
+) -> Result<(), Error> {
+    todo!()
 }
