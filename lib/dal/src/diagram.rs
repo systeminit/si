@@ -9,10 +9,12 @@ use crate::diagram::node::DiagramNodeView;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
+use crate::socket::SocketError;
 use crate::{
-    AttributePrototypeArgumentError, ComponentError, DalContext, EdgeError, Node, NodeError,
-    NodeKind, NodePosition, NodePositionError, PropError, ReadTenancyError, SchemaError,
-    StandardModel, StandardModelError,
+    AttributeContextBuilderError, AttributePrototypeArgumentError, AttributeValueError,
+    ComponentError, DalContext, EdgeError, Node, NodeError, NodeKind, NodePosition,
+    NodePositionError, PropError, ReadTenancyError, SchemaError, SocketId, StandardModel,
+    StandardModelError,
 };
 
 pub mod connection;
@@ -32,6 +34,10 @@ pub enum DiagramError {
     ExternalProvider(#[from] ExternalProviderError),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
+    #[error("external provider not found for socket id: {0}")]
+    ExternalProviderNotFoundForSocket(SocketId),
+    #[error("internal provider not found for socket id: {0}")]
+    InternalProviderNotFoundForSocket(SocketId),
     #[error(transparent)]
     ParseInt(#[from] ParseIntError),
     #[error(transparent)]
@@ -40,6 +46,18 @@ pub enum DiagramError {
     Pg(#[from] PgError),
     #[error("position not found")]
     PositionNotFound,
+    #[error("node not found")]
+    NodeNotFound,
+    #[error("edge not found")]
+    EdgeNotFound,
+    #[error("socket not found")]
+    SocketNotFound,
+    #[error("attribute prototype not found")]
+    AttributePrototypeNotFound,
+    #[error("attribute value not found")]
+    AttributeValueNotFound,
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("node error: {0}")]
@@ -58,6 +76,10 @@ pub enum DiagramError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
+    #[error("attribute context error: {0}")]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
 }
 
 pub type DiagramResult<T> = Result<T, DiagramError>;

@@ -20,11 +20,13 @@ Content-Type: application/json
 
 {
   "billingAccountName": "systeminit",
-  "userEmail": "example@systeminit.com",
+  "userEmail": "sally@systeminit.com",
   "userPassword": "Password123!"
 }
 
-> {% client.global.set("auth_token", response.body.jwt); %}
+> {%
+  client.global.set("auth_token", response.body.jwt);
+%}
 
 ### Save Builtin Func
 POST http://localhost:8080/api/dev/save_func
@@ -57,3 +59,14 @@ workspaceid: 1
   "visibility_change_set_pk": 1
 }
 
+### Delete Edge
+POST http://localhost:8080/api/diagram/delete_connection
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+workspaceid: 01GPC2ZVVMSQ0AWPBW9DS87A0E
+
+{
+  "visibility_change_set_pk": "01GPGYWTG6B7RSP1X9YNH52799",
+  "edgeId": "01GPH1C0K2T7WSVSAHJDC4KC5A",
+  "workspaceId": "01GPC2ZVVMSQ0AWPBW9DS87A0E"
+}

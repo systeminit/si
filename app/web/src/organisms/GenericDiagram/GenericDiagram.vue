@@ -551,6 +551,11 @@ function onRightClick(ke: KonvaEventObject<MouseEvent>) {
   const e = ke.evt;
   e.preventDefault(); // do not show browser right click menu
   if (!hoveredElement.value) return;
+
+  if (!currentSelectionElements.value.includes(hoveredElement.value)) {
+    setSelectionByKey(hoveredElement.value.uniqueKey);
+  }
+
   emit("right-click-element", {
     element: hoveredElement.value,
     e,
@@ -623,6 +628,9 @@ const cursor = computed(() => {
       default:
         return "auto";
     }
+  }
+  if (hoveredElement.value) {
+    return "pointer";
   }
   return "auto";
 });
@@ -1700,14 +1708,17 @@ function triggerInsertElement() {
 function deleteSelected() {
   if (!currentSelectionElements.value?.length) return;
   const selected = currentSelectionElements.value;
-  // when deleting a node, we also have to delete any attached edges
-  const additionalEdgesToDelete = _.flatMap(selected, (el) => {
-    if (el instanceof DiagramNodeData) return [];
-    return _.flatMap(connectedEdgesByElementKey.value[el.uniqueKey]);
-  });
-  // have to dedupe in case we are deleting both nodes connected to an edge
-  const uniqueEdgesToDelete = _.uniq(additionalEdgesToDelete);
-  emit("delete-elements", { elements: [...selected, ...uniqueEdgesToDelete] });
+
+  // previously we were deleting edges connected to nodes from here
+  // but we may want to handle this purely from the backend?
+  // // when deleting a node, we also have to delete any attached edges
+  // const additionalEdgesToDelete = _.flatMap(selected, (el) => {
+  //   if (el instanceof DiagramNodeData) return [];
+  //   return _.flatMap(connectedEdgesByElementKey.value[el.uniqueKey]);
+  // });
+  // // have to dedupe in case we are deleting both nodes connected to an edge
+  // const uniqueEdgesToDelete = _.uniq(additionalEdgesToDelete);
+  emit("delete-elements", { elements: selected });
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////

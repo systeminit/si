@@ -19,6 +19,7 @@ use crate::service::schema::SchemaError;
 mod connect_component_to_frame;
 pub mod create_connection;
 pub mod create_node;
+pub mod delete_connection;
 pub mod get_diagram;
 pub mod get_node_add_menu;
 pub mod get_node_template;
@@ -133,6 +134,10 @@ pub fn routes() -> Router {
         .route(
             "/create_connection",
             post(create_connection::create_connection),
+        )
+        .route(
+            "/delete_connection",
+            post(delete_connection::delete_connection),
         )
         .route(
             "/connect_component_to_frame",
