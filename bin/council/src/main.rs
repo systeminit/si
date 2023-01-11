@@ -157,7 +157,7 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
     };
 
     let mut value_create_queue = ValueCreationQueue::default();
-    let mut complete_graph = WorkspaceGraph::default();
+    let mut complete_graph = ChangeSetGraph::default();
     loop {
         tokio::time::sleep(Duration::from_millis(10)).await;
 
@@ -201,10 +201,16 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
             }
             Request::ValueDependencyGraph {
                 change_set_id,
-                dependency_graph: Graph,
+                dependency_graph,
             } => {
-                let _ = register_graph_from_job(&nats, &mut complete_graph, job_id, change_set_id)
-                    .await;
+                let _ = register_graph_from_job(
+                    &nats,
+                    &mut complete_graph,
+                    job_id,
+                    change_set_id,
+                    dependency_graph,
+                )
+                .await;
             }
             Request::ProcessedValue {
                 change_set_id,
@@ -260,16 +266,15 @@ impl ValueCreationQueue {
 
         next_id
     }
-}
 
-#[derive(Default, Debug)]
-pub struct WorkspaceGraph {
-    workspace_data: HashMap<Id, ChangeSetGraph>,
-}
+    pub fn finished_processing(&mut self, job_id: Id) -> Result<(), Error> {
+        if self.processing != Some(job_id) {
+            return Err(Error::UnexpectedJobId);
+        }
 
-impl WorkspaceGraph {
-    pub fn new() -> Self {
-        WorkspaceGraph::default()
+        self.processing = None;
+
+        Ok(())
     }
 }
 
@@ -280,15 +285,21 @@ pub struct ChangeSetGraph {
 
 #[derive(Default, Debug)]
 pub struct NodeMetadata {
-    wanted_by: Vec<Id>,
+    // This should really be an ordered set, to remove duplicates, but we'll deal with
+    // that later.
+    wanted_by_job_ids: Vec<Id>,
     processing: Option<Id>,
-    depends_on: HashSet<Id>,
+    depends_on_node_ids: HashSet<Id>,
 }
 
 impl NodeMetadata {
     pub fn merge_metadata(&mut self, job_id: Id, dependencies: &Vec<Id>) {
-        self.wanted_by.push(job_id);
-        self.depends_on.extend(dependencies);
+        self.wanted_by_job_ids.push(job_id);
+        self.depends_on_node_ids.extend(dependencies);
+    }
+
+    pub fn remove_dependency(&mut self, node_id: Id) {
+        self.depends_on_node_ids.remove(&node_id);
     }
 }
 
@@ -308,11 +319,60 @@ impl ChangeSetGraph {
                     node.merge_metadata(job_id, &dependencies);
                 })
                 .or_insert_with(|| {
-                    let mut new_metadata = NodeMetadata::default();
-                    new_metadata.merge_metadata(job_id, &dependencies);
+                    let mut new_node = NodeMetadata::default();
+                    new_node.merge_metadata(job_id, &dependencies);
 
-                    new_metadata
+                    new_node
                 });
+
+            for dependency in dependencies {
+                change_set_graph_data
+                    .entry(dependency)
+                    .and_modify(|node| {
+                        node.merge_metadata(job_id, &Vec::new());
+                    })
+                    .or_insert_with(|| {
+                        let mut new_node = NodeMetadata::default();
+                        new_node.merge_metadata(job_id, &Vec::new());
+
+                        new_node
+                    });
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn mark_node_as_processed(
+        &mut self,
+        job_id: Id,
+        change_set_id: Id,
+        node_id: Id,
+    ) -> Result<(), Error> {
+        let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
+
+        let node_is_complete;
+        if let Some(node_metadata) = change_set_graph_data.get_mut(&node_id) {
+            if node_metadata.processing != Some(job_id) {
+                return Err(Error::ShouldNotBeProcessingByJob);
+            }
+            node_metadata.processing = None;
+
+            let wanted_by_job_ids = &mut node_metadata.wanted_by_job_ids;
+            wanted_by_job_ids.retain(|x| *x != job_id);
+
+            node_is_complete = node_metadata.depends_on_node_ids.is_empty();
+        } else {
+            return Err(Error::UnknownNodeId);
+        }
+
+        if node_is_complete {
+            let _node_metadata = change_set_graph_data.remove(&node_id);
+            // for every entry entry in the wanted_by_job_ids, tell them that it has already been processed.
+
+            for node_metadata in change_set_graph_data.values_mut() {
+                node_metadata.remove_dependency(node_id);
+            }
         }
 
         Ok(())
@@ -350,6 +410,13 @@ pub enum Response {
 pub enum Error {
     #[error(transparent)]
     Nats(#[from] si_data_nats::Error),
+
+    #[error("Unexpected JobId")]
+    UnexpectedJobId,
+    #[error("Unknown NodeId")]
+    UnknownNodeId,
+    #[error("Job reported finishing processing, but we expected a different job to be processing")]
+    ShouldNotBeProcessingByJob,
 }
 
 pub async fn job_would_like_to_create_attribute_values(
@@ -367,31 +434,32 @@ pub async fn job_finished_value_creation(
     value_create_queue: &mut ValueCreationQueue,
     job_id: Id,
 ) -> Result<(), Error> {
-    todo!()
+    value_create_queue.finished_processing(job_id)
 }
 
 pub async fn register_graph_from_job(
     nats: &NatsClient,
-    complete_graph: &mut WorkspaceGraph,
+    complete_graph: &mut ChangeSetGraph,
     job_id: Id,
     change_set_id: Id,
+    new_dependency_data: Graph,
 ) -> Result<(), Error> {
-    todo!()
+    complete_graph.merge_dependency_graph(job_id, new_dependency_data, change_set_id)
 }
 
 pub async fn job_processed_a_value(
     nats: &NatsClient,
-    complete_graph: &mut WorkspaceGraph,
+    complete_graph: &mut ChangeSetGraph,
     job_id: Id,
     change_set_id: Id,
     node_id: Id,
 ) -> Result<(), Error> {
-    todo!()
+    complete_graph.mark_node_as_processed(job_id, change_set_id, node_id)
 }
 
 pub async fn job_is_going_away(
     nats: &NatsClient,
-    complete_graph: &mut WorkspaceGraph,
+    complete_graph: &mut ChangeSetGraph,
     value_create_queue: &mut ValueCreationQueue,
     job_id: Id,
     change_set_id: Id,
