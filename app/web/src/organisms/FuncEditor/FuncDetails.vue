@@ -1,6 +1,12 @@
 <template>
   <div
-    v-if="selectedFuncId !== nilId()"
+    v-if="funcReqStatus.isPending"
+    class="w-full flex flex-col items-center gap-4 p-xl"
+  >
+    <Icon name="loader" size="2xl" />
+  </div>
+  <div
+    v-else-if="selectedFuncId !== nilId()"
     class="absolute h-full w-full flex flex-col overflow-hidden"
   >
     <SiTabGroup>
@@ -167,6 +173,7 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, nullEditingFunc } from "@/store/func/funcs.store";
+import Icon from "@/ui-lib/icons/Icon.vue";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
@@ -179,6 +186,7 @@ function nilId(): string {
 }
 
 const funcStore = useFuncStore();
+const funcReqStatus = funcStore.getRequestStatus("FETCH_FUNC");
 const { getFuncById, selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;

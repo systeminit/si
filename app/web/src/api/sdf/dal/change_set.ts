@@ -5,7 +5,7 @@ export enum ChangeSetStatus {
   Closed = "Closed",
   Abandoned = "Abandoned",
   Applied = "Applied",
-  Failed = "Failed,",
+  Failed = "Failed",
 }
 
 export interface ChangeSet extends StandardModelNoVisibility {

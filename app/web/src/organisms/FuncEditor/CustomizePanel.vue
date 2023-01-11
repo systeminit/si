@@ -1,9 +1,11 @@
 <template>
-  <SiTabGroup>
+  <SiTabGroup @change="changeMode">
     <template #tabs>
       <SiTabHeader :key="0">FUNCTIONS</SiTabHeader>
+      <SiTabHeader :key="1">PACKAGES</SiTabHeader>
     </template>
     <template #panels>
+      <!-- FUNCTIONS PANEL -->
       <TabPanel :key="0" class="h-full overflow-auto flex flex-col">
         <div
           class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
@@ -27,9 +29,9 @@
           @search="onSearch"
         />
         <div
-          class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2 border-b dark:border-neutral-600"
+          class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
         >
-          Select a function from the lists below to view or edit it.
+          Select a function to view or edit it.
         </div>
         <ul class="overflow-y-auto min-h-[200px]">
           <SiCollapsible
@@ -56,13 +58,33 @@
                   "
                   :is-builtin="func.isBuiltin"
                   :name="func.name"
-                  class="border border-transparent dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
                   color="#921ed6"
                   @click="routeToFunc(func.id)"
                 />
               </li>
             </template>
           </SiCollapsible>
+        </ul>
+      </TabPanel>
+
+      <!-- PACKAGES PANEL -->
+      <TabPanel :key="1" class="h-full overflow-auto flex flex-col">
+        <div
+          class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
+        >
+          <!-- TODO - currently this button doesn't do anything -->
+          <VButton2 label="Package" tone="action" icon="plus" size="sm" />
+        </div>
+        <SiSearch auto-search placeholder="search packages" />
+        <div
+          class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
+        >
+          Select a package to view or edit it.
+        </div>
+        <ul class="overflow-y-auto min-h-[200px]">
+          <li v-for="(p, index) in packageStore.packages" :key="index">
+            <SiPackageSprite :name="p.name" />
+          </li>
         </ul>
       </TabPanel>
     </template>
@@ -104,7 +126,8 @@ import { computed, ref, Ref } from "vue";
 import { TabPanel } from "@headlessui/vue";
 import validator from "validator";
 import { storeToRefs } from "pinia";
-import _ from "lodash";
+import _, { functions } from "lodash";
+import SiPackageSprite from "@/molecules/SiPackageSprite.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
@@ -112,15 +135,17 @@ import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
 import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
-import NewFuncDropdown from "@/organisms/NewFuncDropdown.vue";
 import Modal from "@/ui-lib/Modal.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
-
 import { useFuncStore } from "@/store/func/funcs.store";
+import { usePackageStore } from "@/store/package.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
+import VButton2 from "@/ui-lib/VButton2.vue";
+import NewFuncDropdown from "../NewFuncDropdown.vue";
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
+const packageStore = usePackageStore();
 const { funcList, selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
@@ -160,7 +185,12 @@ const emits = defineEmits<{
     e: "createFunc",
     v: { variant: FuncVariant; isBuiltin: boolean; name?: string },
   ): void;
+  (e: "changeMode", v: number): void;
 }>();
+
+const changeMode = (mode: number) => {
+  emits("changeMode", mode);
+};
 
 const createFunc = (variant: FuncVariant) => {
   emits("createFunc", { variant, isBuiltin: false });

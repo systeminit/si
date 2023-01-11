@@ -1,5 +1,12 @@
 <template>
+  <div
+    v-if="selectedFuncId === nilId()"
+    class="p-2 text-center text-neutral-400 dark:text-neutral-300"
+  >
+    Select a function to edit it.
+  </div>
   <SiTabGroup
+    v-else
     :selected-index="selectedFuncIndex"
     selected-tab-to-front
     :tab-width-maximum="0.3"
@@ -78,13 +85,28 @@ const closeFunc = (funcId: string) => {
   const funcIndex = getIndexForFunc.value(funcId);
   if (funcId === selectedFuncId.value) {
     const newIndex = funcIndex - 1;
-    routeToFuncByIndex(newIndex < 0 ? 0 : newIndex);
+    const index = newIndex < 0 ? 0 : newIndex;
+    routeToFuncByIndex(index);
   }
   funcStore.CLOSE_FUNC(funcId);
 };
 
 const routeToFuncByIndex = (index: number) => {
-  const func = getFuncByIndex.value(index);
+  let func = getFuncByIndex.value(index);
+
+  // TODO(Wendy) - this ugly fix is to prevent a bug where closing the final tab doesn't select another open tab
+  let i = index;
+  while (func === undefined && i > -1) {
+    i--;
+    if (i > -1) {
+      func = getFuncByIndex.value(i);
+    }
+  }
+
   routeToFunc(func?.id);
 };
+
+function nilId(): string {
+  return "00000000000000000000000000";
+}
 </script>
