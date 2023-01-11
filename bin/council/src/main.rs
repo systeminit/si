@@ -147,7 +147,6 @@ async fn run(
 
 async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch::Receiver<()>) {
     let mut subscription = loop {
-        // TODO: have a queue per workspace
         match nats.subscribe("council.*").await {
             Ok(sub) => break sub,
             Err(err) => {
@@ -162,6 +161,11 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
     loop {
         tokio::time::sleep(Duration::from_millis(10)).await;
 
+        if let Some(reply_channel) = value_create_queue.fetch_next() {
+            nats.publish(reply_channel, serde_json::to_vec(&council::Response::OkToCreate).unwrap()).await.unwrap();
+        }
+
+        // FIXME: This will block here until a new value is provided, so nothing will evolve without a new message
         let (job_id, reply_channel, request) = tokio::select! {
             req = subscription.next() => match req {
                 None => continue,
@@ -198,16 +202,15 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
         match request {
             Request::CreateValues => {
                 // Move to a falible wrapper
-                let _ = job_would_like_to_create_attribute_values(
+                job_would_like_to_create_attribute_values(
                     &nats,
                     &mut value_create_queue,
-                    job_id,
+                    reply_channel,
                 )
-                .await;
-                let _ = nats.publish(reply_channel, serde_json::to_vec(&council::Response::OkToCreate).unwrap()).await;
+                .await.unwrap();
             }
             Request::ValueCreationDone => {
-                let _ = job_finished_value_creation(&nats, &mut value_create_queue, job_id).await;
+                job_finished_value_creation(&nats, &mut value_create_queue, reply_channel).await.unwrap();
             }
             Request::ValueDependencyGraph {
                 change_set_id,
@@ -251,31 +254,31 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
 
 #[derive(Default, Debug)]
 pub struct ValueCreationQueue {
-    processing: Option<Id>,
-    queue: VecDeque<Id>,
+    processing: Option<String>,
+    queue: VecDeque<String>,
 }
 
 impl ValueCreationQueue {
-    pub fn push(&mut self, new_job_id: Id) {
-        self.queue.push_back(new_job_id);
+    pub fn push(&mut self, reply_channel: String) {
+        self.queue.push_back(reply_channel);
     }
 
     pub fn is_busy(&self) -> bool {
         self.processing.is_some()
     }
 
-    pub fn fetch_next(&mut self) -> Option<Id> {
+    pub fn fetch_next(&mut self) -> Option<String> {
         if self.is_busy() {
             return None;
         }
-        let next_id = self.queue.pop_front();
-        self.processing = next_id;
+        let next_channel = self.queue.pop_front();
+        self.processing = next_channel.clone();
 
-        next_id
+        next_channel
     }
 
-    pub fn finished_processing(&mut self, job_id: Id) -> Result<(), Error> {
-        if self.processing != Some(job_id) {
+    pub fn finished_processing(&mut self, reply_channel: String) -> Result<(), Error> {
+        if self.processing.as_ref() != Some(&reply_channel) {
             return Err(Error::UnexpectedJobId);
         }
 
@@ -402,9 +405,9 @@ pub enum Error {
 pub async fn job_would_like_to_create_attribute_values(
     nats: &NatsClient,
     value_create_queue: &mut ValueCreationQueue,
-    job_id: Id,
+    reply_channel: String,
 ) -> Result<(), Error> {
-    value_create_queue.push(job_id);
+    value_create_queue.push(reply_channel);
 
     Ok(())
 }
@@ -412,9 +415,9 @@ pub async fn job_would_like_to_create_attribute_values(
 pub async fn job_finished_value_creation(
     nats: &NatsClient,
     value_create_queue: &mut ValueCreationQueue,
-    job_id: Id,
+    reply_channel: String,
 ) -> Result<(), Error> {
-    value_create_queue.finished_processing(job_id)
+    value_create_queue.finished_processing(reply_channel)
 }
 
 pub async fn register_graph_from_job(
