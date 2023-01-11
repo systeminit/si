@@ -564,8 +564,17 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 name = "council"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "ulid",
+]
+
+[[package]]
+name = "council-cli"
+version = "0.1.0"
+dependencies = [
  "clap",
  "color-eyre",
+ "council",
  "derive_builder",
  "futures",
  "serde",
@@ -787,6 +796,7 @@ dependencies = [
  "async-trait",
  "base64",
  "chrono",
+ "council",
  "dal-test",
  "derive_more",
  "diff",
@@ -820,7 +830,6 @@ dependencies = [
  "tokio-stream",
  "ulid",
  "url",
- "uuid",
  "veritech-client",
  "which",
 ]

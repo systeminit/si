@@ -3,6 +3,7 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     time::Duration,
 };
+use council::{Id, Graph, Request, Response};
 
 use color_eyre::Result;
 use futures::StreamExt;
@@ -161,12 +162,22 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
     loop {
         tokio::time::sleep(Duration::from_millis(10)).await;
 
-        let (subject, request) = tokio::select! {
+        let (job_id, reply_channel, request) = tokio::select! {
             req = subscription.next() => match req {
                 None => continue,
                 Some(result) => match result {
                     Ok(msg) => match serde_json::from_slice::<Request>(msg.data()) {
-                        Ok(req) => (msg.subject().to_owned(), req),
+                        Ok(req) => match (msg.subject().split('.').last().map(Ulid::from_string), msg.reply()) {
+                            (Some(Ok(job_id)), Some(reply)) => (job_id, reply.to_owned(), req),
+                            (Some(Err(err)), _) => {
+                                error!("Unable to convert job id to ulid: {msg:?}");
+                                continue;
+                            }
+                            _ => {
+                                error!("No reply channel provided or subject didn't contain job_id: {msg:?}");
+                                continue;
+                            }
+                        }
                         Err(err) => {
                             error!("Unable to deserialize request: {err}");
                             continue;
@@ -184,8 +195,6 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
             }
         };
 
-        let job_id = Ulid::from_string(subject.split('.').last().unwrap()).unwrap();
-
         match request {
             Request::CreateValues => {
                 // Move to a falible wrapper
@@ -195,6 +204,7 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
                     job_id,
                 )
                 .await;
+                let _ = nats.publish(reply_channel, serde_json::to_vec(&council::Response::OkToCreate).unwrap()).await;
             }
             Request::ValueCreationDone => {
                 let _ = job_finished_value_creation(&nats, &mut value_create_queue, job_id).await;
@@ -238,9 +248,6 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
         };
     }
 }
-
-pub type Id = Ulid;
-pub type Graph = HashMap<Id, Vec<Id>>;
 
 #[derive(Default, Debug)]
 pub struct ValueCreationQueue {
@@ -377,33 +384,6 @@ impl ChangeSetGraph {
 
         Ok(())
     }
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "kind")]
-pub enum Request {
-    CreateValues,
-    ValueCreationDone,
-    ValueDependencyGraph {
-        change_set_id: Id,
-        dependency_graph: Graph,
-    },
-    ProcessedValue {
-        change_set_id: Id,
-        node_id: Id,
-    },
-    Bye {
-        change_set_id: Id,
-    },
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "kind")]
-pub enum Response {
-    OkToCreate,
-    OkToProcess { node_ids: Vec<Id> },
-    BeenProcessed { node_id: Id },
-    Shutdown,
 }
 
 #[derive(Debug, thiserror::Error)]

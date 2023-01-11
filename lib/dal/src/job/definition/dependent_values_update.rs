@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::{collections::HashMap, convert::TryFrom};
 
+use ulid::Ulid;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -93,12 +94,13 @@ impl JobConsumer for DependentValuesUpdate {
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
+        let jid = Ulid::from_string(&self.job.as_ref().unwrap().id)?;
+
         let now = std::time::Instant::now();
 
         let mut status_updater = StatusUpdater::initialize(ctx).await?;
 
-        let mut dependency_graph =
-            AttributeValue::dependent_value_graph(ctx, self.attribute_values.clone()).await?;
+        let mut dependency_graph = AttributeValue::dependent_value_graph(ctx, self.attribute_values.clone(), jid).await?;
 
         // NOTE(nick,jacob): uncomment this for debugging.
         // Save printed output to a file and execute the following: "dot <file> -Tsvg -o <newfile>.svg"

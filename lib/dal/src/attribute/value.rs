@@ -3,12 +3,14 @@
 //! value is proxied or not. Proxied values "point" to another [`AttributeValue`] to provide
 //! the attribute's value.
 
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
+use ulid::Ulid;
 
 use crate::{
     attribute::{
@@ -921,12 +923,32 @@ impl AttributeValue {
     pub async fn dependent_value_graph(
         ctx: &DalContext,
         attribute_value_ids: Vec<AttributeValueId>,
+        jid: Ulid,
     ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
         info!(
             "AttributeValue.dependent_value_graph(): {:?}",
             attribute_value_ids
         );
         let total_start = std::time::Instant::now();
+
+        // Coordinate with council on when we are free to proceed
+        let pub_channel = format!("council.{jid}");
+        let reply_channel = format!("{pub_channel}.reply");
+        let mut subscription = ctx.nats_conn().subscribe(&reply_channel).await?;
+
+        let message = serde_json::to_vec(&council::Request::CreateValues)?;
+        ctx.nats_conn().publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message).await?;
+
+        // TODO: timeout so we don't get stuck here forever if council goes away
+        loop {
+            if let Some(message) = subscription.next().await {
+                match serde_json::from_slice(message?.data())? {
+                    council::Response::OkToCreate => break,
+                    council::Response::Shutdown => return Ok(Default::default()),
+                    msg => unreachable!("{msg:?}"),
+                }
+            }
+        }
 
         let _rows = ctx
             .pg_txn()
@@ -944,6 +966,10 @@ impl AttributeValue {
             "AttributeValue.dependent_value_graph(): Create new affected took {:?}",
             total_start.elapsed()
         );
+
+        let message = serde_json::to_vec(&council::Request::ValueCreationDone)?;
+        ctx.nats_conn().publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message).await?;
+
         let section_start = std::time::Instant::now();
 
         let rows = ctx

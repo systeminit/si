@@ -51,6 +51,8 @@ pub enum JobConsumerError {
     FixResolver(#[from] FixResolverError),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
+    #[error(transparent)]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
     #[error("no schema found for component {0}")]

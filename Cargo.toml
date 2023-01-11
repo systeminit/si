@@ -13,6 +13,7 @@ members = [
     "lib/cyclone-client",
     "lib/cyclone-core",
     "lib/cyclone-server",
+    "lib/council",
     "lib/dal",
     "lib/dal-test",
     "lib/deadpool-cyclone",
