@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 const PROP_TREE_FOR_ALL_SCHEMA_VARIANTS: &str =
-    include_str!("./queries/prop_tree_for_all_schema_variants.sql");
+    include_str!("queries/prop/tree_for_all_schema_variants.sql");
 
 #[derive(Error, Debug)]
 pub enum PropTreeError {

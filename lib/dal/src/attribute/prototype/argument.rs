@@ -15,12 +15,12 @@ use crate::{
 };
 
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
-    include_str!("../../queries/attribute_prototype_argument_list_for_attribute_prototype.sql");
+    include_str!("../../queries/attribute_prototype_argument/list_for_attribute_prototype.sql");
 const LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE_AND_HEAD_COMPONENT_ID: &str = include_str!(
-    "../../queries/attribute_prototype_argument_list_by_name_for_attribute_prototype_and_head_component_id.sql"
+    "../../queries/attribute_prototype_argument/list_by_name_for_attribute_prototype_and_head_component_id.sql"
 );
 const LIST_FOR_FUNC_ARGUMENT_ID: &str =
-    include_str!("../../queries/attribute_prototype_argument_list_for_func_argument.sql");
+    include_str!("../../queries/attribute_prototype_argument/list_for_func_argument.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeArgumentError {

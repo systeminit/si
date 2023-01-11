@@ -40,11 +40,11 @@ pub enum ValidationPrototypeError {
 
 pub type ValidationPrototypeResult<T> = Result<T, ValidationPrototypeError>;
 
-const LIST_FOR_PROP: &str = include_str!("../queries/validation_prototype_list_for_prop.sql");
+const LIST_FOR_PROP: &str = include_str!("../queries/validation_prototype/list_for_prop.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
-    include_str!("../queries/validation_prototype_list_for_schema_variant.sql");
-const LIST_FOR_FUNC: &str = include_str!("../queries/validation_prototype_list_for_func.sql");
-const FIND_FOR_CONTEXT: &str = include_str!("../queries/validation_prototype_find_for_context.sql");
+    include_str!("../queries/validation_prototype/list_for_schema_variant.sql");
+const LIST_FOR_FUNC: &str = include_str!("../queries/validation_prototype/list_for_func.sql");
+const FIND_FOR_CONTEXT: &str = include_str!("../queries/validation_prototype/find_for_context.sql");
 
 pk!(ValidationPrototypePk);
 pk!(ValidationPrototypeId);

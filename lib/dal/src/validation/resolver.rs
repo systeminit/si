@@ -48,9 +48,9 @@ pub enum ValidationResolverError {
 
 pub type ValidationResolverResult<T> = Result<T, ValidationResolverError>;
 
-const FIND_STATUS: &str = include_str!("../queries/validation_resolver_find_status.sql");
+const FIND_STATUS: &str = include_str!("../queries/validation_resolver/find_status.sql");
 const FIND_FOR_ATTRIBUTE_VALUE_AND_FUNC_BINDING: &str =
-    include_str!("../queries/validation_resolver_find_for_attribute_value_and_func_binding.sql");
+    include_str!("../queries/validation_resolver/find_for_attribute_value_and_func_binding.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ValidationStatus {

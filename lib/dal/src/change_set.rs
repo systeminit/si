@@ -15,8 +15,8 @@ use crate::{
 };
 use crate::{Component, ComponentError, DalContext, WsEventResult};
 
-const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
-const CHANGE_SET_GET_BY_PK: &str = include_str!("./queries/change_set_get_by_pk.sql");
+const CHANGE_SET_OPEN_LIST: &str = include_str!("queries/change_set/open_list.sql");
+const CHANGE_SET_GET_BY_PK: &str = include_str!("queries/change_set/get_by_pk.sql");
 
 #[derive(Error, Debug)]
 pub enum ChangeSetError {

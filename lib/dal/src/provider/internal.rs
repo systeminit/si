@@ -93,18 +93,18 @@ use crate::{
 use crate::{Component, ComponentId};
 
 const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
-    include_str!("../queries/internal_provider_find_explicit_for_schema_variant_and_name.sql");
-const FIND_FOR_PROP: &str = include_str!("../queries/internal_provider_find_for_prop.sql");
+    include_str!("../queries/internal_provider/find_explicit_for_schema_variant_and_name.sql");
+const FIND_FOR_PROP: &str = include_str!("../queries/internal_provider/find_for_prop.sql");
 const FIND_EXPLICIT_FOR_SOCKET: &str =
-    include_str!("../queries/internal_provider_find_explicit_for_socket.sql");
+    include_str!("../queries/internal_provider/find_explicit_for_socket.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
-    include_str!("../queries/internal_provider_list_for_schema_variant.sql");
+    include_str!("../queries/internal_provider/list_for_schema_variant.sql");
 const LIST_EXPLICIT_FOR_SCHEMA_VARIANT: &str =
-    include_str!("../queries/internal_provider_list_explicit_for_schema_variant.sql");
+    include_str!("../queries/internal_provider/list_explicit_for_schema_variant.sql");
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
-    include_str!("../queries/internal_provider_list_for_attribute_prototype.sql");
+    include_str!("../queries/internal_provider/list_for_attribute_prototype.sql");
 const LIST_FOR_INPUT_SOCKETS: &str =
-    include_str!("../queries/internal_provider_list_for_input_sockets_for_all_schema_variants.sql");
+    include_str!("../queries/internal_provider/list_for_input_sockets_for_all_schema_variants.sql");
 
 #[derive(Error, Debug)]
 pub enum InternalProviderError {

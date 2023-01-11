@@ -40,22 +40,22 @@ use crate::{
 pub mod view;
 
 const CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT: &str =
-    include_str!("../queries/attribute_value_child_attribute_values_for_context.sql");
+    include_str!("../queries/attribute_value/child_attribute_values_for_context.sql");
 const FETCH_UPDATE_GRAPH_DATA: &str =
     include_str!("../queries/attribute_value/fetch_update_graph_data.sql");
 const IS_FOR_INTERNAL_PROVIDER_OF_ROOT_PROP: &str =
     include_str!("../queries/attribute_value/is_for_internal_provider_of_root_prop.sql");
 const FIND_PROP_FOR_VALUE: &str =
-    include_str!("../queries/attribute_value_find_prop_for_value.sql");
+    include_str!("../queries/attribute_value/find_prop_for_value.sql");
 const FIND_WITH_PARENT_AND_KEY_FOR_CONTEXT: &str =
-    include_str!("../queries/attribute_value_find_with_parent_and_key_for_context.sql");
+    include_str!("../queries/attribute_value/find_with_parent_and_key_for_context.sql");
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
-    include_str!("../queries/attribute_value_find_with_parent_and_prototype_for_context.sql");
-const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_list_for_context.sql");
+    include_str!("../queries/attribute_value/find_with_parent_and_prototype_for_context.sql");
+const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_value/list_for_context.sql");
 const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
-    include_str!("../queries/attribute_value_list_payload_for_read_context.sql");
+    include_str!("../queries/attribute_value/list_payload_for_read_context.sql");
 const LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT: &str =
-    include_str!("../queries/attribute_value_list_payload_for_read_context_and_root.sql");
+    include_str!("../queries/attribute_value/list_payload_for_read_context_and_root.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {

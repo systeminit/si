@@ -22,9 +22,9 @@ use crate::{
 
 const MODEL_TABLE: &str = "status_updates";
 
-const LIST_ACTIVE: &str = include_str!("./queries/status_update_list_active.sql");
-const UPDATE_DATA: &str = include_str!("./queries/status_update_update_data.sql");
-const MARK_FINISHED: &str = include_str!("./queries/status_update_mark_finished.sql");
+const LIST_ACTIVE: &str = include_str!("queries/status_update/list_active.sql");
+const UPDATE_DATA: &str = include_str!("queries/status_update/update_data.sql");
+const MARK_FINISHED: &str = include_str!("queries/status_update/mark_finished.sql");
 
 /// A possible error that can be returned when working with a [`StatusUpdate`].
 #[derive(Error, Debug)]

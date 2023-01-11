@@ -60,7 +60,7 @@ pub enum WorkflowRunnerError {
 
 pub type WorkflowRunnerResult<T> = Result<T, WorkflowRunnerError>;
 
-const FIND_FOR_PROTOTYPE: &str = include_str!("./queries/workflow_runner_find_for_prototype.sql");
+const FIND_FOR_PROTOTYPE: &str = include_str!("queries/workflow_runner_find_for_prototype.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct WorkflowRunnerContext {

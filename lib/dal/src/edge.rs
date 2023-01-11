@@ -10,6 +10,7 @@ use thiserror::Error;
 
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::node::NodeId;
+use crate::standard_model::objects_from_rows;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
     AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
@@ -22,7 +23,8 @@ use crate::{
 };
 
 const LIST_PARENTS_FOR_COMPONENT: &str =
-    include_str!("queries/edge_list_parents_for_component.sql");
+    include_str!("queries/edge/list_parents_for_component.sql");
+const LIST_FOR_KIND: &str = include_str!("queries/edge/list_for_kind.sql");
 
 #[derive(Error, Debug)]
 pub enum EdgeError {
@@ -278,6 +280,19 @@ impl Edge {
             .map(|row| row.get("tail_object_id"))
             .collect();
         Ok(objects)
+    }
+
+    /// List [`Edges`](Self) for a given [`kind`](EdgeKind).
+    pub async fn list_for_kind(ctx: &DalContext, kind: EdgeKind) -> EdgeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_KIND,
+                &[ctx.read_tenancy(), ctx.visibility(), &kind.as_ref()],
+            )
+            .await?;
+        Ok(objects_from_rows(rows)?)
     }
 
     /// This function should be only called by [`Self::new_for_connection()`] and integration tests.

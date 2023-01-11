@@ -16,9 +16,9 @@ use crate::{
     StandardModelError, Timestamp, Visibility,
 };
 
-const USER_PASSWORD: &str = include_str!("./queries/user_password.sql");
-const USER_FIND_BY_EMAIL: &str = include_str!("queries/user_find_by_email.sql");
-const AUTHORIZE_USER: &str = include_str!("./queries/authorize_user.sql");
+const USER_PASSWORD: &str = include_str!("queries/user/password.sql");
+const USER_FIND_BY_EMAIL: &str = include_str!("queries/user/find_by_email.sql");
+const AUTHORIZE_USER: &str = include_str!("queries/user/authorize.sql");
 
 #[derive(Error, Debug)]
 pub enum UserError {

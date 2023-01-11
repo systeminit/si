@@ -10,11 +10,11 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-const LIST_FOR_FUNC: &str = include_str!("../queries/func_argument_list_for_func.sql");
+const LIST_FOR_FUNC: &str = include_str!("../queries/func_argument/list_for_func.sql");
 const LIST_FOR_FUNC_WITH_PROTOTYPE_ARGUMENTS: &str =
-    include_str!("../queries/func_argument_list_for_func_with_prototype_arguments.sql");
+    include_str!("../queries/func_argument/list_for_func_with_prototype_arguments.sql");
 const FIND_BY_NAME_FOR_FUNC: &str =
-    include_str!("../queries/func_argument_find_by_name_for_func.sql");
+    include_str!("../queries/func_argument/find_by_name_for_func.sql");
 
 #[derive(Debug, Error)]
 pub enum FuncArgumentError {
