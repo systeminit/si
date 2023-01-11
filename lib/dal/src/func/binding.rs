@@ -19,7 +19,7 @@ use crate::func::backend::{
     js_validation::FuncBackendJsValidation,
     js_workflow::FuncBackendJsWorkflow,
     map::FuncBackendMap,
-    prop_object::FuncBackendPropObject,
+    object::FuncBackendObject,
     string::FuncBackendString,
     validation::FuncBackendValidation,
     FuncBackend, FuncDispatch, FuncDispatchContext,
@@ -256,9 +256,7 @@ impl FuncBinding {
             }
             FuncBackendKind::Integer => FuncBackendInteger::create_and_execute(&self.args).await?,
             FuncBackendKind::Map => FuncBackendMap::create_and_execute(&self.args).await?,
-            FuncBackendKind::PropObject => {
-                FuncBackendPropObject::create_and_execute(&self.args).await?
-            }
+            FuncBackendKind::Object => FuncBackendObject::create_and_execute(&self.args).await?,
             FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await?,
             FuncBackendKind::Unset => (None, None),
             FuncBackendKind::Validation => {
@@ -323,7 +321,7 @@ impl FuncBinding {
             | FuncBackendKind::Identity
             | FuncBackendKind::Integer
             | FuncBackendKind::Map
-            | FuncBackendKind::PropObject
+            | FuncBackendKind::Object
             | FuncBackendKind::String
             | FuncBackendKind::Unset
             | FuncBackendKind::Validation => {}

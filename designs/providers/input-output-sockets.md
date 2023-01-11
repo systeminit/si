@@ -322,9 +322,9 @@ pub struct AttributeResolverContext {
 - Worst Case: 3 days
 - Likely Case: 2 days
 
-### Create root `Prop` of kind `PropObject` for all `SchemaVariant`s
+### Create root `Prop` of kind `Object` for all `SchemaVariant`s
 
-This root `Prop` will have two child `Prop`s (both are also of kind `PropObject`):
+This root `Prop` will have two child `Prop`s (both are also of kind `Object`):
 
 1. SI-based attributes (e.g. "name")
 2. Domain-based attributes (i.e. model representing the domain concept)
@@ -359,8 +359,8 @@ Visiblity | No
 Veritech and Cyclone | Yes, but only in the function payload shapes (if at all?)
 SDF and the Frontend App | Yes, but they are descoped and affected routes and behavior will be disabled
 Assumptions based on attributes that are not currently props | Yes
-Schema and schema variant builtins migration | Yes, but only with concern to the _depth_ of props changed since schemavariants will now have a root `Prop` of kind `PropObject`
-Qualifications | Yes, `ComponentView` from `cyclone` might change its shape and/or behavior to match the new root `Prop` of kind `PropObject` shape
+Schema and schema variant builtins migration | Yes, but only with concern to the _depth_ of props changed since schemavariants will now have a root `Prop` of kind `Object`
+Qualifications | Yes, `ComponentView` from `cyclone` might change its shape and/or behavior to match the new root `Prop` of kind `Object` shape
 Validations | No, since their comparison is internal to the `Prop`
 Resource | Likely no since we have to ensure that resource sync on the component still works after refactor
 Frontend Sockets, NodeView, and Schematic | Yes, but have descoped fixing the SDF and frontend focused portions from this plan (they may become disabled in the interim)

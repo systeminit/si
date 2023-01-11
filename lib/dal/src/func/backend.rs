@@ -21,7 +21,7 @@ pub mod js_confirmation;
 pub mod js_validation;
 pub mod js_workflow;
 pub mod map;
-pub mod prop_object;
+pub mod object;
 pub mod string;
 pub mod validation;
 
@@ -80,7 +80,7 @@ pub enum FuncBackendKind {
     JsCommand,
     JsValidation,
     Map,
-    PropObject,
+    Object,
     String,
     Unset,
     Json,
@@ -107,7 +107,7 @@ pub enum FuncBackendResponseType {
     Identity,
     Integer,
     Map,
-    PropObject,
+    Object,
     Qualification,
     CodeGeneration,
     Confirmation,
@@ -127,7 +127,7 @@ impl From<ResolverFunctionResponseType> for FuncBackendResponseType {
             ResolverFunctionResponseType::Identity => FuncBackendResponseType::Identity,
             ResolverFunctionResponseType::Integer => FuncBackendResponseType::Integer,
             ResolverFunctionResponseType::Map => FuncBackendResponseType::Map,
-            ResolverFunctionResponseType::PropObject => FuncBackendResponseType::PropObject,
+            ResolverFunctionResponseType::Object => FuncBackendResponseType::Object,
             ResolverFunctionResponseType::Qualification => FuncBackendResponseType::Qualification,
             ResolverFunctionResponseType::CodeGeneration => FuncBackendResponseType::CodeGeneration,
             ResolverFunctionResponseType::Confirmation => FuncBackendResponseType::Confirmation,
@@ -149,7 +149,7 @@ impl From<FuncBackendResponseType> for ResolverFunctionResponseType {
             FuncBackendResponseType::Integer => ResolverFunctionResponseType::Integer,
             FuncBackendResponseType::Identity => ResolverFunctionResponseType::Identity,
             FuncBackendResponseType::Map => ResolverFunctionResponseType::Map,
-            FuncBackendResponseType::PropObject => ResolverFunctionResponseType::PropObject,
+            FuncBackendResponseType::Object => ResolverFunctionResponseType::Object,
             FuncBackendResponseType::Qualification => ResolverFunctionResponseType::Qualification,
             FuncBackendResponseType::CodeGeneration => ResolverFunctionResponseType::CodeGeneration,
             FuncBackendResponseType::Confirmation => ResolverFunctionResponseType::Confirmation,

@@ -1052,7 +1052,7 @@ BEGIN
         CASE
             WHEN typeof_value = 'object' THEN
                 -- It's an array/map, but since we're setting the value for a Provider, then it's an Object.
-                func_name := 'si:setPropObject';
+                func_name := 'si:setObject';
             WHEN typeof_value = 'array' THEN
                 func_name := 'si:setArray';
             WHEN typeof_value = 'string' THEN
@@ -1100,7 +1100,7 @@ BEGIN
         ELSIF prop.kind = 'map' THEN
             func_name := 'si:setMap';
         ELSIF prop.kind = 'object' THEN
-            func_name := 'si:setPropObject';
+            func_name := 'si:setObject';
         ELSIF prop.kind = 'string' THEN
             func_name := 'si:setString';
         ELSE
@@ -1759,7 +1759,7 @@ BEGIN
             result_value_processed := result_value;
         WHEN func_binding.backend_kind = 'Map' THEN
             result_value_processed := '{}'::json;
-        WHEN func_binding.backend_kind = 'PropObject' THEN
+        WHEN func_binding.backend_kind = 'Object' THEN
             result_value_processed := '{}'::json;
         WHEN func_binding.backend_kind = 'String' THEN
             result_value_processed := result_value;

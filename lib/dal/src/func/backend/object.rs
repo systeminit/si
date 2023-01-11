@@ -5,24 +5,24 @@ use serde_json::{Map, Value};
 use crate::func::backend::{FuncBackend, FuncBackendResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct FuncBackendPropObjectArgs {
+pub struct FuncBackendObjectArgs {
     pub value: Map<String, Value>,
 }
 
-impl FuncBackendPropObjectArgs {
+impl FuncBackendObjectArgs {
     pub fn new(value: Map<String, Value>) -> Self {
         Self { value }
     }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct FuncBackendPropObject {
-    args: FuncBackendPropObjectArgs,
+pub struct FuncBackendObject {
+    args: FuncBackendObjectArgs,
 }
 
 #[async_trait]
-impl FuncBackend for FuncBackendPropObject {
-    type Args = FuncBackendPropObjectArgs;
+impl FuncBackend for FuncBackendObject {
+    type Args = FuncBackendObjectArgs;
 
     fn new(args: Self::Args) -> Box<Self> {
         Box::new(Self { args })

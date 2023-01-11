@@ -730,7 +730,7 @@ mod tests {
                     },
                 ],
             },
-            response_type: cyclone_core::ResolverFunctionResponseType::PropObject,
+            response_type: cyclone_core::ResolverFunctionResponseType::Object,
             code_base64: base64::encode(
                 r#"function doit(input) {
                     console.log(`${Object.keys(input).length}`);
@@ -819,7 +819,7 @@ mod tests {
                     },
                 ],
             },
-            response_type: cyclone_core::ResolverFunctionResponseType::PropObject,
+            response_type: cyclone_core::ResolverFunctionResponseType::Object,
             code_base64: base64::encode(
                 r#"function doit(input) {
                     console.log(`${Object.keys(input).length}`);
