@@ -11,16 +11,15 @@ use dal::{
         binding_return_value::FuncBindingReturnValueError,
     },
     prop_tree::PropTreeError,
-    prototype_context::{HasPrototypeContext, PrototypeContext, PrototypeContextError},
+    prototype_context::PrototypeContextError,
     schema::variant::SchemaVariantError,
     AttributeContext, AttributeContextError, AttributePrototype, AttributePrototypeArgumentError,
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
-    AttributeValueError, ComponentError, ComponentId, ConfirmationPrototype,
-    ConfirmationPrototypeError, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    FuncBindingError, FuncId, InternalProviderError, InternalProviderId, PropError, PropId,
-    PrototypeListForFunc, PrototypeListForFuncError, ReadTenancyError, SchemaVariantId,
-    StandardModel, StandardModelError, TransactionsError, ValidationPrototype,
-    ValidationPrototypeError, ValidationPrototypeId, Visibility, WriteTenancyError, WsEventError,
+    AttributeValueError, ComponentError, ComponentId, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncBindingError, FuncId, InternalProviderError, InternalProviderId,
+    PropError, PropId, PrototypeListForFuncError, ReadTenancyError, SchemaVariantId, StandardModel,
+    StandardModelError, TransactionsError, ValidationPrototype, ValidationPrototypeError,
+    ValidationPrototypeId, Visibility, WriteTenancyError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -85,8 +84,6 @@ pub enum FuncError {
     PrototypeContext(#[from] PrototypeContextError),
     #[error("prototype list for func error: {0}")]
     PrototypeListForFunc(#[from] PrototypeListForFuncError),
-    #[error("confirmation prototype error: {0}")]
-    ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
 
@@ -173,12 +170,12 @@ pub enum FuncVariant {
 impl From<FuncVariant> for FuncBackendKind {
     fn from(value: FuncVariant) -> Self {
         match value {
-            FuncVariant::Attribute => FuncBackendKind::JsAttribute,
-            FuncVariant::CodeGeneration => FuncBackendKind::JsAttribute,
-            FuncVariant::Confirmation => FuncBackendKind::JsConfirmation,
             FuncVariant::Command => FuncBackendKind::JsCommand,
-            FuncVariant::Qualification => FuncBackendKind::JsAttribute,
             FuncVariant::Validation => FuncBackendKind::Validation,
+            FuncVariant::Attribute
+            | FuncVariant::CodeGeneration
+            | FuncVariant::Confirmation
+            | FuncVariant::Qualification => FuncBackendKind::JsAttribute,
         }
     }
 }
@@ -193,7 +190,6 @@ impl TryFrom<&Func> for FuncVariant {
                 FuncBackendResponseType::Qualification => Ok(FuncVariant::Qualification),
                 _ => Ok(FuncVariant::Attribute),
             },
-            (FuncBackendKind::JsConfirmation, _) => Ok(FuncVariant::Confirmation),
             (FuncBackendKind::JsCommand, _) => Ok(FuncVariant::Command),
             (FuncBackendKind::Validation, _) => Ok(FuncVariant::Validation),
             _ => Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id())),
@@ -328,27 +324,6 @@ async fn prototype_view_for_attribute_prototype(
     })
 }
 
-fn prototype_context_into_schema_variants_and_components<P, C>(
-    prototype_contexts: &[P],
-) -> (Vec<SchemaVariantId>, Vec<ComponentId>)
-where
-    P: HasPrototypeContext<C>,
-    C: PrototypeContext,
-{
-    let mut schema_variant_ids = vec![];
-    let mut component_ids = vec![];
-
-    for context in prototype_contexts {
-        if context.context().component_id().is_some() {
-            component_ids.push(context.context().component_id())
-        } else if context.context().schema_variant_id().is_some() {
-            schema_variant_ids.push(context.context().schema_variant_id());
-        }
-    }
-
-    (schema_variant_ids, component_ids)
-}
-
 async fn attribute_prototypes_into_schema_variants_and_components(
     ctx: &DalContext,
     func_id: FuncId,
@@ -373,22 +348,32 @@ async fn attribute_prototypes_into_schema_variants_and_components(
 pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncResponse> {
     let associations = match func.backend_kind() {
         FuncBackendKind::JsAttribute => match func.backend_response_type() {
-            FuncBackendResponseType::Qualification => {
-                let (schema_variant_ids, component_ids) =
-                    attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
-                        .await?;
-
-                Some(FuncAssociations::Qualification {
-                    schema_variant_ids,
-                    component_ids,
-                })
-            }
             FuncBackendResponseType::CodeGeneration => {
                 let (schema_variant_ids, component_ids) =
                     attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
                         .await?;
 
                 Some(FuncAssociations::CodeGeneration {
+                    schema_variant_ids,
+                    component_ids,
+                })
+            }
+            FuncBackendResponseType::Confirmation => {
+                let (schema_variant_ids, component_ids) =
+                    attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
+                        .await?;
+
+                Some(FuncAssociations::Confirmation {
+                    schema_variant_ids,
+                    component_ids,
+                })
+            }
+            FuncBackendResponseType::Qualification => {
+                let (schema_variant_ids, component_ids) =
+                    attribute_prototypes_into_schema_variants_and_components(ctx, *func.id())
+                        .await?;
+
+                Some(FuncAssociations::Qualification {
                     schema_variant_ids,
                     component_ids,
                 })
@@ -418,17 +403,6 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
                 })
             }
         },
-        FuncBackendKind::JsConfirmation => {
-            let protos = ConfirmationPrototype::list_for_func(ctx, *func.id()).await?;
-
-            let (schema_variant_ids, component_ids) =
-                prototype_context_into_schema_variants_and_components(&protos);
-
-            Some(FuncAssociations::Confirmation {
-                schema_variant_ids,
-                component_ids,
-            })
-        }
         FuncBackendKind::JsValidation => {
             let protos = ValidationPrototype::list_for_func(ctx, *func.id()).await?;
 

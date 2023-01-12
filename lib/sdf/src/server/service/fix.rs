@@ -7,11 +7,10 @@ use axum::{
 use thiserror::Error;
 
 use dal::fix::FixError as DalFixError;
+use dal::schema::SchemaError as DalSchemaError;
 use dal::{
-    ComponentError, ComponentId, ConfirmationPrototypeError, ConfirmationResolverError,
-    ConfirmationResolverTreeError, FixBatchId, FixId, FixResolverError,
-    FuncBindingReturnValueError, StandardModelError, TransactionsError, UserError, UserId,
-    WorkflowRunnerError,
+    ComponentError, ComponentId, FixBatchId, FixId, FixResolverError, FuncBindingReturnValueError,
+    StandardModelError, TransactionsError, UserError, UserId, WorkflowRunnerError,
 };
 
 mod confirmations;
@@ -28,17 +27,13 @@ pub enum FixError {
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error(transparent)]
-    ConfirmationResolver(#[from] ConfirmationResolverError),
-    #[error(transparent)]
-    ConfirmationResolverTree(#[from] ConfirmationResolverTreeError),
-    #[error(transparent)]
-    ConfirmationPrototype(#[from] ConfirmationPrototypeError),
-    #[error(transparent)]
     FixResolver(#[from] FixResolverError),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
     DalFix(#[from] DalFixError),
+    #[error(transparent)]
+    DalSchema(#[from] DalSchemaError),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
     #[error(transparent)]

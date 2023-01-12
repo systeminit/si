@@ -7,12 +7,12 @@ use crate::fix::FixError;
 use crate::{
     job::{
         consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
-        definition::{Confirmations, DependentValuesUpdate},
+        definition::DependentValuesUpdate,
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, ActionPrototype, Component, ComponentId, ConfirmationResolverId, DalContext,
-    Fix, FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, FixResolverContext,
-    RootPropChild, StandardModel, Visibility, WsEvent,
+    AccessBuilder, ActionPrototype, AttributeValueId, Component, ComponentId, DalContext, Fix,
+    FixBatch, FixBatchId, FixCompletionStatus, FixId, FixResolver, RootPropChild, StandardModel,
+    Visibility, WsEvent,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,7 +20,7 @@ pub struct FixItem {
     pub id: FixId,
     pub action: String,
     pub component_id: ComponentId,
-    pub confirmation_resolver_id: ConfirmationResolverId,
+    pub attribute_value_id: AttributeValueId,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -174,17 +174,11 @@ impl JobConsumer for FixesJob {
             .ok_or(FixError::EmptyCompletionStatus)?;
 
         // Upsert the relevant fix resolver.
-        let context = FixResolverContext {
-            component_id: fix_item.component_id,
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-        };
         let _fix_resolver = FixResolver::upsert(
             ctx,
             workflow_prototype_id,
-            fix_item.confirmation_resolver_id,
+            fix_item.attribute_value_id,
             Some(matches!(completion_status, FixCompletionStatus::Success)),
-            context,
         )
         .await?;
 
@@ -197,7 +191,7 @@ impl JobConsumer for FixesJob {
 
         // Inline dependent values propagation so we can run consecutive fixes that depend on the /root/resource from the previous fix
         if !resources.is_empty() {
-            let attribute_value = Component::root_child_attribute_value_for_component(
+            let attribute_value = Component::root_prop_child_attribute_value_for_component(
                 ctx,
                 *component.id(),
                 RootPropChild::Resource,
@@ -213,7 +207,7 @@ impl JobConsumer for FixesJob {
             ctx,
             *fix.id(),
             self.batch_id,
-            fix_item.confirmation_resolver_id,
+            fix_item.attribute_value_id,
             fix_item.action.clone(),
             completion_status,
             logs,
@@ -274,6 +268,6 @@ async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()>
         .publish(ctx)
         .await?;
 
-    ctx.enqueue_job(Confirmations::new(ctx)).await;
+    Component::run_all_confirmations(ctx).await?;
     Ok(())
 }

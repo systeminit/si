@@ -5,14 +5,12 @@ use thiserror::Error;
 use crate::component::confirmation::ConfirmationRunPayload;
 use crate::{
     component::{code::CodeGeneratedPayload, resource::ResourceRefreshId},
-    confirmation_status::ConfirmationStatusUpdate,
     fix::{batch::FixBatchReturn, FixReturn},
     qualification::QualificationCheckPayload,
     status::StatusMessage,
     workflow::{CommandOutput, CommandReturn},
-    ActorView, AttributeValueId, BillingAccountId, ChangeSetPk, ComponentId,
-    ConfirmationPrototypeError, DalContext, PropId, ReadTenancy, SchemaPk, SocketId,
-    StandardModelError,
+    ActorView, AttributeValueId, BillingAccountId, ChangeSetPk, ComponentId, DalContext, PropId,
+    ReadTenancy, SchemaPk, SocketId, StandardModelError,
 };
 
 #[derive(Error, Debug)]
@@ -21,8 +19,6 @@ pub enum WsEventError {
     SerdeJson(#[from] serde_json::Error),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
-    #[error(transparent)]
-    ConfirmationPrototype(#[from] Box<ConfirmationPrototypeError>),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
 }
@@ -46,7 +42,6 @@ pub enum WsPayload {
     CommandReturn(CommandReturn),
     FixBatchReturn(FixBatchReturn),
     FixReturn(FixReturn),
-    ConfirmationStatusUpdate(ConfirmationStatusUpdate),
     StatusUpdate(StatusMessage),
 }
 

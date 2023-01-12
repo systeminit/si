@@ -80,14 +80,6 @@ pub(crate) struct Args {
     #[arg(long, group = "command_run")]
     pub(crate) disable_command_run: bool,
 
-    /// Enables confirmation endpoint.
-    #[arg(long, group = "confirmation")]
-    pub(crate) enable_confirmation: bool,
-
-    /// Disables confirmation endpoint.
-    #[arg(long, group = "confirmation")]
-    pub(crate) disable_confirmation: bool,
-
     /// Enables configuration endpoint.
     #[arg(long, group = "configuration")]
     pub(crate) enable_configuration: bool,
@@ -144,12 +136,6 @@ impl TryFrom<Args> for Config {
             builder.enable_resolver(true);
         } else if args.disable_resolver {
             builder.enable_resolver(false);
-        }
-
-        if args.enable_confirmation {
-            builder.enable_confirmation(true);
-        } else if args.disable_confirmation {
-            builder.enable_confirmation(false);
         }
 
         if args.oneshot {

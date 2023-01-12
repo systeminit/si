@@ -25,14 +25,18 @@ const fixState = computed(() => {
     const total = fixesStore.fixesOnRunningBatch.length;
     const executed = fixesStore.completedFixesOnRunningBatch.length;
 
+    // Reload confirmations if all recommendations have been applied!
+    let summary = "Applying recommendations...";
+    if (total > 0 && total === executed) {
+      summary = "Recommendations applied!";
+      fixesStore.LOAD_CONFIRMATIONS();
+    }
+
     return {
       mode: "fixing",
       executed,
       total,
-      summary:
-        total > 0 && total === executed
-          ? "Recommendations applied!"
-          : "Applying recommendations...",
+      summary,
       highlightedSummary: "",
     };
   } else {

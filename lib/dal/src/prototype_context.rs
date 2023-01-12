@@ -1,7 +1,6 @@
 use crate::{
-    ComponentId, ConfirmationPrototypeError, DalContext, FuncError, FuncId, ReadTenancyError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, TransactionsError,
-    WriteTenancyError,
+    ComponentId, DalContext, FuncError, FuncId, ReadTenancyError, SchemaId, SchemaVariantId,
+    StandardModel, StandardModelError, TransactionsError, WriteTenancyError,
 };
 use std::future::Future;
 use thiserror::Error;
@@ -20,8 +19,6 @@ pub enum PrototypeContextError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
-    #[error(transparent)]
-    ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error(transparent)]
     Func(#[from] FuncError),
     #[error("json serialization error: {0}")]

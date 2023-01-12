@@ -5,14 +5,14 @@ use super::{FixError, FixResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::job::definition::{FixItem, FixesJob};
 use dal::{
-    ComponentId, ConfirmationResolverId, Fix, FixBatch, FixBatchId, HistoryActor, StandardModel,
-    User, Visibility,
+    AttributeValueId, ComponentId, Fix, FixBatch, FixBatchId, HistoryActor, StandardModel, User,
+    Visibility,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FixRunRequest {
-    pub id: ConfirmationResolverId,
+    pub attribute_value_id: AttributeValueId,
     pub component_id: ComponentId,
     pub action_name: String,
 }
@@ -50,14 +50,14 @@ pub async fn run(
         let fix = Fix::new(
             &ctx,
             *batch.id(),
-            fix_run_request.id,
+            fix_run_request.attribute_value_id,
             fix_run_request.component_id,
             &fix_run_request.action_name,
         )
         .await?;
         fixes.push(FixItem {
             id: *fix.id(),
-            confirmation_resolver_id: fix_run_request.id,
+            attribute_value_id: fix_run_request.attribute_value_id,
             component_id: fix_run_request.component_id,
             action: fix_run_request.action_name,
         });

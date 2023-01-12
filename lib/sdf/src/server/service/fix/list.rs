@@ -1,9 +1,10 @@
 use axum::{extract::Query, Json};
 use dal::fix::FixError as DalFixError;
-use dal::ComponentError as DalComponentError;
+use dal::schema::SchemaUiMenu;
+use dal::{AttributeValueId, ComponentError as DalComponentError};
 use dal::{
-    Component, ComponentId, ConfirmationResolverId, FixBatch, FixBatchId, FixCompletionStatus,
-    FixId, ResourceView, StandardModel, Visibility,
+    Component, ComponentId, FixBatch, FixBatchId, FixCompletionStatus, FixId, ResourceView,
+    StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +28,7 @@ pub struct FixHistoryView {
     schema_name: String,
     component_name: String,
     component_id: ComponentId,
-    resolver_id: ConfirmationResolverId,
+    attribute_value_id: AttributeValueId,
     provider: Option<String>,
     started_at: String,
     resource: ResourceView,
@@ -58,8 +59,6 @@ pub async fn list(
     for batch in FixBatch::list_finished(&ctx).await? {
         let mut fix_views = Vec::new();
         for fix in batch.fixes(&ctx).await? {
-            let resolver = fix.confirmation_resolver(&ctx).await?;
-            let prototype = resolver.confirmation_prototype(&ctx).await?;
             let workflow_runner = match fix.workflow_runner(&ctx).await? {
                 Some(runner) => runner,
                 // Note: This should not be reachable, but it's not clear if we want to break the route if
@@ -79,6 +78,13 @@ pub async fn list(
             let component = Component::get_by_id(&ctx, &fix.component_id())
                 .await?
                 .ok_or_else(|| DalComponentError::NotFound(fix.component_id()))?;
+            let schema = component
+                .schema(&ctx)
+                .await?
+                .ok_or_else(|| DalComponentError::NoSchema(fix.component_id()))?;
+            let category = SchemaUiMenu::find_for_schema(&ctx, *schema.id())
+                .await?
+                .map(|um| um.category().to_string());
 
             fix_views.push(FixHistoryView {
                 id: *fix.id(),
@@ -86,16 +92,11 @@ pub async fn list(
                     .completion_status()
                     .ok_or(DalFixError::EmptyCompletionStatus)?,
                 action: fix.action().to_owned(),
-                schema_name: component
-                    .schema(&ctx)
-                    .await?
-                    .ok_or_else(|| FixError::NoSchemaForComponent(*component.id()))?
-                    .name()
-                    .to_owned(),
-                resolver_id: *resolver.id(),
+                schema_name: schema.name().to_owned(),
+                attribute_value_id: *fix.attribute_value_id(),
                 component_name: component.name(&ctx).await?,
                 component_id: *component.id(),
-                provider: prototype.provider().map(ToOwned::to_owned),
+                provider: category,
                 resource: ResourceView::new(resource),
                 started_at: fix
                     .started_at()

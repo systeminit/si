@@ -18,9 +18,8 @@ use crate::{
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
     ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext, DalContext, DiagramKind,
-    ExternalProvider, Func, InternalProvider, PropKind, SchemaError, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func, InternalProvider, PropKind,
+    SchemaError, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{AttributeValueError, SchemaVariant};
 
@@ -788,30 +787,36 @@ impl MigrationDriver {
         )
         .await?;
 
-        let confirmation_func_name = "si:resourceExistsConfirmation";
+        // Add confirmations.
+        let confirmation_func_name = "si:confirmationResourceExists";
         let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(confirmation_func_name.to_owned()))?;
-        let context = ConfirmationPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let mut confirmation_prototype = ConfirmationPrototype::new(
+        let confirmation_func_argument_name = "resource";
+        let confirmation_func_argument = FuncArgument::find_by_name_for_func(
             ctx,
-            "EC2 Instance Exists?",
+            confirmation_func_argument_name,
             *confirmation_func.id(),
-            context,
         )
-        .await?;
-        confirmation_prototype
-            .set_provider(ctx, Some("AWS".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_success_description(ctx, Some("EC2 instance exists!".to_owned()))
-            .await?;
-        confirmation_prototype.set_failure_description(ctx, Some("This EC2 instance has not been created yet. Please run the fix above to create it!".to_owned())).await?;
+        .await?
+        .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
+            confirmation_func_name.to_string(),
+            confirmation_func_argument_name.to_string(),
+        ))?;
+        SchemaVariant::add_leaf(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            None,
+            LeafKind::Confirmation,
+            vec![LeafInput {
+                location: LeafInputLocation::Resource,
+                func_argument_id: *confirmation_func_argument.id(),
+            }],
+        )
+        .await
+        .expect("could not add leaf");
         FuncDescription::new(
             ctx,
             *confirmation_func.id(),
@@ -820,7 +825,7 @@ impl MigrationDriver {
                 name: "EC2 Instance Exists?".to_string(),
                 success_description: Some("EC2 instance exists!".to_string()),
                 failure_description: Some("This EC2 instance has not been created yet. Please run the fix above to create it!".to_string()),
-                provider: Some("AWS".to_string())
+                provider: Some("AWS".to_string()),
             },
         )
             .await?;
@@ -1348,34 +1353,36 @@ impl MigrationDriver {
         )
         .await?;
 
-        let confirmation_func_name = "si:resourceExistsConfirmation";
+        // Add confirmations.
+        let confirmation_func_name = "si:confirmationResourceExists";
         let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(confirmation_func_name.to_owned()))?;
-        let context = ConfirmationPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let mut confirmation_prototype =
-            ConfirmationPrototype::new(ctx, "Elastic IP Exists?", *confirmation_func.id(), context)
-                .await?;
-        confirmation_prototype
-            .set_provider(ctx, Some("AWS".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_success_description(ctx, Some("Elastic IP exists!".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_failure_description(
-                ctx,
-                Some(
-                    "This Elastic IP has not been created yet. Please run the fix above to create it!"
-                        .to_owned(),
-                ),
-            )
-            .await?;
+        let confirmation_func_argument_name = "resource";
+        let confirmation_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            confirmation_func_argument_name,
+            *confirmation_func.id(),
+        )
+        .await?
+        .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
+            confirmation_func_name.to_string(),
+            confirmation_func_argument_name.to_string(),
+        ))?;
+        SchemaVariant::add_leaf(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            None,
+            LeafKind::Confirmation,
+            vec![LeafInput {
+                location: LeafInputLocation::Resource,
+                func_argument_id: *confirmation_func_argument.id(),
+            }],
+        )
+        .await
+        .expect("could not add leaf");
         FuncDescription::new(
             ctx,
             *confirmation_func.id(),
@@ -1384,7 +1391,7 @@ impl MigrationDriver {
                 name: "Elastic IP Exists?".to_string(),
                 success_description: Some("Elastic IP exists!".to_string()),
                 failure_description: Some("This Elastic IP has not been created yet. Please run the fix above to create it!".to_string()),
-                provider: Some("AWS".to_string())
+                provider: Some("AWS".to_string()),
             },
         )
             .await?;
@@ -1800,34 +1807,36 @@ impl MigrationDriver {
         )
         .await?;
 
-        let confirmation_func_name = "si:resourceExistsConfirmation";
+        // Add confirmations.
+        let confirmation_func_name = "si:confirmationResourceExists";
         let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(confirmation_func_name.to_owned()))?;
-        let context = ConfirmationPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let mut confirmation_prototype =
-            ConfirmationPrototype::new(ctx, "Key Pair Exists?", *confirmation_func.id(), context)
-                .await?;
-        confirmation_prototype
-            .set_provider(ctx, Some("AWS".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_success_description(ctx, Some("Key Pair exists!".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_failure_description(
-                ctx,
-                Some(
-                    "This Key Pair has not been created yet. Please run the fix above to create it!"
-                        .to_owned(),
-                ),
-            )
-            .await?;
+        let confirmation_func_argument_name = "resource";
+        let confirmation_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            confirmation_func_argument_name,
+            *confirmation_func.id(),
+        )
+        .await?
+        .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
+            confirmation_func_name.to_string(),
+            confirmation_func_argument_name.to_string(),
+        ))?;
+        SchemaVariant::add_leaf(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            None,
+            LeafKind::Confirmation,
+            vec![LeafInput {
+                location: LeafInputLocation::Resource,
+                func_argument_id: *confirmation_func_argument.id(),
+            }],
+        )
+        .await
+        .expect("could not add leaf");
         FuncDescription::new(
             ctx,
             *confirmation_func.id(),
@@ -1836,7 +1845,7 @@ impl MigrationDriver {
                 name: "Key Pair Exists?".to_string(),
                 success_description: Some("Key Pair exists!".to_string()),
                 failure_description: Some("This Key Pair has not been created yet. Please run the fix above to create it!".to_string()),
-                provider: Some("AWS".to_string())
+                provider: Some("AWS".to_string()),
             },
         )
             .await?;

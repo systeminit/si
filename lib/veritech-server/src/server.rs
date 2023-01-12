@@ -1,8 +1,8 @@
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CommandRunRequest, CommandRunResultSuccess,
-    ConfirmationRequest, ConfirmationResultSuccess, CycloneClient, Manager, Pool, ProgressMessage,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
-    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    CycloneClient, Manager, Pool, ProgressMessage, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, ValidationRequest, ValidationResultSuccess,
+    WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use si_data_nats::NatsClient;
@@ -32,8 +32,6 @@ pub enum ServerError {
     NatsConnect(#[source] si_data_nats::NatsError),
     #[error(transparent)]
     Publisher(#[from] PublisherError),
-    #[error(transparent)]
-    Confirmation(#[from] deadpool_cyclone::ExecutionError<ConfirmationResultSuccess>),
     #[error(transparent)]
     ResolverFunction(#[from] deadpool_cyclone::ExecutionError<ResolverFunctionResultSuccess>),
     #[error("failed to setup signal handler")]
@@ -134,12 +132,6 @@ impl Server {
 impl Server {
     pub async fn run(self) -> Result<()> {
         let _ = join!(
-            process_confirmation_requests_task(
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.cyclone_pool.clone(),
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
             process_resolver_function_requests_task(
                 self.nats.clone(),
                 self.subject_prefix.clone(),
@@ -185,10 +177,10 @@ impl ShutdownHandle {
     }
 }
 
-// NOTE(fnichol): the resolver_function, confirmation,
-// workflow, command are parallel and extremely similar, so there is a lurking "unifying" refactor
-// here. It felt like waiting until the third time adding one of these would do the trick, and as a
-// result the first 2 impls are here and not split apart into their own modules.
+// NOTE(fnichol): resolver function, workflow, command are parallel and extremely similar, so there
+// is a lurking "unifying" refactor here. It felt like waiting until the third time adding one of
+// these would do the trick, and as a result the first 2 impls are here and not split apart into
+// their own modules.
 
 async fn process_resolver_function_requests_task(
     nats: NatsClient,
@@ -307,119 +299,6 @@ async fn resolver_function_request(
     Ok(())
 }
 
-async fn process_confirmation_requests_task(
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) =
-        process_confirmation_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx)
-            .await
-    {
-        warn!(error = ?err, "processing confirmation requests failed");
-    }
-}
-
-async fn process_confirmation_requests(
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> Result<()> {
-    let mut requests = Subscriber::confirmation(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process confirmation requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Spawn a task an process the request
-                        tokio::spawn(confirmation_request_task(
-                            nats.clone(),
-                            cyclone_pool.clone(),
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next confirmation request had error");
-                    }
-                    None => {
-                        trace!("confirmation requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
-
-    Ok(())
-}
-
-async fn confirmation_request_task(
-    nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<ConfirmationRequest>,
-) {
-    if let Err(err) = confirmation_request(nats, cyclone_pool, request).await {
-        warn!(error = ?err, "confirmation execution failed");
-    }
-}
-
-async fn confirmation_request(
-    nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<ConfirmationRequest>,
-) -> Result<()> {
-    let (reply_mailbox, cyclone_request) = request.into_parts();
-
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool
-        .get()
-        .await
-        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
-    let mut progress = client
-        .execute_confirmation(cyclone_request)
-        .await?
-        .start()
-        .await?;
-
-    while let Some(msg) = progress.next().await {
-        match msg {
-            Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await?;
-            }
-            Ok(ProgressMessage::Heartbeat) => {
-                trace!("received heartbeat message");
-            }
-            Err(err) => {
-                warn!(error = ?err, "next progress message was an error, bailing out");
-                break;
-            }
-        }
-    }
-    publisher.finalize_output().await?;
-
-    let function_result = progress.finish().await?;
-    publisher.publish_result(&function_result).await?;
-
-    Ok(())
-}
-
 async fn process_validation_requests_task(
     nats: NatsClient,
     subject_prefix: Option<String>,
@@ -429,7 +308,7 @@ async fn process_validation_requests_task(
     if let Err(err) =
         process_validation_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx).await
     {
-        warn!(error = ?err, "processing confirmation requests failed");
+        warn!(error = ?err, "processing validation requests failed");
     }
 }
 

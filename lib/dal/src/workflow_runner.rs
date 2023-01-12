@@ -11,13 +11,11 @@ use crate::{
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     func::execution::{FuncExecution, FuncExecutionError},
     func::{binding::FuncBindingId, FuncId},
-    impl_standard_model,
-    job::definition::Confirmations,
-    pk, standard_model, standard_model_accessor, Component, ComponentError, ComponentId, Func,
-    FuncBinding, FuncBindingError, HistoryEventError, InternalProviderError, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WorkflowError,
-    WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowResolverError,
-    WorkflowResolverId, WriteTenancy, WsEventError,
+    impl_standard_model, pk, standard_model, standard_model_accessor, Component, ComponentError,
+    ComponentId, Func, FuncBinding, FuncBindingError, HistoryEventError, InternalProviderError,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
+    WorkflowError, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
+    WorkflowResolverError, WorkflowResolverId, WriteTenancy, WsEventError,
 };
 
 pub mod workflow_runner_state;
@@ -322,7 +320,9 @@ impl WorkflowRunner {
                     .map_err(Box::new)?
                     && should_trigger_confirmations
                 {
-                    ctx.enqueue_job(Confirmations::new(ctx)).await;
+                    Component::run_all_confirmations(ctx)
+                        .await
+                        .map_err(Box::new)?;
                 }
 
                 resources.push(result);

@@ -1,10 +1,10 @@
 use dal::action_prototype::ActionKind;
 use dal::{
     workflow_runner::workflow_runner_state::WorkflowRunnerStatus, ActionPrototype,
-    ActionPrototypeContext, ChangeSet, ChangeSetStatus, ConfirmationPrototype,
-    ConfirmationPrototypeContext, ConfirmationResolver, ConfirmationResolverId, DalContext, Fix,
-    FixBatch, FixCompletionStatus, Func, StandardModel, Visibility, WorkflowPrototype,
-    WorkflowPrototypeContext, WorkflowPrototypeId, WorkflowRunner,
+    ActionPrototypeContext, AttributeReadContext, AttributeValue, AttributeValueId, ChangeSet,
+    ChangeSetStatus, Component, DalContext, Fix, FixBatch, FixCompletionStatus, Func, FuncArgument,
+    LeafInput, LeafInputLocation, LeafKind, RootPropChild, SchemaVariant, StandardModel,
+    Visibility, WorkflowPrototype, WorkflowPrototypeContext, WorkflowPrototypeId, WorkflowRunner,
 };
 use dal_test::helpers::component_payload::ComponentPayload;
 use dal_test::{
@@ -14,7 +14,7 @@ use dal_test::{
 
 #[test]
 async fn confirmation_to_action(ctx: &mut DalContext) {
-    let (payload, _confirmation_resolver_id, action_workflow_prototype_id, _action_name) =
+    let (payload, _attribute_value_id, action_workflow_prototype_id, _action_name) =
         setup_confirmation_resolver_and_get_action_prototype(ctx).await;
 
     // Apply the change set.
@@ -58,7 +58,7 @@ async fn confirmation_to_action(ctx: &mut DalContext) {
 
 #[test]
 async fn confirmation_to_fix(ctx: &mut DalContext) {
-    let (payload, confirmation_resolver_id, action_workflow_prototype_id, action_name) =
+    let (payload, attribute_value_id, action_workflow_prototype_id, action_name) =
         setup_confirmation_resolver_and_get_action_prototype(ctx).await;
 
     // Apply the change set.
@@ -85,7 +85,7 @@ async fn confirmation_to_fix(ctx: &mut DalContext) {
     let mut fix = Fix::new(
         ctx,
         *batch.id(),
-        confirmation_resolver_id,
+        attribute_value_id,
         payload.component_id,
         &action_name,
     )
@@ -141,7 +141,7 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
     ctx: &DalContext,
 ) -> (
     ComponentPayload,
-    ConfirmationResolverId,
+    AttributeValueId,
     WorkflowPrototypeId,
     String,
 ) {
@@ -150,21 +150,32 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
         .create_component(ctx, "systeminit/whiskers", Builtin::DockerImage)
         .await;
 
-    let func_name = "si:resourceExistsConfirmation";
-    let func = Func::find_by_attr(ctx, "name", &func_name)
+    let confirmation_func_name = "si:confirmationResourceExists";
+    let func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
         .await
         .expect("unable to find func")
         .pop()
         .expect("func not found");
-    let context = ConfirmationPrototypeContext {
-        schema_id: payload.schema_id,
-        schema_variant_id: payload.schema_variant_id,
-        ..Default::default()
-    };
-    let confirmation_prototype =
-        ConfirmationPrototype::new(ctx, "Create Docker Image", *func.id(), context)
-            .await
-            .expect("unable to create confirmation prototype");
+    let func_argument = FuncArgument::find_by_name_for_func(ctx, "resource", *func.id())
+        .await
+        .expect("could not perform find by name for func")
+        .expect("func argument not found");
+
+    // FIXME(nick): this is a misuse of how docker image works. We should not be using a builtin for
+    // these tests.
+    SchemaVariant::add_leaf(
+        ctx,
+        *func.id(),
+        payload.schema_variant_id,
+        Some(payload.component_id),
+        LeafKind::Confirmation,
+        vec![LeafInput {
+            location: LeafInputLocation::Resource,
+            func_argument_id: *func_argument.id(),
+        }],
+    )
+    .await
+    .expect("could not add leaf");
 
     let func_name = "si:dockerImageRefreshWorkflow";
     let func = Func::find_by_attr(ctx, "name", &func_name)
@@ -200,22 +211,53 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
     .await
     .expect("unable to create action prototype");
 
-    let confirmation_resolver = confirmation_prototype
-        .run(ctx, payload.component_id)
+    // TODO(nick): don't use builtins and actually apply the changeset.
+    // Now, run confirmations as if the changeset was applied.
+    Component::run_all_confirmations(ctx)
         .await
-        .expect("could not run confirmation prototype");
+        .expect("could not run confirmations");
 
-    let mut found_confirmation_resolvers = ConfirmationResolver::list(ctx)
+    let confirmation_map_attribute_value =
+        Component::root_prop_child_attribute_value_for_component(
+            ctx,
+            payload.component_id,
+            RootPropChild::Confirmation,
+        )
         .await
-        .expect("could not list confirmation resolvers");
-    let found_confirmation_resolver = found_confirmation_resolvers
+        .expect("could not find root child attribute value for component");
+
+    let confirmation_item_prop =
+        SchemaVariant::find_leaf_item_prop(ctx, payload.schema_variant_id, LeafKind::Confirmation)
+            .await
+            .expect("could not find confirmation leaf item prop");
+    let confirmation_attribute_value = AttributeValue::find_with_parent_and_key_for_context(
+        ctx,
+        Some(*confirmation_map_attribute_value.id()),
+        Some(confirmation_func_name.to_string()),
+        AttributeReadContext {
+            prop_id: Some(*confirmation_item_prop.id()),
+            component_id: Some(payload.component_id),
+            ..AttributeReadContext::default()
+        },
+    )
+    .await
+    .expect("could not perform find with parent and key for context")
+    .expect("could not find confirmation attribute value");
+
+    let mut found_confirmations = Component::list_confirmations(ctx)
+        .await
+        .expect("could not list confirmations");
+    let found_confirmation = found_confirmations
         .pop()
-        .expect("found confirmation resolvers is empty");
-    assert!(found_confirmation_resolvers.is_empty());
-    assert_eq!(found_confirmation_resolver.id(), confirmation_resolver.id());
+        .expect("found confirmations are empty");
+    assert!(found_confirmations.is_empty());
+    assert_eq!(
+        found_confirmation.attribute_value_id,
+        *confirmation_attribute_value.id()
+    );
 
     let expected_action_name = "create";
-    let mut filtered_action_prototypes = confirmation_resolver
+    let mut filtered_action_prototypes = found_confirmation
         .recommended_actions(ctx)
         .await
         .expect("could not find recommended actions from confirmation resolver")
@@ -242,7 +284,7 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
 
     (
         payload,
-        *found_confirmation_resolver.id(),
+        found_confirmation.attribute_value_id,
         found_action_prototype.workflow_prototype_id(),
         found_action_prototype.name().to_string(),
     )

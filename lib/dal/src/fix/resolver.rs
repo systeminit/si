@@ -1,14 +1,12 @@
-use crate::DalContext;
+use crate::{AttributeValueId, DalContext};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
-use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId,
-    ConfirmationResolverId, HistoryEventError, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, Timestamp, Visibility, WorkflowPrototypeId, WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, HistoryEventError,
+    StandardModel, StandardModelError, Timestamp, Visibility, WorkflowPrototypeId, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -23,75 +21,31 @@ pub enum FixResolverError {
 
 pub type FixResolverResult<T> = Result<T, FixResolverError>;
 
-const FIND_FOR_CONFIRMATION: &str =
-    include_str!("../queries/fix_resolver_find_for_confirmation.sql");
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct FixResolverContext {
-    pub component_id: ComponentId,
-    pub schema_id: SchemaId,
-    pub schema_variant_id: SchemaVariantId,
-}
-
-// Hrm - is this a universal resolver context? -- Adam
-impl Default for FixResolverContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl FixResolverContext {
-    pub fn new() -> Self {
-        FixResolverContext {
-            component_id: ComponentId::NONE,
-            schema_id: SchemaId::NONE,
-            schema_variant_id: SchemaVariantId::NONE,
-        }
-    }
-
-    pub fn component_id(&self) -> ComponentId {
-        self.component_id
-    }
-
-    pub fn set_component_id(&mut self, component_id: ComponentId) {
-        self.component_id = component_id;
-    }
-
-    pub fn schema_id(&self) -> SchemaId {
-        self.schema_id
-    }
-
-    pub fn set_schema_id(&mut self, schema_id: SchemaId) {
-        self.schema_id = schema_id;
-    }
-
-    pub fn schema_variant_id(&self) -> SchemaVariantId {
-        self.schema_variant_id
-    }
-
-    pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
-        self.schema_variant_id = schema_variant_id;
-    }
-}
+const FIND_FOR_CONFIRMATION_ATTRIBUTE_VALUE: &str =
+    include_str!("../queries/fix_resolver_find_for_confirmation_attribute_value.sql");
 
 pk!(FixResolverPk);
 pk!(FixResolverId);
 
+/// Determines what "fix" to run for a given [`"confirmation"`](crate::schema::variant::leaves)
+/// [`AttributeValueId`](crate::AttributeValue).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FixResolver {
     pk: FixResolverPk,
     id: FixResolverId,
-    workflow_prototype_id: WorkflowPrototypeId,
-    confirmation_resolver_id: ConfirmationResolverId,
-    success: Option<bool>,
-    #[serde(flatten)]
-    context: FixResolverContext,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
     visibility: Visibility,
+
+    /// The "fix" to run.
+    workflow_prototype_id: WorkflowPrototypeId,
+    /// Corresponds to the [`AttributeValue`](crate::AttributeValue) corresponding to the
+    attribute_value_id: AttributeValueId,
+    /// The ternary state of a "fix" execution.
+    success: Option<bool>,
 }
 
 impl_standard_model! {
@@ -104,29 +58,25 @@ impl_standard_model! {
 }
 
 impl FixResolver {
-    #[allow(clippy::too_many_arguments)]
+    /// Private constructor method for creating a [`FixResolver`]. Use [`Self::upsert()`] instead.
     #[instrument(skip_all)]
-    pub async fn new(
+    async fn new(
         ctx: &DalContext,
         workflow_prototype_id: WorkflowPrototypeId,
-        confirmation_resolver_id: ConfirmationResolverId,
+        attribute_value_id: AttributeValueId,
         success: Option<bool>,
-        context: FixResolverContext,
     ) -> FixResolverResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM fix_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM fix_resolver_create_v1($1, $2, $3, $4, $5)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &workflow_prototype_id,
-                    &confirmation_resolver_id,
+                    &attribute_value_id,
                     &success,
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
                 ],
             )
             .await?;
@@ -135,39 +85,32 @@ impl FixResolver {
         Ok(object)
     }
 
-    pub async fn find_for_confirmation(
+    /// Find [`self`](Self) for a given [`AttributeValueId`](crate::AttributeValue).
+    pub async fn find_for_confirmation_attribute_value(
         ctx: &DalContext,
-        confirmation_resolver_id: ConfirmationResolverId,
-        context: FixResolverContext,
+        attribute_value_id: AttributeValueId,
     ) -> FixResolverResult<Option<Self>> {
         let row = ctx
             .txns()
             .pg()
             .query_opt(
-                FIND_FOR_CONFIRMATION,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &confirmation_resolver_id,
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                ],
+                FIND_FOR_CONFIRMATION_ATTRIBUTE_VALUE,
+                &[ctx.read_tenancy(), ctx.visibility(), &attribute_value_id],
             )
             .await?;
         let object = standard_model::option_object_from_row(row)?;
         Ok(object)
     }
 
+    /// Find or create a new [`resolver`](Self) based on the information provided.
     pub async fn upsert(
         ctx: &DalContext,
         workflow_prototype_id: WorkflowPrototypeId,
-        confirmation_resolver_id: ConfirmationResolverId,
+        attribute_value_id: AttributeValueId,
         success: Option<bool>,
-        context: FixResolverContext,
     ) -> FixResolverResult<Self> {
         if let Some(mut resolver) =
-            Self::find_for_confirmation(ctx, confirmation_resolver_id, context.clone()).await?
+            Self::find_for_confirmation_attribute_value(ctx, attribute_value_id).await?
         {
             resolver
                 .set_workflow_prototype_id(ctx, workflow_prototype_id)
@@ -175,14 +118,7 @@ impl FixResolver {
             resolver.set_success(ctx, success).await?;
             Ok(resolver)
         } else {
-            Ok(Self::new(
-                ctx,
-                workflow_prototype_id,
-                confirmation_resolver_id,
-                success,
-                context,
-            )
-            .await?)
+            Ok(Self::new(ctx, workflow_prototype_id, attribute_value_id, success).await?)
         }
     }
 
@@ -191,14 +127,6 @@ impl FixResolver {
         Pk(WorkflowPrototypeId),
         FixResolverResult
     );
-    standard_model_accessor!(
-        confirmation_resolver_id,
-        Pk(ConfirmationResolverId),
-        FixResolverResult
-    );
+    standard_model_accessor!(attribute_value_id, Pk(AttributeValueId), FixResolverResult);
     standard_model_accessor!(success, Option<bool>, FixResolverResult);
-
-    pub fn context(&self) -> FixResolverContext {
-        self.context.clone()
-    }
 }

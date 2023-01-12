@@ -11,16 +11,11 @@ use super::{
 };
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use dal::{
-    attribute::context::AttributeContextBuilder,
-    func::argument::FuncArgument,
-    prototype_context::{
-        associate_prototypes, HasPrototypeContext, PrototypeContextError, PrototypeContextField,
-    },
-    validation::prototype::context::ValidationPrototypeContext,
-    AttributeContext, AttributePrototype, AttributePrototypeArgument, AttributePrototypeId,
-    AttributeValue, Component, ComponentId, ConfirmationPrototype, DalContext, Func,
-    FuncBackendKind, FuncBinding, FuncId, InternalProviderId, Prop, PrototypeListForFunc,
-    SchemaVariantId, StandardModel, Visibility, WsEvent,
+    attribute::context::AttributeContextBuilder, func::argument::FuncArgument,
+    validation::prototype::context::ValidationPrototypeContext, AttributeContext,
+    AttributePrototype, AttributePrototypeArgument, AttributePrototypeId, AttributeValue,
+    Component, ComponentId, DalContext, Func, FuncBackendKind, FuncBinding, FuncId,
+    InternalProviderId, Prop, SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use dal::{FuncBackendResponseType, PropKind, SchemaVariant, ValidationPrototype};
 
@@ -251,7 +246,6 @@ async fn attribute_view_for_leaf_func(
     func: &Func,
     schema_variant_id: SchemaVariantId,
     component_id: Option<ComponentId>,
-
     leaf_kind: LeafKind,
 ) -> FuncResult<AttributePrototypeView> {
     let prop = SchemaVariant::find_leaf_item_prop(ctx, schema_variant_id, leaf_kind).await?;
@@ -512,52 +506,31 @@ pub async fn save_func<'a>(
     func.set_code_plaintext(&ctx, request.code.as_deref())
         .await?;
 
-    let func_id_copy = *func.id();
-
     match func.backend_kind() {
         FuncBackendKind::JsValidation => {
             if let Some(FuncAssociations::Validation { prototypes }) = request.associations {
                 save_validation_func_prototypes(&ctx, &func, prototypes).await?;
             }
         }
-        FuncBackendKind::JsConfirmation => {
-            let mut associations: Vec<PrototypeContextField> = vec![];
-            if let Some(FuncAssociations::Confirmation {
-                schema_variant_ids,
-                component_ids,
-            }) = request.associations
-            {
-                associations.append(&mut schema_variant_ids.iter().map(|f| (*f).into()).collect());
-                associations.append(&mut component_ids.iter().map(|f| (*f).into()).collect());
-
-                let create_prototype_closure =
-                    move |ctx: DalContext, context_field: PrototypeContextField| async move {
-                        let func = Func::get_by_id(&ctx, &func_id_copy)
-                            .await?
-                            .ok_or(PrototypeContextError::FuncNotFound(func_id_copy))?;
-                        ConfirmationPrototype::new(
-                            &ctx,
-                            func.display_name().unwrap_or("unknown"),
-                            func_id_copy,
-                            ConfirmationPrototype::new_context_for_context_field(context_field),
-                        )
-                        .await?;
-
-                        Ok(())
-                    };
-
-                associate_prototypes(
-                    &ctx,
-                    &ConfirmationPrototype::list_for_func(&ctx, *func.id()).await?,
-                    &associations,
-                    Box::new(create_prototype_closure),
-                )
-                .await?;
-            }
-        }
         FuncBackendKind::JsAttribute => match func.backend_response_type() {
             FuncBackendResponseType::CodeGeneration => {
                 if let Some(FuncAssociations::CodeGeneration {
+                    schema_variant_ids,
+                    component_ids,
+                }) = request.associations
+                {
+                    save_leaf_prototypes(
+                        &ctx,
+                        &func,
+                        schema_variant_ids,
+                        component_ids,
+                        LeafKind::CodeGeneration,
+                    )
+                    .await?;
+                }
+            }
+            FuncBackendResponseType::Confirmation => {
+                if let Some(FuncAssociations::Confirmation {
                     schema_variant_ids,
                     component_ids,
                 }) = request.associations

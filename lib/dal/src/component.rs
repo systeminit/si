@@ -35,12 +35,12 @@ use crate::{
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
     AttributePrototype, AttributePrototypeError, AttributePrototypeId, AttributeReadContext,
-    CodeLanguage, DalContext, EdgeError, ExternalProviderId, Func, FuncBackendKind, HistoryActor,
-    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, OrganizationError,
-    Prop, PropError, PropId, ReadTenancyError, RootPropChild, Schema, SchemaError, SchemaId,
-    Socket, StandardModel, StandardModelError, Timestamp, TransactionsError, ValidationPrototype,
-    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
-    WorkflowRunnerError, WorkspaceError, WriteTenancy,
+    CodeLanguage, DalContext, EdgeError, ExternalProviderId, Func, FuncBackendKind, FuncError,
+    HistoryActor, HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError,
+    OrganizationError, Prop, PropError, PropId, ReadTenancyError, RootPropChild, Schema,
+    SchemaError, SchemaId, Socket, StandardModel, StandardModelError, Timestamp, TransactionsError,
+    ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
+    Visibility, WorkflowRunnerError, WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{NodeKind, UserId};
@@ -148,6 +148,8 @@ pub enum ComponentError {
     FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
     #[error("invalid prop value kind; expected {0} but found {1}")]
     InvalidPropValue(&'static str, Value),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("validation resolver error: {0}")]
@@ -178,6 +180,8 @@ pub enum ComponentError {
     SchemaVariantNotFinalized(SchemaVariantId),
     #[error("cannot update the resource tree when in a change set")]
     CannotUpdateResourceTreeInChangeSet,
+    #[error("no func binding return value for leaf entry name: {0}")]
+    MissingFuncBindingReturnValueIdForLeafEntryName(String),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -799,7 +803,7 @@ impl Component {
     /// [`RootPropChild`](crate::RootPropChild) [`Prop`](crate::Prop) for the given
     /// [`Component`](Self).
     #[instrument(skip_all)]
-    pub async fn root_child_attribute_value_for_component(
+    pub async fn root_prop_child_attribute_value_for_component(
         ctx: &DalContext,
         component_id: ComponentId,
         root_prop_child: RootPropChild,

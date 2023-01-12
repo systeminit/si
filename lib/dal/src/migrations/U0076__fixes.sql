@@ -1,17 +1,17 @@
 CREATE TABLE fixes
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
+    pk                          ident primary key                 default ident_create_v1(),
+    id                          ident                    not null default ident_create_v1(),
     tenancy_universal           bool                     NOT NULL,
     tenancy_billing_account_ids ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
+    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    confirmation_resolver_id    ident                   NOT NULL,
-    component_id                ident                   NOT NULL,
+    attribute_value_id          ident                    NOT NULL,
+    component_id                ident                    NOT NULL,
     action                      text                     NOT NULL,
     workflow_runner_id          ident,
     started_at                  text,
@@ -20,9 +20,9 @@ CREATE TABLE fixes
     completion_message          text
 );
 
--- NOTE(nick): create a better unique index.
+-- TODO(nick): create a better unique index.
 -- CREATE UNIQUE INDEX unique_fixes
---     ON fixes (confirmation_resolver_id,
+--     ON fixes (attribute_value_id,
 --               component_id,
 --               tenancy_universal,
 --               tenancy_billing_account_ids,
@@ -46,7 +46,7 @@ VALUES ('fixes', 'model', 'fix', 'Fix'),
 CREATE OR REPLACE FUNCTION fix_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_confirmation_resolver_id ident,
+    this_attribute_value_id ident,
     this_component_id ident,
     this_action text,
     OUT object json) AS
@@ -61,11 +61,11 @@ BEGIN
 
     INSERT INTO fixes (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                        tenancy_workspace_ids, visibility_change_set_pk, visibility_deleted_at,
-                       confirmation_resolver_id, component_id, action)
+                       attribute_value_id, component_id, action)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at,
-            this_confirmation_resolver_id, this_component_id, this_action)
+            this_attribute_value_id, this_component_id, this_action)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

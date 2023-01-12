@@ -99,11 +99,6 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
         debug!("enabling resolver endpoint");
         router = router.merge(Router::new().route("/resolver", get(handlers::ws_execute_resolver)));
     }
-    if config.enable_confirmation() {
-        debug!("enabling confirmation endpoint");
-        router = router
-            .merge(Router::new().route("/confirmation", get(handlers::ws_execute_confirmation)));
-    }
     if config.enable_validation() {
         debug!("enabling validation endpoint");
         router =
