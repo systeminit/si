@@ -4,7 +4,10 @@ use crate::component::ComponentKind;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
 use crate::validation::Validation;
-use crate::{action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation};
+use crate::{
+    action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation, FuncDescription,
+    FuncDescriptionContents,
+};
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
     ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
@@ -565,6 +568,18 @@ impl MigrationDriver {
                 ),
             )
             .await?;
+        FuncDescription::new(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            FuncDescriptionContents::Confirmation {
+                name: "Ingress Exists?".to_string(),
+                success_description: Some("Ingress exists!".to_string()),
+                failure_description: Some("This Ingress rule has not been created yet. Please run the fix above to create it!".to_string()),
+                provider: Some("AWS".to_string()),
+            },
+        )
+            .await?;
 
         let name = "create";
         let context = ActionPrototypeContext {
@@ -1044,6 +1059,18 @@ impl MigrationDriver {
                 ),
             )
             .await?;
+        FuncDescription::new(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            FuncDescriptionContents::Confirmation {
+                name: "Egress Exists?".to_string(),
+                success_description: Some("Egress exists!".to_string()),
+                failure_description: Some("This Egress rule has not been created yet. Please run the fix above to create it!".to_string()),
+                provider: Some("AWS".to_string()),
+            },
+        )
+            .await?;
 
         let name = "create";
         let context = ActionPrototypeContext {
@@ -1512,6 +1539,18 @@ impl MigrationDriver {
             .set_success_description(ctx, Some("Security Group exists!".to_owned()))
             .await?;
         confirmation_prototype.set_failure_description(ctx, Some("This Security Group has not been created yet. Please run the fix above to create it!".to_owned())).await?;
+        FuncDescription::new(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            FuncDescriptionContents::Confirmation {
+                name: "Security Group Exists?".to_string(),
+                success_description: Some("Security Group exists!".to_string()),
+                failure_description: Some("This Security Group has not been created yet. Please run the fix above to create it!".to_string()),
+                provider: Some("AWS".to_string()),
+            },
+        )
+            .await?;
 
         let name = "create";
         let context = ActionPrototypeContext {
