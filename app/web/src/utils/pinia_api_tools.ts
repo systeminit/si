@@ -118,6 +118,7 @@ export type ApiRequestDescription<
   onFail?(response: any): Promise<void> | void;
   headers?: Record<string, any>;
   options?: Record<string, any>; // TODO: pull in axios options type?
+  optimistic?: () => (() => void) | void;
 };
 
 /** type describing how we store the request statuses */
@@ -208,6 +209,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       }
 
       // TODO: apply optimistic update if the action has it defined
+      let rollbackFn;
+      if (requestSpec.optimistic) {
+        rollbackFn = requestSpec.optimistic();
+      }
 
       // mark the request as pending in the store
       // and attach a deferred promise we'll resolve when completed
@@ -275,7 +280,7 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         console.log(err);
         // TODO: trigger global error hook that can be added on plugin init (or split by api)
 
-        // TODO: apply optimistic rollback if one is defined
+        if (rollbackFn) rollbackFn();
 
         // mark the request as failure and store the error info
         store.$patch((state) => {

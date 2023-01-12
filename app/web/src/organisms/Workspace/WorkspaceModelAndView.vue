@@ -357,18 +357,18 @@ function onConfirmDelete() {
   executeDeleteSelection();
   confirmDeleteModalRef.value?.close();
 }
-function executeDeleteSelection() {
+async function executeDeleteSelection() {
   if (selectedEdgeId.value) {
-    componentsStore.DELETE_EDGE(selectedEdgeId.value);
+    await componentsStore.DELETE_EDGE(selectedEdgeId.value);
   } else if (selectedComponentIds.value) {
     for (const componentId of selectedComponentIds.value) {
-      componentsStore.DELETE_COMPONENT(componentId);
+      await componentsStore.DELETE_COMPONENT(componentId);
     }
   }
 }
 
 watch(
-  () => selectedComponentIds.value,
+  () => [selectedComponentIds.value, selectedEdgeId.value],
   () => {
     if (selectedComponentIds.value.length > 0) {
       const selectedComponentsKeys = _.map(selectedComponentIds.value, (c) => {

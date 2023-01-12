@@ -61,6 +61,13 @@ const strokeColor = computed(() => {
   if (isDevMode && props.edge.def.isInvisible) {
     return "rgba(100,50,255,0.1)";
   }
+
+  if (props.edge.def.changeStatus === "added") {
+    return colors.success[500];
+  }
+  if (props.edge.def.changeStatus === "deleted") {
+    return colors.destructive[500];
+  }
   return theme.value === "dark" ? colors.shade[0] : colors.shade[100];
 });
 

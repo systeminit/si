@@ -15,12 +15,12 @@ export interface ChangeSet extends StandardModelNoVisibility {
   status: ChangeSetStatus;
 }
 
-export type ComponentChangeStatus = "added" | "deleted" | "modified";
+export type ChangeStatus = "added" | "deleted" | "modified";
 
 export interface ComponentStatsGroup {
   componentId: string;
   componentName: string;
-  componentStatus: ComponentChangeStatus;
+  componentStatus: ChangeStatus;
 }
 
 export interface ComponentStats {
