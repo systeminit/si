@@ -3,7 +3,6 @@
 use color_eyre::Result;
 use sdf::{
     Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
-    SyncProcessor,
 };
 use telemetry_application::{
     prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
@@ -16,6 +15,7 @@ mod args;
 /// `sdf::FaktoryProcessor` and `sdf::SyncProcessor` are also available
 type JobProcessor = sdf::NatsProcessor;
 // type JobProcessor = sdf::FaktoryProcessor;
+// type JobProcessor = sdf::SyncProcessor;
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 
@@ -127,15 +127,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
-    //Server::start_faktory_job_executor(
-    //    pg_pool.clone(),
-    //    nats.clone(),
-    //    faktory_conn.clone(),
-    //    veritech.clone(),
-    //    encryption_key,
-    //)
-    //.await;
-
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
             let (server, shutdown_broadcast_rx) = Server::http(
@@ -143,7 +134,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 telemetry,
                 pg_pool.clone(),
                 nats.clone(),
-                job_processor,
+                job_processor.clone(),
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
@@ -152,7 +143,8 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             Server::start_resource_refresh_scheduler(
                 pg_pool,
                 nats,
-                Box::new(SyncProcessor::new()),
+                // TODO: have a different processor instance (with a different alive_marker) for resource syncing and wait for it
+                job_processor,
                 veritech,
                 encryption_key,
                 shutdown_broadcast_rx,
@@ -167,7 +159,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 telemetry,
                 pg_pool.clone(),
                 nats.clone(),
-                job_processor,
+                job_processor.clone(),
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
@@ -177,7 +169,8 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             Server::start_resource_refresh_scheduler(
                 pg_pool,
                 nats,
-                Box::new(SyncProcessor::new()),
+                // TODO: have a different processor instance (with a different alive_marker) for resource syncing and wait for it
+                job_processor,
                 veritech,
                 encryption_key,
                 shutdown_broadcast_rx,
@@ -188,13 +181,13 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         }
     }
 
-    // Blocks until all FaktoryProcessors are gone so we don't skip jobs that are still being sent to faktory_async
-    info!("Waiting for all faktory processors to finish pushing jobs");
+    // Blocks until all JobProcessors are gone so we don't skip jobs that are still being sent to job transport
+    info!("Waiting for all job processors to finish pushing jobs");
     let _ = job_processor_shutdown_rx.recv().await;
 
     info!("Shutting down the job processor client");
     if let Err(err) = (&job_client as &dyn JobProcessorClientCloser).close().await {
-        error!("Failed to close faktory client: {err}");
+        error!("Failed to close job client: {err}");
     }
 
     Ok(())

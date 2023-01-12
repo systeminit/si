@@ -3,14 +3,12 @@
 //! value is proxied or not. Proxied values "point" to another [`AttributeValue`] to provide
 //! the attribute's value.
 
-use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
-use ulid::Ulid;
 
 use crate::{
     attribute::{
@@ -911,48 +909,8 @@ impl AttributeValue {
         }
     }
 
-    /// Returns a [`HashMap`] with key [`AttributeValueId`](Self) and value
-    /// [`Vec<AttributeValueId>`](Self) where the keys correspond to [`AttributeValues`](Self) that
-    /// are affected (directly and indirectly) by at least one of the provided
-    /// [`AttributeValueIds`](Self) having a new value. The [`Vec<AttributeValueId>`](Self)
-    /// correspond to the [`AttributeValues`](Self) that the key directly depends on that are also
-    /// affected by at least one of the provided [`AttributeValueIds`](Self) having a new value.
-    ///
-    /// **NOTE**: This has the side effect of **CREATING NEW [`AttributeValues`](Self)**
-    /// if this [`AttributeValue`] affects an [`AttributeContext`](crate::AttributeContext) where an
-    /// [`AttributePrototype`](crate::AttributePrototype) that uses it didn't already have an
-    /// [`AttributeValue`].
-    pub async fn dependent_value_graph(
-        ctx: &DalContext,
-        attribute_value_ids: Vec<AttributeValueId>,
-        jid: Ulid,
-    ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
-        info!(
-            "AttributeValue.dependent_value_graph(): {:?}",
-            attribute_value_ids
-        );
+    pub async fn create_dependent_values(ctx: &DalContext, attribute_value_ids: &[AttributeValueId]) -> AttributeValueResult<()> {
         let total_start = std::time::Instant::now();
-
-        // Coordinate with council on when we are free to proceed
-        let pub_channel = format!("council.{jid}");
-        let reply_channel = format!("{pub_channel}.reply");
-        let mut subscription = ctx.nats_conn().subscribe(&reply_channel).await?;
-
-        let message = serde_json::to_vec(&council::Request::CreateValues)?;
-        ctx.nats_conn()
-            .publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
-            .await?;
-
-        // TODO: timeout so we don't get stuck here forever if council goes away
-        loop {
-            if let Some(message) = subscription.next().await {
-                match serde_json::from_slice(message?.data())? {
-                    council::Response::OkToCreate => break,
-                    council::Response::Shutdown => return Ok(Default::default()),
-                    msg => unreachable!("{msg:?}"),
-                }
-            }
-        }
 
         let _rows = ctx
             .pg_txn()
@@ -970,13 +928,29 @@ impl AttributeValue {
             "AttributeValue.dependent_value_graph(): Create new affected took {:?}",
             total_start.elapsed()
         );
+        Ok(())
+    }
 
-        let message = serde_json::to_vec(&council::Request::ValueCreationDone)?;
-        ctx.nats_conn()
-            .publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
-            .await?;
-
-        let section_start = std::time::Instant::now();
+    /// Returns a [`HashMap`] with key [`AttributeValueId`](Self) and value
+    /// [`Vec<AttributeValueId>`](Self) where the keys correspond to [`AttributeValues`](Self) that
+    /// are affected (directly and indirectly) by at least one of the provided
+    /// [`AttributeValueIds`](Self) having a new value. The [`Vec<AttributeValueId>`](Self)
+    /// correspond to the [`AttributeValues`](Self) that the key directly depends on that are also
+    /// affected by at least one of the provided [`AttributeValueIds`](Self) having a new value.
+    ///
+    /// **NOTE**: This has the side effect of **CREATING NEW [`AttributeValues`](Self)**
+    /// if this [`AttributeValue`] affects an [`AttributeContext`](crate::AttributeContext) where an
+    /// [`AttributePrototype`](crate::AttributePrototype) that uses it didn't already have an
+    /// [`AttributeValue`].
+    pub async fn dependent_value_graph(
+        ctx: &DalContext,
+        attribute_value_ids: &[AttributeValueId],
+    ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
+        info!(
+            "AttributeValue.dependent_value_graph(): {:?}",
+            attribute_value_ids
+        );
+        let total_start = std::time::Instant::now();
 
         let rows = ctx
             .txns()
@@ -987,8 +961,7 @@ impl AttributeValue {
             )
             .await?;
         info!(
-            "AttributeValue.dependent_value_graph(): Graph query took {:?} (total elapsed {:?}",
-            section_start.elapsed(),
+            "AttributeValue.dependent_value_graph(): Graph query took {:?}",
             total_start.elapsed(),
         );
 
