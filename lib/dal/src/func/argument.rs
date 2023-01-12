@@ -216,7 +216,7 @@ impl FuncArgument {
     }
 
     /// Remove the [`FuncArgument`](Self) along with any [`AttributePrototypeArgument`](crate::AttributePrototypeArgument) rows that reference it.
-    /// This should be used instead of the [`delete`](Self::delete) method since it keeps the two tables in sync.
+    /// This should be used instead of the [`delete_by_id`](Self::delete_by_id) method since it keeps the two tables in sync.
     pub async fn remove(
         ctx: &DalContext,
         func_argument_id: &FuncArgumentId,
@@ -229,10 +229,10 @@ impl FuncArgument {
         for prototype_argument in
             AttributePrototypeArgument::list_by_func_argument_id(ctx, *func_argument_id).await?
         {
-            prototype_argument.delete(ctx).await?;
+            prototype_argument.delete_by_id(ctx).await?;
         }
 
-        func_arg.delete(ctx).await?;
+        func_arg.delete_by_id(ctx).await?;
 
         Ok(())
     }

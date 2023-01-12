@@ -388,7 +388,7 @@ impl AttributePrototype {
     /// all [`AttributePrototypeArguments`](crate::AttributePrototypeArgument) that belong to the
     /// prototype.
     ///
-    /// Caution: this should be used rather than [`StandardModel::delete()`] when deleting an
+    /// Caution: this should be used rather than [`StandardModel::delete_by_id()`] when deleting an
     /// [`AttributePrototype`]. That method should never be called directly.
     pub async fn remove(
         ctx: &DalContext,
@@ -415,7 +415,7 @@ impl AttributePrototype {
             AttributePrototypeArgument::list_for_attribute_prototype(ctx, *attribute_prototype_id)
                 .await?
         {
-            argument.delete(ctx).await?;
+            argument.delete_by_id(ctx).await?;
         }
         standard_model::unset_all_belongs_to(
             ctx,
@@ -423,7 +423,7 @@ impl AttributePrototype {
             attribute_prototype.id(),
         )
         .await?;
-        attribute_prototype.delete(ctx).await?;
+        attribute_prototype.delete_by_id(ctx).await?;
 
         // Start with the initial value(s) from the prototype and build a work queue based on the
         // value's children (and their children, recursively). Once we find the child values,
@@ -451,7 +451,7 @@ impl AttributePrototype {
                 )
                 .await?
                 {
-                    argument.delete(ctx).await?;
+                    argument.delete_by_id(ctx).await?;
                 }
                 standard_model::unset_all_belongs_to(
                     ctx,
@@ -459,7 +459,7 @@ impl AttributePrototype {
                     current_prototype.id(),
                 )
                 .await?;
-                current_prototype.delete(ctx).await?;
+                current_prototype.delete_by_id(ctx).await?;
             }
 
             // Delete the value if its context is not "least-specific".
@@ -478,7 +478,7 @@ impl AttributePrototype {
                 current_value.id(),
             )
             .await?;
-            current_value.delete(ctx).await?;
+            current_value.delete_by_id(ctx).await?;
         }
         Ok(())
     }

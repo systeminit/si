@@ -52,7 +52,7 @@ async fn save_attr_func_proto_arguments(
         for proto_arg in
             AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?
         {
-            proto_arg.delete(ctx).await?;
+            proto_arg.delete_by_id(ctx).await?;
         }
     }
 
@@ -114,7 +114,7 @@ async fn save_attr_func_proto_arguments(
         AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?
     {
         if !id_set.contains(proto_arg.id()) {
-            proto_arg.delete(ctx).await?;
+            proto_arg.delete_by_id(ctx).await?;
         }
     }
 
@@ -379,7 +379,7 @@ async fn reset_prototype_and_value_to_builtin_function(
     for proto_arg in
         AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?
     {
-        proto_arg.delete(ctx).await?;
+        proto_arg.delete_by_id(ctx).await?;
     }
 
     // This should reset the prototype to a builtin value function
@@ -476,7 +476,7 @@ async fn save_validation_func_prototypes(
     for proto in ValidationPrototype::list_for_func(ctx, *func.id()).await? {
         if !id_set.contains(proto.id()) {
             if let Some(proto) = ValidationPrototype::get_by_id(ctx, proto.id()).await? {
-                proto.delete(ctx).await?;
+                proto.delete_by_id(ctx).await?;
             }
         }
     }
