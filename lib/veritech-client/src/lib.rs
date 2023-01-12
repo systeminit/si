@@ -410,7 +410,7 @@ mod tests {
             ResolverFunctionResponseType::Boolean,
             ResolverFunctionResponseType::String,
             ResolverFunctionResponseType::Map,
-            ResolverFunctionResponseType::PropObject,
+            ResolverFunctionResponseType::Object,
         ] {
             let value = match response_type {
                 ResolverFunctionResponseType::Array => serde_json::json!({ "value": [1, 2, 3, 4] }),
@@ -419,7 +419,7 @@ mod tests {
                 ResolverFunctionResponseType::String => {
                     serde_json::json!({ "value": "a string is a sequence of characters" })
                 }
-                ResolverFunctionResponseType::Map | ResolverFunctionResponseType::PropObject => {
+                ResolverFunctionResponseType::Map | ResolverFunctionResponseType::Object => {
                     serde_json::json!({ "value": { "an_object": "has keys" } })
                 }
                 _ => serde_json::json!({ "value": null }),
@@ -475,14 +475,14 @@ mod tests {
             ResolverFunctionResponseType::Boolean,
             ResolverFunctionResponseType::String,
             ResolverFunctionResponseType::Map,
-            ResolverFunctionResponseType::PropObject,
+            ResolverFunctionResponseType::Object,
         ] {
             let value = match response_type {
                 ResolverFunctionResponseType::Array => serde_json::json!({ "value": "foo"}),
                 ResolverFunctionResponseType::Integer => serde_json::json!({ "value": "a string" }),
                 ResolverFunctionResponseType::Boolean => serde_json::json!({ "value": "a string" }),
                 ResolverFunctionResponseType::String => serde_json::json!({ "value": 12345 }),
-                ResolverFunctionResponseType::Map | ResolverFunctionResponseType::PropObject => {
+                ResolverFunctionResponseType::Map | ResolverFunctionResponseType::Object => {
                     serde_json::json!({ "value": ["an_object", "has keys" ] })
                 }
                 _ => serde_json::json!({ "value": null }),

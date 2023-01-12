@@ -29,7 +29,7 @@ pub enum ResolverFunctionResponseType {
     Identity,
     Integer,
     Map,
-    PropObject,
+    Object,
     Qualification,
     CodeGeneration,
     Confirmation,

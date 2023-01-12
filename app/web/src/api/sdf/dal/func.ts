@@ -13,7 +13,7 @@ export enum FuncBackendResponseType {
   Identity = "Identity",
   Integer = "Integer",
   Map = "Map",
-  PropObject = "PropObject",
+  Object = "Object",
   Qualification = "Qualification",
   CodeGeneration = "CodeGeneration",
   Confirmation = "Confirmation",

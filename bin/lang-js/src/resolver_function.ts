@@ -26,7 +26,7 @@ export enum FuncBackendResponseType {
   Identity = "Identity",
   Integer = "Integer",
   Map = "Map",
-  PropObject = "PropObject",
+  Object = "Object",
   Qualification = "Qualification",
   CodeGeneration = "CodeGeneration",
   Confirmation = "Confirmation",
@@ -129,7 +129,7 @@ const typeChecks: {
   [FuncBackendResponseType.Array]: isArray,
   [FuncBackendResponseType.Boolean]: isBoolean,
   [FuncBackendResponseType.Integer]: isInteger,
-  [FuncBackendResponseType.PropObject]: isObject,
+  [FuncBackendResponseType.Object]: isObject,
   [FuncBackendResponseType.String]: isString,
   [FuncBackendResponseType.Map]: isObject, // map funcs return js objects
 
@@ -140,7 +140,7 @@ const nullables: { [key in FuncBackendResponseType]?: boolean } = {
   [FuncBackendResponseType.Array]: true,
   [FuncBackendResponseType.Boolean]: true,
   [FuncBackendResponseType.Integer]: true,
-  [FuncBackendResponseType.PropObject]: true,
+  [FuncBackendResponseType.Object]: true,
   [FuncBackendResponseType.String]: true,
   [FuncBackendResponseType.Map]: true,
 

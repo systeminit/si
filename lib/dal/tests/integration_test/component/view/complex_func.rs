@@ -127,7 +127,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         ctx,
         "test:complexObject",
         FuncBackendKind::JsAttribute,
-        FuncBackendResponseType::PropObject,
+        FuncBackendResponseType::Object,
     )
     .await
     .expect("could not create func");
@@ -314,7 +314,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         ctx,
         "test:complexObjectPrefix",
         FuncBackendKind::JsAttribute,
-        FuncBackendResponseType::PropObject,
+        FuncBackendResponseType::Object,
     )
     .await
     .expect("could not create func");
@@ -348,7 +348,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         ctx,
         "test:complexObjectSuffix",
         FuncBackendKind::JsAttribute,
-        FuncBackendResponseType::PropObject,
+        FuncBackendResponseType::Object,
     )
     .await
     .expect("could not create func");

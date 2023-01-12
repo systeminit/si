@@ -111,7 +111,7 @@ impl From<PropKind> for FuncBackendResponseType {
             PropKind::Array => Self::Array,
             PropKind::Boolean => Self::Boolean,
             PropKind::Integer => Self::Integer,
-            PropKind::Object => Self::PropObject,
+            PropKind::Object => Self::Object,
             PropKind::Map => Self::Map,
             PropKind::String => Self::String,
         }
