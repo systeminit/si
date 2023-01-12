@@ -123,7 +123,7 @@ impl JobConsumer for DependentValuesUpdate {
             if let Some(message) = subscription.next().await {
                 match serde_json::from_slice(message?.data())? {
                     council::Response::OkToCreate => break,
-                    council::Response::Shutdown => return Ok(Default::default()),
+                    council::Response::Shutdown => return Ok(()),
                     msg => unreachable!("{msg:?}"),
                 }
             }
@@ -220,7 +220,7 @@ impl JobConsumer for DependentValuesUpdate {
                                 .build(self.access_builder().build(self.visibility()))
                                 .await?;
                             // Send a completed status for this value and *remove* it from the hash
-                            status_updater.values_completed(&ctx, vec![id]).await?;
+                            //status_updater.values_completed(&ctx, vec![id]).await?;
 
                             ctx.commit().await?;
                         }

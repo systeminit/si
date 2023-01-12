@@ -95,6 +95,10 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let (job_client, job_processor) = JobProcessor::connect(&config, alive_marker).await?;
 
+    let (resource_alive_marker, mut resource_job_processor_shutdown_rx) = mpsc::channel(1);
+    let (resource_job_client, resource_job_processor) =
+        JobProcessor::connect(&config, resource_alive_marker).await?;
+
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
     let veritech = Server::create_veritech_client(nats.clone());
@@ -143,8 +147,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             Server::start_resource_refresh_scheduler(
                 pg_pool,
                 nats,
-                // TODO: have a different processor instance (with a different alive_marker) for resource syncing and wait for it
-                job_processor,
+                resource_job_processor,
                 veritech,
                 encryption_key,
                 shutdown_broadcast_rx,
@@ -169,8 +172,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             Server::start_resource_refresh_scheduler(
                 pg_pool,
                 nats,
-                // TODO: have a different processor instance (with a different alive_marker) for resource syncing and wait for it
-                job_processor,
+                resource_job_processor,
                 veritech,
                 encryption_key,
                 shutdown_broadcast_rx,
@@ -184,9 +186,16 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     // Blocks until all JobProcessors are gone so we don't skip jobs that are still being sent to job transport
     info!("Waiting for all job processors to finish pushing jobs");
     let _ = job_processor_shutdown_rx.recv().await;
+    let _ = resource_job_processor_shutdown_rx.recv().await;
 
     info!("Shutting down the job processor client");
     if let Err(err) = (&job_client as &dyn JobProcessorClientCloser).close().await {
+        error!("Failed to close job client: {err}");
+    }
+    if let Err(err) = (&resource_job_client as &dyn JobProcessorClientCloser)
+        .close()
+        .await
+    {
         error!("Failed to close job client: {err}");
     }
 

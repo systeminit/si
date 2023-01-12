@@ -168,7 +168,16 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
             .unwrap();
         }
 
-        // TODO: handle nodes that dont depend on anything
+        for (reply_channel, node_id) in complete_graph.fetch_all_available() {
+            nats.publish(
+                reply_channel,
+                serde_json::to_vec(&Response::OkToProcess {
+                    node_ids: vec![node_id],
+                }).unwrap(),
+            )
+            .await
+            .unwrap();
+        }
 
         // FIXME: handle timeouts
         let (reply_channel, request) = tokio::select! {
@@ -295,30 +304,50 @@ pub struct ChangeSetGraph {
 pub struct NodeMetadata {
     // This should really be an ordered set, to remove duplicates, but we'll deal with
     // that later.
-    wanted_by_reply_channels: Vec<String>,
-    processing_reply_channel: Option<String>, // reply channel
+    wanted_by_reply_channels: VecDeque<String>,
+    processing_reply_channel: Option<String>,
     depends_on_node_ids: HashSet<Id>,
 }
 
 impl NodeMetadata {
     pub fn merge_metadata(&mut self, reply_channel: String, dependencies: &Vec<Id>) {
-        self.wanted_by_reply_channels.push(reply_channel);
+        self.wanted_by_reply_channels.push_back(reply_channel);
         self.depends_on_node_ids.extend(dependencies);
     }
 
     pub fn remove_dependency(&mut self, node_id: Id) {
         self.depends_on_node_ids.remove(&node_id);
     }
+
+    pub fn next_to_process(&mut self) -> Option<String> {
+        if self.depends_on_node_ids.is_empty() && self.processing_reply_channel.is_none() {
+            self.processing_reply_channel = self.wanted_by_reply_channels.pop_front();
+            return self.processing_reply_channel.clone();
+        }
+        None
+    }
 }
 
 impl ChangeSetGraph {
+    pub fn fetch_all_available(&mut self) -> Vec<(String, Id)> {
+        let mut result = Vec::new();
+        for graph in self.dependency_data.values_mut() {
+            for (id, metadata) in graph.iter_mut() {
+                if let Some(reply_channel) = metadata.next_to_process() {
+                    result.push((reply_channel, *id));
+                }
+            }
+        }
+        result
+    }
+
     pub fn merge_dependency_graph(
         &mut self,
         reply_channel: String,
         new_dependency_data: Graph,
         change_set_id: Id,
     ) -> Result<(), Error> {
-        let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
+        let change_set_graph_data = self.dependency_data.entry(change_set_id).or_insert(HashMap::new());
 
         for (attribute_value_id, dependencies) in new_dependency_data {
             change_set_graph_data
@@ -356,7 +385,7 @@ impl ChangeSetGraph {
         reply_channel: String,
         change_set_id: Id,
         node_id: Id,
-    ) -> Result<Vec<String>, Error> {
+    ) -> Result<VecDeque<String>, Error> {
         let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
 
         let node_is_complete;
@@ -376,7 +405,7 @@ impl ChangeSetGraph {
         }
 
         if node_is_complete {
-            // Timeout could race here
+            // Note: Timeout could race here
             let node_metadata = change_set_graph_data.remove(&node_id).unwrap();
 
             for node_metadata in change_set_graph_data.values_mut() {
@@ -386,7 +415,7 @@ impl ChangeSetGraph {
             return Ok(node_metadata.wanted_by_reply_channels);
         }
 
-        Ok(Vec::new())
+        Ok(VecDeque::new())
     }
 }
 
@@ -454,5 +483,6 @@ pub async fn job_is_going_away(
     _reply_channel: String,
     _change_set_id: Id,
 ) -> Result<(), Error> {
-    todo!()
+    Ok(())
+    //todo!()
 }
