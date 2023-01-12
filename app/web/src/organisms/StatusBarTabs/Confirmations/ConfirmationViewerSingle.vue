@@ -56,7 +56,7 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import StatusMessageBox from "@/molecules/StatusMessageBox.vue";
-import Modal from "@/ui-lib/Modal.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
 import { Confirmation } from "@/store/fixes/fixes.store";
 
 defineProps<{

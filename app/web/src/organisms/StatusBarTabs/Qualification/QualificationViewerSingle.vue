@@ -92,7 +92,7 @@ import { computed, ref, toRef } from "vue";
 import _ from "lodash";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import StatusMessageBox from "@/molecules/StatusMessageBox.vue";
-import Modal from "@/ui-lib/Modal.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
 
 const props = defineProps<{
   qualification: Qualification;

@@ -170,7 +170,7 @@ import VormInputOption from "@/ui-lib/forms/VormInputOption.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import Divider from "@/ui-lib/layout/Divider.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
-import Modal from "@/ui-lib/Modal.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
 import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { useStatusStore } from "@/store/status.store";

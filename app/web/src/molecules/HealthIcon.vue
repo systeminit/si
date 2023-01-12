@@ -75,7 +75,7 @@ import { ref, computed } from "vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { IconNames } from "@/ui-lib/icons/icon_set";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
-import Modal from "@/ui-lib/Modal.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
 
 const props = defineProps<{
   health: ResourceHealth;

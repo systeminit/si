@@ -29,6 +29,7 @@ export const CUSTOMIZABLE_FUNC_TYPES = {
   [FuncVariant.Attribute]: {
     pluralLabel: "Attributes",
     singularLabel: "Attribute",
+    enableBuiltIn: true,
   },
   [FuncVariant.CodeGeneration]: {
     pluralLabel: "Code Generations",

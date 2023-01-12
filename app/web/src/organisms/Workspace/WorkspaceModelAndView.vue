@@ -50,6 +50,7 @@
       @update:selection="onDiagramUpdateSelection"
       @right-click-element="onRightClickElement"
     />
+
     <DropdownMenu ref="contextMenuRef">
       <template v-if="selectedEdgeId">
         <DropdownMenuItem icon="trash" @select="triggerDeleteSelection">
@@ -87,6 +88,30 @@
       <template v-else>Select a single component to edit it</template>
     </div>
   </SiPanel>
+
+  <Modal ref="confirmDeleteModalRef" title="Are you sure?">
+    <Stack space="sm">
+      <p>You're about to delete some things.</p>
+      <p>
+        These items will be marked for deletion in this change set. When this
+        change set is merged, they will be removed from your model.
+      </p>
+
+      <div class="flex space-x-sm justify-end">
+        <VButton2
+          icon="x"
+          tone="shade"
+          variant="ghost"
+          @click="confirmDeleteModalRef?.close()"
+        >
+          Cancel
+        </VButton2>
+        <VButton2 icon="trash" tone="destructive" @click="onConfirmDelete">
+          Confirm
+        </VButton2>
+      </div>
+    </Stack>
+  </Modal>
 </template>
 
 <script lang="ts" setup>
@@ -102,6 +127,9 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { useComponentsStore } from "@/store/components.store";
 import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
+import VButton2 from "@/ui-lib/VButton2.vue";
+import Stack from "@/ui-lib/layout/Stack.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
@@ -294,6 +322,8 @@ function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
   }
 }
 
+const confirmDeleteModalRef = ref<InstanceType<typeof Modal>>();
+
 function onDiagramDelete(_e: DeleteElementsEvent) {
   // delete event includes what to delete, but its the same as current selection
   triggerDeleteSelection();
@@ -319,6 +349,15 @@ function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
 }
 
 function triggerDeleteSelection() {
+  // TODO: decide if modal is necessary
+  confirmDeleteModalRef.value?.open();
+}
+function onConfirmDelete() {
+  // TODO: show loading in modal, and close after complete
+  executeDeleteSelection();
+  confirmDeleteModalRef.value?.close();
+}
+function executeDeleteSelection() {
   if (selectedEdgeId.value) {
     componentsStore.DELETE_EDGE(selectedEdgeId.value);
   } else if (selectedComponentIds.value) {

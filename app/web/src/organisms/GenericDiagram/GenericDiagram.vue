@@ -25,7 +25,7 @@ overflow hidden */
     <DiagramControls
       :zoom-level="zoomLevel"
       @update:zoom="setZoom"
-      @open:help="openHelpModal"
+      @open:help="helpModalRef.open()"
     />
     <v-stage
       v-if="customFontsLoaded"
@@ -140,7 +140,7 @@ overflow hidden */
         />
       </v-layer>
     </v-stage>
-    <DiagramHelpModal :open="helpModalOpen" @close="helpModalClose" />
+    <DiagramHelpModal ref="helpModalRef" />
   </div>
 </template>
 
@@ -442,7 +442,7 @@ function onKeyDown(e: KeyboardEvent) {
   // console.log(e);
 
   // handle opening the help modal
-  if (e.key === "?" || e.key === "/") openHelpModal();
+  if (e.key === "?" || e.key === "/") helpModalRef.value.ref.open();
 
   // handle arrow keys - nudge and alignment
   if (e.key.startsWith("Arrow")) {
@@ -1834,12 +1834,5 @@ defineExpose({
   endInsertElement,
 });
 
-// Help Modal
-const helpModalOpen = ref(false);
-const openHelpModal = () => {
-  helpModalOpen.value = true;
-};
-const helpModalClose = () => {
-  helpModalOpen.value = false;
-};
+const helpModalRef = ref();
 </script>
