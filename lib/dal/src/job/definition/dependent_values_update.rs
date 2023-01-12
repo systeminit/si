@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::{collections::HashMap, convert::TryFrom};
 
-use ulid::Ulid;
 use async_trait::async_trait;
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
@@ -94,13 +94,29 @@ impl JobConsumer for DependentValuesUpdate {
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
-        let jid = Ulid::from_string(&self.job.as_ref().unwrap().id)?;
+        let jid = council::Id::from_string(&self.job.as_ref().unwrap().id)?;
 
         let now = std::time::Instant::now();
 
         let mut status_updater = StatusUpdater::initialize(ctx).await?;
 
         let mut dependency_graph = AttributeValue::dependent_value_graph(ctx, self.attribute_values.clone(), jid).await?;
+
+        // Coordinate with council on when we are free to proceed
+        let pub_channel = format!("council.{jid}");
+        let reply_channel = format!("{pub_channel}.reply");
+        let mut subscription = ctx.nats_conn().subscribe(&reply_channel).await?;
+
+        let message = serde_json::to_vec(&council::Request::ValueDependencyGraph {
+            change_set_id: ctx.visibility().change_set_pk.into(),
+            dependency_graph: dependency_graph
+                .iter()
+                .map(|(key, value)| (key.into(), value.iter().map(Into::into).collect()))
+                .collect(),
+        })?;
+        ctx.nats_conn()
+            .publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
+            .await?;
 
         // NOTE(nick,jacob): uncomment this for debugging.
         // Save printed output to a file and execute the following: "dot <file> -Tsvg -o <newfile>.svg"
@@ -125,95 +141,100 @@ impl JobConsumer for DependentValuesUpdate {
 
         let mut update_tasks = JoinSet::new();
 
-        loop {
-            // If only HashMap.drain_filter were in stable...
-            // Link: https://github.com/rust-lang/rust/issues/43244
-            //
-            // let satisfied_dependencies: HashMap<AttributeValueId, Vec<AttributeValueId>> =
-            //     dependency_graph.drain_filter(|_, v| v.is_empty()).collect();
-            //
-            let mut satisfied_dependencies: Vec<AttributeValueId> =
-                dependency_graph.keys().copied().collect();
-            satisfied_dependencies.retain(|&id| {
-                let result = if let Some(dependencies) = dependency_graph.get(&id) {
-                    dependencies.is_empty()
-                } else {
-                    false
-                };
+        while !dependency_graph.is_empty() {
+            match subscription.next().await {
+                Some(Ok(msg)) => match serde_json::from_slice::<council::Response>(msg.data()) {
+                    Ok(response) => match response {
+                        council::Response::OkToProcess { node_ids } => {
+                            for node_id in node_ids {
+                                let id = AttributeValueId::from(node_id);
+                                dependency_graph.remove(&id);
 
-                // We can go ahead and remove the entry in the dependency graph now,
-                // since we know that all of its dependencies have been satisfied.
-                // This also saves us from having to loop through the Vec again to
-                // remove these entries immediately after this loop, anyway.
-                if result {
-                    dependency_graph.remove(&id);
-                }
+                                let attribute_value =
+                                    AttributeValue::get_by_id(ctx, &id).await?.ok_or_else(
+                                        || AttributeValueError::NotFound(id, *ctx.visibility()),
+                                    )?;
+                                let ctx_copy = ctx.clone();
+                                update_tasks
+                                    .build_task()
+                                    .name("AttributeValue.update_from_prototype_function")
+                                    .spawn(update_value(
+                                        ctx_copy,
+                                        attribute_value,
+                                        jid,
+                                        status_updater.clone(),
+                                    ))?;
+                            }
+                        }
+                        council::Response::BeenProcessed { node_id } => {
+                            let id = AttributeValueId::from(node_id);
+                            dependency_graph.remove(&id);
 
-                result
-            });
-
-            if !satisfied_dependencies.is_empty() {
-                // Send a batched running status with all value/component ids that are being
-                // enqueued for processing
-                status_updater
-                    .values_running(ctx, satisfied_dependencies.clone())
-                    .await?;
+                            // Send a completed status for this value and *remove* it from the hash
+                            status_updater.values_completed(ctx, vec![id]).await?;
+                        }
+                        council::Response::OkToCreate => unreachable!(),
+                        council::Response::Shutdown => break,
+                    },
+                    Err(err) => error!("Unable to deserialize council::Response {err}: {msg:?}"),
+                },
+                Some(Err(err)) => error!("Unexpected error when fetching nats subscription: {err}"),
+                // FIXME: reconnect
+                None => break, // Happens if subscription has been unsubscribed or if connection is closed
             }
 
-            for id in satisfied_dependencies {
-                let attribute_value = AttributeValue::get_by_id(ctx, &id)
-                    .await?
-                    .ok_or_else(|| AttributeValueError::NotFound(id, *ctx.visibility()))?;
-                let ctx_copy = ctx.clone();
-                update_tasks
-                    .build_task()
-                    .name("AttributeValue.update_from_prototype_function")
-                    .spawn(update_value(ctx_copy, attribute_value))?;
-            }
+            // If we get `None` back from the `JoinSet` that means that there are no
+            // further tasks in the `JoinSet` for us to wait on. This should only happen
+            // after we've stopped adding new tasks to the `JoinSet`, which means either:
+            //   * We have completely walked the initial graph, and have visited every
+            //     node.
+            //   * We've encountered a cycle that means we can no longer make any
+            //     progress on walking the graph.
+            // In both cases, there isn't anything more we can do, so we can stop looking
+            // at the graph to find more work.
+            while let Some(future_result) = update_tasks.join_next().await {
+                // We get back a `Some<Result<Result<..>>>`. We've already unwrapped the
+                // `Some`, the outermost `Result` is a `JoinError` to let us know if
+                // anything went wrong in joining the task.
+                match future_result {
+                    // We have successfully updated a value
+                    Ok(Ok(())) => {}
+                    // There was an error (with our code) when updating the value
+                    Ok(Err(err)) => {
+                        warn!(error = ?err, "error updating value");
 
-            match update_tasks.join_next().await {
-                Some(future_result) => {
-                    // We get back a `Some<Result<Result<..>>>`. We've already unwrapped the
-                    // `Some`, the outermost `Result` is a `JoinError` to let us know if
-                    // anything went wrong in joining the task.
-                    let finished_id = match future_result {
-                        // We have successfully updated a value
-                        Ok(Ok(finished_id)) => finished_id,
-                        // There was an error (with our code) when updating the value
-                        Ok(Err(err)) => {
-                            warn!(error = ?err, "error updating value");
-                            return Err(err.into());
-                        }
-                        // There was a Tokio JoinSet error when joining the task back (i.e. likely
-                        // I/O error)
-                        Err(err) => {
-                            warn!(error = ?err, "error when joining update task");
-                            return Err(err.into());
-                        }
-                    };
-
-                    // Remove the `AttributeValueId` that just finished from the list of
-                    // unsatisfied dependencies of all entries, so we can check what work
-                    // has been unblocked.
-                    for (_, val) in dependency_graph.iter_mut() {
-                        val.retain(|&id| id != finished_id);
+                        let message = serde_json::to_vec(&council::Request::Bye {
+                            change_set_id: ctx.visibility().change_set_pk.into(),
+                        })?;
+                        ctx.nats_conn()
+                            .publish_with_reply_or_headers(
+                                &pub_channel,
+                                Some(&reply_channel),
+                                None,
+                                message,
+                            )
+                            .await?;
+                        return Err(err.into());
                     }
+                    // There was a Tokio JoinSet error when joining the task back (i.e. likely
+                    // I/O error)
+                    Err(err) => {
+                        warn!(error = ?err, "error when joining update task");
 
-                    // Send a completed status for this value and *remove* it from the hash
-                    status_updater
-                        .values_completed(ctx, vec![finished_id])
-                        .await?;
+                        let message = serde_json::to_vec(&council::Request::Bye {
+                            change_set_id: ctx.visibility().change_set_pk.into(),
+                        })?;
+                        ctx.nats_conn()
+                            .publish_with_reply_or_headers(
+                                &pub_channel,
+                                Some(&reply_channel),
+                                None,
+                                message,
+                            )
+                            .await?;
+                        return Err(err.into());
+                    }
                 }
-                // If we get `None` back from the `JoinSet` that means that there are no
-                // further tasks in the `JoinSet` for us to wait on. This should only happen
-                // after we've stopped adding new tasks to the `JoinSet`, which means either:
-                //   * We have completely walked the initial graph, and have visited every
-                //     node.
-                //   * We've encountered a cycle that means we can no longer make any
-                //     progress on walking the graph.
-                // In both cases, there isn't anything more we can do, so we can stop looking
-                // at the graph to find more work.
-                None => break,
             }
         }
 
@@ -227,6 +248,13 @@ impl JobConsumer for DependentValuesUpdate {
             &self.attribute_values, elapsed_time
         );
 
+        let message = serde_json::to_vec(&council::Request::Bye {
+            change_set_id: ctx.visibility().change_set_pk.into(),
+        })?;
+        ctx.nats_conn()
+            .publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
+            .await?;
+
         Ok(())
     }
 }
@@ -236,7 +264,9 @@ impl JobConsumer for DependentValuesUpdate {
 async fn update_value(
     ctx: DalContext,
     mut attribute_value: AttributeValue,
-) -> AttributeValueResult<AttributeValueId> {
+    jid: council::Id,
+    mut status_updater: StatusUpdater,
+) -> AttributeValueResult<()> {
     info!("DependentValueUpdate {:?}: START", attribute_value.id());
     let start = std::time::Instant::now();
     attribute_value.update_from_prototype_function(&ctx).await?;
@@ -246,7 +276,23 @@ async fn update_value(
         start.elapsed()
     );
 
-    Ok(*attribute_value.id())
+    let pub_channel = format!("council.{jid}");
+    let reply_channel = format!("{pub_channel}.reply");
+    let message = serde_json::to_vec(&council::Request::ProcessedValue {
+        change_set_id: ctx.visibility().change_set_pk.into(),
+        node_id: attribute_value.id().into(),
+    })?;
+    ctx.nats_conn()
+        .publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
+        .await?;
+
+    // Send a completed status for this value and *remove* it from the hash
+    status_updater
+        .values_completed(&ctx, vec![*attribute_value.id()])
+        .await
+        .map_err(Box::new)?;
+
+    Ok(())
 }
 
 impl TryFrom<JobInfo> for DependentValuesUpdate {

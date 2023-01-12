@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use ulid::Ulid;
-use serde::{Serialize, Deserialize};
 
 pub type Id = Ulid;
 pub type Graph = HashMap<Id, Vec<Id>>;

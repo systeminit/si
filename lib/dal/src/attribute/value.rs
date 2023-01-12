@@ -35,8 +35,8 @@ use crate::{
     AttributeContextError, AttributePrototypeArgumentError, Component, ComponentId, DalContext,
     Func, FuncBackendKind, FuncBackendResponseType, FuncBinding, FuncError, HistoryEventError,
     IndexMap, InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind,
-    ReadTenancyError, StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility,
-    WriteTenancy, WsEventError,
+    ReadTenancyError, StandardModel, StandardModelError, StatusUpdaterError, Timestamp,
+    TransactionsError, Visibility, WriteTenancy, WsEventError,
 };
 
 pub mod view;
@@ -179,6 +179,8 @@ pub enum AttributeValueError {
     MissingComponentInReadContext(AttributeReadContext),
     #[error("component not found by id: {0}")]
     ComponentNotFoundById(ComponentId),
+    #[error(transparent)]
+    StatusUpdater(#[from] Box<StatusUpdaterError>),
     #[error("schema variant missing in context")]
     SchemaVariantMissing,
     #[error("schema missing in context")]
@@ -937,7 +939,9 @@ impl AttributeValue {
         let mut subscription = ctx.nats_conn().subscribe(&reply_channel).await?;
 
         let message = serde_json::to_vec(&council::Request::CreateValues)?;
-        ctx.nats_conn().publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message).await?;
+        ctx.nats_conn()
+            .publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
+            .await?;
 
         // TODO: timeout so we don't get stuck here forever if council goes away
         loop {
@@ -968,7 +972,9 @@ impl AttributeValue {
         );
 
         let message = serde_json::to_vec(&council::Request::ValueCreationDone)?;
-        ctx.nats_conn().publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message).await?;
+        ctx.nats_conn()
+            .publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
+            .await?;
 
         let section_start = std::time::Instant::now();
 

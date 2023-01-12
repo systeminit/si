@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use si_data_nats::NatsError;
 use si_data_pg::PgPoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -43,6 +44,8 @@ pub enum JobConsumerError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    Nats(#[from] NatsError),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]

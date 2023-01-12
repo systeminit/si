@@ -1,9 +1,8 @@
-use serde::{Deserialize, Serialize};
+use council::{Graph, Id, Request, Response};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     time::Duration,
 };
-use council::{Id, Graph, Request, Response};
 
 use color_eyre::Result;
 use futures::StreamExt;
@@ -15,7 +14,6 @@ use tokio::{
     signal,
     sync::{mpsc, watch},
 };
-use ulid::Ulid;
 
 mod args;
 mod config;
@@ -162,36 +160,36 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
         tokio::time::sleep(Duration::from_millis(10)).await;
 
         if let Some(reply_channel) = value_create_queue.fetch_next() {
-            nats.publish(reply_channel, serde_json::to_vec(&council::Response::OkToCreate).unwrap()).await.unwrap();
+            nats.publish(
+                reply_channel,
+                serde_json::to_vec(&Response::OkToCreate).unwrap(),
+            )
+            .await
+            .unwrap();
         }
 
-        // FIXME: This will block here until a new value is provided, so nothing will evolve without a new message
-        let (job_id, reply_channel, request) = tokio::select! {
+        // TODO: handle nodes that dont depend on anything
+
+        // FIXME: handle timeouts
+        let (reply_channel, request) = tokio::select! {
             req = subscription.next() => match req {
-                None => continue,
-                Some(result) => match result {
-                    Ok(msg) => match serde_json::from_slice::<Request>(msg.data()) {
-                        Ok(req) => match (msg.subject().split('.').last().map(Ulid::from_string), msg.reply()) {
-                            (Some(Ok(job_id)), Some(reply)) => (job_id, reply.to_owned(), req),
-                            (Some(Err(err)), _) => {
-                                error!("Unable to convert job id to ulid: {msg:?}");
-                                continue;
-                            }
-                            _ => {
-                                error!("No reply channel provided or subject didn't contain job_id: {msg:?}");
-                                continue;
-                            }
-                        }
-                        Err(err) => {
-                            error!("Unable to deserialize request: {err}");
-                            continue;
-                        }
+                Some(Ok(msg)) => match (serde_json::from_slice::<Request>(msg.data()), msg.reply()) {
+                    (Ok(req), Some(reply)) => (reply.to_owned(), req),
+                    (Err(err), _) => {
+                        error!("Unable to deserialize request: {err}");
+                        continue;
                     }
-                    Err(err) => {
-                        error!("Internal error in nats, bailing out: {err}");
-                        break;
+                    _ => {
+                        error!("No reply channel provided: {msg:?}");
+                        continue;
                     }
                 }
+                Some(Err(err)) => {
+                    error!("Internal error in nats, bailing out: {err}");
+                    break;
+                }
+                // FIXME: reconnect
+                None => break, // Happens if subscription has been unsubscribed or if connection is closed
             },
             _ = shutdown_request_rx.changed() => {
                 info!("Worker task received shutdown notification: stopping");
@@ -202,51 +200,51 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
         match request {
             Request::CreateValues => {
                 // Move to a falible wrapper
-                job_would_like_to_create_attribute_values(
-                    &nats,
-                    &mut value_create_queue,
-                    reply_channel,
-                )
-                .await.unwrap();
+                job_would_like_to_create_attribute_values(&mut value_create_queue, reply_channel)
+                    .await
+                    .unwrap();
             }
             Request::ValueCreationDone => {
-                job_finished_value_creation(&nats, &mut value_create_queue, reply_channel).await.unwrap();
+                job_finished_value_creation(&mut value_create_queue, reply_channel)
+                    .await
+                    .unwrap();
             }
             Request::ValueDependencyGraph {
                 change_set_id,
                 dependency_graph,
             } => {
-                let _ = register_graph_from_job(
-                    &nats,
+                register_graph_from_job(
                     &mut complete_graph,
-                    job_id,
+                    reply_channel,
                     change_set_id,
                     dependency_graph,
                 )
-                .await;
+                .await
+                .unwrap();
             }
             Request::ProcessedValue {
                 change_set_id,
                 node_id,
             } => {
-                let _ = job_processed_a_value(
+                job_processed_a_value(
                     &nats,
                     &mut complete_graph,
-                    job_id,
+                    reply_channel,
                     change_set_id,
                     node_id,
                 )
-                .await;
+                .await
+                .unwrap();
             }
             Request::Bye { change_set_id } => {
-                let _ = job_is_going_away(
-                    &nats,
+                job_is_going_away(
                     &mut complete_graph,
                     &mut value_create_queue,
-                    job_id,
+                    reply_channel,
                     change_set_id,
                 )
-                .await;
+                .await
+                .unwrap();
             }
         };
     }
@@ -297,14 +295,14 @@ pub struct ChangeSetGraph {
 pub struct NodeMetadata {
     // This should really be an ordered set, to remove duplicates, but we'll deal with
     // that later.
-    wanted_by_job_ids: Vec<Id>,
-    processing: Option<Id>,
+    wanted_by_reply_channels: Vec<String>,
+    processing_reply_channel: Option<String>, // reply channel
     depends_on_node_ids: HashSet<Id>,
 }
 
 impl NodeMetadata {
-    pub fn merge_metadata(&mut self, job_id: Id, dependencies: &Vec<Id>) {
-        self.wanted_by_job_ids.push(job_id);
+    pub fn merge_metadata(&mut self, reply_channel: String, dependencies: &Vec<Id>) {
+        self.wanted_by_reply_channels.push(reply_channel);
         self.depends_on_node_ids.extend(dependencies);
     }
 
@@ -316,7 +314,7 @@ impl NodeMetadata {
 impl ChangeSetGraph {
     pub fn merge_dependency_graph(
         &mut self,
-        job_id: Id,
+        reply_channel: String,
         new_dependency_data: Graph,
         change_set_id: Id,
     ) -> Result<(), Error> {
@@ -326,11 +324,11 @@ impl ChangeSetGraph {
             change_set_graph_data
                 .entry(attribute_value_id)
                 .and_modify(|node| {
-                    node.merge_metadata(job_id, &dependencies);
+                    node.merge_metadata(reply_channel.clone(), &dependencies);
                 })
                 .or_insert_with(|| {
                     let mut new_node = NodeMetadata::default();
-                    new_node.merge_metadata(job_id, &dependencies);
+                    new_node.merge_metadata(reply_channel.clone(), &dependencies);
 
                     new_node
                 });
@@ -339,11 +337,11 @@ impl ChangeSetGraph {
                 change_set_graph_data
                     .entry(dependency)
                     .and_modify(|node| {
-                        node.merge_metadata(job_id, &Vec::new());
+                        node.merge_metadata(reply_channel.clone(), &Vec::new());
                     })
                     .or_insert_with(|| {
                         let mut new_node = NodeMetadata::default();
-                        new_node.merge_metadata(job_id, &Vec::new());
+                        new_node.merge_metadata(reply_channel.clone(), &Vec::new());
 
                         new_node
                     });
@@ -355,21 +353,22 @@ impl ChangeSetGraph {
 
     pub fn mark_node_as_processed(
         &mut self,
-        job_id: Id,
+        reply_channel: String,
         change_set_id: Id,
         node_id: Id,
-    ) -> Result<(), Error> {
+    ) -> Result<Vec<String>, Error> {
         let change_set_graph_data = self.dependency_data.get_mut(&change_set_id).unwrap();
 
         let node_is_complete;
         if let Some(node_metadata) = change_set_graph_data.get_mut(&node_id) {
-            if node_metadata.processing != Some(job_id) {
+            if node_metadata.processing_reply_channel.as_ref() != Some(&reply_channel) {
                 return Err(Error::ShouldNotBeProcessingByJob);
             }
-            node_metadata.processing = None;
+            node_metadata.processing_reply_channel = None;
 
-            let wanted_by_job_ids = &mut node_metadata.wanted_by_job_ids;
-            wanted_by_job_ids.retain(|x| *x != job_id);
+            node_metadata
+                .wanted_by_reply_channels
+                .retain(|x| x != &reply_channel);
 
             node_is_complete = node_metadata.depends_on_node_ids.is_empty();
         } else {
@@ -377,15 +376,17 @@ impl ChangeSetGraph {
         }
 
         if node_is_complete {
-            let _node_metadata = change_set_graph_data.remove(&node_id);
-            // for every entry entry in the wanted_by_job_ids, tell them that it has already been processed.
+            // Timeout could race here
+            let node_metadata = change_set_graph_data.remove(&node_id).unwrap();
 
             for node_metadata in change_set_graph_data.values_mut() {
                 node_metadata.remove_dependency(node_id);
             }
+
+            return Ok(node_metadata.wanted_by_reply_channels);
         }
 
-        Ok(())
+        Ok(Vec::new())
     }
 }
 
@@ -403,7 +404,6 @@ pub enum Error {
 }
 
 pub async fn job_would_like_to_create_attribute_values(
-    nats: &NatsClient,
     value_create_queue: &mut ValueCreationQueue,
     reply_channel: String,
 ) -> Result<(), Error> {
@@ -413,7 +413,6 @@ pub async fn job_would_like_to_create_attribute_values(
 }
 
 pub async fn job_finished_value_creation(
-    nats: &NatsClient,
     value_create_queue: &mut ValueCreationQueue,
     reply_channel: String,
 ) -> Result<(), Error> {
@@ -421,31 +420,39 @@ pub async fn job_finished_value_creation(
 }
 
 pub async fn register_graph_from_job(
-    nats: &NatsClient,
     complete_graph: &mut ChangeSetGraph,
-    job_id: Id,
+    reply_channel: String,
     change_set_id: Id,
     new_dependency_data: Graph,
 ) -> Result<(), Error> {
-    complete_graph.merge_dependency_graph(job_id, new_dependency_data, change_set_id)
+    complete_graph.merge_dependency_graph(reply_channel, new_dependency_data, change_set_id)
 }
 
 pub async fn job_processed_a_value(
     nats: &NatsClient,
     complete_graph: &mut ChangeSetGraph,
-    job_id: Id,
+    reply_channel: String,
     change_set_id: Id,
     node_id: Id,
 ) -> Result<(), Error> {
-    complete_graph.mark_node_as_processed(job_id, change_set_id, node_id)
+    for reply_channel in
+        complete_graph.mark_node_as_processed(reply_channel, change_set_id, node_id)?
+    {
+        nats.publish(
+            reply_channel,
+            serde_json::to_vec(&Response::BeenProcessed { node_id }).unwrap(),
+        )
+        .await
+        .unwrap();
+    }
+    Ok(())
 }
 
 pub async fn job_is_going_away(
-    nats: &NatsClient,
-    complete_graph: &mut ChangeSetGraph,
-    value_create_queue: &mut ValueCreationQueue,
-    job_id: Id,
-    change_set_id: Id,
+    _complete_graph: &mut ChangeSetGraph,
+    _value_create_queue: &mut ValueCreationQueue,
+    _reply_channel: String,
+    _change_set_id: Id,
 ) -> Result<(), Error> {
     todo!()
 }
