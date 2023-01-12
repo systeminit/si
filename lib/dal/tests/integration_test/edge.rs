@@ -8,6 +8,7 @@ use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,
 };
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new(ctx: &DalContext) {
@@ -204,6 +205,204 @@ async fn create_and_delete_edges(ctx: &DalContext) {
             }
         }], // expected
         to_aws_ec2_instance
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
+    );
+}
+
+#[test]
+async fn create_multiple_connections_and_delete(ctx: &DalContext) {
+    let mut harness = SchemaBuiltinsTestHarness::new();
+    let nginx_container = harness
+        .create_component(ctx, "nginx", Builtin::DockerImage)
+        .await;
+    let apache2_container = harness
+        .create_component(ctx, "apache2", Builtin::DockerImage)
+        .await;
+    apache2_container
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/domain/image",
+            Some(serde_json::json!["apache2"]),
+        )
+        .await;
+    let butane_instance = harness
+        .create_component(ctx, "userdata", Builtin::CoreOsButane)
+        .await;
+
+    let docker_image_schema_variant =
+        SchemaVariant::get_by_id(ctx, &nginx_container.schema_variant_id)
+            .await
+            .expect("could not find schema variant by id")
+            .expect("schema variant by id not found");
+    let butane_schema_variant = SchemaVariant::get_by_id(ctx, &butane_instance.schema_variant_id)
+        .await
+        .expect("could not find schema variant by id")
+        .expect("schema variant by id not found");
+
+    let docker_image_sockets = docker_image_schema_variant
+        .sockets(ctx)
+        .await
+        .expect("cannot fetch sockets");
+    let butane_sockets = butane_schema_variant
+        .sockets(ctx)
+        .await
+        .expect("cannot fetch sockets");
+
+    let from_container_image_socket = docker_image_sockets
+        .iter()
+        .find(|s| {
+            s.edge_kind() == &SocketEdgeKind::ConfigurationOutput
+                && s.kind() == &SocketKind::Provider
+                && s.diagram_kind() == &DiagramKind::Configuration
+                && s.arity() == &SocketArity::Many
+                && s.name() == "Container Image"
+        })
+        .expect("cannot find output socket");
+
+    let to_container_image_socket = butane_sockets
+        .iter()
+        .find(|s| {
+            s.edge_kind() == &SocketEdgeKind::ConfigurationInput
+                && s.kind() == &SocketKind::Provider
+                && s.diagram_kind() == &DiagramKind::Configuration
+                && s.arity() == &SocketArity::Many
+                && s.name() == "Container Image"
+        })
+        .expect("cannot find input socket");
+
+    let connect_from_nginx = Connection::new(
+        ctx,
+        nginx_container.node_id,
+        *from_container_image_socket.id(),
+        butane_instance.node_id,
+        *to_container_image_socket.id(),
+        EdgeKind::Configuration,
+    )
+    .await
+    .expect("could not create connection");
+
+    let connect_from_apache2 = Connection::new(
+        ctx,
+        apache2_container.node_id,
+        *from_container_image_socket.id(),
+        butane_instance.node_id,
+        *to_container_image_socket.id(),
+        EdgeKind::Configuration,
+    )
+    .await
+    .expect("could not create connection");
+
+    // required to happen *AFTER* the connection to trigger a dependantValuesUpdate
+    nginx_container
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/domain/image",
+            Some(serde_json::json!["nginx"]),
+        )
+        .await;
+
+    // check that the value of the butance instance
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "userdata",
+                "type": "component"
+            },
+            "domain": {
+                "systemd": {
+                    "units": [
+                        {
+                            "name": "nginx.service",
+                            "enabled": true,
+                            "contents": "[Unit]\nDescription=Nginx\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill nginx\nExecStartPre=-/bin/podman rm nginx\nExecStartPre=/bin/podman pull nginx\nExecStart=/bin/podman run --name nginx nginx\n\n[Install]\nWantedBy=multi-user.target",
+                        },
+                        {
+                            "name": "apache2.service",
+                            "enabled": true,
+                            "contents": "[Unit]\nDescription=Apache2\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill apache2\nExecStartPre=-/bin/podman rm apache2\nExecStartPre=/bin/podman pull apache2\nExecStart=/bin/podman run --name apache2 apache2\n\n[Install]\nWantedBy=multi-user.target",
+                        },
+                    ],
+                },
+                "variant": "fcos",
+                "version": "1.4.0",
+            },
+            "code": {
+                "si:generateButaneIgnition": {
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Nginx\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill nginx\\nExecStartPre=-/bin/podman rm nginx\\nExecStartPre=/bin/podman pull nginx\\nExecStart=/bin/podman run --name nginx nginx\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"nginx.service\"\n      },\n      {\n        \"contents\": \"[Unit]\\nDescription=Apache2\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill apache2\\nExecStartPre=-/bin/podman rm apache2\\nExecStartPre=/bin/podman pull apache2\\nExecStart=/bin/podman run --name apache2 apache2\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"apache2.service\"\n      }\n    ]\n  }\n}",
+                    "format": "json",
+                },
+            },
+        }], // expected
+        butane_instance
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
+    );
+
+    // delete the nginx connection
+    let _result = Connection::delete_for_edge(ctx, connect_from_nginx.id).await;
+
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "userdata",
+                "type": "component"
+            },
+            "domain": {
+                "systemd": {
+                    "units": [
+                        {
+                            "name": "apache2.service",
+                            "enabled": true,
+                            "contents": "[Unit]\nDescription=Apache2\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill apache2\nExecStartPre=-/bin/podman rm apache2\nExecStartPre=/bin/podman pull apache2\nExecStart=/bin/podman run --name apache2 apache2\n\n[Install]\nWantedBy=multi-user.target",
+                        },
+                    ],
+                },
+                "variant": "fcos",
+                "version": "1.4.0",
+            },
+            "code": {
+                "si:generateButaneIgnition": {
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Apache2\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill apache2\\nExecStartPre=-/bin/podman rm apache2\\nExecStartPre=/bin/podman pull apache2\\nExecStart=/bin/podman run --name apache2 apache2\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"apache2.service\"\n      }\n    ]\n  }\n}",
+                    "format": "json",
+                },
+            },
+        }], // expected
+        butane_instance
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
+    );
+
+    // delete the nginx connection
+    let _result = Connection::delete_for_edge(ctx, connect_from_apache2.id).await;
+
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "userdata",
+                "type": "component"
+            },
+            "domain": {
+                "systemd": {
+                    "units": [],
+                },
+                "variant": "fcos",
+                "version": "1.4.0",
+            },
+            "code": {
+                "si:generateButaneIgnition": {
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  }\n}",
+                    "format": "json",
+                },
+            },
+        }], // expected
+        butane_instance
             .component_view_properties(ctx)
             .await
             .drop_qualification()
