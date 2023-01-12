@@ -5,7 +5,7 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "bootstrap": "./scripts/bootstrap.sh",
-    "docker:deps": "make LOCAL_PG=$(test $(uname -m) = \"arm64\" && test $(uname) = \"Darwin\" && echo true) prepare",
+    "docker:deps": "make SI_SKIP_PULL=true LOCAL_PG=$(test $(uname -m) = \"arm64\" && test $(uname) = \"Darwin\" && echo true) prepare",
     "rc:build": "cargo build",
     "build": "turbo run rc:build build --filter=./app/* --filter=lang-js --filter=// --parallel",
     "rc:clean": "cargo clean",

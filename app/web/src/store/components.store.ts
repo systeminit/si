@@ -70,6 +70,7 @@ type Component = {
   updatedAt: ComponentIdentificationTimestamp;
 };
 
+export type EdgeId = string;
 export type SocketId = string;
 
 type SchemaId = string;
@@ -168,8 +169,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         schemaVariantsById: {} as Record<SchemaVariantId, DiagramSchemaVariant>,
         rawNodeAddMenu: [] as MenuItem[],
 
+        // TODO: make selection more general and handle components and edges
         selectedComponentId: null as ComponentId | null,
+        // TODO: can we get rid of this?
         lastSelectedComponentId: null as ComponentId | null,
+        selectedEdgeId: null as EdgeId | null,
 
         selectedComponentIds: [] as ComponentId[],
         lastSelectedComponentIds: [] as ComponentId[],
@@ -717,7 +721,43 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
 
+        async DELETE_EDGE(edgeId: EdgeId) {
+          return new ApiRequest<any>({
+            method: "post",
+            url: "diagram/delete_connection",
+            keyRequestStatusBy: edgeId,
+            params: {
+              edgeId,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // this.componentDiffsById[componentId] = response.componentDiff;
+            },
+          });
+        },
+        async DELETE_COMPONENT(componentId: ComponentId) {
+          return new ApiRequest<any>({
+            method: "post",
+            url: "diagram/delete_component",
+            keyRequestStatusBy: componentId,
+            params: {
+              componentId,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // this.componentDiffsById[componentId] = response.componentDiff;
+            },
+          });
+        },
+
+        setSelectedEdgeId(selection: EdgeId | null) {
+          // clear component selection
+          this.selectedComponentId = null;
+          this.selectedComponentIds = [];
+          this.selectedEdgeId = selection;
+        },
         setSelectedComponentId(selection: ComponentId | ComponentId[] | null) {
+          this.selectedEdgeId = null;
           if (!selection) {
             this.selectedComponentId = null;
             this.selectedComponentIds = [];

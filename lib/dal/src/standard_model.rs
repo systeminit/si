@@ -5,6 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
+use std::fmt::Debug;
 use strum_macros::AsRefStr;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -81,7 +82,7 @@ pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 // a string. Bright side - so far, only strings! :)
 // Hugs, Adam
 #[instrument(skip(ctx))]
-pub async fn find_by_attr<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
+pub async fn find_by_attr<V: Send + Sync + ToString + Debug, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
     attr_name: &str,
@@ -97,7 +98,7 @@ pub async fn find_by_attr<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
                 ctx.read_tenancy(),
                 ctx.visibility(),
                 &attr_name,
-                &value,
+                &value.to_string(),
             ],
         )
         .await?;
@@ -122,7 +123,7 @@ pub async fn find_by_attr_null<OBJECT: DeserializeOwned>(
 }
 
 #[instrument(skip(ctx))]
-pub async fn find_by_attr_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
+pub async fn find_by_attr_in<V: Send + Sync + ToString + Debug, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
     attr_name: &str,
@@ -138,7 +139,7 @@ pub async fn find_by_attr_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
                 ctx.read_tenancy(),
                 ctx.visibility(),
                 &attr_name,
-                &value,
+                &value.iter().map(|i| i.to_string()).collect::<Vec<String>>(),
             ],
         )
         .await?;
@@ -146,7 +147,7 @@ pub async fn find_by_attr_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 }
 
 #[instrument(skip(ctx))]
-pub async fn find_by_attr_not_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
+pub async fn find_by_attr_not_in<V: Send + Sync + ToString + Debug, OBJECT: DeserializeOwned>(
     ctx: &DalContext,
     table: &str,
     attr_name: &str,
@@ -162,7 +163,7 @@ pub async fn find_by_attr_not_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwne
                 ctx.read_tenancy(),
                 ctx.visibility(),
                 &attr_name,
-                &value,
+                &value.iter().map(|i| i.to_string()).collect::<Vec<String>>(),
             ],
         )
         .await?;
@@ -633,7 +634,7 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn find_by_attr<V: Send + Sync + ToSql>(
+    async fn find_by_attr<V: Send + Sync + ToString + Debug>(
         ctx: &DalContext,
         attr_name: &str,
         value: &V,
@@ -661,7 +662,7 @@ pub trait StandardModel {
     /// caveats as `find_by_attr`: `V` is almost always &String, untested with
     /// other types.
     #[instrument(skip_all)]
-    async fn find_by_attr_in<V: Send + Sync + ToSql>(
+    async fn find_by_attr_in<V: Send + Sync + ToString + Debug>(
         ctx: &DalContext,
         attr_name: &str,
         value: &[&V],
@@ -675,7 +676,7 @@ pub trait StandardModel {
         )
     }
 
-    async fn find_by_attr_not_in<V: Send + Sync + ToSql>(
+    async fn find_by_attr_not_in<V: Send + Sync + ToString + Debug>(
         ctx: &DalContext,
         attr_name: &str,
         value: &[&V],

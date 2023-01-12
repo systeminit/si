@@ -51,7 +51,21 @@
       @right-click-element="onRightClickElement"
     />
     <DropdownMenu ref="contextMenuRef">
-      <DropdownMenuItem icon="trash">Delete component</DropdownMenuItem>
+      <template v-if="selectedEdgeId">
+        <DropdownMenuItem icon="trash" @select="triggerDeleteSelection">
+          Delete edge
+        </DropdownMenuItem>
+      </template>
+      <template v-else-if="selectedComponentId">
+        <DropdownMenuItem icon="trash" @select="triggerDeleteSelection">
+          Delete component
+        </DropdownMenuItem>
+      </template>
+      <template v-else>
+        <DropdownMenuItem icon="help-circle" disabled>
+          empty menu?
+        </DropdownMenuItem>
+      </template>
     </DropdownMenu>
   </div>
 
@@ -101,6 +115,7 @@ import {
   GroupEvent,
   SelectElementEvent,
   ResizeElementEvent,
+  DiagramEdgeData,
 } from "../GenericDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline.vue";
 import GlobalStatusOverlay from "../GlobalStatusOverlay.vue";
@@ -160,6 +175,7 @@ const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 const selectedComponentIds = computed(
   () => componentsStore.selectedComponentIds,
 );
+const selectedEdgeId = computed(() => componentsStore.selectedEdgeId);
 
 const diagramCustomConfig = {};
 
@@ -260,21 +276,27 @@ function onDiagramMoveElement(e: MoveElementEvent) {
 }
 
 function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
-  const validComponentIds = _.compact(
-    newSelection.elements.map((el) => {
-      if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
-        return el.def.componentId;
-      }
-      return undefined;
-    }),
-  );
-
-  componentsStore.setSelectedComponentId(validComponentIds);
+  if (
+    newSelection.elements.length === 1 &&
+    newSelection.elements[0] instanceof DiagramEdgeData
+  ) {
+    componentsStore.setSelectedEdgeId(newSelection.elements[0].def.id);
+  } else {
+    const validComponentIds = _.compact(
+      newSelection.elements.map((el) => {
+        if (el instanceof DiagramNodeData || el instanceof DiagramGroupData) {
+          return el.def.componentId;
+        }
+        return undefined;
+      }),
+    );
+    componentsStore.setSelectedComponentId(validComponentIds);
+  }
 }
 
 function onDiagramDelete(_e: DeleteElementsEvent) {
-  // eslint-disable-next-line no-alert
-  alert("Deletion not supported yet!");
+  // delete event includes what to delete, but its the same as current selection
+  triggerDeleteSelection();
 }
 
 function onOutlineSelectComponent(id: string) {
@@ -293,8 +315,16 @@ function onOutlinePanToComponent(id: string) {
 
 function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
   // TODO: make actually do something, probably also want to handle different types
-  if (rightClickEventInfo.element instanceof DiagramNodeData) {
-    contextMenuRef.value?.open(rightClickEventInfo.e, true);
+  contextMenuRef.value?.open(rightClickEventInfo.e, true);
+}
+
+function triggerDeleteSelection() {
+  if (selectedEdgeId.value) {
+    componentsStore.DELETE_EDGE(selectedEdgeId.value);
+  } else if (selectedComponentIds.value) {
+    for (const componentId of selectedComponentIds.value) {
+      componentsStore.DELETE_COMPONENT(componentId);
+    }
   }
 }
 
@@ -311,6 +341,10 @@ watch(
       });
 
       diagramRef.value?.setSelection(selectedComponentsKeys);
+    } else if (selectedEdgeId.value) {
+      diagramRef.value?.setSelection(
+        DiagramEdgeData.generateUniqueKey(selectedEdgeId.value),
+      );
     } else {
       diagramRef.value?.clearSelection();
     }

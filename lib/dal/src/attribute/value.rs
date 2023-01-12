@@ -1153,20 +1153,44 @@ impl AttributeValue {
                     .await?;
             }
         };
-        // The value will be different from the unprocessed value if we updated it above
-        // for an Array/Map/Value. If they are different from each other, then we know
+        // If they are different from each other, then we know
         // that we need to fully process the deep data structure, populating
         // AttributeValues for the child Props.
-        if func_binding_return_value.unprocessed_value() != func_binding_return_value.value() {
-            if let Some(unprocessed_value) = func_binding_return_value.unprocessed_value().cloned()
+        // cannot be si:setArray / si:setMap / si:setObject
+        if self.context.prop_id() != PropId::NONE {
+            let prop = Prop::get_by_id(ctx, &self.context.prop_id())
+                .await?
+                .ok_or(AttributeValueError::PropNotFound(self.context.prop_id()))?;
+
+            if *prop.kind() == PropKind::Array
+                || *prop.kind() == PropKind::Object
+                || *prop.kind() == PropKind::Map
             {
-                AttributeValue::populate_nested_values(
-                    ctx,
-                    self.id,
-                    self.context,
-                    unprocessed_value,
-                )
-                .await?;
+                let func_name = match *prop.kind() {
+                    PropKind::Array => "si:setArray",
+                    PropKind::Object => "si:setObject",
+                    PropKind::Map => "si:setMap",
+                    _ => unreachable!(),
+                };
+
+                let func = Func::find_by_attr(ctx, "name", &func_name)
+                    .await?
+                    .pop()
+                    .ok_or(AttributeValueError::MissingFunc(func_name.to_owned()))?;
+
+                if attribute_prototype.func_id() != *func.id() {
+                    if let Some(unprocessed_value) =
+                        func_binding_return_value.unprocessed_value().cloned()
+                    {
+                        AttributeValue::populate_nested_values(
+                            ctx,
+                            self.id,
+                            self.context,
+                            unprocessed_value,
+                        )
+                        .await?;
+                    }
+                }
             }
         }
 
