@@ -29,11 +29,8 @@ export type WsEventPayloadMap = {
     componentId: string;
   };
 
-  ConfirmationStatusUpdate: {
-    componentId: string;
-    confirmationPrototypeId: string;
-    status: "success" | "running" | "pending" | "failure" | "error";
-    errorMessage?: string;
+  RanConfirmations: {
+    success: boolean;
   };
 
   // NOT CURRENTLY USED - but leaving here so we remember these events exist
@@ -54,7 +51,7 @@ export type WsEventPayloadMap = {
   FixReturn: {
     id: string;
     batchId: string;
-    confirmationResolverId: string;
+    attributeValueId: string;
     action: string;
     output: string[];
     status: FixStatus;

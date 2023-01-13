@@ -16,9 +16,8 @@ use crate::socket::SocketError;
 use crate::{
     ActionPrototypeError, AttributeContextBuilderError, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributeReadContext, AttributeValueError, AttributeValueId,
-    ConfirmationPrototypeError, DalContext, ExternalProviderId, FuncError, PropError, PropId,
-    PropKind, SchemaError, SchemaVariantId, StandardModelError, ValidationPrototypeError,
-    WorkflowPrototypeError,
+    DalContext, ExternalProviderId, FuncError, PropError, PropId, PropKind, SchemaError,
+    SchemaVariantId, StandardModelError, ValidationPrototypeError, WorkflowPrototypeError,
 };
 
 // Private builtins modules.
@@ -95,8 +94,6 @@ pub enum BuiltinsError {
     Regex(#[from] regex::Error),
     #[error(transparent)]
     WorkflowPrototype(#[from] WorkflowPrototypeError),
-    #[error(transparent)]
-    ConfirmationPrototype(#[from] ConfirmationPrototypeError),
     #[error("Func Metadata error: {0}")]
     FuncMetadata(String),
     #[error("builtin {0} missing func argument {1}")]

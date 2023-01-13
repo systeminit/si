@@ -104,7 +104,11 @@ impl Component {
 
             for (qualification_name, entry) in qualification_map {
                 let found_func_binding_return_value_id =
-                    entry_attribute_values.get(&qualification_name).unwrap();
+                    entry_attribute_values.get(&qualification_name).ok_or(
+                        ComponentError::MissingFuncBindingReturnValueIdForLeafEntryName(
+                            qualification_name.clone(),
+                        ),
+                    )?;
                 let qual_view = QualificationView::new(
                     ctx,
                     qualification_name,

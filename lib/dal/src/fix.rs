@@ -12,11 +12,11 @@ use crate::fix::batch::FixBatchId;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::{
     func::backend::js_command::CommandRunResult, impl_standard_model, pk, standard_model,
-    standard_model_accessor, standard_model_belongs_to, ActionPrototypeError, ComponentError,
-    ComponentId, ConfirmationResolver, ConfirmationResolverError, ConfirmationResolverId,
-    ConfirmationResolverTreeError, DalContext, FixResolverError, HistoryEventError, StandardModel,
-    StandardModelError, Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError,
-    WorkflowRunnerId, WorkflowRunnerStatus, WriteTenancy, WsEvent, WsPayload,
+    standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
+    ActionPrototypeError, AttributeValueId, ComponentError, ComponentId, DalContext,
+    FixResolverError, FuncError, HistoryEventError, SchemaError, StandardModel, StandardModelError,
+    Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError, WorkflowRunnerId,
+    WorkflowRunnerStatus, WriteTenancy, WsEvent, WsPayload,
 };
 use crate::{FixBatch, WorkflowRunner, WsEventResult};
 
@@ -77,11 +77,9 @@ pub enum FixError {
     #[error(transparent)]
     Component(#[from] ComponentError),
     #[error(transparent)]
-    ConfirmationResolver(#[from] ConfirmationResolverError),
-    #[error(transparent)]
-    ConfirmationResolverTree(#[from] ConfirmationResolverTreeError),
-    #[error(transparent)]
     FixResolver(#[from] FixResolverError),
+    #[error(transparent)]
+    Func(#[from] FuncError),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
@@ -94,6 +92,8 @@ pub enum FixError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
+    #[error(transparent)]
+    Schema(#[from] SchemaError),
 
     #[error("cannot stamp batch or fix as started since it already finished")]
     AlreadyFinished,
@@ -103,8 +103,6 @@ pub enum FixError {
     BatchAlreadyFinished(FixId, FixBatchId),
     #[error("cannot set batch for {0}: fix batch ({1}) already started")]
     BatchAlreadyStarted(FixId, FixBatchId),
-    #[error("confirmation resolver {0} not found")]
-    ConfirmationResolverNotFound(ConfirmationResolverId),
     #[error("completion status is empty")]
     EmptyCompletionStatus,
     #[error("workflow runner status {0} cannot be converted to fix completion status")]
@@ -136,8 +134,9 @@ pub struct Fix {
     #[serde(flatten)]
     visibility: Visibility,
 
-    /// The [`ConfirmationResolver`](crate::ConfirmationResolver) used to determine which fix to run.
-    confirmation_resolver_id: ConfirmationResolverId,
+    /// Corresponds to the [`AttributeValue`](crate::AttributeValue) of the
+    /// [`"confirmation"`](crate::schema::variant::leaves).
+    attribute_value_id: AttributeValueId,
     /// The [`Component`](crate::Component) being fixed.
     component_id: ComponentId,
     /// The [`WorkflowRunner`](crate::WorkflowRunner) that got executed.
@@ -176,7 +175,7 @@ impl Fix {
     pub async fn new(
         ctx: &DalContext,
         fix_batch_id: FixBatchId,
-        confirmation_resolver_id: ConfirmationResolverId,
+        attribute_value_id: AttributeValueId,
         component_id: ComponentId,
         action: &str,
     ) -> FixResult<Self> {
@@ -188,7 +187,7 @@ impl Fix {
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
-                    &confirmation_resolver_id,
+                    &attribute_value_id,
                     &component_id,
                     &action,
                 ],
@@ -203,13 +202,7 @@ impl Fix {
         self.component_id
     }
 
-    pub async fn confirmation_resolver(&self, ctx: &DalContext) -> FixResult<ConfirmationResolver> {
-        ConfirmationResolver::get_by_id(ctx, &self.confirmation_resolver_id)
-            .await?
-            .ok_or(FixError::ConfirmationResolverNotFound(
-                self.confirmation_resolver_id,
-            ))
-    }
+    standard_model_accessor_ro!(attribute_value_id, AttributeValueId);
 
     standard_model_accessor!(workflow_runner_id, Option<Pk(WorkflowRunnerId)>, FixResult);
     standard_model_accessor!(action, String, FixResult);
@@ -221,11 +214,6 @@ impl Fix {
         FixResult
     );
     standard_model_accessor!(completion_message, Option<String>, FixResult);
-    standard_model_accessor!(
-        confirmation_resolver_id,
-        Pk(ConfirmationResolverId),
-        FixResult
-    );
 
     standard_model_belongs_to!(
         lookup_fn: fix_batch,
@@ -349,7 +337,7 @@ impl Fix {
 pub struct FixReturn {
     id: FixId,
     batch_id: FixBatchId,
-    confirmation_resolver_id: ConfirmationResolverId,
+    attribute_value_id: AttributeValueId,
     action: String,
     status: FixCompletionStatus,
     output: Vec<String>,
@@ -360,7 +348,7 @@ impl WsEvent {
         ctx: &DalContext,
         id: FixId,
         batch_id: FixBatchId,
-        confirmation_resolver_id: ConfirmationResolverId,
+        attribute_value_id: AttributeValueId,
         action: String,
         status: FixCompletionStatus,
         output: Vec<String>,
@@ -370,7 +358,7 @@ impl WsEvent {
             WsPayload::FixReturn(FixReturn {
                 id,
                 batch_id,
-                confirmation_resolver_id,
+                attribute_value_id,
                 action,
                 status,
                 output,

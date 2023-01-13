@@ -10,10 +10,10 @@ use std::{
 
 use async_trait::async_trait;
 use cyclone_core::{
-    CommandRunRequest, CommandRunResultSuccess, ConfirmationRequest, ConfirmationResultSuccess,
-    LivenessStatus, LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ValidationRequest,
-    ValidationResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    CommandRunRequest, CommandRunResultSuccess, LivenessStatus, LivenessStatusParseError,
+    ReadinessStatus, ReadinessStatusParseError, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, ValidationRequest, ValidationResultSuccess,
+    WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use http::{
     request::Builder,
@@ -125,11 +125,6 @@ where
     async fn readiness(&mut self) -> result::Result<ReadinessStatus, ClientError>;
 
     async fn execute_ping(&mut self) -> result::Result<PingExecution<Strm>, ClientError>;
-
-    async fn execute_confirmation(
-        &mut self,
-        request: ConfirmationRequest,
-    ) -> result::Result<Execution<Strm, ConfirmationRequest, ConfirmationResultSuccess>, ClientError>;
 
     async fn execute_resolver(
         &mut self,
@@ -263,15 +258,6 @@ where
     async fn execute_ping(&mut self) -> Result<PingExecution<Strm>> {
         let stream = self.websocket_stream("/execute/ping").await?;
         Ok(ping::execute(stream))
-    }
-
-    async fn execute_confirmation(
-        &mut self,
-        request: ConfirmationRequest,
-    ) -> result::Result<Execution<Strm, ConfirmationRequest, ConfirmationResultSuccess>, ClientError>
-    {
-        let stream = self.websocket_stream("/execute/confirmation").await?;
-        Ok(execution::execute(stream, request))
     }
 
     async fn execute_resolver(
@@ -874,175 +860,6 @@ mod tests {
             FunctionResult::Success(success) => {
                 assert!(!success.unset);
                 assert_eq!(success.data, json!({"a": "b"}));
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn http_execute_confirmation() {
-        let (_, key) = gen_keys();
-        let mut builder = Config::builder();
-        let mut client =
-            http_client_for_running_server(builder.enable_confirmation(true), key).await;
-
-        let req = ConfirmationRequest {
-            execution_id: "1234".to_string(),
-            handler: "checkit".to_string(),
-            component: ComponentView {
-                properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
-                kind: ComponentKind::Standard,
-            },
-            code_base64: base64::encode(
-                r#"function checkit(component) {
-                    console.log('i like');
-                    console.log('my butt');
-                    if (component.properties.si.name == "Aipim Frito") {
-                        return { success: false, recommendedActions: ["fried cassava baby"] };
-                    } else {
-                        return { success: true, message: "unable to deepfry cassava" };
-                    }
-                }"#,
-            ),
-        };
-
-        // Start the protocol
-        let mut progress = client
-            .execute_confirmation(req)
-            .await
-            .expect("failed to establish websocket stream")
-            .start()
-            .await
-            .expect("failed to start protocol");
-
-        // Consume the output messages
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "i like");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-                None => panic!("output stream ended early"),
-            };
-        }
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "my butt");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'my butt' output: err={:?}", err),
-                None => panic!("output stream ended early"),
-            }
-        }
-        loop {
-            match progress.next().await {
-                None => {
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-            };
-        }
-        let result = progress.finish().await.expect("failed to return result");
-        match result {
-            FunctionResult::Success(success) => {
-                assert!(!success.success);
-                assert_eq!(
-                    success.recommended_actions,
-                    vec!["fried cassava baby".to_owned()]
-                );
-            }
-            FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
-            }
-        }
-    }
-
-    #[test(tokio::test)]
-    async fn uds_execute_confirmation() {
-        let (_, key) = gen_keys();
-        let tmp_socket = rand_uds();
-        let mut builder = Config::builder();
-        let mut client =
-            uds_client_for_running_server(builder.enable_confirmation(true), &tmp_socket, key)
-                .await;
-
-        let req = ConfirmationRequest {
-            execution_id: "1234".to_string(),
-            handler: "checkit".to_string(),
-            component: ComponentView {
-                properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
-                kind: ComponentKind::Standard,
-            },
-            code_base64: base64::encode(
-                r#"function checkit(component) {
-                    console.log('i like');
-                    console.log('my butt');
-                    if (component.properties.si.name == "Aipim Frito") {
-                        return { success: false, recommendedActions: ["fried cassava baby"] };
-                    } else {
-                        return { success: true, message: "unable to deepfry cassava" };
-                    }
-                }"#,
-            ),
-        };
-
-        // Start the protocol
-        let mut progress = client
-            .execute_confirmation(req)
-            .await
-            .expect("failed to establish websocket stream")
-            .start()
-            .await
-            .expect("failed to start protocol");
-
-        // Consume the output messages
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "i like");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-                None => panic!("output stream ended early"),
-            };
-        }
-        loop {
-            match progress.next().await {
-                Some(Ok(ProgressMessage::OutputStream(output))) => {
-                    assert_eq!(output.message, "my butt");
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-                None => panic!("output stream ended early"),
-            };
-        }
-        loop {
-            match progress.next().await {
-                None => {
-                    break;
-                }
-                Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-            };
-        }
-        // Get the result
-        let result = progress.finish().await.expect("failed to return result");
-        match result {
-            FunctionResult::Success(success) => {
-                assert!(!success.success);
-                assert_eq!(
-                    success.recommended_actions,
-                    vec!["fried cassava baby".to_owned()]
-                );
             }
             FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)

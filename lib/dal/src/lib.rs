@@ -22,10 +22,6 @@ pub mod change_set;
 pub mod change_status;
 pub mod code_view;
 pub mod component;
-pub mod confirmation_prototype;
-pub mod confirmation_resolver;
-pub mod confirmation_resolver_tree;
-pub mod confirmation_status;
 pub mod context;
 pub mod cyclone_key_pair;
 pub mod diagram;
@@ -106,15 +102,6 @@ pub use component::{
     resource::ResourceView, Component, ComponentError, ComponentId, ComponentStatus, ComponentView,
     HistoryActorTimestamp,
 };
-pub use confirmation_prototype::{
-    ConfirmationPrototype, ConfirmationPrototypeContext, ConfirmationPrototypeError,
-    ConfirmationPrototypeId,
-};
-pub use confirmation_resolver::{
-    ConfirmationResolver, ConfirmationResolverContext, ConfirmationResolverError,
-    ConfirmationResolverId,
-};
-pub use confirmation_resolver_tree::{ConfirmationResolverTree, ConfirmationResolverTreeError};
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
     Transactions, TransactionsError,
@@ -125,7 +112,7 @@ pub use diagram::{
 };
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use fix::batch::{FixBatch, FixBatchId};
-pub use fix::resolver::{FixResolver, FixResolverContext, FixResolverError, FixResolverId};
+pub use fix::resolver::{FixResolver, FixResolverError, FixResolverId};
 pub use fix::{Fix, FixCompletionStatus, FixId};
 pub use func::argument::FuncArgument;
 pub use func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};

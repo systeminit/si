@@ -7,9 +7,9 @@
     }
   ],
   "response_type": "Confirmation",
-  "display_name": "si:resourceExistsConfirmation",
+  "display_name": "si:confirmationResourceExists",
   "description": null,
   "link": null,
-  "code_file": "resourceExistsConfirmation.js",
+  "code_file": "confirmationResourceExists.js",
   "code_entrypoint": "exists"
 }

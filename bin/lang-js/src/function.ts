@@ -2,7 +2,6 @@ export enum FunctionKind {
   ResolverFunction = "resolverfunction",
   WorkflowResolve = "workflowResolve",
   CommandRun = "commandRun",
-  Confirmation = "confirmation",
   Validation = "validation",
 }
 
@@ -11,7 +10,6 @@ export function function_kinds(): Array<string> {
     FunctionKind.ResolverFunction,
     FunctionKind.WorkflowResolve,
     FunctionKind.CommandRun,
-    FunctionKind.Confirmation,
     FunctionKind.Validation,
   ];
 }

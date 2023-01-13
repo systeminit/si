@@ -10,8 +10,8 @@ use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
 use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
-    job::definition::Confirmations, pk, HistoryEvent, HistoryEventError, LabelListError,
-    StandardModelError, Timestamp, WriteTenancy,
+    pk, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Timestamp,
+    WriteTenancy,
 };
 use crate::{Component, ComponentError, DalContext, WsEventResult};
 
@@ -120,9 +120,6 @@ impl ChangeSet {
             &serde_json::json![{ "pk": &self.pk }],
         )
         .await?;
-
-        // TODO(nick): delete once prop tree confirmations are ready.
-        ctx.enqueue_job(Confirmations::new(ctx)).await;
 
         WsEvent::change_set_applied(ctx, self.pk)
             .await?

@@ -11,10 +11,9 @@ use cyclone_client::{
 };
 use cyclone_core::{
     process::{self, ShutdownError},
-    CanonicalCommand, CommandRunRequest, CommandRunResultSuccess, ConfirmationRequest,
-    ConfirmationResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ValidationRequest, ValidationResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    CanonicalCommand, CommandRunRequest, CommandRunResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, ValidationRequest, ValidationResultSuccess,
+    WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -132,23 +131,6 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .map_err(ClientError::unhealthy)?;
 
         let result = self.client.execute_ping().await;
-        self.count_request();
-
-        result
-    }
-
-    async fn execute_confirmation(
-        &mut self,
-        request: ConfirmationRequest,
-    ) -> result::Result<
-        Execution<TcpStream, ConfirmationRequest, ConfirmationResultSuccess>,
-        ClientError,
-    > {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
-        let result = self.client.execute_confirmation(request).await;
         self.count_request();
 
         result
@@ -280,10 +262,6 @@ pub struct LocalHttpInstanceSpec {
     #[builder(private, setter(name = "_ping"), default = "false")]
     ping: bool,
 
-    /// Enables the `confirmation` execution endpoint for a spawned Cyclone server.
-    #[builder(private, setter(name = "_confirmation"), default = "false")]
-    confirmation: bool,
-
     /// Enables the `resolver` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_resolver"), default = "false")]
     resolver: bool,
@@ -370,10 +348,6 @@ impl LocalHttpInstanceSpec {
         if self.ping {
             cmd.arg("--enable-ping");
         }
-        // NOTE: Not yet implemented on the other side.
-        // if self.confirmation {
-        //     cmd.arg("--enable-confirmation");
-        // }
         if self.resolver {
             cmd.arg("--enable-resolver");
         }
@@ -408,11 +382,6 @@ impl LocalHttpInstanceSpecBuilder {
         self._ping(true)
     }
 
-    /// Enables the `confirmation` execution endpoint for a spawned Cyclone server.
-    pub fn confirmation(&mut self) -> &mut Self {
-        self._confirmation(true)
-    }
-
     /// Enables the `resolver` execution endpoint for a spawned Cyclone server.
     pub fn resolver(&mut self) -> &mut Self {
         self._resolver(true)
@@ -430,7 +399,7 @@ impl LocalHttpInstanceSpecBuilder {
 
     /// Enables all available endpoints for a spawned Cyclone server
     pub fn all_endpoints(&mut self) -> &mut Self {
-        self.command().confirmation().resolver().workflow()
+        self.command().resolver().workflow()
     }
 }
 

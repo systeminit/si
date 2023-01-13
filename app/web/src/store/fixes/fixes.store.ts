@@ -7,6 +7,7 @@ import { ApiRequest } from "@/utils/pinia_api_tools";
 import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useAuthStore } from "../auth.store";
+import { AttributeValueId } from "../status.store";
 
 function nilId(): string {
   return "00000000000000000000000000";
@@ -15,10 +16,8 @@ function nilId(): string {
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
 export type RecommendationKind = "create" | "other";
 
-export type ConfirmationId = string;
-export type ConfirmationResolverId = string;
 export type Confirmation = {
-  id: ConfirmationId;
+  attributeValueId: AttributeValueId;
   title: string;
   description?: string;
   componentId: ComponentId;
@@ -26,7 +25,7 @@ export type Confirmation = {
   status: "running" | "success" | "failure";
 };
 export type Recommendation = {
-  id: ConfirmationId;
+  id: AttributeValueId;
   name: string;
   componentName: string;
   componentId: ComponentId;
@@ -51,7 +50,7 @@ export type Fix = {
   schemaName: string;
   componentName: string;
   componentId: ComponentId;
-  resolverId: ConfirmationResolverId;
+  attributeValueId: AttributeValueId;
   provider?: string;
   resource: Resource;
   startedAt: string;
@@ -251,7 +250,7 @@ export const useFixesStore = () => {
             method: "post",
             params: {
               list: recommendations.map((fix) => ({
-                id: fix.id,
+                attributeValueId: fix.id,
                 componentId: fix.componentId,
                 actionName: fix.recommendation,
               })),
@@ -276,7 +275,7 @@ export const useFixesStore = () => {
                 fixes: recommendations.map((r) => {
                   return {
                     id: r.id,
-                    resolverId: r.id,
+                    attributeValueId: r.id,
                     status: "running" as FixStatus,
                     action: r.recommendation,
                     schemaName: r.schemaName,
@@ -318,11 +317,13 @@ export const useFixesStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `workspace/${workspaceId}/head`, [
           {
-            eventType: "ConfirmationStatusUpdate",
+            eventType: "RanConfirmations",
             callback: (_update) => {
               this.runningFixBatch = undefined;
 
-              // we could be smarter with this
+              // NOTE(nick): this could be better with us only updating confirmations as they run.
+              // Although, there's a counter-argument: all confirmations should be re-ran once the
+              // "real world" changes, so is incremental updating really better? Maybe?
               this.LOAD_CONFIRMATIONS();
               this.LOAD_RECOMMENDATIONS();
               this.LOAD_FIX_BATCHES();
@@ -341,7 +342,7 @@ export const useFixesStore = () => {
               }
               const fix = batch.fixes.find(
                 (f) =>
-                  f.resolverId === update.confirmationResolverId &&
+                  f.id === update.attributeValueId &&
                   f.action === update.action,
               );
               if (!fix) {

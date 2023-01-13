@@ -87,7 +87,7 @@ impl Component {
             return Ok(false);
         }
 
-        let resource_attribute_value = Component::root_child_attribute_value_for_component(
+        let resource_attribute_value = Component::root_prop_child_attribute_value_for_component(
             ctx,
             self.id,
             RootPropChild::Resource,

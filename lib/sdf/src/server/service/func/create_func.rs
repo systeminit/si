@@ -3,9 +3,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::func::FuncError;
 use axum::Json;
 use dal::{
-    generate_name, prototype_context::HasPrototypeContext, AttributeValueId, ComponentId,
-    ConfirmationPrototype, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncId,
-    SchemaId, SchemaVariantId, StandardModel, Visibility, WsEvent,
+    generate_name, AttributeValueId, ComponentId, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncId, SchemaId, SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -88,31 +87,6 @@ async fn create_command_func(ctx: &DalContext) -> FuncResult<Func> {
     Ok(func)
 }
 
-async fn create_confirmation_func(ctx: &DalContext) -> FuncResult<Func> {
-    let mut func = Func::new(
-        ctx,
-        generate_name(),
-        FuncBackendKind::JsConfirmation,
-        FuncBackendResponseType::Confirmation,
-    )
-    .await?;
-
-    func.set_code_plaintext(ctx, Some(DEFAULT_CONFIRMATION_CODE))
-        .await?;
-    func.set_handler(ctx, Some(DEFAULT_CONFIRMATION_HANDLER))
-        .await?;
-
-    ConfirmationPrototype::new(
-        ctx,
-        func.display_name().unwrap_or("unknown"),
-        *func.id(),
-        ConfirmationPrototype::new_context(),
-    )
-    .await?;
-
-    Ok(func)
-}
-
 async fn create_attribute_func(ctx: &DalContext, variant: FuncVariant) -> FuncResult<Func> {
     let (code, handler, response_type) = match variant {
         FuncVariant::Attribute => (
@@ -125,6 +99,11 @@ async fn create_attribute_func(ctx: &DalContext, variant: FuncVariant) -> FuncRe
             DEFAULT_CODE_GENERATION_HANDLER,
             FuncBackendResponseType::CodeGeneration,
         ),
+        FuncVariant::Confirmation => (
+            DEFAULT_CONFIRMATION_CODE,
+            DEFAULT_CODE_GENERATION_HANDLER,
+            FuncBackendResponseType::Confirmation,
+        ),
         FuncVariant::Qualification => (
             DEFAULT_QUALIFICATION_CODE,
             DEFAULT_QUALIFICATION_HANDLER,
@@ -133,7 +112,7 @@ async fn create_attribute_func(ctx: &DalContext, variant: FuncVariant) -> FuncRe
         _ => {
             return Err(FuncError::UnexpectedFuncVariantCreatingAttributeFunc(
                 variant,
-            ))
+            ));
         }
     };
 
@@ -157,7 +136,7 @@ pub async fn create_func(
         FuncVariant::CodeGeneration => {
             create_attribute_func(&ctx, FuncVariant::CodeGeneration).await?
         }
-        FuncVariant::Confirmation => create_confirmation_func(&ctx).await?,
+        FuncVariant::Confirmation => create_attribute_func(&ctx, FuncVariant::Confirmation).await?,
         FuncVariant::Command => create_command_func(&ctx).await?,
         FuncVariant::Validation => create_validation_func(&ctx).await?,
         FuncVariant::Qualification => {

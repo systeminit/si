@@ -11,9 +11,9 @@ use crate::{
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
     ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, BuiltinsResult, ConfirmationPrototype, ConfirmationPrototypeContext,
-    DalContext, DiagramKind, ExternalProvider, Func, FuncBinding, InternalProvider, PropKind,
-    SchemaError, SchemaVariant, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    AttributeValueError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func,
+    FuncBinding, InternalProvider, PropKind, SchemaError, SchemaVariant, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{
     builtins::schema::aws::{AWS_NODE_COLOR, EC2_TAG_DOCS_URL},
@@ -540,34 +540,36 @@ impl MigrationDriver {
         )
         .await?;
 
-        let confirmation_func_name = "si:resourceExistsConfirmation";
+        // Add confirmations.
+        let confirmation_func_name = "si:confirmationResourceExists";
         let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(confirmation_func_name.to_owned()))?;
-        let context = ConfirmationPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let mut confirmation_prototype =
-            ConfirmationPrototype::new(ctx, "Ingress Exists?", *confirmation_func.id(), context)
-                .await?;
-        confirmation_prototype
-            .set_provider(ctx, Some("AWS".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_success_description(ctx, Some("Ingress exists!".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_failure_description(
-                ctx,
-                Some(
-                    "This Ingress rule has not been created yet. Please run the fix above to create it!"
-                        .to_owned(),
-                ),
-            )
-            .await?;
+        let confirmation_func_argument_name = "resource";
+        let confirmation_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            confirmation_func_argument_name,
+            *confirmation_func.id(),
+        )
+        .await?
+        .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
+            confirmation_func_name.to_string(),
+            confirmation_func_argument_name.to_string(),
+        ))?;
+        SchemaVariant::add_leaf(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            None,
+            LeafKind::Confirmation,
+            vec![LeafInput {
+                location: LeafInputLocation::Resource,
+                func_argument_id: *confirmation_func_argument.id(),
+            }],
+        )
+        .await
+        .expect("could not add leaf");
         FuncDescription::new(
             ctx,
             *confirmation_func.id(),
@@ -1031,34 +1033,36 @@ impl MigrationDriver {
         )
         .await?;
 
-        let confirmation_func_name = "si:resourceExistsConfirmation";
+        // Add confirmations.
+        let confirmation_func_name = "si:confirmationResourceExists";
         let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(confirmation_func_name.to_owned()))?;
-        let context = ConfirmationPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let mut confirmation_prototype =
-            ConfirmationPrototype::new(ctx, "Egress Exists?", *confirmation_func.id(), context)
-                .await?;
-        confirmation_prototype
-            .set_provider(ctx, Some("AWS".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_success_description(ctx, Some("Egress exists!".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_failure_description(
-                ctx,
-                Some(
-                    "This Egress rule has not been created yet. Please run the fix above to create it!"
-                        .to_owned(),
-                ),
-            )
-            .await?;
+        let confirmation_func_argument_name = "resource";
+        let confirmation_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            confirmation_func_argument_name,
+            *confirmation_func.id(),
+        )
+        .await?
+        .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
+            confirmation_func_name.to_string(),
+            confirmation_func_argument_name.to_string(),
+        ))?;
+        SchemaVariant::add_leaf(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            None,
+            LeafKind::Confirmation,
+            vec![LeafInput {
+                location: LeafInputLocation::Resource,
+                func_argument_id: *confirmation_func_argument.id(),
+            }],
+        )
+        .await
+        .expect("could not add leaf");
         FuncDescription::new(
             ctx,
             *confirmation_func.id(),
@@ -1515,30 +1519,36 @@ impl MigrationDriver {
         )
         .await?;
 
-        let confirmation_func_name = "si:resourceExistsConfirmation";
+        // Add confirmations.
+        let confirmation_func_name = "si:confirmationResourceExists";
         let confirmation_func = Func::find_by_attr(ctx, "name", &confirmation_func_name)
             .await?
             .pop()
             .ok_or_else(|| SchemaError::FuncNotFound(confirmation_func_name.to_owned()))?;
-        let context = ConfirmationPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let mut confirmation_prototype = ConfirmationPrototype::new(
+        let confirmation_func_argument_name = "resource";
+        let confirmation_func_argument = FuncArgument::find_by_name_for_func(
             ctx,
-            "Security Group Exists?",
+            confirmation_func_argument_name,
             *confirmation_func.id(),
-            context,
         )
-        .await?;
-        confirmation_prototype
-            .set_provider(ctx, Some("AWS".to_owned()))
-            .await?;
-        confirmation_prototype
-            .set_success_description(ctx, Some("Security Group exists!".to_owned()))
-            .await?;
-        confirmation_prototype.set_failure_description(ctx, Some("This Security Group has not been created yet. Please run the fix above to create it!".to_owned())).await?;
+        .await?
+        .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
+            confirmation_func_name.to_string(),
+            confirmation_func_argument_name.to_string(),
+        ))?;
+        SchemaVariant::add_leaf(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            None,
+            LeafKind::Confirmation,
+            vec![LeafInput {
+                location: LeafInputLocation::Resource,
+                func_argument_id: *confirmation_func_argument.id(),
+            }],
+        )
+        .await
+        .expect("could not add leaf");
         FuncDescription::new(
             ctx,
             *confirmation_func.id(),

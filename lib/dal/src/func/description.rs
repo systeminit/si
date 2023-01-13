@@ -19,6 +19,9 @@ use crate::{
     FuncId, FuncResult, SchemaVariantId, StandardModel, Timestamp, Visibility, WriteTenancy,
 };
 
+const FIND_FOR_FUNC_AND_SCHEMA_VARIANT: &str =
+    include_str!("../queries/func_description_find_for_func_and_schema_variant.sql");
+
 /// The contents of a [`FuncDescription`], which differ based on the [`Func's`](crate::Func)
 /// [`FuncBackendResponseType`](crate::FuncBackendResponseType).
 #[derive(
@@ -140,6 +143,30 @@ impl FuncDescription {
 
     pub fn response_type(&self) -> FuncBackendResponseType {
         self.response_type
+    }
+
+    /// Find [`Self`] with a provided [`FuncId`](crate::FuncId) and
+    /// [`SchemaVariantId`](crate::SchemaVariantId).
+    #[instrument(skip_all)]
+    pub async fn find_for_func_and_schema_variant(
+        ctx: &DalContext,
+        func_id: FuncId,
+        schema_variant_id: SchemaVariantId,
+    ) -> FuncResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_FOR_FUNC_AND_SCHEMA_VARIANT,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &func_id,
+                    &schema_variant_id,
+                ],
+            )
+            .await?;
+        Ok(standard_model::object_option_from_row_option(row)?)
     }
 
     /// Deserializes the "serialized_contents" field into a [`FuncDescriptionContents`] object.

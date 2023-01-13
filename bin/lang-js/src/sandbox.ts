@@ -41,8 +41,6 @@ function resolverFunctionSandbox(executionId: string): Sandbox {
   };
 }
 
-const confirmationSandbox = {};
-
 const workflowResolveSandbox = {};
 
 const validationSandbox = {};
@@ -62,11 +60,6 @@ export function createSandbox(
       return {
         ...commonSandbox(executionId),
         ...resolverFunctionSandbox(executionId),
-      };
-    case FunctionKind.Confirmation:
-      return {
-        ...commonSandbox(executionId),
-        ...confirmationSandbox,
       };
     case FunctionKind.WorkflowResolve:
       return {

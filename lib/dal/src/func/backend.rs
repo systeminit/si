@@ -17,7 +17,6 @@ pub mod identity;
 pub mod integer;
 pub mod js_attribute;
 pub mod js_command;
-pub mod js_confirmation;
 pub mod js_validation;
 pub mod js_workflow;
 pub mod map;
@@ -76,7 +75,6 @@ pub enum FuncBackendKind {
     Integer,
     JsAttribute,
     JsWorkflow,
-    JsConfirmation,
     JsCommand,
     JsValidation,
     Map,
