@@ -24,7 +24,8 @@
     </div>
   </div>
   <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
-    Select a package to view it.
+    <template v-if="slug">Package "{{ slug }}" does not exist!</template>
+    <template v-else>Select a package to view it.</template>
   </div>
 </template>
 
@@ -33,4 +34,8 @@ import { usePackageStore } from "@/store/package.store";
 import Icon from "@/ui-lib/icons/Icon.vue";
 
 const packageStore = usePackageStore();
+
+defineProps<{
+  slug?: string;
+}>();
 </script>

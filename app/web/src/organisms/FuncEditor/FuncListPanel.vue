@@ -58,13 +58,7 @@
                   :key="func.id"
                 >
                   <SiFuncListItem
-                    :class="
-                      selectedFuncId === func.id
-                        ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
-                        : ''
-                    "
-                    :is-builtin="func.isBuiltin"
-                    :name="func.name"
+                    :func="func"
                     color="#921ed6"
                     @click="routeToFunc(func.id)"
                   />
@@ -133,7 +127,7 @@ const router = useRouter();
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
 const loadFuncsReqStatus = funcStore.getRequestStatus("FETCH_FUNC_LIST");
-const { funcList, selectedFuncId } = storeToRefs(funcStore);
+const { funcList } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 

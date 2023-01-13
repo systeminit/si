@@ -14,7 +14,8 @@
     v-else
     class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
   >
-    Select a package to view its changelog.
+    <template v-if="slug">Package "{{ slug }}" does not exist!</template>
+    <template v-else>Select a package to view its changelog.</template>
   </div>
 </template>
 
@@ -24,4 +25,8 @@ import VButton2 from "@/ui-lib/VButton2.vue";
 import { usePackageStore } from "@/store/package.store";
 
 const packageStore = usePackageStore();
+
+defineProps<{
+  slug?: string;
+}>();
 </script>

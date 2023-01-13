@@ -14,11 +14,11 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
     <div class="inset-2 bottom-0 absolute">
-      <PackageDisplayPanel />
+      <PackageDisplay :slug="packageSlug" />
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    <PackageDetails />
+    <PackageDetailsPanel :slug="packageSlug" />
   </SiPanel>
 </template>
 
@@ -28,8 +28,8 @@ import _ from "lodash";
 import SiPanel from "@/atoms/SiPanel.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import PackageListPanel from "@/organisms/FuncEditor/PackageListPanel.vue";
-import PackageDisplayPanel from "@/organisms/PackageDisplayPanel.vue";
-import PackageDetails from "@/organisms/PackageDetails.vue";
+import PackageDisplay from "@/organisms/PackageDisplay.vue";
+import PackageDetailsPanel from "@/organisms/PackageDetailsPanel.vue";
 import { usePackageStore } from "@/store/package.store";
 
 const packageStore = usePackageStore();
