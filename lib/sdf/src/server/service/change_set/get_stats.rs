@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 
 use axum::extract::Query;
 use axum::Json;
-use dal::component::stats::ComponentStats;
+use dal::change_status::ComponentChangeStatus;
 use dal::Visibility;
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ pub struct GetStatsRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetStatsResponse {
-    pub component_stats: ComponentStats,
+    pub component_stats: ComponentChangeStatus,
 }
 
 /// Gather statistics for the _current_ change set.
@@ -28,7 +28,7 @@ pub async fn get_stats(
 ) -> ChangeSetResult<Json<GetStatsResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let component_stats = ComponentStats::new(&ctx).await?;
+    let component_stats = ComponentChangeStatus::new(&ctx).await?;
 
     Ok(Json(GetStatsResponse { component_stats }))
 }

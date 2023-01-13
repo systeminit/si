@@ -52,7 +52,6 @@ pub mod confirmation;
 pub mod diff;
 pub mod qualification;
 pub mod resource;
-pub mod stats;
 pub mod view;
 
 #[derive(Error, Debug)]

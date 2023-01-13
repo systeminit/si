@@ -4,6 +4,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use dal::change_status::ChangeStatusError;
 use dal::{
     ChangeSetError as DalChangeSetError, ComponentError as DalComponentError, StandardModelError,
     TransactionsError,
@@ -35,6 +36,8 @@ pub enum ChangeSetError {
     ChangeSetNotFound,
     #[error("edit session not found")]
     EditSessionNotFound,
+    #[error(transparent)]
+    ChangeStatusError(#[from] ChangeStatusError),
 }
 
 pub type ChangeSetResult<T> = std::result::Result<T, ChangeSetError>;

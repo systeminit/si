@@ -1,3 +1,4 @@
+use dal::change_status::ChangeStatus;
 use dal::edge::EdgeKind;
 use dal::node_position::NodePositionView;
 use dal::{
@@ -215,7 +216,7 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
     assert_eq!(diagram.edges().len(), 1);
     assert_eq!(
         diagram.edges()[0],
-        DiagramEdgeView::from(connection.clone())
+        DiagramEdgeView::from_with_change_status(connection.clone(), ChangeStatus::Added)
     );
 
     // Check the connection itself.
@@ -332,7 +333,7 @@ async fn get_diagram_and_delete_connection(ctx: &DalContext) {
     assert_eq!(diagram.edges().len(), 1);
     assert_eq!(
         diagram.edges()[0],
-        DiagramEdgeView::from(connection.clone())
+        DiagramEdgeView::from_with_change_status(connection.clone(), ChangeStatus::Added)
     );
 
     // Check the connection itself.
