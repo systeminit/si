@@ -2,7 +2,7 @@
   <div v-if="packageStore.selectedPackage" class="p-sm flex flex-col">
     <div class="flex flex-row items-center gap-2">
       <Icon :name="packageStore.selectedPackage.icon" />
-      <div class="text-3xl font-bold">
+      <div class="text-3xl font-bold truncate">
         {{ packageStore.selectedPackage.displayName }}
       </div>
     </div>

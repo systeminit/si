@@ -9,16 +9,20 @@ import { useChangeSetsStore } from "./change_sets.store";
 export type PackageId = string;
 
 export type Package = {
-  id: PackageId;
+  id: PackageId; // TODO FUTURE - should probably have a namespace system for packages
   displayName: string;
-  slug: string;
+  slug: string; // TODO FUTURE - should probably have a namespace system for packages
   description?: string; // TODO - think about how this will be used, maybe two fields, one short one long? markdown?
-  version: string; // FUTURE - how do users select versions?
+  version: string; // TODO FUTURE - how do users select versions?
   schemaVariants: Array<DiagramSchemaVariant>; // TODO - use my own type here
   icon: IconNames;
   color?: string; // TODO - use this, not optional
   // TODO - what else do packages have? talk to fletcher
-  // namespace/org slug perhaps? created at? created by? etc. think about what's in a package json in NPM
+  // changelog - just a string for now
+  // created at - Date
+  // created by - just a string for now
+
+  // TODO FUTURE - what other info would be useful here?
 };
 
 export const usePackageStore = () => {
@@ -63,7 +67,8 @@ export const usePackageStore = () => {
               this.packagesById = {
                 666: {
                   id: "666",
-                  displayName: "test package 0",
+                  displayName:
+                    "test package 0 has a really long name omg it's so long!",
                   version: "1.0",
                   schemaVariants: [
                     {
@@ -85,7 +90,7 @@ export const usePackageStore = () => {
                   version: "13.12",
                   schemaVariants: [],
                   icon: "bolt",
-                  slug: "bolt",
+                  slug: "dbolt",
                 },
                 777: {
                   id: "777",

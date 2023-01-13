@@ -3,7 +3,8 @@
     v-if="selectedFuncId === nilId()"
     class="p-2 text-center text-neutral-400 dark:text-neutral-300"
   >
-    Select a function to edit it.
+    <template v-if="funcId">Function "{{ funcId }}" does not exist!</template>
+    <template v-else>Select a function to edit it.</template>
   </div>
   <SiTabGroup
     v-else
@@ -70,6 +71,10 @@ import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { themeClasses } from "@/ui-lib/theme_tools";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+
+defineProps({
+  funcId: { type: String },
+});
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();

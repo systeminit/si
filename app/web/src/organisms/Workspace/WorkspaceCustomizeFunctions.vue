@@ -14,11 +14,11 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
     <div class="inset-2 bottom-0 absolute">
-      <FuncEditorTabs />
+      <FuncEditorTabs :func-id="funcId" />
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    <FuncDetails />
+    <FuncDetails :func-id="funcId" />
   </SiPanel>
 </template>
 

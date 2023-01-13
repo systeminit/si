@@ -161,7 +161,8 @@
     v-else
     class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
   >
-    Select a function to view its properties.
+    <template v-if="funcId">Function "{{ funcId }}" does not exist!</template>
+    <template v-else>Select a function to view its properties.</template>
   </div>
 </template>
 
@@ -183,6 +184,10 @@ import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ConfirmationDetails from "./ConfirmationDetails.vue";
 import ValidationDetails from "./ValidationDetails.vue";
+
+defineProps({
+  funcId: { type: String },
+});
 
 function nilId(): string {
   return "00000000000000000000000000";
