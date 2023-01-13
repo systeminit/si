@@ -126,6 +126,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     typeIcon: "logo-docker",
     isLoading: false,
     nodeType: "component",
+    changeStatus: "unmodified",
   },
   {
     id: "n2",
@@ -139,6 +140,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     typeIcon: "logo-docker",
     isLoading: false,
     nodeType: "component",
+    changeStatus: "unmodified",
   },
   {
     id: "n3",
@@ -159,6 +161,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     ],
     isLoading: false,
     nodeType: "component",
+    changeStatus: "unmodified",
   },
   {
     id: "n4",
@@ -172,6 +175,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     typeIcon: "logo-k8s",
     isLoading: false,
     nodeType: "component",
+    changeStatus: "unmodified",
   },
   {
     id: "n5",
@@ -185,6 +189,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     typeIcon: "logo-k8s",
     isLoading: true,
     nodeType: "component",
+    changeStatus: "unmodified",
   },
 ]);
 
@@ -220,6 +225,7 @@ function onDrawEdge(e: DrawEdgeEvent) {
     toNodeId: e.toSocket.parent.def.id,
     toSocketId: e.toSocket.def.id,
     id: `${e.fromSocket.def.id}/${_.uniqueId()}`,
+    changeStatus: "unmodified",
   });
 }
 
@@ -249,6 +255,7 @@ function onInsert(e: InsertElementEvent) {
         typeIcon: "logo-docker",
         isLoading: false,
         nodeType: "component",
+        changeStatus: "unmodified",
       });
 
       // parent needs to call this when insert is complete

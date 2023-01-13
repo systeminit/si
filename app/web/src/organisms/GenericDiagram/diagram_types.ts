@@ -198,6 +198,8 @@ export type DiagramNodeDef = {
   isLoading: boolean;
   /** the list of childIds related to the node */
   childIds?: DiagramElementId[];
+  /** change status of component in relation to head */
+  changeStatus: "added" | "modified" | "deleted" | "unmodified";
 };
 
 export type DiagramSocketDef = {
@@ -237,6 +239,8 @@ export type DiagramEdgeDef = {
   // color
   // thickness
   isInvisible?: boolean;
+  /** change status of edge in relation to head */
+  changeStatus: "added" | "deleted" | "unmodified";
 };
 
 // specific features... likely will move these as the diagram functionality gets broken up

@@ -4,6 +4,9 @@ use std::num::{ParseFloatError, ParseIntError};
 use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 
+use crate::change_status::{
+    ChangeStatus, ChangeStatusError, ComponentChangeStatus, EdgeChangeStatus,
+};
 use crate::diagram::connection::{Connection, DiagramEdgeView};
 use crate::diagram::node::DiagramNodeView;
 use crate::provider::external::ExternalProviderError;
@@ -26,6 +29,8 @@ pub enum DiagramError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("change status error: {0}")]
+    ChangeStatus(#[from] ChangeStatusError),
     #[error("component not found")]
     ComponentNotFound,
     #[error("edge error: {0}")]
@@ -113,19 +118,27 @@ impl Diagram {
         let connections = Connection::list(ctx).await?;
         let nodes = Node::list(ctx).await?;
 
+        let added = ComponentChangeStatus::list_added(ctx).await?;
+        let deleted = ComponentChangeStatus::list_deleted(ctx).await?;
+        let modified = ComponentChangeStatus::list_modified(ctx).await?;
+
+        let mut stats = Vec::new();
+        stats.extend(added);
+        stats.extend(deleted);
+        stats.extend(modified);
+
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in &nodes {
+            let component = node
+                .component(ctx)
+                .await?
+                .ok_or(DiagramError::ComponentNotFound)?;
+
             let schema_variant = match node.kind() {
-                NodeKind::Configuration => {
-                    let component = node
-                        .component(ctx)
-                        .await?
-                        .ok_or(DiagramError::ComponentNotFound)?;
-                    component
-                        .schema_variant(ctx)
-                        .await?
-                        .ok_or(DiagramError::SchemaVariantNotFound)?
-                }
+                NodeKind::Configuration => component
+                    .schema_variant(ctx)
+                    .await?
+                    .ok_or(DiagramError::SchemaVariantNotFound)?,
             };
 
             let positions = NodePosition::list_for_node(ctx, *node.id()).await?;
@@ -137,12 +150,24 @@ impl Diagram {
                 Some(pos) => pos,
                 None => continue, // Note: do we want to ignore things with no position?
             };
-            let view = DiagramNodeView::new(ctx, node, &position, &schema_variant).await?;
+
+            let maybe_change_status = stats.iter().find(|s| s.component_id == *component.id());
+
+            let change_status = if let Some(status) = maybe_change_status {
+                status.component_status.clone()
+            } else {
+                ChangeStatus::Unmodified
+            };
+
+            let view =
+                DiagramNodeView::new(ctx, node, &position, change_status, &schema_variant).await?;
             node_views.push(view);
         }
 
-        Ok(Self {
-            edges: connections
+        let edges = {
+            let edge_change_statuses = EdgeChangeStatus::list(ctx).await?;
+
+            connections
                 .into_iter()
                 .filter(|conn| {
                     node_views.iter().any(|n| {
@@ -150,8 +175,19 @@ impl Diagram {
                         source_node_id == n.id()
                     })
                 })
-                .map(DiagramEdgeView::from)
-                .collect(),
+                .map(|c| {
+                    let change_status = edge_change_statuses
+                        .iter()
+                        .find(|cs| cs.edge_id == c.id)
+                        .map_or(ChangeStatus::Unmodified, |cs| cs.status.clone());
+
+                    DiagramEdgeView::from_with_change_status(c, change_status)
+                })
+                .collect()
+        };
+
+        Ok(Self {
+            edges,
             nodes: node_views,
         })
     }

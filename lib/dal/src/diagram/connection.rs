@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::edge::{Edge, EdgeId, EdgeKind};
 
+use crate::change_status::ChangeStatus;
 use crate::diagram::DiagramResult;
 use crate::job::definition::DependentValuesUpdate;
 use crate::socket::SocketId;
@@ -221,6 +222,7 @@ pub struct DiagramEdgeView {
     to_node_id: String,
     to_socket_id: String,
     is_bidirectional: Option<bool>,
+    change_status: ChangeStatus,
 }
 
 impl DiagramEdgeView {
@@ -229,8 +231,8 @@ impl DiagramEdgeView {
     }
 }
 
-impl From<Connection> for DiagramEdgeView {
-    fn from(conn: Connection) -> Self {
+impl DiagramEdgeView {
+    pub fn from_with_change_status(conn: Connection, change_status: ChangeStatus) -> Self {
         Self {
             id: conn.id.to_string(),
             ty: None,
@@ -240,6 +242,13 @@ impl From<Connection> for DiagramEdgeView {
             to_node_id: conn.destination.node_id.to_string(),
             to_socket_id: conn.destination.socket_id.to_string(),
             is_bidirectional: Some(false),
+            change_status,
         }
+    }
+}
+
+impl From<Connection> for DiagramEdgeView {
+    fn from(conn: Connection) -> Self {
+        DiagramEdgeView::from_with_change_status(conn, ChangeStatus::Unmodified)
     }
 }

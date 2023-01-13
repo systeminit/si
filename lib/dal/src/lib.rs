@@ -19,6 +19,7 @@ pub mod billing_account;
 pub mod builtins;
 pub mod capability;
 pub mod change_set;
+pub mod change_status;
 pub mod code_view;
 pub mod component;
 pub mod confirmation_prototype;

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 
+use crate::change_status::ChangeStatus;
 use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
@@ -143,6 +144,7 @@ pub struct DiagramNodeView {
     size: Option<Size2D>,
     color: Option<String>,
     node_type: String,
+    change_status: ChangeStatus,
 }
 
 impl DiagramNodeView {
@@ -150,6 +152,7 @@ impl DiagramNodeView {
         ctx: &DalContext,
         node: &Node,
         position: &NodePosition,
+        change_status: ChangeStatus,
         schema_variant: &SchemaVariant,
     ) -> DiagramResult<Self> {
         let component = node
@@ -203,6 +206,7 @@ impl DiagramNodeView {
                 .find_value_by_json_pointer::<String>(ctx, "/root/si/type")
                 .await?
                 .unwrap_or_else(|| "component".to_string()),
+            change_status,
         })
     }
 
