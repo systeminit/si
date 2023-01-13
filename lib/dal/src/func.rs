@@ -8,8 +8,8 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
-    DalContext, FuncBinding, HistoryEventError, StandardModel, StandardModelError, Timestamp,
-    Visibility, WriteTenancy,
+    DalContext, FuncBinding, FuncDescriptionContents, HistoryEventError, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -18,6 +18,7 @@ pub mod argument;
 pub mod backend;
 pub mod binding;
 pub mod binding_return_value;
+pub mod description;
 pub mod execution;
 
 #[derive(Error, Debug)]
@@ -41,6 +42,8 @@ pub enum FuncError {
     NotFound(FuncId),
     #[error("could not find func by name: {0}")]
     NotFoundByName(String),
+    #[error("contents ({0}) response type does not match func response type: {1}")]
+    ResponseTypeMismatch(FuncDescriptionContents, FuncBackendResponseType),
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;

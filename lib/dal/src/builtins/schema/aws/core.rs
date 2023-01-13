@@ -5,6 +5,7 @@ use crate::builtins::schema::MigrationDriver;
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
 use crate::edit_field::widget::WidgetKind;
+use crate::func::description::FuncDescription;
 use crate::property_editor::SelectWidgetOption;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
@@ -12,6 +13,7 @@ use crate::validation::Validation;
 use crate::{
     action_prototype::ActionKind,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
+    FuncDescriptionContents,
 };
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
@@ -810,6 +812,18 @@ impl MigrationDriver {
             .set_success_description(ctx, Some("EC2 instance exists!".to_owned()))
             .await?;
         confirmation_prototype.set_failure_description(ctx, Some("This EC2 instance has not been created yet. Please run the fix above to create it!".to_owned())).await?;
+        FuncDescription::new(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            FuncDescriptionContents::Confirmation {
+                name: "EC2 Instance Exists?".to_string(),
+                success_description: Some("EC2 instance exists!".to_string()),
+                failure_description: Some("This EC2 instance has not been created yet. Please run the fix above to create it!".to_string()),
+                provider: Some("AWS".to_string())
+            },
+        )
+            .await?;
 
         let name = "create";
         let context = ActionPrototypeContext {
@@ -1362,6 +1376,18 @@ impl MigrationDriver {
                 ),
             )
             .await?;
+        FuncDescription::new(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            FuncDescriptionContents::Confirmation {
+                name: "Elastic IP Exists?".to_string(),
+                success_description: Some("Elastic IP exists!".to_string()),
+                failure_description: Some("This Elastic IP has not been created yet. Please run the fix above to create it!".to_string()),
+                provider: Some("AWS".to_string())
+            },
+        )
+            .await?;
 
         let name = "create";
         let context = ActionPrototypeContext {
@@ -1801,6 +1827,18 @@ impl MigrationDriver {
                         .to_owned(),
                 ),
             )
+            .await?;
+        FuncDescription::new(
+            ctx,
+            *confirmation_func.id(),
+            *schema_variant.id(),
+            FuncDescriptionContents::Confirmation {
+                name: "Key Pair Exists?".to_string(),
+                success_description: Some("Key Pair exists!".to_string()),
+                failure_description: Some("This Key Pair has not been created yet. Please run the fix above to create it!".to_string()),
+                provider: Some("AWS".to_string())
+            },
+        )
             .await?;
 
         let name = "create";

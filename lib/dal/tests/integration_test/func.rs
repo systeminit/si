@@ -15,6 +15,8 @@ use dal_test::{
 };
 use strum::IntoEnumIterator;
 
+mod description;
+
 #[test]
 async fn new(ctx: &DalContext) {
     let _write_tenancy = WriteTenancy::new_universal();

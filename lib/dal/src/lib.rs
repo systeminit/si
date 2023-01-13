@@ -128,6 +128,8 @@ pub use fix::resolver::{FixResolver, FixResolverContext, FixResolverError, FixRe
 pub use fix::{Fix, FixCompletionStatus, FixId};
 pub use func::argument::FuncArgument;
 pub use func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
+pub use func::description::FuncDescription;
+pub use func::description::FuncDescriptionContents;
 pub use func::{
     backend::{FuncBackendError, FuncBackendKind, FuncBackendResponseType},
     binding::{FuncBinding, FuncBindingError, FuncBindingId},
