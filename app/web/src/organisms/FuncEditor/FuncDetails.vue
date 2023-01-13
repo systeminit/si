@@ -157,7 +157,10 @@
       </template>
     </SiTabGroup>
   </div>
-  <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
+  <div
+    v-else
+    class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
+  >
     Select a function to view its properties.
   </div>
 </template>

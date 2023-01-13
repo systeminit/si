@@ -1,94 +1,81 @@
 <template>
-  <SiTabGroup @change="changeMode">
+  <SiTabGroup @change="onTabChange">
     <template #tabs>
       <SiTabHeader :key="0">FUNCTIONS</SiTabHeader>
       <SiTabHeader :key="1">PACKAGES</SiTabHeader>
     </template>
     <template #panels>
-      <!-- FUNCTIONS PANEL -->
       <TabPanel :key="0" class="h-full overflow-auto flex flex-col">
-        <div
-          class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
-        >
-          <NewFuncDropdown
-            label="Function"
-            :fn-types="CREATE_OPTIONS"
-            @selected-func-variant="createFunc"
-          />
-
-          <NewFuncDropdown
-            v-if="isDevMode"
-            label="Builtin"
-            :fn-types="BUILTIN_CREATE_OPTIONS"
-            @selected-func-variant="openFuncNameModal"
-          />
-        </div>
-        <SiSearch
-          auto-search
-          placeholder="search functions"
-          @search="onSearch"
+        <RequestStatusMessage
+          :request-status="loadFuncsReqStatus"
+          loading-message="Loading functions..."
         />
-        <div
-          class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
-        >
-          Select a function to view or edit it.
-        </div>
-        <ul class="overflow-y-auto min-h-[200px]">
-          <SiCollapsible
-            v-for="(fnTypeInfo, variant) in CUSTOMIZABLE_FUNC_TYPES"
-            :key="variant"
-            as="li"
-            class="w-full"
-            content-as="ul"
-            default-open
+        <template v-if="loadFuncsReqStatus.isSuccess">
+          <div
+            class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
           >
-            <template #label>
-              <div class="flex items-center gap-2">
-                <FuncSkeleton />
-                <span> {{ fnTypeInfo.pluralLabel }} </span>
-              </div>
-            </template>
-            <template #default>
-              <li v-for="func in funcsByVariant[variant] ?? []" :key="func.id">
-                <SiFuncSprite
-                  :class="
-                    selectedFuncId === func.id
-                      ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
-                      : ''
-                  "
-                  :is-builtin="func.isBuiltin"
-                  :name="func.name"
-                  color="#921ed6"
-                  @click="routeToFunc(func.id)"
-                />
-              </li>
-            </template>
-          </SiCollapsible>
-        </ul>
-      </TabPanel>
+            <NewFuncDropdown
+              label="Function"
+              :fn-types="CREATE_OPTIONS"
+              @selected-func-variant="createFunc"
+            />
 
-      <!-- PACKAGES PANEL -->
-      <TabPanel :key="1" class="h-full overflow-auto flex flex-col">
-        <div
-          class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
-        >
-          <!-- TODO - currently this button doesn't do anything -->
-          <VButton2 label="Package" tone="action" icon="plus" size="sm" />
-        </div>
-        <SiSearch auto-search placeholder="search packages" />
-        <div
-          class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
-        >
-          Select a package to view or edit it.
-        </div>
-        <ul class="overflow-y-auto min-h-[200px]">
-          <li v-for="(p, index) in packageStore.packages" :key="index">
-            <SiPackageSprite :name="p.name" />
-          </li>
-        </ul>
+            <NewFuncDropdown
+              v-if="isDevMode"
+              label="Builtin"
+              :fn-types="BUILTIN_CREATE_OPTIONS"
+              @selected-func-variant="openFuncNameModal"
+            />
+          </div>
+          <SiSearch
+            auto-search
+            placeholder="search functions"
+            @search="onSearch"
+          />
+          <div
+            class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
+          >
+            Select a function to view or edit it.
+          </div>
+          <ul class="overflow-y-auto min-h-[200px]">
+            <SiCollapsible
+              v-for="(fnTypeInfo, variant) in CUSTOMIZABLE_FUNC_TYPES"
+              :key="variant"
+              as="li"
+              class="w-full"
+              content-as="ul"
+              default-open
+            >
+              <template #label>
+                <div class="flex items-center gap-2">
+                  <FuncSkeleton />
+                  <span> {{ fnTypeInfo.pluralLabel }} </span>
+                </div>
+              </template>
+              <template #default>
+                <li
+                  v-for="func in funcsByVariant[variant] ?? []"
+                  :key="func.id"
+                >
+                  <SiFuncSprite
+                    :class="
+                      selectedFuncId === func.id
+                        ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
+                        : ''
+                    "
+                    :is-builtin="func.isBuiltin"
+                    :name="func.name"
+                    color="#921ed6"
+                    @click="routeToFunc(func.id)"
+                  />
+                </li>
+              </template>
+            </SiCollapsible>
+          </ul>
+        </template>
       </TabPanel>
+      <TabPanel />
     </template>
-
     <Modal
       size="sm"
       :open="funcNameModalOpen"
@@ -126,8 +113,8 @@ import { computed, ref, Ref } from "vue";
 import { TabPanel } from "@headlessui/vue";
 import validator from "validator";
 import { storeToRefs } from "pinia";
-import _, { functions } from "lodash";
-import SiPackageSprite from "@/molecules/SiPackageSprite.vue";
+import _ from "lodash";
+import { useRouter } from "vue-router";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
@@ -138,14 +125,14 @@ import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
 import Modal from "@/ui-lib/Modal.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
-import { usePackageStore } from "@/store/package.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
-import VButton2 from "@/ui-lib/VButton2.vue";
+import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import NewFuncDropdown from "../NewFuncDropdown.vue";
 
+const router = useRouter();
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
-const packageStore = usePackageStore();
+const loadFuncsReqStatus = funcStore.getRequestStatus("FETCH_FUNC_LIST");
 const { funcList, selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
@@ -185,12 +172,7 @@ const emits = defineEmits<{
     e: "createFunc",
     v: { variant: FuncVariant; isBuiltin: boolean; name?: string },
   ): void;
-  (e: "changeMode", v: number): void;
 }>();
-
-const changeMode = (mode: number) => {
-  emits("changeMode", mode);
-};
 
 const createFunc = (variant: FuncVariant) => {
   emits("createFunc", { variant, isBuiltin: false });
@@ -225,5 +207,9 @@ const createBuiltinFunc = () => {
     name: `si:${newBuiltinFuncName.value}`,
   });
   closeFuncNameModal();
+};
+
+const onTabChange = () => {
+  router.push({ name: "workspace-lab-packages" });
 };
 </script>

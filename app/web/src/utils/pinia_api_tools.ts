@@ -388,7 +388,9 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           isSuccess: !!rawStatus.receivedAt && !rawStatus.error,
           isError: !!rawStatus.error,
           ...(rawStatus.error && {
-            errorMessage: rawStatus.error.data?.error?.message,
+            errorMessage:
+              rawStatus.error.data?.error?.message ||
+              rawStatus.error.statusText,
             errorCode: rawStatus.error.data?.error?.type,
           }),
         };

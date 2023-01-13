@@ -45,7 +45,7 @@ const routes: RouteRecordRaw[] = [
         params: { ...to.params, changeSetId: "auto" },
       };
     },
-    props: castNumberProps, // will cast all props - even for child routes
+    props: true,
     children: [
       {
         path: ":changeSetId",
@@ -65,12 +65,32 @@ const routes: RouteRecordRaw[] = [
           import("@/organisms/Workspace/WorkspaceModelAndView.vue"),
       },
       {
-        path: ":changeSetId/l/:funcId?",
+        path: ":changeSetId/l",
         name: "workspace-lab",
-        component: () => import("@/organisms/Workspace/WorkspaceCustomize.vue"),
-        props: (route: RouteLocationNormalized) => ({
-          funcId: castNumberProps(route).funcId,
-        }),
+        component: () =>
+          import("@/organisms/Workspace/WorkspaceCustomizeIndex.vue"),
+        redirect(to) {
+          return {
+            name: "workspace-lab-functions",
+            params: to.params,
+          };
+        },
+        children: [
+          {
+            path: "f/:funcId?",
+            name: "workspace-lab-functions",
+            component: () =>
+              import("@/organisms/Workspace/WorkspaceCustomizeFunctions.vue"),
+            props: true,
+          },
+          {
+            path: "p/:packageSlug?",
+            name: "workspace-lab-packages",
+            component: () =>
+              import("@/organisms/Workspace/WorkspaceCustomizePackages.vue"),
+            props: true,
+          },
+        ],
       },
       {
         path: "v",
