@@ -57,7 +57,7 @@
                   v-for="func in funcsByVariant[variant] ?? []"
                   :key="func.id"
                 >
-                  <SiFuncSprite
+                  <SiFuncListItem
                     :class="
                       selectedFuncId === func.id
                         ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
@@ -118,7 +118,7 @@ import { useRouter } from "vue-router";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
+import SiFuncListItem from "@/molecules/SiFuncListItem.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
 import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";

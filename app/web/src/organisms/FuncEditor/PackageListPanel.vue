@@ -26,16 +26,7 @@
           </div>
           <ul class="overflow-y-auto min-h-[200px]">
             <li v-for="(p, index) in packageStore.packagesById" :key="index">
-              <SiPackageSprite
-                :name="p.displayName"
-                :icon="p.icon"
-                :class="
-                  selectedPackageId === p.id
-                    ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300' // TODO - REFACTOR THIS SHIT
-                    : ''
-                "
-                :slug="p.slug"
-              />
+              <SiPackageListItem :p="p" />
             </li>
           </ul>
         </template>
@@ -46,10 +37,9 @@
 
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
-import { storeToRefs } from "pinia";
 import _ from "lodash";
 import { useRouter } from "vue-router";
-import SiPackageSprite from "@/molecules/SiPackageSprite.vue";
+import SiPackageListItem from "@/molecules/SiPackageListItem.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
@@ -59,7 +49,6 @@ import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 
 const router = useRouter();
 const packageStore = usePackageStore();
-const { selectedPackageId } = storeToRefs(packageStore);
 const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
 
 const onTabChange = () => {

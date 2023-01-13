@@ -1,14 +1,19 @@
 <template>
   <RouterLink
     class="flex flex-row items-center gap-2.5 py-4 pr-4 pl-8 text-xs relative border border-transparent dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
+    :class="
+      selectedPackageId === p.id
+        ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
+        : ''
+    "
     :to="{
       name: 'workspace-lab-packages',
-      params: { ...route.params, packageSlug: slug },
+      params: { ...route.params, packageSlug: p.slug },
     }"
   >
-    <Icon :name="icon || 'cat'" />
+    <Icon :name="p.icon || 'cat'" />
     <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
-      {{ props.name }}
+      {{ p.displayName }}
     </div>
   </RouterLink>
 </template>
@@ -16,14 +21,15 @@
 <script setup lang="ts">
 import { PropType } from "vue";
 import { useRoute } from "vue-router";
+import { storeToRefs } from "pinia";
 import Icon from "@/ui-lib/icons/Icon.vue";
-import { IconNames } from "@/ui-lib/icons/icon_set";
+import { Package, usePackageStore } from "@/store/package.store";
 
-const props = defineProps({
-  name: { type: String },
-  icon: { type: String as PropType<IconNames> },
-  slug: { type: String },
+defineProps({
+  p: { type: Object as PropType<Package>, required: true },
 });
 
 const route = useRoute();
+const packageStore = usePackageStore();
+const { selectedPackageId } = storeToRefs(packageStore);
 </script>

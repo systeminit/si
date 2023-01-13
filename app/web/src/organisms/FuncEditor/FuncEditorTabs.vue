@@ -20,7 +20,7 @@
         {{ func.name }}
         <template #icon>
           <button
-            class="inline-block rounded-sm rounded-3xl text-neutral-400 ml-1"
+            class="inline-block rounded-full text-neutral-400 ml-1"
             :class="
               clsx(
                 themeClasses(
