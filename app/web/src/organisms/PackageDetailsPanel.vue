@@ -3,12 +3,15 @@
     <div
       class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-between"
     >
-      <div class="font-bold truncate">
+      <div class="font-bold truncate leading-relaxed">
         {{ packageStore.selectedPackage.displayName }}
       </div>
       <VButton2 label="Import" tone="action" icon="plus" size="md" />
     </div>
-    <div class="p-sm">Changelog goes here</div>
+    <div class="p-sm flex flex-col">
+      <div class="pb-xs font-bold text-xl">Changelog:</div>
+      <div>{{ packageStore.selectedPackage.changelog }}</div>
+    </div>
   </div>
   <div
     v-else

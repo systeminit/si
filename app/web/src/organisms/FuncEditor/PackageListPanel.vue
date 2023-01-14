@@ -24,11 +24,32 @@
           >
             Select a package to view or edit it.
           </div>
-          <ul class="overflow-y-auto min-h-[200px]">
-            <li v-for="(p, index) in packageStore.packagesById" :key="index">
-              <SiPackageListItem :p="p" />
-            </li>
-          </ul>
+          <SiCollapsible label="Installed Packages" default-open>
+            <ul class="overflow-y-auto">
+              <li
+                v-if="!packageStore.installedPackages.length"
+                class="p-sm italic text-center text-xs"
+              >
+                No packages installed.
+              </li>
+              <li
+                v-for="(p, index) in packageStore.installedPackages"
+                :key="index"
+              >
+                <SiPackageListItem :p="p" />
+              </li>
+            </ul>
+          </SiCollapsible>
+          <SiCollapsible label="Available Packages" default-open>
+            <ul class="overflow-y-auto">
+              <li
+                v-for="(p, index) in packageStore.notInstalledPackages"
+                :key="index"
+              >
+                <SiPackageListItem :p="p" />
+              </li>
+            </ul>
+          </SiCollapsible>
         </template>
       </TabPanel>
     </template>
@@ -46,6 +67,7 @@ import SiSearch from "@/molecules/SiSearch.vue";
 import { usePackageStore } from "@/store/package.store";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
+import SiCollapsible from "../SiCollapsible.vue";
 
 const router = useRouter();
 const packageStore = usePackageStore();

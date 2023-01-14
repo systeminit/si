@@ -13,7 +13,7 @@
   <div
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
-    <div class="inset-2 bottom-0 absolute">
+    <div class="inset-2 bottom-0 absolute w-full h-full">
       <PackageDisplay :slug="packageSlug" />
     </div>
   </div>
