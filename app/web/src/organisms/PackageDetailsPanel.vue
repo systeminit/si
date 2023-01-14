@@ -6,7 +6,18 @@
       <div class="font-bold truncate leading-relaxed">
         {{ packageStore.selectedPackage.displayName }}
       </div>
-      <VButton2 label="Import" tone="action" icon="plus" size="md" />
+      <VButton2
+        :disabled="disableInstallButton"
+        :loading="disableInstallButton"
+        :label="packageStore.selectedPackage.installed ? 'Remove' : 'Add'"
+        :loading-text="
+          packageStore.selectedPackage.installed ? 'Removing...' : 'Adding...'
+        "
+        tone="action"
+        icon="plus"
+        size="md"
+        @click="toggleSelectedPackage()"
+      />
     </div>
     <div class="p-sm flex flex-col">
       <div class="pb-xs font-bold text-xl">Changelog:</div>
@@ -23,13 +34,24 @@
 </template>
 
 <script lang="ts" setup>
+import { ref } from "vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 
 import { usePackageStore } from "@/store/package.store";
 
 const packageStore = usePackageStore();
+const disableInstallButton = ref(false);
 
 defineProps<{
   slug?: string;
 }>();
+
+const toggleSelectedPackage = () => {
+  disableInstallButton.value = true;
+  setTimeout(() => {
+    packageStore.selectedPackage.installed =
+      !packageStore.selectedPackage.installed;
+    disableInstallButton.value = false;
+  }, 2000);
+};
 </script>
