@@ -198,9 +198,9 @@ impl JobConsumer for FixesJob {
             )
             .await?;
 
-            DependentValuesUpdate::new(ctx, vec![*attribute_value.id()])
-                .run(ctx)
-                .await?;
+            let mut job = DependentValuesUpdate::new(ctx, vec![*attribute_value.id()]);
+            job.set_sync();
+            job.run(ctx).await?;
         }
 
         WsEvent::fix_return(

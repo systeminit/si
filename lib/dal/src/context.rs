@@ -117,6 +117,13 @@ impl DalContext {
         DalContextBuilder { services_context }
     }
 
+    /// Replaces internal transactions with a new one, commiting the old one
+    pub async fn commit_and_continue(&mut self) -> Result<(), TransactionsError> {
+        let (builder, conns, request_ctx) = self.clone().commit_into_parts().await?;
+        *self = builder.build_with_conns(request_ctx, conns).await?;
+        Ok(())
+    }
+
     /// Consumes all inner transactions, committing all changes made within them, and returns
     /// underlying connections.
     pub async fn commit_into_conns(self) -> Result<Connections, TransactionsError> {
@@ -190,6 +197,18 @@ impl DalContext {
         self.write_tenancy = request_ctx.write_tenancy;
         self.visibility = request_ctx.visibility;
         self.history_actor = request_ctx.history_actor;
+    }
+
+    /// Clones a new context with the same metadata, but in different transactions
+    pub async fn clone_with_new_transactions(&self) -> Result<Self, TransactionsError> {
+        let mut other = self.clone();
+        other.txns = self
+            .services_context
+            .connections()
+            .await?
+            .start_txns()
+            .await?;
+        Ok(other)
     }
 
     /// Clones a new context from this one with all new values from a  [`RequestContext`].

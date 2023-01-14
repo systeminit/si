@@ -564,7 +564,11 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 name = "council"
 version = "0.1.0"
 dependencies = [
+ "futures",
  "serde",
+ "serde_json",
+ "si-data-nats",
+ "thiserror",
  "ulid",
 ]
 

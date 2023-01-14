@@ -173,7 +173,8 @@ async fn start_graph_processor(nats: NatsClient, mut shutdown_request_rx: watch:
                 reply_channel,
                 serde_json::to_vec(&Response::OkToProcess {
                     node_ids: vec![node_id],
-                }).unwrap(),
+                })
+                .unwrap(),
             )
             .await
             .unwrap();
@@ -347,7 +348,7 @@ impl ChangeSetGraph {
         new_dependency_data: Graph,
         change_set_id: Id,
     ) -> Result<(), Error> {
-        let change_set_graph_data = self.dependency_data.entry(change_set_id).or_insert(HashMap::new());
+        let change_set_graph_data = self.dependency_data.entry(change_set_id).or_default();
 
         for (attribute_value_id, dependencies) in new_dependency_data {
             change_set_graph_data

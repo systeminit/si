@@ -8,3 +8,7 @@ edition = "2021"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 ulid = { version = "1", features = ["serde"] }
+si-data-nats = { path = "../../lib/si-data-nats" }
+thiserror = "1.0.24"
+serde_json = { version = "1.0.64", features = ["preserve_order"] }
+futures = "0.3.13"

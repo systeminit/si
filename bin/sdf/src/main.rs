@@ -96,7 +96,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     let (job_client, job_processor) = JobProcessor::connect(&config, alive_marker).await?;
 
     let (resource_alive_marker, mut resource_job_processor_shutdown_rx) = mpsc::channel(1);
-    let (resource_job_client, resource_job_processor) =
+    let (_resource_job_client, resource_job_processor) =
         JobProcessor::connect(&config, resource_alive_marker).await?;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
@@ -190,12 +190,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     info!("Shutting down the job processor client");
     if let Err(err) = (&job_client as &dyn JobProcessorClientCloser).close().await {
-        error!("Failed to close job client: {err}");
-    }
-    if let Err(err) = (&resource_job_client as &dyn JobProcessorClientCloser)
-        .close()
-        .await
-    {
         error!("Failed to close job client: {err}");
     }
 

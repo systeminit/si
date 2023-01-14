@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
-use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use tokio::task::JoinSet;
@@ -11,7 +10,7 @@ use crate::{
     job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    DalContext, DalContextBuilder, StandardModel, StatusUpdater, Visibility, WsEvent,
+    DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -33,6 +32,7 @@ pub struct DependentValuesUpdate {
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
+    single_transaction: bool,
 }
 
 impl DependentValuesUpdate {
@@ -45,7 +45,26 @@ impl DependentValuesUpdate {
             access_builder,
             visibility,
             job: None,
+            single_transaction: false,
         })
+    }
+
+    pub async fn clone_ctx_with_new_transactions(
+        &self,
+        ctx: &DalContext,
+    ) -> JobConsumerResult<DalContext> {
+        if self.single_transaction {
+            Ok(ctx.clone())
+        } else {
+            Ok(ctx.clone_with_new_transactions().await?)
+        }
+    }
+
+    pub async fn commit_and_continue(&self, mut ctx: DalContext) -> JobConsumerResult<DalContext> {
+        if !self.single_transaction {
+            ctx.commit_and_continue().await?;
+        }
+        Ok(ctx)
     }
 }
 
@@ -85,6 +104,14 @@ impl JobConsumer for DependentValuesUpdate {
         "DependentValuesUpdate".to_string()
     }
 
+    /// This method is a hack to support SyncProcessor in DependentValusUpdate, since we commit transactions mid job, and write to multiple ones
+    /// The sync processor needs everything to run within a single transaction, so we check for it
+    fn set_sync(&mut self) {
+        self.single_transaction = true;
+        let boxed = Box::new(self.clone()) as Box<dyn JobProducer + Send + Sync>;
+        self.job = Some(boxed.try_into().unwrap());
+    }
+
     fn access_builder(&self) -> AccessBuilder {
         self.access_builder.clone()
     }
@@ -93,70 +120,41 @@ impl JobConsumer for DependentValuesUpdate {
         self.visibility
     }
 
-    async fn run(&self, _ctx: &DalContext) -> JobConsumerResult<()> {
-        unreachable!()
-    }
-
-    async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
-        let ctx = ctx_builder
-            .build(self.access_builder().build(self.visibility()))
-            .await?;
-
-        let jid = council::Id::from_string(&self.job.as_ref().unwrap().id)?;
-        let nats = ctx.nats_conn().clone();
+    async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
+        let mut ctx = self.clone_ctx_with_new_transactions(ctx).await?;
 
         let now = std::time::Instant::now();
 
         let mut status_updater = StatusUpdater::initialize(&ctx).await?;
 
-        // Coordinate with council on when we are free to proceed
-        let pub_channel = format!("council.{jid}");
-        let reply_channel = format!("{pub_channel}.reply");
-        let mut subscription = nats.subscribe(&reply_channel).await?;
+        let jid = council::Id::from_string(&self.job.as_ref().unwrap().id)?;
+        let mut council = council::Client::new(
+            ctx.nats_conn().clone(),
+            jid,
+            self.visibility().change_set_pk.into(),
+        )
+        .await?;
+        let pub_council = council.clone_into_pub();
 
-        let message = serde_json::to_vec(&council::Request::CreateValues)?;
-        nats.publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
-            .await?;
-
-        // TODO: timeout so we don't get stuck here forever if council goes away
-        loop {
-            if let Some(message) = subscription.next().await {
-                match serde_json::from_slice(message?.data())? {
-                    council::Response::OkToCreate => break,
-                    council::Response::Shutdown => return Ok(()),
-                    msg => unreachable!("{msg:?}"),
-                }
-            }
+        if let council::State::Shutdown = council.wait_to_create_values().await? {
+            return Ok(());
         }
 
         AttributeValue::create_dependent_values(&ctx, &self.attribute_values).await?;
 
-        let message = serde_json::to_vec(&council::Request::ValueCreationDone)?;
-        ctx.nats_conn()
-            .publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
-            .await?;
+        council.finished_creating_values().await?;
 
-        ctx.commit().await?;
-
-        let ctx = ctx_builder
-            .build(self.access_builder().build(self.visibility()))
-            .await?;
+        ctx = self.commit_and_continue(ctx).await?;
 
         let mut dependency_graph = AttributeValue::dependent_value_graph(&ctx, &self.attribute_values).await?;
 
-        // Coordinate with council on when we are free to proceed
-        let pub_channel = format!("council.{jid}");
-        let reply_channel = format!("{pub_channel}.reply");
-        let mut subscription = nats.subscribe(&reply_channel).await?;
-
-        let message = serde_json::to_vec(&council::Request::ValueDependencyGraph {
-            change_set_id: self.visibility().change_set_pk.into(),
-            dependency_graph: dependency_graph
-                .iter()
-                .map(|(key, value)| (key.into(), value.iter().map(Into::into).collect()))
-                .collect(),
-        })?;
-        nats.publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
+        council
+            .register_dependency_graph(
+                dependency_graph
+                    .iter()
+                    .map(|(key, value)| (key.into(), value.iter().map(Into::into).collect()))
+                    .collect(),
+            )
             .await?;
 
         // NOTE(nick,jacob): uncomment this for debugging.
@@ -180,59 +178,58 @@ impl JobConsumer for DependentValuesUpdate {
             .values_queued(&ctx, dependency_graph.keys().copied().collect())
             .await?;
 
-        ctx.commit().await?;
+        ctx = self.commit_and_continue(ctx).await?;
 
         let mut update_tasks = JoinSet::new();
 
         while !dependency_graph.is_empty() {
-            match subscription.next().await {
-                Some(Ok(msg)) => match serde_json::from_slice::<council::Response>(msg.data()) {
-                    Ok(response) => match response {
-                        council::Response::OkToProcess { node_ids } => {
-                            for node_id in node_ids {
-                                let id = AttributeValueId::from(node_id);
-                                dependency_graph.remove(&id);
-
-                                let ctx = ctx_builder
-                                    .build(self.access_builder().build(self.visibility()))
-                                    .await?;
-
-                                let attribute_value =
-                                    AttributeValue::get_by_id(&ctx, &id).await?.ok_or_else(
-                                        || AttributeValueError::NotFound(id, self.visibility()),
-                                    )?;
-                                update_tasks
-                                    .build_task()
-                                    .name("AttributeValue.update_from_prototype_function")
-                                    .spawn(update_value(
-                                        ctx,
-                                        attribute_value,
-                                        jid,
-                                        status_updater.clone(),
-                                    ))?;
-                            }
-                        }
-                        council::Response::BeenProcessed { node_id } => {
+            match council.fetch_response().await? {
+                Some(response) => match response {
+                    council::Response::OkToProcess { node_ids } => {
+                        for node_id in node_ids {
                             let id = AttributeValueId::from(node_id);
                             dependency_graph.remove(&id);
 
-                            let ctx = ctx_builder
-                                .build(self.access_builder().build(self.visibility()))
-                                .await?;
-                            // Send a completed status for this value and *remove* it from the hash
-                            //status_updater.values_completed(&ctx, vec![id]).await?;
+                            let task_ctx = self.clone_ctx_with_new_transactions(&ctx).await?;
 
-                            ctx.commit().await?;
+                            let attribute_value = AttributeValue::get_by_id(&task_ctx, &id)
+                                .await?
+                                .ok_or_else(|| {
+                                    AttributeValueError::NotFound(id, self.visibility())
+                                })?;
+                            update_tasks
+                                .build_task()
+                                .name("AttributeValue.update_from_prototype_function")
+                                .spawn(update_value(
+                                    task_ctx,
+                                    attribute_value,
+                                    self.single_transaction,
+                                    pub_council.clone(),
+                                    status_updater.clone(),
+                                ))?;
                         }
-                        council::Response::OkToCreate => unreachable!(),
-                        council::Response::Shutdown => break,
-                    },
-                    Err(err) => error!("Unable to deserialize council::Response {err}: {msg:?}"),
+                    }
+                    council::Response::BeenProcessed { node_id } => {
+                        let id = AttributeValueId::from(node_id);
+                        dependency_graph.remove(&id);
+
+                        // Send a completed status for this value and *remove* it from the hash
+                        status_updater.values_completed(&ctx, vec![id]).await?;
+
+                        ctx = self.commit_and_continue(ctx).await?;
+                    }
+                    council::Response::OkToCreate => unreachable!(),
+                    council::Response::Shutdown => break,
                 },
-                Some(Err(err)) => error!("Unexpected error when fetching nats subscription: {err}"),
                 // FIXME: reconnect
                 None => break, // Happens if subscription has been unsubscribed or if connection is closed
             }
+
+            WsEvent::change_set_written(&ctx)
+                .await?
+                .publish(&ctx)
+                .await?;
+            ctx = self.commit_and_continue(ctx).await?;
 
             // If we get `None` back from the `JoinSet` that means that there are no
             // further tasks in the `JoinSet` for us to wait on. This should only happen
@@ -254,16 +251,7 @@ impl JobConsumer for DependentValuesUpdate {
                     Ok(Err(err)) => {
                         warn!(error = ?err, "error updating value");
 
-                        let message = serde_json::to_vec(&council::Request::Bye {
-                            change_set_id: self.visibility().change_set_pk.into(),
-                        })?;
-                        nats.publish_with_reply_or_headers(
-                            &pub_channel,
-                            Some(&reply_channel),
-                            None,
-                            message,
-                        )
-                        .await?;
+                        council.bye().await?;
                         return Err(err.into());
                     }
                     // There was a Tokio JoinSet error when joining the task back (i.e. likely
@@ -271,25 +259,12 @@ impl JobConsumer for DependentValuesUpdate {
                     Err(err) => {
                         warn!(error = ?err, "error when joining update task");
 
-                        let message = serde_json::to_vec(&council::Request::Bye {
-                            change_set_id: self.visibility().change_set_pk.into(),
-                        })?;
-                        nats.publish_with_reply_or_headers(
-                            &pub_channel,
-                            Some(&reply_channel),
-                            None,
-                            message,
-                        )
-                        .await?;
+                        council.bye().await?;
                         return Err(err.into());
                     }
                 }
             }
         }
-
-        let ctx = ctx_builder
-            .build(self.access_builder().build(self.visibility()))
-            .await?;
 
         status_updater.finish(&ctx).await?;
 
@@ -297,6 +272,9 @@ impl JobConsumer for DependentValuesUpdate {
             .await?
             .publish(&ctx)
             .await?;
+        if !self.single_transaction {
+            ctx.commit().await?;
+        }
 
         let elapsed_time = now.elapsed();
         info!(
@@ -304,11 +282,7 @@ impl JobConsumer for DependentValuesUpdate {
             &self.attribute_values, elapsed_time
         );
 
-        let message = serde_json::to_vec(&council::Request::Bye {
-            change_set_id: self.visibility().change_set_pk.into(),
-        })?;
-        nats.publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
-            .await?;
+        council.bye().await?;
 
         Ok(())
     }
@@ -319,7 +293,8 @@ impl JobConsumer for DependentValuesUpdate {
 async fn update_value(
     ctx: DalContext,
     mut attribute_value: AttributeValue,
-    jid: council::Id,
+    single_transaction: bool,
+    council: council::PubClient,
     mut status_updater: StatusUpdater,
 ) -> AttributeValueResult<()> {
     info!("DependentValueUpdate {:?}: START", attribute_value.id());
@@ -331,23 +306,21 @@ async fn update_value(
         start.elapsed()
     );
 
-    let pub_channel = format!("council.{jid}");
-    let reply_channel = format!("{pub_channel}.reply");
-    let message = serde_json::to_vec(&council::Request::ProcessedValue {
-        change_set_id: ctx.visibility().change_set_pk.into(),
-        node_id: attribute_value.id().into(),
-    })?;
-    ctx.nats_conn()
-        .publish_with_reply_or_headers(&pub_channel, Some(&reply_channel), None, message)
-        .await?;
+    council.processed_value(attribute_value.id().into()).await?;
 
     // Send a completed status for this value and *remove* it from the hash
-    status_updater
-        .values_completed(&ctx, vec![*attribute_value.id()])
-        .await
-        .map_err(Box::new)?;
+    dbg!(status_updater
+         .values_completed(&ctx, vec![*attribute_value.id()])
+         .await
+         .map_err(Box::new)).unwrap();
 
-    ctx.commit().await?;
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
+    if !single_transaction {
+        ctx.commit().await?;
+    }
 
     Ok(())
 }
@@ -372,6 +345,7 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
             access_builder,
             visibility,
             job: Some(job),
+            single_transaction: false,
         })
     }
 }
