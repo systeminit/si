@@ -109,11 +109,11 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "fedora",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
-
             "domain": {
-                "image": "fedora"
+                "image": "fedora",
             },
         }], // expected
         fedora_docker_image_payload
@@ -126,10 +126,11 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "alpine",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "domain": {
-                "image": "alpine"
+                "image": "alpine",
             },
         }], // expected
         alpine_docker_image_payload
@@ -142,7 +143,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "namespace",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "code": {
                 "si:generateYAML": {
@@ -152,8 +154,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             },
             "domain": {
                 "metadata": {
-                    "name": "squidward-system"
-                }
+                    "name": "squidward-system",
+                },
             },
         }], // expected
         namespace_payload.component_view_properties_raw(ctx).await // actual
@@ -162,7 +164,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "spongebob",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "code": {
                 "si:generateYAML": {
@@ -185,7 +188,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "patrick",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "code": {
                 "si:generateYAML": {
@@ -230,10 +234,11 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "fedora-updated",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "domain": {
-                "image": "fedora-updated"
+                "image": "fedora-updated",
             },
         }], // expected
         fedora_docker_image_payload
@@ -246,10 +251,11 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "alpine",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "domain": {
-                "image": "alpine"
+                "image": "alpine",
             },
         }], // expected
         alpine_docker_image_payload
@@ -262,7 +268,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "namespace",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "code": {
                 "si:generateYAML": {
@@ -272,8 +279,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             },
             "domain": {
                 "metadata": {
-                    "name": "squidward-system"
-                }
+                    "name": "squidward-system",
+                },
             },
         }], // expected
         namespace_payload.component_view_properties_raw(ctx).await // actual
@@ -282,7 +289,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "spongebob",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "code": {
                 "si:generateYAML": {
@@ -318,7 +326,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "patrick",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "code": {
                 "si:generateYAML": {
@@ -400,11 +409,12 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "fedora-updated-twice",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
 
             "domain": {
-                "image": "fedora-updated-twice"
+                "image": "fedora-updated-twice",
             },
         }], // expected
         fedora_docker_image_payload
@@ -417,7 +427,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "alpine-updated",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "domain": {
                 "image": "alpine-updated"
@@ -433,7 +444,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "namespace",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "code": {
                 "si:generateYAML": {
@@ -443,8 +455,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
             },
             "domain": {
                 "metadata": {
-                    "name": "squidward-system-updated"
-                }
+                    "name": "squidward-system-updated",
+                },
             },
         }], // expected
         namespace_payload.component_view_properties_raw(ctx).await // actual
@@ -453,7 +465,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "spongebob",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "code": {
                 "si:generateYAML": {
@@ -500,7 +513,8 @@ async fn kubernetes_deployment_intelligence(octx: DalContext) {
         serde_json::json![{
             "si": {
                 "name": "patrick",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "code": {
                 "si:generateYAML": {

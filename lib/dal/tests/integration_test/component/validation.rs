@@ -529,6 +529,7 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
             "si": {
                 "name": "us-east-1",
                 "type": "configurationFrame",
+                "protected": false
             },
 
             "domain": {

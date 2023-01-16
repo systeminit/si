@@ -36,12 +36,13 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         .expect("could not create component view properties from component view");
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "image": "13700KF"
-            },
             "si": {
                 "name": "13700KF",
-                "type": "component"
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "image": "13700KF",
             },
         }], // expected
         component_view_properties.drop_qualification().to_value() // actual
@@ -78,12 +79,13 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         .expect("could not create component view properties from component view");
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "image": "13700KF"
-            },
             "si": {
                 "name": "13700KF",
-                "type": "component"
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "image": "13700KF",
             },
         }], // expected
         component_view_properties.drop_qualification().to_value() // actual

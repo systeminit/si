@@ -105,13 +105,8 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "Mimic Tear",
-                "type": "component"
-            },
-            "code": {
-                "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Whiskers\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill whiskers1\\nExecStartPre=-/bin/podman rm whiskers1\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers\\nExecStart=/bin/podman run --name whiskers1 --publish 80:80 docker.io/systeminit/whiskers\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"whiskers.service\"\n      }\n    ]\n  }\n}",
-                    "format": "json",
-                },
+                "type": "component",
+                "protected": false,
             },
             "domain": {
                 "systemd": {
@@ -125,6 +120,12 @@ async fn butane_to_ec2_user_data_is_valid_ignition(ctx: &DalContext) {
                 },
                 "variant": "fcos",
                 "version": "1.4.0",
+            },
+            "code": {
+                "si:generateButaneIgnition": {
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Whiskers\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill whiskers1\\nExecStartPre=-/bin/podman rm whiskers1\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers\\nExecStart=/bin/podman run --name whiskers1 --publish 80:80 docker.io/systeminit/whiskers\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"whiskers.service\"\n      }\n    ]\n  }\n}",
+                    "format": "json",
+                },
             },
         }], // expected
         butane_payload

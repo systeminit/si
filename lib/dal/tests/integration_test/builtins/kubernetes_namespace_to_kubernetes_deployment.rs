@@ -23,10 +23,10 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     // Ensure setup worked.
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "metadata": {
-                    "name": "tail"
-                }
+            "si": {
+                "name": "tail",
+                "type": "component",
+                "protected": false,
             },
             "code": {
                 "si:generateYAML": {
@@ -34,10 +34,11 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                     "format": "yaml",
                 },
             },
-            "si": {
-                "name": "tail",
-                "type": "component"
-            }
+            "domain": {
+                "metadata": {
+                    "name": "tail",
+                },
+            },
         }], // expected
         tail_namespace_payload
             .component_view_properties_raw(ctx)
@@ -45,9 +46,14 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "head",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
-                "apiVersion": "apps/v1",
                 "kind": "Deployment",
+                "apiVersion": "apps/v1",
             },
             "code": {
                 "si:generateYAML": {
@@ -55,10 +61,6 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                     "format": "yaml",
                 },
             },
-            "si": {
-                "name": "head",
-                "type": "component"
-            }
         }], // expected
         head_deployment_payload
             .component_view_properties(ctx)
@@ -100,6 +102,11 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     // Ensure the view did not drift.
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "tail",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
                 "metadata": {
                     "name": "tail"
@@ -111,10 +118,6 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                     "format": "yaml",
                 },
             },
-            "si": {
-                "name": "tail",
-                "type": "component"
-            }
         }], // expected
         tail_namespace_payload
             .component_view_properties_raw(ctx)
@@ -122,6 +125,11 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "head",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",
@@ -132,10 +140,6 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                     "format": "yaml",
                 },
             },
-            "si": {
-                "name": "head",
-                "type": "component"
-            }
         }], // expected
         head_deployment_payload
             .component_view_properties(ctx)
@@ -156,6 +160,11 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     // Observed that it worked.
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "look-at-me-mom-i-updated",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
                 "metadata": {
                     "name": "look-at-me-mom-i-updated"
@@ -167,10 +176,6 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                     "format": "yaml",
                 },
             },
-            "si": {
-                "name": "look-at-me-mom-i-updated",
-                "type": "component"
-            }
         }], // expected
         tail_namespace_payload
             .component_view_properties_raw(ctx)
@@ -179,6 +184,11 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
 
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "head",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",
@@ -199,10 +209,6 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
                     "format": "yaml",
                 },
             },
-            "si": {
-                "name": "head",
-                "type": "component"
-            }
         }], // expected
         head_deployment_payload
             .component_view_properties(ctx)

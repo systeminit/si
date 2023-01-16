@@ -156,6 +156,11 @@ async fn create_and_delete_edges(ctx: &DalContext) {
     // check that the value of the ec2 instance region
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "to",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
                 "awsResourceType": "instance",
                 "region": "us-east-2",
@@ -169,10 +174,6 @@ async fn create_and_delete_edges(ctx: &DalContext) {
                     "format": "json",
                 },
             },
-            "si": {
-                "name": "to",
-                "type": "component"
-            }
         }], // expected
         to_aws_ec2_instance
             .component_view_properties(ctx)
@@ -187,11 +188,16 @@ async fn create_and_delete_edges(ctx: &DalContext) {
     // check that the region of the ec2 instance is empty
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "to",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
-                "awsResourceType": "instance",
                 "tags": {
                     "Name": "to",
                 },
+                "awsResourceType": "instance",
             },
             "code": {
                 "si:generateAwsEc2JSON": {
@@ -199,10 +205,6 @@ async fn create_and_delete_edges(ctx: &DalContext) {
                     "format": "json",
                 },
             },
-            "si": {
-                "name": "to",
-                "type": "component"
-            }
         }], // expected
         to_aws_ec2_instance
             .component_view_properties(ctx)
@@ -309,7 +311,8 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "userdata",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "domain": {
                 "systemd": {
@@ -350,7 +353,8 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "userdata",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "domain": {
                 "systemd": {
@@ -386,7 +390,8 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "userdata",
-                "type": "component"
+                "type": "component",
+                "protected": false,
             },
             "domain": {
                 "systemd": {

@@ -18,12 +18,13 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
     // Ensure that setup worked
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "image": "soulrender"
-            },
             "si": {
                 "name": "soulrender",
                 "type": "component"
+                "protected": false,
+            },
+            "domain": {
+                "image": "soulrender",
             },
         }], // expected
         soulrender_payload
@@ -34,12 +35,13 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "image": "bloodscythe"
-            },
             "si": {
                 "name": "bloodscythe",
-                "type": "component"
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "image": "bloodscythe",
             },
         }], // expected
         bloodscythe_payload
@@ -61,12 +63,13 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "image": "soulrender"
-            },
             "si": {
                 "name": "soulrender",
-                "type": "component"
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "image": "soulrender"
             },
         }], // expected
         soulrender_payload
@@ -78,12 +81,13 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "image": "bloodscythe-updated"
-            },
             "si": {
                 "name": "bloodscythe-updated",
-                "type": "component"
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "image": "bloodscythe-updated"
             },
         }], // expected
         bloodscythe_payload
@@ -105,12 +109,13 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "image": "soulrender-updated"
-            },
             "si": {
                 "name": "soulrender-updated",
-                "type": "component"
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "image": "soulrender-updated",
             },
         }], // expected
         soulrender_payload
@@ -121,12 +126,13 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "image": "bloodscythe-updated"
-            },
             "si": {
                 "name": "bloodscythe-updated",
-                "type": "component"
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "image": "bloodscythe-updated",
             },
         }], // expected
         bloodscythe_payload
