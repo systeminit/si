@@ -108,9 +108,11 @@ impl MigrationDriver {
             .filter(|p| p.name() == docker_image_explicit_internal_provider_name)
             .collect::<Vec<InternalProvider>>()
             .pop()
-            .ok_or(BuiltinsError::ExplicitInternalProviderNotFound(
-                docker_image_explicit_internal_provider_name.to_string(),
-            ))?;
+            .ok_or_else(|| {
+                BuiltinsError::ExplicitInternalProviderNotFound(
+                    docker_image_explicit_internal_provider_name.to_string(),
+                )
+            })?;
 
         // FIXME(nick,wendy): use a hash map or something more elegant with O(1) lookup.
         let user_data_external_provider_name = "User Data";
@@ -119,9 +121,11 @@ impl MigrationDriver {
             .filter(|p| p.name() == user_data_external_provider_name)
             .collect::<Vec<ExternalProvider>>()
             .pop()
-            .ok_or(BuiltinsError::ExternalProviderNotFound(
-                user_data_external_provider_name.to_string(),
-            ))?;
+            .ok_or_else(|| {
+                BuiltinsError::ExternalProviderNotFound(
+                    user_data_external_provider_name.to_string(),
+                )
+            })?;
 
         // Set default values after finalization.
         self.set_default_value_for_prop(ctx, variant_prop_id, serde_json::json!["fcos"])

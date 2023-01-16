@@ -1160,7 +1160,7 @@ impl AttributeValue {
         if self.context.prop_id() != PropId::NONE {
             let prop = Prop::get_by_id(ctx, &self.context.prop_id())
                 .await?
-                .ok_or(AttributeValueError::PropNotFound(self.context.prop_id()))?;
+                .ok_or_else(|| AttributeValueError::PropNotFound(self.context.prop_id()))?;
 
             if *prop.kind() == PropKind::Array
                 || *prop.kind() == PropKind::Object
@@ -1176,7 +1176,7 @@ impl AttributeValue {
                 let func = Func::find_by_attr(ctx, "name", &func_name)
                     .await?
                     .pop()
-                    .ok_or(AttributeValueError::MissingFunc(func_name.to_owned()))?;
+                    .ok_or_else(|| AttributeValueError::MissingFunc(func_name.to_owned()))?;
 
                 if attribute_prototype.func_id() != *func.id() {
                     if let Some(unprocessed_value) =

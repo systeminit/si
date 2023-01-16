@@ -58,7 +58,7 @@ impl ConfirmationView {
             let action_prototype =
                 ActionPrototype::find_by_name(ctx, action, self.schema_id, self.schema_variant_id)
                     .await?
-                    .ok_or(ActionPrototypeError::NotFoundByName(action.clone()))?;
+                    .ok_or_else(|| ActionPrototypeError::NotFoundByName(action.clone()))?;
             recommended_actions.push(action_prototype);
         }
         Ok(recommended_actions)
@@ -138,11 +138,11 @@ impl Component {
             let schema_variant = component
                 .schema_variant(ctx)
                 .await?
-                .ok_or(ComponentError::NoSchemaVariant(*component.id()))?;
+                .ok_or_else(|| ComponentError::NoSchemaVariant(*component.id()))?;
             let schema = schema_variant
                 .schema(ctx)
                 .await?
-                .ok_or(SchemaVariantError::MissingSchema(*schema_variant.id()))?;
+                .ok_or_else(|| SchemaVariantError::MissingSchema(*schema_variant.id()))?;
 
             // Prepare to assemble qualification views and access the "/root/qualification" prop tree.
             // We will use its implicit internal provider id and its corresponding prop id to do so.
@@ -184,9 +184,9 @@ impl Component {
                 let attribute_prototype = entry_attribute_value
                     .attribute_prototype(ctx)
                     .await?
-                    .ok_or(ComponentError::MissingAttributePrototype(
-                        *entry_attribute_value.id(),
-                    ))?;
+                    .ok_or_else(|| {
+                        ComponentError::MissingAttributePrototype(*entry_attribute_value.id())
+                    })?;
                 let key =
                     entry_attribute_value
                         .key
@@ -229,11 +229,13 @@ impl Component {
                         found_func_binding_return_value_id,
                         found_attribute_value_id,
                         found_func_id,
-                    ) = entry_attribute_values.get(&confirmation_name).ok_or(
-                        ComponentError::MissingFuncBindingReturnValueIdForLeafEntryName(
-                            confirmation_name.clone(),
-                        ),
-                    )?;
+                    ) = entry_attribute_values
+                        .get(&confirmation_name)
+                        .ok_or_else(|| {
+                            ComponentError::MissingFuncBindingReturnValueIdForLeafEntryName(
+                                confirmation_name.clone(),
+                            )
+                        })?;
 
                     // Collect the output from the func binding return value.
                     let mut output = Vec::new();
