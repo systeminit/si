@@ -334,9 +334,9 @@ impl Component {
         let resource_attribute_prototype = resource_attribute_value
             .attribute_prototype(ctx)
             .await?
-            .ok_or(ComponentError::MissingAttributePrototype(
-                *resource_attribute_value.id(),
-            ))?;
+            .ok_or_else(|| {
+                ComponentError::MissingAttributePrototype(*resource_attribute_value.id())
+            })?;
         AttributePrototype::update_for_context(
             ctx,
             *resource_attribute_prototype.id(),

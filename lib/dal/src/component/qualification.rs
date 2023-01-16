@@ -103,12 +103,13 @@ impl Component {
                 serde_json::from_value(qualification_map_value)?;
 
             for (qualification_name, entry) in qualification_map {
-                let found_func_binding_return_value_id =
-                    entry_attribute_values.get(&qualification_name).ok_or(
+                let found_func_binding_return_value_id = entry_attribute_values
+                    .get(&qualification_name)
+                    .ok_or_else(|| {
                         ComponentError::MissingFuncBindingReturnValueIdForLeafEntryName(
                             qualification_name.clone(),
-                        ),
-                    )?;
+                        )
+                    })?;
                 let qual_view = QualificationView::new(
                     ctx,
                     qualification_name,

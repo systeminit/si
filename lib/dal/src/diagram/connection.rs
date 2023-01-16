@@ -114,9 +114,10 @@ impl Connection {
                 .await?
                 .ok_or(DiagramError::SocketNotFound)?;
 
-            socket.external_provider(ctx).await?.ok_or(
-                DiagramError::ExternalProviderNotFoundForSocket(*socket.id()),
-            )?
+            socket
+                .external_provider(ctx)
+                .await?
+                .ok_or_else(|| DiagramError::ExternalProviderNotFoundForSocket(*socket.id()))?
         };
 
         let internal_provider_id = *{
@@ -127,9 +128,7 @@ impl Connection {
             socket
                 .internal_provider(ctx)
                 .await?
-                .ok_or(DiagramError::InternalProviderNotFoundForSocket(
-                    *socket.id(),
-                ))?
+                .ok_or_else(|| DiagramError::InternalProviderNotFoundForSocket(*socket.id()))?
                 .id()
         };
 

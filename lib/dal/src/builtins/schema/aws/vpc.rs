@@ -553,10 +553,12 @@ impl MigrationDriver {
             *confirmation_func.id(),
         )
         .await?
-        .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
-            confirmation_func_name.to_string(),
-            confirmation_func_argument_name.to_string(),
-        ))?;
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                confirmation_func_name.to_string(),
+                confirmation_func_argument_name.to_string(),
+            )
+        })?;
         SchemaVariant::add_leaf(
             ctx,
             *confirmation_func.id(),
@@ -1046,10 +1048,12 @@ impl MigrationDriver {
             *confirmation_func.id(),
         )
         .await?
-        .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
-            confirmation_func_name.to_string(),
-            confirmation_func_argument_name.to_string(),
-        ))?;
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                confirmation_func_name.to_string(),
+                confirmation_func_argument_name.to_string(),
+            )
+        })?;
         SchemaVariant::add_leaf(
             ctx,
             *confirmation_func.id(),
@@ -1532,10 +1536,12 @@ impl MigrationDriver {
             *confirmation_func.id(),
         )
         .await?
-        .ok_or(BuiltinsError::BuiltinMissingFuncArgument(
-            confirmation_func_name.to_string(),
-            confirmation_func_argument_name.to_string(),
-        ))?;
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                confirmation_func_name.to_string(),
+                confirmation_func_argument_name.to_string(),
+            )
+        })?;
         SchemaVariant::add_leaf(
             ctx,
             *confirmation_func.id(),
