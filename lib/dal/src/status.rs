@@ -477,10 +477,10 @@ impl StatusUpdater {
                 .await
                 .map_err(StatusUpdaterError::metadata)?
                 .ok_or_else(|| {
-                    dbg!(StatusUpdaterError::metadata(AttributeValueError::NotFound(
+                    StatusUpdaterError::metadata(AttributeValueError::NotFound(
                         value_id,
                         *ctx.visibility(),
-                    )))
+                    ))
                 })?;
             let component_id = attribute_value.context.component_id();
 

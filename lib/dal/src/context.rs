@@ -32,6 +32,8 @@ pub struct ServicesContext {
     veritech: VeritechClient,
     /// A key for re-recrypting messages to the function execution system.
     encryption_key: Arc<EncryptionKey>,
+    /// The prefix for channels names when communicating with Council
+    council_subject_prefix: String,
 }
 
 impl ServicesContext {
@@ -42,6 +44,7 @@ impl ServicesContext {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
         encryption_key: Arc<EncryptionKey>,
+        council_subject_prefix: String,
     ) -> Self {
         Self {
             pg_pool,
@@ -49,6 +52,7 @@ impl ServicesContext {
             job_processor,
             veritech,
             encryption_key,
+            council_subject_prefix,
         }
     }
 
@@ -117,11 +121,10 @@ impl DalContext {
         DalContextBuilder { services_context }
     }
 
-    /// Replaces internal transactions with a new one, commiting the old one
-    pub async fn commit_and_continue(&mut self) -> Result<(), TransactionsError> {
-        let (builder, conns, request_ctx) = self.clone().commit_into_parts().await?;
-        *self = builder.build_with_conns(request_ctx, conns).await?;
-        Ok(())
+    /// Consumes context, commiting transactions, returning new context with new transaction
+    pub async fn commit_and_continue(self) -> Result<Self, TransactionsError> {
+        let (builder, conns, request_ctx) = self.commit_into_parts().await?;
+        builder.build_with_conns(request_ctx, conns).await
     }
 
     /// Consumes all inner transactions, committing all changes made within them, and returns
@@ -199,7 +202,7 @@ impl DalContext {
         self.history_actor = request_ctx.history_actor;
     }
 
-    /// Clones a new context with the same metadata, but in different transactions
+    /// Clones a new context from this one with the same metadata, but in different transactions
     pub async fn clone_with_new_transactions(&self) -> Result<Self, TransactionsError> {
         let mut other = self.clone();
         other.txns = self
@@ -426,6 +429,11 @@ impl DalContext {
     /// Gets a reference to the dal context's history actor.
     pub fn history_actor(&self) -> &HistoryActor {
         &self.history_actor
+    }
+
+    /// Gets a reference to the council's communication channel subject prefix
+    pub fn council_subject_prefix(&self) -> &str {
+        &self.services_context.council_subject_prefix
     }
 
     /// Determines if a standard model object matches the write tenancy of the current context and

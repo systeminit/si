@@ -31,6 +31,7 @@ async fn create_schema() {
         auth_token,
         _dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
     let visibility = Visibility::new_head(false);
     let request = CreateSchemaRequest {
@@ -65,6 +66,7 @@ async fn list_schemas() {
         auth_token,
         dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
     dal_ctx.update_to_universal_head();
 
@@ -115,6 +117,7 @@ async fn get_schemas() {
         auth_token,
         dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
     dal_ctx.update_to_universal_head();
 

@@ -564,11 +564,15 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 name = "council"
 version = "0.1.0"
 dependencies = [
+ "derive_builder",
  "futures",
  "serde",
  "serde_json",
  "si-data-nats",
+ "si-settings",
+ "telemetry",
  "thiserror",
+ "tokio",
  "ulid",
 ]
 
@@ -843,6 +847,7 @@ name = "dal-test"
 version = "0.1.0"
 dependencies = [
  "color-eyre",
+ "council",
  "dal",
  "lazy_static",
  "names",

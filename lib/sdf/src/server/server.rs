@@ -77,6 +77,7 @@ impl Server<(), ()> {
         veritech: VeritechClient,
         encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
+        council_subject_prefix: String,
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
@@ -89,6 +90,7 @@ impl Server<(), ()> {
                     encryption_key,
                     jwt_secret_key,
                     config.signup_secret().clone(),
+                    council_subject_prefix,
                 )?;
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
@@ -121,6 +123,7 @@ impl Server<(), ()> {
         veritech: VeritechClient,
         encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
+        council_subject_prefix: String,
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
@@ -133,6 +136,7 @@ impl Server<(), ()> {
                     encryption_key,
                     jwt_secret_key,
                     config.signup_secret().clone(),
+                    council_subject_prefix,
                 )?;
 
                 info!("binding to Unix domain socket; path={}", path.display());
@@ -193,8 +197,17 @@ impl Server<(), ()> {
         jwt_secret_key: &JwtSecretKey,
         veritech: VeritechClient,
         encryption_key: &EncryptionKey,
+        council_subject_prefix: String,
     ) -> Result<()> {
-        dal::migrate_all(pg, nats, job_processor, veritech, encryption_key).await?;
+        dal::migrate_all(
+            pg,
+            nats,
+            job_processor,
+            veritech,
+            encryption_key,
+            council_subject_prefix,
+        )
+        .await?;
 
         let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
@@ -216,10 +229,17 @@ impl Server<(), ()> {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
         encryption_key: EncryptionKey,
+        council_subject_prefix: String,
         shutdown_broadcast_rx: broadcast::Receiver<()>,
     ) {
-        let services_context =
-            ServicesContext::new(pg, nats, job_processor, veritech, Arc::new(encryption_key));
+        let services_context = ServicesContext::new(
+            pg,
+            nats,
+            job_processor,
+            veritech,
+            Arc::new(encryption_key),
+            council_subject_prefix,
+        );
         ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
     }
 
@@ -280,6 +300,7 @@ pub fn build_service(
     encryption_key: EncryptionKey,
     jwt_secret_key: JwtSecretKey,
     signup_secret: SensitiveString,
+    council_subject_prefix: String,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
@@ -293,6 +314,7 @@ pub fn build_service(
         encryption_key,
         jwt_secret_key,
         signup_secret,
+        council_subject_prefix,
         shutdown_tx,
         shutdown_broadcast_tx.clone(),
     )

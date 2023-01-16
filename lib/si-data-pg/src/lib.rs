@@ -2613,6 +2613,7 @@ impl fmt::Debug for PgSharedTransaction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PgSharedTransaction")
             .field("metadata", &self.metadata)
+            .field("strong_count", &Arc::strong_count(&self.inner))
             .finish_non_exhaustive()
     }
 }

@@ -103,6 +103,8 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let veritech = Server::create_veritech_client(nats.clone());
 
+    let council_subject_prefix = "council".to_owned();
+
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
         Server::migrate_database(
             &pg_pool,
@@ -111,6 +113,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             &jwt_secret_key,
             veritech.clone(),
             &encryption_key,
+            council_subject_prefix.clone(),
         )
         .await?;
         if let MigrationMode::RunAndQuit = config.migration_mode() {
@@ -138,10 +141,11 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 telemetry,
                 pg_pool.clone(),
                 nats.clone(),
-                job_processor.clone(),
+                job_processor,
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
+                council_subject_prefix.clone(),
             )?;
 
             Server::start_resource_refresh_scheduler(
@@ -150,6 +154,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 resource_job_processor,
                 veritech,
                 encryption_key,
+                council_subject_prefix.clone(),
                 shutdown_broadcast_rx,
             )
             .await;
@@ -162,10 +167,11 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 telemetry,
                 pg_pool.clone(),
                 nats.clone(),
-                job_processor.clone(),
+                job_processor,
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
+                council_subject_prefix.clone(),
             )
             .await?;
 
@@ -175,6 +181,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 resource_job_processor,
                 veritech,
                 encryption_key,
+                council_subject_prefix.clone(),
                 shutdown_broadcast_rx,
             )
             .await;
@@ -184,8 +191,9 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     }
 
     // Blocks until all JobProcessors are gone so we don't skip jobs that are still being sent to job transport
-    info!("Waiting for all job processors to finish pushing jobs");
+    info!("Waiting for job processors to finish pushing jobs");
     let _ = job_processor_shutdown_rx.recv().await;
+    info!("Waiting for resource job processors to finish pushing jobs");
     let _ = resource_job_processor_shutdown_rx.recv().await;
 
     info!("Shutting down the job processor client");

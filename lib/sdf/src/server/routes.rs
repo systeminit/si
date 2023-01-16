@@ -62,6 +62,7 @@ pub fn routes(
     encryption_key: EncryptionKey,
     jwt_secret_key: JwtSecretKey,
     signup_secret: SensitiveString,
+    council_subject_prefix: String,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
 ) -> Router {
@@ -74,6 +75,7 @@ pub fn routes(
         job_processor,
         veritech.clone(),
         encryption_key.clone(),
+        council_subject_prefix,
     );
 
     let mut router: Router = Router::new();

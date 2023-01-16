@@ -1,40 +1,32 @@
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsConfig;
-use telemetry_application::prelude::*;
-use thiserror::Error;
-
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
-    #[error("config builder")]
+    #[error(transparent)]
     Builder(#[from] ConfigBuilderError),
     #[error(transparent)]
     Settings(#[from] si_settings::SettingsError),
 }
 
-type Result<T> = std::result::Result<T, ConfigError>;
+pub type Result<T, E = ConfigError> = std::result::Result<T, E>;
 
 #[derive(Debug, Builder)]
 pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
+
+    #[builder(setter(into, strip_option), default)]
+    subject_prefix: Option<String>,
 }
 
 impl StandardConfig for Config {
     type Builder = ConfigBuilder;
 }
 
-impl Config {
-    /// Gets a reference to the config's nats.
-    #[must_use]
-    pub fn nats(&self) -> &NatsConfig {
-        &self.nats
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct ConfigFile {
     nats: NatsConfig,
 }
@@ -50,5 +42,18 @@ impl TryFrom<ConfigFile> for Config {
         let mut config = Config::builder();
         config.nats(value.nats);
         config.build().map_err(Into::into)
+    }
+}
+
+impl Config {
+    /// Gets a reference to the config's nats.
+    #[must_use]
+    pub fn nats(&self) -> &NatsConfig {
+        &self.nats
+    }
+
+    /// Gets a reference to the config's subject prefix.
+    pub fn subject_prefix(&self) -> Option<&str> {
+        self.subject_prefix.as_deref()
     }
 }

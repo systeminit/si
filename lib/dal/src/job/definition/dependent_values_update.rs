@@ -1,10 +1,9 @@
-use std::collections::HashSet;
-use std::{collections::HashMap, convert::TryFrom};
+use std::{collections::HashMap, collections::HashSet, convert::TryFrom, sync::Arc};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
-use tokio::task::JoinSet;
+use tokio::{sync::Mutex, task::JoinSet};
 
 use crate::{
     job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
@@ -49,7 +48,7 @@ impl DependentValuesUpdate {
         })
     }
 
-    pub async fn clone_ctx_with_new_transactions(
+    async fn clone_ctx_with_new_transactions(
         &self,
         ctx: &DalContext,
     ) -> JobConsumerResult<DalContext> {
@@ -60,11 +59,12 @@ impl DependentValuesUpdate {
         }
     }
 
-    pub async fn commit_and_continue(&self, mut ctx: DalContext) -> JobConsumerResult<DalContext> {
-        if !self.single_transaction {
-            ctx.commit_and_continue().await?;
+    async fn commit_and_continue(&self, ctx: DalContext) -> JobConsumerResult<DalContext> {
+        if self.single_transaction {
+            Ok(ctx)
+        } else {
+            Ok(ctx.commit_and_continue().await?)
         }
-        Ok(ctx)
     }
 }
 
@@ -125,28 +125,30 @@ impl JobConsumer for DependentValuesUpdate {
 
         let now = std::time::Instant::now();
 
-        let mut status_updater = StatusUpdater::initialize(&ctx).await?;
+        let status_updater = Arc::new(Mutex::new(StatusUpdater::initialize(&ctx).await?));
 
         let jid = council::Id::from_string(&self.job.as_ref().unwrap().id)?;
         let mut council = council::Client::new(
             ctx.nats_conn().clone(),
+            ctx.council_subject_prefix(),
             jid,
             self.visibility().change_set_pk.into(),
         )
         .await?;
         let pub_council = council.clone_into_pub();
 
-        if let council::State::Shutdown = council.wait_to_create_values().await? {
+        if let council::client::State::Shutdown = council.wait_to_create_values().await? {
             return Ok(());
         }
 
         AttributeValue::create_dependent_values(&ctx, &self.attribute_values).await?;
 
-        council.finished_creating_values().await?;
-
         ctx = self.commit_and_continue(ctx).await?;
 
-        let mut dependency_graph = AttributeValue::dependent_value_graph(&ctx, &self.attribute_values).await?;
+        council.finished_creating_values().await?;
+
+        let mut dependency_graph =
+            AttributeValue::dependent_value_graph(&ctx, &self.attribute_values).await?;
 
         council
             .register_dependency_graph(
@@ -174,8 +176,11 @@ impl JobConsumer for DependentValuesUpdate {
             self.attribute_values, &dependency_graph
         );
 
+        let enqueued: Vec<AttributeValueId> = dependency_graph.keys().copied().collect();
         status_updater
-            .values_queued(&ctx, dependency_graph.keys().copied().collect())
+            .lock()
+            .await
+            .values_queued(&ctx, enqueued)
             .await?;
 
         ctx = self.commit_and_continue(ctx).await?;
@@ -190,8 +195,14 @@ impl JobConsumer for DependentValuesUpdate {
                             let id = AttributeValueId::from(node_id);
                             dependency_graph.remove(&id);
 
-                            let task_ctx = self.clone_ctx_with_new_transactions(&ctx).await?;
+                            status_updater
+                                .lock()
+                                .await
+                                .values_running(&ctx, vec![id])
+                                .await?;
+                            ctx = self.commit_and_continue(ctx).await?;
 
+                            let task_ctx = self.clone_ctx_with_new_transactions(&ctx).await?;
                             let attribute_value = AttributeValue::get_by_id(&task_ctx, &id)
                                 .await?
                                 .ok_or_else(|| {
@@ -214,7 +225,16 @@ impl JobConsumer for DependentValuesUpdate {
                         dependency_graph.remove(&id);
 
                         // Send a completed status for this value and *remove* it from the hash
-                        status_updater.values_completed(&ctx, vec![id]).await?;
+                        status_updater
+                            .lock()
+                            .await
+                            .values_running(&ctx, vec![id])
+                            .await?;
+                        status_updater
+                            .lock()
+                            .await
+                            .values_completed(&ctx, vec![id])
+                            .await?;
 
                         ctx = self.commit_and_continue(ctx).await?;
                     }
@@ -266,7 +286,13 @@ impl JobConsumer for DependentValuesUpdate {
             }
         }
 
-        status_updater.finish(&ctx).await?;
+        ctx = self.commit_and_continue(ctx).await?;
+
+        Arc::try_unwrap(status_updater)
+            .unwrap()
+            .into_inner()
+            .finish(&ctx)
+            .await?;
 
         WsEvent::change_set_written(&ctx)
             .await?
@@ -295,7 +321,7 @@ async fn update_value(
     mut attribute_value: AttributeValue,
     single_transaction: bool,
     council: council::PubClient,
-    mut status_updater: StatusUpdater,
+    status_updater: Arc<Mutex<StatusUpdater>>,
 ) -> AttributeValueResult<()> {
     info!("DependentValueUpdate {:?}: START", attribute_value.id());
     let start = std::time::Instant::now();
@@ -306,13 +332,13 @@ async fn update_value(
         start.elapsed()
     );
 
-    council.processed_value(attribute_value.id().into()).await?;
-
     // Send a completed status for this value and *remove* it from the hash
-    dbg!(status_updater
-         .values_completed(&ctx, vec![*attribute_value.id()])
-         .await
-         .map_err(Box::new)).unwrap();
+    status_updater
+        .lock()
+        .await
+        .values_completed(&ctx, vec![*attribute_value.id()])
+        .await
+        .map_err(Box::new)?;
 
     WsEvent::change_set_written(&ctx)
         .await?
@@ -321,6 +347,8 @@ async fn update_value(
     if !single_transaction {
         ctx.commit().await?;
     }
+
+    council.processed_value(attribute_value.id().into()).await?;
 
     Ok(())
 }

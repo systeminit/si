@@ -12,3 +12,7 @@ si-data-nats = { path = "../../lib/si-data-nats" }
 thiserror = "1.0.24"
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
 futures = "0.3.13"
+derive_builder = { version = "0.11.2" }
+si-settings = { path = "../../lib/si-settings" }
+telemetry = { path = "../../lib/telemetry-rs" }
+tokio = { version = "1.12.0", features = ["full"] }

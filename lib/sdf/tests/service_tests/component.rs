@@ -31,6 +31,7 @@ async fn list_components_identification() {
         auth_token,
         dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
 
     let schema = create_schema(&dal_ctx).await;
@@ -140,6 +141,7 @@ async fn get_components_metadata() {
         auth_token,
         dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
     let visibility = Visibility::new_head(false);
 

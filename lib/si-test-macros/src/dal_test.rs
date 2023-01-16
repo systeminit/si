@@ -405,7 +405,7 @@ impl FnSetupExpander {
         self.code.extend(quote! {
             let #var = ::dal_test::veritech_server_for_uds_cyclone(
                 #test_context.nats_config().clone(),
-                #nats_subject_prefix.clone(),
+                format!("{}.veritech", #nats_subject_prefix),
             ).await?;
         });
         self.veritech_server = Some(Arc::new(var));

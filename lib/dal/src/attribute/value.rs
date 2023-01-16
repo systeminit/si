@@ -62,7 +62,7 @@ pub enum AttributeValueError {
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
-    Council(#[from] council::Error),
+    Council(#[from] council::client::Error),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
     #[error("AttributeContext error: {0}")]
@@ -911,7 +911,10 @@ impl AttributeValue {
         }
     }
 
-    pub async fn create_dependent_values(ctx: &DalContext, attribute_value_ids: &[AttributeValueId]) -> AttributeValueResult<()> {
+    pub async fn create_dependent_values(
+        ctx: &DalContext,
+        attribute_value_ids: &[AttributeValueId],
+    ) -> AttributeValueResult<()> {
         let total_start = std::time::Instant::now();
 
         let _rows = ctx

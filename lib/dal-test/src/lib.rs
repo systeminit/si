@@ -237,13 +237,10 @@ impl TestContext {
     }
 
     /// Creates a new [`ServicesContext`] using the given NATS subject prefix.
-    pub async fn create_services_context(
-        &self,
-        nats_subject_prefix: impl Into<String>,
-    ) -> ServicesContext {
+    pub async fn create_services_context(&self, nats_subject_prefix: &str) -> ServicesContext {
         let veritech = veritech_client::Client::with_subject_prefix(
             self.nats_conn.clone(),
-            nats_subject_prefix,
+            format!("{nats_subject_prefix}.veritech"),
         );
 
         ServicesContext::new(
@@ -252,6 +249,7 @@ impl TestContext {
             self.job_processor.clone(),
             veritech,
             self.encryption_key.clone(),
+            format!("{nats_subject_prefix}.council"),
         )
     }
 
@@ -326,6 +324,20 @@ pub fn nats_subject_prefix() -> String {
     Uuid::new_v4().as_simple().to_string()
 }
 
+/// Configures and builds a [`council::Server`] suitable for running alongside DAL object-related
+/// tests.
+pub async fn council_server(
+    nats_config: NatsConfig,
+    subject_prefix: String,
+) -> Result<council::Server> {
+    let config = council::server::Config::builder()
+        .nats(nats_config)
+        .subject_prefix(subject_prefix)
+        .build()?;
+    let server = council::Server::new_with_config(config).await?;
+    Ok(server)
+}
+
 /// Configures and builds a [`veritech_server::Server`] suitable for running alongside DAL object-related
 /// tests.
 pub async fn veritech_server_for_uds_cyclone(
@@ -390,11 +402,28 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     let nats_subject_prefix = nats_subject_prefix();
 
+    // Create a dedicated Council server with a unique subject prefix for each test
+    let council_subject_prefix = format!("{nats_subject_prefix}.council");
+    let council_server = council_server(
+        test_context.config.nats.clone(),
+        council_subject_prefix.clone(),
+    )
+    .await?;
+    let (_shutdown_request_tx, shutdown_request_rx) = tokio::sync::watch::channel(());
+    let (subscription_started_tx, mut subscription_started_rx) = tokio::sync::watch::channel(());
+    tokio::spawn(async move {
+        council_server
+            .run(subscription_started_tx, shutdown_request_rx)
+            .await
+            .unwrap()
+    });
+    subscription_started_rx.changed().await?;
+
     // Start up a Veritech server as a task exclusively to allow the migrations to run
     info!("starting Veritech server for initial migrations");
     let veritech_server = veritech_server_for_uds_cyclone(
         test_context.config.nats.clone(),
-        nats_subject_prefix.clone(),
+        format!("{nats_subject_prefix}.veritech"),
     )
     .await?;
     let veritech_server_handle = veritech_server.shutdown_handle();
@@ -402,7 +431,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     // Create a `ServicesContext`
     let services_ctx = test_context
-        .create_services_context(nats_subject_prefix)
+        .create_services_context(&nats_subject_prefix)
         .await;
 
     info!("testing database connection");
@@ -464,6 +493,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         services_ctx.job_processor(),
         services_ctx.veritech().clone(),
         services_ctx.encryption_key(),
+        format!("{nats_subject_prefix}.council"),
         skip_migrating_schemas,
     )
     .await

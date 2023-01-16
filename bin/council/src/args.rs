@@ -1,6 +1,6 @@
 use clap::{ArgAction, Parser};
 
-use crate::config::{Config, ConfigError, ConfigFile, StandardConfigFile};
+use council::server::config::{Config, ConfigError, ConfigFile, StandardConfigFile};
 
 const NAME: &str = "council";
 

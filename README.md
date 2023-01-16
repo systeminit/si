@@ -58,7 +58,7 @@ There are other components and paradigms that aren't displayed, but this diagram
 - **[sdf](./bin/sdf/):** the backend webserver for communicating with `web`
 - **[dal](./lib/dal/):** the library used by `sdf` routes to "make stuff happen" (the keystone of SI)
 - **[pinga](./bin/pinga/):** the job queueing service used by the `dal` to execute non-trivial jobs via `nats` or `faktory`
-- **[council](./bin/council/):** the job queueing service used by the `dal` to execute non-trivial jobs via `nats` or `faktory`
+- **[council](./bin/council/):** the dependent values updates synchronization service used by the `dal` to avoid race conditions in DependentValuesUpdate the job, communicates via `nats`
 - **[faktory](https://github.com/contribsys/faktory):** one of the job queueing mechanism that can be used by `pinga` to execute non-trivial jobs
 - **[postgres](https://postgresql.org):** the database for storing SI data
 - **[veritech](./bin/veritech/):** a backend webserver for dispatching functions in secure runtime environments

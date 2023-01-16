@@ -56,6 +56,30 @@ macro_rules! pk {
             }
         }
 
+        impl From<council::Id> for $name {
+            fn from(id: council::Id) -> Self {
+                Self(id.into())
+            }
+        }
+
+        impl<'a> From<&'a council::Id> for $name {
+            fn from(id: &'a council::Id) -> Self {
+                Self((*id).into())
+            }
+        }
+
+        impl From<$name> for council::Id {
+            fn from(pk: $name) -> Self {
+                pk.0.into()
+            }
+        }
+
+        impl<'a> From<&'a $name> for council::Id {
+            fn from(pk: &'a $name) -> Self {
+                pk.0.into()
+            }
+        }
+
         impl<'a> From<&'a $name> for ulid::Ulid {
             fn from(pk: &'a $name) -> Self {
                 pk.0

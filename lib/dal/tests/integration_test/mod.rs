@@ -54,13 +54,13 @@ macro_rules! test_setup {
         let test_context = ::dal_test::TestContext::global().await;
         let nats_subject_prefix = ::dal_test::nats_subject_prefix();
         let services_context = test_context
-            .create_services_context(nats_subject_prefix.clone())
+            .create_services_context(&nats_subject_prefix)
             .await;
 
         // Run a Veritech server instance for each test
         let veritech_server = ::dal_test::veritech_server_for_uds_cyclone(
             test_context.nats_config().clone(),
-            nats_subject_prefix,
+            format!("{nats_subject_prefix}.veritech"),
         )
         .await;
         ::tokio::spawn(veritech_server.run());
