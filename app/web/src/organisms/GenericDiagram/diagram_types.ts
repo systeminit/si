@@ -200,7 +200,7 @@ export type DiagramNodeDef = {
   /** the list of childIds related to the node */
   childIds?: DiagramElementId[];
   /** change status of component in relation to head */
-  changeStatus: "added" | "modified" | "deleted" | "unmodified";
+  changeStatus?: ChangeStatus;
 };
 
 export type DiagramSocketDef = {

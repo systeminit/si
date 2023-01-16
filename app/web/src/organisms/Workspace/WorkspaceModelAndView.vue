@@ -48,7 +48,14 @@
 
     <DropdownMenu ref="contextMenuRef">
       <template v-if="selectedEdgeId">
-        <DropdownMenuItem icon="trash" @select="triggerDeleteSelection">
+        <DropdownMenuItem
+          v-if="selectedEdge.changeStatus === 'deleted'"
+          icon="trash-restore"
+          @select="triggerRestoreSelection"
+        >
+          Restore deleted edge
+        </DropdownMenuItem>
+        <DropdownMenuItem v-else icon="trash" @select="triggerDeleteSelection">
           Delete edge
         </DropdownMenuItem>
       </template>
@@ -199,6 +206,7 @@ const selectedComponentIds = computed(
   () => componentsStore.selectedComponentIds,
 );
 const selectedEdgeId = computed(() => componentsStore.selectedEdgeId);
+const selectedEdge = computed(() => componentsStore.selectedEdge);
 
 const diagramCustomConfig = {};
 
@@ -358,6 +366,10 @@ async function executeDeleteSelection() {
       await componentsStore.DELETE_COMPONENT(componentId);
     }
   }
+}
+function triggerRestoreSelection() {
+  // eslint-disable-next-line no-alert
+  alert("restore!");
 }
 
 watch(

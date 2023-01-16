@@ -379,6 +379,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         selectedComponent(): Component {
           return this.componentsById[this.selectedComponentId || 0];
         },
+        selectedEdge(): DiagramEdgeDef {
+          return this.diagramEdgesById[this.selectedEdgeId || 0];
+        },
         selectedComponentDiff(): ComponentDiff | undefined {
           return this.componentDiffsById[this.selectedComponentId || 0];
         },
@@ -530,7 +533,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // for now just storing the diagram-y data
               // but I think ideally we fetch more generic component data and then transform into diagram format as necessary
               this.rawDiagramNodes = response.nodes;
-              this.diagramEdgesById = _.keyBy(response.edges, "id");
+
+              // TODO: re-enable this line, instead of code below, which maintains the existing data
+              // this.diagramEdgesById = _.keyBy(response.edges, "id");
+
+              // temporary solution to keep showing deleted edges during your session
+              const cachedEdgeStatusById = _.mapValues(
+                this.diagramEdgesById,
+                (e) => e.changeStatus,
+              );
+
+              _.assign(this.diagramEdgesById, _.keyBy(response.edges, "id"));
+
+              // preserve added/removed status set by optimistic updates
+              // TODO: remove this when backend is working
+              _.each(this.diagramEdgesById, (edgeData, edgeId) => {
+                edgeData.changeStatus = cachedEdgeStatusById[edgeId];
+              });
             },
           });
         },
@@ -651,7 +670,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           from: { nodeId: ComponentNodeId; socketId: SocketId },
           to: { nodeId: ComponentNodeId; socketId: SocketId },
         ) {
-          return new ApiRequest<{ node: DiagramNode }>({
+          const tempId = `temp-edge-${+new Date()}`;
+
+          return new ApiRequest<{
+            connection: {
+              id: string;
+              classification: "configuration";
+              destination: { nodeId: string; socketId: string };
+              source: { nodeId: string; socketId: string };
+            };
+          }>({
             method: "post",
             url: "diagram/create_connection",
             params: {
@@ -662,10 +690,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+              // change our temporary id to the real one
+              this.diagramEdgesById[response.connection.id] =
+                this.diagramEdgesById[tempId];
+              delete this.diagramEdgesById[tempId];
               // TODO: store component details rather than waiting for re-fetch
             },
             optimistic: () => {
-              const tempId = `temp-edge-${+new Date()}`;
+              // TODO: if edge already exists but is deleted in changeset, it should not be marked as new
+              // and maybe should use existing ID?
+
               this.diagramEdgesById[tempId] = {
                 id: tempId,
                 // type?: string;
@@ -741,17 +775,27 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
-              const originalStatus = this.diagramEdgesById[edgeId].changeStatus;
-
               this.selectedEdgeId = null;
-              this.diagramEdgesById[edgeId].changeStatus = "deleted";
-              this.diagramEdgesById[edgeId].deletedAt = new Date();
 
-              return () => {
-                this.diagramEdgesById[edgeId].changeStatus = originalStatus;
-                delete this.diagramEdgesById[edgeId]?.deletedAt;
-                this.selectedEdgeId = edgeId;
-              };
+              if (this.diagramEdgesById[edgeId].changeStatus === "added") {
+                const originalEdge = this.diagramEdgesById[edgeId];
+                delete this.diagramEdgesById[edgeId];
+                return () => {
+                  this.diagramEdgesById[edgeId] = originalEdge;
+                  this.selectedEdgeId = edgeId;
+                };
+              } else {
+                const originalStatus =
+                  this.diagramEdgesById[edgeId].changeStatus;
+                this.diagramEdgesById[edgeId].changeStatus = "deleted";
+                this.diagramEdgesById[edgeId].deletedAt = new Date();
+
+                return () => {
+                  this.diagramEdgesById[edgeId].changeStatus = originalStatus;
+                  delete this.diagramEdgesById[edgeId]?.deletedAt;
+                  this.selectedEdgeId = edgeId;
+                };
+              }
             },
           });
         },

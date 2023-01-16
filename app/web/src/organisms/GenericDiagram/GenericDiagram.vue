@@ -1580,8 +1580,13 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
   const fromSocket = drawEdgeFromSocket.value;
   if (!drawEdgeActive.value || !fromSocket) return [];
 
-  const existingEdges = connectedEdgesByElementKey.value[fromSocket.uniqueKey];
-  const existingConnectedSocketKeys = _.map(existingEdges, (edge) =>
+  const allExistingEdges =
+    connectedEdgesByElementKey.value[fromSocket.uniqueKey];
+  const actualExistingEdges = _.reject(
+    allExistingEdges,
+    (e) => e.def.changeStatus === "deleted",
+  );
+  const existingConnectedSocketKeys = _.map(actualExistingEdges, (edge) =>
     edge.fromSocketKey === fromSocket.uniqueKey
       ? edge.toSocketKey
       : edge.fromSocketKey,

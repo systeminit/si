@@ -34,6 +34,7 @@ import Chevron from "~icons/heroicons-solid/chevron-up";
 
 import Save from "~icons/heroicons-solid/save";
 import Trash from "~icons/heroicons-solid/trash";
+import TrashRestore from "~icons/material-symbols/restore-from-trash";
 
 import PlayCircle from "~icons/heroicons-solid/play";
 import Beaker from "~icons/heroicons-solid/beaker";
@@ -143,6 +144,7 @@ export const ICONS = Object.freeze({
   "tilde-circle": TildeCircle,
   tools: Tools,
   trash: Trash,
+  "trash-restore": TrashRestore,
   x: X,
   "x-circle": XCircle,
   "x-square": XSquare,

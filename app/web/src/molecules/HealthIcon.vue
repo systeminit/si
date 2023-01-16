@@ -52,20 +52,20 @@
           <p v-if="message.length === 0">Health {{ health }}</p>
         </span>
       </template>
-      <template #content>
-        <div
-          class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
+
+      <!-- modal default content-->
+      <div
+        class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
+      >
+        <b>Logs: </b>
+        <p
+          v-for="(log, index) in details"
+          :key="index"
+          class="text-sm break-all"
         >
-          <b>Logs: </b>
-          <p
-            v-for="(log, index) in details"
-            :key="index"
-            class="text-sm break-all"
-          >
-            {{ log }}
-          </p>
-        </div>
-      </template>
+          {{ log }}
+        </p>
+      </div>
     </Modal>
   </span>
 </template>

@@ -36,56 +36,49 @@
       </div>
     </div>
 
-    <Modal ref="detailsModalRef" size="2xl">
-      <template #title>{{ qualification.title }}</template>
-      <template #content>
-        <div class="my-2">
-          <StatusMessageBox :status="qualificationStatus">
-            <template v-if="qualificationStatus === 'failure'">
-              Something went wrong!
-            </template>
-            <template v-else-if="qualificationStatus === 'success'">
-              Passed!
-            </template>
-            <template v-else> Qualification running, standby...</template>
-          </StatusMessageBox>
-        </div>
+    <Modal ref="detailsModalRef" size="2xl" :title="qualification.title">
+      <div class="my-2">
+        <StatusMessageBox :status="qualificationStatus">
+          <template v-if="qualificationStatus === 'failure'">
+            Something went wrong!
+          </template>
+          <template v-else-if="qualificationStatus === 'success'">
+            Passed!
+          </template>
+          <template v-else> Qualification running, standby...</template>
+        </StatusMessageBox>
+      </div>
 
-        <div v-if="qualification.description" class="my-2">
-          <b>Description: </b>
-          <p>{{ qualification.description }}</p>
-        </div>
+      <div v-if="qualification.description" class="my-2">
+        <b>Description: </b>
+        <p>{{ qualification.description }}</p>
+      </div>
 
-        <div
-          v-if="failedSubchecks.length"
-          class="flex flex-col my-2 p-2 border border-destructive-600 text-destructive-500 rounded"
+      <div
+        v-if="failedSubchecks.length"
+        class="flex flex-col my-2 p-2 border border-destructive-600 text-destructive-500 rounded"
+      >
+        <b>Qualification Failures:</b>
+        <ul>
+          <li v-for="(subCheck, idx) in failedSubchecks" :key="idx" class="p-2">
+            {{ subCheck.description }}
+          </li>
+        </ul>
+      </div>
+
+      <div
+        v-if="qualification.output?.length"
+        class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
+      >
+        <b>Raw Output:</b>
+        <p
+          v-for="(output, index) in qualification.output"
+          :key="index"
+          class="text-sm break-all"
         >
-          <b>Qualification Failures:</b>
-          <ul>
-            <li
-              v-for="(subCheck, idx) in failedSubchecks"
-              :key="idx"
-              class="p-2"
-            >
-              {{ subCheck.description }}
-            </li>
-          </ul>
-        </div>
-
-        <div
-          v-if="qualification.output?.length"
-          class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
-        >
-          <b>Raw Output:</b>
-          <p
-            v-for="(output, index) in qualification.output"
-            :key="index"
-            class="text-sm break-all"
-          >
-            {{ output.line }}
-          </p>
-        </div>
-      </template>
+          {{ output.line }}
+        </p>
+      </div>
     </Modal>
   </div>
 </template>
