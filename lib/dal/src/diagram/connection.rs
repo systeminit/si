@@ -7,9 +7,8 @@ use crate::diagram::DiagramResult;
 use crate::job::definition::DependentValuesUpdate;
 use crate::socket::SocketId;
 use crate::{
-    node::NodeId, AttributePrototype, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, DalContext, DiagramError, ExternalProviderId, Node, PropId, Socket,
-    StandardModel,
+    node::NodeId, AttributePrototypeArgument, AttributeReadContext, AttributeValue, DalContext,
+    DiagramError, ExternalProviderId, Node, PropId, Socket, StandardModel,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -133,77 +132,57 @@ impl Connection {
                 .id()
         };
 
-        // TODO (Paul/Victor): Change this to be a query
         // Delete the arguments that have the same external provider of the edge, and are connected to an attribute prototype for
-        let arguments = AttributePrototypeArgument::find_by_attr(
+        let edge_argument = AttributePrototypeArgument::find_for_providers_and_components(
+            ctx,
+            external_provider.id(),
+            &internal_provider_id,
+            &tail_component_id,
+            &head_component_id,
+        )
+        .await?
+        .ok_or(DiagramError::AttributePrototypeNotFound)?;
+
+        edge_argument.delete(ctx).await?;
+        edge.delete(ctx).await?;
+
+        let read_context = AttributeReadContext {
+            prop_id: Some(PropId::NONE),
+            internal_provider_id: Some(internal_provider_id),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(head_component_id),
+        };
+
+        let mut attr_value = AttributeValue::find_for_context(ctx, read_context)
+            .await?
+            .ok_or(DiagramError::AttributeValueNotFound)?;
+
+        let sibling_arguments = AttributePrototypeArgument::find_by_attr(
             ctx,
             "external_provider_id",
             external_provider.id(),
         )
         .await?;
 
-        let arg_count = arguments.len();
-        let mut deleted_arg = false;
-        for argument in arguments {
-            let arg_prototype =
-                AttributePrototype::get_by_id(ctx, &argument.attribute_prototype_id())
-                    .await?
-                    .ok_or(DiagramError::AttributePrototypeNotFound)?;
+        let arg_count = sibling_arguments.len();
 
-            if argument.external_provider_id() != *external_provider.id() {
-                continue;
-            }
+        if arg_count > 0 {
+            attr_value.update_from_prototype_function(ctx).await?;
 
-            if arg_prototype.context.internal_provider_id() != internal_provider_id {
-                continue;
-            }
+            ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attr_value.id()))
+                .await;
+        } else {
+            let attr_val_context = attr_value.context;
+            attr_value.unset_attribute_prototype(ctx).await?;
 
-            if argument.head_component_id() != head_component_id {
-                continue;
-            }
+            attr_value.delete(ctx).await?;
 
-            if argument.tail_component_id() != tail_component_id {
-                continue;
-            }
-
-            argument.delete(ctx).await?;
-
-            deleted_arg = true;
-            break;
-        }
-
-        if deleted_arg {
-            edge.delete(ctx).await?;
-
-            let read_context = AttributeReadContext {
-                prop_id: Some(PropId::NONE),
-                internal_provider_id: Some(internal_provider_id),
-                external_provider_id: Some(ExternalProviderId::NONE),
-                component_id: Some(head_component_id),
-            };
-
-            let mut attr_value = AttributeValue::find_for_context(ctx, read_context)
+            let att_val = AttributeValue::find_for_context(ctx, attr_val_context.into())
                 .await?
                 .ok_or(DiagramError::AttributeValueNotFound)?;
 
-            if arg_count > 1 {
-                attr_value.update_from_prototype_function(ctx).await?;
-
-                ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attr_value.id()))
-                    .await;
-            } else {
-                let attr_val_context = attr_value.context;
-                attr_value.unset_attribute_prototype(ctx).await?;
-
-                attr_value.delete(ctx).await?;
-
-                let att_val = AttributeValue::find_for_context(ctx, attr_val_context.into())
-                    .await?
-                    .ok_or(DiagramError::AttributeValueNotFound)?;
-
-                ctx.enqueue_job(DependentValuesUpdate::new(ctx, *att_val.id()))
-                    .await;
-            }
+            ctx.enqueue_job(DependentValuesUpdate::new(ctx, *att_val.id()))
+                .await;
         }
 
         Ok(())

@@ -21,6 +21,9 @@ const LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE_AND_HEAD_COMPONENT_ID: &str = include
 );
 const LIST_FOR_FUNC_ARGUMENT_ID: &str =
     include_str!("../../queries/attribute_prototype_argument/list_for_func_argument.sql");
+const FIND_FOR_PROVIDERS_AND_COMPONENTS: &str = include_str!(
+    "../../queries/attribute_prototype_argument/find_for_providers_and_components.sql"
+);
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeArgumentError {
@@ -459,5 +462,31 @@ impl AttributePrototypeArgument {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    pub async fn find_for_providers_and_components(
+        ctx: &DalContext,
+        external_provider_id: &ExternalProviderId,
+        internal_provider_id: &InternalProviderId,
+        tail_component: &ComponentId,
+        head_component: &ComponentId,
+    ) -> AttributePrototypeArgumentResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_FOR_PROVIDERS_AND_COMPONENTS,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    external_provider_id,
+                    internal_provider_id,
+                    tail_component,
+                    head_component,
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::object_option_from_row_option(row)?)
     }
 }
