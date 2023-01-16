@@ -442,7 +442,7 @@ function onKeyDown(e: KeyboardEvent) {
   // console.log(e);
 
   // handle opening the help modal
-  if (e.key === "?" || e.key === "/") helpModalRef.value.ref.open();
+  if (e.key === "?" || e.key === "/") helpModalRef.value?.open();
 
   // handle arrow keys - nudge and alignment
   if (e.key.startsWith("Arrow")) {

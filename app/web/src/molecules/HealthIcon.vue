@@ -21,7 +21,7 @@
         <button
           v-if="index === 0 && details.length > 0"
           class="underline text-action-400"
-          @click="openModal"
+          @click="modalRef.open()"
         >
           View Details
         </button>
@@ -29,7 +29,7 @@
       <strong v-if="message.length === 0">Health {{ health }}</strong>
     </span>
 
-    <Modal size="2xl" :open="modalOpen" @close="closeModal">
+    <Modal ref="modalRef" size="2xl">
       <template #title>
         <span class="flex" :title="message.join('\n')">
           <Icon
@@ -101,13 +101,5 @@ const icon = computed(() => {
   }
 });
 
-const modalOpen = ref(false);
-
-const openModal = () => {
-  modalOpen.value = true;
-};
-
-const closeModal = () => {
-  modalOpen.value = false;
-};
+const modalRef = ref();
 </script>

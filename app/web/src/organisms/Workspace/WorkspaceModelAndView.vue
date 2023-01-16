@@ -2,11 +2,7 @@
 <template>
   <SiPanel remember-size-key="changeset-and-asset" side="left" :min-size="250">
     <div class="flex flex-col h-full">
-      <ChangeSetPanel
-        v-if="!isViewMode"
-        ref="changeSetPanelRef"
-        class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
-      />
+      <ChangeSetPanel v-if="!isViewMode" />
 
       <SiTabGroup class="relative flex-grow">
         <template #tabs>
@@ -40,7 +36,6 @@
       :nodes="diagramNodes"
       :edges="diagramEdges"
       :read-only="isViewMode"
-      :controls-disabled="changeSetPanelRef?.showDialog === undefined"
       @insert-element="onDiagramInsertElement"
       @move-element="onDiagramMoveElement"
       @resize-element="onDiagramResizeElement"
@@ -210,8 +205,6 @@ const diagramCustomConfig = {};
 const selectedComponent = computed(() => componentsStore.selectedComponent);
 
 const insertCallbacks: Record<string, () => void> = {};
-
-const changeSetPanelRef = ref();
 
 watch(
   () => componentsStore.selectedInsertSchemaId,

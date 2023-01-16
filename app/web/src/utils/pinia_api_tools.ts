@@ -110,14 +110,23 @@ export type ApiRequestDescription<
   Response = any,
   RequestParams = Record<string, unknown>,
 > = {
+  /** http request method, defaults to "get" */
   method?: "get" | "patch" | "post" | "put" | "delete"; // defaults to "get" if empty
+  /** url to request */
   url: string;
+  /** request data, passed as querystring for GET, body for everything else */
   params?: RequestParams;
+  /** additional args to key the request status */
   keyRequestStatusBy?: RawRequestStatusKeyArg | RawRequestStatusKeyArg[];
+  /** function to call if request is successfull (2xx) - usually contains changes to the store */
   onSuccess?(response: Response): Promise<void> | void;
+  /** function to call if request fails (>=400) - not common */
   onFail?(response: any): Promise<void> | void;
+  /** additional headers to pass with request */
   headers?: Record<string, any>;
+  /** additional axios options */
   options?: Record<string, any>; // TODO: pull in axios options type?
+  /** optional optimistic update fn to call before api request is made, should return a rollback fn called on api error */
   optimistic?: () => (() => void) | void;
 };
 
@@ -198,20 +207,15 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
 
       // check if we have already have a pending identical request (same tracking key, and identical payload)
       // if so, we can skip triggering the new api call
-      // probably need to add more options here...
+      // TODO: probably need to add more options here for caching/dedupe request/logic
+      // ex: let us skip certain requests if already successful, not just pending
       const existingRequest = store.getRequestStatus(trackingKey).value;
       if (
         existingRequest.isPending &&
         _.isEqual(existingRequest.payload, requestSpec.params)
       ) {
-        // return original promise so
+        // return original promise so caller can use the result directly if necessary
         return existingRequest.completed?.promise;
-      }
-
-      // TODO: apply optimistic update if the action has it defined
-      let rollbackFn;
-      if (requestSpec.optimistic) {
-        rollbackFn = requestSpec.optimistic();
       }
 
       // mark the request as pending in the store
@@ -227,6 +231,13 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
           lastSuccessAt: state.apiRequestStatuses[trackingKey]?.lastSuccessAt,
         };
       });
+
+      // if optimistic update logic is defined, we trigger it here, before actually making the API request
+      // that fn should return a fn to call which rolls back any optimistic updates in case the request fails
+      let optimisticRollbackFn;
+      if (requestSpec.optimistic) {
+        optimisticRollbackFn = requestSpec.optimistic();
+      }
 
       const { method, url, params, headers, options, onSuccess, onFail } =
         requestSpec;
@@ -280,7 +291,8 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         console.log(err);
         // TODO: trigger global error hook that can be added on plugin init (or split by api)
 
-        if (rollbackFn) rollbackFn();
+        // if we made an optimistic update, we'll roll it back here
+        if (optimisticRollbackFn) optimisticRollbackFn();
 
         // mark the request as failure and store the error info
         store.$patch((state) => {

@@ -2,9 +2,7 @@
 <template>
   <SiPanel remember-size-key="func-picker" side="left" :min-size="300">
     <div class="flex flex-col h-full">
-      <ChangeSetPanel
-        class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
-      />
+      <ChangeSetPanel />
       <div class="relative flex-grow">
         <FuncListPanel />
       </div>

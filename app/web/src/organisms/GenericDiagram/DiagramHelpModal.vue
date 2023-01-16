@@ -16,6 +16,6 @@ import Modal from "@/ui-lib/modals/Modal.vue";
 import { useModal } from "@/ui-lib/modals/modal_utils";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
-const { open, close } = useModal(modalRef as any);
+const { open, close } = useModal(modalRef);
 defineExpose({ open, close });
 </script>

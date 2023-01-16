@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ComponentTreeNode, StatusIconsSet } from "@/store/components.store";
+import { StatusIconsSet } from "@/store/components.store";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { IconNames } from "@/ui-lib/icons/icon_set";
 

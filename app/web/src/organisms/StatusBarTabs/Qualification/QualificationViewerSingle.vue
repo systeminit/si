@@ -27,13 +27,16 @@
       </div>
 
       <div class="text-right">
-        <button class="underline text-action-400" @click="openModal">
+        <button
+          class="underline text-action-400"
+          @click="detailsModalRef?.open()"
+        >
           View Details
         </button>
       </div>
     </div>
 
-    <Modal size="2xl" :open="modalOpen" @close="closeModal">
+    <Modal ref="detailsModalRef" size="2xl">
       <template #title>{{ qualification.title }}</template>
       <template #content>
         <div class="my-2">
@@ -113,15 +116,7 @@ const qualificationStatus = computed(() => {
   return props.qualification.result.status;
 });
 
-const modalOpen = ref(false);
-
-const openModal = () => {
-  modalOpen.value = true;
-};
-
-const closeModal = () => {
-  modalOpen.value = false;
-};
+const detailsModalRef = ref<InstanceType<typeof Modal>>();
 
 const titleFailedSubchecks = computed(() => {
   return failedSubchecks.value.length

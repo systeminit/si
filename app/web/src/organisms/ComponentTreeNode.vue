@@ -58,13 +58,11 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import { Disclosure, DisclosurePanel, DisclosureButton } from "@headlessui/vue";
-import clsx from "clsx";
 import _ from "lodash";
 import {
   ComponentTreeNode,
   useComponentsStore,
 } from "@/store/components.store";
-import { colors } from "@/utils/design_token_values";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import ComponentTree from "@/organisms/ComponentTree.vue";
 import ComponentTreeNodeHeader from "@/organisms/ComponentTreeNodeHeader.vue";
@@ -79,7 +77,6 @@ const emit = defineEmits<{
 
 const componentsStore = useComponentsStore();
 
-const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 const isSelected = computed(() => {
   return _.includes(componentsStore.selectedComponentIds, props.component.id);
 });

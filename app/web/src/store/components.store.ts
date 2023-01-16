@@ -10,8 +10,6 @@ import {
   DiagramNodeDef,
   DiagramStatusIcon,
   Size2D,
-  DiagramNodeData,
-  DiagramGroupData,
 } from "@/organisms/GenericDiagram/diagram_types";
 import { MenuItem } from "@/api/sdf/dal/menu";
 import {
@@ -36,11 +34,7 @@ import {
   useQualificationsStore,
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
-import {
-  ConfirmationStats,
-  ConfirmationStatus,
-  useFixesStore,
-} from "./fixes/fixes.store";
+import { ConfirmationStatus, useFixesStore } from "./fixes/fixes.store";
 import { useStatusStore } from "./status.store";
 
 export type ComponentId = string;
@@ -119,6 +113,7 @@ const changeStatusToIconMap: Record<ChangeStatus, DiagramStatusIcon> = {
   added: { icon: "plus-circle", tone: "success" },
   deleted: { icon: "minus-circle", tone: "error" },
   modified: { icon: "tilde-circle", tone: "warning" },
+  unmodified: { icon: "minus", tone: "neutral" },
 };
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
@@ -488,6 +483,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             added: grouped.added?.length || 0,
             deleted: grouped.deleted?.length || 0,
             modified: grouped.modified?.length || 0,
+            unmodified: grouped.unmodified?.length || 0,
             total: allChanged.length,
           };
         },
@@ -733,7 +729,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async DELETE_EDGE(edgeId: EdgeId) {
-          return new ApiRequest<any>({
+          return new ApiRequest({
             method: "post",
             url: "diagram/delete_connection",
             keyRequestStatusBy: edgeId,
@@ -760,7 +756,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         async DELETE_COMPONENT(componentId: ComponentId) {
-          return new ApiRequest<any>({
+          return new ApiRequest({
             method: "post",
             url: "diagram/delete_component",
             keyRequestStatusBy: componentId,

@@ -254,7 +254,6 @@ import {
   SELECTION_COLOR,
   GROUP_HEADER_BOTTOM_MARGIN,
   GROUP_TITLE_FONT_SIZE,
-  RESIZE_HANDLE_SIZE,
   GROUP_INTERNAL_PADDING,
 } from "@/organisms/GenericDiagram/diagram_constants";
 import {
