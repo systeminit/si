@@ -1,0 +1,21 @@
+<template>
+  <div>
+    <LoadingMessage
+      :request-status="requestStatus"
+      :request-message="loadingMessage"
+    />
+    <ErrorMessage :request-status="requestStatus" />
+  </div>
+</template>
+
+<script lang="ts" setup>
+import { PropType } from "vue";
+import { ApiRequestStatus } from "@/utils/pinia_api_tools";
+import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
+import LoadingMessage from "@/ui-lib/LoadingMessage.vue";
+
+defineProps({
+  loadingMessage: { type: String },
+  requestStatus: { type: Object as PropType<ApiRequestStatus> },
+});
+</script>

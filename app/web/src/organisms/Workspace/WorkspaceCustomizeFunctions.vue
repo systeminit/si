@@ -6,7 +6,7 @@
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
       <div class="relative flex-grow">
-        <FuncPicker @create-func="createFunc" />
+        <FuncListPanel @create-func="createFunc" />
       </div>
     </div>
   </SiPanel>
@@ -14,17 +14,11 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
     <div class="inset-2 bottom-0 absolute">
-      <FuncEditorTabs v-if="selectedFuncId !== nilId()" />
-      <div
-        v-else
-        class="p-2 text-center text-neutral-400 dark:text-neutral-300"
-      >
-        Select a function to edit it.
-      </div>
+      <FuncEditorTabs :func-id="funcId" />
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    <FuncDetails v-if="!funcReqStatus.isPending" />
+    <FuncDetails :func-id="funcId" />
   </SiPanel>
 </template>
 
@@ -34,7 +28,7 @@ import _ from "lodash";
 import { storeToRefs } from "pinia";
 import SiPanel from "@/atoms/SiPanel.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
-import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
+import FuncListPanel from "@/organisms/FuncEditor/FuncListPanel.vue";
 import FuncEditorTabs from "@/organisms/FuncEditor/FuncEditorTabs.vue";
 import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
 import { ListedFuncView } from "@/store/func/requests/list_funcs";
@@ -43,13 +37,14 @@ import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { useFuncStore } from "@/store/func/funcs.store";
 
 const funcStore = useFuncStore();
-const funcReqStatus = funcStore.getRequestStatus("FETCH_FUNC");
 const { selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 
 const props = defineProps<{
   funcId?: string;
+  workspaceId: string;
+  changeSetId: string;
 }>();
 
 function nilId(): string {
@@ -66,7 +61,12 @@ watch(
   () => funcIdParam.value,
   (funcIdParam) => {
     let funcId = funcIdParam ?? nilId();
-    if (Number.isNaN(funcIdParam) || funcId === nilId()) {
+    if (funcId === "") {
+      selectedFuncId.value = nilId();
+      return;
+    }
+
+    if (funcId === nilId()) {
       if (selectedFuncId.value !== nilId()) {
         routeToFunc(selectedFuncId.value);
         return;

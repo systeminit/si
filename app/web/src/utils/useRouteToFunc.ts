@@ -5,7 +5,7 @@ export const useRouteToFunc = () => {
   const router = useRouter();
   return (funcId?: string) => {
     router.push({
-      name: "workspace-lab",
+      name: "workspace-lab-functions",
       params: {
         ...route.params,
         funcId,

@@ -1,6 +1,12 @@
 <template>
   <div
-    v-if="selectedFuncId !== nilId()"
+    v-if="funcReqStatus.isPending"
+    class="w-full flex flex-col items-center gap-4 p-xl"
+  >
+    <Icon name="loader" size="2xl" />
+  </div>
+  <div
+    v-else-if="selectedFuncId !== nilId()"
     class="absolute h-full w-full flex flex-col overflow-hidden"
   >
     <SiTabGroup>
@@ -151,8 +157,12 @@
       </template>
     </SiTabGroup>
   </div>
-  <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
-    Select a function to view its properties.
+  <div
+    v-else
+    class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
+  >
+    <template v-if="funcId">Function "{{ funcId }}" does not exist!</template>
+    <template v-else>Select a function to view its properties.</template>
   </div>
 </template>
 
@@ -167,6 +177,7 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, nullEditingFunc } from "@/store/func/funcs.store";
+import Icon from "@/ui-lib/icons/Icon.vue";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
@@ -174,11 +185,16 @@ import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ConfirmationDetails from "./ConfirmationDetails.vue";
 import ValidationDetails from "./ValidationDetails.vue";
 
+defineProps({
+  funcId: { type: String },
+});
+
 function nilId(): string {
   return "00000000000000000000000000";
 }
 
 const funcStore = useFuncStore();
+const funcReqStatus = funcStore.getRequestStatus("FETCH_FUNC");
 const { getFuncById, selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;

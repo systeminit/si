@@ -15,7 +15,7 @@
 
     <NavbarButton
       tooltip-text="Customize"
-      :selected="route.name === 'workspace-lab'"
+      :selected="route.matched.some((r) => r.name === 'workspace-lab')"
       :link-to="{
         name: 'workspace-lab',
         params: { changeSetId: 'auto' },

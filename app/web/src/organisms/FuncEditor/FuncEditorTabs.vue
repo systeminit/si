@@ -1,5 +1,13 @@
 <template>
+  <div
+    v-if="selectedFuncId === nilId()"
+    class="p-2 text-center text-neutral-400 dark:text-neutral-300"
+  >
+    <template v-if="funcId">Function "{{ funcId }}" does not exist!</template>
+    <template v-else>Select a function to edit it.</template>
+  </div>
   <SiTabGroup
+    v-else
     :selected-index="selectedFuncIndex"
     selected-tab-to-front
     :tab-width-maximum="0.3"
@@ -13,7 +21,7 @@
         {{ func.name }}
         <template #icon>
           <button
-            class="inline-block rounded-sm rounded-3xl text-neutral-400 ml-1"
+            class="inline-block rounded-full text-neutral-400 ml-1"
             :class="
               clsx(
                 themeClasses(
@@ -64,6 +72,10 @@ import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { themeClasses } from "@/ui-lib/theme_tools";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 
+defineProps({
+  funcId: { type: String },
+});
+
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
 const {
@@ -78,13 +90,28 @@ const closeFunc = (funcId: string) => {
   const funcIndex = getIndexForFunc.value(funcId);
   if (funcId === selectedFuncId.value) {
     const newIndex = funcIndex - 1;
-    routeToFuncByIndex(newIndex < 0 ? 0 : newIndex);
+    const index = newIndex < 0 ? 0 : newIndex;
+    routeToFuncByIndex(index);
   }
   funcStore.CLOSE_FUNC(funcId);
 };
 
 const routeToFuncByIndex = (index: number) => {
-  const func = getFuncByIndex.value(index);
+  let func = getFuncByIndex.value(index);
+
+  // TODO(Wendy) - this ugly fix is to prevent a bug where closing the final tab doesn't select another open tab
+  let i = index;
+  while (func === undefined && i > -1) {
+    i--;
+    if (i > -1) {
+      func = getFuncByIndex.value(i);
+    }
+  }
+
   routeToFunc(func?.id);
 };
+
+function nilId(): string {
+  return "00000000000000000000000000";
+}
 </script>
