@@ -186,7 +186,7 @@ CREATE OR REPLACE FUNCTION attribute_value_create_new_affected_values_v1(
     this_write_tenancy jsonb,
     this_read_tenancy jsonb,
     this_visibility jsonb,
-    this_attribute_value_id ident
+    this_attribute_value_id_array ident[]
 ) RETURNS void AS
 $$
 DECLARE
@@ -195,7 +195,6 @@ DECLARE
     attribute_prototype_id        ident;
     attribute_prototype_ids       ident[];
     attribute_value               attribute_values%ROWTYPE;
-    base_attribute_context        jsonb;
     current_attribute_context     jsonb;
     current_attribute_value_id    ident;
     current_attribute_value_ids   ident[];
@@ -222,25 +221,9 @@ BEGIN
         this_write_tenancy,
         this_read_tenancy,
         this_visibility,
-        this_attribute_value_id;
+        this_attribute_value_id_array;
 
-    current_attribute_value_ids := ARRAY [this_attribute_value_id];
-    -- Grab the AttributeContext that we're starting with, since there should be an
-    -- AttributeValue for every dependent AttributeValue that is _at least_ as specific as
-    -- this starting AttributeContext.
-    --
-    -- We ignore the Prop/InternalProvider/ExternalProvider part, because they are always
-    -- going to be different on the AttributeValues that we look at. The Component is also
-    -- going to be different as soon as we go across an
-    -- `ExternalProvider -> InternalProvider` link, but we need to dynamically figure out
-    -- what the appropriate ComponentId is to use as we go along.
-    base_attribute_context := jsonb_build_object(
-                                      'attribute_context_component_id', attribute_context_component_id
-                                  )
-                              FROM (SELECT attribute_context_component_id
-                                    FROM attribute_values_v1(this_read_tenancy, this_visibility)
-                                    WHERE id = this_attribute_value_id) AS av;
-    RAISE DEBUG 'attribute_value_create_new_affected_values_v1: base_attribute_context: %', base_attribute_context;
+    current_attribute_value_ids := this_attribute_value_id_array;
 
     LOOP
         RAISE DEBUG 'attribute_value_create_new_affected_values_v1: current_attribute_value_ids: %', current_attribute_value_ids;
@@ -256,13 +239,11 @@ BEGIN
             WHERE id = current_attribute_value_id;
             RAISE DEBUG 'attribute_value_create_new_affected_values_v1: source_attribute_value: %', source_attribute_value;
 
-            -- The base_attribute_context should take precedence for everything in the AttributeContext
-            -- _except_ for the ComponentId, which we should get from the current AttributeValue since
+            -- We should get the ComponentId from the current AttributeValue's context
             -- the current AttributeValue may have crossed an ExternalProvider -> InternalProvider
             -- boundary into a new Component.
             current_attribute_context := attribute_context_from_record_v1(source_attribute_value)
-                                             || base_attribute_context
-                || jsonb_build_object(
+                                             || jsonb_build_object(
                                                  'attribute_context_component_id',
                                                  source_attribute_value.attribute_context_component_id
                                              );
@@ -371,11 +352,10 @@ BEGIN
 
                 RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Found AttributeValue for InternalProvider';
                 current_internal_provider_id := source_attribute_value.attribute_context_internal_provider_id;
-                tmp_attribute_context := base_attribute_context
-                    || jsonb_build_object(
-                                                 'attribute_context_component_id',
-                                                 source_attribute_value.attribute_context_component_id
-                                             );
+                tmp_attribute_context := jsonb_build_object(
+                    'attribute_context_component_id',
+                    source_attribute_value.attribute_context_component_id
+                    );
                 -- AttributePrototypes that refer to this InternalProvider (through AttributePrototypeArguments)
                 RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Looking for AttributePrototype that use InternalProvider(%) in AttributeContext(%), Tenancy(%), Visibility(%)',
                     current_internal_provider_id,
@@ -495,8 +475,7 @@ BEGIN
                         END LOOP attribute_values_for_prototype;
                     ELSIF attribute_prototype.attribute_context_external_provider_id != ident_nil_v1() THEN
                         insertion_attribute_context := attribute_context_from_record_v1(attribute_prototype)
-                                                           || base_attribute_context
-                            || jsonb_build_object(
+                                                           || jsonb_build_object(
                                                                'attribute_context_component_id',
                                                                source_attribute_value.attribute_context_component_id
                                                            );

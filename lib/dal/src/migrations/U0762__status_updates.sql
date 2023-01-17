@@ -12,8 +12,7 @@ CREATE TABLE status_updates
     data                        jsonb                    NOT NULL
 );
 
-CREATE OR REPLACE FUNCTION status_update_create_v1(this_attribute_value_id ident,
-                                                   this_change_set_pk ident,
+CREATE OR REPLACE FUNCTION status_update_create_v1(this_change_set_pk ident,
                                                    this_actor jsonb,
                                                    this_tenancy jsonb,
                                                    OUT object json) AS
@@ -26,7 +25,6 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
 
     this_data := jsonb_build_object('actor', this_actor,
-                                    'attribute_value_id', this_attribute_value_id,
                                     'dependent_values_metadata', '{}'::jsonb,
                                     'queued_dependent_value_ids', '[]'::jsonb,
                                     'running_dependent_value_ids', '[]'::jsonb,

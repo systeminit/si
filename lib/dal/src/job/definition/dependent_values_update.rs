@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
@@ -14,32 +15,32 @@ use crate::{
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DependentValuesUpdateArgs {
-    attribute_value_id: AttributeValueId,
+    attribute_values: Vec<AttributeValueId>,
 }
 
 impl From<DependentValuesUpdate> for DependentValuesUpdateArgs {
     fn from(value: DependentValuesUpdate) -> Self {
         Self {
-            attribute_value_id: value.attribute_value_id,
+            attribute_values: value.attribute_values,
         }
     }
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct DependentValuesUpdate {
-    attribute_value_id: AttributeValueId,
+    attribute_values: Vec<AttributeValueId>,
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
 }
 
 impl DependentValuesUpdate {
-    pub fn new(ctx: &DalContext, attribute_value_id: AttributeValueId) -> Box<Self> {
+    pub fn new(ctx: &DalContext, attribute_values: Vec<AttributeValueId>) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
         let visibility = *ctx.visibility();
 
         Box::new(Self {
-            attribute_value_id,
+            attribute_values,
             access_builder,
             visibility,
             job: None,
@@ -94,28 +95,26 @@ impl JobConsumer for DependentValuesUpdate {
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
         let now = std::time::Instant::now();
 
-        let mut status_updater = StatusUpdater::initialize(ctx, self.attribute_value_id).await?;
+        let mut status_updater = StatusUpdater::initialize(ctx).await?;
 
-        let mut source_attribute_value = AttributeValue::get_by_id(ctx, &self.attribute_value_id)
-            .await?
-            .ok_or_else(|| {
-                AttributeValueError::NotFound(self.attribute_value_id, *ctx.visibility())
-            })?;
-        let mut dependency_graph = source_attribute_value.dependent_value_graph(ctx).await?;
+        let mut dependency_graph =
+            AttributeValue::dependent_value_graph(ctx, self.attribute_values.clone()).await?;
 
         // NOTE(nick,jacob): uncomment this for debugging.
         // Save printed output to a file and execute the following: "dot <file> -Tsvg -o <newfile>.svg"
         // println!("{}", dependency_graph_to_dot(ctx, &dependency_graph).await?);
 
-        // Remove the `AttributeValueId` from the list of values that are in the dependencies,
+        // Remove the `AttributeValueIds` from the list of values that are in the dependencies,
         // as we consider that one to have already been updated. This lets us check for
         // `AttributeValuesId`s where the list of *unsatisfied* dependencies is empty.
+        let attribute_values_set: HashSet<AttributeValueId> =
+            HashSet::from_iter(self.attribute_values.iter().cloned());
         for (_, val) in dependency_graph.iter_mut() {
-            val.retain(|&id| id != self.attribute_value_id);
+            val.retain(|id| !attribute_values_set.contains(id))
         }
         info!(
             "DependentValuesUpdate for {:?}: dependency_graph {:?}",
-            self.attribute_value_id, &dependency_graph
+            self.attribute_values, &dependency_graph
         );
 
         status_updater
@@ -125,7 +124,8 @@ impl JobConsumer for DependentValuesUpdate {
         let mut update_tasks = JoinSet::new();
 
         loop {
-            // // If only HashMap.drain_filter were in stable...
+            // If only HashMap.drain_filter were in stable...
+            // Link: https://github.com/rust-lang/rust/issues/43244
             //
             // let satisfied_dependencies: HashMap<AttributeValueId, Vec<AttributeValueId>> =
             //     dependency_graph.drain_filter(|_, v| v.is_empty()).collect();
@@ -222,7 +222,7 @@ impl JobConsumer for DependentValuesUpdate {
         let elapsed_time = now.elapsed();
         info!(
             "DependentValuesUpdate for {:?} took {:?}",
-            &self.attribute_value_id, elapsed_time
+            &self.attribute_values, elapsed_time
         );
 
         Ok(())
@@ -253,7 +253,7 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
     fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
-                r#"[{ "attribute_value_id": <AttributeValueId> }, <AccessBuilder>, <Visibility>]"#
+                r#"[{ "attribute_values": <Vec<AttributeValueId>> }, <AccessBuilder>, <Visibility>]"#
                     .to_string(),
                 job.args().to_vec(),
             ));
@@ -263,7 +263,7 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
         let visibility: Visibility = serde_json::from_value(job.args()[2].clone())?;
 
         Ok(Self {
-            attribute_value_id: args.attribute_value_id,
+            attribute_values: args.attribute_values,
             access_builder,
             visibility,
             job: Some(job),

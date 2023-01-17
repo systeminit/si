@@ -84,8 +84,11 @@ pub async fn create_connection(
             attribute_value_context,
         ))?;
 
-    ctx.enqueue_job(DependentValuesUpdate::new(&ctx, *attribute_value.id()))
-        .await;
+    ctx.enqueue_job(DependentValuesUpdate::new(
+        &ctx,
+        vec![*attribute_value.id()],
+    ))
+    .await;
 
     WsEvent::change_set_written(&ctx)
         .await?

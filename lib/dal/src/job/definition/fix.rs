@@ -198,7 +198,7 @@ impl JobConsumer for FixesJob {
             )
             .await?;
 
-            DependentValuesUpdate::new(ctx, *attribute_value.id())
+            DependentValuesUpdate::new(ctx, vec![*attribute_value.id()])
                 .run(ctx)
                 .await?;
         }

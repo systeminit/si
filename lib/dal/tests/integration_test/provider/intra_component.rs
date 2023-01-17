@@ -479,7 +479,7 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         .update_from_prototype_function(ctx)
         .await
         .expect("update from proto func");
-    ctx.enqueue_job(DependentValuesUpdate::new(ctx, *freya_value.id()))
+    ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*freya_value.id()]))
         .await;
 
     let external_provider_av = AttributeValue::find_for_context(

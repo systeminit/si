@@ -747,8 +747,11 @@ impl AttributeValue {
         // TODO(fnichol): we might want to fire off a status even at this point, however we've
         // already updated the initial attribute value, so is there much value?
 
-        ctx.enqueue_job(DependentValuesUpdate::new(ctx, new_attribute_value_id))
-            .await;
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx,
+            vec![new_attribute_value_id],
+        ))
+        .await;
 
         Ok((value, new_attribute_value_id))
     }
@@ -823,8 +826,11 @@ impl AttributeValue {
 
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
 
-        ctx.enqueue_job(DependentValuesUpdate::new(ctx, new_attribute_value_id))
-            .await;
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx,
+            vec![new_attribute_value_id],
+        ))
+        .await;
 
         Ok(new_attribute_value_id)
     }
@@ -901,20 +907,25 @@ impl AttributeValue {
         }
     }
 
-    /// Returns a `HashMap` of `AttributeValueId -> Vec<AttributeValueId>` where the keys
-    /// are `AttributeValue`s that are affected (directly, and indirectly) by `self`
-    /// having a new value. The `Vec<AttributeValueId>` are the `AttributeValue` that the
-    /// key directly depends on that are also affected by `self` having a new value.
+    /// Returns a [`HashMap`] with key [`AttributeValueId`](Self) and value
+    /// [`Vec<AttributeValueId>`](Self) where the keys correspond to [`AttributeValues`](Self) that
+    /// are affected (directly and indirectly) by at least one of the provided
+    /// [`AttributeValueIds`](Self) having a new value. The [`Vec<AttributeValueId>`](Self)
+    /// correspond to the [`AttributeValues`](Self) that the key directly depends on that are also
+    /// affected by at least one of the provided [`AttributeValueIds`](Self) having a new value.
     ///
-    /// **NOTE**: This has the side effect of **CREATING NEW [`AttributeValue`s][AttributeValue]**
-    /// if this [`AttributeValue`][AttributeValue] affects an [`AttributeContext`][AttributeContext]
-    /// where an [`AttributePrototype`][AttributePrototype] that uses it didn't already have an
-    /// [`AttributeValue`][AttributeValue].
+    /// **NOTE**: This has the side effect of **CREATING NEW [`AttributeValues`](Self)**
+    /// if this [`AttributeValue`] affects an [`AttributeContext`](crate::AttributeContext) where an
+    /// [`AttributePrototype`](crate::AttributePrototype) that uses it didn't already have an
+    /// [`AttributeValue`].
     pub async fn dependent_value_graph(
-        &mut self,
         ctx: &DalContext,
+        attribute_value_ids: Vec<AttributeValueId>,
     ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
-        info!("AttributeValue.dependent_value_graph(): {:?}", &self);
+        info!(
+            "AttributeValue.dependent_value_graph(): {:?}",
+            attribute_value_ids
+        );
         let total_start = std::time::Instant::now();
 
         let _rows = ctx
@@ -925,7 +936,7 @@ impl AttributeValue {
                     &ctx.write_tenancy(),
                     &ctx.read_tenancy(),
                     &ctx.visibility(),
-                    &self.id,
+                    &attribute_value_ids,
                 ],
             )
             .await?;
@@ -940,7 +951,7 @@ impl AttributeValue {
             .pg()
             .query(
                 FETCH_UPDATE_GRAPH_DATA,
-                &[&ctx.read_tenancy(), ctx.visibility(), &self.id],
+                &[&ctx.read_tenancy(), ctx.visibility(), &attribute_value_ids],
             )
             .await?;
         info!(

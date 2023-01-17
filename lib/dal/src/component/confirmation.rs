@@ -19,7 +19,6 @@ use crate::{
 };
 use crate::{Component, ComponentId};
 
-// TODO(nick): replace existing view with this unused view.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum ConfirmationStatusView {
@@ -28,7 +27,6 @@ pub enum ConfirmationStatusView {
     Success,
 }
 
-// TODO(nick): replace existing view with this unused view.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfirmationView {
@@ -105,15 +103,17 @@ impl Component {
     /// [`AttributeValue`](crate::AttributeValue) corresponding to the "/root/resource" implicit
     /// [`InternalProvider`](crate::InternalProvider) for every [`Component`](crate::Component).
     pub async fn run_all_confirmations(ctx: &DalContext) -> ComponentResult<()> {
-        for resource_attribute_value in
-            Component::list_all_resource_implicit_internal_provider_attribute_values(ctx).await?
-        {
-            ctx.enqueue_job(DependentValuesUpdate::new(
-                ctx,
-                *resource_attribute_value.id(),
-            ))
-            .await;
-        }
+        let resource_attribute_values =
+            Component::list_all_resource_implicit_internal_provider_attribute_values(ctx).await?;
+
+        ctx.enqueue_job(DependentValuesUpdate::new(
+            ctx,
+            resource_attribute_values
+                .iter()
+                .map(|av| *av.id())
+                .collect::<Vec<AttributeValueId>>(),
+        ))
+        .await;
 
         WsEvent::ran_confirmations(ctx).await?;
 

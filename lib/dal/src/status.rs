@@ -3,11 +3,10 @@
 
 #![warn(missing_docs, clippy::missing_errors_doc, clippy::missing_panics_doc)]
 
-use std::collections::{HashMap, HashSet};
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgPoolError};
+use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -29,7 +28,7 @@ const MARK_FINISHED: &str = include_str!("queries/status_update/mark_finished.sq
 /// A possible error that can be returned when working with a [`StatusUpdate`].
 #[derive(Error, Debug)]
 pub enum StatusUpdateError {
-    /// When an attibute value metadata entry is not found
+    /// When an attribute value metadata entry is not found
     #[error("attribute value metadata not found for: {0}")]
     AttributeValueMetadataNotFound(AttributeValueId),
     /// When a pg error is returned
@@ -67,8 +66,6 @@ pk!(
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct StatusUpdateData {
     actor: ActorView,
-    /// The initial/causal/initiaing value id that triggered the depdendent value job
-    attribute_value_id: AttributeValueId,
     dependent_values_metadata: HashMap<AttributeValueId, AttributeValueMetadata>,
     queued_dependent_value_ids: HashSet<AttributeValueId>,
     running_dependent_value_ids: HashSet<AttributeValueId>,
@@ -131,10 +128,7 @@ impl StatusUpdate {
     /// # Errors
     ///
     /// Returns [`Err`] if the datastore is unable to persist the new object.
-    pub async fn new(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> StatusUpdateResult<Self> {
+    pub async fn new(ctx: &DalContext) -> StatusUpdateResult<Self> {
         let actor = ActorView::from_history_actor(ctx, *ctx.history_actor()).await?;
 
         // This query explicitly uses its own connection to bypass/avoid a ctx's database
@@ -144,13 +138,8 @@ impl StatusUpdate {
             .get()
             .await?
             .query_one(
-                "SELECT object FROM status_update_create_v1($1, $2, $3, $4)",
-                &[
-                    &attribute_value_id,
-                    &ctx.visibility().change_set_pk,
-                    &actor,
-                    ctx.write_tenancy(),
-                ],
+                "SELECT object FROM status_update_create_v1($1, $2, $3)",
+                &[&ctx.visibility().change_set_pk, &actor, ctx.write_tenancy()],
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
@@ -198,11 +187,6 @@ impl StatusUpdate {
             )
             .await?;
         objects_from_rows(rows).map_err(Into::into)
-    }
-
-    /// Returns the initial [`AttributeValueId`].
-    pub fn attribute_value_id(&self) -> AttributeValueId {
-        self.data.attribute_value_id
     }
 
     /// Returns a map of all attribute value metadata, keyed by [`AttributeValueId`].
@@ -461,11 +445,8 @@ impl StatusUpdater {
     /// # Errors
     ///
     /// Returns [`Err`] if the datastore is unable to persist the new object.
-    pub async fn initialize(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> Result<Self, StatusUpdaterError> {
-        let model = StatusUpdate::new(ctx, attribute_value_id).await?;
+    pub async fn initialize(ctx: &DalContext) -> Result<Self, StatusUpdaterError> {
+        let model = StatusUpdate::new(ctx).await?;
 
         WsEvent::status_update(ctx, model.pk, StatusMessageState::StatusStarted, vec![])
             .await?
@@ -533,7 +514,7 @@ impl StatusUpdater {
                     .expect("no sockets in vec");
                 value_kind = AttributeValueKind::OutputSocket(*socket.id());
 
-            // does this value look like an input socket?
+                // does this value look like an input socket?
             } else if attribute_value
                 .context
                 .is_least_specific_field_kind_internal_provider()
@@ -562,7 +543,7 @@ impl StatusUpdater {
                     value_kind = AttributeValueKind::Internal;
                 }
 
-            // does this value correspond to a code generation function?
+                // does this value correspond to a code generation function?
             } else if attribute_value.context.prop_id().is_some() {
                 value_kind = AttributeValueKind::Attribute(attribute_value.context.prop_id());
 
