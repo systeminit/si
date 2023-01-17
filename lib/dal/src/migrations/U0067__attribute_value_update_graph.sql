@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION attribute_value_affected_graph_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_attribute_value_id ident
+    this_attribute_value_id_list ident[]
 )
     RETURNS TABLE
             (
@@ -27,8 +27,8 @@ DECLARE
     tmp_record_ids              ident[];
     tmp_prop                    props%ROWTYPE;
 BEGIN
-    RAISE DEBUG 'attribute_value_affected_graph_v1: Finding graph of AttributeValues affected by AttributeValue(%)', this_attribute_value_id;
-    current_attribute_value_ids := ARRAY [this_attribute_value_id];
+    RAISE DEBUG 'attribute_value_affected_graph_v1: Finding graph of AttributeValues affected by AttributeValues(%)', this_attribute_value_id_list;
+    current_attribute_value_ids := this_attribute_value_id_list;
 
     LOOP
         RAISE DEBUG 'attribute_value_affected_graph_v1: Current set of AttributeValueIds: %', current_attribute_value_ids;

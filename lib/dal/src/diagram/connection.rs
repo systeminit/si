@@ -168,7 +168,7 @@ impl Connection {
         if arg_count > 0 {
             attr_value.update_from_prototype_function(ctx).await?;
 
-            ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attr_value.id()))
+            ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
                 .await;
         } else {
             let attr_val_context = attr_value.context;
@@ -180,7 +180,7 @@ impl Connection {
                 .await?
                 .ok_or(DiagramError::AttributeValueNotFound)?;
 
-            ctx.enqueue_job(DependentValuesUpdate::new(ctx, *att_val.id()))
+            ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*att_val.id()]))
                 .await;
         }
 

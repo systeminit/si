@@ -218,8 +218,11 @@ pub async fn connect_component_sockets_to_frame(
                                     attribute_value_context,
                                 ))?;
 
-                        ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
-                            .await;
+                        ctx.enqueue_job(DependentValuesUpdate::new(
+                            ctx,
+                            vec![*attribute_value.id()],
+                        ))
+                        .await;
                     }
                     SocketEdgeKind::ConfigurationOutput => {
                         let provider = ExternalProvider::find_for_socket(ctx, *parent_socket.id())
@@ -263,8 +266,11 @@ pub async fn connect_component_sockets_to_frame(
                                     attribute_value_context,
                                 ))?;
 
-                        ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
-                            .await;
+                        ctx.enqueue_job(DependentValuesUpdate::new(
+                            ctx,
+                            vec![*attribute_value.id()],
+                        ))
+                        .await;
                     }
                 }
             } else if let Some(parent_provider) = parent_socket.external_provider(ctx).await? {
@@ -297,8 +303,11 @@ pub async fn connect_component_sockets_to_frame(
                                         attribute_read_context,
                                     ))?;
 
-                            ctx.enqueue_job(DependentValuesUpdate::new(ctx, *attribute_value.id()))
-                                .await;
+                            ctx.enqueue_job(DependentValuesUpdate::new(
+                                ctx,
+                                vec![*attribute_value.id()],
+                            ))
+                            .await;
                         }
                     }
                 }

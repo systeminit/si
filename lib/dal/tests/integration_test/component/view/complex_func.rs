@@ -176,7 +176,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
 
     ctx.enqueue_job(DependentValuesUpdate::new(
         ctx,
-        *attribute_value_for_prototype.id(),
+        vec![*attribute_value_for_prototype.id()],
     ))
     .await;
 

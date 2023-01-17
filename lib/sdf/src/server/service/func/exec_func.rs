@@ -2,9 +2,9 @@ use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    job::definition::DependentValuesUpdate, AttributePrototype, AttributeValue, Component,
-    DalContext, Func, FuncBackendKind, FuncId, PropId, StandardModel, ValidationPrototype,
-    Visibility, WsEvent,
+    job::definition::DependentValuesUpdate, AttributePrototype, AttributeValue, AttributeValueId,
+    Component, DalContext, Func, FuncBackendKind, FuncId, PropId, StandardModel,
+    ValidationPrototype, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -27,11 +27,19 @@ pub struct ExecFuncResponse {
 async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     let prototypes = AttributePrototype::find_for_func(ctx, func.id()).await?;
     for proto in prototypes {
-        for value in proto.attribute_values(ctx).await?.iter_mut() {
+        let mut values = proto.attribute_values(ctx).await?;
+        let value_ids = values
+            .iter()
+            .cloned()
+            .map(|av| *av.id())
+            .collect::<Vec<AttributeValueId>>();
+
+        for value in values.iter_mut() {
             value.update_from_prototype_function(ctx).await?;
-            ctx.enqueue_job(DependentValuesUpdate::new(ctx, *value.id()))
-                .await;
         }
+
+        ctx.enqueue_job(DependentValuesUpdate::new(ctx, value_ids))
+            .await;
     }
 
     Ok(())
