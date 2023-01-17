@@ -3,7 +3,9 @@ change the fill color. NOTE - this only works if the SVG has the fill set to
 "currentColor" in its source */
 
 <template>
-  <v-image ref="konvaImageRef" :config="konvaConfig" />
+  <v-group>
+    <v-image ref="konvaImageRef" :config="konvaConfig" />
+  </v-group>
 </template>
 
 <script lang="ts" setup>
@@ -36,9 +38,12 @@ const konvaConfig = computed(() => {
   return {
     ...props.config,
     image: imageEl.value,
-    offset: { x: offsetX, y: offsetY },
-    x: (props.config.x || 0) + offsetX,
-    y: (props.config.y || 0) + offsetY,
+    // offset: { x: offsetX, y: offsetY },
+    // x: (props.config.x || 0) + offsetX,
+    // y: (props.config.y || 0) + offsetY,
+
+    x: props.config.x || 0,
+    y: props.config.y || 0,
   };
 });
 
