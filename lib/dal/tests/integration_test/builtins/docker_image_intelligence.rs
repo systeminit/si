@@ -20,7 +20,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "soulrender",
-                "type": "component"
+                "type": "component",
                 "protected": false,
             },
             "domain": {
