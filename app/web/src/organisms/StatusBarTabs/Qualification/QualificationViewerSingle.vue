@@ -27,62 +27,58 @@
       </div>
 
       <div class="text-right">
-        <button class="underline text-action-400" @click="openModal">
+        <button
+          class="underline text-action-400"
+          @click="detailsModalRef?.open()"
+        >
           View Details
         </button>
       </div>
     </div>
 
-    <Modal size="2xl" :open="modalOpen" @close="closeModal">
-      <template #title>{{ qualification.title }}</template>
-      <template #content>
-        <div class="my-2">
-          <StatusMessageBox :status="qualificationStatus">
-            <template v-if="qualificationStatus === 'failure'">
-              Something went wrong!
-            </template>
-            <template v-else-if="qualificationStatus === 'success'">
-              Passed!
-            </template>
-            <template v-else> Qualification running, standby...</template>
-          </StatusMessageBox>
-        </div>
+    <Modal ref="detailsModalRef" size="2xl" :title="qualification.title">
+      <div class="my-2">
+        <StatusMessageBox :status="qualificationStatus">
+          <template v-if="qualificationStatus === 'failure'">
+            Something went wrong!
+          </template>
+          <template v-else-if="qualificationStatus === 'success'">
+            Passed!
+          </template>
+          <template v-else> Qualification running, standby...</template>
+        </StatusMessageBox>
+      </div>
 
-        <div v-if="qualification.description" class="my-2">
-          <b>Description: </b>
-          <p>{{ qualification.description }}</p>
-        </div>
+      <div v-if="qualification.description" class="my-2">
+        <b>Description: </b>
+        <p>{{ qualification.description }}</p>
+      </div>
 
-        <div
-          v-if="failedSubchecks.length"
-          class="flex flex-col my-2 p-2 border border-destructive-600 text-destructive-500 rounded"
+      <div
+        v-if="failedSubchecks.length"
+        class="flex flex-col my-2 p-2 border border-destructive-600 text-destructive-500 rounded"
+      >
+        <b>Qualification Failures:</b>
+        <ul>
+          <li v-for="(subCheck, idx) in failedSubchecks" :key="idx" class="p-2">
+            {{ subCheck.description }}
+          </li>
+        </ul>
+      </div>
+
+      <div
+        v-if="qualification.output?.length"
+        class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
+      >
+        <b>Raw Output:</b>
+        <p
+          v-for="(output, index) in qualification.output"
+          :key="index"
+          class="text-sm break-all"
         >
-          <b>Qualification Failures:</b>
-          <ul>
-            <li
-              v-for="(subCheck, idx) in failedSubchecks"
-              :key="idx"
-              class="p-2"
-            >
-              {{ subCheck.description }}
-            </li>
-          </ul>
-        </div>
-
-        <div
-          v-if="qualification.output?.length"
-          class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
-        >
-          <b>Raw Output:</b>
-          <p
-            v-for="(output, index) in qualification.output"
-            :key="index"
-            class="text-sm break-all"
-          >
-            {{ output.line }}
-          </p>
-        </div>
-      </template>
+          {{ output.line }}
+        </p>
+      </div>
     </Modal>
   </div>
 </template>
@@ -92,7 +88,7 @@ import { computed, ref, toRef } from "vue";
 import _ from "lodash";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import StatusMessageBox from "@/molecules/StatusMessageBox.vue";
-import Modal from "@/ui-lib/Modal.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
 
 const props = defineProps<{
   qualification: Qualification;
@@ -113,15 +109,7 @@ const qualificationStatus = computed(() => {
   return props.qualification.result.status;
 });
 
-const modalOpen = ref(false);
-
-const openModal = () => {
-  modalOpen.value = true;
-};
-
-const closeModal = () => {
-  modalOpen.value = false;
-};
+const detailsModalRef = ref<InstanceType<typeof Modal>>();
 
 const titleFailedSubchecks = computed(() => {
   return failedSubchecks.value.length

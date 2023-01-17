@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0">
     <section class="p-sm">
       <div class="flex items-center gap-x-xs">
         <VormInput
@@ -33,91 +33,64 @@
     </section>
 
     <Modal
-      :open="showDialog === 'create'"
-      size="sm"
-      hide-top-close-button
-      disable-close
-      type="custom"
-      @close="onCloseCreateDialog"
+      ref="createModalRef"
+      title="Create Change Set"
+      @close="onCreateModalClose"
     >
-      <template #title>Create Change Set</template>
-      <template #content>
-        <form @submit.prevent="onCreateChangeSet">
-          <div>
-            <p class="pb-2 type-regular-sm">
-              Modeling a configuration or extending SI happens within
-              <b>Change Sets</b>. Think of these like light-weight branches,
-              allowing you to experiment freely without risk of impacting
-              production systems.
-            </p>
-            <p class="pb-2 type-regular-sm">
-              Please give your <b>Change Set</b> a name below, and click the
-              Create button.
-            </p>
-          </div>
-          <div class="pt-2">
-            <VormInput
-              v-model="createChangeSetName"
-              label="Change set name"
-              required
-              required-message="Please choose a name for your change set!"
-            />
-          </div>
-          <div class="flex flex-row-reverse gap-sm py-3">
+      <form @submit.prevent="onCreateChangeSet">
+        <Stack>
+          <p>
+            Modeling a configuration or extending SI happens within
+            <b>Change Sets</b>. Think of these like light-weight branches,
+            allowing you to experiment freely without risk of impacting
+            production systems.
+          </p>
+          <p>
+            Please give your <b>Change Set</b> a name below, and click the
+            Create button.
+          </p>
+          <VormInput
+            v-model="createChangeSetName"
+            label="Change set name"
+            required
+            required-message="Please choose a name for your change set!"
+          />
+          <div class="flex flex-row-reverse gap-sm">
             <VButton2
               :disabled="validationState.isError"
               tone="success"
               icon="plus-circle"
-              label="Create"
+              label="Create change set"
               loading-text="Creating Change Set"
               :request-status="createChangeSetReqStatus"
               class="flex-grow"
               submit
             />
-            <VButton2
-              v-if="changeSetsStore.openChangeSets.length > 0"
-              tone="destructive"
-              variant="ghost"
-              icon="x-circle"
-              label="Cancel"
-              @click="onCloseCreateDialog"
-            />
           </div>
-        </form>
-      </template>
+        </Stack>
+      </form>
     </Modal>
 
-    <Modal
-      :open="showDialog === 'select'"
-      size="sm"
-      hide-top-close-button
-      disable-close
-      type="custom"
-      @close="onCloseSelectDialog"
-    >
-      <template #title>Select Change Set</template>
-      <template #content>
-        <div class="type-regular-sm pt-2">
-          <p>
-            Select the Change Set you would like to resume working in, or select
-            <b>- new -</b> to create a new Change Set.
-          </p>
-        </div>
-        <Stack>
-          <VormInput
-            type="dropdown"
-            :model-value="selectedChangeSetId"
-            :options="changeSetDropdownOptions"
-            placeholder="Select an existing change set"
-            class="flex-grow"
-            @update:model-value="onSelectChangeSet"
-          />
-          <Divider label="or" />
-          <VButton2 icon="plus-circle" @click="switchToCreateMode">
-            Create a new change set
-          </VButton2>
-        </Stack>
-      </template>
+    <Modal ref="selectModalRef" no-exit title="Select Change Set">
+      <Stack>
+        <p>
+          Select the Change Set you would like to resume working in, or select
+          <b>- new -</b> to create a new Change Set.
+        </p>
+        <VormInput
+          type="dropdown"
+          no-label
+          :model-value="selectedChangeSetId"
+          :options="changeSetDropdownOptions"
+          placeholder="Select an existing change set"
+          class="flex-grow"
+          @update:model-value="onSelectChangeSet"
+        />
+        <Divider label="or" />
+        <VButton2 icon="plus-circle" @click="createModalRef?.open()">
+          Create a new change set
+        </VButton2>
+      </Stack>
     </Modal>
 
     <Wipe ref="wipeRef">
@@ -170,7 +143,7 @@ import VormInputOption from "@/ui-lib/forms/VormInputOption.vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import Divider from "@/ui-lib/layout/Divider.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
-import Modal from "@/ui-lib/Modal.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
 import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { useStatusStore } from "@/store/status.store";
@@ -196,8 +169,8 @@ const changeSetDropdownOptions = computed(() =>
 const router = useRouter();
 const route = useRoute();
 
-// Determines whether or not to display a dialog
-const showDialog = ref<false | "create" | "select">(false);
+const createModalRef = ref<InstanceType<typeof Modal>>();
+const selectModalRef = ref<InstanceType<typeof Modal>>();
 
 // The name for a new change set
 const createChangeSetName = ref("");
@@ -206,7 +179,7 @@ const { validationState, validationMethods } = useValidatedInputGroup();
 
 function onSelectChangeSet(newVal: string | "NEW") {
   if (newVal === "NEW") {
-    showDialog.value = "create";
+    createModalRef.value?.open();
   } else if (newVal && route.name) {
     router.push({
       name: route.name,
@@ -215,7 +188,6 @@ function onSelectChangeSet(newVal: string | "NEW") {
         changeSetId: newVal,
       },
     });
-    showDialog.value = false;
   }
 }
 
@@ -249,10 +221,11 @@ const celebrationEmoji = [
   "🥂",
   "🍾",
 ];
+
 const celebrate = ref("🎉");
 let jsConfetti: JSConfetti;
 const confettis = [
-  {},
+  { emojis: ["🎉"] },
   { emojis: ["🤘", "🤘🏻", "🤘🏼", "🤘🏽", "🤘🏾", "🤘🏿"] },
   { emojis: ["❤️", "🧡", "💛", "💚", "💙", "💜"] },
   { emojis: ["🍾", "🍷", "🍸", "🍹", "🍺", "🥂", "🍻"] },
@@ -273,10 +246,11 @@ const applyChangeSet = async () => {
   if (!wipeRef.value) return; // bail if the wipe doesn't exist
 
   // Pick a celebration emoji!
-  celebrate.value = _.sample(celebrationEmoji) || "🎉";
+  celebrate.value = _.sample(celebrationEmoji)!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
 
   // Run both the wipe and the change set apply in parallel
   const wipeDone = wipeRef.value.open(mergeButtonRef.value.$el);
+
   await changeSetsStore.APPLY_CHANGE_SET();
   await wipeDone;
 
@@ -288,17 +262,14 @@ const applyChangeSet = async () => {
   }
 };
 
-const switchToCreateMode = () => {
-  showDialog.value = "create";
-};
-
 watch(
-  openChangeSets,
+  // have to also watch for the modals existing since they may not exist immediately on mount
+  [openChangeSets, createModalRef, selectModalRef],
   () => {
     if (!openChangeSets.value.length) {
-      showDialog.value = "create";
+      createModalRef.value?.open();
     } else if (!selectedChangeSetId.value) {
-      showDialog.value = "select";
+      selectModalRef.value?.open();
     }
   },
   { immediate: true },
@@ -309,7 +280,6 @@ const navigateToFixMode = async () => {
   if (selectedWorkspaceId.value) {
     await router.push({
       name: "workspace-fix",
-      path: "/w/:workspaceId/r",
       params: { workspaceId: selectedWorkspaceId.value },
     });
   } else {
@@ -326,17 +296,7 @@ const statusStoreUpdating = computed(() => {
   } else return false;
 });
 
-function onCloseCreateDialog() {
-  showDialog.value = false;
+function onCreateModalClose() {
   if (!selectedChangeSetId.value) navigateToFixMode();
 }
-
-function onCloseSelectDialog() {
-  showDialog.value = false;
-  if (!selectedChangeSetId.value) navigateToFixMode();
-}
-
-defineExpose({
-  showDialog,
-});
 </script>

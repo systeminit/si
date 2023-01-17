@@ -18,15 +18,10 @@
         <ErrorMessage>Cannot find workspace {{ workspaceId }}</ErrorMessage>
       </div>
     </template>
+
+    <!-- by this point we know we have a valid workspace selected and loaded -->
     <template v-else>
-      <!-- no change set on some routes, otherwise it will only be set if change set is selected and valid -->
-      <template v-if="changeSetId === undefined || selectedChangeSet">
-        <div class="w-full h-full flex flex-row relative overflow-hidden">
-          <router-view :key="selectedChangeSet?.id" />
-        </div>
-        <StatusBar :key="selectedChangeSet?.id" class="flex-none" />
-      </template>
-      <template v-else-if="changeSetsReqStatus.isPending">
+      <template v-if="changeSetsReqStatus.isPending">
         <div class="flex-grow p-lg flex flex-col items-center gap-4">
           <Icon name="loader" size="2xl" />
           <h2>Loading change sets...</h2>
@@ -37,12 +32,38 @@
           <ErrorMessage>Error loading change sets</ErrorMessage>
         </div>
       </template>
+
+      <!-- tried to autoselect but failed -->
+      <template
+        v-else-if="changeSetId === 'auto' && selectedChangeSet === null"
+      >
+        <div class="w-full h-full flex flex-row relative overflow-hidden">
+          <PlaceholderComposeView />
+        </div>
+        <!-- <ErrorMessage>Auto select failed</ErrorMessage>
+        <p>TODO: show create/select modal</p> -->
+      </template>
+
+      <!-- <template
+        v-else-if="
+          selectedChangeSet &&
+          selectedChangeSet?.status !== ChangeSetStatus.Open
+        "
+      >
+        <ErrorMessage>Sorry, this change set is no longer open</ErrorMessage>
+      </template> -->
+
+      <!-- change set id in the URL, but it is invalid -->
+      <template v-else-if="changeSetId && !selectedChangeSet">
+        <ErrorMessage>Change set "{{ changeSetId }}" not found </ErrorMessage>
+      </template>
+
+      <!-- all good - either no change set (fix/view) or we have a selected and valid change set -->
       <template v-else>
         <div class="w-full h-full flex flex-row relative overflow-hidden">
-          <router-view :key="route.fullPath" />
-          <!-- without a key the router view doesn't update on route change, which we want here -->
+          <router-view :key="changeSetId" />
         </div>
-        <StatusBar :key="0" class="flex-none" />
+        <StatusBar :key="changeSetId" class="flex-none" />
       </template>
     </template>
   </AppLayout>
@@ -63,10 +84,11 @@ import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import AppLayout from "@/layout/AppLayout.vue";
 import Navbar from "@/layout/navbar/Navbar.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
+import PlaceholderComposeView from "@/layout/PlaceholderComposeView.vue";
 
 const props = defineProps({
   workspaceId: { type: String, required: true },
-  changeSetId: { type: [String, String] as PropType<string | "auto"> },
+  changeSetId: { type: String as PropType<string | "auto"> },
 });
 
 const router = useRouter();
@@ -101,15 +123,14 @@ function routeToChangeSet(id: ChangeSetId, replace = false) {
 }
 
 function handleUrlChange() {
-  // if id looks like a string, we set it in the store
+  // if "auto", we do our best to autoselect, and show a selection screen otherwise
   if (props.changeSetId === "auto") {
     tryAutoSelect();
-  } else if (_.isString(props.changeSetId)) {
-    changeSetsStore.selectedChangeSetId = props.changeSetId;
     // if undefined, that means the route has no changeSetId param, so we select "head"
   } else if (props.changeSetId === undefined) {
     changeSetsStore.selectedChangeSetId = changeSetIdNil();
-    // if "auto", we do our best to autoselect, and show a selection screen otherwise
+  } else {
+    changeSetsStore.selectedChangeSetId = props.changeSetId;
   }
 }
 function handleChangeSetsLoaded() {

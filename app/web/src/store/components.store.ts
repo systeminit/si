@@ -10,8 +10,6 @@ import {
   DiagramNodeDef,
   DiagramStatusIcon,
   Size2D,
-  DiagramNodeData,
-  DiagramGroupData,
 } from "@/organisms/GenericDiagram/diagram_types";
 import { MenuItem } from "@/api/sdf/dal/menu";
 import {
@@ -19,10 +17,7 @@ import {
   DiagramSchemaVariant,
   DiagramSchemaVariants,
 } from "@/api/sdf/dal/diagram";
-import {
-  ComponentStats,
-  ComponentChangeStatus,
-} from "@/api/sdf/dal/change_set";
+import { ComponentStats, ChangeStatus } from "@/api/sdf/dal/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import {
   ComponentDiff,
@@ -39,11 +34,7 @@ import {
   useQualificationsStore,
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
-import {
-  ConfirmationStats,
-  ConfirmationStatus,
-  useFixesStore,
-} from "./fixes/fixes.store";
+import { ConfirmationStatus, useFixesStore } from "./fixes/fixes.store";
 import { useStatusStore } from "./status.store";
 
 export type ComponentId = string;
@@ -62,7 +53,7 @@ type Component = {
   icon: IconNames;
   color: string;
   nodeType: "component" | "configurationFrame" | "aggregationFrame";
-  changeStatus?: ComponentChangeStatus;
+  changeStatus?: ChangeStatus;
   // TODO: probably want to move this to a different store and not load it all the time
   resource: Resource;
   matchesFilter: boolean;
@@ -118,12 +109,12 @@ const confirmationStatusToIconMap: Record<
   running: { icon: "loader", tone: "info" },
 };
 
-const changeStatusToIconMap: Record<ComponentChangeStatus, DiagramStatusIcon> =
-  {
-    added: { icon: "plus-circle", tone: "success" },
-    deleted: { icon: "minus-circle", tone: "error" },
-    modified: { icon: "tilde-circle", tone: "warning" },
-  };
+const changeStatusToIconMap: Record<ChangeStatus, DiagramStatusIcon> = {
+  added: { icon: "plus-circle", tone: "success" },
+  deleted: { icon: "minus-circle", tone: "error" },
+  modified: { icon: "tilde-circle", tone: "warning" },
+  unmodified: { icon: "minus", tone: "neutral" },
+};
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
@@ -156,16 +147,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ComponentId,
           ComponentIdentification
         >,
-        componentChangeStatusById: {} as Record<
-          ComponentId,
-          ComponentChangeStatus
-        >,
+        componentChangeStatusById: {} as Record<ComponentId, ChangeStatus>,
 
         componentCodeViewsById: {} as Record<ComponentId, CodeView[]>,
         componentDiffsById: {} as Record<ComponentId, ComponentDiff>,
 
         rawDiagramNodes: [] as DiagramNodeDef[],
-        diagramEdges: [] as DiagramEdgeDef[],
+        diagramEdgesById: {} as Record<EdgeId, DiagramEdgeDef>,
         schemaVariantsById: {} as Record<SchemaVariantId, DiagramSchemaVariant>,
         rawNodeAddMenu: [] as MenuItem[],
 
@@ -386,8 +374,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             return treeView;
           };
         },
+
+        diagramEdges: (state) => _.values(state.diagramEdgesById),
         selectedComponent(): Component {
           return this.componentsById[this.selectedComponentId || 0];
+        },
+        selectedEdge(): DiagramEdgeDef {
+          return this.diagramEdgesById[this.selectedEdgeId || 0];
         },
         selectedComponentDiff(): ComponentDiff | undefined {
           return this.componentDiffsById[this.selectedComponentId || 0];
@@ -483,7 +476,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           );
         },
 
-        changeStatsSummary(): Record<ComponentChangeStatus | "total", number> {
+        changeStatsSummary(): Record<ChangeStatus | "total", number> {
           const allChanged = _.filter(
             this.allComponents,
             (c) => !!c.changeStatus,
@@ -493,6 +486,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             added: grouped.added?.length || 0,
             deleted: grouped.deleted?.length || 0,
             modified: grouped.modified?.length || 0,
+            unmodified: grouped.unmodified?.length || 0,
             total: allChanged.length,
           };
         },
@@ -501,7 +495,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // TODO: this is ugly... much of this logic is duplicated in GenericDiagram
 
           const connectedNodes: Record<ComponentId, ComponentId[]> = {};
-          _.each(state.diagramEdges, (edge) => {
+          _.each(_.values(state.diagramEdgesById), (edge) => {
             const fromNodeId = edge.fromNodeId;
             const toNodeId = edge.toNodeId;
             connectedNodes[fromNodeId] ||= [];
@@ -539,7 +533,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // for now just storing the diagram-y data
               // but I think ideally we fetch more generic component data and then transform into diagram format as necessary
               this.rawDiagramNodes = response.nodes;
-              this.diagramEdges = response.edges;
+
+              // TODO: re-enable this line, instead of code below, which maintains the existing data
+              // this.diagramEdgesById = _.keyBy(response.edges, "id");
+
+              // temporary solution to keep showing deleted edges during your session
+              const cachedEdgeStatusById = _.mapValues(
+                this.diagramEdgesById,
+                (e) => e.changeStatus,
+              );
+
+              _.assign(this.diagramEdgesById, _.keyBy(response.edges, "id"));
+
+              // preserve added/removed status set by optimistic updates
+              // TODO: remove this when backend is working
+              _.each(this.diagramEdgesById, (edgeData, edgeId) => {
+                edgeData.changeStatus = cachedEdgeStatusById[edgeId];
+              });
             },
           });
         },
@@ -601,7 +611,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 (acc, cs) => {
                   acc[cs.componentId] = cs.componentStatus;
                 },
-                {} as Record<ComponentId, ComponentChangeStatus>,
+                {} as Record<ComponentId, ChangeStatus>,
               );
             },
           });
@@ -660,7 +670,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           from: { nodeId: ComponentNodeId; socketId: SocketId },
           to: { nodeId: ComponentNodeId; socketId: SocketId },
         ) {
-          return new ApiRequest<{ node: DiagramNode }>({
+          const tempId = `temp-edge-${+new Date()}`;
+
+          return new ApiRequest<{
+            connection: {
+              id: string;
+              classification: "configuration";
+              destination: { nodeId: string; socketId: string };
+              source: { nodeId: string; socketId: string };
+            };
+          }>({
             method: "post",
             url: "diagram/create_connection",
             params: {
@@ -671,7 +690,29 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+              // change our temporary id to the real one
+              this.diagramEdgesById[response.connection.id] =
+                this.diagramEdgesById[tempId];
+              delete this.diagramEdgesById[tempId];
               // TODO: store component details rather than waiting for re-fetch
+            },
+            optimistic: () => {
+              // TODO: if edge already exists but is deleted in changeset, it should not be marked as new
+              // and maybe should use existing ID?
+
+              this.diagramEdgesById[tempId] = {
+                id: tempId,
+                // type?: string;
+                // name?: string;
+                fromNodeId: from.nodeId,
+                fromSocketId: from.socketId,
+                toNodeId: to.nodeId,
+                toSocketId: to.socketId,
+                changeStatus: "added",
+              };
+              return () => {
+                delete this.diagramEdgesById[tempId];
+              };
             },
           });
         },
@@ -722,7 +763,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
 
         async DELETE_EDGE(edgeId: EdgeId) {
-          return new ApiRequest<any>({
+          return new ApiRequest({
             method: "post",
             url: "diagram/delete_connection",
             keyRequestStatusBy: edgeId,
@@ -733,10 +774,33 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             onSuccess: (response) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
+            optimistic: () => {
+              this.selectedEdgeId = null;
+
+              if (this.diagramEdgesById[edgeId].changeStatus === "added") {
+                const originalEdge = this.diagramEdgesById[edgeId];
+                delete this.diagramEdgesById[edgeId];
+                return () => {
+                  this.diagramEdgesById[edgeId] = originalEdge;
+                  this.selectedEdgeId = edgeId;
+                };
+              } else {
+                const originalStatus =
+                  this.diagramEdgesById[edgeId].changeStatus;
+                this.diagramEdgesById[edgeId].changeStatus = "deleted";
+                this.diagramEdgesById[edgeId].deletedAt = new Date();
+
+                return () => {
+                  this.diagramEdgesById[edgeId].changeStatus = originalStatus;
+                  delete this.diagramEdgesById[edgeId]?.deletedAt;
+                  this.selectedEdgeId = edgeId;
+                };
+              }
+            },
           });
         },
         async DELETE_COMPONENT(componentId: ComponentId) {
-          return new ApiRequest<any>({
+          return new ApiRequest({
             method: "post",
             url: "diagram/delete_component",
             keyRequestStatusBy: componentId,

@@ -21,7 +21,7 @@
         <button
           v-if="index === 0 && details.length > 0"
           class="underline text-action-400"
-          @click="openModal"
+          @click="modalRef.open()"
         >
           View Details
         </button>
@@ -29,7 +29,7 @@
       <strong v-if="message.length === 0">Health {{ health }}</strong>
     </span>
 
-    <Modal size="2xl" :open="modalOpen" @close="closeModal">
+    <Modal ref="modalRef" size="2xl">
       <template #title>
         <span class="flex" :title="message.join('\n')">
           <Icon
@@ -52,20 +52,20 @@
           <p v-if="message.length === 0">Health {{ health }}</p>
         </span>
       </template>
-      <template #content>
-        <div
-          class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
+
+      <!-- modal default content-->
+      <div
+        class="flex flex-col my-2 p-2 border border-warning-600 text-warning-500 rounded"
+      >
+        <b>Logs: </b>
+        <p
+          v-for="(log, index) in details"
+          :key="index"
+          class="text-sm break-all"
         >
-          <b>Logs: </b>
-          <p
-            v-for="(log, index) in details"
-            :key="index"
-            class="text-sm break-all"
-          >
-            {{ log }}
-          </p>
-        </div>
-      </template>
+          {{ log }}
+        </p>
+      </div>
     </Modal>
   </span>
 </template>
@@ -75,7 +75,7 @@ import { ref, computed } from "vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { IconNames } from "@/ui-lib/icons/icon_set";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
-import Modal from "@/ui-lib/Modal.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
 
 const props = defineProps<{
   health: ResourceHealth;
@@ -101,13 +101,5 @@ const icon = computed(() => {
   }
 });
 
-const modalOpen = ref(false);
-
-const openModal = () => {
-  modalOpen.value = true;
-};
-
-const closeModal = () => {
-  modalOpen.value = false;
-};
+const modalRef = ref();
 </script>

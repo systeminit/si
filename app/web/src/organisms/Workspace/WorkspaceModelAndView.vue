@@ -2,11 +2,7 @@
 <template>
   <SiPanel remember-size-key="changeset-and-asset" side="left" :min-size="250">
     <div class="flex flex-col h-full">
-      <ChangeSetPanel
-        v-if="!isViewMode"
-        ref="changeSetPanelRef"
-        class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
-      />
+      <ChangeSetPanel v-if="!isViewMode" />
 
       <SiTabGroup class="relative flex-grow">
         <template #tabs>
@@ -40,7 +36,6 @@
       :nodes="diagramNodes"
       :edges="diagramEdges"
       :read-only="isViewMode"
-      :controls-disabled="changeSetPanelRef?.showDialog === undefined"
       @insert-element="onDiagramInsertElement"
       @move-element="onDiagramMoveElement"
       @resize-element="onDiagramResizeElement"
@@ -50,9 +45,17 @@
       @update:selection="onDiagramUpdateSelection"
       @right-click-element="onRightClickElement"
     />
+
     <DropdownMenu ref="contextMenuRef">
       <template v-if="selectedEdgeId">
-        <DropdownMenuItem icon="trash" @select="triggerDeleteSelection">
+        <DropdownMenuItem
+          v-if="selectedEdge.changeStatus === 'deleted'"
+          icon="trash-restore"
+          @select="triggerRestoreSelection"
+        >
+          Restore deleted edge
+        </DropdownMenuItem>
+        <DropdownMenuItem v-else icon="trash" @select="triggerDeleteSelection">
           Delete edge
         </DropdownMenuItem>
       </template>
@@ -87,6 +90,30 @@
       <template v-else>Select a single component to edit it</template>
     </div>
   </SiPanel>
+
+  <Modal ref="confirmDeleteModalRef" title="Are you sure?">
+    <Stack space="sm">
+      <p>You're about to delete some things.</p>
+      <p>
+        These items will be marked for deletion in this change set. When this
+        change set is merged, they will be removed from your model.
+      </p>
+
+      <div class="flex space-x-sm justify-end">
+        <VButton2
+          icon="x"
+          tone="shade"
+          variant="ghost"
+          @click="confirmDeleteModalRef?.close()"
+        >
+          Cancel
+        </VButton2>
+        <VButton2 icon="trash" tone="destructive" @click="onConfirmDelete">
+          Confirm
+        </VButton2>
+      </div>
+    </Stack>
+  </Modal>
 </template>
 
 <script lang="ts" setup>
@@ -102,6 +129,9 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { useComponentsStore } from "@/store/components.store";
 import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
+import VButton2 from "@/ui-lib/VButton2.vue";
+import Stack from "@/ui-lib/layout/Stack.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
@@ -176,14 +206,13 @@ const selectedComponentIds = computed(
   () => componentsStore.selectedComponentIds,
 );
 const selectedEdgeId = computed(() => componentsStore.selectedEdgeId);
+const selectedEdge = computed(() => componentsStore.selectedEdge);
 
 const diagramCustomConfig = {};
 
 const selectedComponent = computed(() => componentsStore.selectedComponent);
 
 const insertCallbacks: Record<string, () => void> = {};
-
-const changeSetPanelRef = ref();
 
 watch(
   () => componentsStore.selectedInsertSchemaId,
@@ -294,6 +323,8 @@ function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
   }
 }
 
+const confirmDeleteModalRef = ref<InstanceType<typeof Modal>>();
+
 function onDiagramDelete(_e: DeleteElementsEvent) {
   // delete event includes what to delete, but its the same as current selection
   triggerDeleteSelection();
@@ -319,17 +350,30 @@ function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
 }
 
 function triggerDeleteSelection() {
+  // TODO: decide if modal is necessary
+  confirmDeleteModalRef.value?.open();
+}
+function onConfirmDelete() {
+  // TODO: show loading in modal, and close after complete
+  executeDeleteSelection();
+  confirmDeleteModalRef.value?.close();
+}
+async function executeDeleteSelection() {
   if (selectedEdgeId.value) {
-    componentsStore.DELETE_EDGE(selectedEdgeId.value);
+    await componentsStore.DELETE_EDGE(selectedEdgeId.value);
   } else if (selectedComponentIds.value) {
     for (const componentId of selectedComponentIds.value) {
-      componentsStore.DELETE_COMPONENT(componentId);
+      await componentsStore.DELETE_COMPONENT(componentId);
     }
   }
 }
+function triggerRestoreSelection() {
+  // eslint-disable-next-line no-alert
+  alert("restore!");
+}
 
 watch(
-  () => selectedComponentIds.value,
+  () => [selectedComponentIds.value, selectedEdgeId.value],
   () => {
     if (selectedComponentIds.value.length > 0) {
       const selectedComponentsKeys = _.map(selectedComponentIds.value, (c) => {

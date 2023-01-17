@@ -41,17 +41,28 @@ export function checkRectanglesOverlap(
 }
 
 /**
- * returns a new point at a set distance along a line from P1 to P2
+ * returns a new point at a set px distance along a line from P1 to P2
  */
-export function pointAlongLine(
+export function pointAlongLinePx(
   p1: Vector2d,
   p2: Vector2d,
-  distanceFromP1: number,
+  pxDistanceFromP1: number,
 ): Vector2d {
   const distance = vectorDistance(p1, p2);
+  const pctDistance = pxDistanceFromP1 / distance;
+  return pointAlongLinePct(p1, p2, pctDistance);
+}
+/**
+ * returns a new point at a set % distance along a line from P1 to P2
+ */
+export function pointAlongLinePct(
+  p1: Vector2d,
+  p2: Vector2d,
+  pctDistanceFromP1: number,
+): Vector2d {
   return {
-    x: p1.x + (distanceFromP1 / distance) * (p2.x - p1.x),
-    y: p1.y + (distanceFromP1 / distance) * (p2.y - p1.y),
+    x: p1.x + pctDistanceFromP1 * (p2.x - p1.x),
+    y: p1.y + pctDistanceFromP1 * (p2.y - p1.y),
   };
 }
 

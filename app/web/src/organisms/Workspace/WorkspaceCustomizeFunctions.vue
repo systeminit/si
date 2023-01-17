@@ -2,11 +2,9 @@
 <template>
   <SiPanel remember-size-key="func-picker" side="left" :min-size="300">
     <div class="flex flex-col h-full">
-      <ChangeSetPanel
-        class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
-      />
+      <ChangeSetPanel />
       <div class="relative flex-grow">
-        <FuncListPanel @create-func="createFunc" />
+        <FuncListPanel />
       </div>
     </div>
   </SiPanel>
@@ -31,15 +29,11 @@ import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import FuncListPanel from "@/organisms/FuncEditor/FuncListPanel.vue";
 import FuncEditorTabs from "@/organisms/FuncEditor/FuncEditorTabs.vue";
 import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
-import { ListedFuncView } from "@/store/func/requests/list_funcs";
-import { FuncVariant } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { useFuncStore } from "@/store/func/funcs.store";
 
 const funcStore = useFuncStore();
 const { selectedFuncId } = storeToRefs(funcStore);
-
-const isDevMode = import.meta.env.DEV;
 
 const props = defineProps<{
   funcId?: string;
@@ -53,9 +47,6 @@ function nilId(): string {
 const funcIdParam = toRef(props, "funcId", nilId());
 
 const routeToFunc = useRouteToFunc();
-const selectFunc = (func: ListedFuncView) => {
-  routeToFunc(func.id);
-};
 
 watch(
   () => funcIdParam.value,
@@ -78,28 +69,4 @@ watch(
   },
   { immediate: true },
 );
-
-const createFunc = async ({
-  isBuiltin,
-  variant,
-  name,
-}: {
-  variant: FuncVariant;
-  isBuiltin: boolean;
-  name?: string;
-}) => {
-  let func;
-
-  if (isDevMode && isBuiltin && !_.isNil(name)) {
-    const res = await funcStore.CREATE_BUILTIN_FUNC({ name, variant });
-    func = res.result.success && res.result.data;
-  } else {
-    const res = await funcStore.CREATE_FUNC({ variant });
-    func = res.result.success && res.result.data;
-  }
-
-  if (func) {
-    selectFunc(func);
-  }
-};
 </script>

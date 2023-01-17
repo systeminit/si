@@ -41,7 +41,7 @@ const routes: RouteRecordRaw[] = [
     // TODO: will probably want a workspace "home" page at some point
     redirect(to) {
       return {
-        name: "workspace-compose",
+        name: "change-set-home",
         params: { ...to.params, changeSetId: "auto" },
       };
     },

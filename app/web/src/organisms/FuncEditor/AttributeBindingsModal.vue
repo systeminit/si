@@ -65,7 +65,7 @@
 <script lang="ts" setup>
 import { inject, watch, computed, toRef, ref, Ref } from "vue";
 import { storeToRefs } from "pinia";
-import Modal from "@/ui-lib/Modal.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
 import { AttributePrototypeView } from "@/store/func/types";
 import { FuncArgument } from "@/api/sdf/dal/func";

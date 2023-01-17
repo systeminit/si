@@ -1,6 +1,7 @@
 import { Vector2d } from "konva/lib/types";
 import { IconNames } from "@/ui-lib/icons/icon_set";
 import { useComponentsStore, ComponentId } from "@/store/components.store";
+import { ChangeStatus } from "@/api/sdf/dal/change_set";
 
 export type DiagramConfig = {
   // canNodesConnectToThemselves: boolean;
@@ -199,7 +200,7 @@ export type DiagramNodeDef = {
   /** the list of childIds related to the node */
   childIds?: DiagramElementId[];
   /** change status of component in relation to head */
-  changeStatus: "added" | "modified" | "deleted" | "unmodified";
+  changeStatus?: ChangeStatus;
 };
 
 export type DiagramSocketDef = {
@@ -240,7 +241,8 @@ export type DiagramEdgeDef = {
   // thickness
   isInvisible?: boolean;
   /** change status of edge in relation to head */
-  changeStatus: "added" | "deleted" | "unmodified";
+  changeStatus?: ChangeStatus;
+  deletedAt?: Date;
 };
 
 // specific features... likely will move these as the diagram functionality gets broken up

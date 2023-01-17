@@ -46,6 +46,7 @@ import Icon from "@/ui-lib/icons/Icon.vue";
 import { IconNames } from "@/ui-lib/icons/icon_set";
 import { ApiRequestStatus } from "@/utils/pinia_api_tools";
 import { Tones } from "./helpers/tones";
+import { useTheme } from "./theme_tools";
 
 const SHOW_SUCCESS_DELAY = 2000;
 
@@ -197,6 +198,8 @@ onBeforeUnmount(() => {
   if (successClickTimeout) clearTimeout(successClickTimeout);
 });
 
+const containerTheme = useTheme();
+
 const computedClasses = computed(() => ({
   "--disabled": !!props.disabled,
   "--loading": !!computedLoading.value,
@@ -205,6 +208,8 @@ const computedClasses = computed(() => ({
   ...(props.tone && { [`--tone-${props.tone}`]: true }),
   "--rounded": !!props.rounded,
   "--hover-glow": !!props.hoverGlow,
+  "--within-dark": containerTheme.theme.value === "dark",
+  "--within-light": containerTheme.theme.value === "light",
 }));
 </script>
 
@@ -256,6 +261,7 @@ const computedClasses = computed(() => ({
   .vbutton__icon {
     flex-grow: 0;
     flex-shrink: 0;
+    margin-left: -5%;
   }
 
   // &:focus {
@@ -414,7 +420,12 @@ const computedClasses = computed(() => ({
     .button-theme-generator(@colors-neutral-500);
   }
   &.--tone-shade {
-    .button-theme-generator(@colors-black);
+    &.--within-dark {
+      .button-theme-generator(@colors-white);
+    }
+    &.--within-light {
+      .button-theme-generator(@colors-black);
+    }
   }
 
   &.--rounded {

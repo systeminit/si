@@ -89,7 +89,13 @@ const fillColor = computed(() => {
   return colors.value.fill;
 });
 
-const isConnected = computed(() => props.connectedEdges.length >= 1);
+const isConnected = computed(() => {
+  const actualEdges = _.reject(
+    props.connectedEdges,
+    (e) => e.def?.changeStatus === "deleted",
+  );
+  return actualEdges.length >= 1;
+});
 
 const state = computed(() => {
   if (props.drawEdgeState.active) {
