@@ -1,5 +1,10 @@
 <template>
-  <div v-if="packageStore.selectedPackage" class="p-sm flex flex-col h-full">
+  <div
+    v-if="
+      packageStore.selectedPackage && packageStore.selectedPackage.slug === slug
+    "
+    class="p-sm flex flex-col h-full"
+  >
     <div
       class="flex flex-row items-center gap-2 flex-none"
       :style="`color: ${packageStore.selectedPackage.color}`"

@@ -43,6 +43,12 @@
           <SiCollapsible label="Available Packages" default-open>
             <ul class="overflow-y-auto">
               <li
+                v-if="!packageStore.notInstalledPackages.length"
+                class="p-sm italic text-center text-xs"
+              >
+                All available packages are already installed.
+              </li>
+              <li
                 v-for="(p, index) in packageStore.notInstalledPackages"
                 :key="index"
               >
