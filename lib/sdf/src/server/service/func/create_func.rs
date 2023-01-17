@@ -101,7 +101,7 @@ async fn create_attribute_func(ctx: &DalContext, variant: FuncVariant) -> FuncRe
         ),
         FuncVariant::Confirmation => (
             DEFAULT_CONFIRMATION_CODE,
-            DEFAULT_CODE_GENERATION_HANDLER,
+            DEFAULT_CONFIRMATION_HANDLER,
             FuncBackendResponseType::Confirmation,
         ),
         FuncVariant::Qualification => (

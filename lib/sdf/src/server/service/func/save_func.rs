@@ -540,7 +540,7 @@ pub async fn save_func<'a>(
                         &func,
                         schema_variant_ids,
                         component_ids,
-                        LeafKind::CodeGeneration,
+                        LeafKind::Confirmation,
                     )
                     .await?;
                 }
