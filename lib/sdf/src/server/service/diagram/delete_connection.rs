@@ -14,8 +14,7 @@ pub struct DeleteConnectionRequest {
     pub visibility: Visibility,
 }
 
-/// Create a [`Connection`](dal::Connection) with a _to_ [`Socket`](dal::Socket) and
-/// [`Node`](dal::Node) and a _from_ [`Socket`](dal::Socket) and [`Node`](dal::Node).
+/// Delete a [`Connection`](dal::Connection) via its EdgeId.
 pub async fn delete_connection(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,

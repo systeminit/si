@@ -188,6 +188,13 @@ impl SchemaVariant {
             )
             .await?;
 
+        // create a protected property for each of the nodes
+        // this protected property will control the deletion behaviour
+        let protected_prop = Prop::new(ctx, "protected", PropKind::Boolean, None).await?;
+        protected_prop
+            .set_parent_prop(ctx, root_prop.si_prop_id)
+            .await?;
+
         // create a type property for each of the nodes
         // this type will control the functionality of the node
         // the types can be component, or frame types (configuration and aggregation)

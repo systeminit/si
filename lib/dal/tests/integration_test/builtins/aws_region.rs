@@ -30,14 +30,15 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     // Ensure setup worked.
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "region": "us-east-2"
-            },
-
             "si": {
                 "name": "us-east-2",
-                "type": "configurationFrame"
-            }
+                "type": "configurationFrame",
+                "protected": false,
+            },
+
+            "domain": {
+                "region": "us-east-2",
+            },
         }], // expected
         region_payload
             .component_view_properties(ctx)
@@ -47,6 +48,11 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "server",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
                 "awsResourceType": "instance",
                 "tags": {
@@ -59,10 +65,6 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     "format": "json",
                 },
             },
-            "si": {
-                "name": "server",
-                "type": "component"
-            }
         }], // expected
         ec2_payload
             .component_view_properties(ctx)
@@ -104,19 +106,24 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     // Ensure the view did not drift.
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "us-east-2",
+                "type": "configurationFrame",
+                "protected": false,
+            },
             "domain": {
                 "region": "us-east-2"
             },
-
-            "si": {
-                "name": "us-east-2",
-                "type": "configurationFrame"
-            }
         }], // expected
         region_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "server",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
                 "awsResourceType": "instance",
                 "tags": {
@@ -129,10 +136,6 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     "format": "json",
                 },
             },
-            "si": {
-                "name": "server",
-                "type": "component"
-            }
         }], // expected
         ec2_payload
             .component_view_properties(ctx)
@@ -153,19 +156,24 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
     // Observed that it worked.
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "us-west-2",
+                "type": "configurationFrame",
+                "protected": false,
+            },
             "domain": {
                 "region": "us-west-2"
             },
-
-            "si": {
-                "name": "us-west-2",
-                "type": "configurationFrame"
-            }
         }], // expected
         region_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "server",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
                 "awsResourceType": "instance",
                 "region": "us-west-2",
@@ -179,10 +187,6 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
                     "format": "json",
                 },
             },
-            "si": {
-                "name": "server",
-                "type": "component"
-            }
         }], // expected
         ec2_payload
             .component_view_properties(ctx)
@@ -211,7 +215,8 @@ async fn aws_region_field_validation(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "us-poop-1",
-                "type": "configurationFrame"
+                "type": "configurationFrame",
+                "protected": false,
             },
 
             "domain": {
@@ -267,11 +272,11 @@ async fn aws_region_field_validation(ctx: &DalContext) {
             "si": {
                 "name": "us-east-1",
                 "type": "configurationFrame",
+                "protected": false,
             },
-
             "domain": {
-                "region": "us-east-1"
-            }
+                "region": "us-east-1",
+            },
         }], // actual
         region_payload.component_view_properties_raw(ctx).await // expected
     );

@@ -314,6 +314,13 @@ impl MigrationDriver {
         self.set_default_value_for_prop(ctx, *type_prop.id(), serde_json::json!["component"])
             .await?;
 
+        // set the default value for protected attribute on a component
+        let protected_prop = self
+            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "protected")
+            .await?;
+        self.set_default_value_for_prop(ctx, *protected_prop.id(), serde_json::json![false])
+            .await?;
+
         Ok(())
     }
 

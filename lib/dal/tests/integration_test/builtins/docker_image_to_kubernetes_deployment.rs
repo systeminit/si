@@ -23,13 +23,14 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     // Ensure setup worked.
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "image": "tail"
-            },
             "si": {
                 "name": "tail",
-                "type": "component"
-            }
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "image": "tail",
+            },
         }], // expected
         tail_docker_image_payload
             .component_view_properties(ctx)
@@ -39,20 +40,21 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "deployment",
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+            },
             "code": {
                 "si:generateYAML": {
                     "code": "kind: Deployment\napiVersion: apps/v1\n",
                     "format": "yaml",
                 },
             },
-            "domain": {
-                "apiVersion": "apps/v1",
-                "kind": "Deployment",
-            },
-            "si": {
-                "name": "deployment",
-                "type": "component"
-            }
         }], // expected
         head_deployment_payload
             .component_view_properties(ctx)
@@ -94,13 +96,14 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     // Ensure the view did not drift.
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "image": "tail"
-            },
             "si": {
                 "name": "tail",
-                "type": "component"
-            }
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "image": "tail",
+            },
         }], // expected
         tail_docker_image_payload
             .component_view_properties(ctx)
@@ -110,20 +113,21 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     );
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "deployment",
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+            },
             "code": {
                 "si:generateYAML": {
                     "code": "kind: Deployment\napiVersion: apps/v1\n",
                     "format": "yaml",
                 },
             },
-            "domain": {
-                "apiVersion": "apps/v1",
-                "kind": "Deployment",
-            },
-            "si": {
-                "name": "deployment",
-                "type": "component"
-            }
         }], // expected
         head_deployment_payload
             .component_view_properties(ctx)
@@ -144,13 +148,14 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     // Observe that it worked.
     assert_eq!(
         serde_json::json![{
+            "si": {
+                "name": "ironsides",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
                 "image": "ironsides"
             },
-            "si": {
-                "name": "ironsides",
-                "type": "component"
-            }
         }], // expected
         tail_docker_image_payload
             .component_view_properties(ctx)
@@ -161,11 +166,10 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
 
     assert_eq!(
         serde_json::json![{
-            "code": {
-                "si:generateYAML": {
-                    "code": "kind: Deployment\nspec:\n  template:\n    spec:\n      containers:\n        - name: ironsides\n          image: ironsides\n          ports: []\napiVersion: apps/v1\n",
-                    "format": "yaml",
-                },
+            "si": {
+                "name": "deployment",
+                "type": "component",
+                "protected": false,
             },
             "domain": {
                 "apiVersion": "apps/v1",
@@ -184,9 +188,11 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
                     },
                 },
             },
-            "si": {
-                "name": "deployment",
-                "type": "component"
+            "code": {
+                "si:generateYAML": {
+                    "code": "kind: Deployment\nspec:\n  template:\n    spec:\n      containers:\n        - name: ironsides\n          image: ironsides\n          ports: []\napiVersion: apps/v1\n",
+                    "format": "yaml",
+                },
             },
         }], // expected
         head_deployment_payload
