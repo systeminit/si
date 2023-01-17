@@ -516,7 +516,31 @@ pub async fn list<OBJECT: DeserializeOwned>(
 }
 
 #[instrument(skip_all)]
-pub async fn delete<PK: Send + Sync + ToSql + std::fmt::Display>(
+pub async fn delete_by_id<ID: Send + Sync + ToSql + std::fmt::Display>(
+    ctx: &DalContext,
+    table: &str,
+    id: ID,
+) -> StandardModelResult<DateTime<Utc>> {
+    let row = ctx
+        .txns()
+        .pg()
+        .query_one(
+            "SELECT updated_at FROM delete_by_id_v1($1, $2, $3, $4, $5)",
+            &[
+                &table,
+                ctx.read_tenancy(),
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                &id,
+            ],
+        )
+        .await?;
+    row.try_get("updated_at")
+        .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()))
+}
+
+#[instrument(skip_all)]
+pub async fn delete_by_pk<PK: Send + Sync + ToSql + std::fmt::Display>(
     ctx: &DalContext,
     table: &str,
     pk: PK,
@@ -700,12 +724,37 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn delete(&self, ctx: &DalContext) -> StandardModelResult<()>
+    async fn delete_by_pk(&self, ctx: &DalContext) -> StandardModelResult<()>
     where
         Self: Send + Sync + Sized,
     {
         let updated_at: chrono::DateTime<chrono::Utc> =
-            crate::standard_model::delete(ctx, Self::table_name(), self.pk()).await?;
+            crate::standard_model::delete_by_pk(ctx, Self::table_name(), self.pk()).await?;
+
+        let mut visibility = *self.visibility();
+        visibility.deleted_at = Some(updated_at);
+
+        let _history_event = crate::HistoryEvent::new(
+            ctx,
+            &Self::history_event_label(vec!["deleted"]),
+            &Self::history_event_message("deleted"),
+            &serde_json::json![{
+                "pk": self.pk(),
+                "id": self.id(),
+                "visibility": visibility,
+            }],
+        )
+        .await?;
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
+    async fn delete_by_id(&self, ctx: &DalContext) -> StandardModelResult<()>
+    where
+        Self: Send + Sync + Sized,
+    {
+        let updated_at: chrono::DateTime<chrono::Utc> =
+            crate::standard_model::delete_by_id(ctx, Self::table_name(), self.id()).await?;
 
         let mut visibility = *self.visibility();
         visibility.deleted_at = Some(updated_at);

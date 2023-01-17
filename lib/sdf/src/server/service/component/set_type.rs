@@ -197,7 +197,7 @@ pub async fn set_type(
 
                 if !attribute_value.context.is_component_unset() {
                     attribute_value.unset_attribute_prototype(&ctx).await?;
-                    attribute_value.delete(&ctx).await?;
+                    attribute_value.delete_by_id(&ctx).await?;
                 }
             }
 
@@ -216,7 +216,7 @@ pub async fn set_type(
 
                 if !attribute_value.context.is_component_unset() {
                     attribute_value.unset_attribute_prototype(&ctx).await?;
-                    attribute_value.delete(&ctx).await?;
+                    attribute_value.delete_by_id(&ctx).await?;
                 }
             }
         }

@@ -131,7 +131,7 @@ where
             || schema_variant_id.is_some()
                 && !prototype_context_field_ids.contains(&schema_variant_id.into())
         {
-            proto.delete(ctx).await?;
+            proto.delete_by_id(ctx).await?;
             continue;
         } else if component_id.is_some() {
             existing_field_ids.push(component_id.into());

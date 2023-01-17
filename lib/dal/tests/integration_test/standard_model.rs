@@ -127,9 +127,10 @@ async fn update(ctx: &mut DalContext, nba: &BillingAccountSignup) {
 
 #[test]
 async fn delete(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let _updated_at = standard_model::delete(ctx, "billing_accounts", nba.billing_account.pk())
-        .await
-        .expect("cannot delete field");
+    let _updated_at =
+        standard_model::delete_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
+            .await
+            .expect("cannot delete field");
 
     let soft_deleted: BillingAccount =
         standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
@@ -166,9 +167,10 @@ async fn hard_delete(ctx: &DalContext, nba: &BillingAccountSignup) {
 
 #[test]
 async fn undelete(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let _updated_at = standard_model::delete(ctx, "billing_accounts", nba.billing_account.pk())
-        .await
-        .expect("cannot delete field");
+    let _updated_at =
+        standard_model::delete_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
+            .await
+            .expect("cannot delete field");
 
     let soft_deleted: BillingAccount =
         standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())

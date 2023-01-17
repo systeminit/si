@@ -142,8 +142,8 @@ impl Connection {
         .await?
         .ok_or(DiagramError::AttributePrototypeNotFound)?;
 
-        edge_argument.delete(ctx).await?;
-        edge.delete(ctx).await?;
+        edge_argument.delete_by_id(ctx).await?;
+        edge.delete_by_id(ctx).await?;
 
         let read_context = AttributeReadContext {
             prop_id: Some(PropId::NONE),
@@ -174,7 +174,7 @@ impl Connection {
             let attr_val_context = attr_value.context;
             attr_value.unset_attribute_prototype(ctx).await?;
 
-            attr_value.delete(ctx).await?;
+            attr_value.delete_by_id(ctx).await?;
 
             let att_val = AttributeValue::find_for_context(ctx, attr_val_context.into())
                 .await?
