@@ -186,6 +186,11 @@ impl Connection {
 
         Ok(())
     }
+
+    pub async fn restore_for_edge(ctx: &DalContext, edge_id: EdgeId) -> DiagramResult<()> {
+        Edge::restore_by_id(ctx, edge_id).await?;
+        Ok(())
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

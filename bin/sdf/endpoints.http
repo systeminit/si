@@ -76,3 +76,15 @@ workspaceid: 01GPC2ZVVMSQ0AWPBW9DS87A0E
 GET http://localhost:8080/api/diagram/get_diagram?visibility_change_set_pk=01GQ35YNM21H71VVDTRN8YJJP2
 authorization: Bearer {{auth_token}}
 WorkspaceId: 01GQ35YGTWRYNMNHP7QA8A1XD1
+
+### Restore Edge
+POST http://localhost:8080/api/diagram/restore_connection
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+workspaceid: 01GQ35YGTWRYNMNHP7QA8A1XD1
+
+{
+  "visibility_change_set_pk": "01GQ37T27VP4WEN5TBN7VE3YXH",
+  "edgeId": "01GQ37D814ZRGF52RAVMVHNZ5S",
+  "workspaceId": "01GQ35YGTWRYNMNHP7QA8A1XD1"
+}

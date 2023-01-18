@@ -9,13 +9,15 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::func::argument::{FuncArgument, FuncArgumentError};
+use crate::job::definition::DependentValuesUpdate;
 use crate::node::NodeId;
+use crate::socket::SocketError;
 use crate::standard_model::objects_from_rows;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
     AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
-    Func, HistoryEventError, InternalProviderError, PropId, ReadTenancyError, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    Func, HistoryEventError, InternalProviderError, Node, PropId, ReadTenancyError, Socket,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
@@ -50,6 +52,8 @@ pub enum EdgeError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
 
@@ -59,6 +63,10 @@ pub enum EdgeError {
     AttributeValueNotFound,
     #[error("attribute prototype not found")]
     AttributePrototypeNotFound,
+    #[error("edge not found for id: {0}")]
+    EdgeNotFound(EdgeId),
+    #[error("cannot restore non deleted edge with id: {0}")]
+    RestoringNonDeletedEdge(EdgeId),
     #[error("external provider not found for id: {0}")]
     ExternalProviderNotFound(ExternalProviderId),
     #[error("external provider not found for socket id: {0}")]
@@ -73,6 +81,12 @@ pub enum EdgeError {
     IdentityFuncNotFound,
     #[error("cannot find identity func argument")]
     IdentityFuncArgNotFound,
+    #[error("cannot find identity func argument")]
+    NodeNotFound,
+    #[error("cannot find identity func argument")]
+    SocketNotFound,
+    #[error("cannot find identity func argument")]
+    ComponentNotFound,
 }
 
 pub type EdgeResult<T> = Result<T, EdgeError>;
@@ -293,6 +307,104 @@ impl Edge {
             )
             .await?;
         Ok(objects_from_rows(rows)?)
+    }
+
+    pub async fn restore_by_id(ctx: &DalContext, edge_id: EdgeId) -> EdgeResult<()> {
+        let ctx_with_deleted = &ctx.clone_with_new_visibility(Visibility::new_change_set(
+            ctx.visibility().change_set_pk,
+            true,
+        ));
+
+        let edge = Edge::get_by_id(ctx_with_deleted, &edge_id)
+            .await?
+            .ok_or(EdgeError::EdgeNotFound(edge_id))?;
+
+        if edge.visibility().deleted_at.is_none()
+            || edge.visibility().change_set_pk != ctx.visibility().change_set_pk
+        {
+            return Err(EdgeError::RestoringNonDeletedEdge(edge_id));
+        }
+
+        edge.undelete(ctx_with_deleted).await?;
+
+        // Restore the Attribute Prototype Argument
+        let head_component_id = *{
+            let head_node = Node::get_by_id(ctx, &edge.head_node_id())
+                .await?
+                .ok_or(EdgeError::NodeNotFound)?;
+            head_node
+                .component(ctx)
+                .await?
+                .ok_or(EdgeError::ComponentNotFound)?
+                .id()
+        };
+
+        let tail_component_id = *{
+            let tail_node = Node::get_by_id(ctx, &edge.tail_node_id())
+                .await?
+                .ok_or(EdgeError::NodeNotFound)?;
+            tail_node
+                .component(ctx)
+                .await?
+                .ok_or(EdgeError::ComponentNotFound)?
+                .id()
+        };
+
+        // This code assumes that every connection is established between a tail external provider and
+        // a head (explicit) internal provider. That might not be the case, but it true in practice for the present state of the interface
+        // (aggr frame connection to children shouldn't go through this path)
+        let external_provider_id = *{
+            let socket = Socket::get_by_id(ctx, &edge.tail_socket_id())
+                .await?
+                .ok_or(EdgeError::SocketNotFound)?;
+
+            socket
+                .external_provider(ctx)
+                .await?
+                .ok_or_else(|| EdgeError::ExternalProviderNotFoundForSocket(*socket.id()))?
+                .id()
+        };
+
+        let internal_provider_id = *{
+            let socket = Socket::get_by_id(ctx, &edge.head_socket_id())
+                .await?
+                .ok_or(EdgeError::SocketNotFound)?;
+
+            socket
+                .internal_provider(ctx)
+                .await?
+                .ok_or_else(|| EdgeError::InternalProviderNotFoundForSocket(*socket.id()))?
+                .id()
+        };
+
+        let edge_argument = AttributePrototypeArgument::find_for_providers_and_components(
+            ctx_with_deleted,
+            &external_provider_id,
+            &internal_provider_id,
+            &tail_component_id,
+            &head_component_id,
+        )
+        .await?
+        .ok_or(EdgeError::AttributePrototypeNotFound)?;
+
+        edge_argument.undelete(ctx_with_deleted).await?;
+
+        // Trigger a dependent values update
+        let read_context = AttributeReadContext {
+            prop_id: Some(PropId::NONE),
+            internal_provider_id: Some(InternalProviderId::NONE),
+            external_provider_id: Some(external_provider_id),
+            component_id: Some(tail_component_id),
+        };
+
+        let attr_value = AttributeValue::find_for_context(ctx, read_context)
+            .await?
+            .ok_or(EdgeError::AttributeValueNotFound)?;
+
+        ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
+            .await;
+
+        Ok(())
     }
 
     /// This function should be only called by [`Self::new_for_connection()`] and integration tests.
