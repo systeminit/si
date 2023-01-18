@@ -1,64 +1,57 @@
 <template>
   <Modal
-    :open="open"
+    ref="bindingsModalRef"
     type="save"
     :save-label="isCreating ? 'Add Binding' : 'Update Binding'"
     size="2xl"
+    :title="modalTitle"
     @close="emit('close')"
     @save="emit('save', editedPrototype)"
   >
-    <template #title
-      >{{ isCreating ? "Add" : "Update" }} Function Bindings
-    </template>
-    <template #content>
-      <div class="p-4 flex flex-col place-content-center">
-        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-          Schema Variant:
-        </h1>
-        <SelectMenu
-          v-model="selectedVariant"
-          class="flex-auto"
-          :options="schemaVariantOptions ?? []"
-        />
-        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-          Component:
-        </h1>
-        <SelectMenu
-          v-model="selectedComponent"
-          class="flex-auto"
-          :options="filteredComponentOptions"
-        />
-        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-          Output location:
-        </h1>
-        <SelectMenu
-          v-model="selectedOutputLocation"
-          class="flex-auto"
-          :options="outputLocationOptions"
-        />
-        <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-          Expected Function Arguments:
-        </h1>
-        <h2 class="pb-2 text-sm">
-          Below is the source of the data for each function argument listed.
-        </h2>
-        <ul>
-          <li v-for="binding in editableBindings" :key="binding.funcArgumentId">
-            <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
-              {{
-                funcArgumentsIdMap
-                  ? funcArgumentsIdMap[binding.funcArgumentId]?.name ?? "none"
-                  : "none"
-              }}
-            </h1>
-            <SelectMenu
-              v-model="binding.binding"
-              :options="inputSourceOptions"
-            />
-          </li>
-        </ul>
-      </div>
-    </template>
+    <div class="p-4 flex flex-col place-content-center">
+      <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        Schema Variant:
+      </h1>
+      <SelectMenu
+        v-model="selectedVariant"
+        class="flex-auto"
+        :options="schemaVariantOptions ?? []"
+      />
+      <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        Component:
+      </h1>
+      <SelectMenu
+        v-model="selectedComponent"
+        class="flex-auto"
+        :options="filteredComponentOptions"
+      />
+      <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        Output location:
+      </h1>
+      <SelectMenu
+        v-model="selectedOutputLocation"
+        class="flex-auto"
+        :options="outputLocationOptions"
+      />
+      <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+        Expected Function Arguments:
+      </h1>
+      <h2 class="pb-2 text-sm">
+        Below is the source of the data for each function argument listed.
+      </h2>
+      <ul>
+        <li v-for="binding in editableBindings" :key="binding.funcArgumentId">
+          <h1 class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50">
+            {{
+              funcArgumentsIdMap
+                ? funcArgumentsIdMap[binding.funcArgumentId]?.name ?? "none"
+                : "none"
+            }}
+          </h1>
+          <SelectMenu v-model="binding.binding" :options="inputSourceOptions" />
+        </li>
+      </ul>
+    </div>
   </Modal>
 </template>
 
@@ -92,9 +85,15 @@ const props = withDefaults(
   { open: false, edit: false },
 );
 
+const bindingsModalRef = ref<InstanceType<typeof Modal>>();
+
 const prototype = toRef(props, "prototype", undefined);
+const open = toRef(props, "open", false);
 
 const isCreating = computed(() => props.prototype?.id === nilId());
+const modalTitle = computed(
+  () => `${isCreating.value ? "Add" : "Update"}  Function Bindings`,
+);
 
 const emit = defineEmits<{
   (e: "close"): void;
@@ -196,6 +195,18 @@ const inputSourceOptions = computed<Option[]>(() => {
 
   return sockets.concat(props);
 });
+
+watch(
+  () => open.value,
+  (open) => {
+    if (open) {
+      bindingsModalRef?.value?.open();
+    } else {
+      bindingsModalRef?.value?.close();
+    }
+  },
+  { immediate: true },
+);
 
 // When variant changes, unset component if necessary
 watch(
