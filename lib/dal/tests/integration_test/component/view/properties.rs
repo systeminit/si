@@ -82,7 +82,7 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
 
     // Finalize the variant and create a component.
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("unable to finalize schema variant");
     let (component, _) = Component::new(ctx, "component", schema_variant_id)
@@ -96,12 +96,14 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "component"
+                "name": "component",
+                "type": "component",
+                "protected": false
             },
-            "domain": { },
             "code": {
                 "test:codeGeneration": {}
-            }
+            },
+            "domain": {},
         }], // expected
         component_view.properties // actual
     );
@@ -111,7 +113,9 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "component"
+                "name": "component",
+                "type": "component",
+                "protected": false
             },
             "domain": {}
         }], // expected
@@ -154,17 +158,19 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "component"
-            },
-            "domain": {
-                "poop": "canoe"
+                "name": "component",
+                "type": "component",
+                "protected": false
             },
             "code": {
                 "test:codeGeneration": {
                     "code": "canoe",
                     "format": "json",
                 }
-            }
+            },
+            "domain": {
+                "poop": "canoe"
+            },
         }], // expected
         component_view.properties // actual
     );
@@ -174,7 +180,9 @@ async fn drop_subtree_using_component_view_properties(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "component"
+                "name": "component",
+                "type": "component",
+                "protected": false
             },
             "domain": {
                 "poop": "canoe"

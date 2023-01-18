@@ -37,7 +37,7 @@ async fn list_components_identification() {
     let schema = create_schema(&dal_ctx).await;
     let mut schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
     schema_variant
-        .finalize(&dal_ctx)
+        .finalize(&dal_ctx, None)
         .await
         .expect("unable to finalize schema variant");
 
@@ -149,7 +149,7 @@ async fn get_components_metadata() {
 
     let mut schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
     schema_variant
-        .finalize(&dal_ctx)
+        .finalize(&dal_ctx, None)
         .await
         .expect("could not finalize schema variant");
 

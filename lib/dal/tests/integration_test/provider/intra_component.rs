@@ -35,7 +35,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         create_prop_and_set_parent(ctx, PropKind::String, "destination", *object_prop.id()).await;
 
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -129,15 +129,16 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Ensure that our rendered data matches what was intended.
     assert_eq!(
         serde_json::json![{
-
+            "si": {
+                "name": "starfield",
+                "type": "component",
+                "protected": false
+            },
             "domain": {
                 "object": {
                     "destination": "11-nov-2022",
                     "source": "updateme",
                 },
-            },
-            "si": {
-                "name": "starfield",
             },
         }], // expected
         ComponentView::new(ctx, *component.id())
@@ -159,16 +160,8 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         .await
         .expect("cannot find attribute prototype")
         .expect("attribute prototype not found");
-    let identity_func: Func = Func::find_by_attr(ctx, "name", &"si:identity".to_string())
-        .await
-        .expect("could not find func by name attr")
-        .pop()
-        .expect("identity func not found");
-    let identity_func_identity_arg = FuncArgument::list_for_func(ctx, *identity_func.id())
-        .await
-        .expect("cannot list identity func args")
-        .pop()
-        .expect("cannot find identity func identity arg");
+    let (identity_func_id, _, _, identity_func_identity_argument_id) =
+        setup_identity_func(ctx).await;
 
     // Now, update the "destination" field's corresponding prototype to use the identity function
     // and the source internal provider.
@@ -177,7 +170,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
         .expect("could not get internal provider")
         .expect("internal provider not found");
     destination_attribute_prototype
-        .set_func_id(ctx, *identity_func.id())
+        .set_func_id(ctx, identity_func_id)
         .await
         .expect("could not set func id on attribute prototype");
 
@@ -186,7 +179,7 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     let _argument = AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *destination_attribute_prototype.id(),
-        *identity_func_identity_arg.id(),
+        identity_func_identity_argument_id,
         *source_internal_provider.id(),
     )
     .await
@@ -195,15 +188,16 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Ensure that the shape has not changed after creating the provider and updating the prototype.
     assert_eq!(
         serde_json::json![{
-
-            "domain": {
-                "object": {
-                    "destination": "11-nov-2022",
-                    "source": "updateme",
-                },
-            },
             "si": {
                 "name": "starfield",
+                "type": "component",
+                "protected": false
+            },
+            "domain": {
+                "object": {
+                    "source": "updateme",
+                    "destination": "11-nov-2022",
+                },
             },
         }], // expected
         ComponentView::new(ctx, *component.id())
@@ -228,15 +222,16 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Observe that both the source and destination fields were updated.
     assert_eq!(
         serde_json::json![{
-
+            "si": {
+                "name": "starfield",
+                "type": "component",
+                "protected": false
+            },
             "domain": {
                 "object": {
                     "destination": "h1-2023",
                     "source": "h1-2023",
                 },
-            },
-            "si": {
-                "name": "starfield",
             },
         }], // expected
         ComponentView::new(ctx, *component.id())
@@ -261,15 +256,16 @@ async fn intra_component_identity_update(ctx: &DalContext) {
     // Observe it again!
     assert_eq!(
         serde_json::json![{
-
+            "si": {
+                "name": "starfield",
+                "type": "component",
+                "protected": false
+            },
             "domain": {
                 "object": {
                     "destination": "pain.",
                     "source": "pain.",
                 },
-            },
-            "si": {
-                "name": "starfield",
             },
         }], // expected
         ComponentView::new(ctx, *component.id())
@@ -310,7 +306,7 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
     .expect("could not create external provider");
 
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
 

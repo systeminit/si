@@ -295,35 +295,6 @@ impl MigrationDriver {
         Err(PropError::ExpectedChildNotFound(child_prop_name.to_string()).into())
     }
 
-    /// A wrapper around [`SchemaVariant::finalize()`](crate::SchemaVariant::finalize()) to perform
-    /// some additional, builtin-specific work when finalizing a
-    /// [`SchemaVariant`](crate::SchemaVariant).
-    pub async fn finalize_schema_variant(
-        &self,
-        ctx: &DalContext,
-        schema_variant: &mut SchemaVariant,
-        root_prop: &RootProp,
-    ) -> BuiltinsResult<()> {
-        schema_variant.finalize(ctx).await?;
-
-        // set the default type for the node to be a component
-        // individual schemas can override this value where appropriate
-        let type_prop = self
-            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "type")
-            .await?;
-        self.set_default_value_for_prop(ctx, *type_prop.id(), serde_json::json!["component"])
-            .await?;
-
-        // set the default value for protected attribute on a component
-        let protected_prop = self
-            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "protected")
-            .await?;
-        self.set_default_value_for_prop(ctx, *protected_prop.id(), serde_json::json![false])
-            .await?;
-
-        Ok(())
-    }
-
     /// Set a default [`Value`](serde_json::Value) for a given [`Prop`](crate::Prop) in a
     /// [`Schema`](crate::Schema) and [`SchemaVariant`](crate::SchemaVariant).
     ///

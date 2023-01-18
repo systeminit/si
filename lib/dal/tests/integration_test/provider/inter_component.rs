@@ -21,26 +21,28 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Ensure setup went as expected.
     assert_eq!(
         serde_json::json![{
-            "domain": {
-                "object": {
-                    "intermediate": "zero-intermediate",
-                    "source": "zero-source",
-                },
-            },
-
             "si": {
                 "name": "esp",
+                "type": "component",
+                "protected": false
+            },
+            "domain": {
+                "object": {
+                    "source": "zero-source",
+                    "intermediate": "zero-intermediate",
+                },
             },
         }], // expected
         esp_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
-
-            "domain": {},
             "si": {
                 "name": "swings",
-            }
+                "type": "component",
+                "protected": false
+            },
+            "domain": {},
         }], // expected
         swings_payload.component_view_properties_raw(ctx).await // actual
     );
@@ -96,26 +98,28 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Ensure that they look as we expect.
     assert_eq!(
         serde_json::json![{
-
-            "domain": {
-                "object": {
-                    "intermediate": "one",
-                    "source": "one",
-                },
-            },
             "si": {
                 "name": "esp",
+                "type": "component",
+                "protected": false
+            },
+            "domain": {
+                "object": {
+                    "source": "one",
+                    "intermediate": "one",
+                },
             },
         }], // expected
         esp_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
-
-            "domain": {},
             "si": {
                 "name": "swings",
-            }
+                "type": "component",
+                "protected": false
+            },
+            "domain": {},
         }], // expected
         swings_payload.component_view_properties_raw(ctx).await // actual
     );
@@ -196,26 +200,28 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // component identity update working.
     assert_eq!(
         serde_json::json![{
-
+            "si": {
+                "name": "esp",
+                "type": "component",
+                "protected": false
+            },
             "domain": {
                 "object": {
                     "intermediate": "one",
                     "source": "one",
                 },
             },
-            "si": {
-                "name": "esp",
-            },
         }], // expected
         esp_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
-
-            "domain": {},
             "si": {
                 "name": "swings",
-            }
+                "type": "component",
+                "protected": false
+            },
+            "domain": {},
         }], // expected
         swings_payload.component_view_properties_raw(ctx).await // actual
     );
@@ -234,26 +240,28 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Ensure that both components continue to look as we expect.
     assert_eq!(
         serde_json::json![{
-
+            "si": {
+                "name": "esp",
+                "type": "component",
+                "protected": false
+            },
             "domain": {
                 "object": {
                     "intermediate": "one",
                     "source": "one",
                 },
             },
-            "si": {
-                "name": "esp",
-            },
         }], // expected
         esp_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
-
-            "domain": {},
             "si": {
                 "name": "swings",
-            }
+                "type": "component",
+                "protected": false
+            },
+            "domain": {},
         }], // expected
         swings_payload.component_view_properties_raw(ctx).await // actual
     );
@@ -270,27 +278,29 @@ async fn inter_component_identity_update(ctx: &DalContext) {
     // Observe that inter component identity updating work.
     assert_eq!(
         serde_json::json![{
-
+            "si": {
+                "name": "esp",
+                "type": "component",
+                "protected": false
+            },
             "domain": {
                 "object": {
                     "intermediate": "two",
                     "source": "two",
                 },
             },
-            "si": {
-                "name": "esp",
-            },
         }], // expected
         esp_payload.component_view_properties_raw(ctx).await // actual
     );
     assert_eq!(
         serde_json::json![{
-
-            "domain": {
-                "destination": "two",
-            },
             "si": {
                 "name": "swings",
+                "type": "component",
+                "protected": false
+            },
+            "domain": {
+                "destination": "two",
             },
         }], // expected
         swings_payload.component_view_properties_raw(ctx).await // actual
@@ -319,7 +329,7 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
         create_prop_and_set_parent(ctx, PropKind::String, "intermediate", *object_prop.id()).await;
 
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -389,7 +399,7 @@ async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
     .await;
 
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemVariant");
 
@@ -458,7 +468,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     )
     .await;
     source_schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize source SchemaVariant");
 
@@ -528,7 +538,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
     )
     .await;
     destination_schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize destination SchemaVariant");
 
@@ -591,8 +601,9 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Source Component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {},
             }
         ],
@@ -615,8 +626,9 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Destination Component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {},
             }
         ],
@@ -694,8 +706,9 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Source Component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "base_object": {
                         "foo_string": "deep update",
@@ -714,8 +727,9 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Destination Component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "parent_object": {
                         "base_object": {
@@ -778,8 +792,9 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Source Component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "base_object": {
                         "foo_string": "deep update",
@@ -799,8 +814,9 @@ async fn with_deep_data_structure(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Destination Component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "parent_object": {
                         "base_object": {

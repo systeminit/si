@@ -13,7 +13,7 @@ use crate::validation::Validation;
 use crate::{
     action_prototype::ActionKind,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
-    FuncDescriptionContents,
+    ComponentType, FuncDescriptionContents,
 };
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
@@ -188,8 +188,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Connect the props to providers.
         let external_provider_attribute_prototype_id = image_id_external_provider
@@ -568,8 +567,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Set Defaults
         self.set_default_value_for_prop(
@@ -962,20 +960,9 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
+        schema_variant
+            .finalize(ctx, Some(ComponentType::ConfigurationFrame))
             .await?;
-
-        // set the component as a configuration frame
-        let si_type_prop = self
-            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "type")
-            .await?;
-
-        self.set_default_value_for_prop(
-            ctx,
-            *si_type_prop.id(),
-            serde_json::json!["configurationFrame"],
-        )
-        .await?;
 
         let region_implicit_internal_provider =
             InternalProvider::find_for_prop(ctx, *region_prop.id())
@@ -1241,8 +1228,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Set Defaults
         self.set_default_value_for_prop(
@@ -1645,8 +1631,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Set Defaults
         self.set_default_value_for_prop(

@@ -1,15 +1,17 @@
+//! This module contains [`SchemaVariant`](crate::SchemaVariant), which is the "class" of a
+//! [`Component`](crate::Component).
+
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::edit_field::widget::WidgetKind;
+use crate::attribute::context::AttributeContextBuilder;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::internal::InternalProviderError;
+use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::standard_model::object_from_row;
-use crate::RootPropChild;
 use crate::{
     func::binding::FuncBindingError,
     impl_standard_model, pk,
@@ -18,11 +20,12 @@ use crate::{
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many,
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeValueError, BuiltinsError, DalContext, DiagramKind, ExternalProvider,
-    ExternalProviderError, Func, FuncBinding, FuncError, HistoryEventError, InternalProvider, Prop,
-    PropError, PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel, StandardModelError,
-    Timestamp, Visibility, WriteTenancy, WsEventError,
+    AttributeValueError, AttributeValueId, BuiltinsError, DalContext, DiagramKind,
+    ExternalProvider, ExternalProviderError, Func, FuncError, HistoryEventError, InternalProvider,
+    Prop, PropError, PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy, WsEventError,
 };
+use crate::{AttributeReadContext, AttributeValue, RootPropChild};
 use crate::{FuncBackendResponseType, FuncId};
 
 use self::leaves::LeafKind;
@@ -35,6 +38,8 @@ const ALL_PROPS: &str = include_str!("../queries/schema_variant/all_props.sql");
 const FIND_LEAF_ITEM_PROP: &str = include_str!("../queries/schema_variant/find_leaf_item_prop.sql");
 const FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER: &str =
     include_str!("../queries/schema_variant/find_root_child_implicit_internal_provider.sql");
+const LIST_ROOT_SI_CHILD_PROPS: &str =
+    include_str!("../queries/schema_variant/list_root_si_child_props.sql");
 
 #[derive(Error, Debug)]
 pub enum SchemaVariantError {
@@ -88,8 +93,6 @@ pub enum SchemaVariantError {
     InvalidSchemaVariant,
     #[error("parent prop not found for prop id: {0}")]
     ParentPropNotFound(PropId),
-    #[error("identity func not found by name")]
-    IdentityFuncNotFoundByName,
 
     // Errors related to definitions.
     #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
@@ -116,6 +119,20 @@ pub enum SchemaVariantError {
     LeafFunctionMismatch(FuncBackendResponseType, LeafKind),
     #[error("leaf function ({0}) must be JsAttribute")]
     LeafFunctionMustBeJsAttribute(FuncId),
+
+    /// This variant indicates that a [`Prop`](crate::Prop) or [`PropId`](crate::Prop) was not
+    /// found. However, it does not _describe_ the attempt to locate the object in question. The
+    /// "json pointer" piece is purely meant to help describe the location.
+    #[error("prop not found corresponding to the following json pointer: {0}")]
+    PropNotFound(&'static str),
+    /// An [`AttributeValue`](crate::AttributeValue) could not be found for the specified
+    /// [`AttributeReadContext`](crate::AttributeReadContext).
+    #[error("attribute value not found for attribute read context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeReadContext),
+    /// Not parent [`AttributeValue`](crate::AttributeValue) was found for the specified
+    /// [`AttributeValueId`](crate::AttributeValue).
+    #[error("no parent found for attribute value: {0}")]
+    AttributeValueDoesNotHaveParent(AttributeValueId),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
@@ -174,55 +191,8 @@ impl SchemaVariant {
 
         object.set_schema(ctx, &schema_id).await?;
 
-        // Create frame socket
-        let identity_func_name = "si:identity".to_string();
-        let identity_func = Func::find_by_attr(ctx, "name", &identity_func_name)
-            .await?
-            .pop()
-            .ok_or(FuncError::NotFoundByName(identity_func_name))?;
-        let (identity_func_binding, identity_func_binding_return_value) =
-            FuncBinding::create_and_execute(
-                ctx,
-                serde_json::json![{ "identity": null }],
-                *identity_func.id(),
-            )
-            .await?;
-
-        // create a protected property for each of the nodes
-        // this protected property will control the deletion behaviour
-        let protected_prop = Prop::new(ctx, "protected", PropKind::Boolean, None).await?;
-        protected_prop
-            .set_parent_prop(ctx, root_prop.si_prop_id)
-            .await?;
-
-        // create a type property for each of the nodes
-        // this type will control the functionality of the node
-        // the types can be component, or frame types (configuration and aggregation)
-        // each schema will set its default type for a node
-        let type_prop = Prop::new(
-            ctx,
-            "type",
-            PropKind::String,
-            Some((
-                WidgetKind::Select,
-                Some(serde_json::json!([
-                    {
-                        "label": "Component",
-                        "value": "component",
-                    },
-                    {
-                        "label": "Configuration Frame",
-                        "value": "configurationFrame",
-                    },
-                    {
-                        "label": "Aggregation Frame",
-                        "value": "aggregationFrame",
-                    },
-                ])),
-            )),
-        )
-        .await?;
-        type_prop.set_parent_prop(ctx, root_prop.si_prop_id).await?;
+        let (identity_func, identity_func_binding, identity_func_binding_return_value) =
+            Func::identity_with_binding_and_return_value(ctx).await?;
 
         // all nodes can be turned into frames therefore, they will need a frame input socket
         // the UI itself will determine if this socket is available to be connected
@@ -269,7 +239,11 @@ impl SchemaVariant {
     /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
     /// [`SchemaVariant`]. It can be called multiple times while [`Props`](Prop) are being created,
     /// but it must be called once after all [`Props`](Prop) have been created.
-    pub async fn finalize(&mut self, ctx: &DalContext) -> SchemaVariantResult<()> {
+    pub async fn finalize(
+        &mut self,
+        ctx: &DalContext,
+        component_type: Option<ComponentType>,
+    ) -> SchemaVariantResult<()> {
         let total_start = std::time::Instant::now();
 
         Self::create_default_prototypes_and_values(ctx, self.id).await?;
@@ -277,6 +251,75 @@ impl SchemaVariant {
         if !self.finalized_once() {
             self.set_finalized_once(ctx, true).await?;
         }
+
+        // Default to the standard "component" component type.
+        let component_type = match component_type {
+            Some(component_type) => component_type,
+            None => ComponentType::Component,
+        };
+
+        // Find props that we need to set defaults on for _all_ schema variants.
+        let mut maybe_type_prop_id = None;
+        let mut maybe_protected_prop_id = None;
+        for root_si_child_prop in Self::list_root_si_child_props(ctx, self.id).await? {
+            if root_si_child_prop.name() == "type" {
+                maybe_type_prop_id = Some(*root_si_child_prop.id())
+            } else if root_si_child_prop.name() == "protected" {
+                maybe_protected_prop_id = Some(*root_si_child_prop.id())
+            }
+        }
+        let type_prop_id =
+            maybe_type_prop_id.ok_or(SchemaVariantError::PropNotFound("/root/si/type"))?;
+        let protected_prop_id =
+            maybe_protected_prop_id.ok_or(SchemaVariantError::PropNotFound("/root/si/type"))?;
+
+        // Set the default type of the schema variant.
+        let attribute_read_context = AttributeReadContext::default_with_prop(type_prop_id);
+        let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
+            .await?
+            .ok_or(SchemaVariantError::AttributeValueNotFoundForContext(
+                attribute_read_context,
+            ))?;
+        let parent_attribute_value = attribute_value
+            .parent_attribute_value(ctx)
+            .await?
+            .ok_or_else(|| {
+                SchemaVariantError::AttributeValueDoesNotHaveParent(*attribute_value.id())
+            })?;
+        let context = AttributeContextBuilder::from(attribute_read_context).to_context()?;
+        AttributeValue::update_for_context(
+            ctx,
+            *attribute_value.id(),
+            Some(*parent_attribute_value.id()),
+            context,
+            Some(serde_json::to_value(component_type)?),
+            None,
+        )
+        .await?;
+
+        // Ensure _all_ schema variants are not protected by default.
+        let attribute_read_context = AttributeReadContext::default_with_prop(protected_prop_id);
+        let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
+            .await?
+            .ok_or(SchemaVariantError::AttributeValueNotFoundForContext(
+                attribute_read_context,
+            ))?;
+        let parent_attribute_value = attribute_value
+            .parent_attribute_value(ctx)
+            .await?
+            .ok_or_else(|| {
+                SchemaVariantError::AttributeValueDoesNotHaveParent(*attribute_value.id())
+            })?;
+        let context = AttributeContextBuilder::from(attribute_read_context).to_context()?;
+        AttributeValue::update_for_context(
+            ctx,
+            *attribute_value.id(),
+            Some(*parent_attribute_value.id()),
+            context,
+            Some(serde_json::json![false]),
+            None,
+        )
+        .await?;
 
         debug!("finalizing {:?} took {:?}", self.id, total_start.elapsed());
         Ok(())
@@ -379,6 +422,26 @@ impl SchemaVariant {
         result: SchemaVariantResult,
     );
 
+    /// List all direct child [`Props`](crate::Prop) of the [`Prop`](crate::Prop) corresponding
+    /// to "/root/si".
+    #[instrument(skip_all)]
+    pub async fn list_root_si_child_props(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<Prop>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_ROOT_SI_CHILD_PROPS,
+                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+            )
+            .await?;
+        Ok(objects_from_rows(rows)?)
+    }
+
+    // TODO(nick): change this query to take in a `SchemaVariantId` and a method that wraps this
+    // for `&self` instead.
     #[instrument(skip_all)]
     pub async fn all_props(&self, ctx: &DalContext) -> SchemaVariantResult<Vec<Prop>> {
         let rows = ctx

@@ -27,10 +27,6 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
-function nilId(): string {
-  return "00000000000000000000000000";
-}
-
 const componentsStore = useComponentsStore();
 // Note(victor): This component will only be rendered if there's a selected component.
 // To avoid weird data races where the store has already unset the value but we still need to use it, we can default to
@@ -44,24 +40,13 @@ const componentAttributesStore = useComponentAttributesStore();
 
 const editorContext = computed(() => componentAttributesStore.editorContext);
 
-// TODO: not sure why we need to pass this all back to the backend - seems like we should pass the minimal data
-const getAttributeContext = (propId: string) => ({
-  attribute_context_prop_id: propId,
-  attribute_context_internal_provider_id: nilId(),
-  attribute_context_external_provider_id: nilId(),
-  attribute_context_component_id: lastSelectedComponent.value.id,
-});
-
 const updateProperty = (event: UpdatedProperty) => {
   const prop = editorContext.value?.schema.props[event.propId];
 
   if (prop?.name === "type") {
     componentAttributesStore.SET_COMPONENT_TYPE({
-      attributeValueId: event.valueId,
-      parentAttributeValueId: event.parentValueId,
       value: event.value,
-      key: event.key,
-      attributeContext: getAttributeContext(event.propId),
+      componentId: lastSelectedComponent.value.id,
     });
   } else {
     componentAttributesStore.UPDATE_PROPERTY_VALUE({
@@ -70,7 +55,8 @@ const updateProperty = (event: UpdatedProperty) => {
         parentAttributeValueId: event.parentValueId,
         value: event.value,
         key: event.key,
-        attributeContext: getAttributeContext(event.propId),
+        propId: event.propId,
+        componentId: lastSelectedComponent.value.id,
       },
     });
   }
@@ -80,7 +66,8 @@ const addToArray = (event: AddToArray) => {
   componentAttributesStore.UPDATE_PROPERTY_VALUE({
     insert: {
       parentAttributeValueId: event.valueId,
-      attributeContext: getAttributeContext(event.propId),
+      propId: event.propId,
+      componentId: lastSelectedComponent.value.id,
     },
   });
 };
@@ -89,7 +76,8 @@ const addToMap = (event: AddToMap) => {
     insert: {
       parentAttributeValueId: event.valueId,
       key: event.key,
-      attributeContext: getAttributeContext(event.propId),
+      propId: event.propId,
+      componentId: lastSelectedComponent.value.id,
     },
   });
 };

@@ -112,8 +112,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Connect the "/root/si/name" field to the "/root/domain/metadata/name" field.
         let metadata_name_prop = self
@@ -311,8 +310,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Set default values after finalization.
         self.set_default_value_for_prop(ctx, *api_version_prop.id(), serde_json::json!["apps/v1"])

@@ -1,8 +1,8 @@
 use dal::{
     func::backend::js_command::CommandRunResult, generate_name, AttributePrototypeArgument,
-    AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentView,
-    DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider, PropKind, SocketArity,
-    StandardModel, Visibility, WorkspaceId,
+    AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentType,
+    ComponentView, DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider, Prop, PropId,
+    PropKind, SchemaVariant, SocketArity, StandardModel, Visibility, WorkspaceId,
 };
 use dal_test::{
     helpers::setup_identity_func,
@@ -31,7 +31,7 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext) {
     let schema = create_schema(ctx).await;
     let mut schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("could not finalize schema variant");
 
@@ -55,7 +55,7 @@ async fn name_from_context(ctx: &DalContext) {
     let schema = create_schema(ctx).await;
     let mut schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("could not finalize schema variant");
 
@@ -75,6 +75,142 @@ async fn name_from_context(ctx: &DalContext) {
 }
 
 #[test]
+async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: WorkspaceId) {
+    // Start on universal head tenancy and visibility.
+    ctx.update_to_universal_head();
+
+    let schema = create_schema(ctx).await;
+    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0")
+        .await
+        .expect("cannot create schema variant");
+    schema_variant
+        .finalize(ctx, None)
+        .await
+        .expect("cannot finalize schema variant");
+
+    // Switch to workspace tenancy with a new change set.
+    ctx.update_to_workspace_tenancies(wid)
+        .await
+        .expect("could not update to workspace tenancies");
+    let new_change_set = ChangeSet::new(ctx, generate_name(), None)
+        .await
+        .expect("could not create new change set");
+    ctx.update_visibility(Visibility::new(new_change_set.pk, None));
+    let (component, _) = Component::new(ctx, generate_name(), *schema_variant.id())
+        .await
+        .expect("could not create component");
+    let component_id = *component.id();
+
+    // Find the prop corresponding to "/root/si/type". Ensure that we find only one prop.
+    let si_prop = Prop::get_by_id(ctx, &root_prop.si_prop_id)
+        .await
+        .expect("could not perform get by id")
+        .expect("prop not found");
+    let si_child_props = si_prop
+        .child_props(ctx)
+        .await
+        .expect("could not find child props");
+    let mut filtered_si_child_prop_ids: Vec<PropId> = si_child_props
+        .iter()
+        .filter(|p| p.name() == "type")
+        .map(|p| *p.id())
+        .collect();
+    let type_prop_id = filtered_si_child_prop_ids
+        .pop()
+        .expect("filtered si child props are empty");
+    assert!(filtered_si_child_prop_ids.is_empty());
+
+    // With that prop, find the attribute value that we want to use for our assertion. Ensure
+    // that the context is exactly as we expect because we will rely on both the prop and the
+    // component fields being accurate for our query.
+    let expected_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(type_prop_id),
+            component_id: Some(component_id),
+            ..AttributeReadContext::default()
+        },
+    )
+    .await
+    .expect("could not perform find for context")
+    .expect("attribute value not found");
+    assert_eq!(
+        type_prop_id,                               // expected
+        expected_attribute_value.context.prop_id()  // actual
+    );
+    assert_eq!(
+        component_id,                                    // expected
+        expected_attribute_value.context.component_id()  // actual
+    );
+
+    // Now, test our query. Ensure we have the right context too.
+    let found_attribute_value = Component::find_type_attribute_value(ctx, *component.id())
+        .await
+        .expect("could not find type attribute value");
+    assert_eq!(
+        expected_attribute_value.context, // expected
+        found_attribute_value.context,    // actual
+    );
+
+    // Check the found type.
+    let found_raw_value = found_attribute_value
+        .get_value(ctx)
+        .await
+        .expect("could not get value from attribute value")
+        .expect("value is none");
+    let found_component_type: ComponentType =
+        serde_json::from_value(found_raw_value).expect("could not deserialize");
+    assert_eq!(
+        ComponentType::Component, // expected
+        found_component_type,     // actual
+    );
+
+    // Check our query wrapper.
+    let found_component_type_from_wrapper =
+        component.get_type(ctx).await.expect("could not get type");
+    assert_eq!(
+        ComponentType::Component,          // expected
+        found_component_type_from_wrapper, // actual
+    );
+
+    // Update the type.
+    let new_component_type = ComponentType::ConfigurationFrame;
+    component
+        .set_type(ctx, new_component_type)
+        .await
+        .expect("could not set type");
+
+    // Check that the type was updated. Ensure that we have the right attribute value too (specific
+    // to the component now that's been updated).
+    let updated_attribute_value = Component::find_type_attribute_value(ctx, *component.id())
+        .await
+        .expect("could not find type attribute value");
+    assert_eq!(
+        expected_attribute_value.context, // expected
+        updated_attribute_value.context,  // actual
+    );
+    let updated_raw_value = updated_attribute_value
+        .get_value(ctx)
+        .await
+        .expect("could not get value from attribute value")
+        .expect("value is none");
+    let updated_component_type: ComponentType =
+        serde_json::from_value(updated_raw_value).expect("could not deserialize");
+    assert_eq!(
+        new_component_type,     // expected
+        updated_component_type, // actual
+    );
+
+    // Check our query wrapper (again).
+    let updated_component_type_from_wrapper =
+        component.get_type(ctx).await.expect("could not get type");
+    assert_eq!(
+        new_component_type,                  // expected
+        updated_component_type_from_wrapper, // actual
+    );
+}
+
+#[test]
 async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: WorkspaceId) {
     // Switch to universal head (tenancy and visibility) to author schemas and
     // intra-schema-variant relationships.
@@ -86,7 +222,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     let (mut ekwb_schema_variant, ekwb_root_prop) =
         create_schema_variant_with_root(ctx, *ekwb_schema.id()).await;
     ekwb_schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("unable to finalize schema variant");
 
@@ -102,7 +238,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     )
     .await;
     noctua_schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("unable to finalize schema variant");
 
@@ -223,6 +359,8 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         serde_json::json![{
             "si": {
                 "name": "ekwb",
+                "type": "component",
+                "protected": false
             },
             "domain": {},
         }], // expected
@@ -232,8 +370,9 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         serde_json::json![{
             "si": {
                 "name": "noctua",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {}
         }], // expected
         noctua_component_view.properties // actual
@@ -277,13 +416,14 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         serde_json::json![{
             "si": {
                 "name": "ekwb",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {},
             "resource": {
-                "status": "ok",
-                "value": "quantum",
                 "logs": [],
+                "value": "quantum",
+                "status": "ok",
             }
         }], // expected
         ekwb_component_view.properties // actual
@@ -292,12 +432,14 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         serde_json::json![{
             "si": {
                 "name": "noctua",
+                "type": "component",
+                "protected": false
             },
             "domain": {
                 "u12a": {
-                    "status": "ok",
-                    "value": "quantum",
                     "logs": [],
+                    "value": "quantum",
+                    "status": "ok",
                 }
             }
         }], // expected
@@ -322,13 +464,14 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         serde_json::json![{
             "si": {
                 "name": "ekwb",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {},
             "resource": {
-                "status": "ok",
-                "value": "quantum",
                 "logs": [],
+                "value": "quantum",
+                "status": "ok",
             }
         }], // expected
         ekwb_component_view.properties // actual
@@ -337,12 +480,14 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         serde_json::json![{
             "si": {
                 "name": "noctua",
+                "type": "component",
+                "protected": false
             },
             "domain": {
                 "u12a": {
-                    "status": "ok",
-                    "value": "quantum",
                     "logs": [],
+                    "value": "quantum",
+                    "status": "ok",
                 }
             }
         }], // expected

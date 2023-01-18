@@ -1,6 +1,6 @@
 use dal::{
     schema::{variant::leaves::LeafKind, SchemaVariant},
-    DalContext, InternalProvider, RootPropChild, StandardModel,
+    DalContext, InternalProvider, Prop, PropId, RootPropChild, StandardModel,
 };
 use dal_test::{test, test_harness::create_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -61,13 +61,49 @@ async fn find_code_item_prop(ctx: &DalContext) {
 }
 
 #[test]
-async fn find_implicit_internal_providers_for_root_children(ctx: &DalContext) {
+async fn list_root_si_child_props(ctx: &DalContext) {
     let schema = create_schema(ctx).await;
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0")
         .await
         .expect("cannot create schema variant");
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
+        .await
+        .expect("cannot finalize schema variant");
+
+    // Gather all children of "/root/si".
+    let si_prop = Prop::get_by_id(ctx, &root_prop.si_prop_id)
+        .await
+        .expect("could not perform get by id")
+        .expect("prop not found");
+    let expected_si_child_props = si_prop
+        .child_props(ctx)
+        .await
+        .expect("could not find child props");
+    let expected_si_child_prop_ids: Vec<PropId> =
+        expected_si_child_props.iter().map(|p| *p.id()).collect();
+
+    // Now, test our query.
+    let found_si_child_props = SchemaVariant::list_root_si_child_props(ctx, *schema_variant.id())
+        .await
+        .expect("could not list root si child props");
+    let found_si_child_prop_ids: Vec<PropId> =
+        found_si_child_props.iter().map(|p| *p.id()).collect();
+
+    assert_eq!(
+        expected_si_child_prop_ids, // expected
+        found_si_child_prop_ids,    // actual
+    )
+}
+
+#[test]
+async fn list_implicit_internal_providers_for_root_children(ctx: &DalContext) {
+    let schema = create_schema(ctx).await;
+    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0")
+        .await
+        .expect("cannot create schema variant");
+    schema_variant
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
 

@@ -4,8 +4,8 @@
 
 use dal::{
     attribute::context::AttributeContextBuilder, node::NodeId, AttributeContext,
-    AttributeReadContext, AttributeValue, AttributeValueId, ComponentId, ComponentView, DalContext,
-    Prop, PropId, SchemaId, SchemaVariantId, StandardModel,
+    AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId, ComponentView,
+    DalContext, Prop, PropId, SchemaId, SchemaVariantId, StandardModel,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -259,5 +259,14 @@ impl ComponentPayload {
 
         // Return the updated attribute value id.
         updated_attribute_value_id
+    }
+
+    /// Get the full [`Component`](dal::Component) using the [`ComponentId`](dal::Component)
+    /// from [`self`](Self).
+    pub async fn component(&self, ctx: &DalContext) -> Component {
+        Component::get_by_id(ctx, &self.component_id)
+            .await
+            .expect("could not get component by id")
+            .expect("no component found")
     }
 }

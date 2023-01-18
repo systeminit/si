@@ -76,7 +76,7 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
 
     // Finalize the schema variant and create the component.
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("unable to finalize schema variant");
 
@@ -122,6 +122,8 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
             {
                 "si": {
                     "name": "component",
+                    "type": "component",
+                    "protected": false
                 },
                 "domain": {
                     "poop": true,

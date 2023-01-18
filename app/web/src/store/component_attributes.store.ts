@@ -3,7 +3,6 @@ import _ from "lodash";
 import { watch } from "vue";
 import { ApiRequest } from "@/utils/pinia_api_tools";
 import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
-
 import {
   PropertyEditorSchema,
   PropertyEditorValidation,
@@ -11,7 +10,6 @@ import {
   PropertyEditorValues,
   PropertyEditorProp,
 } from "@/api/sdf/dal/property_editor";
-import { AttributeContext } from "@/api/sdf/dal/attribute";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useComponentsStore } from "./components.store";
@@ -20,16 +18,23 @@ import { useStatusStore } from "./status.store";
 export interface UpdatePropertyEditorValueArgs {
   attributeValueId: string;
   parentAttributeValueId?: string;
-  attributeContext: AttributeContext;
+  propId: string;
+  componentId: string;
   value?: unknown;
   key?: string;
 }
 
 export interface InsertPropertyEditorValueArgs {
   parentAttributeValueId: string;
-  attributeContext: AttributeContext;
+  propId: string;
+  componentId: string;
   value?: unknown;
   key?: string;
+}
+
+export interface SetTypeArgs {
+  componentId: string;
+  value?: unknown;
 }
 
 export const useComponentAttributesStore = () => {
@@ -232,7 +237,7 @@ export const useComponentAttributesStore = () => {
           });
         },
 
-        async SET_COMPONENT_TYPE(payload: UpdatePropertyEditorValueArgs) {
+        async SET_COMPONENT_TYPE(payload: SetTypeArgs) {
           const statusStore = useStatusStore();
           statusStore.markUpdateStarted();
 
