@@ -47,7 +47,7 @@
             :disabled="disabled"
             button-rank="primary"
             button-type="neutral"
-            label="Edit binding "
+            label="Edit Binding"
             size="md"
             @click="openModal(proto.id)"
           />
