@@ -7,21 +7,22 @@ use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::edge::EdgeId;
-use crate::{ComponentId, DalContext};
+use crate::standard_model::objects_from_rows;
+use crate::{ComponentId, DalContext, Edge, StandardModelError};
 
 const LIST_MODIFIED_COMPONENTS: &str =
     include_str!("queries/change_status/list_modified_components.sql");
 const LIST_ADDED_COMPONENTS: &str = include_str!("queries/change_status/list_added_components.sql");
 const LIST_DELETED_COMPONENTS: &str =
     include_str!("queries/change_status/list_deleted_components.sql");
-const LIST_EDGE_CHANGE_STATUSES: &str =
-    include_str!("queries/change_status/list_edge_change_statuses.sql");
+const LIST_DELETED_EDGES: &str = include_str!("queries/change_status/edges_list_deleted.sql");
 
 #[derive(Error, Debug)]
 pub enum ChangeStatusError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
 }
 
 pub type ChangeStatusResult<T> = Result<T, ChangeStatusError>;
@@ -141,38 +142,17 @@ impl ComponentChangeStatusGroup {
 
 pub struct EdgeChangeStatus;
 
-pub struct EdgeChangeStatusItem {
-    pub edge_id: EdgeId,
-    pub status: ChangeStatus,
-}
-
 impl EdgeChangeStatus {
-    pub async fn list(ctx: &DalContext) -> ChangeStatusResult<Vec<EdgeChangeStatusItem>> {
+    pub async fn list_deleted(ctx: &DalContext) -> ChangeStatusResult<Vec<Edge>> {
         let rows = ctx
             .txns()
             .pg()
             .query(
-                LIST_EDGE_CHANGE_STATUSES,
+                LIST_DELETED_EDGES,
                 &[ctx.read_tenancy(), &ctx.visibility().change_set_pk],
             )
             .await?;
 
-        let mut result = Vec::new();
-        for row in rows.into_iter() {
-            let edge_id: EdgeId = row.try_get("id")?;
-            let status: String = row.try_get("status")?;
-
-            // TODO(nick): don't move the enum.
-            result.push(EdgeChangeStatusItem {
-                edge_id,
-                status: match status.as_str() {
-                    "added" => ChangeStatus::Added,
-                    "deleted" => ChangeStatus::Deleted,
-                    _ => ChangeStatus::Unmodified,
-                },
-            });
-        }
-
-        Ok(result)
+        Ok(objects_from_rows(rows)?)
     }
 }

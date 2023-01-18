@@ -9,15 +9,16 @@ use crate::change_status::{
 };
 use crate::diagram::connection::{Connection, DiagramEdgeView};
 use crate::diagram::node::DiagramNodeView;
+use crate::edge::EdgeKind;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributeValueError,
-    ComponentError, DalContext, EdgeError, Node, NodeError, NodeKind, NodePosition,
-    NodePositionError, PropError, ReadTenancyError, SchemaError, SocketId, StandardModel,
-    StandardModelError,
+    ChangeSetPk, ComponentError, DalContext, Edge, EdgeError, Node, NodeError, NodeKind,
+    NodePosition, NodePositionError, PropError, ReadTenancyError, SchemaError, SocketId,
+    StandardModel, StandardModelError,
 };
 
 pub mod connection;
@@ -115,7 +116,6 @@ impl Diagram {
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
     /// [`Connections`](crate::Connection).
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
-        let connections = Connection::list(ctx).await?;
         let nodes = Node::list(ctx).await?;
 
         let added = ComponentChangeStatus::list_added(ctx).await?;
@@ -164,27 +164,33 @@ impl Diagram {
             node_views.push(view);
         }
 
-        let edges = {
-            let edge_change_statuses = EdgeChangeStatus::list(ctx).await?;
+        let mut edges: Vec<DiagramEdgeView> = Edge::list(ctx)
+            .await?
+            .into_iter()
+            .filter(|e| *e.kind() == EdgeKind::Configuration)
+            .map(|e| {
+                let change_status = match e.visibility().change_set_pk {
+                    ChangeSetPk::NONE => ChangeStatus::Unmodified,
+                    _ => ChangeStatus::Added,
+                };
 
-            connections
-                .into_iter()
-                .filter(|conn| {
-                    node_views.iter().any(|n| {
-                        let source_node_id = conn.source.node_id.to_string();
-                        source_node_id == n.id()
-                    })
-                })
-                .map(|c| {
-                    let change_status = edge_change_statuses
-                        .iter()
-                        .find(|cs| cs.edge_id == c.id)
-                        .map_or(ChangeStatus::Unmodified, |cs| cs.status.clone());
+                DiagramEdgeView::from_with_change_status(Connection::from_edge(&e), change_status)
+            })
+            .collect();
 
-                    DiagramEdgeView::from_with_change_status(c, change_status)
-                })
-                .collect()
-        };
+        let deleted_edges: Vec<DiagramEdgeView> = EdgeChangeStatus::list_deleted(ctx)
+            .await?
+            .into_iter()
+            .filter(|e| *e.kind() == EdgeKind::Configuration)
+            .map(|e| {
+                DiagramEdgeView::from_with_change_status(
+                    Connection::from_edge(&e),
+                    ChangeStatus::Deleted,
+                )
+            })
+            .collect();
+
+        edges.extend(deleted_edges);
 
         Ok(Self {
             edges,
