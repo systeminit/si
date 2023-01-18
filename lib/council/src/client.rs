@@ -123,7 +123,7 @@ impl Client {
             Some(msg) => {
                 let msg = msg?;
                 if msg.data().is_empty() {
-                    dbg!(&msg);
+                    return Err(Error::NoListenerAvailable);
                 }
                 Ok(Some(serde_json::from_slice::<Response>(msg.data())?))
             }
@@ -176,4 +176,6 @@ pub enum Error {
     Nats(#[from] si_data_nats::Error),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+    #[error("no listener available for message that was just sent")]
+    NoListenerAvailable,
 }

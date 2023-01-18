@@ -409,7 +409,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
         council_subject_prefix.clone(),
     )
     .await?;
-    let (_shutdown_request_tx, shutdown_request_rx) = tokio::sync::watch::channel(());
+    let (council_shutdown_request_tx, shutdown_request_rx) = tokio::sync::watch::channel(());
     let (subscription_started_tx, mut subscription_started_rx) = tokio::sync::watch::channel(());
     tokio::spawn(async move {
         council_server
@@ -503,6 +503,9 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
     // unique subject prefix)
     info!("shutting down initial migrations Veritech server");
     veritech_server_handle.shutdown().await;
+
+    info!("shutting down initial migrations Council server");
+    council_shutdown_request_tx.send(())?;
 
     info!("global test setup complete");
     Ok(())

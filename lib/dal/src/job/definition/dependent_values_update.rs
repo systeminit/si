@@ -150,15 +150,6 @@ impl JobConsumer for DependentValuesUpdate {
         let mut dependency_graph =
             AttributeValue::dependent_value_graph(&ctx, &self.attribute_values).await?;
 
-        council
-            .register_dependency_graph(
-                dependency_graph
-                    .iter()
-                    .map(|(key, value)| (key.into(), value.iter().map(Into::into).collect()))
-                    .collect(),
-            )
-            .await?;
-
         // NOTE(nick,jacob): uncomment this for debugging.
         // Save printed output to a file and execute the following: "dot <file> -Tsvg -o <newfile>.svg"
         // println!("{}", dependency_graph_to_dot(ctx, &dependency_graph).await?);
@@ -168,15 +159,38 @@ impl JobConsumer for DependentValuesUpdate {
         // `AttributeValuesId`s where the list of *unsatisfied* dependencies is empty.
         let attribute_values_set: HashSet<AttributeValueId> =
             HashSet::from_iter(self.attribute_values.iter().cloned());
-        for (_, val) in dependency_graph.iter_mut() {
-            val.retain(|id| !attribute_values_set.contains(id))
+        let mut to_remove = Vec::new();
+        for (id, val) in dependency_graph.iter_mut() {
+            val.retain(|id| !attribute_values_set.contains(id));
+            if val.is_empty() {
+                to_remove.push(*id);
+            }
         }
+
+        for id in to_remove {
+            dependency_graph.remove(&id);
+        }
+
         info!(
             "DependentValuesUpdate for {:?}: dependency_graph {:?}",
             self.attribute_values, &dependency_graph
         );
 
-        let enqueued: Vec<AttributeValueId> = dependency_graph.keys().copied().collect();
+        if dependency_graph.is_empty() {
+            return Ok(());
+        }
+
+        council
+            .register_dependency_graph(
+                dependency_graph
+                    .iter()
+                    .map(|(key, value)| (key.into(), value.iter().map(Into::into).collect()))
+                    .collect(),
+            )
+            .await?;
+
+        let mut enqueued: Vec<AttributeValueId> = dependency_graph.keys().copied().collect();
+        enqueued.extend(dependency_graph.values().flatten().copied());
         status_updater
             .lock()
             .await

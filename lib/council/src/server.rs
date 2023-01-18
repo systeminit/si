@@ -27,7 +27,7 @@ impl Server {
     }
 
     pub async fn run(
-        &self,
+        self,
         subscription_started_tx: watch::Sender<()>,
         mut shutdown_request_rx: watch::Receiver<()>,
     ) -> Result<()> {
@@ -64,6 +64,7 @@ impl Server {
                 }
                 // fails if shutdown_request_tx has been dropped, which means shutdown has already happened
                 Ok(()) = outer_shutdown_request_rx.changed() => {}
+                else => unreachable!(),
             }
         });
 
@@ -122,6 +123,7 @@ impl Server {
                     info!("Worker task received our shutdown notification: stopping");
                     break;
                 }
+                else => unreachable!(),
             };
 
             match request {

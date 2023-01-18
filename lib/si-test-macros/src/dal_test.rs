@@ -271,6 +271,7 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
         // future, but for now (as before), every test starts with its own veritech server with a
         // randomized subject prefix
         expander.setup_start_veritech_server();
+        expander.setup_start_council_server();
     }
 
     expander.drop_transactions_clone_if_created();
@@ -289,6 +290,8 @@ struct FnSetupExpander {
     test_context: Option<Arc<Ident>>,
     jwt_secret_key: Option<Arc<Ident>>,
     nats_subject_prefix: Option<Arc<Ident>>,
+    council_server: Option<Arc<Ident>>,
+    start_council_server: Option<()>,
     veritech_server: Option<Arc<Ident>>,
     veritech_shutdown_handle: Option<Arc<Ident>>,
     start_veritech_server: Option<()>,
@@ -319,6 +322,8 @@ impl FnSetupExpander {
             test_context: None,
             jwt_secret_key: None,
             nats_subject_prefix: None,
+            council_server: None,
+            start_council_server: None,
             veritech_server: None,
             veritech_shutdown_handle: None,
             start_veritech_server: None,
@@ -389,6 +394,47 @@ impl FnSetupExpander {
         self.nats_subject_prefix = Some(Arc::new(var));
 
         self.nats_subject_prefix.as_ref().unwrap().clone()
+    }
+
+    fn setup_council_server(&mut self) -> Arc<Ident> {
+        if let Some(ref ident) = self.council_server {
+            return ident.clone();
+        }
+
+        let test_context = self.setup_test_context();
+        let test_context = test_context.as_ref();
+        let nats_subject_prefix = self.setup_nats_subject_prefix();
+        let nats_subject_prefix = nats_subject_prefix.as_ref();
+
+        let var = Ident::new("council_server", Span::call_site());
+        self.code.extend(quote! {
+            let #var = ::dal_test::council_server(
+                #test_context.nats_config().clone(),
+                format!("{}.council", #nats_subject_prefix),
+            ).await?;
+        });
+        self.council_server = Some(Arc::new(var));
+
+        self.council_server.as_ref().unwrap().clone()
+    }
+
+    fn setup_start_council_server(&mut self) {
+        if self.start_council_server.is_some() {
+            return;
+        }
+
+        let council_server = self.setup_council_server();
+        let council_server = council_server.as_ref();
+
+        self.code.extend(quote! {
+            {
+              let (_, shutdown_request_rx) = ::tokio::sync::watch::channel(());
+              let (subscription_started_tx, mut subscription_started_rx) = ::tokio::sync::watch::channel(());
+              ::tokio::spawn(#council_server.run(subscription_started_tx, shutdown_request_rx));
+              subscription_started_rx.changed().await.unwrap()
+            }
+        });
+        self.start_council_server = Some(());
     }
 
     fn setup_veritech_server(&mut self) -> Arc<Ident> {

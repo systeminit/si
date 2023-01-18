@@ -792,7 +792,8 @@ impl Component {
                 &[ctx.read_tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
-        let component_name: Option<String> = row.try_get("component_name")?;
+        let component_name: serde_json::Value = row.try_get("component_name")?;
+        let component_name: Option<String> = serde_json::from_value(component_name)?;
         let component_name = component_name.ok_or(ComponentError::NameIsUnset(component_id))?;
         Ok(component_name)
     }
