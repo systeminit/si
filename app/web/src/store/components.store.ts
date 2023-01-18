@@ -534,22 +534,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // but I think ideally we fetch more generic component data and then transform into diagram format as necessary
               this.rawDiagramNodes = response.nodes;
 
-              // TODO: re-enable this line, instead of code below, which maintains the existing data
-              // this.diagramEdgesById = _.keyBy(response.edges, "id");
-
-              // temporary solution to keep showing deleted edges during your session
-              const cachedEdgeStatusById = _.mapValues(
-                this.diagramEdgesById,
-                (e) => e.changeStatus,
-              );
-
-              _.assign(this.diagramEdgesById, _.keyBy(response.edges, "id"));
-
-              // preserve added/removed status set by optimistic updates
-              // TODO: remove this when backend is working
-              _.each(this.diagramEdgesById, (edgeData, edgeId) => {
-                edgeData.changeStatus = cachedEdgeStatusById[edgeId];
-              });
+              this.diagramEdgesById = _.keyBy(response.edges, "id");
             },
           });
         },

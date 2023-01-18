@@ -70,3 +70,9 @@ workspaceid: 01GPC2ZVVMSQ0AWPBW9DS87A0E
   "edgeId": "01GPH1C0K2T7WSVSAHJDC4KC5A",
   "workspaceId": "01GPC2ZVVMSQ0AWPBW9DS87A0E"
 }
+
+### Get Diagram
+
+GET http://localhost:8080/api/diagram/get_diagram?visibility_change_set_pk=01GQ35YNM21H71VVDTRN8YJJP2
+authorization: Bearer {{auth_token}}
+WorkspaceId: 01GQ35YGTWRYNMNHP7QA8A1XD1
