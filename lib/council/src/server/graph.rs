@@ -26,14 +26,19 @@ impl ValueCreationQueue {
         next_channel
     }
 
-    pub fn finished_processing(&mut self, reply_channel: String) -> Result<(), Error> {
-        if self.processing.as_ref() != Some(&reply_channel) {
+    pub fn finished_processing(&mut self, reply_channel: &str) -> Result<(), Error> {
+        if self.processing.as_deref() != Some(reply_channel) {
             return Err(Error::UnexpectedJobId);
         }
 
         self.processing = None;
 
         Ok(())
+    }
+
+    pub fn remove(&mut self, reply_channel: &str) {
+        self.processing = self.processing.take().filter(|el| *el != reply_channel);
+        self.queue.retain(|el| reply_channel != el);
     }
 }
 
@@ -67,6 +72,19 @@ impl NodeMetadata {
             return self.processing_reply_channel.clone();
         }
         None
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.wanted_by_reply_channels.is_empty() && self.processing_reply_channel.is_none()
+    }
+
+    pub fn remove_channel(&mut self, reply_channel: &str) {
+        self.wanted_by_reply_channels
+            .retain(|el| el != reply_channel);
+        self.processing_reply_channel = self
+            .processing_reply_channel
+            .take()
+            .filter(|el| el != reply_channel);
     }
 }
 
@@ -162,5 +180,21 @@ impl ChangeSetGraph {
         }
 
         Ok(VecDeque::new())
+    }
+
+    pub fn remove_channel(&mut self, change_set_id: Id, reply_channel: &str) {
+        if let Some(graph) = self.dependency_data.get_mut(&change_set_id) {
+            let mut to_remove = Vec::new();
+            for (id, metadata) in graph.iter_mut() {
+                metadata.remove_channel(reply_channel);
+                if metadata.is_empty() {
+                    to_remove.push(*id);
+                }
+            }
+
+            for id in to_remove {
+                graph.remove(&id).unwrap();
+            }
+        }
     }
 }

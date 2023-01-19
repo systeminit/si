@@ -242,7 +242,7 @@ pub async fn job_finished_value_creation(
     value_create_queue: &mut ValueCreationQueue,
     reply_channel: String,
 ) -> Result<(), Error> {
-    value_create_queue.finished_processing(reply_channel)
+    value_create_queue.finished_processing(&reply_channel)
 }
 
 pub async fn register_graph_from_job(
@@ -275,11 +275,13 @@ pub async fn job_processed_a_value(
 }
 
 pub async fn job_is_going_away(
-    _complete_graph: &mut ChangeSetGraph,
-    _value_create_queue: &mut ValueCreationQueue,
-    _reply_channel: String,
-    _change_set_id: Id,
+    complete_graph: &mut ChangeSetGraph,
+    value_create_queue: &mut ValueCreationQueue,
+    reply_channel: String,
+    change_set_id: Id,
 ) -> Result<(), Error> {
+    value_create_queue.remove(&reply_channel);
+    complete_graph.remove_channel(change_set_id, &reply_channel);
+
     Ok(())
-    //todo!()
 }
