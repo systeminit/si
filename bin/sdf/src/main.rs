@@ -3,7 +3,6 @@
 use color_eyre::Result;
 use sdf::{
     Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
-    SyncProcessor,
 };
 use telemetry_application::{
     prelude::*, start_tracing_level_signal_handler_task, ApplicationTelemetryClient,
@@ -16,6 +15,7 @@ mod args;
 /// `sdf::FaktoryProcessor` and `sdf::SyncProcessor` are also available
 type JobProcessor = sdf::NatsProcessor;
 // type JobProcessor = sdf::FaktoryProcessor;
+// type JobProcessor = sdf::SyncProcessor;
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 
@@ -95,9 +95,15 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let (job_client, job_processor) = JobProcessor::connect(&config, alive_marker).await?;
 
+    let (resource_alive_marker, mut resource_job_processor_shutdown_rx) = mpsc::channel(1);
+    let (_resource_job_client, resource_job_processor) =
+        JobProcessor::connect(&config, resource_alive_marker).await?;
+
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
     let veritech = Server::create_veritech_client(nats.clone());
+
+    let council_subject_prefix = "council".to_owned();
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
         Server::migrate_database(
@@ -107,6 +113,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             &jwt_secret_key,
             veritech.clone(),
             &encryption_key,
+            council_subject_prefix.clone(),
         )
         .await?;
         if let MigrationMode::RunAndQuit = config.migration_mode() {
@@ -127,15 +134,6 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
-    //Server::start_faktory_job_executor(
-    //    pg_pool.clone(),
-    //    nats.clone(),
-    //    faktory_conn.clone(),
-    //    veritech.clone(),
-    //    encryption_key,
-    //)
-    //.await;
-
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
             let (server, shutdown_broadcast_rx) = Server::http(
@@ -147,14 +145,16 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
+                council_subject_prefix.clone(),
             )?;
 
             Server::start_resource_refresh_scheduler(
                 pg_pool,
                 nats,
-                Box::new(SyncProcessor::new()),
+                resource_job_processor,
                 veritech,
                 encryption_key,
+                council_subject_prefix.clone(),
                 shutdown_broadcast_rx,
             )
             .await;
@@ -171,15 +171,17 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
+                council_subject_prefix.clone(),
             )
             .await?;
 
             Server::start_resource_refresh_scheduler(
                 pg_pool,
                 nats,
-                Box::new(SyncProcessor::new()),
+                resource_job_processor,
                 veritech,
                 encryption_key,
+                council_subject_prefix.clone(),
                 shutdown_broadcast_rx,
             )
             .await;
@@ -188,13 +190,15 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
         }
     }
 
-    // Blocks until all FaktoryProcessors are gone so we don't skip jobs that are still being sent to faktory_async
-    info!("Waiting for all faktory processors to finish pushing jobs");
+    // Blocks until all JobProcessors are gone so we don't skip jobs that are still being sent to job transport
+    info!("Waiting for job processors to finish pushing jobs");
     let _ = job_processor_shutdown_rx.recv().await;
+    info!("Waiting for resource job processors to finish pushing jobs");
+    let _ = resource_job_processor_shutdown_rx.recv().await;
 
     info!("Shutting down the job processor client");
     if let Err(err) = (&job_client as &dyn JobProcessorClientCloser).close().await {
-        error!("Failed to close faktory client: {err}");
+        error!("Failed to close job client: {err}");
     }
 
     Ok(())

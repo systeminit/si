@@ -291,9 +291,19 @@ pub async fn migrate_all(
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: Client,
     encryption_key: &EncryptionKey,
+    council_subject_prefix: String,
 ) -> ModelResult<()> {
     migrate(pg).await?;
-    migrate_builtins(pg, nats, job_processor, veritech, encryption_key, false).await?;
+    migrate_builtins(
+        pg,
+        nats,
+        job_processor,
+        veritech,
+        encryption_key,
+        council_subject_prefix,
+        false,
+    )
+    .await?;
     Ok(())
 }
 
@@ -309,6 +319,7 @@ pub async fn migrate_builtins(
     job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech_client::Client,
     encryption_key: &EncryptionKey,
+    council_subject_prefix: String,
     skip_migrating_schemas: bool,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
@@ -317,6 +328,7 @@ pub async fn migrate_builtins(
         job_processor,
         veritech,
         Arc::new(*encryption_key),
+        council_subject_prefix,
     );
     let dal_context = services_context.into_builder();
     let request_context = RequestContext::new_universal_head(HistoryActor::SystemInit);

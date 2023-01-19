@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::{collections::HashMap, convert::TryFrom};
 use thiserror::Error;
-use uuid::Uuid;
+use ulid::Ulid;
 
 use super::consumer::{JobConsumer, JobConsumerCustomPayload, JobInfo};
 
@@ -40,7 +40,7 @@ impl TryFrom<Box<dyn JobProducer + Send + Sync>> for JobInfo {
         let job_producer_meta = job_producer.meta()?;
 
         Ok(JobInfo {
-            id: Uuid::new_v4().to_string(),
+            id: Ulid::new().to_string(),
             kind: job_producer.type_name(),
             queue: None,
             created_at: Some(Utc::now()),

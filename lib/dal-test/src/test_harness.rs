@@ -73,6 +73,7 @@ pub struct TestContext {
     pub encryption_key: EncryptionKey,
     pub jwt_secret_key: JwtSecretKey,
     pub telemetry: telemetry::NoopClient,
+    pub council_subject_prefix: String,
 }
 
 impl TestContext {
@@ -91,14 +92,33 @@ impl TestContext {
         let job_processor =
             Box::new(SyncProcessor::new()) as Box<dyn JobQueueProcessor + Send + Sync>;
 
-        // Create a dedicated Veritech server with a unique subject prefix for each test
         let nats_subject_prefix = nats_prefix();
+
+        // Create a dedicated Council server with a unique subject prefix for each test
+        let council_subject_prefix = format!("{nats_subject_prefix}.council");
+        let council_server =
+            council_server(settings.nats.clone(), council_subject_prefix.clone()).await;
+        let (_shutdown_request_tx, shutdown_request_rx) = tokio::sync::watch::channel(());
+        let (subscription_started_tx, mut subscription_started_rx) =
+            tokio::sync::watch::channel(());
+        tokio::spawn(async move {
+            council_server
+                .run(subscription_started_tx, shutdown_request_rx)
+                .await
+                .unwrap()
+        });
+        subscription_started_rx.changed().await.unwrap();
+
+        // Create a dedicated Veritech server with a unique subject prefix for each test
+        let veritech_subject_prefix = format!("{nats_subject_prefix}.veritech");
         let veritech_server =
-            veritech_server_for_uds_cyclone(settings.nats.clone(), nats_subject_prefix.clone())
+            veritech_server_for_uds_cyclone(settings.nats.clone(), veritech_subject_prefix.clone())
                 .await;
         tokio::spawn(veritech_server.run());
-        let veritech =
-            veritech_client::Client::with_subject_prefix(nats_conn.clone(), nats_subject_prefix);
+        let veritech = veritech_client::Client::with_subject_prefix(
+            nats_conn.clone(),
+            veritech_subject_prefix,
+        );
         let encryption_key = EncryptionKey::load(
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone-server/src/dev.encryption.key"),
         )
@@ -111,6 +131,7 @@ impl TestContext {
             tmp_event_log_fs_root,
             pg,
             nats_conn,
+            council_subject_prefix,
             job_processor,
             veritech,
             encryption_key,
@@ -128,6 +149,7 @@ impl TestContext {
         veritech_client::Client,
         &EncryptionKey,
         &JwtSecretKey,
+        &str,
     ) {
         (
             &self.pg,
@@ -136,6 +158,7 @@ impl TestContext {
             self.veritech.clone(),
             &self.encryption_key,
             &self.jwt_secret_key,
+            &self.council_subject_prefix,
         )
     }
 
@@ -143,6 +166,17 @@ impl TestContext {
     pub fn telemetry(&self) -> telemetry::NoopClient {
         self.telemetry
     }
+}
+
+async fn council_server(nats_config: NatsConfig, subject_prefix: String) -> council::Server {
+    let config = council::server::Config::builder()
+        .nats(nats_config)
+        .subject_prefix(subject_prefix)
+        .build()
+        .expect("failed to build spec");
+    council::Server::new_with_config(config)
+        .await
+        .expect("failed to create server")
 }
 
 async fn veritech_server_for_uds_cyclone(

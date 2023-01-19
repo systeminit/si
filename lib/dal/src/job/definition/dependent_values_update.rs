@@ -1,10 +1,9 @@
-use std::collections::HashSet;
-use std::{collections::HashMap, convert::TryFrom};
+use std::{collections::HashMap, collections::HashSet, convert::TryFrom, sync::Arc};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
-use tokio::task::JoinSet;
+use tokio::{sync::Mutex, task::JoinSet};
 
 use crate::{
     job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
@@ -32,6 +31,7 @@ pub struct DependentValuesUpdate {
     access_builder: AccessBuilder,
     visibility: Visibility,
     job: Option<JobInfo>,
+    single_transaction: bool,
 }
 
 impl DependentValuesUpdate {
@@ -44,7 +44,27 @@ impl DependentValuesUpdate {
             access_builder,
             visibility,
             job: None,
+            single_transaction: false,
         })
+    }
+
+    async fn clone_ctx_with_new_transactions(
+        &self,
+        ctx: &DalContext,
+    ) -> JobConsumerResult<DalContext> {
+        if self.single_transaction {
+            Ok(ctx.clone())
+        } else {
+            Ok(ctx.clone_with_new_transactions().await?)
+        }
+    }
+
+    async fn commit_and_continue(&self, ctx: DalContext) -> JobConsumerResult<DalContext> {
+        if self.single_transaction {
+            Ok(ctx)
+        } else {
+            Ok(ctx.commit_and_continue().await?)
+        }
     }
 }
 
@@ -84,6 +104,14 @@ impl JobConsumer for DependentValuesUpdate {
         "DependentValuesUpdate".to_string()
     }
 
+    /// This method is a hack to support SyncProcessor in DependentValusUpdate, since we commit transactions mid job, and write to multiple ones
+    /// The sync processor needs everything to run within a single transaction, so we check for it
+    fn set_sync(&mut self) {
+        self.single_transaction = true;
+        let boxed = Box::new(self.clone()) as Box<dyn JobProducer + Send + Sync>;
+        self.job = Some(boxed.try_into().unwrap());
+    }
+
     fn access_builder(&self) -> AccessBuilder {
         self.access_builder.clone()
     }
@@ -93,12 +121,34 @@ impl JobConsumer for DependentValuesUpdate {
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
+        let mut ctx = self.clone_ctx_with_new_transactions(ctx).await?;
+
         let now = std::time::Instant::now();
 
-        let mut status_updater = StatusUpdater::initialize(ctx).await?;
+        let status_updater = Arc::new(Mutex::new(StatusUpdater::initialize(&ctx).await?));
+
+        let jid = council::Id::from_string(&self.job.as_ref().unwrap().id)?;
+        let mut council = council::Client::new(
+            ctx.nats_conn().clone(),
+            ctx.council_subject_prefix(),
+            jid,
+            self.visibility().change_set_pk.into(),
+        )
+        .await?;
+        let pub_council = council.clone_into_pub();
+
+        if let council::client::State::Shutdown = council.wait_to_create_values().await? {
+            return Ok(());
+        }
+
+        AttributeValue::create_dependent_values(&ctx, &self.attribute_values).await?;
+
+        ctx = self.commit_and_continue(ctx).await?;
+
+        council.finished_creating_values().await?;
 
         let mut dependency_graph =
-            AttributeValue::dependent_value_graph(ctx, self.attribute_values.clone()).await?;
+            AttributeValue::dependent_value_graph(&ctx, &self.attribute_values).await?;
 
         // NOTE(nick,jacob): uncomment this for debugging.
         // Save printed output to a file and execute the following: "dot <file> -Tsvg -o <newfile>.svg"
@@ -109,121 +159,170 @@ impl JobConsumer for DependentValuesUpdate {
         // `AttributeValuesId`s where the list of *unsatisfied* dependencies is empty.
         let attribute_values_set: HashSet<AttributeValueId> =
             HashSet::from_iter(self.attribute_values.iter().cloned());
-        for (_, val) in dependency_graph.iter_mut() {
-            val.retain(|id| !attribute_values_set.contains(id))
+        let mut to_remove = Vec::new();
+        for (id, val) in dependency_graph.iter_mut() {
+            val.retain(|id| !attribute_values_set.contains(id));
+            if val.is_empty() {
+                to_remove.push(*id);
+            }
         }
+
+        for id in to_remove {
+            dependency_graph.remove(&id);
+        }
+
         info!(
             "DependentValuesUpdate for {:?}: dependency_graph {:?}",
             self.attribute_values, &dependency_graph
         );
 
-        status_updater
-            .values_queued(ctx, dependency_graph.keys().copied().collect())
+        if dependency_graph.is_empty() {
+            return Ok(());
+        }
+
+        council
+            .register_dependency_graph(
+                dependency_graph
+                    .iter()
+                    .map(|(key, value)| (key.into(), value.iter().map(Into::into).collect()))
+                    .collect(),
+            )
             .await?;
+
+        let mut enqueued: Vec<AttributeValueId> = dependency_graph.keys().copied().collect();
+        enqueued.extend(dependency_graph.values().flatten().copied());
+        status_updater
+            .lock()
+            .await
+            .values_queued(&ctx, enqueued)
+            .await?;
+
+        ctx = self.commit_and_continue(ctx).await?;
 
         let mut update_tasks = JoinSet::new();
 
-        loop {
-            // If only HashMap.drain_filter were in stable...
-            // Link: https://github.com/rust-lang/rust/issues/43244
-            //
-            // let satisfied_dependencies: HashMap<AttributeValueId, Vec<AttributeValueId>> =
-            //     dependency_graph.drain_filter(|_, v| v.is_empty()).collect();
-            //
-            let mut satisfied_dependencies: Vec<AttributeValueId> =
-                dependency_graph.keys().copied().collect();
-            satisfied_dependencies.retain(|&id| {
-                let result = if let Some(dependencies) = dependency_graph.get(&id) {
-                    dependencies.is_empty()
-                } else {
-                    false
-                };
+        while !dependency_graph.is_empty() {
+            match council.fetch_response().await? {
+                Some(response) => match response {
+                    council::Response::OkToProcess { node_ids } => {
+                        for node_id in node_ids {
+                            let id = AttributeValueId::from(node_id);
+                            dependency_graph.remove(&id);
 
-                // We can go ahead and remove the entry in the dependency graph now,
-                // since we know that all of its dependencies have been satisfied.
-                // This also saves us from having to loop through the Vec again to
-                // remove these entries immediately after this loop, anyway.
-                if result {
-                    dependency_graph.remove(&id);
-                }
+                            status_updater
+                                .lock()
+                                .await
+                                .values_running(&ctx, vec![id])
+                                .await?;
+                            ctx = self.commit_and_continue(ctx).await?;
 
-                result
-            });
-
-            if !satisfied_dependencies.is_empty() {
-                // Send a batched running status with all value/component ids that are being
-                // enqueued for processing
-                status_updater
-                    .values_running(ctx, satisfied_dependencies.clone())
-                    .await?;
-            }
-
-            for id in satisfied_dependencies {
-                let attribute_value = AttributeValue::get_by_id(ctx, &id)
-                    .await?
-                    .ok_or_else(|| AttributeValueError::NotFound(id, *ctx.visibility()))?;
-                let ctx_copy = ctx.clone();
-                update_tasks
-                    .build_task()
-                    .name("AttributeValue.update_from_prototype_function")
-                    .spawn(update_value(ctx_copy, attribute_value))?;
-            }
-
-            match update_tasks.join_next().await {
-                Some(future_result) => {
-                    // We get back a `Some<Result<Result<..>>>`. We've already unwrapped the
-                    // `Some`, the outermost `Result` is a `JoinError` to let us know if
-                    // anything went wrong in joining the task.
-                    let finished_id = match future_result {
-                        // We have successfully updated a value
-                        Ok(Ok(finished_id)) => finished_id,
-                        // There was an error (with our code) when updating the value
-                        Ok(Err(err)) => {
-                            warn!(error = ?err, "error updating value");
-                            return Err(err.into());
+                            let task_ctx = self.clone_ctx_with_new_transactions(&ctx).await?;
+                            let attribute_value = AttributeValue::get_by_id(&task_ctx, &id)
+                                .await?
+                                .ok_or_else(|| {
+                                    AttributeValueError::NotFound(id, self.visibility())
+                                })?;
+                            update_tasks
+                                .build_task()
+                                .name("AttributeValue.update_from_prototype_function")
+                                .spawn(update_value(
+                                    task_ctx,
+                                    attribute_value,
+                                    self.single_transaction,
+                                    pub_council.clone(),
+                                    status_updater.clone(),
+                                ))?;
                         }
-                        // There was a Tokio JoinSet error when joining the task back (i.e. likely
-                        // I/O error)
-                        Err(err) => {
-                            warn!(error = ?err, "error when joining update task");
-                            return Err(err.into());
-                        }
-                    };
-
-                    // Remove the `AttributeValueId` that just finished from the list of
-                    // unsatisfied dependencies of all entries, so we can check what work
-                    // has been unblocked.
-                    for (_, val) in dependency_graph.iter_mut() {
-                        val.retain(|&id| id != finished_id);
                     }
+                    council::Response::BeenProcessed { node_id } => {
+                        let id = AttributeValueId::from(node_id);
+                        dependency_graph.remove(&id);
 
-                    // Send a completed status for this value and *remove* it from the hash
-                    status_updater
-                        .values_completed(ctx, vec![finished_id])
-                        .await?;
+                        // Send a completed status for this value and *remove* it from the hash
+                        status_updater
+                            .lock()
+                            .await
+                            .values_running(&ctx, vec![id])
+                            .await?;
+                        status_updater
+                            .lock()
+                            .await
+                            .values_completed(&ctx, vec![id])
+                            .await?;
+
+                        ctx = self.commit_and_continue(ctx).await?;
+                    }
+                    council::Response::OkToCreate => unreachable!(),
+                    council::Response::Shutdown => break,
+                },
+                // FIXME: reconnect
+                None => break, // Happens if subscription has been unsubscribed or if connection is closed
+            }
+
+            WsEvent::change_set_written(&ctx)
+                .await?
+                .publish(&ctx)
+                .await?;
+            ctx = self.commit_and_continue(ctx).await?;
+
+            // If we get `None` back from the `JoinSet` that means that there are no
+            // further tasks in the `JoinSet` for us to wait on. This should only happen
+            // after we've stopped adding new tasks to the `JoinSet`, which means either:
+            //   * We have completely walked the initial graph, and have visited every
+            //     node.
+            //   * We've encountered a cycle that means we can no longer make any
+            //     progress on walking the graph.
+            // In both cases, there isn't anything more we can do, so we can stop looking
+            // at the graph to find more work.
+            while let Some(future_result) = update_tasks.join_next().await {
+                // We get back a `Some<Result<Result<..>>>`. We've already unwrapped the
+                // `Some`, the outermost `Result` is a `JoinError` to let us know if
+                // anything went wrong in joining the task.
+                match future_result {
+                    // We have successfully updated a value
+                    Ok(Ok(())) => {}
+                    // There was an error (with our code) when updating the value
+                    Ok(Err(err)) => {
+                        warn!(error = ?err, "error updating value");
+
+                        council.bye().await?;
+                        return Err(err.into());
+                    }
+                    // There was a Tokio JoinSet error when joining the task back (i.e. likely
+                    // I/O error)
+                    Err(err) => {
+                        warn!(error = ?err, "error when joining update task");
+
+                        council.bye().await?;
+                        return Err(err.into());
+                    }
                 }
-                // If we get `None` back from the `JoinSet` that means that there are no
-                // further tasks in the `JoinSet` for us to wait on. This should only happen
-                // after we've stopped adding new tasks to the `JoinSet`, which means either:
-                //   * We have completely walked the initial graph, and have visited every
-                //     node.
-                //   * We've encountered a cycle that means we can no longer make any
-                //     progress on walking the graph.
-                // In both cases, there isn't anything more we can do, so we can stop looking
-                // at the graph to find more work.
-                None => break,
             }
         }
 
-        status_updater.finish(ctx).await?;
+        ctx = self.commit_and_continue(ctx).await?;
 
-        WsEvent::change_set_written(ctx).await?.publish(ctx).await?;
+        Arc::try_unwrap(status_updater)
+            .unwrap()
+            .into_inner()
+            .finish(&ctx)
+            .await?;
+
+        WsEvent::change_set_written(&ctx)
+            .await?
+            .publish(&ctx)
+            .await?;
+        if !self.single_transaction {
+            ctx.commit().await?;
+        }
 
         let elapsed_time = now.elapsed();
         info!(
             "DependentValuesUpdate for {:?} took {:?}",
             &self.attribute_values, elapsed_time
         );
+
+        council.bye().await?;
 
         Ok(())
     }
@@ -234,7 +333,10 @@ impl JobConsumer for DependentValuesUpdate {
 async fn update_value(
     ctx: DalContext,
     mut attribute_value: AttributeValue,
-) -> AttributeValueResult<AttributeValueId> {
+    single_transaction: bool,
+    council: council::PubClient,
+    status_updater: Arc<Mutex<StatusUpdater>>,
+) -> AttributeValueResult<()> {
     info!("DependentValueUpdate {:?}: START", attribute_value.id());
     let start = std::time::Instant::now();
     attribute_value.update_from_prototype_function(&ctx).await?;
@@ -244,7 +346,25 @@ async fn update_value(
         start.elapsed()
     );
 
-    Ok(*attribute_value.id())
+    // Send a completed status for this value and *remove* it from the hash
+    status_updater
+        .lock()
+        .await
+        .values_completed(&ctx, vec![*attribute_value.id()])
+        .await
+        .map_err(Box::new)?;
+
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
+    if !single_transaction {
+        ctx.commit().await?;
+    }
+
+    council.processed_value(attribute_value.id().into()).await?;
+
+    Ok(())
 }
 
 impl TryFrom<JobInfo> for DependentValuesUpdate {
@@ -267,6 +387,7 @@ impl TryFrom<JobInfo> for DependentValuesUpdate {
             access_builder,
             visibility,
             job: Some(job),
+            single_transaction: false,
         })
     }
 }

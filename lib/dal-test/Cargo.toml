@@ -25,3 +25,4 @@ tracing-subscriber = { version = "0.3.11", default-features = false, features = 
 uuid = { version = "1.1.2", features = ["serde", "v4"] }
 veritech-client = { path = "../../lib/veritech-client" }
 veritech-server = { path = "../../lib/veritech-server" }
+council = { path = "../../lib/council" }

@@ -29,6 +29,7 @@ async fn login() {
         _auth_token,
         _dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
 
     let request = LoginRequest {
@@ -86,6 +87,7 @@ async fn restore_authentication() {
         auth_token,
         _dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
 
     let response: RestoreAuthenticationResponse = api_request_auth_empty(
@@ -116,6 +118,7 @@ async fn get_defaults() {
         auth_token,
         dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
     dal_ctx.commit().await.expect("cannot commit txns");
 

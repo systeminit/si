@@ -13,12 +13,14 @@
 !rustfmt.toml
 
 # All workspace member directories from `Cargo.toml`
+!bin/council
 !bin/cyclone
 !bin/sdf
-!bin/veritech
 !bin/pinga
+!bin/veritech
 !lib/bytes-lines-codec
 !lib/config-file
+!lib/council
 !lib/cyclone-client
 !lib/cyclone-core
 !lib/cyclone-server

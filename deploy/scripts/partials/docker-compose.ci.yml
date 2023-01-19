@@ -81,3 +81,13 @@ services:
         read_only: true
     entrypoint:
       - "/usr/local/bin/pinga"
+
+  council:
+    image: "fedora:latest"
+    volumes:
+      - type: bind 
+        source: "${REPOPATH:-..}/target/debug/council"
+        target: "/usr/local/bin/council"
+        read_only: true
+    entrypoint:
+      - "/usr/local/bin/council"

@@ -42,6 +42,7 @@ COMPONENTS = \
 	bin/cyclone \
 	bin/lang-js \
 	bin/pinga \
+	bin/council \
 	bin/sdf \
 	bin/si-discord-bot \
 	bin/veritech \
@@ -69,6 +70,7 @@ COMPONENTS = \
 RELEASEABLE_COMPONENTS = \
 	app/web \
 	bin/pinga \
+	bin/council \
 	bin/sdf \
 	bin/veritech \
 	component/nats \
@@ -78,6 +80,7 @@ RELEASEABLE_COMPONENTS = \
 RUNABLE_COMPONENTS = \
 	app/web \
 	bin/pinga \
+	bin/council \
 	bin/sdf \
 	bin/veritech
 
@@ -232,7 +235,7 @@ test//lib/deadpool-cyclone//TESTDEPS: build//bin/cyclone
 test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech-server
 
 test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
-test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga
+test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga test//bin/council
 
 test//lib/si-data-faktory//RTESTDEPS: test//lib/sdf test//bin/pinga
 

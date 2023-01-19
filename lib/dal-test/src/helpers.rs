@@ -19,15 +19,9 @@ pub mod component_view;
 /// Commits the transactions in the given [`DalContext`] and returns a new context which reuses the
 /// underlying [`dal::Connections`] and with identical state.
 pub async fn commit_and_continue(ctx: DalContext) -> DalContext {
-    let (builder, conns, request_ctx) = ctx
-        .commit_into_parts()
+    ctx.commit_and_continue()
         .await
-        .expect("failed to commit txns in dal context");
-
-    builder
-        .build_with_conns(request_ctx, conns)
-        .await
-        .expect("failed to build ctx")
+        .expect("unable to commit and continue")
 }
 
 pub fn generate_fake_name() -> String {

@@ -1,0 +1,1 @@
+../../../mk/promote-image.sh

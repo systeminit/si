@@ -217,15 +217,23 @@ macro_rules! test_setup {
         $nba:ident,
         $auth_token:ident,
         $dal_ctx:ident,
-        $job_processor:ident $(,)?
+        $job_processor:ident,
+        $council_subject_prefix:ident $(,)?
     ,
     ) => {
         ::dal_test::test_harness::one_time_setup()
             .await
             .expect("one time setup failed");
         let $ctx = ::dal_test::test_harness::TestContext::init().await;
-        let ($pg, $nats_conn, $job_processor, $veritech, $encr_key, $jwt_secret_key) =
-            $ctx.entries();
+        let (
+            $pg,
+            $nats_conn,
+            $job_processor,
+            $veritech,
+            $encr_key,
+            $jwt_secret_key,
+            $council_subject_prefix,
+        ) = $ctx.entries();
         let telemetry = $ctx.telemetry();
         let $nats = $nats_conn.transaction();
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
@@ -239,6 +247,7 @@ macro_rules! test_setup {
             $encr_key.clone(),
             $jwt_secret_key.clone(),
             "myunusedsignupsecret".into(),
+            $council_subject_prefix.to_owned(),
         )
         .expect("cannot build new server");
         let $app: ::axum::Router = $app.into();
@@ -250,6 +259,7 @@ macro_rules! test_setup {
                 $job_processor.clone(),
                 $veritech.clone(),
                 std::sync::Arc::new($encr_key.clone()),
+                $council_subject_prefix.to_owned(),
             );
             let builder = services_context.into_builder();
             let ctx = builder
@@ -273,6 +283,7 @@ macro_rules! test_setup {
             $job_processor.clone(),
             $veritech.clone(),
             std::sync::Arc::new($encr_key.clone()),
+            $council_subject_prefix.to_owned(),
         );
         let builder = services_context.into_builder();
 

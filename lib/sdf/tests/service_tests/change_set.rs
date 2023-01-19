@@ -30,6 +30,7 @@ async fn list_open_change_sets() {
         auth_token,
         dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
     dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
     let _a_change_set = dal_create_change_set(&dal_ctx).await;
@@ -63,6 +64,7 @@ async fn create_change_set() {
         auth_token,
         _dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
     let request: CreateChangeSetRequest = CreateChangeSetRequest {
         change_set_name: "mastodon".to_string(),
@@ -95,6 +97,7 @@ async fn get_change_set() {
         auth_token,
         dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
     dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
     let change_set = dal_create_change_set(&dal_ctx).await;
@@ -123,6 +126,7 @@ async fn apply_change_set() {
         auth_token,
         dal_ctx,
         _job_processor,
+        _council_subject_prefix,
     );
     dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
     let change_set = dal_create_change_set(&dal_ctx).await;

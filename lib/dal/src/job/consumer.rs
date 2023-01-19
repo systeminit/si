@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use si_data_nats::NatsError;
 use si_data_pg::PgPoolError;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -44,6 +45,10 @@ pub enum JobConsumerError {
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
+    Nats(#[from] NatsError),
+    #[error(transparent)]
+    Council(#[from] council::client::Error),
+    #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
@@ -51,6 +56,8 @@ pub enum JobConsumerError {
     FixResolver(#[from] FixResolverError),
     #[error(transparent)]
     WsEvent(#[from] WsEventError),
+    #[error(transparent)]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
     #[error("no schema found for component {0}")]
@@ -106,6 +113,10 @@ pub trait JobConsumer: std::fmt::Debug + Sync {
     fn type_name(&self) -> String;
     fn access_builder(&self) -> AccessBuilder;
     fn visibility(&self) -> Visibility;
+
+    /// Horrible hack, exists to support sync processor, they need that all jobs run within the provided DalContext, without commiting any transactions, or writing to unrelated transactions
+    /// And since it's sync the data sharing issue that appears in dependent values update running in parallel in pinga, sharing data, synchronized by council, stops existing
+    fn set_sync(&mut self) {}
 
     /// Intended to be defined by implementations of this trait.
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()>;

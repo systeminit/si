@@ -33,8 +33,8 @@ use crate::{
     AttributeContextError, AttributePrototypeArgumentError, Component, ComponentId, DalContext,
     Func, FuncBackendKind, FuncBackendResponseType, FuncBinding, FuncError, HistoryEventError,
     IndexMap, InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind,
-    ReadTenancyError, StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility,
-    WriteTenancy, WsEventError,
+    ReadTenancyError, StandardModel, StandardModelError, StatusUpdaterError, Timestamp,
+    TransactionsError, Visibility, WriteTenancy, WsEventError,
 };
 
 pub mod view;
@@ -61,6 +61,8 @@ const LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT: &str =
 pub enum AttributeValueError {
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    Council(#[from] council::client::Error),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
     #[error("AttributeContext error: {0}")]
@@ -177,6 +179,8 @@ pub enum AttributeValueError {
     MissingComponentInReadContext(AttributeReadContext),
     #[error("component not found by id: {0}")]
     ComponentNotFoundById(ComponentId),
+    #[error(transparent)]
+    StatusUpdater(#[from] Box<StatusUpdaterError>),
     #[error("schema variant missing in context")]
     SchemaVariantMissing,
     #[error("schema missing in context")]
@@ -907,25 +911,10 @@ impl AttributeValue {
         }
     }
 
-    /// Returns a [`HashMap`] with key [`AttributeValueId`](Self) and value
-    /// [`Vec<AttributeValueId>`](Self) where the keys correspond to [`AttributeValues`](Self) that
-    /// are affected (directly and indirectly) by at least one of the provided
-    /// [`AttributeValueIds`](Self) having a new value. The [`Vec<AttributeValueId>`](Self)
-    /// correspond to the [`AttributeValues`](Self) that the key directly depends on that are also
-    /// affected by at least one of the provided [`AttributeValueIds`](Self) having a new value.
-    ///
-    /// **NOTE**: This has the side effect of **CREATING NEW [`AttributeValues`](Self)**
-    /// if this [`AttributeValue`] affects an [`AttributeContext`](crate::AttributeContext) where an
-    /// [`AttributePrototype`](crate::AttributePrototype) that uses it didn't already have an
-    /// [`AttributeValue`].
-    pub async fn dependent_value_graph(
+    pub async fn create_dependent_values(
         ctx: &DalContext,
-        attribute_value_ids: Vec<AttributeValueId>,
-    ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
-        info!(
-            "AttributeValue.dependent_value_graph(): {:?}",
-            attribute_value_ids
-        );
+        attribute_value_ids: &[AttributeValueId],
+    ) -> AttributeValueResult<()> {
         let total_start = std::time::Instant::now();
 
         let _rows = ctx
@@ -944,7 +933,29 @@ impl AttributeValue {
             "AttributeValue.dependent_value_graph(): Create new affected took {:?}",
             total_start.elapsed()
         );
-        let section_start = std::time::Instant::now();
+        Ok(())
+    }
+
+    /// Returns a [`HashMap`] with key [`AttributeValueId`](Self) and value
+    /// [`Vec<AttributeValueId>`](Self) where the keys correspond to [`AttributeValues`](Self) that
+    /// are affected (directly and indirectly) by at least one of the provided
+    /// [`AttributeValueIds`](Self) having a new value. The [`Vec<AttributeValueId>`](Self)
+    /// correspond to the [`AttributeValues`](Self) that the key directly depends on that are also
+    /// affected by at least one of the provided [`AttributeValueIds`](Self) having a new value.
+    ///
+    /// **NOTE**: This has the side effect of **CREATING NEW [`AttributeValues`](Self)**
+    /// if this [`AttributeValue`] affects an [`AttributeContext`](crate::AttributeContext) where an
+    /// [`AttributePrototype`](crate::AttributePrototype) that uses it didn't already have an
+    /// [`AttributeValue`].
+    pub async fn dependent_value_graph(
+        ctx: &DalContext,
+        attribute_value_ids: &[AttributeValueId],
+    ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
+        info!(
+            "AttributeValue.dependent_value_graph(): {:?}",
+            attribute_value_ids
+        );
+        let total_start = std::time::Instant::now();
 
         let rows = ctx
             .txns()
@@ -955,8 +966,7 @@ impl AttributeValue {
             )
             .await?;
         info!(
-            "AttributeValue.dependent_value_graph(): Graph query took {:?} (total elapsed {:?}",
-            section_start.elapsed(),
+            "AttributeValue.dependent_value_graph(): Graph query took {:?}",
             total_start.elapsed(),
         );
 

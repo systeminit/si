@@ -104,6 +104,8 @@ pub enum ComponentError {
     MissingAttributePrototype(AttributeValueId),
     #[error("attribute prototype does not have a function: {0}")]
     MissingAttributePrototypeFunction(AttributePrototypeId),
+    #[error("/root/si/name is unset for component {0}")]
+    NameIsUnset(ComponentId),
 
     // FIXME: change the below to be alphabetical and re-join with the above variants.
     #[error(transparent)]
@@ -790,8 +792,9 @@ impl Component {
                 &[ctx.read_tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
-        let value: serde_json::Value = row.try_get("component_name")?;
-        let component_name: String = serde_json::from_value(value)?;
+        let component_name: serde_json::Value = row.try_get("component_name")?;
+        let component_name: Option<String> = serde_json::from_value(component_name)?;
+        let component_name = component_name.ok_or(ComponentError::NameIsUnset(component_id))?;
         Ok(component_name)
     }
 

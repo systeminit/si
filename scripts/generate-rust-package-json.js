@@ -22,7 +22,7 @@ function transformInternalDeps(cargoTomlDeps) {
 
 const cargoTomlFiles = fg.sync('(bin|lib)/*/Cargo.toml');
 
-const BOOT_PACKAGES = ['pinga', 'sdf-cli', 'veritech-cli'];
+const BOOT_PACKAGES = ['pinga', 'sdf-cli', 'veritech-cli', 'council'];
 
 // add cyclone as veritech dep
 // lang-js to cyclone

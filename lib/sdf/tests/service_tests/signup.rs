@@ -14,7 +14,8 @@ use tower::ServiceExt;
 async fn create_account() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;
-    let (pg, nats, job_processor, _veritech, encr_key, jwt_secret_key) = ctx.entries();
+    let (pg, nats, job_processor, _veritech, encr_key, jwt_secret_key, council_subject_prefix) =
+        ctx.entries();
     let veritech = veritech_client::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
     let (app, _, _) = sdf::build_service(
@@ -26,6 +27,7 @@ async fn create_account() {
         *encr_key,
         jwt_secret_key.clone(),
         "my-signup-secret".into(),
+        council_subject_prefix.to_owned(),
     )
     .expect("cannot build new server");
     let app: Router = app;
@@ -61,7 +63,8 @@ async fn create_account() {
 async fn create_account_invalid_signup_secret() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;
-    let (pg, nats, job_processor, _veritech, encr_key, jwt_secret_key) = ctx.entries();
+    let (pg, nats, job_processor, _veritech, encr_key, jwt_secret_key, council_subject_prefix) =
+        ctx.entries();
     let veritech = veritech_client::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
     let (app, _, _) = sdf::build_service(
@@ -73,6 +76,7 @@ async fn create_account_invalid_signup_secret() {
         *encr_key,
         jwt_secret_key.clone(),
         "nope-nope-nope".into(),
+        council_subject_prefix.to_owned(),
     )
     .expect("cannot build new server");
     let app: Router = app;
