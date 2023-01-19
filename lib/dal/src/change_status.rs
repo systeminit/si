@@ -23,8 +23,6 @@ pub enum ChangeStatusError {
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("/root/si/name is unset for component {0}")]
-    NameIsUnset(ComponentId),
 }
 
 pub type ChangeStatusResult<T> = Result<T, ChangeStatusError>;
@@ -130,8 +128,7 @@ impl ComponentChangeStatusGroup {
         for row in rows.into_iter() {
             let component_id: ComponentId = row.try_get("component_id")?;
             let component_name: Option<String> = row.try_get("component_name")?;
-            let component_name =
-                component_name.ok_or(ChangeStatusError::NameIsUnset(component_id))?;
+            let component_name = component_name.unwrap_or_else(|| "".to_owned());
 
             // TODO(nick): don't move the enum.
             result.push(Self {
