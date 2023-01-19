@@ -315,7 +315,7 @@ impl Edge {
             true,
         ));
 
-        let edge = Edge::get_by_id(ctx_with_deleted, &edge_id)
+        let mut edge = Edge::get_by_id(ctx_with_deleted, &edge_id)
             .await?
             .ok_or(EdgeError::EdgeNotFound(edge_id))?;
 
@@ -377,7 +377,7 @@ impl Edge {
                 .id()
         };
 
-        let edge_argument = AttributePrototypeArgument::find_for_providers_and_components(
+        let mut edge_argument = AttributePrototypeArgument::find_for_providers_and_components(
             ctx_with_deleted,
             &external_provider_id,
             &internal_provider_id,

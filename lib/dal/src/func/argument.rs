@@ -221,12 +221,12 @@ impl FuncArgument {
         ctx: &DalContext,
         func_argument_id: &FuncArgumentId,
     ) -> FuncArgumentResult<()> {
-        let func_arg = match FuncArgument::get_by_id(ctx, func_argument_id).await? {
+        let mut func_arg = match FuncArgument::get_by_id(ctx, func_argument_id).await? {
             Some(func_arg) => func_arg,
             None => return Ok(()),
         };
 
-        for prototype_argument in
+        for mut prototype_argument in
             AttributePrototypeArgument::list_by_func_argument_id(ctx, *func_argument_id).await?
         {
             prototype_argument.delete_by_id(ctx).await?;

@@ -101,7 +101,7 @@ impl From<SchemaVariantId> for PrototypeContextField {
 /// `create_new_prototype_callback`.
 pub async fn associate_prototypes<'a, 'b, T, P, C, F>(
     ctx: &'b DalContext,
-    existing_protos_for_func: &[P],
+    existing_protos_for_func: &mut [P],
     prototype_context_field_ids: &[T],
     create_new_prototype_callback: Box<
         dyn Fn(DalContext, PrototypeContextField) -> F + Send + Sync + 'a,
