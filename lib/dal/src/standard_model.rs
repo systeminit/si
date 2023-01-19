@@ -724,24 +724,24 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn delete_by_pk(&self, ctx: &DalContext) -> StandardModelResult<()>
+    async fn delete_by_pk(&mut self, ctx: &DalContext) -> StandardModelResult<()>
     where
         Self: Send + Sync + Sized,
     {
-        let updated_at: chrono::DateTime<chrono::Utc> =
+        let updated_at: DateTime<Utc> =
             crate::standard_model::delete_by_pk(ctx, Self::table_name(), self.pk()).await?;
 
-        let mut visibility = *self.visibility();
-        visibility.deleted_at = Some(updated_at);
+        self.visibility_mut().deleted_at = Some(updated_at);
+        self.timestamp_mut().updated_at = updated_at;
 
-        let _history_event = crate::HistoryEvent::new(
+        HistoryEvent::new(
             ctx,
             &Self::history_event_label(vec!["deleted"]),
             &Self::history_event_message("deleted"),
             &serde_json::json![{
                 "pk": self.pk(),
                 "id": self.id(),
-                "visibility": visibility,
+                "visibility": self.visibility(),
             }],
         )
         .await?;
@@ -749,24 +749,49 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn delete_by_id(&self, ctx: &DalContext) -> StandardModelResult<()>
+    async fn delete_by_id(&mut self, ctx: &DalContext) -> StandardModelResult<()>
     where
         Self: Send + Sync + Sized,
     {
-        let updated_at: chrono::DateTime<chrono::Utc> =
+        let updated_at: DateTime<Utc> =
             crate::standard_model::delete_by_id(ctx, Self::table_name(), self.id()).await?;
 
-        let mut visibility = *self.visibility();
-        visibility.deleted_at = Some(updated_at);
+        self.visibility_mut().deleted_at = Some(updated_at);
+        self.timestamp_mut().updated_at = updated_at;
 
-        let _history_event = crate::HistoryEvent::new(
+        HistoryEvent::new(
             ctx,
             &Self::history_event_label(vec!["deleted"]),
             &Self::history_event_message("deleted"),
             &serde_json::json![{
                 "pk": self.pk(),
                 "id": self.id(),
-                "visibility": visibility,
+                "visibility": self.visibility(),
+            }],
+        )
+        .await?;
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
+    async fn undelete(&mut self, ctx: &DalContext) -> StandardModelResult<()>
+    where
+        Self: Send + Sync + Sized,
+    {
+        let updated_at: DateTime<Utc> =
+            crate::standard_model::undelete(ctx, Self::table_name(), self.pk()).await?;
+
+        self.visibility_mut().deleted_at = None;
+        self.timestamp_mut().updated_at = updated_at;
+
+        HistoryEvent::new(
+            ctx,
+            &Self::history_event_label(vec!["undeleted"]),
+            &Self::history_event_message("undeleted"),
+            &serde_json::json![{
+                "pk": self.pk(),
+                "id": self.id(),
+                "visibility": self.visibility(),
             }],
         )
         .await?;

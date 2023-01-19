@@ -49,7 +49,7 @@ async fn save_attr_func_proto_arguments(
     let mut id_set = HashSet::new();
 
     if create_all {
-        for proto_arg in
+        for mut proto_arg in
             AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?
         {
             proto_arg.delete_by_id(ctx).await?;
@@ -110,7 +110,7 @@ async fn save_attr_func_proto_arguments(
         } // else condition should be error here? (saving an arg that has no internal provider id)
     }
 
-    for proto_arg in
+    for mut proto_arg in
         AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?
     {
         if !id_set.contains(proto_arg.id()) {
@@ -376,7 +376,7 @@ async fn reset_prototype_and_value_to_builtin_function(
     let maybe_parent_attribute_value = existing_value.parent_attribute_value(ctx).await?;
     let value_value = existing_value.get_value(ctx).await?;
 
-    for proto_arg in
+    for mut proto_arg in
         AttributePrototypeArgument::list_for_attribute_prototype(ctx, *proto.id()).await?
     {
         proto_arg.delete_by_id(ctx).await?;
@@ -475,7 +475,7 @@ async fn save_validation_func_prototypes(
 
     for proto in ValidationPrototype::list_for_func(ctx, *func.id()).await? {
         if !id_set.contains(proto.id()) {
-            if let Some(proto) = ValidationPrototype::get_by_id(ctx, proto.id()).await? {
+            if let Some(mut proto) = ValidationPrototype::get_by_id(ctx, proto.id()).await? {
                 proto.delete_by_id(ctx).await?;
             }
         }

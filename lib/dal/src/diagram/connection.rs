@@ -79,7 +79,7 @@ impl Connection {
     }
 
     pub async fn delete_for_edge(ctx: &DalContext, edge_id: EdgeId) -> DiagramResult<()> {
-        let edge = Edge::get_by_id(ctx, &edge_id)
+        let mut edge = Edge::get_by_id(ctx, &edge_id)
             .await?
             .ok_or(DiagramError::EdgeNotFound)?;
 
@@ -132,7 +132,7 @@ impl Connection {
         };
 
         // Delete the arguments that have the same external provider of the edge, and are connected to an attribute prototype for
-        let edge_argument = AttributePrototypeArgument::find_for_providers_and_components(
+        let mut edge_argument = AttributePrototypeArgument::find_for_providers_and_components(
             ctx,
             external_provider.id(),
             &internal_provider_id,
@@ -184,6 +184,11 @@ impl Connection {
                 .await;
         }
 
+        Ok(())
+    }
+
+    pub async fn restore_for_edge(ctx: &DalContext, edge_id: EdgeId) -> DiagramResult<()> {
+        Edge::restore_by_id(ctx, edge_id).await?;
         Ok(())
     }
 }

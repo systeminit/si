@@ -190,7 +190,7 @@ pub async fn set_type(
                     component_id: Some(component_id),
                 };
 
-                let attribute_value =
+                let mut attribute_value =
                     AttributeValue::find_for_context(&ctx, attribute_read_context)
                         .await?
                         .ok_or(ComponentError::AttributeValueNotFound)?;
@@ -209,7 +209,7 @@ pub async fn set_type(
                     component_id: Some(component_id),
                 };
 
-                let attribute_value =
+                let mut attribute_value =
                     AttributeValue::find_for_context(&ctx, attribute_read_context)
                         .await?
                         .ok_or(ComponentError::AttributeValueNotFound)?;
