@@ -92,7 +92,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
 
     // Finalize schema
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -175,12 +175,13 @@ async fn check_validations_for_component(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "hundo_gecs"
+                "name": "hundo_gecs",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {
+                "thousand_gecs": "wrongLyrics",
                 "the_tree_of_clues": "wrong song title",
-                "thousand_gecs": "wrongLyrics"
             }
         }], // actual
         ComponentView::new(ctx, *component.id())
@@ -254,12 +255,13 @@ async fn check_validations_for_component(ctx: &DalContext) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "hundo_gecs"
+                "name": "hundo_gecs",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {
-                "the_tree_of_clues": "toothless",
-                "thousand_gecs": "stupidHorse"
+                "thousand_gecs": "stupidHorse",
+                "the_tree_of_clues": "toothless"
             }
         }], // actual
         ComponentView::new(ctx, *component.id())
@@ -331,7 +333,7 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
     .expect("unable to create validation prototype");
 
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("could not finalize");
 
@@ -385,8 +387,9 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         serde_json::json!({
             "si": {
                 "name": "Danoth",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {
                 "Tamarian": "Shaka, when the walls fell",
             }
@@ -469,8 +472,9 @@ async fn check_js_validation_for_component(ctx: &DalContext) {
         serde_json::json!({
             "si": {
                 "name": "Danoth",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {
                 "Tamarian": "Temba, his arms open",
             }

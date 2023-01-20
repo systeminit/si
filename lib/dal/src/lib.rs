@@ -99,8 +99,8 @@ pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, Ca
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{
-    resource::ResourceView, Component, ComponentError, ComponentId, ComponentStatus, ComponentView,
-    HistoryActorTimestamp,
+    resource::ResourceView, status::ComponentStatus, status::HistoryActorTimestamp, Component,
+    ComponentError, ComponentId, ComponentView,
 };
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,
@@ -155,6 +155,7 @@ pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
 pub use schema::variant::leaves::LeafInput;
 pub use schema::variant::leaves::LeafInputLocation;
 pub use schema::variant::leaves::LeafKind;
+pub use schema::variant::root_prop::component_type::ComponentType;
 pub use schema::variant::root_prop::RootProp;
 pub use schema::variant::root_prop::RootPropChild;
 pub use schema::{Schema, SchemaError, SchemaId, SchemaPk, SchemaVariant, SchemaVariantId};

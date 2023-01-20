@@ -48,7 +48,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
     .await
     .expect("could not create external provider");
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
 
@@ -193,13 +193,14 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         serde_json::json![
             {
                 "si": {
-                    "name": "god-of-war"
+                    "name": "god-of-war",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "ragnarok": {
-                        "kratos": "poop",
-                        "atreus": "canoe"
+                        "atreus": "canoe",
+                        "kratos": "poop"
                     }
                 }
             }
@@ -305,7 +306,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
     let _canoe_prop =
         create_prop_and_set_parent(ctx, PropKind::String, "canoe", *map_item_prop.id()).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
 
@@ -560,8 +561,9 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
             {
                 "si": {
                     "name": "the-game-awards-2022",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "map": {
                         "first": {
@@ -643,6 +645,8 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
             {
                 "si": {
                     "name": "the-game-awards-2022",
+                    "type": "component",
+                    "protected": false
                 },
                 "domain": {
                     "map": {

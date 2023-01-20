@@ -22,7 +22,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
     let name_prop =
         create_prop_and_set_parent(ctx, PropKind::String, "name_prop", root.domain_prop_id).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -42,8 +42,9 @@ async fn update_for_context_simple(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Basic component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {},
             }
         ],
@@ -97,8 +98,9 @@ async fn update_for_context_simple(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Basic component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "name_prop": "Miles",
                 },
@@ -126,8 +128,9 @@ async fn update_for_context_simple(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Basic component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "name_prop": "Iria",
                 },
@@ -154,7 +157,7 @@ async fn insert_for_context_simple(ctx: &DalContext) {
     let array_element =
         create_prop_and_set_parent(ctx, PropKind::String, "array_element", *array_prop.id()).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -173,8 +176,9 @@ async fn insert_for_context_simple(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "Array Component",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {},
         }],
         ComponentView::new(ctx, *component.id())
@@ -207,8 +211,9 @@ async fn insert_for_context_simple(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "Array Component",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {
                 "array_prop": [],
             },
@@ -245,7 +250,7 @@ async fn update_for_context_object(ctx: &DalContext) {
     let _tags_child_prop =
         create_prop_and_set_parent(ctx, PropKind::String, "tag", *tags_prop.id()).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -263,8 +268,9 @@ async fn update_for_context_object(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Basic component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {},
             }
         ],
@@ -340,20 +346,21 @@ async fn update_for_context_object(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Basic component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "address": {
-                        "streets": [
-                            "Suite 4",
-                            "14 Main Street"
-                        ],
                         "city": "Plainstown",
-                        "country": "Eurasia",
                         "tags": {
                             "cool": "beans",
                             "alpha": "bet",
                         },
+                        "country": "Eurasia",
+                        "streets": [
+                            "Suite 4",
+                            "14 Main Street"
+                        ],
                     },
                 },
             }
@@ -391,17 +398,18 @@ async fn update_for_context_object(ctx: &DalContext) {
             {
                 "si": {
                     "name": "Basic component",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "address": {
-                        "streets": [
-                            "123 Ok",
-                        ],
                         "city": "Nowheresville",
                         "tags": {
                             "new": "one",
                         },
+                        "streets": [
+                            "123 Ok",
+                        ],
                     },
                 },
             }
@@ -424,7 +432,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
     let array_element =
         create_prop_and_set_parent(ctx, PropKind::String, "array_element", *array_prop.id()).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -443,8 +451,9 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "Array Component",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {},
         }],
         ComponentView::new(ctx, *component.id())
@@ -482,8 +491,9 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         serde_json::json![{
             "si": {
                 "name": "Array Component",
+                "type": "component",
+                "protected": false
             },
-
             "domain": {
                 "array_prop": [
                     "Component Element",

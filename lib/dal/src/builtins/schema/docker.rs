@@ -87,8 +87,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
         Ok(())
     }
 
@@ -199,8 +198,7 @@ impl MigrationDriver {
         )
         .await?;
 
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Connect the "/root/si/name" field to the "/root/domain/image" field.
         let image_attribute_value = AttributeValue::find_for_context(

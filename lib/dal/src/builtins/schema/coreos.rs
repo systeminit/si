@@ -90,8 +90,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Collect the props we need.
         let prop_cache = maybe_prop_cache

@@ -51,6 +51,8 @@ pub enum ComponentError {
     Node(#[from] NodeError),
     #[error("diagram error: {0}")]
     Diagram(#[from] DiagramError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),

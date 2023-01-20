@@ -132,7 +132,7 @@ impl SchemaVariant {
             .await?
             .ok_or(SchemaVariantError::NotFound(schema_variant_id))?;
         if !schema_variant.finalized_once() {
-            schema_variant.finalize(ctx).await?;
+            schema_variant.finalize(ctx, None).await?;
         }
 
         // Assemble the values we need to insert an object into the map.

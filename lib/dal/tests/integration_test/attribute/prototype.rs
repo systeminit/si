@@ -97,7 +97,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext) {
     let hash_key_prop =
         create_prop_and_set_parent(ctx, PropKind::String, "album_hash_key", *album_prop.id()).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("could not finalize schema variant");
 
@@ -358,7 +358,7 @@ async fn remove_component_specific(ctx: &DalContext) {
 
     let prop = create_prop_and_set_parent(ctx, PropKind::String, "god", root.domain_prop_id).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -375,6 +375,8 @@ async fn remove_component_specific(ctx: &DalContext) {
             {
                 "si": {
                     "name": "toddhoward",
+                    "type": "component",
+                    "protected": false
                 },
                 "domain": {}
             }

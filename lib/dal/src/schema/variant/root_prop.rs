@@ -3,11 +3,14 @@
 
 use telemetry::prelude::*;
 
+use crate::edit_field::widget::WidgetKind;
 use crate::{
     schema::variant::{leaves::LeafKind, SchemaVariantResult},
     AttributeContext, AttributeValue, AttributeValueError, DalContext, Prop, PropId, PropKind,
     SchemaVariant, SchemaVariantId, StandardModel,
 };
+
+pub mod component_type;
 
 /// This enum contains the subtree names for every direct child [`Prop`](crate::Prop) of
 /// [`RootProp`](RootProp). Not all children will be of the same [`PropKind`](crate::PropKind).
@@ -78,19 +81,13 @@ impl RootProp {
             .await?;
         let root_prop_id = *root_prop.id();
 
-        let si_specific_prop = Prop::new(ctx, "si", PropKind::Object, None).await?;
-        si_specific_prop.set_parent_prop(ctx, root_prop_id).await?;
-
-        let si_name_prop = Prop::new(ctx, "name", PropKind::String, None).await?;
-        si_name_prop
-            .set_parent_prop(ctx, *si_specific_prop.id())
-            .await?;
-
         let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object, None).await?;
         domain_specific_prop
             .set_parent_prop(ctx, root_prop_id)
             .await?;
 
+        let (si_specific_prop_id, si_child_name_prop_id) =
+            Self::setup_si(ctx, root_prop_id).await?;
         let resource_specific_prop_id = Self::setup_resource(ctx, root_prop_id).await?;
         let code_specific_prop_id = Self::setup_code(ctx, root_prop_id).await?;
         let qualification_specific_prop_id = Self::setup_qualification(ctx, root_prop_id).await?;
@@ -100,6 +97,7 @@ impl RootProp {
         // AttributePrototypes & AttributeValues to be updated appropriately below.
         SchemaVariant::create_default_prototypes_and_values(ctx, schema_variant_id).await?;
 
+        // Initialize the root object.
         let root_context = AttributeContext::builder()
             .set_prop_id(root_prop_id)
             .to_context()?;
@@ -116,8 +114,9 @@ impl RootProp {
         )
         .await?;
 
+        // Initialize the si object.
         let si_context = AttributeContext::builder()
-            .set_prop_id(*si_specific_prop.id())
+            .set_prop_id(si_specific_prop_id)
             .to_context()?;
         let (_, si_value_id) = AttributeValue::update_for_context(
             ctx,
@@ -132,8 +131,9 @@ impl RootProp {
         )
         .await?;
 
+        // Initialize the si name value.
         let si_name_context = AttributeContext::builder()
-            .set_prop_id(*si_name_prop.id())
+            .set_prop_id(si_child_name_prop_id)
             .to_context()?;
         let (_, _) = AttributeValue::update_for_context(
             ctx,
@@ -148,6 +148,7 @@ impl RootProp {
         )
         .await?;
 
+        // Initialize the domain object.
         let domain_context = AttributeContext::builder()
             .set_prop_id(*domain_specific_prop.id())
             .to_context()?;
@@ -166,7 +167,7 @@ impl RootProp {
 
         Ok(Self {
             prop_id: root_prop_id,
-            si_prop_id: *si_specific_prop.id(),
+            si_prop_id: si_specific_prop_id,
             domain_prop_id: *domain_specific_prop.id(),
             resource_prop_id: resource_specific_prop_id,
             code_prop_id: code_specific_prop_id,
@@ -192,6 +193,52 @@ impl RootProp {
         leaf_item_prop.set_parent_prop(ctx, *leaf_prop.id()).await?;
 
         Ok((*leaf_prop.id(), *leaf_item_prop.id()))
+    }
+
+    async fn setup_si(
+        ctx: &DalContext,
+        root_prop_id: PropId,
+    ) -> SchemaVariantResult<(PropId, PropId)> {
+        let si_prop = Prop::new(ctx, "si", PropKind::Object, None).await?;
+        si_prop.set_parent_prop(ctx, root_prop_id).await?;
+        let si_prop_id = *si_prop.id();
+
+        let si_name_prop = Prop::new(ctx, "name", PropKind::String, None).await?;
+        si_name_prop.set_parent_prop(ctx, si_prop_id).await?;
+
+        // The protected prop ensures a component cannot be deleted in the configuration diagram.
+        let protected_prop = Prop::new(ctx, "protected", PropKind::Boolean, None).await?;
+        protected_prop.set_parent_prop(ctx, si_prop_id).await?;
+
+        // The type prop controls the type of the configuration node. The default type can be
+        // determined by the schema variant author. The widget options correspond to the component
+        // type enumeration.
+        let type_prop = Prop::new(
+            ctx,
+            "type",
+            PropKind::String,
+            Some((
+                WidgetKind::Select,
+                Some(serde_json::json!([
+                    {
+                        "label": "Component",
+                        "value": "component",
+                    },
+                    {
+                        "label": "Configuration Frame",
+                        "value": "configurationFrame",
+                    },
+                    {
+                        "label": "Aggregation Frame",
+                        "value": "aggregationFrame",
+                    },
+                ])),
+            )),
+        )
+        .await?;
+        type_prop.set_parent_prop(ctx, si_prop_id).await?;
+
+        Ok((si_prop_id, *si_name_prop.id()))
     }
 
     async fn setup_resource(ctx: &DalContext, root_prop_id: PropId) -> SchemaVariantResult<PropId> {

@@ -58,7 +58,7 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
 
     // Finalize the schema variant and create the component.
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("unable to finalize schema variant");
 
@@ -104,15 +104,17 @@ async fn add_code_generation_and_list_code_views(ctx: &DalContext) {
             {
                 "si": {
                     "name": "component",
-                },
-                "domain": {
-                    "poop": "canoe",
+                    "type": "component",
+                    "protected": false,
                 },
                 "code": {
                     "si:generateYAML": {
                         "code": "poop: canoe\n",
                         "format": "yaml",
                     },
+                },
+                "domain": {
+                    "poop": "canoe",
                 }
         }], // expected
         component_view.properties // actual

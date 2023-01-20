@@ -341,8 +341,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Set Defaults
         self.set_default_value_for_prop(
@@ -893,8 +892,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up.
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Set Defaults
         self.set_default_value_for_prop(
@@ -1342,8 +1340,7 @@ impl MigrationDriver {
         .await?;
 
         // Wrap it up!
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
-            .await?;
+        schema_variant.finalize(ctx, None).await?;
 
         // Set Defaults
         self.set_default_value_for_prop(

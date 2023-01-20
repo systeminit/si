@@ -1,5 +1,7 @@
 use axum::Json;
-use dal::{AttributeContext, AttributeValue, AttributeValueId, Visibility, WsEvent};
+use dal::{
+    AttributeContext, AttributeValue, AttributeValueId, ComponentId, PropId, Visibility, WsEvent,
+};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -9,7 +11,8 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[serde(rename_all = "camelCase")]
 pub struct InsertPropertyEditorValueRequest {
     pub parent_attribute_value_id: AttributeValueId,
-    pub attribute_context: AttributeContext,
+    pub prop_id: PropId,
+    pub component_id: ComponentId,
     pub value: Option<serde_json::Value>,
     pub key: Option<String>,
     #[serde(flatten)]
@@ -29,9 +32,13 @@ pub async fn insert_property_editor_value(
 ) -> ComponentResult<Json<InsertPropertyEditorValueResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
+    let attribute_context = AttributeContext::builder()
+        .set_prop_id(request.prop_id)
+        .set_component_id(request.component_id)
+        .to_context()?;
     let _ = AttributeValue::insert_for_context(
         &ctx,
-        request.attribute_context,
+        attribute_context,
         request.parent_attribute_value_id,
         request.value,
         request.key,

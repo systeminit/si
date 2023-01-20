@@ -6,6 +6,7 @@ use si_data_pg::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::func::argument::FuncArgumentError;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     DalContext, FuncBinding, FuncDescriptionContents, HistoryEventError, StandardModel,
@@ -20,6 +21,7 @@ pub mod binding;
 pub mod binding_return_value;
 pub mod description;
 pub mod execution;
+pub mod identity;
 
 #[derive(Error, Debug)]
 pub enum FuncError {
@@ -37,6 +39,10 @@ pub enum FuncError {
     Decode(#[from] base64::DecodeError),
     #[error("utf8 encoding error: {0}")]
     FromUtf8(#[from] FromUtf8Error),
+    #[error("func argument error: {0}")]
+    FuncArgument(#[from] FuncArgumentError),
+    #[error("func binding error: {0}")]
+    FuncBinding(String),
 
     #[error("could not find func by id: {0}")]
     NotFound(FuncId),
@@ -44,6 +50,16 @@ pub enum FuncError {
     NotFoundByName(String),
     #[error("contents ({0}) response type does not match func response type: {1}")]
     ResponseTypeMismatch(FuncDescriptionContents, FuncBackendResponseType),
+
+    /// Could not find [`FuncArgument`](crate::FuncArgument) corresponding to the identity [`Func`].
+    #[error("identity func argument not found")]
+    IdentityFuncArgumentNotFound,
+    /// Could not find the identity [`Func`].
+    #[error("identity func not found")]
+    IdentityFuncNotFound,
+    /// When attempting to find the identity [`Func`], there were too many [`Funcs`](Func) returned.
+    #[error("too many funcs found when looking for identity func")]
+    TooManyFuncsFoundForIdentity,
 }
 
 pub type FuncResult<T> = Result<T, FuncError>;

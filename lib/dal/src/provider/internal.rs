@@ -11,14 +11,14 @@
 //! ## What are explicit [`InternalProviders`](InternalProvider)?
 //!
 //! Explicit [`InternalProviders`](InternalProvider) _consume_ values from external
-//! [`SchemaVariants`](crate::SchemaVariant), pass them through a transformation [`function`](crate::Func)
-//! (usually `si:identity`), and then _expose_ the resulting value within the
+//! [`SchemaVariants`](crate::SchemaVariant), pass them through a transformation [`Func`](crate::Func)
+//! (usually the identity [`Func`](crate::Func)), and then _expose_ the resulting value within the
 //! [`SchemaVariant`](crate::SchemaVariant) that it belongs to.
 //!
 //! One way to think of explicit [`InternalProviders`](InternalProvider) is as "inverted"
 //! [`ExternalProviders`](crate::ExternalProvider). [`ExternalProviders`](crate::ExternalProvider)
 //! _consume_ values from within the [`SchemaVariant`](crate::SchemaVariant) that they belong to,
-//! pass them through a transformation [`function`](crate::Func) (usually `si:identity`), and then
+//! pass them through a transformation [`Func`](crate::Func) (usually the identity [`Func`](crate::Func)), and then
 //! _expose_ the resulting value to external [`SchemaVariants`](crate::SchemaVariant).
 //!
 //! ## Why the labels "implicit" and "explicit"?
@@ -83,8 +83,8 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
     AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView, DiagramKind,
-    FuncId, HistoryEventError, Prop, PropError, SchemaVariant, StandardModel, StandardModelError,
-    Timestamp, Visibility, WriteTenancy,
+    FuncError, FuncId, HistoryEventError, Prop, PropError, SchemaVariant, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     standard_model_has_many, AttributeContext, AttributeContextError, AttributeValue, DalContext,
@@ -135,7 +135,9 @@ pub enum InternalProviderError {
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    StandardModel(#[from] StandardModelError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
 
     #[error("attribute prototype not found for id: {0}")]
     AttributePrototypeNotFound(AttributePrototypeId),
@@ -248,18 +250,8 @@ impl InternalProvider {
         let mut internal_provider: InternalProvider =
             standard_model::finish_create_from_row(ctx, row).await?;
 
-        let identity_func_name = "si:identity".to_string();
-        let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
-            .await?
-            .pop()
-            .ok_or(InternalProviderError::MissingFunc(identity_func_name))?;
-        let (identity_func_binding, identity_func_binding_return_value) =
-            FuncBinding::create_and_execute(
-                ctx,
-                serde_json::json![{ "identity": null }],
-                *identity_func.id(),
-            )
-            .await?;
+        let (identity_func, identity_func_binding, identity_func_binding_return_value) =
+            Func::identity_with_binding_and_return_value(ctx).await?;
 
         // The "base" AttributeContext of anything we create should be as un-specific as possible,
         // and for an InternalProvider that is having only the InternalProviderId set.

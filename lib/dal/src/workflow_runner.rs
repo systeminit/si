@@ -5,18 +5,18 @@ use thiserror::Error;
 
 use crate::workflow_runner::workflow_runner_state::WorkflowRunnerState;
 use crate::workflow_runner::workflow_runner_state::WorkflowRunnerStatus;
-use crate::DalContext;
 use crate::{
     func::backend::js_command::CommandRunResult,
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     func::execution::{FuncExecution, FuncExecutionError},
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk, standard_model, standard_model_accessor, Component, ComponentError,
-    ComponentId, Func, FuncBinding, FuncBindingError, HistoryEventError, InternalProviderError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
-    WorkflowError, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
-    WorkflowResolverError, WorkflowResolverId, WriteTenancy, WsEventError,
+    ComponentId, Func, FuncBindingError, HistoryEventError, InternalProviderError, SchemaId,
+    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WorkflowError,
+    WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowResolverError,
+    WorkflowResolverId, WriteTenancy, WsEventError,
 };
+use crate::{DalContext, FuncError};
 
 pub mod workflow_runner_state;
 
@@ -48,6 +48,9 @@ pub enum WorkflowRunnerError {
     FuncBinding(#[from] FuncBindingError),
     #[error(transparent)]
     InternalProvider(#[from] InternalProviderError),
+    #[error(transparent)]
+    Func(#[from] FuncError),
+
     #[error("prototype not found {0}")]
     PrototypeNotFound(WorkflowPrototypeId),
     #[error("missing workflow {0}")]
@@ -284,17 +287,8 @@ impl WorkflowRunner {
         component_id: ComponentId,
         should_trigger_confirmations: bool,
     ) -> WorkflowRunnerResult<(FuncId, FuncBindingId, Vec<CommandRunResult>)> {
-        let identity = Func::find_by_attr(ctx, "name", &"si:identity")
-            .await?
-            .pop()
-            .ok_or_else(|| WorkflowRunnerError::MissingWorkflow("si:identity".to_owned()))?;
-
-        let (func_binding, mut func_binding_return_value) = FuncBinding::create_and_execute(
-            ctx,
-            serde_json::json!({ "identity": serde_json::to_value(func_binding_return_values)? }),
-            *identity.id(),
-        )
-        .await?;
+        let (identity, func_binding, mut func_binding_return_value) =
+            Func::identity_with_binding_and_return_value(ctx).await?;
 
         let mut resources = Vec::new();
         let mut logs = Vec::new();

@@ -1,7 +1,7 @@
 use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
 use crate::validation::Validation;
-use crate::{BuiltinsResult, DalContext, PropKind, StandardModel};
+use crate::{BuiltinsResult, ComponentType, DalContext, PropKind, StandardModel};
 
 const FRAME_NODE_COLOR: i64 = 0xFFFFFF;
 
@@ -53,20 +53,9 @@ impl MigrationDriver {
         )
         .await?;
 
-        self.finalize_schema_variant(ctx, &mut schema_variant, &root_prop)
+        schema_variant
+            .finalize(ctx, Some(ComponentType::ConfigurationFrame))
             .await?;
-
-        // set the component as a configuration frame
-        let si_type_prop = self
-            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "type")
-            .await?;
-
-        self.set_default_value_for_prop(
-            ctx,
-            *si_type_prop.id(),
-            serde_json::json!["configurationFrame"],
-        )
-        .await?;
 
         // TODO - PAUL/VICTOR:
         // As this is an actual frame and has no alternative functionality

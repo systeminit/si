@@ -389,7 +389,7 @@ pub async fn create_component_and_schema(ctx: &DalContext) -> Component {
     let schema = create_schema(ctx).await;
     let mut schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("unable to finalize schema variant");
     let name = generate_fake_name();

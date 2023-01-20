@@ -1,13 +1,10 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
-use chrono::DateTime;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use std::collections::HashMap;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -16,10 +13,7 @@ use crate::attribute::context::AttributeContextBuilder;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::code_view::CodeViewError;
-use crate::func::backend::{
-    js_validation::FuncBackendJsValidationArgs, validation::FuncBackendValidationArgs,
-};
-use crate::func::binding::{FuncBinding, FuncBindingError};
+use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::{
     FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
 };
@@ -27,23 +21,23 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::SocketEdgeKind;
 use crate::standard_model::object_from_row;
-use crate::standard_model::TypeHint;
 use crate::validation::ValidationConstructorError;
 use crate::ws_event::WsEventError;
+use crate::NodeKind;
 use crate::{
     func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
-    AttributePrototype, AttributePrototypeError, AttributePrototypeId, AttributeReadContext,
-    CodeLanguage, DalContext, EdgeError, ExternalProviderId, Func, FuncBackendKind, FuncError,
-    HistoryActor, HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError,
-    OrganizationError, Prop, PropError, PropId, ReadTenancyError, RootPropChild, Schema,
-    SchemaError, SchemaId, Socket, StandardModel, StandardModelError, Timestamp, TransactionsError,
-    ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
-    Visibility, WorkflowRunnerError, WorkspaceError, WriteTenancy,
+    AttributePrototype, AttributePrototypeArgument, AttributePrototypeArgumentError,
+    AttributePrototypeError, AttributePrototypeId, AttributeReadContext, CodeLanguage,
+    ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderError,
+    ExternalProviderId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError,
+    InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
+    PropId, ReadTenancyError, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
+    StandardModelError, Timestamp, TransactionsError, ValidationPrototypeError,
+    ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationError};
-use crate::{NodeKind, UserId};
 
 pub use view::{ComponentView, ComponentViewError};
 
@@ -52,6 +46,8 @@ pub mod confirmation;
 pub mod diff;
 pub mod qualification;
 pub mod resource;
+pub mod status;
+pub mod validation;
 pub mod view;
 
 #[derive(Error, Debug)]
@@ -106,8 +102,6 @@ pub enum ComponentError {
     MissingAttributePrototypeFunction(AttributePrototypeId),
     #[error("/root/si/name is unset for component {0}")]
     NameIsUnset(ComponentId),
-
-    // FIXME: change the below to be alphabetical and re-join with the above variants.
     #[error(transparent)]
     ComponentView(#[from] ComponentViewError),
     #[error("unable to find code generated")]
@@ -184,12 +178,29 @@ pub enum ComponentError {
     CannotUpdateResourceTreeInChangeSet,
     #[error("no func binding return value for leaf entry name: {0}")]
     MissingFuncBindingReturnValueIdForLeafEntryName(String),
+
+    /// Found an [`AttributePrototypeArgumentError`](crate::AttributePrototypeArgumentError).
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    /// Found an [`ExternalProviderError`](crate::ExternalProviderError).
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
+    /// A parent [`AttributeValue`](crate::AttributeValue) was not found for the specified
+    /// [`AttributeValueId`](crate::AttributeValue).
+    #[error("parent attribute value not found for attribute value: {0}")]
+    ParentAttributeValueNotFound(AttributeValueId),
+    /// No [`ComponentType`](crate::ComponentType) was found for the appropriate
+    /// [`AttributeValue`](crate::AttributeValue) and [`Component`](crate::Component). In other
+    /// words, the value contained in the [`AttributeValue`](crate::AttributeValue) was "none".
+    #[error("component type is none for component ({0}) and attribute value ({1})")]
+    ComponentTypeIsNone(AttributeValueId, ComponentId),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
 const FIND_FOR_NODE: &str = include_str!("queries/component/find_for_node.sql");
-//const GET_RESOURCE: &str = include_str!("./queries/get_resource.sql");
+const FIND_TYPE_ATTRIBUTE_VALUE: &str =
+    include_str!("queries/component/find_type_attribute_value.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str = include_str!("queries/component/list_for_schema_variant.sql");
 const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
     include_str!("queries/component/list_sockets_for_socket_edge_kind.sql");
@@ -447,135 +458,27 @@ impl Component {
         Ok(standard_model::object_option_from_row_option(row)?)
     }
 
-    pub async fn check_single_validation(
-        &self,
+    /// Find the [`AttributeValue`](crate::AttributeValue) whose
+    /// [`context`](crate::AttributeContext) corresponds to the [`PropId`](crate::Prop)
+    /// corresponding to "/root/si/type" and whose [`ComponentId`](Self) matches the provided
+    /// [`ComponentId`](Self).
+    ///
+    /// _Note:_ if the type has never been updated, this will find the _default_
+    /// [`AttributeValue`](crate::AttributeValue) where the [`ComponentId`](Self) is unset.
+    #[instrument(skip_all)]
+    pub async fn find_type_attribute_value(
         ctx: &DalContext,
-        validation_prototype: &ValidationPrototype,
-        value_cache: &mut HashMap<PropId, (Option<Value>, AttributeValue)>,
-    ) -> ComponentResult<()> {
-        let base_attribute_read_context = AttributeReadContext {
-            prop_id: None,
-            external_provider_id: Some(ExternalProviderId::NONE),
-            internal_provider_id: Some(InternalProviderId::NONE),
-            component_id: Some(self.id),
-        };
-
-        let prop_id = validation_prototype.context().prop_id();
-
-        let (maybe_value, attribute_value) = match value_cache.get(&prop_id) {
-            Some((value, attribute_value)) => (value.to_owned(), attribute_value.clone()),
-            None => {
-                let attribute_read_context = AttributeReadContext {
-                    prop_id: Some(prop_id),
-                    ..base_attribute_read_context
-                };
-                let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
-                    .await?
-                    .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                        attribute_read_context,
-                    ))?;
-
-                let value = match FuncBindingReturnValue::get_by_id(
-                    ctx,
-                    &attribute_value.func_binding_return_value_id(),
-                )
-                .await?
-                {
-                    Some(func_binding_return_value) => func_binding_return_value.value().cloned(),
-                    None => None,
-                };
-
-                value_cache.insert(prop_id, (value.clone(), attribute_value.clone()));
-                (value, attribute_value)
-            }
-        };
-
-        let func = Func::get_by_id(ctx, &validation_prototype.func_id())
-            .await?
-            .ok_or_else(|| PropError::MissingFuncById(validation_prototype.func_id()))?;
-
-        let mutated_args = match func.backend_kind() {
-            FuncBackendKind::Validation => {
-                // Deserialize the args, update the "value", and serialize the mutated args.
-                let mut args = FuncBackendValidationArgs::deserialize(validation_prototype.args())?;
-                args.validation = args.validation.update_value(&maybe_value)?;
-
-                serde_json::to_value(args)?
-            }
-            FuncBackendKind::JsValidation => serde_json::to_value(FuncBackendJsValidationArgs {
-                value: maybe_value.unwrap_or(serde_json::json!(null)),
-            })?,
-            kind => {
-                return Err(ComponentError::InvalidFuncBackendKindForValidations(*kind));
-            }
-        };
-
-        // Now, we can load in the mutated args!
-        let (func_binding, _) =
-            FuncBinding::create_and_execute(ctx, mutated_args, *func.id()).await?;
-
-        let attribute_value_id = *attribute_value.id();
-
-        // Does a resolver already exist for this validation func and attribute value? If so, we
-        // need to make sure the attribute_value_func_binding_return_value_id matches the
-        // func_binding_return_value_id of the current attribute value, since it could be different
-        // *even if the value is the same*. We also need to be sure to create a resolver for each
-        // attribute_value_id, since the way func_bindings are cached means the validation func
-        // won't be created for the same validation func + value, despite running this on a
-        // completely different attribute value (or even prop).
-        match ValidationResolver::find_for_attribute_value_and_validation_func(
-            ctx,
-            attribute_value_id,
-            *func.id(),
-        )
-        .await?
-        .pop()
-        {
-            Some(mut existing_resolver) => {
-                existing_resolver
-                    .set_validation_func_binding_id(ctx, func_binding.id())
-                    .await?;
-                existing_resolver
-                    .set_attribute_value_func_binding_return_value_id(
-                        ctx,
-                        attribute_value.func_binding_return_value_id(),
-                    )
-                    .await?;
-            }
-            None => {
-                ValidationResolver::new(
-                    ctx,
-                    *validation_prototype.id(),
-                    attribute_value_id,
-                    *func_binding.id(),
-                )
-                .await?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Check validations for [`Self`].
-    pub async fn check_validations(&self, ctx: &DalContext) -> ComponentResult<()> {
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-
-        let validation_prototypes =
-            ValidationPrototype::list_for_schema_variant(ctx, *schema_variant.id()).await?;
-
-        // Cache data necessary for assembling func arguments. We do this since a prop can have
-        // multiple validation prototypes within schema variant.
-        let mut cache: HashMap<PropId, (Option<Value>, AttributeValue)> = HashMap::new();
-
-        for validation_prototype in validation_prototypes {
-            self.check_single_validation(ctx, &validation_prototype, &mut cache)
-                .await?;
-        }
-
-        Ok(())
+        component_id: ComponentId,
+    ) -> ComponentResult<AttributeValue> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                FIND_TYPE_ATTRIBUTE_VALUE,
+                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+        Ok(object_from_row(row)?)
     }
 
     #[instrument(skip_all)]
@@ -889,138 +792,220 @@ impl Component {
 
         Ok(row.try_get("schema_variant_id")?)
     }
-}
 
-pk!(ComponentStatusPk);
-
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct HistoryActorTimestamp {
-    pub actor: HistoryActor,
-    pub timestamp: DateTime<Utc>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct ComponentStatus {
-    pk: ComponentStatusPk,
-    // This is a `ComponentId` as the underlying table is parallel to the components table
-    id: ComponentId,
-    #[serde(flatten)]
-    tenancy: WriteTenancy,
-    #[serde(flatten)]
-    timestamp: Timestamp,
-    #[serde(flatten)]
-    visibility: Visibility,
-    creation_timestamp: DateTime<Utc>,
-    creation_user_id: Option<UserId>,
-    update_timestamp: DateTime<Utc>,
-    update_user_id: Option<UserId>,
-}
-
-impl_standard_model! {
-    model: ComponentStatus,
-    pk: ComponentStatusPk,
-    id: ComponentId,
-    table_name: "component_statuses",
-    history_event_label_base: "component_status",
-    history_event_message_name: "Component Status"
-}
-
-impl ComponentStatus {
-    pub fn creation(&self) -> HistoryActorTimestamp {
-        HistoryActorTimestamp {
-            actor: self.actor(),
-            timestamp: self.creation_timestamp,
-        }
+    /// Gets the [`ComponentType`](crate::ComponentType) of [`self`](Self).
+    ///
+    /// Mutate this with [`Self::set_type()`].
+    pub async fn get_type(&self, ctx: &DalContext) -> ComponentResult<ComponentType> {
+        let type_attribute_value = Self::find_type_attribute_value(ctx, self.id).await?;
+        let raw_value = type_attribute_value.get_value(ctx).await?.ok_or(
+            ComponentError::ComponentTypeIsNone(*type_attribute_value.id(), self.id),
+        )?;
+        let component_type: ComponentType = serde_json::from_value(raw_value)?;
+        Ok(component_type)
     }
 
-    pub fn update(&self) -> HistoryActorTimestamp {
-        HistoryActorTimestamp {
-            actor: self.actor(),
-            timestamp: self.update_timestamp,
-        }
-    }
-
-    /// Persists updated 'update' timestamp/actor data by [`ComponentId`] and returns the update
-    /// timestamp.
-    ///
-    /// # Errors
-    ///
-    /// Return [`Err`] if the upsert failed or if there was a connection issue to the database.
-    pub async fn record_update_by_id(
+    /// Sets the field corresponding to "/root/si/type" for the [`Component`]. Possible values
+    /// are limited to variants of [`ComponentType`](crate::ComponentType).
+    pub async fn set_type(
+        &self,
         ctx: &DalContext,
-        id: ComponentId,
-    ) -> ComponentResult<DateTime<Utc>> {
-        let actor_user_id = Self::user_id(ctx.history_actor());
+        component_type: ComponentType,
+    ) -> ComponentResult<()> {
+        let type_attribute_value = Self::find_type_attribute_value(ctx, self.id).await?;
 
-        // TODO(fnichol): I would *highly* prefer to avoid 2 `UPDATE` statements, but our standard
-        // model update code understands how to properly upsert a record to the correct visibility.
-        // That is, we might be updating a record that exists only so far in HEAD, and therefore a
-        // new change set record must be created. The first `update()` call guarentees this upsert
-        // and the second call is effectively executing the "update-not-insert" code path, but
-        // since we get arbitrary field updates for free and there's only one more field to update,
-        // why not call it again?.
-        //
-        // If we decide to extract the standard model upsert logic, then a custom db function could
-        // be written to use that and called once from here--I'm too nervous to duplicate the
-        // upsert code to save on *1* more db statement call.
-        let update_timestamp = standard_model::update(
+        // If we are setting the type for the first time, we will need to mutate the context to
+        // be component-specific. This is because the attribute value will have an unset component
+        // id and we will need to deviate from the schema variant default component type.
+        let attribute_context = if type_attribute_value.context.is_component_unset() {
+            AttributeContextBuilder::from(type_attribute_value.context)
+                .set_component_id(self.id)
+                .to_context()?
+        } else {
+            type_attribute_value.context
+        };
+
+        let si_attribute_value = type_attribute_value
+            .parent_attribute_value(ctx)
+            .await?
+            .ok_or(ComponentError::ParentAttributeValueNotFound(
+                *type_attribute_value.id(),
+            ))?;
+        AttributeValue::update_for_context(
             ctx,
-            "component_statuses",
-            "update_user_id",
-            &id,
-            &actor_user_id,
-            TypeHint::BpChar,
-        )
-        .await?;
-        let _updated_at = standard_model::update(
-            ctx,
-            "component_statuses",
-            "update_timestamp",
-            &id,
-            &update_timestamp,
-            TypeHint::TimestampWithTimeZone,
+            *type_attribute_value.id(),
+            Some(*si_attribute_value.id()),
+            attribute_context,
+            Some(serde_json::to_value(component_type)?),
+            None,
         )
         .await?;
 
-        Ok(update_timestamp)
-    }
+        // Now that we've updated the field, we need to see if we need to do additional work.
+        let schema_variant = self
+            .schema_variant(ctx)
+            .await?
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
+        let external_providers =
+            ExternalProvider::list_for_schema_variant(ctx, *schema_variant.id()).await?;
+        let internal_providers =
+            InternalProvider::list_explicit_for_schema_variant(ctx, *schema_variant.id()).await?;
 
-    /// Persists updated 'update' timestamp/actor data and returns the update timestamp.
-    ///
-    /// # Errors
-    ///
-    /// Return [`Err`] if there was a connection issue to the database.
-    pub async fn record_update(&mut self, ctx: &DalContext) -> ComponentResult<DateTime<Utc>> {
-        let actor_user_id = Self::user_id(ctx.history_actor());
+        // We have some work to do for all component types, but the aggregation frames need a
+        // special look.
+        if let ComponentType::AggregationFrame = component_type {
+            let (func, func_binding, func_binding_return_value) =
+                Func::identity_with_binding_and_return_value(ctx).await?;
+            let func_id = *func.id();
 
-        let row = ctx
-            .pg_txn()
-            .query_one(COMPONENT_STATUS_UPDATE_BY_PK, &[&self.pk, &actor_user_id])
-            .await?;
-        let updated_at = row.try_get("updated_at").map_err(|_| {
-            StandardModelError::ModelMissing("component_statuses".to_string(), self.pk.to_string())
-        })?;
-        let update_timestamp = row.try_get("update_timestamp").map_err(|_| {
-            StandardModelError::ModelMissing("component_statuses".to_string(), self.pk.to_string())
-        })?;
-        self.timestamp.updated_at = updated_at;
-        self.update_timestamp = update_timestamp;
-        self.update_user_id = actor_user_id;
+            for external_provider in external_providers {
+                let attribute_read_context = AttributeReadContext {
+                    prop_id: Some(PropId::NONE),
+                    internal_provider_id: Some(InternalProviderId::NONE),
+                    external_provider_id: Some(*external_provider.id()),
+                    component_id: Some(self.id),
+                };
 
-        Ok(update_timestamp)
-    }
+                let attribute_context =
+                    AttributeContextBuilder::from(attribute_read_context).to_context()?;
 
-    fn actor(&self) -> HistoryActor {
-        match self.creation_user_id {
-            Some(user_id) => user_id.into(),
-            None => HistoryActor::SystemInit,
+                let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
+                    .await?
+                    .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                        attribute_read_context,
+                    ))?;
+
+                if attribute_value.context.is_component_unset() {
+                    AttributePrototype::new(
+                        ctx,
+                        func_id,
+                        *func_binding.id(),
+                        *func_binding_return_value.id(),
+                        attribute_context,
+                        None,
+                        None,
+                    )
+                    .await?;
+                } else {
+                    AttributePrototype::new_with_existing_value(
+                        ctx,
+                        func_id,
+                        attribute_context,
+                        None,
+                        None,
+                        *attribute_value.id(),
+                    )
+                    .await?;
+                };
+            }
+
+            for internal_provider in internal_providers {
+                let attribute_read_context = AttributeReadContext {
+                    prop_id: Some(PropId::NONE),
+                    internal_provider_id: Some(*internal_provider.id()),
+                    external_provider_id: Some(ExternalProviderId::NONE),
+                    component_id: Some(self.id),
+                };
+
+                let attr_write_context =
+                    AttributeContextBuilder::from(attribute_read_context).to_context()?;
+
+                let attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
+                    .await?
+                    .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                        attribute_read_context,
+                    ))?;
+
+                let prototype = attribute_value.attribute_prototype(ctx).await?.ok_or(
+                    ComponentError::MissingAttributePrototype(*attribute_value.id()),
+                )?;
+
+                let arguments = AttributePrototypeArgument::find_by_attr(
+                    ctx,
+                    "attribute_prototype_id",
+                    prototype.id(),
+                )
+                .await?;
+
+                let new_prototype = if attribute_value.context.is_component_unset() {
+                    AttributePrototype::new(
+                        ctx,
+                        func_id,
+                        *func_binding.id(),
+                        *func_binding_return_value.id(),
+                        attr_write_context,
+                        None,
+                        None,
+                    )
+                    .await?
+                } else {
+                    AttributePrototype::new_with_existing_value(
+                        ctx,
+                        func_id,
+                        attr_write_context,
+                        None,
+                        None,
+                        *attribute_value.id(),
+                    )
+                    .await?
+                };
+
+                for argument in arguments {
+                    AttributePrototypeArgument::new_for_inter_component(
+                        ctx,
+                        *new_prototype.id(),
+                        argument.func_argument_id(),
+                        argument.head_component_id(),
+                        argument.tail_component_id(),
+                        argument.external_provider_id(),
+                    )
+                    .await?;
+                }
+            }
+        } else {
+            for external_provider in external_providers {
+                let attribute_read_context = AttributeReadContext {
+                    prop_id: Some(PropId::NONE),
+                    internal_provider_id: Some(InternalProviderId::NONE),
+                    external_provider_id: Some(*external_provider.id()),
+                    component_id: Some(self.id),
+                };
+
+                let mut attribute_value =
+                    AttributeValue::find_for_context(ctx, attribute_read_context)
+                        .await?
+                        .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                            attribute_read_context,
+                        ))?;
+
+                if !attribute_value.context.is_component_unset() {
+                    attribute_value.unset_attribute_prototype(ctx).await?;
+                    attribute_value.delete_by_id(ctx).await?;
+                }
+            }
+
+            for internal_provider in internal_providers {
+                let attribute_read_context = AttributeReadContext {
+                    prop_id: Some(PropId::NONE),
+                    internal_provider_id: Some(*internal_provider.id()),
+                    external_provider_id: Some(ExternalProviderId::NONE),
+                    component_id: Some(self.id),
+                };
+
+                let mut attribute_value =
+                    AttributeValue::find_for_context(ctx, attribute_read_context)
+                        .await?
+                        .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                            attribute_read_context,
+                        ))?;
+
+                if !attribute_value.context.is_component_unset() {
+                    attribute_value.unset_attribute_prototype(ctx).await?;
+                    attribute_value.delete_by_id(ctx).await?;
+                }
+            }
         }
-    }
 
-    fn user_id(history_actor: &HistoryActor) -> Option<UserId> {
-        match history_actor {
-            HistoryActor::User(user_id) => Some(*user_id),
-            _ => None,
-        }
+        Ok(())
     }
 }

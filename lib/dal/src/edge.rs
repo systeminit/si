@@ -8,7 +8,7 @@ use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::func::argument::{FuncArgument, FuncArgumentError};
+use crate::func::argument::FuncArgumentError;
 use crate::job::definition::DependentValuesUpdate;
 use crate::node::NodeId;
 use crate::socket::SocketError;
@@ -16,8 +16,8 @@ use crate::standard_model::objects_from_rows;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
     AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
-    Func, HistoryEventError, InternalProviderError, Node, PropId, ReadTenancyError, Socket,
-    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    Func, FuncError, HistoryEventError, InternalProviderError, Node, PropId, ReadTenancyError,
+    Socket, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
@@ -56,6 +56,8 @@ pub enum EdgeError {
     Socket(#[from] SocketError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
 
     #[error("component error: {0}")]
     Component(String),
@@ -77,10 +79,6 @@ pub enum EdgeError {
     InternalProviderNotFound(InternalProviderId),
     #[error("internal provider not found for socket id: {0}")]
     InternalProviderNotFoundForSocket(SocketId),
-    #[error("cannot find identity func")]
-    IdentityFuncNotFound,
-    #[error("cannot find identity func argument")]
-    IdentityFuncArgNotFound,
     #[error("cannot find identity func argument")]
     NodeNotFound,
     #[error("cannot find identity func argument")]
@@ -415,7 +413,7 @@ impl Edge {
     /// - _"head":_ where the connection is going to
     /// - _"tail":_ where the connection is coming from
     ///
-    /// Currently this func only supports connecting via the "si:identity" func, refactoring
+    /// Currently this func only supports connecting via the identity [`Func`](crate::Func), refactoring
     /// is necessary to support other transformation functions for edge connections.
     pub async fn connect_providers_for_components(
         ctx: &DalContext,
@@ -461,20 +459,13 @@ impl Edge {
             .await?
             .ok_or(EdgeError::AttributePrototypeNotFound)?;
 
-        let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
-            .await?
-            .pop()
-            .ok_or(EdgeError::IdentityFuncNotFound)?;
-        let identity_func_arg =
-            FuncArgument::find_by_name_for_func(ctx, "identity", *identity_func.id())
-                .await?
-                .ok_or(EdgeError::IdentityFuncArgNotFound)?;
+        let (_identity_func, identity_func_argument) = Func::identity_with_argument(ctx).await?;
 
         // Now, we can create the inter component attribute prototype argument.
         AttributePrototypeArgument::new_for_inter_component(
             ctx,
             *attribute_prototype.id(),
-            *identity_func_arg.id(),
+            *identity_func_argument.id(),
             head_component_id,
             tail_component_id,
             *tail_external_provider.id(),
@@ -505,20 +496,13 @@ impl Edge {
             .await?
             .ok_or(EdgeError::AttributePrototypeNotFound)?;
 
-        let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
-            .await?
-            .pop()
-            .ok_or(EdgeError::IdentityFuncNotFound)?;
-        let identity_func_arg =
-            FuncArgument::find_by_name_for_func(ctx, "identity", *identity_func.id())
-                .await?
-                .ok_or(EdgeError::IdentityFuncArgNotFound)?;
+        let (_identity_func, identity_func_argument) = Func::identity_with_argument(ctx).await?;
 
         // Now, we can create the inter component attribute prototype argument.
         AttributePrototypeArgument::new_explicit_internal_to_explicit_internal_inter_component(
             ctx,
             *attribute_prototype.id(),
-            *identity_func_arg.id(),
+            *identity_func_argument.id(),
             head_component_id,
             tail_component_id,
             internal_provider_id,
@@ -549,20 +533,13 @@ impl Edge {
             .await?
             .ok_or(EdgeError::AttributePrototypeNotFound)?;
 
-        let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
-            .await?
-            .pop()
-            .ok_or(EdgeError::IdentityFuncNotFound)?;
-        let identity_func_arg =
-            FuncArgument::find_by_name_for_func(ctx, "identity", *identity_func.id())
-                .await?
-                .ok_or(EdgeError::IdentityFuncArgNotFound)?;
+        let (_identity_func, identity_func_argument) = Func::identity_with_argument(ctx).await?;
 
         // Now, we can create the inter component attribute prototype argument.
         AttributePrototypeArgument::new_external_to_external_inter_component(
             ctx,
             *attribute_prototype.id(),
-            *identity_func_arg.id(),
+            *identity_func_argument.id(),
             head_component_id,
             tail_component_id,
             external_provider_id,

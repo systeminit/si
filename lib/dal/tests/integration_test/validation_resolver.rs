@@ -51,7 +51,7 @@ async fn new(ctx: &DalContext) {
     .expect("unable to create validation prototype");
 
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("could not finalize schema variant");
     let component = create_component_for_schema(ctx, schema.id()).await;

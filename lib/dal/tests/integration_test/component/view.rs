@@ -37,7 +37,7 @@ pub async fn create_schema_with_object_and_string_prop(
         create_prop_and_set_parent(ctx, PropKind::String, "bohemian_rhapsody", *queen_prop.id())
             .await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -93,7 +93,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     )
     .await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -136,7 +136,7 @@ pub async fn create_schema_with_string_props(
         create_prop_and_set_parent(ctx, PropKind::String, "killer_queen", root.domain_prop_id)
             .await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -165,7 +165,7 @@ pub async fn create_schema_with_array_of_string_props(
     let album_string_prop =
         create_prop_and_set_parent(ctx, PropKind::String, "ignoreme", *sammy_prop.id()).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -218,7 +218,7 @@ pub async fn create_schema_with_nested_array_objects(
     )
     .await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -256,7 +256,7 @@ pub async fn create_simple_map(ctx: &DalContext) -> (Schema, SchemaVariant, Prop
     let album_item_prop =
         create_prop_and_set_parent(ctx, PropKind::String, "album_ignore", *album_prop.id()).await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -316,7 +316,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
     )
     .await;
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("cannot finalize SchemaVariant");
 
@@ -401,16 +401,17 @@ async fn only_string_props(ctx: &DalContext) {
         serde_json::json![
             {
                 "si": {
-                    "name": "capoeira"
+                    "name": "capoeira",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
-                    "bohemian_rhapsody": "Galileo",
-                    "killer_queen": "woohoo"
+                    "killer_queen": "woohoo",
+                    "bohemian_rhapsody": "Galileo"
                 }
             }
-        ],
-        component_view.properties,
+        ], // expected
+        component_view.properties, // actual
     );
 }
 
@@ -500,17 +501,20 @@ async fn one_object_prop(ctx: &DalContext) {
         .expect("cannot get component view");
 
     assert_eq!(
-        component_view.properties,
         serde_json::json![{
-            "si": { "name": "santos dumont" },
-
+            "si": {
+                "name": "santos dumont",
+                "type": "component",
+                "protected": false,
+            },
             "domain": {
                 "queen": {
-                    "bohemian_rhapsody": "Galileo",
-                    "killer_queen": "woohoo"
+                    "killer_queen": "woohoo",
+                    "bohemian_rhapsody": "Galileo"
                 }
             }
-        }]
+        }], // expected
+        component_view.properties, // actual
     );
 }
 
@@ -651,16 +655,17 @@ async fn nested_object_prop(ctx: &DalContext) {
         serde_json::json![
             {
                 "si": {
-                    "name": "free ronaldinho"
+                    "name": "free ronaldinho",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "queen": {
-                        "bohemian_rhapsody": "scaramouche",
                         "killer_queen": "cake",
                         "under_pressure": {
                             "another_one_bites_the_dust": "another one gone"
-                        }
+                        },
+                        "bohemian_rhapsody": "scaramouche"
                     }
                 }
             }
@@ -744,9 +749,10 @@ async fn simple_array_of_strings(ctx: &DalContext) {
         serde_json::json![
             {
                 "si": {
-                    "name": "tim maia"
+                    "name": "tim maia",
+                    "type": "component",
+                    "protected": false
                 },
-
                 "domain": {
                     "sammy_hagar": ["standing_hampton", "voa"]
                 }
@@ -981,8 +987,11 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-            "si": {"name": "An Integralist Doesn't Run, It Flies"},
-
+            "si": {
+                "name": "An Integralist Doesn't Run, It Flies",
+                "type": "component",
+                "protected": false
+            },
             "domain": {
                 "sammy_hagar": [
                     {
@@ -1078,12 +1087,15 @@ async fn simple_map(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-            "si": {"name": "E como isso afeta o Grêmio?"},
-
+            "si": {
+                "name": "E como isso afeta o Grêmio?",
+                "type": "component",
+                "protected": false
+            },
             "domain": {
                 "albums": {
-                    "black_dahlia": "nocturnal",
                     "meshuggah": "destroy erase improve",
+                    "black_dahlia": "nocturnal"
                 }
             }
         }], // expected
@@ -1243,14 +1255,17 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
 
     assert_eq!(
         serde_json::json![{
-            "si": { "name": "E como isso afeta o Grêmio?" },
-
+            "si": {
+                "name": "E como isso afeta o Grêmio?",
+                "type": "component",
+                "protected": false
+            },
             "domain": {
                 "sammy_hagar": [
                     {
                         "album": "standing_hampton",
                         "songs": [
-                            { "fall in love again": "good", "surrender": "ok"},
+                            { "surrender": "ok", "fall in love again": "good" },
                         ]
                     },
                 ]

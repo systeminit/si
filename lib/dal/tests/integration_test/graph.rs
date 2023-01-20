@@ -163,7 +163,7 @@ impl ConfigurationGraphConstructor {
         .expect("could not create external provider with socket");
 
         schema_variant
-            .finalize(ctx)
+            .finalize(ctx, None)
             .await
             .expect("could not finalize schema variant");
 

@@ -84,7 +84,7 @@ async fn add_and_run_confirmations(mut octx: DalContext, wid: WorkspaceId) {
 
     // Finalize the schema variant and create the component.
     schema_variant
-        .finalize(ctx)
+        .finalize(ctx, None)
         .await
         .expect("unable to finalize schema variant");
 
@@ -120,7 +120,9 @@ async fn add_and_run_confirmations(mut octx: DalContext, wid: WorkspaceId) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "component"
+                "name": "component",
+                "type": "component",
+                "protected": false
             },
             "domain": {},
             "confirmation": {
@@ -154,7 +156,9 @@ async fn add_and_run_confirmations(mut octx: DalContext, wid: WorkspaceId) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "component"
+                "name": "component",
+                "type": "component",
+                "protected": false
             },
             "domain": {},
             "resource": {
@@ -193,7 +197,9 @@ async fn add_and_run_confirmations(mut octx: DalContext, wid: WorkspaceId) {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "component"
+                "name": "component",
+                "type": "component",
+                "protected": false
             },
             "domain": {},
             "resource": {

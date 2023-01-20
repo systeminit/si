@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
-    edit_field::widget::WidgetKind, DalContext, DiagramKind, ExternalProvider, Func, FuncBinding,
+    edit_field::widget::WidgetKind, DalContext, DiagramKind, ExternalProvider, Func,
     InternalProvider, Prop, PropId, PropKind, RootProp, SchemaId, SchemaVariant, SocketArity,
     StandardModel,
 };
@@ -172,18 +172,9 @@ impl SchemaVariant {
         if !schema_variant_definition.input_sockets.is_empty()
             || !schema_variant_definition.output_sockets.is_empty()
         {
-            let identity_func = Func::find_by_attr(ctx, "name", &"si:identity".to_string())
-                .await?
-                .pop()
-                .ok_or(SchemaVariantError::IdentityFuncNotFoundByName)?;
+            let (identity_func, identity_func_binding, identity_func_binding_return_value) =
+                Func::identity_with_binding_and_return_value(ctx).await?;
             let identity_func_id = *identity_func.id();
-            let (identity_func_binding, identity_func_binding_return_value) =
-                FuncBinding::create_and_execute(
-                    ctx,
-                    serde_json::json![{ "identity": null }],
-                    identity_func_id,
-                )
-                .await?;
             let identity_func_binding_id = *identity_func_binding.id();
             let identity_func_binding_return_value_id = *identity_func_binding_return_value.id();
 

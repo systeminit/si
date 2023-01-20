@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::{
     func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor,
     workflow_resolver::WorkflowResolverContext, Component, ComponentId, ComponentView, DalContext,
-    Func, FuncBinding, FuncBindingError, HistoryEventError, SchemaId, SchemaVariantId,
+    Func, FuncBinding, FuncBindingError, FuncError, HistoryEventError, SchemaId, SchemaVariantId,
     StandardModel, StandardModelError, Timestamp, Visibility, WorkflowError, WorkflowResolver,
     WorkflowResolverError, WorkflowView, WriteTenancy, WsEvent, WsEventError,
 };
@@ -32,6 +32,8 @@ pub enum WorkflowPrototypeError {
     Workflow(#[from] WorkflowError),
     #[error(transparent)]
     WorkflowResolver(#[from] WorkflowResolverError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error(transparent)]
     FuncBinding(#[from] FuncBindingError),
     #[error(transparent)]
@@ -181,7 +183,7 @@ impl WorkflowPrototype {
 
     /// For the given [`WorkflowPrototype`](Self), find or create a
     /// [`WorkflowResolver`](crate::workflow_resolver::WorkflowResolver) corresponding to the
-    /// "si:identity" [`Func`](crate::Func).
+    /// identity [`Func`](crate::Func).
     ///
     /// Found resolvers are not modified.
     pub async fn resolve(
@@ -226,10 +228,7 @@ impl WorkflowPrototype {
             .await?
             .pop();
 
-        let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
-            .await?
-            .pop()
-            .ok_or_else(|| WorkflowError::MissingWorkflow("si:identity".to_owned()))?;
+        let identity_func = Func::identity_func(ctx).await?;
 
         let mut resolver = if let Some(resolver) = resolver {
             resolver
