@@ -21,6 +21,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   lib/dal/**
   lib/dal-test/**
   lib/sdf/**
+  lib/council/**
   lib/si-data-faktory/**
   lib/si-data-nats/**
   lib/si-data-pg/**
@@ -53,8 +54,10 @@ WEB_PATHS=".github/workflows/promote-web.yml
   babel.config.js
   app/web/**"
 PINGA_PATHS="${SDF_PATHS}
+  .github/workflows/promote-pinga.yml
   bin/pinga/**"
 COUNCIL_PATHS="${SDF_PATHS}
+  .github/workflows/promote-council.yml
   bin/council/**"
 
 NATS_CHANGES=false

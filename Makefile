@@ -46,6 +46,7 @@ COMPONENTS = \
 	bin/sdf \
 	bin/si-discord-bot \
 	bin/veritech \
+	lib/council \
 	lib/bytes-lines-codec \
 	lib/config-file \
 	lib/cyclone-client \
@@ -225,6 +226,9 @@ test//lib/cyclone-client//RTESTDEPS: test//lib/deadpool-cyclone
 
 test//lib/cyclone-server//TESTDEPS: build//bin/lang-js
 test//lib/cyclone-server//RTESTDEPS: test//bin/cyclone test//lib/cyclone-client
+
+test//lib/council//TESTDEPS: build//bin/cyclone deploy//partial
+test//lib/council//RTESTDEPS: test//lib/dal//TEST
 
 test//lib/dal//TESTDEPS: build//bin/cyclone deploy//partial
 test//lib/dal//RTESTDEPS: test//lib/sdf

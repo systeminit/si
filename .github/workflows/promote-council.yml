@@ -1,4 +1,4 @@
-name: promote-sdf
+name: promote-council
 
 on:
   push:
@@ -6,12 +6,12 @@ on:
       - main
     paths:
       - .github/workflows/promote-image.yml
-      - .github/workflows/promote-sdf.yml
+      - .github/workflows/promote-council.yml
       - .cargo/**
       - Cargo.*
-      - bin/sdf/**
-      - lib/config-file/**
+      - bin/council/**
       - lib/council/**
+      - lib/config-file/**
       - lib/dal/**
       - lib/sdf/**
       - lib/si-data-faktory/**
@@ -30,7 +30,7 @@ jobs:
   promote:
     uses: ./.github/workflows/promote-image.yml
     with:
-      component_name: bin/sdf
+      component_name: bin/council
     secrets:
       SLACKBOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
