@@ -784,6 +784,34 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
           });
         },
+
+        async RESTORE_EDGE(edgeId: EdgeId) {
+          return new ApiRequest({
+            method: "post",
+            url: "diagram/restore_connection",
+            keyRequestStatusBy: edgeId,
+            params: {
+              edgeId,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // this.componentDiffsById[componentId] = response.componentDiff;
+            },
+            optimistic: () => {
+              this.selectedEdgeId = null;
+
+              const originalEdge = this.diagramEdgesById[edgeId];
+              delete this.diagramEdgesById[edgeId]?.deletedAt;
+              this.diagramEdgesById[edgeId].changeStatus = "unmodified";
+
+              return () => {
+                this.diagramEdgesById[edgeId] = originalEdge;
+                this.selectedEdgeId = edgeId;
+              };
+            },
+          });
+        },
+
         async DELETE_COMPONENT(componentId: ComponentId) {
           return new ApiRequest({
             method: "post",

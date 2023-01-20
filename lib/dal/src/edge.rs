@@ -313,21 +313,28 @@ impl Edge {
             true,
         ));
 
-        let mut edge = Edge::get_by_id(ctx_with_deleted, &edge_id)
+        let deleted_edge = Edge::get_by_id(ctx_with_deleted, &edge_id)
             .await?
             .ok_or(EdgeError::EdgeNotFound(edge_id))?;
 
-        if edge.visibility().deleted_at.is_none()
-            || edge.visibility().change_set_pk != ctx.visibility().change_set_pk
+        if deleted_edge.visibility().deleted_at.is_none()
+            || deleted_edge.visibility().change_set_pk != ctx.visibility().change_set_pk
         {
             return Err(EdgeError::RestoringNonDeletedEdge(edge_id));
         }
 
-        edge.undelete(ctx_with_deleted).await?;
+        let head_node_id = &deleted_edge.head_node_id();
+        let tail_node_id = &deleted_edge.tail_node_id();
+        let head_socket_id = &deleted_edge.head_socket_id();
+        let tail_socket_id = &deleted_edge.tail_socket_id();
+
+        // Note(victor): We hard delete the edge on the changeset so the status calculations
+        // does not think it is a newly created one (Yeah yeah I know I know)
+        deleted_edge.hard_delete(ctx_with_deleted).await?;
 
         // Restore the Attribute Prototype Argument
         let head_component_id = *{
-            let head_node = Node::get_by_id(ctx, &edge.head_node_id())
+            let head_node = Node::get_by_id(ctx, head_node_id)
                 .await?
                 .ok_or(EdgeError::NodeNotFound)?;
             head_node
@@ -338,7 +345,7 @@ impl Edge {
         };
 
         let tail_component_id = *{
-            let tail_node = Node::get_by_id(ctx, &edge.tail_node_id())
+            let tail_node = Node::get_by_id(ctx, tail_node_id)
                 .await?
                 .ok_or(EdgeError::NodeNotFound)?;
             tail_node
@@ -352,7 +359,7 @@ impl Edge {
         // a head (explicit) internal provider. That might not be the case, but it true in practice for the present state of the interface
         // (aggr frame connection to children shouldn't go through this path)
         let external_provider_id = *{
-            let socket = Socket::get_by_id(ctx, &edge.tail_socket_id())
+            let socket = Socket::get_by_id(ctx, tail_socket_id)
                 .await?
                 .ok_or(EdgeError::SocketNotFound)?;
 
@@ -364,7 +371,7 @@ impl Edge {
         };
 
         let internal_provider_id = *{
-            let socket = Socket::get_by_id(ctx, &edge.head_socket_id())
+            let socket = Socket::get_by_id(ctx, head_socket_id)
                 .await?
                 .ok_or(EdgeError::SocketNotFound)?;
 
