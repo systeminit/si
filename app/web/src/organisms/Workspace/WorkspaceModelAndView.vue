@@ -233,17 +233,34 @@ watch([diagramNodes, diagramEdges], () => {
   });
 });
 
-async function onDrawEdge(e: DrawEdgeEvent) {
-  await componentsStore.CREATE_COMPONENT_CONNECTION(
-    {
-      nodeId: e.fromSocket.parent.def.id,
-      socketId: e.fromSocket.def.id,
-    },
-    {
-      nodeId: e.toSocket.parent.def.id,
-      socketId: e.toSocket.def.id,
-    },
+async function onDrawEdge(newEdge: DrawEdgeEvent) {
+  const fromNodeId = newEdge.fromSocket.parent.def.id;
+  const fromSocketId = newEdge.fromSocket.def.id;
+  const toNodeId = newEdge.toSocket.parent.def.id;
+  const toSocketId = newEdge.toSocket.def.id;
+
+  const equivalentEdge = diagramEdges.value.find(
+    (e) =>
+      e.fromNodeId === fromNodeId &&
+      e.fromSocketId === fromSocketId &&
+      e.toNodeId === toNodeId &&
+      e.toSocketId === toSocketId,
   );
+
+  if (equivalentEdge) {
+    await componentsStore.RESTORE_EDGE(equivalentEdge.id);
+  } else {
+    await componentsStore.CREATE_COMPONENT_CONNECTION(
+      {
+        nodeId: newEdge.fromSocket.parent.def.id,
+        socketId: newEdge.fromSocket.def.id,
+      },
+      {
+        nodeId: newEdge.toSocket.parent.def.id,
+        socketId: newEdge.toSocket.def.id,
+      },
+    );
+  }
 }
 
 async function onDiagramInsertElement(e: InsertElementEvent) {

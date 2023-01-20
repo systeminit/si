@@ -27,6 +27,7 @@ use crate::{
 const LIST_PARENTS_FOR_COMPONENT: &str =
     include_str!("queries/edge/list_parents_for_component.sql");
 const LIST_FOR_KIND: &str = include_str!("queries/edge/list_for_kind.sql");
+const FIND_DELETED_EQUIVALENT: &str = include_str!("queries/edge/find_deleted_equivalent.sql");
 
 #[derive(Error, Debug)]
 pub enum EdgeError {
@@ -216,6 +217,29 @@ impl Edge {
         tail_socket_id: SocketId,
         edge_kind: EdgeKind,
     ) -> EdgeResult<Self> {
+        // Revive edge if it already exists
+        if let Some(equivalent_edge) = {
+            let row = ctx
+                .txns()
+                .pg()
+                .query_opt(
+                    FIND_DELETED_EQUIVALENT,
+                    &[
+                        ctx.read_tenancy(),
+                        &ctx.visibility().change_set_pk,
+                        &head_node_id,
+                        &head_socket_id,
+                        &tail_node_id,
+                        &tail_socket_id,
+                    ],
+                )
+                .await?;
+            standard_model::object_option_from_row_option::<Edge>(row)?
+        } {
+            return Self::restore_by_id(ctx, equivalent_edge.id).await;
+        }
+
+        // Otherwise create a new one
         let head_component = Component::find_for_node(ctx, head_node_id)
             .await
             .map_err(|err| EdgeError::Component(err.to_string()))?
@@ -307,11 +331,8 @@ impl Edge {
         Ok(objects_from_rows(rows)?)
     }
 
-    pub async fn restore_by_id(ctx: &DalContext, edge_id: EdgeId) -> EdgeResult<()> {
-        let ctx_with_deleted = &ctx.clone_with_new_visibility(Visibility::new_change_set(
-            ctx.visibility().change_set_pk,
-            true,
-        ));
+    pub async fn restore_by_id(ctx: &DalContext, edge_id: EdgeId) -> EdgeResult<Self> {
+        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
 
         let deleted_edge = Edge::get_by_id(ctx_with_deleted, &edge_id)
             .await?
@@ -409,7 +430,11 @@ impl Edge {
         ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
             .await;
 
-        Ok(())
+        let head_edge = Edge::get_by_id(ctx, &edge_id)
+            .await?
+            .ok_or(EdgeError::EdgeNotFound(edge_id))?;
+
+        Ok(head_edge)
     }
 
     /// This function should be only called by [`Self::new_for_connection()`] and integration tests.

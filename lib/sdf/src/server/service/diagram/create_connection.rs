@@ -47,24 +47,12 @@ pub async fn create_connection(
     )
     .await?;
 
-    let node = Node::get_by_id(&ctx, &request.from_node_id)
+    let component = Node::get_by_id(&ctx, &request.from_node_id)
         .await?
-        .ok_or(DiagramError::NodeNotFound(request.from_node_id))?;
-
-    let component = node
+        .ok_or(DiagramError::NodeNotFound(request.from_node_id))?
         .component(&ctx)
         .await?
         .ok_or(DiagramError::ComponentNotFound)?;
-
-    let schema_variant = component
-        .schema_variant(&ctx)
-        .await?
-        .ok_or(DiagramError::SchemaVariantNotFound)?;
-
-    let _schema = schema_variant
-        .schema(&ctx)
-        .await?
-        .ok_or(DiagramError::SchemaNotFound)?;
 
     let from_socket_external_provider =
         ExternalProvider::find_for_socket(&ctx, request.from_socket_id)
