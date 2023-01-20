@@ -353,11 +353,13 @@ function triggerDeleteSelection() {
   // TODO: decide if modal is necessary
   confirmDeleteModalRef.value?.open();
 }
+
 function onConfirmDelete() {
   // TODO: show loading in modal, and close after complete
   executeDeleteSelection();
   confirmDeleteModalRef.value?.close();
 }
+
 async function executeDeleteSelection() {
   if (selectedEdgeId.value) {
     await componentsStore.DELETE_EDGE(selectedEdgeId.value);
@@ -367,9 +369,14 @@ async function executeDeleteSelection() {
     }
   }
 }
-function triggerRestoreSelection() {
-  // eslint-disable-next-line no-alert
-  alert("restore!");
+
+async function triggerRestoreSelection() {
+  if (selectedEdgeId.value) {
+    await componentsStore.RESTORE_EDGE(selectedEdgeId.value);
+  } else if (selectedComponentIds.value) {
+    // eslint-disable-next-line no-alert
+    alert("restore!");
+  }
 }
 
 watch(
