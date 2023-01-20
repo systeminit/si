@@ -682,9 +682,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // TODO: store component details rather than waiting for re-fetch
             },
             optimistic: () => {
-              // TODO: if edge already exists but is deleted in changeset, it should not be marked as new
-              // and maybe should use existing ID?
-
               this.diagramEdgesById[tempId] = {
                 id: tempId,
                 // type?: string;

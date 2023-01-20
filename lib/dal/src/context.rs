@@ -245,6 +245,14 @@ impl DalContext {
         new
     }
 
+    /// Clones a new context from this one [`Visibility`] that allows querying deleted values.
+    pub fn clone_with_delete_visibility(&self) -> Self {
+        self.clone_with_new_visibility(Visibility::new_change_set(
+            self.visibility().change_set_pk,
+            true,
+        ))
+    }
+
     /// Updates this context with a new [`ReadTenancy`] and [`WriteTenancy`].
     pub fn update_tenancies(&mut self, read_tenancy: ReadTenancy, write_tenancy: WriteTenancy) {
         self.read_tenancy = read_tenancy;
