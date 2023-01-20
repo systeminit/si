@@ -48,6 +48,20 @@ A-veritech:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
+A-pinga:
+  - bin/pinga/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-council:
+  - bin/council/**/*
+  - lib/council/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+
 A-lang-js:
   - bin/lang-js/**/*
   - .prettierrc.js
