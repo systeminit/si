@@ -1,6 +1,6 @@
 import { Func, FuncVariant } from "@/api/sdf/dal/func";
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { ApiRequest } from "@/utils/pinia_api_tools";
+import { ApiRequest } from "@/store/lib/pinia_api_tools";
 
 export type CreateFuncResponse = Func;
 

@@ -28,7 +28,7 @@ import { useRouter } from "vue-router";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
-import AppLayout from "@/layout/AppLayout.vue";
+import AppLayout from "@/components/layout/AppLayout.vue";
 
 const router = useRouter();
 

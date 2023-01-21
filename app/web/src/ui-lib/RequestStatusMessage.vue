@@ -10,7 +10,7 @@
 
 <script lang="ts" setup>
 import { PropType } from "vue";
-import { ApiRequestStatus } from "@/utils/pinia_api_tools";
+import { ApiRequestStatus } from "@/store/lib/pinia_api_tools";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import LoadingMessage from "@/ui-lib/LoadingMessage.vue";
 

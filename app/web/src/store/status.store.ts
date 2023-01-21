@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
-import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
-import { ApiRequest } from "@/utils/pinia_api_tools";
+import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
+import { ApiRequest } from "@/store/lib/pinia_api_tools";
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";

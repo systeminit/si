@@ -16,12 +16,12 @@ import "floating-vue/dist/style.css";
 
 import { useHead } from "@vueuse/head";
 import { useThemeContainer } from "@/ui-lib/theme_tools";
-import { useCustomFontsLoadedProvider } from "./composables/useFontLoaded";
+import { useCustomFontsLoadedProvider } from "./utils/useFontLoaded";
 import { tw } from "./utils/style_helpers";
 import { useAuthStore } from "./store/auth.store";
 import { useWorkspacesStore } from "./store/workspaces.store";
 import { useRealtimeStore } from "./store/realtime/realtime.store";
-import RealtimeConnectionStatus from "./molecules/RealtimeConnectionStatus.vue";
+import RealtimeConnectionStatus from "./components/RealtimeConnectionStatus.vue";
 
 useCustomFontsLoadedProvider();
 

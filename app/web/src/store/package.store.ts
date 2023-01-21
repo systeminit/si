@@ -1,9 +1,9 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
-import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
+import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { IconNames, ICONS } from "@/ui-lib/icons/icon_set";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
-import { ApiRequest } from "@/utils/pinia_api_tools";
+import { ApiRequest } from "@/store/lib/pinia_api_tools";
 import { useChangeSetsStore } from "./change_sets.store";
 
 export type PackageId = string;
