@@ -1,0 +1,7 @@
+{
+  "link": "https://coreos.github.io/butane/config-fcos-v1_4/",
+  "name": "Butane",
+  "category": "CoreOS", 
+  "componentKind": "standard",
+  "color": "E26B70"
+}

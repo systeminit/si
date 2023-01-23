@@ -12,6 +12,7 @@ use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
+use crate::schema::variant::definition::SchemaVariantDefinitionError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
@@ -105,6 +106,8 @@ pub enum BuiltinsError {
     ExplicitInternalProviderNotFound(String),
     #[error("external provider not found by name: {0}")]
     ExternalProviderNotFound(String),
+    #[error("schema variant definition error")]
+    SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;

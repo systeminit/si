@@ -191,6 +191,15 @@ impl Schema {
         }
     }
 
+    pub async fn schema_for_name(ctx: &DalContext, name: impl AsRef<str>) -> SchemaResult<Schema> {
+        let name = name.as_ref();
+        let schemas = Schema::find_by_attr(ctx, "name", &name).await?;
+        schemas
+            .first()
+            .ok_or_else(|| SchemaError::NotFoundByName(name.into()))
+            .cloned()
+    }
+
     pub async fn default_schema_variant_id_for_name(
         ctx: &DalContext,
         name: impl AsRef<str>,
