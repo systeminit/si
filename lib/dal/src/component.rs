@@ -30,7 +30,7 @@ use crate::{
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributePrototypeId, AttributeReadContext, CodeLanguage,
-    ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderError,
+    ComponentType, DalContext, Edge, EdgeError, ExternalProvider, ExternalProviderError,
     ExternalProviderId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError,
     InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
     PropId, ReadTenancyError, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
@@ -70,6 +70,10 @@ pub enum ComponentError {
     CodeView(#[from] CodeViewError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("unable to delete frame")]
+    Frame,
+    #[error("component marked as protected: {0}")]
+    ComponentProtected(ComponentId),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
     #[error(transparent)]
@@ -1005,6 +1009,46 @@ impl Component {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    pub async fn delete_and_propagate(
+        &mut self,
+        ctx: &DalContext,
+        // component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        // TODO - This is temporary for now until we allow deleting frames
+        let maybe_type = self
+            .find_value_by_json_pointer::<String>(ctx, "/root/si/type")
+            .await?;
+
+        if let Some(comp_type) = maybe_type {
+            if comp_type != "component" {
+                return Err(ComponentError::Frame);
+            }
+        }
+
+        let protection_opt = self
+            .find_value_by_json_pointer::<bool>(ctx, "/root/si/protected")
+            .await?;
+
+        if let Some(protection) = protection_opt {
+            if protection {
+                return Err(ComponentError::ComponentProtected(self.id));
+            }
+        }
+
+        let edges = Edge::list_for_component(ctx, self.id).await?;
+        for mut edge in edges {
+            edge.delete_and_propagate(ctx).await?;
+        }
+
+        for mut node in self.node(ctx).await? {
+            node.delete_by_id(ctx).await?;
+        }
+
+        self.delete_by_id(ctx).await?;
 
         Ok(())
     }

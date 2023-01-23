@@ -21,22 +21,11 @@ pub async fn delete_component(
 ) -> DiagramResult<()> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    // get the status of protection
-    // if it's protected then throw a DiagramError
-    // else do nothing (for now)
-    let comp = Component::get_by_id(&ctx, &request.component_id)
+    let mut comp = Component::get_by_id(&ctx, &request.component_id)
         .await?
         .ok_or(DiagramError::ComponentNotFound)?;
 
-    let protection_opt = comp
-        .find_value_by_json_pointer::<bool>(&ctx, "/root/si/protected")
-        .await?;
-
-    if let Some(protection) = protection_opt {
-        if protection {
-            return Err(DiagramError::ComponentProtected(request.component_id));
-        }
-    }
+    comp.delete_and_propagate(&ctx).await?;
 
     WsEvent::change_set_written(&ctx)
         .await?

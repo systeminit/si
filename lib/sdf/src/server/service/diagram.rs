@@ -7,8 +7,8 @@ use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
-    ComponentId, DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError,
-    NodeKind, NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
+    DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError, NodeKind,
+    NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
     SchemaVariantId, StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
@@ -58,8 +58,6 @@ pub enum DiagramError {
     FrameSocketNotFound(SchemaVariantId),
     #[error("component not found")]
     ComponentNotFound,
-    #[error("component marked as protected: {0}")]
-    ComponentProtected(ComponentId),
     #[error("node not found: {0}")]
     NodeNotFound(NodeId),
     #[error("schema variant not found")]
