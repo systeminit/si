@@ -1,6 +1,6 @@
 use axum::extract::{Json, Query};
 use dal::{
-    socket::{SocketEdgeKind, SocketId, SocketKind},
+    socket::{SocketEdgeKind, SocketId},
     DiagramKind, ExternalProviderId, InternalProviderId, SchemaId, SchemaVariant, SchemaVariantId,
     StandardModel, Visibility,
 };
@@ -79,37 +79,35 @@ pub async fn list_schema_variants(
 
         let sockets = variant.sockets(&ctx).await?;
         for socket in sockets {
-            match socket.kind() {
-                SocketKind::Provider => match socket.edge_kind() {
-                    SocketEdgeKind::ConfigurationOutput => {
-                        let provider = socket.external_provider(&ctx).await?.ok_or_else(|| {
-                            DiagramError::ExternalProviderNotFoundForSocket(*socket.id())
-                        })?;
-                        output_sockets.push(OutputSocketView {
-                            id: *socket.id(),
-                            name: socket.name().to_owned(),
-                            diagram_kind: *socket.diagram_kind(),
-                            provider: OutputProviderView {
-                                id: *provider.id(),
-                                ty: socket.name().to_owned(),
-                            },
-                        })
-                    }
-                    SocketEdgeKind::ConfigurationInput => {
-                        let provider = socket.internal_provider(&ctx).await?.ok_or_else(|| {
-                            DiagramError::InternalProviderNotFoundForSocket(*socket.id())
-                        })?;
-                        input_sockets.push(InputSocketView {
-                            id: *socket.id(),
-                            name: socket.name().to_owned(),
-                            diagram_kind: *socket.diagram_kind(),
-                            provider: InputProviderView {
-                                id: *provider.id(),
-                                ty: socket.name().to_owned(),
-                            },
-                        })
-                    }
-                },
+            match socket.edge_kind() {
+                SocketEdgeKind::ConfigurationOutput => {
+                    let provider = socket.external_provider(&ctx).await?.ok_or_else(|| {
+                        DiagramError::ExternalProviderNotFoundForSocket(*socket.id())
+                    })?;
+                    output_sockets.push(OutputSocketView {
+                        id: *socket.id(),
+                        name: socket.name().to_owned(),
+                        diagram_kind: *socket.diagram_kind(),
+                        provider: OutputProviderView {
+                            id: *provider.id(),
+                            ty: socket.name().to_owned(),
+                        },
+                    })
+                }
+                SocketEdgeKind::ConfigurationInput => {
+                    let provider = socket.internal_provider(&ctx).await?.ok_or_else(|| {
+                        DiagramError::InternalProviderNotFoundForSocket(*socket.id())
+                    })?;
+                    input_sockets.push(InputSocketView {
+                        id: *socket.id(),
+                        name: socket.name().to_owned(),
+                        diagram_kind: *socket.diagram_kind(),
+                        provider: InputProviderView {
+                            id: *provider.id(),
+                            ty: socket.name().to_owned(),
+                        },
+                    })
+                }
             }
         }
 

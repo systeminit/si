@@ -6,9 +6,9 @@ use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInpu
 use crate::{
     component::ComponentKind, edit_field::widget::*, socket::SocketArity, ActionPrototype,
     ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider,
-    Func, InternalProvider, Prop, PropKind, SchemaError, SchemaVariant, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
+    InternalProvider, Prop, PropKind, SchemaError, SchemaVariant, StandardModel, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 
 // Reference: https://www.docker.com/company/newsroom/media-resources/
@@ -83,7 +83,7 @@ impl MigrationDriver {
             identity_func_item.func_binding_id,
             identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
-            DiagramKind::Configuration,
+            false,
         )
         .await?;
 
@@ -145,7 +145,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -159,7 +159,7 @@ impl MigrationDriver {
             identity_func_item.func_binding_id,
             identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
-            DiagramKind::Configuration,
+            false,
         )
         .await?;
 
@@ -173,7 +173,7 @@ impl MigrationDriver {
             identity_func_item.func_binding_id,
             identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
-            DiagramKind::Configuration,
+            false,
         )
         .await?;
 
