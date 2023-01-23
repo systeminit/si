@@ -12,7 +12,7 @@
 
 <script lang="ts" setup>
 import { computed, PropType } from "vue";
-import { ApiRequestStatus } from "@/utils/pinia_api_tools";
+import { ApiRequestStatus } from "@/store/lib/pinia_api_tools";
 import Icon from "./icons/Icon.vue";
 
 const props = defineProps({

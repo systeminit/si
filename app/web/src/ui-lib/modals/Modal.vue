@@ -110,7 +110,7 @@ import {
 } from "@headlessui/vue";
 import { PropType, toRef, ref } from "vue";
 import clsx from "clsx";
-import VButton from "@/molecules/VButton.vue";
+import VButton from "@/components/VButton.vue";
 import Icon from "../icons/Icon.vue";
 import { useThemeContainer } from "../theme_tools";
 

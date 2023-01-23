@@ -1,6 +1,6 @@
 import _ from "lodash";
 import { defineStore } from "pinia";
-import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
+import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { FuncArgument, FuncVariant } from "@/api/sdf/dal/func";

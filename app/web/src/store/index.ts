@@ -1,8 +1,8 @@
 import { createPinia } from "pinia";
 
-import { initPiniaApiToolkitPlugin } from "@/utils/pinia_api_tools";
-import api from "@/utils/api";
-import { piniaHooksPlugin } from "@/utils/pinia_hooks_plugin";
+import { initPiniaApiToolkitPlugin } from "./lib/pinia_api_tools";
+import { piniaHooksPlugin } from "./lib/pinia_hooks_plugin";
+import api from "./api";
 
 // initialize root pinia store/instance
 const pinia = createPinia();

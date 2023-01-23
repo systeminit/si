@@ -3,11 +3,11 @@ import _ from "lodash";
 import { watch } from "vue";
 
 import storage from "local-storage-fallback";
-import { ApiRequest } from "@/utils/pinia_api_tools";
+import { ApiRequest } from "@/store/lib/pinia_api_tools";
 
 import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
+import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 

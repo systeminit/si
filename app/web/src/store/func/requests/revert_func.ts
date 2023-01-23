@@ -1,5 +1,5 @@
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { ApiRequest } from "@/utils/pinia_api_tools";
+import { ApiRequest } from "@/store/lib/pinia_api_tools";
 
 export interface RevertFuncRequest {
   id: string;

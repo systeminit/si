@@ -1,12 +1,7 @@
-import {
-  createRouter,
-  createWebHistory,
-  RouteLocationNormalized,
-  RouteRecordRaw,
-} from "vue-router";
+import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import _ from "lodash";
 import { useAuthStore } from "./store/auth.store";
-import { castNumericParam, useRouterStore } from "./store/router.store";
+import { useRouterStore } from "./store/router.store";
 
 // Cannot use inside the template directly.
 const isDevMode = import.meta.env.DEV;
@@ -22,7 +17,7 @@ const routes: RouteRecordRaw[] = [
     path: "/diagram",
     name: "diagram",
     meta: { public: true },
-    component: () => import("@/organisms/GenericDiagram/DiagramDemoPage.vue"),
+    component: () => import("@/components/GenericDiagram/DiagramDemoPage.vue"),
   },
   {
     path: "/",
@@ -37,7 +32,7 @@ const routes: RouteRecordRaw[] = [
   {
     name: "workspace-single",
     path: "/w/:workspaceId",
-    component: () => import("@/pages/WorkspaceSingle.vue"),
+    component: () => import("@/pages/WorkspaceSinglePage.vue"),
     // TODO: will probably want a workspace "home" page at some point
     redirect(to) {
       return {
@@ -62,13 +57,13 @@ const routes: RouteRecordRaw[] = [
         path: ":changeSetId/c",
         name: "workspace-compose",
         component: () =>
-          import("@/organisms/Workspace/WorkspaceModelAndView.vue"),
+          import("@/components/Workspace/WorkspaceModelAndView.vue"),
       },
       {
         path: ":changeSetId/l",
         name: "workspace-lab",
         component: () =>
-          import("@/organisms/Workspace/WorkspaceCustomizeIndex.vue"),
+          import("@/components/Workspace/WorkspaceCustomizeIndex.vue"),
         redirect(to) {
           return {
             name: "workspace-lab-functions",
@@ -80,14 +75,14 @@ const routes: RouteRecordRaw[] = [
             path: "f/:funcId?",
             name: "workspace-lab-functions",
             component: () =>
-              import("@/organisms/Workspace/WorkspaceCustomizeFunctions.vue"),
+              import("@/components/Workspace/WorkspaceCustomizeFunctions.vue"),
             props: true,
           },
           {
             path: "p/:packageSlug?",
             name: "workspace-lab-packages",
             component: () =>
-              import("@/organisms/Workspace/WorkspaceCustomizePackages.vue"),
+              import("@/components/Workspace/WorkspaceCustomizePackages.vue"),
             props: true,
           },
         ],
@@ -96,12 +91,12 @@ const routes: RouteRecordRaw[] = [
         path: "v",
         name: "workspace-view",
         component: () =>
-          import("@/organisms/Workspace/WorkspaceModelAndView.vue"),
+          import("@/components/Workspace/WorkspaceModelAndView.vue"),
       },
       {
         path: "r",
         name: "workspace-fix",
-        component: () => import("@/organisms/Workspace/WorkspaceApply.vue"),
+        component: () => import("@/components/Workspace/WorkspaceApply.vue"),
       },
       ...(isDevMode
         ? [
@@ -109,7 +104,7 @@ const routes: RouteRecordRaw[] = [
               path: "dev",
               name: "workspace-dev-dashboard",
               component: () =>
-                import("@/organisms/Workspace/WorkspaceDevDashboard.vue"),
+                import("@/components/Workspace/WorkspaceDevDashboard.vue"),
             },
           ]
         : []),
@@ -187,13 +182,5 @@ router.beforeResolve((to) => {
   const routerStore = useRouterStore();
   routerStore.currentRoute = to;
 });
-
-// automatically cast any integer string params into proper numbers
-// so that components can set params to expect a Number
-// NOTE - this is so that when we user router link or programatically navigate that we can set the param as an int
-// and it will act the same as when the url is typed in
-function castNumberProps(route: RouteLocationNormalized) {
-  return _.mapValues(route.params, castNumericParam);
-}
 
 export default router;

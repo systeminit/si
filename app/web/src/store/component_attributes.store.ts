@@ -1,8 +1,10 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
 import { watch } from "vue";
-import { ApiRequest } from "@/utils/pinia_api_tools";
-import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
+
+import { ApiRequest } from "@/store/lib/pinia_api_tools";
+import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
+
 import {
   PropertyEditorSchema,
   PropertyEditorValidation,

@@ -1,0 +1,82 @@
+<template>
+  <div>
+    <div class="flex items-center">
+      <SelectMenu
+        v-model="optionsState"
+        class="w-4/5"
+        :none-selected-label="`select ${props.thingLabel}...`"
+        :options="options"
+        :disabled="disabled"
+      />
+      <VButton
+        label="Add"
+        button-rank="tertiary"
+        icon="plus"
+        :disabled="disabled"
+        @click="addOptions"
+      />
+    </div>
+    <div>
+      <h2 class="pb-2 text-sm">Selected {{ props.thingLabel }}</h2>
+      <p v-if="props.modelValue.length === 0" class="pl-4 text-sm">
+        None selected. Select {{ props.thingLabel }} above...
+      </p>
+      <ul v-else class="list-disc list-inside flex flex-col">
+        <li
+          v-for="option in modelValue"
+          :key="option.value"
+          class="flex items-center text-sm pb-2 pl-4"
+        >
+          <div class="pr-2" role="decoration">•</div>
+          {{ option.label }}
+          <div class="ml-auto">
+            <VButton
+              label=""
+              icon="trash"
+              button-rank="tertiary"
+              :disabled="disabled"
+              @click="removeOption(option)"
+            />
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</template>
+
+<script lang="ts" setup>
+import { ref } from "vue";
+import SelectMenu, { Option } from "@/components/SelectMenu.vue";
+import VButton from "@/components/VButton.vue";
+
+const props = defineProps<{
+  options: Option[];
+  modelValue: Option[];
+  thingLabel: string;
+  disabled?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: "update:modelValue", v: Option[]): void;
+  (e: "change", v: Option[]): void;
+}>();
+
+const optionsState = ref<Option[]>([]);
+
+const addOptions = () => {
+  const newOptions = Array.from(
+    new Set(props.modelValue.concat(optionsState.value)),
+  );
+
+  emit("update:modelValue", newOptions);
+  optionsState.value = [];
+  emit("change", newOptions);
+};
+
+const removeOption = (remove: Option) => {
+  const newOptions = props.modelValue.filter((opt) => opt !== remove);
+
+  emit("update:modelValue", newOptions);
+  emit("change", newOptions);
+};
+</script>

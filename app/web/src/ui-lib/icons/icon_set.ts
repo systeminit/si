@@ -64,6 +64,8 @@ import Logout from "~icons/material-symbols/logout";
 import Cat from "~icons/fa6-solid/cat";
 import Filter from "~icons/heroicons/funnel-20-solid";
 import Menu from "~icons/heroicons-solid/menu-alt-1";
+import Plug from "~icons/ph/plugs-fill";
+import Boxes from "~icons/bi/boxes";
 
 import EmptyIcon from "@/assets/images/custom-icons/empty-icon.svg?raw";
 
@@ -127,9 +129,11 @@ export const ICONS = Object.freeze({
   minus: Minus,
   "minus-circle": MinusCircle,
   moon: Moon,
+  multiselect: Boxes,
   none: EmptyIcon,
   play: Play,
   "play-circle": PlayCircle,
+  plug: Plug,
   plus: Plus,
   "plus-circle": PlusCircle,
   refresh: Refresh,

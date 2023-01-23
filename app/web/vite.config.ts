@@ -27,15 +27,19 @@ export default (opts: { mode: string }) => {
       // our Icon component knows how to deal with raw SVGs
       IconsPlugin({ compiler: "raw" }),
 
-      ...process.env.NODE_ENV !== "production" ? [checkerPlugin({
-        vueTsc: true,
-        eslint: {
-          lintCommand: packageJson.scripts.lint,
-          // I _think_ we only want to pop up an error on the screen for proper errors
-          // otherwise we can get a lot of unused var errors when you comment something out temporarily
-          dev: { logLevel: ["error"] },
-        },
-      })] : [],
+      ...(process.env.NODE_ENV !== "production"
+        ? [
+            checkerPlugin({
+              vueTsc: true,
+              eslint: {
+                lintCommand: packageJson.scripts.lint,
+                // I _think_ we only want to pop up an error on the screen for proper errors
+                // otherwise we can get a lot of unused var errors when you comment something out temporarily
+                dev: { logLevel: ["error"] },
+              },
+            }),
+          ]
+        : []),
 
       ViteGitRevisionPlugin({}),
     ],

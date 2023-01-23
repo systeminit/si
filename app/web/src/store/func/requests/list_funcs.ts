@@ -1,5 +1,5 @@
 import { Func, FuncVariant } from "@/api/sdf/dal/func";
-import { ApiRequest } from "@/utils/pinia_api_tools";
+import { ApiRequest } from "@/store/lib/pinia_api_tools";
 import { Visibility } from "@/api/sdf/dal/visibility";
 
 export type ListedFuncView = Omit<Func, "code">;

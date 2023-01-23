@@ -1,16 +1,16 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
 import { Vector2d } from "konva/lib/types";
-import { ApiRequest } from "@/utils/pinia_api_tools";
+import { ApiRequest } from "@/store/lib/pinia_api_tools";
 
-import { addStoreHooks } from "@/utils/pinia_hooks_plugin";
+import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import {
   DiagramContent,
   DiagramEdgeDef,
   DiagramNodeDef,
   DiagramStatusIcon,
   Size2D,
-} from "@/organisms/GenericDiagram/diagram_types";
+} from "@/components/GenericDiagram/diagram_types";
 import { MenuItem } from "@/api/sdf/dal/menu";
 import {
   DiagramNode,
@@ -757,11 +757,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
-              this.selectedEdgeId = null;
-
               if (this.diagramEdgesById[edgeId].changeStatus === "added") {
                 const originalEdge = this.diagramEdgesById[edgeId];
                 delete this.diagramEdgesById[edgeId];
+                this.selectedEdgeId = null;
                 return () => {
                   this.diagramEdgesById[edgeId] = originalEdge;
                   this.selectedEdgeId = edgeId;
@@ -795,8 +794,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
-              this.selectedEdgeId = null;
-
               const originalEdge = this.diagramEdgesById[edgeId];
               delete this.diagramEdgesById[edgeId]?.deletedAt;
               this.diagramEdgesById[edgeId].changeStatus = "unmodified";
