@@ -4,8 +4,8 @@ use dal::{
     job::definition::DependentValuesUpdate,
     provider::internal::InternalProvider,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
-    ComponentView, DalContext, DiagramKind, ExternalProvider, Func, FuncBackendKind,
-    FuncBackendResponseType, PropKind, SocketArity, StandardModel,
+    ComponentView, DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
+    PropKind, SocketArity, StandardModel,
 };
 use dal_test::{
     helpers::setup_identity_func,
@@ -300,7 +300,7 @@ async fn intra_component_custom_func_update_to_external_provider(ctx: &DalContex
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("could not create external provider");

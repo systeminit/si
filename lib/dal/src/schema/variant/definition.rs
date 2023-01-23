@@ -8,9 +8,8 @@ use std::collections::HashMap;
 
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
-    edit_field::widget::WidgetKind, DalContext, DiagramKind, ExternalProvider, Func,
-    InternalProvider, Prop, PropId, PropKind, RootProp, SchemaId, SchemaVariant, SocketArity,
-    StandardModel,
+    edit_field::widget::WidgetKind, DalContext, ExternalProvider, Func, InternalProvider, Prop,
+    PropId, PropKind, RootProp, SchemaId, SchemaVariant, SocketArity, StandardModel,
 };
 
 /// A cache of [`PropIds`](crate::Prop) where the _key_ is a tuple corresponding to the
@@ -191,7 +190,7 @@ impl SchemaVariant {
                     identity_func_binding_id,
                     identity_func_binding_return_value_id,
                     arity,
-                    DiagramKind::Configuration,
+                    false,
                 )
                 .await?;
                 explicit_internal_providers.push(explicit_internal_provider);
@@ -212,7 +211,7 @@ impl SchemaVariant {
                     identity_func_binding_id,
                     identity_func_binding_return_value_id,
                     arity,
-                    DiagramKind::Configuration,
+                    false,
                 )
                 .await?;
                 external_providers.push(external_provider);

@@ -19,7 +19,6 @@ CREATE TABLE sockets
 );
 SELECT standard_model_table_constraints_v1('sockets');
 SELECT many_to_many_table_create_v1('socket_many_to_many_schema_variants', 'sockets', 'schema_variants');
-
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('sockets', 'model', 'socket', 'Socket'),
        ('socket_many_to_many_schema_variants', 'many_to_many', 'socket.types', 'Socket <> Schema Variant');

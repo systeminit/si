@@ -6,11 +6,15 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, label_list::ToLabelList, pk, standard_model, standard_model_accessor,
-    standard_model_belongs_to, standard_model_many_to_many, DalContext, DiagramKind,
+    standard_model_belongs_to, standard_model_many_to_many, ComponentId, DalContext, DiagramKind,
     ExternalProvider, ExternalProviderId, HistoryEventError, InternalProvider, InternalProviderId,
     SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
     WriteTenancy,
 };
+
+const FIND_FRAME_SOCKET_FOR_COMPONENT: &str =
+    include_str!("queries/socket/find_frame_socket_for_component.sql");
+const LIST_FOR_COMPONENT: &str = include_str!("queries/socket/list_for_component.sql");
 
 #[derive(Error, Debug)]
 pub enum SocketError {
@@ -46,8 +50,16 @@ pk!(SocketId);
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SocketKind {
-    /// Indicates that this [`Socket`](Socket) was created alongside a [`provider`](crate::provider).
+    /// Indicates that this [`Socket`](Socket) is for ["frames"](crate::frame) _and_ was created
+    /// alongside [`provider`](crate::provider).
+    Frame,
+    /// Indicates that this [`Socket`](Socket) was created alongside a
+    /// [`provider`](crate::provider).
     Provider,
+    /// Indicates that this [`Socket`](Socket) was _not_ created alongside a
+    /// [`provider`](crate::provider), which should likely only happen in integration tests and
+    /// _not_ production code.,
+    Standalone,
 }
 
 #[derive(
@@ -183,4 +195,45 @@ impl Socket {
         returns: ExternalProvider,
         result: SocketResult,
     );
+
+    /// Finds the "Frame" [`Socket`] for a given [`Component`](crate::Component) and
+    /// [`SocketEdgeKind`].
+    #[instrument(skip_all)]
+    pub async fn find_frame_socket_for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        socket_edge_kind: SocketEdgeKind,
+    ) -> SocketResult<Self> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                FIND_FRAME_SOCKET_FOR_COMPONENT,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &component_id,
+                    &socket_edge_kind.as_ref(),
+                ],
+            )
+            .await?;
+        Ok(standard_model::object_from_row(row)?)
+    }
+
+    /// List all [`Sockets`](Self) for the given [`ComponentId`](crate::Component).
+    #[instrument(skip_all)]
+    pub async fn list_for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> SocketResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_COMPONENT,
+                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
 }

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, Component, ComponentView, DalContext, DiagramKind, Edge, ExternalProvider,
-    InternalProvider, PropKind, StandardModel,
+    AttributeValue, Component, ComponentView, DalContext, Edge, ExternalProvider, InternalProvider,
+    PropKind, StandardModel,
 };
 use dal_test::{
     helpers::{component_payload::ComponentPayload, setup_identity_func},
@@ -135,7 +135,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("could not create external provider");
@@ -166,7 +166,7 @@ async fn inter_component_identity_update(ctx: &DalContext) {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("could not create explicit internal provider");
@@ -482,7 +482,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("cannot create source external provider");
@@ -569,7 +569,7 @@ async fn with_deep_data_structure(ctx: &DalContext) {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::One,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("cannot create destination explicit internal provider");

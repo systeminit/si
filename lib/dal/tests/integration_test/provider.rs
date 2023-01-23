@@ -1,6 +1,4 @@
-use dal::{
-    socket::SocketArity, DalContext, DiagramKind, ExternalProvider, InternalProvider, StandardModel,
-};
+use dal::{socket::SocketArity, DalContext, ExternalProvider, InternalProvider, StandardModel};
 use dal_test::{
     helpers::setup_identity_func,
     test,
@@ -31,7 +29,7 @@ async fn new_external(ctx: &DalContext) {
         func_binding_id,
         func_binding_return_value_id,
         SocketArity::Many,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("could not create external provider");
@@ -66,7 +64,7 @@ async fn new_implicit_internal(ctx: &DalContext) {
         func_binding_id,
         func_binding_return_value_id,
         SocketArity::Many,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("could not create (explicit internal provider");

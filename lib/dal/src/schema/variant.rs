@@ -20,10 +20,10 @@ use crate::{
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many,
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeValueError, AttributeValueId, BuiltinsError, DalContext, DiagramKind,
-    ExternalProvider, ExternalProviderError, Func, FuncError, HistoryEventError, InternalProvider,
-    Prop, PropError, PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy, WsEventError,
+    AttributeValueError, AttributeValueId, BuiltinsError, DalContext, ExternalProvider,
+    ExternalProviderError, Func, FuncError, HistoryEventError, InternalProvider, Prop, PropError,
+    PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel, StandardModelError, Timestamp,
+    Visibility, WriteTenancy, WsEventError,
 };
 use crate::{AttributeReadContext, AttributeValue, RootPropChild};
 use crate::{FuncBackendResponseType, FuncId};
@@ -187,16 +187,15 @@ impl SchemaVariant {
             )
             .await?;
         let object: SchemaVariant = standard_model::finish_create_from_row(ctx, row).await?;
-        let root_prop = RootProp::new(ctx, *object.id()).await?;
 
+        // Create root prop and set the corresponding schema.
+        let root_prop = RootProp::new(ctx, *object.id()).await?;
         object.set_schema(ctx, &schema_id).await?;
 
+        // All components can be a frame, so all schema variants need to be created with frame input and output sockets.
         let (identity_func, identity_func_binding, identity_func_binding_return_value) =
             Func::identity_with_binding_and_return_value(ctx).await?;
-
-        // all nodes can be turned into frames therefore, they will need a frame input socket
-        // the UI itself will determine if this socket is available to be connected
-        let (_frame_internal_provider, _input_socket) = InternalProvider::new_explicit_with_socket(
+        InternalProvider::new_explicit_with_socket(
             ctx,
             *object.id(),
             "Frame",
@@ -204,11 +203,10 @@ impl SchemaVariant {
             *identity_func_binding.id(),
             *identity_func_binding_return_value.id(),
             SocketArity::Many,
-            DiagramKind::Configuration,
+            true,
         )
         .await?;
-
-        let (_output_provider, _output_socket) = ExternalProvider::new_with_socket(
+        ExternalProvider::new_with_socket(
             ctx,
             schema_id,
             *object.id(),
@@ -218,7 +216,7 @@ impl SchemaVariant {
             *identity_func_binding.id(),
             *identity_func_binding_return_value.id(),
             SocketArity::One,
-            DiagramKind::Configuration,
+            true,
         )
         .await?;
 

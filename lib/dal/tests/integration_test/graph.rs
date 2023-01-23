@@ -5,8 +5,8 @@ use dal::component::ComponentKind;
 use dal::node::NodeId;
 use dal::{
     edge::{EdgeKind, EdgeObjectId, VertexObjectKind},
-    Component, DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider, Node, Schema,
-    SchemaVariant, SchemaVariantId, SocketArity, SocketId, StandardModel,
+    Component, DalContext, Edge, ExternalProvider, InternalProvider, Node, Schema, SchemaVariant,
+    SchemaVariantId, SocketArity, SocketId, StandardModel,
 };
 use dal_test::helpers::setup_identity_func;
 use dal_test::test;
@@ -142,7 +142,7 @@ impl ConfigurationGraphConstructor {
                 identity_func_binding_id,
                 identity_func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await
             .expect("could not create explicit internal provider with socket");
@@ -157,7 +157,7 @@ impl ConfigurationGraphConstructor {
             identity_func_binding_id,
             identity_func_binding_return_value_id,
             SocketArity::Many,
-            DiagramKind::Configuration,
+            false,
         )
         .await
         .expect("could not create external provider with socket");

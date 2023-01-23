@@ -7,9 +7,9 @@ use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
-    ComponentId, DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError,
-    NodeKind, NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
-    SchemaVariantId, StandardModelError, TransactionsError,
+    ComponentId, DiagramError as DalDiagramError, EdgeError, FrameError, InternalProviderError,
+    NodeError, NodeKind, NodeMenuError, NodePositionError, ReadTenancyError,
+    SchemaError as DalSchemaError, SchemaVariantId, StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
@@ -43,27 +43,16 @@ pub enum DiagramError {
     #[error(transparent)]
     InternalProvider(#[from] InternalProviderError),
     #[error(transparent)]
+    Frame(#[from] FrameError),
+    #[error(transparent)]
     Edge(#[from] EdgeError),
+
     #[error("dal schema error: {0}")]
     DalSchema(#[from] DalSchemaError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error("attribute value not found for context: {0:?}")]
-    AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
-    #[error("schema not found")]
-    SchemaNotFound,
-    #[error("frame socket not found for schema variant id: {0}")]
-    FrameSocketNotFound(SchemaVariantId),
-    #[error("component not found")]
-    ComponentNotFound,
-    #[error("component marked as protected: {0}")]
-    ComponentProtected(ComponentId),
-    #[error("node not found: {0}")]
-    NodeNotFound(NodeId),
-    #[error("schema variant not found")]
-    SchemaVariantNotFound,
     #[error("node menu error: {0}")]
     NodeMenu(#[from] NodeMenuError),
     #[error("node error: {0}")]
@@ -72,14 +61,6 @@ pub enum DiagramError {
     Socket(#[from] SocketError),
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] DalExternalProviderError),
-    #[error("external provider not found for socket id: {0}")]
-    ExternalProviderNotFoundForSocket(SocketId),
-    #[error("internal provider not found for socket id: {0}")]
-    InternalProviderNotFoundForSocket(SocketId),
-    #[error("frame internal provider not found for schema variant id: {0}")]
-    FrameInternalProviderNotFoundForSchemaVariant(SchemaVariantId),
-    #[error("invalid request")]
-    InvalidRequest,
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("component error: {0}")]
@@ -90,16 +71,25 @@ pub enum DiagramError {
     DiagramError(#[from] DalDiagramError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
-    #[error("not authorized")]
-    NotAuthorized,
-    #[error("invalid system")]
-    InvalidSystem,
-    #[error("parent node not found {0}")]
-    ParentNodeNotFound(NodeId),
-    #[error("invalid parent node kind {0:?}")]
-    InvalidParentNode(NodeKind),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+
+    #[error("attribute value not found for context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeReadContext),
+    #[error("schema not found")]
+    SchemaNotFound,
+    #[error("component not found")]
+    ComponentNotFound,
+    #[error("component marked as protected: {0}")]
+    ComponentProtected(ComponentId),
+    #[error("node not found: {0}")]
+    NodeNotFound(NodeId),
+    #[error("schema variant not found")]
+    SchemaVariantNotFound,
+    #[error("external provider not found for socket id: {0}")]
+    ExternalProviderNotFoundForSocket(SocketId),
+    #[error("internal provider not found for socket id: {0}")]
+    InternalProviderNotFoundForSocket(SocketId),
 }
 
 pub type DiagramResult<T> = Result<T, DiagramError>;

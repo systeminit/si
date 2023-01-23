@@ -1,8 +1,8 @@
 use dal::{
     func::backend::js_command::CommandRunResult, generate_name, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentType,
-    ComponentView, DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider, Prop, PropId,
-    PropKind, SchemaVariant, SocketArity, StandardModel, Visibility, WorkspaceId,
+    ComponentView, DalContext, Edge, ExternalProvider, InternalProvider, Prop, PropId, PropKind,
+    SchemaVariant, SocketArity, StandardModel, Visibility, WorkspaceId,
 };
 use dal_test::{
     helpers::setup_identity_func,
@@ -261,7 +261,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("could not create external provider");
@@ -290,7 +290,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("could not create explicit internal provider");

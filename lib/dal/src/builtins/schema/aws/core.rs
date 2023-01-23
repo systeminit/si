@@ -18,8 +18,8 @@ use crate::{
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
     ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func, InternalProvider, PropKind,
-    SchemaError, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
+    BuiltinsResult, DalContext, ExternalProvider, Func, InternalProvider, PropKind, SchemaError,
+    StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 use crate::{AttributeValueError, SchemaVariant};
 
@@ -153,7 +153,7 @@ impl MigrationDriver {
             identity_func_item.func_binding_id,
             identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
-            DiagramKind::Configuration,
+            false,
         )
         .await?;
 
@@ -166,7 +166,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -477,7 +477,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -490,7 +490,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -503,7 +503,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -516,7 +516,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?; // TODO(wendy) - Can an EC2 instance have multiple regions? Idk!
 
@@ -529,7 +529,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -955,7 +955,7 @@ impl MigrationDriver {
             identity_func_item.func_binding_id,
             identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
-            DiagramKind::Configuration,
+            false,
         )
         .await?;
 
@@ -1174,7 +1174,7 @@ impl MigrationDriver {
             identity_func_item.func_binding_id,
             identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
-            DiagramKind::Configuration,
+            false,
         )
         .await?;
 
@@ -1190,7 +1190,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -1579,7 +1579,7 @@ impl MigrationDriver {
             identity_func_item.func_binding_id,
             identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
-            DiagramKind::Configuration,
+            false,
         )
         .await?;
 
@@ -1593,7 +1593,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?; // TODO(wendy) - Can a key pair have multiple regions? Idk!
 

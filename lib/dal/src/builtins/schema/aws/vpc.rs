@@ -11,9 +11,9 @@ use crate::{
 use crate::{
     attribute::context::AttributeContextBuilder, func::argument::FuncArgument, ActionPrototype,
     ActionPrototypeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider, Func,
-    FuncBinding, InternalProvider, PropKind, SchemaError, SchemaVariant, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    AttributeValueError, BuiltinsResult, DalContext, ExternalProvider, Func, FuncBinding,
+    InternalProvider, PropKind, SchemaError, SchemaVariant, StandardModel, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 use crate::{
     builtins::schema::aws::{AWS_NODE_COLOR, EC2_TAG_DOCS_URL},
@@ -259,7 +259,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -273,7 +273,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -286,7 +286,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -824,7 +824,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -837,7 +837,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -1256,7 +1256,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -1281,7 +1281,7 @@ impl MigrationDriver {
                 *transformation_func_binding.id(),
                 *transformation_func_binding_return_value.id(),
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 

@@ -80,7 +80,7 @@ pub async fn list_schema_variants(
         let sockets = variant.sockets(&ctx).await?;
         for socket in sockets {
             match socket.kind() {
-                SocketKind::Provider => match socket.edge_kind() {
+                SocketKind::Provider | SocketKind::Frame => match socket.edge_kind() {
                     SocketEdgeKind::ConfigurationOutput => {
                         let provider = socket.external_provider(&ctx).await?.ok_or_else(|| {
                             DiagramError::ExternalProviderNotFoundForSocket(*socket.id())

@@ -2,8 +2,8 @@ use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::job::definition::DependentValuesUpdate;
 use dal::{
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Component,
-    ComponentView, DalContext, DiagramKind, ExternalProvider, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncBinding, InternalProvider, PropKind, SocketArity, StandardModel,
+    ComponentView, DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
+    FuncBinding, InternalProvider, PropKind, SocketArity, StandardModel,
 };
 use dal_test::helpers::setup_identity_func;
 use dal_test::test_harness::create_prop_and_set_parent;
@@ -43,7 +43,7 @@ async fn nested_object_prop_with_complex_func(ctx: &DalContext) {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("could not create external provider");
@@ -424,7 +424,7 @@ async fn map_with_object_entries_and_complex_funcs(ctx: &DalContext) {
         *canoe_from_second_func_binding.id(),
         *canoe_from_second_func_binding_return_value.id(),
         SocketArity::Many,
-        DiagramKind::Configuration,
+        false,
     )
     .await
     .expect("could not create external provider");
