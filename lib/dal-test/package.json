@@ -25,7 +25,8 @@
     "si-test-macros": "workspace:*",
     "telemetry": "workspace:*",
     "veritech-client": "workspace:*",
-    "veritech-server": "workspace:*"
+    "veritech-server": "workspace:*",
+    "council": "workspace:*"
   },
   "devDependencies": {}
 }

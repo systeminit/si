@@ -169,6 +169,18 @@ importers:
       vite-svg-loader: 3.6.0
       vue-tsc: 1.0.12_typescript@4.8.4
 
+  bin/council:
+    specifiers:
+      council: workspace:*
+      si-data-nats: workspace:*
+      si-settings: workspace:*
+      telemetry-application: workspace:*
+    dependencies:
+      council: link:../../lib/council
+      si-data-nats: link:../../lib/si-data-nats
+      si-settings: link:../../lib/si-settings
+      telemetry-application: link:../../lib/telemetry-application-rs
+
   bin/cyclone:
     specifiers:
       cyclone-server: workspace:*
@@ -276,6 +288,16 @@ importers:
   lib/config-file:
     specifiers: {}
 
+  lib/council:
+    specifiers:
+      si-data-nats: workspace:*
+      si-settings: workspace:*
+      telemetry: workspace:*
+    dependencies:
+      si-data-nats: link:../si-data-nats
+      si-settings: link:../si-settings
+      telemetry: link:../telemetry-rs
+
   lib/cyclone-client:
     specifiers:
       cyclone-core: workspace:*
@@ -307,11 +329,13 @@ importers:
 
   lib/dal:
     specifiers:
+      council: workspace:*
       si-data-nats: workspace:*
       si-data-pg: workspace:*
       telemetry: workspace:*
       veritech-client: workspace:*
     dependencies:
+      council: link:../council
       si-data-nats: link:../si-data-nats
       si-data-pg: link:../si-data-pg
       telemetry: link:../telemetry-rs
@@ -319,6 +343,7 @@ importers:
 
   lib/dal-test:
     specifiers:
+      council: workspace:*
       dal: workspace:*
       si-data-nats: workspace:*
       si-data-pg: workspace:*
@@ -328,6 +353,7 @@ importers:
       veritech-client: workspace:*
       veritech-server: workspace:*
     dependencies:
+      council: link:../council
       dal: link:../dal
       si-data-nats: link:../si-data-nats
       si-data-pg: link:../si-data-pg
