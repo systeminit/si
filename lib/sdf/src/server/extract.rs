@@ -256,9 +256,7 @@ where
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let HandlerContext(builder) = HandlerContext::from_request(req).await?;
         let mut ctx = builder
-            .build(RequestContext::new_universal_head(
-                dal::HistoryActor::SystemInit,
-            ))
+            .build(RequestContext::default())
             .await
             .map_err(internal_error)?;
 
@@ -272,7 +270,7 @@ where
         let claim = UserClaim::from_bearer_token(&ctx, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
-        let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
+        let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_pk]);
         ctx.update_read_tenancy(read_tenancy);
 
         User::authorize(&ctx, &claim.user_id)
@@ -295,9 +293,7 @@ where
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let HandlerContext(builder) = HandlerContext::from_request(req).await?;
         let mut ctx = builder
-            .build(RequestContext::new_universal_head(
-                dal::HistoryActor::SystemInit,
-            ))
+            .build(RequestContext::default())
             .await
             .map_err(internal_error)?;
 
@@ -309,7 +305,7 @@ where
         let claim = UserClaim::from_bearer_token(&ctx, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
-        let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
+        let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_pk]);
         ctx.update_read_tenancy(read_tenancy);
 
         User::authorize(&ctx, &claim.user_id)
@@ -356,9 +352,7 @@ async fn tenancy_from_request<P: Send>(
 ) -> Result<Tenancy, (StatusCode, Json<serde_json::Value>)> {
     let HandlerContext(builder) = HandlerContext::from_request(req).await?;
     let mut ctx = builder
-        .build(RequestContext::new_universal_head(
-            dal::HistoryActor::SystemInit,
-        ))
+        .build(RequestContext::default())
         .await
         .map_err(internal_error)?;
 
@@ -370,12 +364,10 @@ async fn tenancy_from_request<P: Send>(
             .map_err(not_acceptable_error)?;
         WriteTenancy::new_workspace(workspace_id)
     } else if headers.get("Authorization").is_some() {
-        WriteTenancy::new_billing_account(claim.billing_account_id)
+        WriteTenancy::new_billing_account(claim.billing_account_pk)
     } else {
-        // Should only happen at signup where the billing account creation should set the
-        // tenancy manually to universal as we don't write to universal implicitly
-        //
-        // Empty tenancy means things can be written, but won't ever be read
+        // Should only happen at signup where the billing account creation doesn't depend on any tenancy
+        // Empty tenancy means things can be written, but won't ever be read, with exception of billing accounts
         WriteTenancy::new_empty()
     };
     ctx.update_write_tenancy(write_tenancy.clone());
@@ -389,7 +381,7 @@ async fn tenancy_from_request<P: Send>(
     if !read_tenancy.billing_accounts().is_empty()
         && !read_tenancy
             .billing_accounts()
-            .contains(&claim.billing_account_id)
+            .contains(&claim.billing_account_pk)
     {
         return Err(not_acceptable_error("failed to determine valid tenacy"));
     }

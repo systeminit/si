@@ -20,9 +20,7 @@ pub async fn restore_authentication(
     let ctx = builder.build(request_ctx.build_head()).await?;
 
     // Why is this here?
-    let billing_account = BillingAccount::get_by_id(&ctx, &claim.billing_account_id)
-        .await?
-        .ok_or(SessionError::LoginFailed)?;
+    let billing_account = BillingAccount::get_by_pk(&ctx, &claim.billing_account_pk).await?;
 
     let user = User::get_by_id(&ctx, &claim.user_id)
         .await?

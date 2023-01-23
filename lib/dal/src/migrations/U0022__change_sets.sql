@@ -4,8 +4,7 @@ CREATE TABLE change_sets
     name                        text                     NOT NULL,
     note                        text,
     status                      text                     NOT NULL,
-    tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids ident[],
+    tenancy_billing_account_pks ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
@@ -23,10 +22,10 @@ DECLARE
     this_new_row        change_sets%ROWTYPE;
 BEGIN
     SELECT * FROM tenancy_json_to_columns_v1(this_tenancy) INTO this_tenancy_record;
-    INSERT INTO change_sets (name, note, status, tenancy_universal, tenancy_billing_account_ids,
+    INSERT INTO change_sets (name, note, status, tenancy_billing_account_pks,
                              tenancy_organization_ids, tenancy_workspace_ids)
     VALUES (this_name, this_note, this_status,
-            this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
+	    this_tenancy_record.tenancy_billing_account_pks,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids)
     RETURNING * INTO this_new_row;
     object := row_to_json(this_new_row);
@@ -37,8 +36,7 @@ CREATE TYPE change_set_update_type_v1 as
 (
     pk                          ident,
     id                          ident,
-    tenancy_universal           bool,
-    tenancy_billing_account_ids ident[],
+    tenancy_billing_account_pks ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[]
 );
@@ -78,8 +76,8 @@ BEGIN
             FROM information_schema.columns
             WHERE information_schema.columns.table_name = standard_model.table_name
               AND information_schema.columns.column_name NOT IN
-                  ('pk', 'id', 'tenancy_universal', 'tenancy_billing_account_ids', 'tenancy_organization_ids',
-                   'tenancy_workspace_ids', 'visibility_change_set_pk', 'pk', 'created_at', 'updated_at')
+                  ('pk', 'id', 'tenancy_billing_account_pks', 'tenancy_organization_ids',
+                   'tenancy_workspace_ids', 'visibility_change_set_pk', 'created_at', 'updated_at')
               AND information_schema.columns.is_generated = 'NEVER'
             INTO update_set_names;
 
@@ -104,15 +102,14 @@ BEGIN
                             'SELECT %2$s FROM %1$I WHERE %1$I.visibility_change_set_pk = %3$L ' ||
                             '                            AND %1$I.visibility_deleted_at IS NULL ' ||
                             'ON CONFLICT (id, ' ||
-                            '              tenancy_universal, ' ||
-                            '              tenancy_billing_account_ids, ' ||
+                            '              tenancy_billing_account_pks, ' ||
                             '              tenancy_organization_ids, ' ||
                             '              tenancy_workspace_ids, ' ||
                             '              visibility_change_set_pk, ' ||
                             '              (visibility_deleted_at IS NULL)) ' ||
                             '    WHERE visibility_deleted_at IS NULL ' ||
                             'DO UPDATE SET updated_at = clock_timestamp(), %4$s ' ||
-                            'RETURNING pk, id, tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids, tenancy_workspace_ids',
+                            'RETURNING pk, id, tenancy_billing_account_pks, tenancy_organization_ids, tenancy_workspace_ids',
                             this_table_name, insert_column_names, this_change_set_pk, update_set_names);
 
             FOR updated_model IN EXECUTE query
@@ -127,9 +124,8 @@ BEGIN
                                                             'change_set_pk', this_change_set_pk
                                                         ),
                                                     jsonb_build_object(
-                                                            'tenancy_universal', updated_model.tenancy_universal,
-                                                            'tenancy_billing_account_ids',
-                                                            updated_model.tenancy_billing_account_ids,
+                                                            'tenancy_billing_account_pks',
+                                                            updated_model.tenancy_billing_account_pks,
                                                             'tenancy_organization_ids',
                                                             updated_model.tenancy_organization_ids,
                                                             'tenancy_workspace_ids', updated_model.tenancy_workspace_ids

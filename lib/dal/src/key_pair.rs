@@ -8,8 +8,8 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
-    standard_model_belongs_to, BillingAccount, BillingAccountId, DalContext, HistoryEvent,
-    HistoryEventError, StandardModel, StandardModelError, Timestamp, Visibility,
+    BillingAccount, BillingAccountError, BillingAccountPk, DalContext, HistoryEventError,
+    StandardModel, StandardModelError, Timestamp, Visibility,
 };
 
 mod key_pair_box_public_key_serde;
@@ -29,6 +29,8 @@ pub enum KeyPairError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error(transparent)]
+    BillingAccount(#[from] Box<BillingAccountError>),
     #[error("no current key pair found when one was expected")]
     NoCurrentKeyPair,
 }
@@ -43,6 +45,7 @@ pub struct KeyPair {
     pk: KeyPairPk,
     id: KeyPairId,
     name: String,
+    billing_account_pk: BillingAccountPk,
     #[serde(with = "key_pair_box_public_key_serde")]
     public_key: BoxPublicKey,
     #[serde(with = "key_pair_box_secret_key_serde")]
@@ -66,7 +69,11 @@ impl_standard_model! {
 }
 
 impl KeyPair {
-    pub async fn new(ctx: &DalContext, name: impl AsRef<str>) -> KeyPairResult<Self> {
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        billing_account_pk: BillingAccountPk,
+    ) -> KeyPairResult<Self> {
         let name = name.as_ref();
         let (public_key, secret_key) = box_::gen_keypair();
 
@@ -74,38 +81,31 @@ impl KeyPair {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM key_pair_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM key_pair_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &name,
+                    &billing_account_pk,
                     &encode_public_key(&public_key),
                     &encode_secret_key(&secret_key),
                 ],
             )
             .await?;
-        let json: serde_json::Value = row.try_get("object")?;
-        let _history_event = HistoryEvent::new(
-            ctx,
-            Self::history_event_label(vec!["create"]),
-            Self::history_event_message("created"),
-            &serde_json::json![{ "visibility": ctx.visibility() }],
-        )
-        .await?;
-        let object = serde_json::from_value(json)?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
     pub async fn get_current(
         ctx: &DalContext,
-        billing_account_id: &BillingAccountId,
+        billing_account_pk: &BillingAccountPk,
     ) -> KeyPairResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
                 PUBLIC_KEY_GET_CURRENT,
-                &[ctx.read_tenancy(), ctx.visibility(), &billing_account_id],
+                &[ctx.read_tenancy(), ctx.visibility(), &billing_account_pk],
             )
             .await?;
         let object = standard_model::object_from_row(row)?;
@@ -113,20 +113,16 @@ impl KeyPair {
     }
 
     standard_model_accessor!(name, String, KeyPairResult);
+    standard_model_accessor!(billing_account_pk, Pk(BillingAccountPk), KeyPairResult);
     standard_model_accessor_ro!(public_key, BoxPublicKey);
     standard_model_accessor_ro!(secret_key, BoxSecretKey);
     standard_model_accessor_ro!(created_lamport_clock, u64);
 
-    standard_model_belongs_to!(
-         lookup_fn: billing_account,
-         set_fn: set_billing_account,
-         unset_fn: unset_billing_account,
-         table: "key_pair_belongs_to_billing_account",
-         model_table: "billing_accounts",
-         belongs_to_id: BillingAccountId,
-         returns: BillingAccount,
-         result: KeyPairResult,
-    );
+    pub async fn billing_account(&self, ctx: &DalContext) -> KeyPairResult<BillingAccount> {
+        Ok(BillingAccount::get_by_pk(ctx, &self.billing_account_pk)
+            .await
+            .map_err(Box::new)?)
+    }
 }
 
 fn encode_public_key(key: &BoxPublicKey) -> String {
@@ -167,14 +163,14 @@ pub struct PublicKey {
 impl PublicKey {
     pub async fn get_current(
         ctx: &DalContext,
-        billing_account_id: &BillingAccountId,
+        billing_account_pk: &BillingAccountPk,
     ) -> KeyPairResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
                 PUBLIC_KEY_GET_CURRENT,
-                &[ctx.read_tenancy(), ctx.visibility(), &billing_account_id],
+                &[ctx.read_tenancy(), ctx.visibility(), &billing_account_pk],
             )
             .await?;
         let object = standard_model::object_from_row(row)?;

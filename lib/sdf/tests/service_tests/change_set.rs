@@ -32,7 +32,7 @@ async fn list_open_change_sets() {
         _job_processor,
         _council_subject_prefix,
     );
-    dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
+    dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.pk());
     let _a_change_set = dal_create_change_set(&dal_ctx).await;
     let _b_change_set = dal_create_change_set(&dal_ctx).await;
     dal_ctx.commit().await.expect("cannot commit transaction");
@@ -99,7 +99,7 @@ async fn get_change_set() {
         _job_processor,
         _council_subject_prefix,
     );
-    dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
+    dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.pk());
     let change_set = dal_create_change_set(&dal_ctx).await;
     dal_ctx.commit().await.expect("cannot commit txn");
 
@@ -128,7 +128,7 @@ async fn apply_change_set() {
         _job_processor,
         _council_subject_prefix,
     );
-    dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
+    dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.pk());
     let change_set = dal_create_change_set(&dal_ctx).await;
     dal_ctx.commit().await.expect("cannot commit txn");
 

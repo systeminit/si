@@ -1,24 +1,25 @@
-use dal::{BillingAccount, BillingAccountSignup, DalContext, StandardModel};
+use dal::{BillingAccount, BillingAccountSignup, DalContext};
 use dal_test::{
     helpers::{create_billing_account, generate_fake_name},
-    test, DalContextUniversalHeadRef,
+    test,
 };
 
 #[test]
-async fn new(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
+async fn new(ctx: &DalContext) {
     let name = generate_fake_name();
     let billing_account = BillingAccount::new(ctx, &name, Some(&"coheed and cambria".to_string()))
         .await
         .expect("cannot create new billing account");
 
     assert_eq!(billing_account.name(), &name);
-    assert_eq!(billing_account.description(), Some("coheed and cambria"));
-    assert_eq!(billing_account.tenancy(), ctx.write_tenancy());
-    assert_eq!(billing_account.visibility(), ctx.visibility());
+    assert_eq!(
+        billing_account.description().as_deref(),
+        Some("coheed and cambria")
+    );
 }
 
 #[test]
-async fn get_by_pk(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
+async fn get_by_pk(ctx: &DalContext) {
     let billing_account = create_billing_account(ctx).await;
 
     let retrieved = BillingAccount::get_by_pk(ctx, billing_account.pk())
@@ -29,43 +30,7 @@ async fn get_by_pk(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'
 }
 
 #[test]
-async fn get_by_id(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
-    let billing_account = create_billing_account(ctx).await;
-
-    let retrieved = BillingAccount::get_by_id(ctx, billing_account.id())
-        .await
-        .expect("cannot get billing account by id")
-        .expect("there was no billing account by id");
-
-    assert_eq!(billing_account, retrieved);
-}
-
-#[test]
-async fn set_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
-    let mut billing_account = create_billing_account(ctx).await;
-
-    let new_name = generate_fake_name();
-    billing_account
-        .set_name(ctx, new_name.clone())
-        .await
-        .expect("cannot set name");
-
-    assert_eq!(billing_account.name(), &new_name);
-}
-
-#[test]
-async fn set_description(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
-    let mut billing_account = create_billing_account(ctx).await;
-
-    billing_account
-        .set_description(ctx, Some("smooth".to_string()))
-        .await
-        .expect("cannot set description");
-    assert_eq!(billing_account.description(), Some("smooth"));
-}
-
-#[test]
-async fn find_by_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
+async fn find_by_name(ctx: &DalContext) {
     let billing_account = create_billing_account(ctx).await;
 
     let name_billing_account = BillingAccount::find_by_name(ctx, &billing_account.name())
@@ -80,7 +45,7 @@ async fn find_by_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRe
 
 #[test]
 async fn get_defaults(ctx: &mut DalContext, nba: &BillingAccountSignup) {
-    let defaults = BillingAccount::get_defaults(ctx, nba.billing_account.id())
+    let defaults = BillingAccount::get_defaults(ctx, nba.billing_account.pk())
         .await
         .expect("cannot get defaults for billing account");
     assert_eq!(

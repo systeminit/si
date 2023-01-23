@@ -1,11 +1,11 @@
 use dal::{
-    BillingAccountId, BillingAccountSignup, DalContext, JwtSecretKey, ReadTenancy, StandardModel,
+    BillingAccountPk, BillingAccountSignup, DalContext, JwtSecretKey, ReadTenancy, StandardModel,
     User,
 };
 use dal_test::test;
 
 #[test]
-async fn new(ctx: &mut DalContext, bid: BillingAccountId) {
+async fn new(ctx: &mut DalContext, bid: BillingAccountPk) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let _user = User::new(
@@ -13,17 +13,18 @@ async fn new(ctx: &mut DalContext, bid: BillingAccountId) {
         "funky",
         "bobotclown@systeminit.com",
         "snakesOnAPlan123",
+        bid,
     )
     .await
     .expect("cannot create user");
 }
 
 #[test]
-async fn login(ctx: &mut DalContext, bid: BillingAccountId, jwt_secret_key: &JwtSecretKey) {
+async fn login(ctx: &mut DalContext, bid: BillingAccountPk, jwt_secret_key: &JwtSecretKey) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let password = "snakesOnAPlane123";
-    let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password)
+    let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password, bid)
         .await
         .expect("cannot create user");
 
@@ -34,11 +35,9 @@ async fn login(ctx: &mut DalContext, bid: BillingAccountId, jwt_secret_key: &Jwt
 }
 
 #[test]
-async fn find_by_email(ctx: &mut DalContext, bid: BillingAccountId) {
-    ctx.update_to_billing_account_tenancies(bid);
-
+async fn find_by_email(ctx: &mut DalContext, bid: BillingAccountPk) {
     let password = "snakesOnAPlane123";
-    let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password)
+    let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password, bid)
         .await
         .expect("cannot create user");
 
@@ -51,7 +50,9 @@ async fn find_by_email(ctx: &mut DalContext, bid: BillingAccountId) {
         "user by email does not match created user"
     );
 
-    ctx.update_read_tenancy(ReadTenancy::new_universal());
+    ctx.update_read_tenancy(ReadTenancy::new_billing_account(vec![
+        BillingAccountPk::generate(),
+    ]));
 
     let fail_user = User::find_by_email(ctx, "bobotclown@systeminit.com")
         .await
@@ -64,7 +65,7 @@ async fn find_by_email(ctx: &mut DalContext, bid: BillingAccountId) {
 
 #[test]
 async fn authorize(ctx: &mut DalContext, nba: &BillingAccountSignup) {
-    ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
+    ctx.update_to_billing_account_tenancies(*nba.billing_account.pk());
 
     let worked = User::authorize(ctx, nba.user.id())
         .await
@@ -72,9 +73,15 @@ async fn authorize(ctx: &mut DalContext, nba: &BillingAccountSignup) {
     assert!(worked, "authorized admin group user returns true");
 
     let password = "snakesOnAPlane123";
-    let user_no_group = User::new(ctx, "funky", "bobotclown@systeminit.com", &password)
-        .await
-        .expect("cannot create user");
+    let user_no_group = User::new(
+        ctx,
+        "funky",
+        "bobotclown@systeminit.com",
+        &password,
+        *nba.billing_account.pk(),
+    )
+    .await
+    .expect("cannot create user");
 
     let f = User::authorize(ctx, user_no_group.id()).await;
     assert!(

@@ -27,7 +27,7 @@ pub async fn get_defaults(
 ) -> SessionResult<Json<GetDefaultsResponse>> {
     let ctx = builder.build(request_ctx.build_head()).await?;
 
-    let response = BillingAccount::get_defaults(&ctx, &claim.billing_account_id)
+    let response = BillingAccount::get_defaults(&ctx, &claim.billing_account_pk)
         .await?
         .into();
 

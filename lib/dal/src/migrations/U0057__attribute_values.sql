@@ -2,8 +2,7 @@ CREATE TABLE attribute_values
 (
     pk                                     ident primary key default ident_create_v1(),
     id                                     ident not null default ident_create_v1(),
-    tenancy_universal                      bool                     NOT NULL,
-    tenancy_billing_account_ids            ident[],
+    tenancy_billing_account_pks            ident[],
     tenancy_organization_ids               ident[],
     tenancy_workspace_ids                  ident[],
     visibility_change_set_pk               ident                   NOT NULL DEFAULT ident_nil_v1(),
@@ -59,8 +58,7 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
     this_attribute_context_record := attribute_context_json_to_columns_v1(this_attribute_context);
 
-    INSERT INTO attribute_values (tenancy_universal,
-                                  tenancy_billing_account_ids,
+    INSERT INTO attribute_values (tenancy_billing_account_pks,
                                   tenancy_organization_ids,
                                   tenancy_workspace_ids,
                                   visibility_change_set_pk,
@@ -72,8 +70,7 @@ BEGIN
                                   func_binding_id,
                                   func_binding_return_value_id,
                                   key)
-    VALUES (this_tenancy_record.tenancy_universal,
-            this_tenancy_record.tenancy_billing_account_ids,
+    VALUES (this_tenancy_record.tenancy_billing_account_pks,
             this_tenancy_record.tenancy_organization_ids,
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,

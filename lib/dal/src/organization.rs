@@ -5,8 +5,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    BillingAccount, BillingAccountId, DalContext, HistoryEventError, StandardModel,
+    impl_standard_model, pk, standard_model, standard_model_accessor, BillingAccount,
+    BillingAccountError, BillingAccountPk, DalContext, HistoryEventError, StandardModel,
     StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
@@ -22,6 +22,8 @@ pub enum OrganizationError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error(transparent)]
+    BillingAccount(#[from] Box<BillingAccountError>),
 }
 
 pub type OrganizationResult<T> = Result<T, OrganizationError>;
@@ -34,6 +36,7 @@ pub struct Organization {
     pk: OrganizationPk,
     id: OrganizationId,
     name: String,
+    billing_account_pk: BillingAccountPk,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -53,14 +56,23 @@ impl_standard_model! {
 
 impl Organization {
     #[instrument(skip_all)]
-    pub async fn new(ctx: &DalContext, name: impl AsRef<str>) -> OrganizationResult<Self> {
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        billing_account_pk: BillingAccountPk,
+    ) -> OrganizationResult<Self> {
         let name = name.as_ref();
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM organization_create_v1($1, $2, $3)",
-                &[ctx.write_tenancy(), ctx.visibility(), &name],
+                "SELECT object FROM organization_create_v1($1, $2, $3, $4)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &name,
+                    &billing_account_pk,
+                ],
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
@@ -68,14 +80,11 @@ impl Organization {
     }
 
     standard_model_accessor!(name, String, OrganizationResult);
-    standard_model_belongs_to!(
-        lookup_fn: billing_account,
-        set_fn: set_billing_account,
-        unset_fn: unset_billing_account,
-        table: "organization_belongs_to_billing_account",
-        model_table: "billing_accounts",
-        belongs_to_id: BillingAccountId,
-        returns: BillingAccount,
-        result: OrganizationResult,
-    );
+    standard_model_accessor!(billing_account_pk, Pk(BillingAccountPk), OrganizationResult);
+
+    pub async fn billing_account(&self, ctx: &DalContext) -> OrganizationResult<BillingAccount> {
+        Ok(BillingAccount::get_by_pk(ctx, &self.billing_account_pk)
+            .await
+            .map_err(Box::new)?)
+    }
 }

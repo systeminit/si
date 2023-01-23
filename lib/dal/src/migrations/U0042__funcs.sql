@@ -2,8 +2,7 @@ CREATE TABLE funcs
 (
     pk                          ident primary key default ident_create_v1(),
     id                          ident not null default ident_create_v1(),
-    tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids ident[],
+    tenancy_billing_account_pks ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
@@ -15,6 +14,7 @@ CREATE TABLE funcs
     description                 text,
     link                        text,
     hidden                      bool                     NOT NULL DEFAULT FALSE,
+    builtin                     bool                     NOT NULL DEFAULT FALSE,
     backend_kind                text                     NOT NULL,
     backend_response_type       text                     NOT NULL,
     handler                     text,
@@ -23,8 +23,7 @@ CREATE TABLE funcs
 );
 CREATE UNIQUE INDEX unique_func_name_live ON funcs (
 	name,
-	tenancy_universal,
-	tenancy_billing_account_ids,
+	tenancy_billing_account_pks,
 	tenancy_organization_ids,
 	tenancy_workspace_ids,
 	visibility_change_set_pk,
@@ -36,8 +35,7 @@ CREATE TABLE func_bindings
 (
     pk                          ident primary key default ident_create_v1(),
     id                          ident not null default ident_create_v1(),
-    tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids ident[],
+    tenancy_billing_account_pks ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
@@ -55,8 +53,7 @@ CREATE TABLE func_binding_return_values
 (
     pk                          ident primary key default ident_create_v1(),
     id                          ident not null default ident_create_v1(),
-    tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids ident[],
+    tenancy_billing_account_pks ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
@@ -71,8 +68,7 @@ CREATE TABLE func_binding_return_values
 );
 CREATE UNIQUE INDEX unique_value_func_binding_return_value_live ON func_binding_return_values (
   func_binding_id,
-  tenancy_universal,
-  tenancy_billing_account_ids,
+  tenancy_billing_account_pks,
   tenancy_organization_ids,
   tenancy_workspace_ids,
   visibility_change_set_pk,
@@ -103,11 +99,11 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
-    INSERT INTO funcs (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
+    INSERT INTO funcs (tenancy_billing_account_pks, tenancy_organization_ids,
                        tenancy_workspace_ids,
                        visibility_change_set_pk, visibility_deleted_at,
                        name, backend_kind, backend_response_type)
-    VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
+    VALUES (this_tenancy_record.tenancy_billing_account_pks,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at, this_name, this_backend_kind, this_backend_response_type)
@@ -136,8 +132,7 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO func_bindings (
-        tenancy_universal,
-        tenancy_billing_account_ids,
+        tenancy_billing_account_pks,
         tenancy_organization_ids,
         tenancy_workspace_ids,
         visibility_change_set_pk,
@@ -147,8 +142,7 @@ BEGIN
         code_sha256
     )
     VALUES (
-        this_write_tenancy_record.tenancy_universal,
-        this_write_tenancy_record.tenancy_billing_account_ids,
+        this_write_tenancy_record.tenancy_billing_account_pks,
         this_write_tenancy_record.tenancy_organization_ids,
         this_write_tenancy_record.tenancy_workspace_ids,
         this_visibility_record.visibility_change_set_pk,
@@ -189,11 +183,11 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
-    INSERT INTO func_binding_return_values (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
+    INSERT INTO func_binding_return_values (tenancy_billing_account_pks, tenancy_organization_ids,
                                             tenancy_workspace_ids,
                                             visibility_change_set_pk, visibility_deleted_at,
                                             unprocessed_value, value, func_id, func_binding_id, func_execution_pk)
-    VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
+    VALUES (this_tenancy_record.tenancy_billing_account_pks,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at, this_unprocessed_value, this_value, this_func_id, this_func_binding_id, this_func_execution_pk)

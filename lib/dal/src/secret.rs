@@ -19,7 +19,7 @@ use crate::{
     pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
-    BillingAccountId, DalContext, HistoryEvent, HistoryEventError, KeyPair, KeyPairError,
+    BillingAccountPk, DalContext, HistoryEvent, HistoryEventError, KeyPair, KeyPairError,
     StandardModel, StandardModelError, Timestamp, Visibility,
 };
 
@@ -159,7 +159,7 @@ pub struct EncryptedSecret {
     name: String,
     object_type: SecretObjectType,
     kind: SecretKind,
-    billing_account_id: BillingAccountId,
+    billing_account_pk: BillingAccountPk,
     #[serde(with = "crypted_serde")]
     crypted: Vec<u8>,
     version: SecretVersion,
@@ -210,7 +210,7 @@ impl EncryptedSecret {
         key_pair_id: KeyPairId,
         version: SecretVersion,
         algorithm: SecretAlgorithm,
-        billing_account_id: BillingAccountId,
+        billing_account_pk: BillingAccountPk,
     ) -> SecretResult<Secret> {
         let name = name.as_ref();
 
@@ -228,7 +228,7 @@ impl EncryptedSecret {
                     &encode_crypted(crypted),
                     &version.as_ref(),
                     &algorithm.as_ref(),
-                    &billing_account_id,
+                    &billing_account_pk,
                 ],
             )
             .await?;
@@ -437,7 +437,7 @@ mod tests {
             object_type: SecretObjectType,
             kind: SecretKind,
             crypted: impl Into<Vec<u8>>,
-            billing_account_id: BillingAccountId,
+            billing_account_pk: BillingAccountPk,
         ) -> EncryptedSecret {
             let name = name.into();
             let crypted = crypted.into();
@@ -448,11 +448,11 @@ mod tests {
                 name,
                 object_type,
                 kind,
-                billing_account_id,
+                billing_account_pk,
                 crypted,
                 version: Default::default(),
                 algorithm: Default::default(),
-                tenancy: WriteTenancy::new_universal(),
+                tenancy: WriteTenancy::new_billing_account(billing_account_pk),
                 timestamp: Timestamp::now(),
                 visibility: Visibility::new_head(false),
             }
@@ -482,7 +482,7 @@ mod tests {
                 SecretObjectType::Credential,
                 SecretKind::DockerHub,
                 crypted,
-                BillingAccountId::NONE,
+                BillingAccountPk::NONE,
             );
             let decrypted = encrypted
                 .into_decrypted(&pkey, &skey)

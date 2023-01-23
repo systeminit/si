@@ -55,7 +55,7 @@ pub async fn list_funcs(
                 .display_name()
                 .unwrap_or_else(|| func.name())
                 .to_owned(),
-            is_builtin: func.is_builtin(),
+            is_builtin: func.builtin(),
         })
     })
     .collect();

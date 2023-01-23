@@ -2,7 +2,7 @@ use axum::{
     extract::{ws::WebSocket, Extension, WebSocketUpgrade},
     response::IntoResponse,
 };
-use dal::BillingAccountId;
+use dal::BillingAccountPk;
 use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use tokio::sync::broadcast;
@@ -24,10 +24,10 @@ pub async fn billing_account_updates(
         socket: WebSocket,
         nats: NatsClient,
         mut shutdown: broadcast::Receiver<()>,
-        billing_account_id: BillingAccountId,
+        billing_account_pk: BillingAccountPk,
     ) {
         tokio::select! {
-            _ = run_billing_account_updates_proto(socket, nats, billing_account_id) => {
+            _ = run_billing_account_updates_proto(socket, nats, billing_account_pk) => {
                 trace!("finished billing_account_updates proto");
             }
             _ = shutdown.recv() => {
@@ -40,15 +40,15 @@ pub async fn billing_account_updates(
     }
 
     let shutdown = shutdown_broadcast.subscribe();
-    wsu.on_upgrade(move |socket| handle_socket(socket, nats, shutdown, claim.billing_account_id))
+    wsu.on_upgrade(move |socket| handle_socket(socket, nats, shutdown, claim.billing_account_pk))
 }
 
 async fn run_billing_account_updates_proto(
     mut socket: WebSocket,
     nats: NatsClient,
-    billing_account_id: BillingAccountId,
+    billing_account_pk: BillingAccountPk,
 ) {
-    let proto = match billing_account_updates::run(nats, billing_account_id)
+    let proto = match billing_account_updates::run(nats, billing_account_pk)
         .start()
         .await
     {
@@ -79,17 +79,17 @@ mod billing_account_updates {
     use std::error::Error;
 
     use axum::extract::ws::{self, WebSocket};
-    use dal::BillingAccountId;
+    use dal::BillingAccountPk;
     use futures::TryStreamExt;
     use si_data_nats::{NatsClient, NatsError, Subscription};
     use telemetry::prelude::*;
     use thiserror::Error;
     use tokio_tungstenite::tungstenite;
 
-    pub fn run(nats: NatsClient, billing_account_id: BillingAccountId) -> BillingAccountUpdates {
+    pub fn run(nats: NatsClient, billing_account_pk: BillingAccountPk) -> BillingAccountUpdates {
         BillingAccountUpdates {
             nats,
-            billing_account_id,
+            billing_account_pk,
         }
     }
 
@@ -110,12 +110,12 @@ mod billing_account_updates {
     #[derive(Debug)]
     pub struct BillingAccountUpdates {
         nats: NatsClient,
-        billing_account_id: BillingAccountId,
+        billing_account_pk: BillingAccountPk,
     }
 
     impl BillingAccountUpdates {
         pub async fn start(self) -> Result<BillingAccountUpdatesStarted> {
-            let subject = format!("si.billing_account_id.{}.>", self.billing_account_id);
+            let subject = format!("si.billing_account_pk.{}.>", self.billing_account_pk);
             let subscription = self
                 .nats
                 .subscribe(&subject)

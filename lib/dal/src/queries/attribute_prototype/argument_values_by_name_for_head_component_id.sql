@@ -77,8 +77,7 @@ FROM (SELECT attribute_prototype_id,
                   END
 
           ORDER BY attribute_context_internal_provider_id,
-                   attribute_context_component_id DESC,
-                   av.tenancy_universal -- bools sort false first ascending.
+                   attribute_context_component_id DESC
           ) AS internal_provider_data ON prototype_argument_data.internal_provider_id =
                                          internal_provider_data.internal_provider_id
                LEFT JOIN LATERAL (
@@ -102,8 +101,7 @@ FROM (SELECT attribute_prototype_id,
                           av
                   )
           ORDER BY attribute_context_external_provider_id,
-                   attribute_context_component_id DESC,
-                   av.tenancy_universal -- bools sort false first ascending.
+                   attribute_context_component_id DESC
           ) AS external_provider_data ON prototype_argument_data.external_provider_id =
                                          external_provider_data.external_provider_id
       GROUP BY attribute_prototype_id,

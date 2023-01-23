@@ -14,7 +14,7 @@ pub async fn get_public_key(
     let ctx = builder.build(request_ctx.build_head()).await?;
 
     let response: GetPublicKeyResponse =
-        PublicKey::get_current(&ctx, &claim.billing_account_id).await?;
+        PublicKey::get_current(&ctx, &claim.billing_account_pk).await?;
 
     Ok(Json(response))
 }

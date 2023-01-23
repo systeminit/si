@@ -1,5 +1,5 @@
 use dal::{
-    BillingAccountId, ChangeSet, ChangeSetPk, ChangeSetStatus, DalContext, Group, StandardModel,
+    BillingAccountPk, ChangeSet, ChangeSetPk, ChangeSetStatus, DalContext, Group, StandardModel,
     Visibility,
 };
 use dal_test::{
@@ -26,13 +26,13 @@ async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
 }
 
 #[test]
-async fn apply(ctx: &mut DalContext) {
+async fn apply(ctx: &mut DalContext, bid: BillingAccountPk) {
     let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
         .await
         .expect("could not perform get by pk")
         .expect("could not get change set");
 
-    let group = create_group(ctx).await;
+    let group = create_group(ctx, bid).await;
 
     change_set
         .apply(ctx)
@@ -54,7 +54,7 @@ async fn apply(ctx: &mut DalContext) {
 }
 
 #[test]
-async fn list_open(DalContextHeadRef(ctx): DalContextHeadRef<'_>, bid: BillingAccountId) {
+async fn list_open(DalContextHeadRef(ctx): DalContextHeadRef<'_>, bid: BillingAccountPk) {
     let a_change_set = create_change_set(ctx, bid).await;
     let b_change_set = create_change_set(ctx, bid).await;
     let mut c_change_set = create_change_set(ctx, bid).await;
@@ -94,7 +94,7 @@ async fn list_open(DalContextHeadRef(ctx): DalContextHeadRef<'_>, bid: BillingAc
 }
 
 #[test]
-async fn get_by_pk(DalContextHeadRef(ctx): DalContextHeadRef<'_>, bid: BillingAccountId) {
+async fn get_by_pk(DalContextHeadRef(ctx): DalContextHeadRef<'_>, bid: BillingAccountPk) {
     let change_set = create_change_set(ctx, bid).await;
     let result = ChangeSet::get_by_pk(ctx, &change_set.pk)
         .await

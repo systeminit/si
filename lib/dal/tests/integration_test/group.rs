@@ -1,23 +1,25 @@
-use dal::{BillingAccountId, DalContext, Group, StandardModel};
+use dal::{BillingAccountPk, DalContext, Group, StandardModel};
 use dal_test::{
     helpers::{create_group, create_user},
     test,
 };
 
 #[test]
-async fn new(ctx: &mut DalContext, bid: BillingAccountId) {
+async fn new(ctx: &mut DalContext, bid: BillingAccountPk) {
     ctx.update_to_billing_account_tenancies(bid);
 
-    let _group = Group::new(ctx, "funky").await.expect("cannot create group");
+    let _group = Group::new(ctx, "funky", bid)
+        .await
+        .expect("cannot create group");
 }
 
 #[test]
-async fn add_user(ctx: &mut DalContext, bid: BillingAccountId) {
+async fn add_user(ctx: &mut DalContext, bid: BillingAccountPk) {
     ctx.update_to_billing_account_tenancies(bid);
 
-    let group = create_group(ctx).await;
-    let user_one = create_user(ctx).await;
-    let user_two = create_user(ctx).await;
+    let group = create_group(ctx, bid).await;
+    let user_one = create_user(ctx, bid).await;
+    let user_two = create_user(ctx, bid).await;
 
     group
         .add_user(ctx, user_one.id())
@@ -30,12 +32,12 @@ async fn add_user(ctx: &mut DalContext, bid: BillingAccountId) {
 }
 
 #[test]
-async fn remove_user(ctx: &mut DalContext, bid: BillingAccountId) {
+async fn remove_user(ctx: &mut DalContext, bid: BillingAccountPk) {
     ctx.update_to_billing_account_tenancies(bid);
 
-    let group = create_group(ctx).await;
-    let user_one = create_user(ctx).await;
-    let user_two = create_user(ctx).await;
+    let group = create_group(ctx, bid).await;
+    let user_one = create_user(ctx, bid).await;
+    let user_two = create_user(ctx, bid).await;
 
     group
         .add_user(ctx, user_one.id())
@@ -57,12 +59,12 @@ async fn remove_user(ctx: &mut DalContext, bid: BillingAccountId) {
 }
 
 #[test]
-async fn users(ctx: &mut DalContext, bid: BillingAccountId) {
+async fn users(ctx: &mut DalContext, bid: BillingAccountPk) {
     ctx.update_to_billing_account_tenancies(bid);
 
-    let group = create_group(ctx).await;
-    let user_one = create_user(ctx).await;
-    let user_two = create_user(ctx).await;
+    let group = create_group(ctx, bid).await;
+    let user_one = create_user(ctx, bid).await;
+    let user_two = create_user(ctx, bid).await;
 
     group
         .add_user(ctx, user_one.id())

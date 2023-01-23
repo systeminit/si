@@ -2,8 +2,7 @@ CREATE TABLE encrypted_secrets
 (
     pk                          ident primary key default ident_create_v1(),
     id                          ident not null default ident_create_v1(),
-    tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids ident[],
+    tenancy_billing_account_pks ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
@@ -13,7 +12,7 @@ CREATE TABLE encrypted_secrets
     name                        text                     NOT NULL,
     object_type                 text                     NOT NULL,
     kind                        text                     NOT NULL,
-    billing_account_id          ident                   NOT NULL,
+    billing_account_pk          ident                   NOT NULL,
     crypted                     text                     NOT NULL,
     version                     text                     NOT NULL,
     algorithm                   text                     NOT NULL
@@ -34,8 +33,7 @@ VALUES ('encrypted_secrets', 'model', 'encrypted_secret', 'Encrypted Secret'),
 CREATE VIEW secrets AS
 SELECT pk,
        id,
-       tenancy_universal,
-       tenancy_billing_account_ids,
+       tenancy_billing_account_pks,
        tenancy_organization_ids,
        tenancy_workspace_ids,
        visibility_change_set_pk,
@@ -60,8 +58,7 @@ IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
 AS $$
     SELECT in_tenancy_v1(
         this_read_tenancy,
-        record_to_check.tenancy_universal,
-        record_to_check.tenancy_billing_account_ids,
+        record_to_check.tenancy_billing_account_pks,
         record_to_check.tenancy_organization_ids,
         record_to_check.tenancy_workspace_ids
     )
@@ -94,8 +91,7 @@ AS $$
     SELECT
         in_tenancy_v1(
             this_read_tenancy,
-            record_to_check.tenancy_universal,
-            record_to_check.tenancy_billing_account_ids,
+            record_to_check.tenancy_billing_account_pks,
             record_to_check.tenancy_organization_ids,
             record_to_check.tenancy_workspace_ids
         )
@@ -130,7 +126,7 @@ CREATE OR REPLACE FUNCTION encrypted_secret_create_v1(
     this_crypted text,
     this_version text,
     this_algorithm text,
-    this_billing_account_id ident,
+    this_billing_account_pk ident,
     OUT object json) AS
 $$
 DECLARE
@@ -141,8 +137,7 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
-    INSERT INTO encrypted_secrets (tenancy_universal,
-                                   tenancy_billing_account_ids,
+    INSERT INTO encrypted_secrets (tenancy_billing_account_pks,
                                    tenancy_organization_ids,
                                    tenancy_workspace_ids,
                                    visibility_change_set_pk,
@@ -150,12 +145,11 @@ BEGIN
                                    name,
                                    object_type,
                                    kind,
-                                   billing_account_id,
+                                   billing_account_pk,
                                    crypted,
                                    version,
                                    algorithm)
-    VALUES (this_tenancy_record.tenancy_universal,
-            this_tenancy_record.tenancy_billing_account_ids,
+    VALUES (this_tenancy_record.tenancy_billing_account_pks,
             this_tenancy_record.tenancy_organization_ids,
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
@@ -163,7 +157,7 @@ BEGIN
             this_name,
             this_object_type,
             this_kind,
-            this_billing_account_id,
+            this_billing_account_pk,
             this_crypted,
             this_version,
             this_algorithm)

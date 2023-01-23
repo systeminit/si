@@ -110,7 +110,7 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                         //
                         // ```ignore
                         // #[test]
-                        // async fn does_things(bid: BillingAccountId) {
+                        // async fn does_things(bid: BillingAccountPk) {
                         //      // ...
                         // }
                         // ```
@@ -119,8 +119,8 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                         // references and/or mutability, however the surrounding type is passed as
                         // an owned type.
                         match ty_str {
-                            "BillingAccountId" => {
-                                let var = expander.setup_billing_account_id();
+                            "BillingAccountPk" => {
+                                let var = expander.setup_billing_account_pk();
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
@@ -156,21 +156,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                             }
                             "DalContextHeadMutRef" => {
                                 let var = expander.setup_dal_context_head_mut_ref();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
-                            "DalContextUniversalHead" => {
-                                let var = expander.setup_dal_context_universal_head();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
-                            "DalContextUniversalHeadRef" => {
-                                let var = expander.setup_dal_context_universal_head_ref();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
-                            "DalContextUniversalHeadMutRef" => {
-                                let var = expander.setup_dal_context_universal_head_mut_ref();
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
@@ -301,7 +286,7 @@ struct FnSetupExpander {
     owned_connections: Option<Arc<Ident>>,
     transactions: Option<Arc<Ident>>,
     billing_account_signup: Option<(Arc<Ident>, Arc<Ident>)>,
-    billing_account_id: Option<Arc<Ident>>,
+    billing_account_pk: Option<Arc<Ident>>,
     organization_id: Option<Arc<Ident>>,
     workspace_id: Option<Arc<Ident>>,
     dal_context_default: Option<Arc<Ident>>,
@@ -309,9 +294,6 @@ struct FnSetupExpander {
     dal_context_head: Option<Arc<Ident>>,
     dal_context_head_ref: Option<Arc<Ident>>,
     dal_context_head_mut_ref: Option<Arc<Ident>>,
-    dal_context_universal_head: Option<Arc<Ident>>,
-    dal_context_universal_head_ref: Option<Arc<Ident>>,
-    dal_context_universal_head_mut_ref: Option<Arc<Ident>>,
 }
 
 impl FnSetupExpander {
@@ -333,7 +315,7 @@ impl FnSetupExpander {
             owned_connections: None,
             transactions: None,
             billing_account_signup: None,
-            billing_account_id: None,
+            billing_account_pk: None,
             organization_id: None,
             workspace_id: None,
             dal_context_default: None,
@@ -341,9 +323,6 @@ impl FnSetupExpander {
             dal_context_head: None,
             dal_context_head_ref: None,
             dal_context_head_mut_ref: None,
-            dal_context_universal_head: None,
-            dal_context_universal_head_ref: None,
-            dal_context_universal_head_mut_ref: None,
         }
     }
 
@@ -616,21 +595,21 @@ impl FnSetupExpander {
         self.billing_account_signup.as_ref().unwrap().clone()
     }
 
-    fn setup_billing_account_id(&mut self) -> Arc<Ident> {
-        if let Some(ref idents) = self.billing_account_id {
+    fn setup_billing_account_pk(&mut self) -> Arc<Ident> {
+        if let Some(ref idents) = self.billing_account_pk {
             return idents.clone();
         }
 
         let bas = self.setup_billing_account_signup();
         let nba = bas.0.as_ref();
 
-        let var = Ident::new("nba_billing_account_id", Span::call_site());
+        let var = Ident::new("nba_billing_account_pk", Span::call_site());
         self.code.extend(quote! {
-            let #var = *#nba.billing_account.id();
+            let #var = *#nba.billing_account.pk();
         });
-        self.billing_account_id = Some(Arc::new(var));
+        self.billing_account_pk = Some(Arc::new(var));
 
-        self.billing_account_id.as_ref().unwrap().clone()
+        self.billing_account_pk.as_ref().unwrap().clone()
     }
 
     fn setup_organization_id(&mut self) -> Arc<Ident> {
@@ -723,92 +702,6 @@ impl FnSetupExpander {
         self.dal_context_default_mut.as_ref().unwrap().clone()
     }
 
-    fn setup_dal_context_universal_head(&mut self) -> Arc<Ident> {
-        if let Some(ref ident) = self.dal_context_universal_head {
-            return ident.clone();
-        }
-
-        let dal_context_builder = self.setup_dal_context_builder();
-        let dal_context_builder = dal_context_builder.as_ref();
-        let transactions = self.setup_transactions();
-        let transactions = transactions.as_ref();
-
-        let var = Ident::new("dal_context_universal_head", Span::call_site());
-        self.code.extend(quote! {
-            let #var = {
-                let ctx = #dal_context_builder
-                    .build_with_txns(
-                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
-                        #transactions.clone(),
-                    );
-                ::dal_test::DalContextUniversalHead(ctx)
-            };
-        });
-        self.dal_context_universal_head = Some(Arc::new(var));
-
-        self.dal_context_universal_head.as_ref().unwrap().clone()
-    }
-
-    fn setup_dal_context_universal_head_ref(&mut self) -> Arc<Ident> {
-        if let Some(ref ident) = self.dal_context_universal_head_ref {
-            return ident.clone();
-        }
-
-        let dal_context_builder = self.setup_dal_context_builder();
-        let dal_context_builder = dal_context_builder.as_ref();
-        let transactions = self.setup_transactions();
-        let transactions = transactions.as_ref();
-
-        let var = Ident::new("dal_context_universal_head_ref", Span::call_site());
-        self.code.extend(quote! {
-            let _dcuhr = {
-                let ctx = #dal_context_builder
-                    .build_with_txns(
-                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
-                        #transactions.clone(),
-                    );
-                ctx
-            };
-            let #var = ::dal_test::DalContextUniversalHeadRef(&_dcuhr);
-        });
-        self.dal_context_universal_head_ref = Some(Arc::new(var));
-
-        self.dal_context_universal_head_ref
-            .as_ref()
-            .unwrap()
-            .clone()
-    }
-
-    fn setup_dal_context_universal_head_mut_ref(&mut self) -> Arc<Ident> {
-        if let Some(ref ident) = self.dal_context_universal_head_mut_ref {
-            return ident.clone();
-        }
-
-        let dal_context_builder = self.setup_dal_context_builder();
-        let dal_context_builder = dal_context_builder.as_ref();
-        let transactions = self.setup_transactions();
-        let transactions = transactions.as_ref();
-
-        let var = Ident::new("dal_context_universal_head_mut_ref", Span::call_site());
-        self.code.extend(quote! {
-            let mut _dcuhmr = {
-                let ctx = #dal_context_builder
-                    .build_with_txns(
-                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
-                        #transactions.clone(),
-                    );
-                ctx
-            };
-            let #var = ::dal_test::DalContextUniversalHeadMutRef(&mut _dcuhmr);
-        });
-        self.dal_context_universal_head_mut_ref = Some(Arc::new(var));
-
-        self.dal_context_universal_head_mut_ref
-            .as_ref()
-            .unwrap()
-            .clone()
-    }
-
     fn setup_dal_context_head(&mut self) -> Arc<Ident> {
         if let Some(ref ident) = self.dal_context_head {
             return ident.clone();
@@ -826,7 +719,7 @@ impl FnSetupExpander {
             let #var = {
                 let mut ctx = #dal_context_builder
                     .build_with_txns(
-                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
+                        ::dal::RequestContext::default(),
                         #transactions.clone(),
                     );
                 ctx
@@ -859,7 +752,7 @@ impl FnSetupExpander {
             let _dchr = {
                 let mut ctx = #dal_context_builder
                     .build_with_txns(
-                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
+                        ::dal::RequestContext::default(),
                         #transactions.clone(),
                     );
                 ctx
@@ -892,7 +785,7 @@ impl FnSetupExpander {
             let mut _dchmr = {
                 let mut ctx = #dal_context_builder
                     .build_with_txns(
-                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
+                        ::dal::RequestContext::default(),
                         #transactions.clone(),
                     );
                 ctx

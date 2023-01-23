@@ -1,12 +1,9 @@
 use dal::{
-    component::ComponentKind, schema::SchemaUiMenu, BillingAccountSignup, DalContext, JwtSecretKey,
-    Schema, StandardModel,
+    component::ComponentKind, schema::SchemaUiMenu, BillingAccountSignup, DalContext, Schema,
+    StandardModel,
 };
 
-use dal_test::{
-    test,
-    test_harness::{billing_account_signup, create_schema},
-};
+use dal_test::{test, test_harness::create_schema};
 
 pub mod ui_menu;
 pub mod variant;
@@ -16,34 +13,6 @@ async fn new(ctx: &DalContext) {
     let _schema = Schema::new(ctx, "mastodon", &ComponentKind::Standard)
         .await
         .expect("cannot create schema");
-}
-
-#[test]
-async fn billing_accounts(ctx: &DalContext, jwt_secret_key: &JwtSecretKey) {
-    let (nba, _token) = billing_account_signup(ctx, jwt_secret_key).await;
-    let schema = Schema::new(ctx, "mastodon", &ComponentKind::Standard)
-        .await
-        .expect("cannot create schema");
-    schema
-        .add_billing_account(ctx, nba.billing_account.id())
-        .await
-        .expect("cannot add billing account");
-
-    let relations = schema
-        .billing_accounts(ctx)
-        .await
-        .expect("cannot get billing accounts");
-    assert_eq!(relations, vec![nba.billing_account.clone()]);
-
-    schema
-        .remove_billing_account(ctx, nba.billing_account.id())
-        .await
-        .expect("cannot remove billing account");
-    let relations = schema
-        .billing_accounts(ctx)
-        .await
-        .expect("cannot get billing accounts");
-    assert_eq!(relations, vec![]);
 }
 
 #[test]

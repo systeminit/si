@@ -7,7 +7,7 @@ use dal::{
         execution::FuncExecution,
     },
     generate_name, ChangeSetPk, DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncId,
-    HistoryActor, StandardModel, Visibility, WriteTenancy,
+    StandardModel, Visibility,
 };
 use dal_test::{
     test,
@@ -19,9 +19,6 @@ mod description;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let _write_tenancy = WriteTenancy::new_universal();
-    let _visibility = Visibility::new_head(false);
-    let _history_actor = HistoryActor::SystemInit;
     let _func = Func::new(
         ctx,
         "poop",
@@ -34,9 +31,6 @@ async fn new(ctx: &DalContext) {
 
 #[test]
 async fn func_binding_new(ctx: &DalContext) {
-    let _write_tenancy = WriteTenancy::new_universal();
-    let _visibility = Visibility::new_head(false);
-    let _history_actor = HistoryActor::SystemInit;
     let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("floop".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");

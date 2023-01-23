@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use axum::http::Method;
-use dal::{StandardModel, Visibility};
+use dal::StandardModel;
 use dal_test::{test, test_harness::create_schema as dal_create_schema};
 use sdf::service::schema::{
     create_schema::{CreateSchemaRequest, CreateSchemaResponse},
@@ -29,11 +29,11 @@ async fn create_schema() {
         app,
         _nba,
         auth_token,
-        _dal_ctx,
+        dal_ctx,
         _job_processor,
         _council_subject_prefix,
     );
-    let visibility = Visibility::new_head(false);
+    let visibility = *dal_ctx.visibility();
     let request = CreateSchemaRequest {
         name: "fancyPants".to_string(),
         visibility,
@@ -68,17 +68,18 @@ async fn list_schemas() {
         _job_processor,
         _council_subject_prefix,
     );
-    dal_ctx.update_to_universal_head();
-
     let rand_schema1 = dal_create_schema(&dal_ctx).await;
     let rand_schema1_name = rand_schema1.name();
     let rand_schema2 = dal_create_schema(&dal_ctx).await;
     let rand_schema2_name = rand_schema2.name();
 
+    let visibility = *dal_ctx.visibility();
     dal_ctx.commit().await.expect("cannot commit txn");
 
-    let visibility = Visibility::new_head(false);
-    let request = ListSchemaRequest { visibility };
+    let request = ListSchemaRequest {
+        visibility,
+        workspace_id: *nba.workspace.id(),
+    };
     let response: ListSchemaResponse =
         api_request_auth_query(app, "/api/schema/list_schemas", &auth_token, &request).await;
 
@@ -119,16 +120,15 @@ async fn get_schemas() {
         _job_processor,
         _council_subject_prefix,
     );
-    dal_ctx.update_to_universal_head();
-
     let schema_one = dal_create_schema(&dal_ctx).await;
 
+    let visibility = *dal_ctx.visibility();
     dal_ctx.commit().await.expect("cannot commit txn");
 
-    let visibility = Visibility::new_head(false);
     let request = GetSchemaRequest {
         visibility,
         schema_id: *schema_one.id(),
+        workspace_id: *nba.workspace.id(),
     };
     let response: GetSchemaResponse =
         api_request_auth_query(app, "/api/schema/get_schema", &auth_token, &request).await;

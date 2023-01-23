@@ -315,9 +315,7 @@ BEGIN
                     ORDER BY attribute_context_internal_provider_id DESC,
                              attribute_context_prop_id DESC,
                              attribute_context_external_provider_id DESC,
-                             attribute_context_component_id DESC,
-                             -- bools sort false first ascending.
-                             av.tenancy_universal;
+                             attribute_context_component_id DESC;
                     IF exact_attribute_context_v1(tmp_attribute_context,
                                                   attribute_context_from_record_v1(tmp_attribute_value)) THEN
                         -- There's already an appropriate AttributeValue for the InternalProvider. Nothing to do.

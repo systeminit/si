@@ -4,7 +4,7 @@ use dal::{
     ActionPrototypeContext, AttributeReadContext, AttributeValue, AttributeValueId, ChangeSet,
     ChangeSetStatus, Component, DalContext, Fix, FixBatch, FixCompletionStatus, Func, FuncArgument,
     LeafInput, LeafInputLocation, LeafKind, RootPropChild, SchemaVariant, StandardModel,
-    Visibility, WorkflowPrototype, WorkflowPrototypeContext, WorkflowPrototypeId, WorkflowRunner,
+    Visibility, WorkflowPrototype, WorkflowPrototypeId, WorkflowRunner,
 };
 use dal_test::helpers::component_payload::ComponentPayload;
 use dal_test::{
@@ -177,23 +177,12 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
     .await
     .expect("could not add leaf");
 
-    let func_name = "si:dockerImageRefreshWorkflow";
-    let func = Func::find_by_attr(ctx, "name", &func_name)
+    let title = "Refresh Docker Image";
+    let workflow_prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
-        .expect("unable to find func")
+        .expect("unable to find prototype")
         .pop()
-        .expect("unable to find func");
-
-    let title = "Docker Image Refresh - Test";
-    let context = WorkflowPrototypeContext {
-        schema_id: payload.schema_id,
-        schema_variant_id: payload.schema_variant_id,
-        ..Default::default()
-    };
-    let workflow_prototype =
-        WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title)
-            .await
-            .expect("unable to create workflow prototype");
+        .expect("unable to find prototype");
 
     let name = "create";
     let context = ActionPrototypeContext {

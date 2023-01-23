@@ -63,7 +63,7 @@ impl ResourceScheduler {
         let components = self.components().await?;
 
         for component in components {
-            // First we're building a ctx with universal head, then updating it with a
+            // First we're building a ctx with no tenancy at head, then updating it with a
             // workspace head request context
 
             let builder = self.services_context.clone().into_builder();

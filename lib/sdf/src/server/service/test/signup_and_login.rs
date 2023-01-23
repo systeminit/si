@@ -1,8 +1,5 @@
 use axum::Json;
-use dal::{
-    billing_account::BillingAccountSignup, BillingAccount, HistoryActor, RequestContext,
-    StandardModel,
-};
+use dal::{billing_account::BillingAccountSignup, BillingAccount, RequestContext};
 use serde::{Deserialize, Serialize};
 
 use super::{generate_fake_name, TestResult};
@@ -18,9 +15,7 @@ pub async fn signup_and_login(
     HandlerContext(builder): HandlerContext,
     JwtSecretKey(jwt_secret_key): JwtSecretKey,
 ) -> TestResult<Json<SignupResponse>> {
-    let ctx = builder
-        .build(RequestContext::new_universal_head(HistoryActor::SystemInit))
-        .await?;
+    let ctx = builder.build(RequestContext::default()).await?;
 
     let billing_account_name = generate_fake_name();
     let user_name = generate_fake_name();
@@ -40,7 +35,7 @@ pub async fn signup_and_login(
         .login(
             &ctx,
             &jwt_secret_key,
-            result.billing_account.id(),
+            result.billing_account.pk(),
             user_password,
         )
         .await?;

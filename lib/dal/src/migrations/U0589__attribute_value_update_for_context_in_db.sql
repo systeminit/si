@@ -238,9 +238,7 @@ BEGIN
              visibility_deleted_at DESC NULLS FIRST,
              attribute_context_internal_provider_id DESC,
              attribute_context_external_provider_id DESC,
-             attribute_context_component_id DESC,
-             -- bools sort false first ascending.
-             av.tenancy_universal;
+             attribute_context_component_id DESC;
 END;
 $$ LANGUAGE PLPGSQL PARALLEL SAFE;
 
@@ -311,8 +309,7 @@ AS $$
         COALESCE(ap.key, ''),
         ap.attribute_context_internal_provider_id DESC,
         ap.attribute_context_external_provider_id DESC,
-        ap.attribute_context_component_id DESC,
-        av.tenancy_universal -- bools sort false first ascending.
+        ap.attribute_context_component_id DESC
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_prototype_create_intermediate_proxy_values_v1(this_write_tenancy             jsonb,
@@ -598,8 +595,7 @@ AS $$
             attribute_context_internal_provider_id DESC,
             attribute_context_external_provider_id DESC,
             COALESCE(key, ''),
-            attribute_context_component_id DESC,
-            av.tenancy_universal -- bools sort false first ascending.
+            attribute_context_component_id DESC
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_value_new_v1(this_write_tenancy                jsonb,
@@ -783,8 +779,7 @@ AS $$
                 COALESCE(key, ''),
                 attribute_context_internal_provider_id DESC,
                 attribute_context_external_provider_id DESC,
-                attribute_context_component_id DESC,
-                av.tenancy_universal -- bools sort false first ascending.
+                attribute_context_component_id DESC
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_value_populate_child_proxies_for_value_v1(this_write_tenancy               jsonb,
@@ -1706,10 +1701,7 @@ DECLARE
     read_tenancy            jsonb;
     result_value            jsonb;
     result_value_processed  jsonb;
-    universal_write_tenancy jsonb;
 BEGIN
-    universal_write_tenancy := jsonb_set(this_write_tenancy, '{tenancy_universal}', to_jsonb(TRUE));
-
     -- binding.prepare_execution
     SELECT *
     INTO STRICT func_binding
@@ -1729,7 +1721,7 @@ BEGIN
     SELECT (fe.object ->> 'pk')::ident
     INTO STRICT func_execution_pk
     FROM func_execution_create_v1(
-        universal_write_tenancy,
+        this_write_tenancy,
         'Start'::text,
         func.id,
         func_binding.id,
@@ -1796,8 +1788,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION tenancy_build_from_parts(this_universal           bool,
-                                                    this_billing_account_ids ident[],
+CREATE OR REPLACE FUNCTION tenancy_build_from_parts(this_billing_account_pks ident[],
                                                     this_organization_ids    ident[],
                                                     this_workspace_ids       ident[],
                                                     OUT new_tenancy          jsonb
@@ -1805,8 +1796,7 @@ CREATE OR REPLACE FUNCTION tenancy_build_from_parts(this_universal           boo
 AS
 $$
 BEGIN
-    new_tenancy := jsonb_build_object('universal',           this_universal,
-                                      'billing_account_ids', this_billing_account_ids,
+    new_tenancy := jsonb_build_object('billing_account_pks', this_billing_account_pks,
                                       'organization_ids',    this_organization_ids,
                                       'workspace_ids',       this_workspace_ids);
 END;
@@ -1820,7 +1810,7 @@ AS
 $$
 DECLARE
     this_write_tenancy_record tenancy_record_v1;
-    billing_account_ids       ident[];
+    billing_account_pks       ident[];
     organization_ids          ident[];
 BEGIN
     this_write_tenancy_record := jsonb_to_record(this_write_tenancy);
@@ -1829,34 +1819,32 @@ BEGIN
         IF this_write_tenancy_record.organization_ids IS NULL || array_length(this_write_tenancy_record.organization_ids, 1) = 0 THEN
             -- New billing account read tenancy
             read_tenancy := tenancy_build_from_parts(true,
-                                                     this_write_tenancy_record.billing_account_ids,
+                                                     this_write_tenancy_record.billing_account_pks,
                                                      ARRAY[]::ident[],
                                                      ARRAY[]::ident[]);
         ELSE
             -- New organization read tenancy
-            SELECT COALESCE(array_agg(x.belongs_to_id), ARRAY[]::ident[])
-            INTO billing_account_ids
+            SELECT COALESCE(array_agg(x.billing_account_pk), ARRAY[]::ident[])
+            INTO billing_account_pks
             FROM (
-                SELECT DISTINCT ON (object_id) belongs_to_id
-                FROM organization_belongs_to_billing_account
-                WHERE is_visible_v1(this_visibility, organization_belongs_to_billing_account)
-                      AND object_id = ANY(this_write_tenancy_record.organization_ids)
-                ORDER BY object_id,
-                         visibility_change_set_pk DESC,
-                         visibility_deleted_at DESC NULLS FIRST
+                SELECT DISTINCT ON (billing_account_pk) billing_account_pk
+                FROM organizations
+                WHERE is_visible_v1(this_visibility, organizations)
+                      AND id = ANY(this_write_tenancy_record.organization_ids)
+                ORDER BY id, visibility_deleted_at DESC NULLS FIRST
             ) AS x;
 
             read_tenancy := tenancy_build_from_parts(true,
-                                                     billing_account_ids,
+                                                     billing_account_pks,
                                                      this_write_tenancy_record.organization_ids,
                                                      ARRAY[]::ident[]);
         END IF;
     ELSE
         -- New workspace read tenancy
         SELECT COALESCE(array_agg(org.organization_id),        ARRAY[]::ident[]),
-               COALESCE(array_agg(billing.billing_account_id), ARRAY[]::ident[])
+               COALESCE(array_agg(billing.billing_account_pk), ARRAY[]::ident[])
         INTO organization_ids,
-             billing_account_ids
+             billing_account_pks
         FROM (
              SELECT DISTINCT ON (object_id) belongs_to_id AS organization_id
              FROM workspace_belongs_to_organization
@@ -1867,18 +1855,15 @@ BEGIN
                       visibility_deleted_at DESC NULLS FIRST
         ) AS org
         INNER JOIN (
-            SELECT DISTINCT ON (object_id)
-                belongs_to_id AS billing_account_id,
-                object_id AS organization_id
-            FROM organization_belongs_to_billing_account
-            WHERE is_visible_v1(this_visibility, organization_belongs_to_billing_account)
-            ORDER BY object_id,
-                     visibility_change_set_pk DESC,
+            SELECT DISTINCT ON (id) billing_account_pk, id AS organization_id
+            FROM organizations
+            WHERE is_visible_v1(this_visibility, organizations)
+            ORDER BY id,
                      visibility_deleted_at DESC NULLS FIRST
         ) AS billing ON org.organization_id = billing.organization_id;
 
         read_tenancy := tenancy_build_from_parts(true,
-                                                 billing_account_ids,
+                                                 billing_account_pks,
                                                  organization_ids,
                                                  this_write_tenancy_record.workspace_ids);
     END IF;

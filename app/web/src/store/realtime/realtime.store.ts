@@ -35,7 +35,7 @@ type TrackedSubscription = EventTypeAndCallback & {
 // shape of the extra data that comes through the websocket along with the payload
 type RealtimeEventMetadata = {
   version: number;
-  billing_account_ids: Array<number>;
+  billing_account_pks: Array<number>;
   actor: ActorView;
 };
 

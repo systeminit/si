@@ -4,8 +4,7 @@ WHERE change_set_pk = $1
  AND finished_at IS NULL
  AND in_tenancy_v1(
      $2,
-     status_updates.tenancy_universal,
-     status_updates.tenancy_billing_account_ids,
+     status_updates.tenancy_billing_account_pks,
      status_updates.tenancy_organization_ids,
      status_updates.tenancy_workspace_ids
  )

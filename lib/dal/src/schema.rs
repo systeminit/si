@@ -14,10 +14,10 @@ use crate::{
     component::ComponentKind, func::binding::FuncBindingError, impl_standard_model, pk,
     schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
-    AttributePrototypeError, AttributeValueError, BillingAccount, BillingAccountId, Component,
-    DalContext, FuncError, HistoryEventError, Organization, OrganizationId, PropError,
-    ReadTenancyError, StandardModel, StandardModelError, Timestamp, ValidationPrototypeError,
-    Visibility, Workspace, WorkspaceId, WsEventError,
+    AttributePrototypeError, AttributeValueError, Component, DalContext, FuncError,
+    HistoryEventError, Organization, OrganizationId, PropError, ReadTenancyError, StandardModel,
+    StandardModelError, Timestamp, ValidationPrototypeError, Visibility, Workspace, WorkspaceId,
+    WsEventError,
 };
 
 pub use ui_menu::SchemaUiMenu;
@@ -144,21 +144,6 @@ impl Schema {
         default_schema_variant_id,
         Option<Pk(SchemaVariantId)>,
         SchemaResult
-    );
-
-    standard_model_many_to_many!(
-        lookup_fn: billing_accounts,
-        associate_fn: add_billing_account,
-        disassociate_fn: remove_billing_account,
-        disassociate_all_fn: remove_all_billing_accounts,
-        table_name: "schema_many_to_many_billing_account",
-        left_table: "schema",
-        left_id: SchemaId,
-        right_table: "billing_accounts",
-        right_id: BillingAccountId,
-        which_table_is_this: "left",
-        returns: BillingAccount,
-        result: SchemaResult,
     );
 
     standard_model_many_to_many!(

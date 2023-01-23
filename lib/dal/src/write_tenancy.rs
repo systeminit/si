@@ -4,7 +4,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    BillingAccountId, DalContext, OrganizationId, ReadTenancy, ReadTenancyError, WorkspaceId,
+    BillingAccountPk, DalContext, OrganizationId, ReadTenancy, ReadTenancyError, WorkspaceId,
 };
 
 #[derive(Error, Debug)]
@@ -17,10 +17,8 @@ pub type WriteTenancyResult<T> = Result<T, WriteTenancyError>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct WriteTenancy {
-    #[serde(rename = "tenancy_universal")]
-    universal: bool,
-    #[serde(rename = "tenancy_billing_account_ids")]
-    billing_account_ids: Vec<BillingAccountId>,
+    #[serde(rename = "tenancy_billing_account_pks")]
+    billing_account_pks: Vec<BillingAccountPk>,
     #[serde(rename = "tenancy_organization_ids")]
     organization_ids: Vec<OrganizationId>,
     #[serde(rename = "tenancy_workspace_ids")]
@@ -28,8 +26,8 @@ pub struct WriteTenancy {
 }
 
 impl WriteTenancy {
-    pub fn billing_accounts(&self) -> &[BillingAccountId] {
-        &self.billing_account_ids
+    pub fn billing_accounts(&self) -> &[BillingAccountPk] {
+        &self.billing_account_pks
     }
 
     pub fn organizations(&self) -> &[OrganizationId] {
@@ -40,37 +38,17 @@ impl WriteTenancy {
         &self.workspace_ids
     }
 
-    pub fn universal(&self) -> bool {
-        self.universal
-    }
-
-    pub fn into_universal(mut self) -> Self {
-        self.universal = true;
-        self
-    }
-
     pub fn new_empty() -> Self {
         Self {
-            universal: false,
-            billing_account_ids: Vec::new(),
+            billing_account_pks: Vec::new(),
             organization_ids: Vec::new(),
             workspace_ids: Vec::new(),
         }
     }
 
-    pub fn new_universal() -> Self {
+    pub fn new_billing_account(bid: BillingAccountPk) -> Self {
         Self {
-            universal: true,
-            billing_account_ids: Vec::new(),
-            organization_ids: Vec::new(),
-            workspace_ids: Vec::new(),
-        }
-    }
-
-    pub fn new_billing_account(id: BillingAccountId) -> Self {
-        Self {
-            universal: false,
-            billing_account_ids: vec![id],
+            billing_account_pks: vec![bid],
             organization_ids: Vec::new(),
             workspace_ids: Vec::new(),
         }
@@ -78,8 +56,7 @@ impl WriteTenancy {
 
     pub fn new_organization(id: OrganizationId) -> Self {
         Self {
-            universal: false,
-            billing_account_ids: Vec::new(),
+            billing_account_pks: Vec::new(),
             organization_ids: vec![id],
             workspace_ids: Vec::new(),
         }
@@ -87,8 +64,7 @@ impl WriteTenancy {
 
     pub fn new_workspace(id: WorkspaceId) -> Self {
         Self {
-            universal: false,
-            billing_account_ids: Vec::new(),
+            billing_account_pks: Vec::new(),
             organization_ids: Vec::new(),
             workspace_ids: vec![id],
         }
@@ -98,11 +74,10 @@ impl WriteTenancy {
     pub async fn check(&self, txn: &PgTxn, read_tenancy: &ReadTenancy) -> WriteTenancyResult<bool> {
         let row = txn
             .query_one(
-                "SELECT in_tenancy_v1($1, $2, $3, $4, $5) AS result",
+                "SELECT in_tenancy_v1($1, $2, $3, $4) AS result",
                 &[
                     read_tenancy,
-                    &self.universal,
-                    &self.billing_account_ids,
+                    &self.billing_account_pks,
                     &self.organization_ids,
                     &self.workspace_ids,
                 ],
@@ -118,7 +93,7 @@ impl WriteTenancy {
     ) -> Result<ReadTenancy, ReadTenancyError> {
         let read_tenancy = if self.workspace_ids.is_empty() {
             if self.organization_ids.is_empty() {
-                ReadTenancy::new_billing_account(self.billing_account_ids)
+                ReadTenancy::new_billing_account(self.billing_account_pks)
             } else {
                 ReadTenancy::new_organization(
                     ctx.txns().pg(),

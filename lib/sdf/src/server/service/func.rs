@@ -95,8 +95,6 @@ pub enum FuncError {
     MissingOptions,
     #[error("Cannot create that type of function")]
     FuncNotSupported,
-    #[error("we don't know what to do if the prototype is in the universal tenancy")]
-    UniversalError,
     #[error("attribute value missing")]
     AttributeValueMissing,
     #[error("attribute prototype missing")]
@@ -434,7 +432,7 @@ pub async fn get_func_view(ctx: &DalContext, func: &Func) -> FuncResult<GetFuncR
             .to_owned(),
         description: func.description().map(|d| d.to_owned()),
         code: func.code_plaintext()?,
-        is_builtin: func.is_builtin(),
+        is_builtin: func.builtin(),
         is_revertible,
         associations,
     })

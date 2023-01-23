@@ -76,8 +76,8 @@ async fn name_from_context(ctx: &DalContext) {
 
 #[test]
 async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: WorkspaceId) {
-    // Start on universal head tenancy and visibility.
-    ctx.update_to_universal_head();
+    // Start on head visibility.
+    ctx.update_to_head();
 
     let schema = create_schema(ctx).await;
     let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0")
@@ -214,10 +214,9 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: Works
 
 #[test]
 async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: WorkspaceId) {
-    // Switch to universal head (tenancy and visibility) to author schemas and
-    // intra-schema-variant relationships.
+    // Switch to head visibility to author schemas and intra-schema-variant relationships.
     let ctx = &mut octx;
-    ctx.update_to_universal_head();
+    ctx.update_to_head();
 
     // Create "ekwb" schema.
     let ekwb_schema = create_schema(ctx).await;

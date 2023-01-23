@@ -43,11 +43,7 @@ BEGIN
                            func.display_name,
                            func.backend_kind,
                            func.backend_response_type,
-                           CASE
-                               WHEN func.tenancy_universal IS TRUE
-                                   AND func.visibility_change_set_pk = ident_nil_v1() THEN TRUE
-                               ELSE FALSE
-                               END,
+			   func.builtin,
                            ap.id,
                            ap.attribute_context_component_id
                            ) AS func_with_attribute_prototype_context
@@ -88,8 +84,7 @@ BEGIN
                  ORDER BY COALESCE(avbtav.belongs_to_id, ident_nil_v1()) DESC,
                           av.attribute_context_prop_id DESC,
                           COALESCE(av.key, ''),
-                          av.attribute_context_component_id DESC,
-                          av.tenancy_universal -- bools sort false first ascending.
+                          av.attribute_context_component_id DESC
              ) AS av_ids;
         -- Exit the loop, since we haven't found any new child AttributeValues to return.
         EXIT WHEN new_child_attribute_value_ids IS NULL;
@@ -107,11 +102,7 @@ BEGIN
                                func.display_name,
                                func.backend_kind,
                                func.backend_response_type,
-                               CASE
-                                   WHEN func.tenancy_universal IS TRUE
-                                       AND func.visibility_change_set_pk = ident_nil_v1() THEN TRUE
-                                   ELSE FALSE
-                                   END,
+			       func.builtin,
                                ap.id,
                                ap.attribute_context_component_id
                                ) AS func_with_attribute_prototype_context
@@ -174,8 +165,7 @@ ORDER BY av.attribute_context_prop_id,
          av.visibility_deleted_at DESC NULLS FIRST,
          av.attribute_context_internal_provider_id DESC,
          av.attribute_context_external_provider_id DESC,
-         av.attribute_context_component_id DESC,
-         av.tenancy_universal -- bools sort false first ascending.
+         av.attribute_context_component_id DESC
 $$;
 
 CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_v1(

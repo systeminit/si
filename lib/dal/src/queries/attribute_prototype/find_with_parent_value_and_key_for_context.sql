@@ -28,5 +28,4 @@ ORDER BY
     visibility_change_set_pk DESC,
     attribute_context_internal_provider_id DESC,
     attribute_context_external_provider_id DESC,
-    attribute_context_component_id DESC,
-    av.tenancy_universal -- bools sort false first ascending.
+    attribute_context_component_id DESC

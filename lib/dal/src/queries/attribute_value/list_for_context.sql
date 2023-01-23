@@ -14,5 +14,4 @@ ORDER BY COALESCE(belongs_to_id, ''),
          attribute_context_internal_provider_id DESC,
          attribute_context_external_provider_id DESC,
          COALESCE(key, ''),
-         attribute_context_component_id DESC,
-         av.tenancy_universal -- bools sort false first ascending.
+         attribute_context_component_id DESC

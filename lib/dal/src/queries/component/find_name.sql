@@ -35,8 +35,7 @@ WHERE id IN (
                   av
               )
     ORDER BY av.attribute_context_prop_id,
-             av.attribute_context_component_id DESC,
-             av.tenancy_universal -- bools sort false first ascending.
+             av.attribute_context_component_id DESC
 )
 
 -- This ends up with an extremely bad query plan to the point where it
@@ -96,8 +95,7 @@ WHERE id IN (
 --     ORDER BY
 --         attribute_context_prop_id,
 --         attribute_context_component_id DESC,
---         attribute_context_system_id DESC,
---         av.tenancy_universal
+--         attribute_context_system_id DESC
 -- ) AS name_av
 --     ON name_av.attribute_context_prop_id = name_prop.id
 -- INNER JOIN func_binding_return_values_v1($1, $2) AS fbrv

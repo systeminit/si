@@ -9,5 +9,4 @@ ORDER BY attribute_context_prop_id,
          COALESCE(key, ''),
          attribute_context_internal_provider_id DESC,
          attribute_context_external_provider_id DESC,
-         attribute_context_component_id DESC,
-         ap.tenancy_universal -- bools sort false first ascending.
+         attribute_context_component_id DESC

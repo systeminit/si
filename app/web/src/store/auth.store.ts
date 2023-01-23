@@ -14,7 +14,7 @@ const AUTH_LOCAL_STORAGE_KEYS = {
 
 type TokenData = {
   user_id: string;
-  billing_account_id: string;
+  billing_account_pk: string;
   // isImpersonating?: boolean;
 };
 
@@ -27,7 +27,7 @@ interface LoginResponse {
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     token: null as string | null,
-    billingAccountId: null as string | null,
+    billingAccountPk: null as string | null,
     userId: null as string | null,
     adminIsImpersonatingUser: false,
 
@@ -152,12 +152,12 @@ export const useAuthStore = defineStore("auth", {
       if (!token) return;
 
       // token contains user id and biling account id
-      const { user_id: userId, billing_account_id: billingAccountId } =
+      const { user_id: userId, billing_account_pk: billingAccountPk } =
         jwtDecode<TokenData>(token);
       this.$patch({
         token,
         userId,
-        billingAccountId,
+        billingAccountPk,
         // adminIsImpersonatingUser: isImpersonating,
       });
 
@@ -177,7 +177,7 @@ export const useAuthStore = defineStore("auth", {
       this.$patch({
         token: null,
         userId: null,
-        billingAccountId: null,
+        billingAccountPk: null,
         adminIsImpersonatingUser: false,
       });
     },
@@ -187,7 +187,7 @@ export const useAuthStore = defineStore("auth", {
       const decodedJwt = jwtDecode<TokenData>(loginResponse.jwt);
       this.$patch({
         userId: decodedJwt.user_id,
-        billingAccountId: decodedJwt.billing_account_id,
+        billingAccountPk: decodedJwt.billing_account_pk,
         token: loginResponse.jwt,
         user: loginResponse.user,
         billingAccount: loginResponse.billingAccount,

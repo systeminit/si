@@ -1,9 +1,7 @@
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use dal::{
-    Func, FuncBackendKind, FuncId, HistoryActor, RequestContext, StandardModel, Visibility, WsEvent,
-};
+use dal::{Func, FuncBackendKind, FuncId, RequestContext, StandardModel, Visibility, WsEvent};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::dev::DevError;
@@ -36,9 +34,7 @@ pub async fn save_builtin_func(
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SaveBuiltinFuncRequest>,
 ) -> DevResult<Json<SaveBuiltinFuncResponse>> {
-    let mut ctx = builder
-        .build(RequestContext::new_universal_head(HistoryActor::SystemInit))
-        .await?;
+    let mut ctx = builder.build(RequestContext::default()).await?;
 
     let mut func = Func::get_by_id(&ctx, &request.id)
         .await?

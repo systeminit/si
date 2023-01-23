@@ -1,6 +1,6 @@
 use axum::Json;
 
-use dal::{FuncBackendKind, HistoryActor, RequestContext, StandardModel, Visibility, WsEvent};
+use dal::{FuncBackendKind, RequestContext, StandardModel, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::DevResult;
@@ -22,9 +22,7 @@ pub async fn create_builtin_func(
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CreateBuiltinFuncRequest>,
 ) -> DevResult<Json<CreateFuncResponse>> {
-    let mut ctx = builder
-        .build(RequestContext::new_universal_head(HistoryActor::SystemInit))
-        .await?;
+    let mut ctx = builder.build(RequestContext::default()).await?;
 
     // TODO(nick): fix this module.
     #[allow(clippy::match_single_binding)]
@@ -44,6 +42,7 @@ pub async fn create_builtin_func(
     //     .await?;
     // func.set_handler(&ctx, Some("qualification".to_owned()))
     //     .await?;
+    // func.set_builtin(&ctx, true).await?;
     // func
 
     dal::builtins::func_persist(&ctx, &func).await?;
