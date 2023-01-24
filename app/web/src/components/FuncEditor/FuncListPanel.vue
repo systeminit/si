@@ -98,7 +98,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, reactive, ref, Ref } from "vue";
+import { computed, ref } from "vue";
 import { TabPanel } from "@headlessui/vue";
 import { storeToRefs } from "pinia";
 import _ from "lodash";

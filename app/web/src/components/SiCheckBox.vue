@@ -52,7 +52,6 @@
 <script setup lang="ts">
 import { computed, toRef } from "vue";
 import _ from "lodash";
-import clsx from "clsx";
 import { Switch } from "@headlessui/vue";
 import { useValidations, ValidatorArray } from "@/utils/input_validations";
 import Icon from "@/ui-lib/icons/Icon.vue";
@@ -92,5 +91,6 @@ const inputValue = computed<boolean | undefined>({
   },
 });
 
-const isIndeterminate = computed(() => _.isUndefined(props.modelValue));
+// TODO: maybe want this to be a thing again?
+// const isIndeterminate = computed(() => _.isUndefined(props.modelValue));
 </script>
