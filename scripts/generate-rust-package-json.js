@@ -22,7 +22,7 @@ function transformInternalDeps(cargoTomlDeps) {
 
 const cargoTomlFiles = fg.sync('(bin|lib)/*/Cargo.toml');
 
-const BOOT_PACKAGES = ['pinga', 'sdf-cli', 'veritech-cli', 'council'];
+const BOOT_PACKAGES = ['pinga', 'sdf-cli', 'veritech-cli', 'council-cli'];
 
 // add cyclone as veritech dep
 // lang-js to cyclone
@@ -54,7 +54,7 @@ for (const tomlPath of cargoTomlFiles) {
       "check:format": "cargo fmt -- --check",
       "check": "pnpm check:format && pnpm check:lint && pnpm check:doc",
       "prepush": "pnpm check && pnpm test",
-      ...BOOT_PACKAGES.includes(tomlData.package.name) && { "boot:backend": `CARGO_MANIFEST_DIR=\${PWD} ${binPath}` },
+      ...BOOT_PACKAGES.includes(tomlData.package.name) && { "dev:backend": `CARGO_MANIFEST_DIR=\${PWD} ${binPath}` },
     },
     // the dependencies in package.json files is used by turborepo when running dependent tasks
     dependencies: {
