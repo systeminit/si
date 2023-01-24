@@ -81,12 +81,12 @@ pub enum EdgeError {
     InternalProviderNotFound(InternalProviderId),
     #[error("internal provider not found for socket id: {0}")]
     InternalProviderNotFoundForSocket(SocketId),
-    #[error("cannot find identity func argument")]
-    NodeNotFound,
-    #[error("cannot find identity func argument")]
-    SocketNotFound,
-    #[error("cannot find identity func argument")]
-    ComponentNotFound,
+    #[error("cannot find node id: {0}")]
+    NodeNotFound(NodeId),
+    #[error("cannot find socket id: {0}")]
+    SocketNotFound(SocketId),
+    #[error("cannot find component for node id: {0}")]
+    ComponentNotFoundForNode(NodeId),
 }
 
 pub type EdgeResult<T> = Result<T, EdgeError>;
@@ -237,7 +237,9 @@ impl Edge {
                 .await?;
             standard_model::object_option_from_row_option::<Edge>(row)?
         } {
-            return Self::restore_by_id(ctx, equivalent_edge.id).await;
+            if let Some(restored_edge) = Self::restore_by_id(ctx, equivalent_edge.id).await? {
+                return Ok(restored_edge);
+            }
         }
 
         // Otherwise create a new one
@@ -351,22 +353,22 @@ impl Edge {
         let head_component_id = *{
             let head_node = Node::get_by_id(ctx, &self.head_node_id())
                 .await?
-                .ok_or(EdgeError::NodeNotFound)?;
+                .ok_or(EdgeError::NodeNotFound(self.head_node_id))?;
             head_node
                 .component(ctx)
                 .await?
-                .ok_or(EdgeError::ComponentNotFound)?
+                .ok_or(EdgeError::ComponentNotFoundForNode(self.tail_node_id))?
                 .id()
         };
 
         let tail_component_id = *{
             let tail_node = Node::get_by_id(ctx, &self.tail_node_id())
                 .await?
-                .ok_or(EdgeError::NodeNotFound)?;
+                .ok_or(EdgeError::NodeNotFound(self.tail_node_id))?;
             tail_node
                 .component(ctx)
                 .await?
-                .ok_or(EdgeError::ComponentNotFound)?
+                .ok_or(EdgeError::ComponentNotFoundForNode(self.tail_node_id))?
                 .id()
         };
 
@@ -374,9 +376,9 @@ impl Edge {
         // a head (explicit) internal provider. That might not be the case, but it true in practice for the present state of the interface
         // (aggr frame connection to children shouldn't go through this path)
         let external_provider = {
-            let socket = Socket::get_by_id(ctx, &self.tail_socket_id())
+            let socket = Socket::get_by_id(ctx, &self.tail_socket_id)
                 .await?
-                .ok_or(EdgeError::SocketNotFound)?;
+                .ok_or(EdgeError::SocketNotFound(self.tail_socket_id))?;
 
             socket
                 .external_provider(ctx)
@@ -387,7 +389,7 @@ impl Edge {
         let internal_provider_id = *{
             let socket = Socket::get_by_id(ctx, &self.head_socket_id())
                 .await?
-                .ok_or(EdgeError::SocketNotFound)?;
+                .ok_or(EdgeError::SocketNotFound(self.head_socket_id))?;
 
             socket
                 .internal_provider(ctx)
@@ -452,7 +454,7 @@ impl Edge {
         Ok(())
     }
 
-    pub async fn restore_by_id(ctx: &DalContext, edge_id: EdgeId) -> EdgeResult<Self> {
+    pub async fn restore_by_id(ctx: &DalContext, edge_id: EdgeId) -> EdgeResult<Option<Self>> {
         let ctx_with_deleted = &ctx.clone_with_delete_visibility();
 
         let deleted_edge = Edge::get_by_id(ctx_with_deleted, &edge_id)
@@ -476,24 +478,24 @@ impl Edge {
 
         // Restore the Attribute Prototype Argument
         let head_component_id = *{
-            let head_node = Node::get_by_id(ctx, head_node_id)
+            let head_node = Node::get_by_id(ctx_with_deleted, head_node_id)
                 .await?
-                .ok_or(EdgeError::NodeNotFound)?;
+                .ok_or(EdgeError::NodeNotFound(*head_node_id))?;
             head_node
-                .component(ctx)
+                .component(ctx_with_deleted)
                 .await?
-                .ok_or(EdgeError::ComponentNotFound)?
+                .ok_or(EdgeError::ComponentNotFoundForNode(*head_node_id))?
                 .id()
         };
 
         let tail_component_id = *{
-            let tail_node = Node::get_by_id(ctx, tail_node_id)
+            let tail_node = Node::get_by_id(ctx_with_deleted, tail_node_id)
                 .await?
-                .ok_or(EdgeError::NodeNotFound)?;
+                .ok_or(EdgeError::NodeNotFound(*tail_node_id))?;
             tail_node
-                .component(ctx)
+                .component(ctx_with_deleted)
                 .await?
-                .ok_or(EdgeError::ComponentNotFound)?
+                .ok_or(EdgeError::ComponentNotFoundForNode(*tail_node_id))?
                 .id()
         };
 
@@ -501,24 +503,24 @@ impl Edge {
         // a head (explicit) internal provider. That might not be the case, but it true in practice for the present state of the interface
         // (aggr frame connection to children shouldn't go through this path)
         let external_provider_id = *{
-            let socket = Socket::get_by_id(ctx, tail_socket_id)
+            let socket = Socket::get_by_id(ctx_with_deleted, tail_socket_id)
                 .await?
-                .ok_or(EdgeError::SocketNotFound)?;
+                .ok_or(EdgeError::SocketNotFound(*tail_socket_id))?;
 
             socket
-                .external_provider(ctx)
+                .external_provider(ctx_with_deleted)
                 .await?
                 .ok_or_else(|| EdgeError::ExternalProviderNotFoundForSocket(*socket.id()))?
                 .id()
         };
 
         let internal_provider_id = *{
-            let socket = Socket::get_by_id(ctx, head_socket_id)
+            let socket = Socket::get_by_id(ctx_with_deleted, head_socket_id)
                 .await?
-                .ok_or(EdgeError::SocketNotFound)?;
+                .ok_or(EdgeError::SocketNotFound(*head_socket_id))?;
 
             socket
-                .internal_provider(ctx)
+                .internal_provider(ctx_with_deleted)
                 .await?
                 .ok_or_else(|| EdgeError::InternalProviderNotFoundForSocket(*socket.id()))?
                 .id()
@@ -544,18 +546,16 @@ impl Edge {
             component_id: Some(tail_component_id),
         };
 
-        let attr_value = AttributeValue::find_for_context(ctx, read_context)
+        let attr_value = AttributeValue::find_for_context(ctx_with_deleted, read_context)
             .await?
             .ok_or(EdgeError::AttributeValueNotFound)?;
 
         ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
             .await;
 
-        let head_edge = Edge::get_by_id(ctx, &edge_id)
-            .await?
-            .ok_or(EdgeError::EdgeNotFound(edge_id))?;
+        println!("Searching for original edge {}", edge_id);
 
-        Ok(head_edge)
+        Ok(Edge::get_by_id(ctx, &edge_id).await?)
     }
 
     /// This function should be only called by [`Self::new_for_connection()`] and integration tests.

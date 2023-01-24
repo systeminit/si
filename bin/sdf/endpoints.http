@@ -88,3 +88,27 @@ workspaceid: 01GQ35YGTWRYNMNHP7QA8A1XD1
   "edgeId": "01GQ37D814ZRGF52RAVMVHNZ5S",
   "workspaceId": "01GQ35YGTWRYNMNHP7QA8A1XD1"
 }
+
+### Delete Component
+POST http://localhost:8080/api/diagram/delete_component
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+workspaceid: 01GQJPSJ6E5QVJV3Z5X6WMPM14
+
+{
+  "visibility_change_set_pk": "01GQJPTHW71B8Y4YG7DF4EVBN1",
+  "componentId": "01GQJQWP59A3N843FXHSZCGP2A"
+}
+
+### Restore Component
+POST http://localhost:8080/api/diagram/restore_component
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+workspaceid: 01GQJPSJ6E5QVJV3Z5X6WMPM14
+
+{
+  "visibility_change_set_pk": "01GQJPTHW71B8Y4YG7DF4EVBN1",
+  "componentId": "01GQJQWP59A3N843FXHSZCGP2A"
+}
+
+

@@ -810,9 +810,9 @@ impl Component {
     pub async fn get_type(&self, ctx: &DalContext) -> ComponentResult<ComponentType> {
         let type_attribute_value =
             Self::find_attribute_value(ctx, self.id, "type".to_string()).await?;
-        let raw_value = type_attribute_value.get_value(ctx).await?.ok_or(
-            ComponentError::ComponentTypeIsNone(*type_attribute_value.id(), self.id),
-        )?;
+        let raw_value = type_attribute_value.get_value(ctx).await?.ok_or_else(|| {
+            ComponentError::ComponentTypeIsNone(*type_attribute_value.id(), self.id)
+        })?;
         let component_type: ComponentType = serde_json::from_value(raw_value)?;
         Ok(component_type)
     }
@@ -853,9 +853,9 @@ impl Component {
         let si_attribute_value = type_attribute_value
             .parent_attribute_value(ctx)
             .await?
-            .ok_or(ComponentError::ParentAttributeValueNotFound(
-                *type_attribute_value.id(),
-            ))?;
+            .ok_or_else(|| {
+                ComponentError::ParentAttributeValueNotFound(*type_attribute_value.id())
+            })?;
         AttributeValue::update_for_context(
             ctx,
             *type_attribute_value.id(),
@@ -941,9 +941,13 @@ impl Component {
                         attribute_read_context,
                     ))?;
 
-                let prototype = attribute_value.attribute_prototype(ctx).await?.ok_or(
-                    ComponentError::MissingAttributePrototype(*attribute_value.id()),
-                )?;
+                let prototype =
+                    attribute_value
+                        .attribute_prototype(ctx)
+                        .await?
+                        .ok_or_else(|| {
+                            ComponentError::MissingAttributePrototype(*attribute_value.id())
+                        })?;
 
                 let arguments = AttributePrototypeArgument::find_by_attr(
                     ctx,
@@ -1034,11 +1038,7 @@ impl Component {
         Ok(())
     }
 
-    pub async fn delete_and_propagate(
-        &mut self,
-        ctx: &DalContext,
-        // component_id: ComponentId,
-    ) -> ComponentResult<()> {
+    pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> ComponentResult<()> {
         // TODO - This is temporary for now until we allow deleting frames
         if self.get_type(ctx).await? != ComponentType::Component {
             return Err(ComponentError::Frame);
@@ -1060,5 +1060,32 @@ impl Component {
         self.delete_by_id(ctx).await?;
 
         Ok(())
+    }
+
+    pub async fn restore_by_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Self> {
+        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
+
+        for edge in Edge::list_for_component(ctx_with_deleted, component_id).await? {
+            Edge::restore_by_id(ctx, *edge.id()).await?;
+        }
+
+        // TODO: When components that don't exist on HEAD but got deleted on the changeset try to
+        // be restored, get_by_id does not find them, even with a "valid" visibility. we should discuss this
+        let comp = Component::get_by_id(ctx_with_deleted, &component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(component_id))?;
+
+        for node in comp.node(ctx_with_deleted).await? {
+            node.hard_delete(ctx_with_deleted).await?;
+        }
+
+        comp.hard_delete(ctx_with_deleted).await?;
+
+        Component::get_by_id(ctx, &component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(component_id))
     }
 }
