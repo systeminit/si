@@ -10,13 +10,11 @@ use thiserror::Error;
 
 use crate::edge::EdgeKind;
 use crate::{
-    diagram::DiagramKind, generate_name, impl_standard_model, pk,
-    schema::variant::SchemaVariantError, standard_model, standard_model_accessor,
-    standard_model_belongs_to, Component, ComponentId, HistoryEventError, ReadTenancyError, Schema,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
-    WriteTenancy,
+    impl_standard_model, pk, schema::variant::SchemaVariantError, standard_model,
+    standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryEventError,
+    ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
-use crate::{node_position::NodePositionView, DalContext, Edge, SchemaError};
+use crate::{DalContext, Edge, SchemaError};
 
 const LIST_FOR_KIND: &str = include_str!("queries/node/list_for_kind.sql");
 const LIST_CONNECTED_FOR_KIND: &str = include_str!("queries/node/list_connected_for_kind.sql");
@@ -276,79 +274,5 @@ impl Node {
             total_start.elapsed()
         );
         Ok(sorted)
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeTemplate {
-    name: String,
-    pub title: String,
-    kind: DiagramKind,
-    schema_variant_id: SchemaVariantId,
-}
-
-impl NodeTemplate {
-    /// Creates [`self`](Self) for a given [`SchemaId`](crate::Schema). The resulting template will
-    /// be of [`DiagramKind::Configuration`](crate::DiagramKind::Configuration).
-    pub async fn new_for_schema(ctx: &DalContext, schema_id: SchemaId) -> NodeResult<Self> {
-        let schema = Schema::get_by_id(ctx, &schema_id)
-            .await?
-            .ok_or(NodeError::SchemaIdNotFound)?;
-        let schema_variant_id = *schema
-            .default_schema_variant_id()
-            .ok_or(NodeError::SchemaMissingDefaultVariant)?;
-
-        Ok(NodeTemplate {
-            kind: DiagramKind::Configuration,
-            title: schema.name().to_owned(),
-            name: generate_name(),
-            schema_variant_id,
-        })
-    }
-}
-
-/// This maps to the typescript DiagramNode, and can go from the database
-/// representation of a node, combined with the schema data.
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeView {
-    id: NodeId,
-    name: String,
-    title: String,
-    component_id: ComponentId,
-    schema_variant_id: SchemaVariantId,
-    positions: Vec<NodePositionView>,
-}
-
-impl NodeView {
-    pub fn new(
-        name: impl Into<String>,
-        node: &Node,
-        component_id: ComponentId,
-        positions: Vec<NodePositionView>,
-        node_template: NodeTemplate,
-    ) -> Self {
-        let name = name.into();
-        NodeView {
-            id: node.id,
-            name,
-            component_id,
-            schema_variant_id: node_template.schema_variant_id,
-            title: node_template.title,
-            positions,
-        }
-    }
-
-    pub fn id(&self) -> &NodeId {
-        &self.id
-    }
-
-    pub fn component_id(&self) -> ComponentId {
-        self.component_id
-    }
-
-    pub fn positions(&self) -> &[NodePositionView] {
-        &self.positions
     }
 }

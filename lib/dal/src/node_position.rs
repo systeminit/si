@@ -147,35 +147,3 @@ impl NodePosition {
         result: NodePositionResult,
     );
 }
-
-/// This maps to the typescript DiagramNodePosition, and can go from the database
-/// representation of a node, combined with the schema data.
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodePositionView {
-    pub diagram_kind: DiagramKind,
-    pub x: f64,
-    pub y: f64,
-    pub width: Option<f64>,
-    pub height: Option<f64>,
-}
-
-impl From<NodePosition> for NodePositionView {
-    fn from(pos: NodePosition) -> Self {
-        Self {
-            diagram_kind: pos.diagram_kind,
-            x: pos.x.parse().expect("Node position.x was not a float"),
-            y: pos.y.parse().expect("Node position.y was not a float"),
-            width: pos
-                .width
-                .map(|val| val.parse())
-                .transpose()
-                .expect("Node position.width was not a float"),
-            height: pos
-                .height
-                .map(|val| val.parse())
-                .transpose()
-                .expect("Node position.height was not a float"),
-        }
-    }
-}

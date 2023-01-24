@@ -301,12 +301,16 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   }
 
   // TODO These ids should be number from the start.
-  await componentsStore.CREATE_COMPONENT(schemaId, e.position, parentId);
+  const createReq = await componentsStore.CREATE_COMPONENT(
+    schemaId,
+    e.position,
+    parentId,
+  );
 
-  // TODO: we actually want the new node ID so we can watch for it in the updated data
-  // but the API currently doesn't have it right away :(
-  const newNodeId = +new Date();
-  insertCallbacks[newNodeId] = e.onComplete;
+  // TODO(nick,theo): consider what to do upon failure.
+  if (createReq.result.success) {
+    insertCallbacks[createReq.result.data.componentId] = e.onComplete;
+  }
 }
 
 function onDiagramResizeElement(e: ResizeElementEvent) {

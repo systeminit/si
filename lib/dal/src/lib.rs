@@ -134,7 +134,7 @@ pub use job_failure::{JobFailure, JobFailureError, JobFailureResult};
 pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
-pub use node::{Node, NodeError, NodeKind, NodeTemplate, NodeView};
+pub use node::{Node, NodeError, NodeKind};
 pub use node_menu::NodeMenuError;
 pub use node_position::{
     NodePosition, NodePositionError, NodePositionId, NodePositionPk, NodePositionResult,

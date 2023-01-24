@@ -5,8 +5,8 @@ use dal::edge::EdgeKind;
 use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
 use dal::{
-    generate_name, node_position::NodePositionView, Component, Connection, DiagramKind,
-    NodePosition, NodeTemplate, NodeView, Schema, SchemaId, StandardModel, Visibility, WorkspaceId,
+    generate_name, Component, ComponentId, Connection, DiagramKind, NodePosition, Schema, SchemaId,
+    StandardModel, Visibility, WorkspaceId, WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -28,7 +28,7 @@ pub struct CreateNodeRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateNodeResponse {
-    pub node: NodeView,
+    pub component_id: ComponentId,
 }
 
 pub async fn create_node(
@@ -48,10 +48,6 @@ pub async fn create_node(
         .ok_or(DiagramError::SchemaVariantNotFound)?;
 
     let (component, node) = Component::new(&ctx, &name, *schema_variant_id).await?;
-
-    let component_id = *component.id();
-
-    let node_template = NodeTemplate::new_for_schema(&ctx, request.schema_id).await?;
 
     let (width, height) = {
         let sockets = component
@@ -74,7 +70,7 @@ pub async fn create_node(
     };
 
     // NOTE(nick): we currently assume all nodes created through this route are configuration nodes.
-    let position = NodePosition::new(
+    NodePosition::new(
         &ctx,
         *node.id(),
         DiagramKind::Configuration,
@@ -84,8 +80,6 @@ pub async fn create_node(
         height,
     )
     .await?;
-    let positions = vec![NodePositionView::from(position)];
-    let node_view = NodeView::new(name, &node, component_id, positions, node_template);
 
     if let Some(frame_id) = request.parent_id {
         if let Some(frame) = Component::find_for_node(&ctx, frame_id).await? {
@@ -156,7 +150,16 @@ pub async fn create_node(
         }
     }
 
+    // TODO(nick,theo): create a component-specific event once the endpoints are cleaner (i.e. we
+    // can call routes with more precision).
+    WsEvent::change_set_written(&ctx)
+        .await?
+        .publish(&ctx)
+        .await?;
+
     ctx.commit().await?;
 
-    Ok(Json(CreateNodeResponse { node: node_view }))
+    Ok(Json(CreateNodeResponse {
+        component_id: *component.id(),
+    }))
 }
