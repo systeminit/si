@@ -23,7 +23,6 @@ pub mod delete_component;
 pub mod delete_connection;
 pub mod get_diagram;
 pub mod get_node_add_menu;
-pub mod get_node_template;
 pub mod list_schema_variants;
 pub mod restore_connection;
 pub mod set_node_position;
@@ -123,10 +122,6 @@ pub fn routes() -> Router {
         .route(
             "/get_node_add_menu",
             post(get_node_add_menu::get_node_add_menu),
-        )
-        .route(
-            "/get_node_template",
-            get(get_node_template::get_node_template),
         )
         .route("/create_node", post(create_node::create_node))
         .route(

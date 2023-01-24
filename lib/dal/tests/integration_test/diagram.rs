@@ -1,10 +1,9 @@
 use dal::change_status::ChangeStatus;
 use dal::edge::EdgeKind;
-use dal::node_position::NodePositionView;
 use dal::{
     socket::{SocketArity, SocketEdgeKind, SocketKind},
     Component, ComponentView, Connection, DalContext, Diagram, DiagramEdgeView, DiagramKind,
-    NodePosition, NodeTemplate, NodeView, Schema, SchemaVariant, StandardModel,
+    NodePosition, Schema, SchemaVariant, StandardModel,
 };
 use dal_test::helpers::component_view::ComponentViewProperties;
 use dal_test::{
@@ -48,11 +47,7 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         component_view_properties.drop_qualification().to_value() // actual
     );
 
-    let node_template = NodeTemplate::new_for_schema(ctx, *schema.id())
-        .await
-        .expect("could not create node template");
-
-    let position = NodePosition::new(
+    NodePosition::new(
         ctx,
         *node.id(),
         DiagramKind::Configuration,
@@ -63,14 +58,6 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
     )
     .await
     .expect("could not create node position");
-    let positions = vec![NodePositionView::from(position)];
-    let node_view = NodeView::new(name, &node, *component.id(), positions, node_template);
-
-    let found_component = Component::get_by_id(ctx, &node_view.component_id())
-        .await
-        .expect("could not perform get by id for component")
-        .expect("component not found by id");
-    assert_eq!(*component.id(), *found_component.id());
 
     let component_view = ComponentView::new(ctx, *component.id())
         .await
