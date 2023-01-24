@@ -144,9 +144,10 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: Works
     );
 
     // Now, test our query. Ensure we have the right context too.
-    let found_attribute_value = Component::find_type_attribute_value(ctx, *component.id())
-        .await
-        .expect("could not find type attribute value");
+    let found_attribute_value =
+        Component::find_attribute_value(ctx, *component.id(), "type".to_string())
+            .await
+            .expect("could not find type attribute value");
     assert_eq!(
         expected_attribute_value.context, // expected
         found_attribute_value.context,    // actual
@@ -182,9 +183,10 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: Works
 
     // Check that the type was updated. Ensure that we have the right attribute value too (specific
     // to the component now that's been updated).
-    let updated_attribute_value = Component::find_type_attribute_value(ctx, *component.id())
-        .await
-        .expect("could not find type attribute value");
+    let updated_attribute_value =
+        Component::find_attribute_value(ctx, *component.id(), "type".to_string())
+            .await
+            .expect("could not find type attribute value");
     assert_eq!(
         expected_attribute_value.context, // expected
         updated_attribute_value.context,  // actual

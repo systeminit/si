@@ -6,7 +6,7 @@ FROM attribute_values_v1($1, $2) AS attribute_values
     FROM props_v1($1, $2) AS type_prop
              JOIN prop_belongs_to_prop_v1($1, $2) AS type_prop_belongs_to_si_prop
                   ON type_prop_belongs_to_si_prop.object_id = type_prop.id
-                      AND type_prop.name = 'type'
+                      AND type_prop.name = $4
              JOIN props_v1($1, $2) as si_prop
                   ON type_prop_belongs_to_si_prop.belongs_to_id = si_prop.id
                       AND si_prop.name = 'si'
