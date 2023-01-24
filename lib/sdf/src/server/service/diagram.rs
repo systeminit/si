@@ -24,6 +24,7 @@ pub mod delete_connection;
 pub mod get_diagram;
 pub mod get_node_add_menu;
 pub mod list_schema_variants;
+mod restore_component;
 pub mod restore_connection;
 pub mod set_node_position;
 
@@ -143,6 +144,10 @@ pub fn routes() -> Router {
         .route(
             "/delete_component",
             post(delete_component::delete_component),
+        )
+        .route(
+            "/restore_component",
+            post(restore_component::restore_component),
         )
         .route(
             "/connect_component_to_frame",
