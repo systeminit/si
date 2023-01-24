@@ -4,12 +4,8 @@ use crate::edge::{Edge, EdgeId, EdgeKind};
 
 use crate::change_status::ChangeStatus;
 use crate::diagram::DiagramResult;
-use crate::job::definition::DependentValuesUpdate;
 use crate::socket::SocketId;
-use crate::{
-    node::NodeId, AttributePrototypeArgument, AttributeReadContext, AttributeValue, DalContext,
-    DiagramError, ExternalProviderId, Node, PropId, Socket, StandardModel,
-};
+use crate::{node::NodeId, DalContext, DiagramError, StandardModel};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -82,108 +78,7 @@ impl Connection {
         let mut edge = Edge::get_by_id(ctx, &edge_id)
             .await?
             .ok_or(DiagramError::EdgeNotFound)?;
-
-        let head_component_id = *{
-            let head_node = Node::get_by_id(ctx, &edge.head_node_id())
-                .await?
-                .ok_or(DiagramError::NodeNotFound)?;
-            head_node
-                .component(ctx)
-                .await?
-                .ok_or(DiagramError::ComponentNotFound)?
-                .id()
-        };
-
-        let tail_component_id = *{
-            let tail_node = Node::get_by_id(ctx, &edge.tail_node_id())
-                .await?
-                .ok_or(DiagramError::NodeNotFound)?;
-            tail_node
-                .component(ctx)
-                .await?
-                .ok_or(DiagramError::ComponentNotFound)?
-                .id()
-        };
-
-        // This code assumes that every connection is established between a tail external provider and
-        // a head (explicit) internal provider. That might not be the case, but it true in practice for the present state of the interface
-        // (aggr frame connection to children shouldn't go through this path)
-        let external_provider = {
-            let socket = Socket::get_by_id(ctx, &edge.tail_socket_id())
-                .await?
-                .ok_or(DiagramError::SocketNotFound)?;
-
-            socket
-                .external_provider(ctx)
-                .await?
-                .ok_or_else(|| DiagramError::ExternalProviderNotFoundForSocket(*socket.id()))?
-        };
-
-        let internal_provider_id = *{
-            let socket = Socket::get_by_id(ctx, &edge.head_socket_id())
-                .await?
-                .ok_or(DiagramError::SocketNotFound)?;
-
-            socket
-                .internal_provider(ctx)
-                .await?
-                .ok_or_else(|| DiagramError::InternalProviderNotFoundForSocket(*socket.id()))?
-                .id()
-        };
-
-        // Delete the arguments that have the same external provider of the edge, and are connected to an attribute prototype for
-        let mut edge_argument = AttributePrototypeArgument::find_for_providers_and_components(
-            ctx,
-            external_provider.id(),
-            &internal_provider_id,
-            &tail_component_id,
-            &head_component_id,
-        )
-        .await?
-        .ok_or(DiagramError::AttributePrototypeNotFound)?;
-
-        edge_argument.delete_by_id(ctx).await?;
-        edge.delete_by_id(ctx).await?;
-
-        let read_context = AttributeReadContext {
-            prop_id: Some(PropId::NONE),
-            internal_provider_id: Some(internal_provider_id),
-            external_provider_id: Some(ExternalProviderId::NONE),
-            component_id: Some(head_component_id),
-        };
-
-        let mut attr_value = AttributeValue::find_for_context(ctx, read_context)
-            .await?
-            .ok_or(DiagramError::AttributeValueNotFound)?;
-
-        let sibling_arguments = AttributePrototypeArgument::find_by_attr(
-            ctx,
-            "external_provider_id",
-            external_provider.id(),
-        )
-        .await?;
-
-        let arg_count = sibling_arguments.len();
-
-        if arg_count > 0 {
-            attr_value.update_from_prototype_function(ctx).await?;
-
-            ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
-                .await;
-        } else {
-            let attr_val_context = attr_value.context;
-            attr_value.unset_attribute_prototype(ctx).await?;
-
-            attr_value.delete_by_id(ctx).await?;
-
-            let att_val = AttributeValue::find_for_context(ctx, attr_val_context.into())
-                .await?
-                .ok_or(DiagramError::AttributeValueNotFound)?;
-
-            ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*att_val.id()]))
-                .await;
-        }
-
+        edge.delete_and_propagate(ctx).await?;
         Ok(())
     }
 

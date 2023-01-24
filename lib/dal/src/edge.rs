@@ -26,6 +26,7 @@ use crate::{
 
 const LIST_PARENTS_FOR_COMPONENT: &str =
     include_str!("queries/edge/list_parents_for_component.sql");
+const LIST_FOR_COMPONENT: &str = include_str!("queries/edge/list_for_component.sql");
 const LIST_FOR_KIND: &str = include_str!("queries/edge/list_for_kind.sql");
 const FIND_DELETED_EQUIVALENT: &str = include_str!("queries/edge/find_deleted_equivalent.sql");
 
@@ -318,6 +319,21 @@ impl Edge {
         Ok(objects)
     }
 
+    pub async fn list_for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> EdgeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_COMPONENT,
+                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+        Ok(objects_from_rows(rows)?)
+    }
+
     /// List [`Edges`](Self) for a given [`kind`](EdgeKind).
     pub async fn list_for_kind(ctx: &DalContext, kind: EdgeKind) -> EdgeResult<Vec<Self>> {
         let rows = ctx
@@ -329,6 +345,111 @@ impl Edge {
             )
             .await?;
         Ok(objects_from_rows(rows)?)
+    }
+
+    pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> EdgeResult<()> {
+        let head_component_id = *{
+            let head_node = Node::get_by_id(ctx, &self.head_node_id())
+                .await?
+                .ok_or(EdgeError::NodeNotFound)?;
+            head_node
+                .component(ctx)
+                .await?
+                .ok_or(EdgeError::ComponentNotFound)?
+                .id()
+        };
+
+        let tail_component_id = *{
+            let tail_node = Node::get_by_id(ctx, &self.tail_node_id())
+                .await?
+                .ok_or(EdgeError::NodeNotFound)?;
+            tail_node
+                .component(ctx)
+                .await?
+                .ok_or(EdgeError::ComponentNotFound)?
+                .id()
+        };
+
+        // This code assumes that every connection is established between a tail external provider and
+        // a head (explicit) internal provider. That might not be the case, but it true in practice for the present state of the interface
+        // (aggr frame connection to children shouldn't go through this path)
+        let external_provider = {
+            let socket = Socket::get_by_id(ctx, &self.tail_socket_id())
+                .await?
+                .ok_or(EdgeError::SocketNotFound)?;
+
+            socket
+                .external_provider(ctx)
+                .await?
+                .ok_or_else(|| EdgeError::ExternalProviderNotFoundForSocket(*socket.id()))?
+        };
+
+        let internal_provider_id = *{
+            let socket = Socket::get_by_id(ctx, &self.head_socket_id())
+                .await?
+                .ok_or(EdgeError::SocketNotFound)?;
+
+            socket
+                .internal_provider(ctx)
+                .await?
+                .ok_or_else(|| EdgeError::InternalProviderNotFoundForSocket(*socket.id()))?
+                .id()
+        };
+
+        // Delete the arguments that have the same external provider of the edge, and are connected to an attribute prototype for
+        let mut edge_argument = AttributePrototypeArgument::find_for_providers_and_components(
+            ctx,
+            external_provider.id(),
+            &internal_provider_id,
+            &tail_component_id,
+            &head_component_id,
+        )
+        .await?
+        .ok_or(EdgeError::AttributePrototypeNotFound)?;
+
+        edge_argument.delete_by_id(ctx).await?;
+        self.delete_by_id(ctx).await?;
+
+        let read_context = AttributeReadContext {
+            prop_id: Some(PropId::NONE),
+            internal_provider_id: Some(internal_provider_id),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            component_id: Some(head_component_id),
+        };
+
+        let mut attr_value = AttributeValue::find_for_context(ctx, read_context)
+            .await?
+            .ok_or(EdgeError::AttributeValueNotFound)?;
+
+        let sibling_arguments = AttributePrototypeArgument::find_by_attr(
+            ctx,
+            "external_provider_id",
+            external_provider.id(),
+        )
+        .await?;
+
+        let arg_count = sibling_arguments.len();
+
+        if arg_count > 0 {
+            attr_value.update_from_prototype_function(ctx).await?;
+
+            ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
+                .await;
+        } else {
+            let attr_val_context = attr_value.context;
+            attr_value.unset_attribute_prototype(ctx).await?;
+
+            attr_value.delete_by_id(ctx).await?;
+
+            let att_val = AttributeValue::find_for_context(ctx, attr_val_context.into())
+                .await?
+                .ok_or(EdgeError::AttributeValueNotFound)?;
+
+            ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*att_val.id()]))
+                .await;
+        }
+
+        Ok(())
     }
 
     pub async fn restore_by_id(ctx: &DalContext, edge_id: EdgeId) -> EdgeResult<Self> {

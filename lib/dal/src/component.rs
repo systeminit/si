@@ -30,7 +30,7 @@ use crate::{
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributePrototypeId, AttributeReadContext, CodeLanguage,
-    ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderError,
+    ComponentType, DalContext, Edge, EdgeError, ExternalProvider, ExternalProviderError,
     ExternalProviderId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError,
     InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
     PropId, ReadTenancyError, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
@@ -70,6 +70,10 @@ pub enum ComponentError {
     CodeView(#[from] CodeViewError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("unable to delete frame")]
+    Frame,
+    #[error("component marked as protected: {0}")]
+    ComponentProtected(ComponentId),
     #[error(transparent)]
     WorkflowRunner(#[from] WorkflowRunnerError),
     #[error(transparent)]
@@ -194,13 +198,14 @@ pub enum ComponentError {
     /// words, the value contained in the [`AttributeValue`](crate::AttributeValue) was "none".
     #[error("component type is none for component ({0}) and attribute value ({1})")]
     ComponentTypeIsNone(AttributeValueId, ComponentId),
+    #[error("component protection is none for component ({0})")]
+    ComponentProtectionIsNone(ComponentId),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
 const FIND_FOR_NODE: &str = include_str!("queries/component/find_for_node.sql");
-const FIND_TYPE_ATTRIBUTE_VALUE: &str =
-    include_str!("queries/component/find_type_attribute_value.sql");
+const FIND_ATTRIBUTE_VALUE: &str = include_str!("queries/component/find_attribute_value.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str = include_str!("queries/component/list_for_schema_variant.sql");
 const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
     include_str!("queries/component/list_sockets_for_socket_edge_kind.sql");
@@ -466,16 +471,22 @@ impl Component {
     /// _Note:_ if the type has never been updated, this will find the _default_
     /// [`AttributeValue`](crate::AttributeValue) where the [`ComponentId`](Self) is unset.
     #[instrument(skip_all)]
-    pub async fn find_type_attribute_value(
+    pub async fn find_attribute_value(
         ctx: &DalContext,
         component_id: ComponentId,
+        attribute_value_name: String,
     ) -> ComponentResult<AttributeValue> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                FIND_TYPE_ATTRIBUTE_VALUE,
-                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+                FIND_ATTRIBUTE_VALUE,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &component_id,
+                    &attribute_value_name,
+                ],
             )
             .await?;
         Ok(object_from_row(row)?)
@@ -797,12 +808,25 @@ impl Component {
     ///
     /// Mutate this with [`Self::set_type()`].
     pub async fn get_type(&self, ctx: &DalContext) -> ComponentResult<ComponentType> {
-        let type_attribute_value = Self::find_type_attribute_value(ctx, self.id).await?;
+        let type_attribute_value =
+            Self::find_attribute_value(ctx, self.id, "type".to_string()).await?;
         let raw_value = type_attribute_value.get_value(ctx).await?.ok_or(
             ComponentError::ComponentTypeIsNone(*type_attribute_value.id(), self.id),
         )?;
         let component_type: ComponentType = serde_json::from_value(raw_value)?;
         Ok(component_type)
+    }
+
+    /// Gets the protected attribute value of [`self`](Self).
+    pub async fn get_protected(&self, ctx: &DalContext) -> ComponentResult<bool> {
+        let protected_attribute_value =
+            Self::find_attribute_value(ctx, self.id, "protected".to_string()).await?;
+        let raw_value = protected_attribute_value
+            .get_value(ctx)
+            .await?
+            .ok_or(ComponentError::ComponentProtectionIsNone(self.id))?;
+        let protected: bool = serde_json::from_value(raw_value)?;
+        Ok(protected)
     }
 
     /// Sets the field corresponding to "/root/si/type" for the [`Component`]. Possible values
@@ -812,7 +836,8 @@ impl Component {
         ctx: &DalContext,
         component_type: ComponentType,
     ) -> ComponentResult<()> {
-        let type_attribute_value = Self::find_type_attribute_value(ctx, self.id).await?;
+        let type_attribute_value =
+            Self::find_attribute_value(ctx, self.id, "type".to_string()).await?;
 
         // If we are setting the type for the first time, we will need to mutate the context to
         // be component-specific. This is because the attribute value will have an unset component
@@ -1005,6 +1030,34 @@ impl Component {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    pub async fn delete_and_propagate(
+        &mut self,
+        ctx: &DalContext,
+        // component_id: ComponentId,
+    ) -> ComponentResult<()> {
+        // TODO - This is temporary for now until we allow deleting frames
+        if self.get_type(ctx).await? != ComponentType::Component {
+            return Err(ComponentError::Frame);
+        }
+
+        if self.get_protected(ctx).await? {
+            return Err(ComponentError::ComponentProtected(self.id));
+        }
+
+        let edges = Edge::list_for_component(ctx, self.id).await?;
+        for mut edge in edges {
+            edge.delete_and_propagate(ctx).await?;
+        }
+
+        for mut node in self.node(ctx).await? {
+            node.delete_by_id(ctx).await?;
+        }
+
+        self.delete_by_id(ctx).await?;
 
         Ok(())
     }
