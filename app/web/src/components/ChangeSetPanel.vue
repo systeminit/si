@@ -87,7 +87,7 @@
           @update:model-value="onSelectChangeSet"
         />
         <Divider label="or" />
-        <VButton2 icon="plus-circle" @click="createModalRef?.open()">
+        <VButton2 icon="plus-circle" @click="openCreateModal">
           Create a new change set
         </VButton2>
       </Stack>
@@ -179,7 +179,7 @@ const { validationState, validationMethods } = useValidatedInputGroup();
 
 function onSelectChangeSet(newVal: string | "NEW") {
   if (newVal === "NEW") {
-    createModalRef.value?.open();
+    openCreateModal();
   } else if (newVal && route.name) {
     router.push({
       name: route.name,
@@ -262,12 +262,29 @@ const applyChangeSet = async () => {
   }
 };
 
+function getGeneratedChangesetName() {
+  // TODO: do we want to autogenerate names when not in dev? Maybe toggle-able setting?
+  if (!import.meta.env.DEV) return "";
+  let latestNum = 0;
+  _.each(changeSetsStore.allChangeSets, (cs) => {
+    const labelNum = parseInt(cs.name.split(" ").pop() || "");
+    if (!_.isNaN(labelNum) && labelNum > latestNum) {
+      latestNum = labelNum;
+    }
+  });
+  return `Demo ${latestNum + 1}`;
+}
+function openCreateModal() {
+  createChangeSetName.value = getGeneratedChangesetName();
+  createModalRef.value?.open();
+}
+
 watch(
   // have to also watch for the modals existing since they may not exist immediately on mount
   [openChangeSets, createModalRef, selectModalRef],
   () => {
     if (!openChangeSets.value.length) {
-      createModalRef.value?.open();
+      openCreateModal();
     } else if (!selectedChangeSetId.value) {
       selectModalRef.value?.open();
     }
