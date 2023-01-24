@@ -77,7 +77,7 @@ async fn new(ctx: &DalContext) {
 }
 
 #[test]
-async fn create_and_delete_edges(ctx: &DalContext) {
+async fn create_delete_and_restore_edges(ctx: &DalContext) {
     let mut harness = SchemaBuiltinsTestHarness::new();
     let from_aws_region = harness
         .create_component(ctx, "from", Builtin::AwsRegion)
@@ -198,6 +198,38 @@ async fn create_and_delete_edges(ctx: &DalContext) {
                     "Name": "to",
                 },
                 "awsResourceType": "instance",
+            },
+            "code": {
+                "si:generateAwsEc2JSON": {
+                    "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"to\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
+                    "format": "json",
+                },
+            },
+        }], // expected
+        to_aws_ec2_instance
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
+    );
+
+    // restore the edge
+    let _result = Connection::restore_for_edge(ctx, connection.id).await;
+
+    // check that the value of the ec2 instance region
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "to",
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "awsResourceType": "instance",
+                "region": "us-east-2",
+                "tags": {
+                    "Name": "to",
+                },
             },
             "code": {
                 "si:generateAwsEc2JSON": {
