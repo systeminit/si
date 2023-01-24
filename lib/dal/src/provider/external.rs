@@ -112,7 +112,7 @@ impl ExternalProvider {
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
         arity: SocketArity,
-        diagram_kind: DiagramKind,
+        frame_socket: bool,
     ) -> ExternalProviderResult<(Self, Socket)> {
         let name = name.as_ref();
         let row = ctx
@@ -154,10 +154,13 @@ impl ExternalProvider {
         let socket = Socket::new(
             ctx,
             name,
-            SocketKind::Provider,
+            match frame_socket {
+                true => SocketKind::Frame,
+                false => SocketKind::Provider,
+            },
             &SocketEdgeKind::ConfigurationOutput,
             &arity,
-            &diagram_kind,
+            &DiagramKind::Configuration,
         )
         .await?;
         socket

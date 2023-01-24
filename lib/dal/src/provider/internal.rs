@@ -290,7 +290,7 @@ impl InternalProvider {
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
         arity: SocketArity,
-        diagram_kind: DiagramKind,
+        frame_socket: bool,
     ) -> InternalProviderResult<(Self, Socket)> {
         let name = name.as_ref();
         let prop_id = PropId::NONE;
@@ -338,10 +338,13 @@ impl InternalProvider {
         let socket = Socket::new(
             ctx,
             name,
-            SocketKind::Provider,
+            match frame_socket {
+                true => SocketKind::Frame,
+                false => SocketKind::Provider,
+            },
             &SocketEdgeKind::ConfigurationInput,
             &arity,
-            &diagram_kind,
+            &DiagramKind::Configuration,
         )
         .await?;
         socket

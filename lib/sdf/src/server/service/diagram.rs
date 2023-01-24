@@ -7,8 +7,8 @@ use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
-    DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError, NodeKind,
-    NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
+    ComponentType, DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError,
+    NodeKind, NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
     SchemaVariantId, StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
@@ -97,6 +97,8 @@ pub enum DiagramError {
     InvalidParentNode(NodeKind),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+    #[error("invalid component type ({0:?}) for frame")]
+    InvalidComponentTypeForFrame(ComponentType),
 }
 
 pub type DiagramResult<T> = Result<T, DiagramError>;

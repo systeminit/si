@@ -6,7 +6,7 @@ use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
 use dal::{
     generate_name, Component, ComponentId, Connection, DiagramKind, NodePosition, Schema, SchemaId,
-    StandardModel, Visibility, WorkspaceId, WsEvent,
+    Socket, StandardModel, Visibility, WorkspaceId, WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -49,26 +49,6 @@ pub async fn create_node(
 
     let (component, node) = Component::new(&ctx, &name, *schema_variant_id).await?;
 
-    let (width, height) = {
-        let sockets = component
-            .schema_variant(&ctx)
-            .await?
-            .ok_or(DiagramError::SchemaVariantNotFound)?
-            .sockets(&ctx)
-            .await?;
-
-        let mut size = (None, None);
-
-        for s in sockets {
-            if s.name() == "Frame" && *s.edge_kind() == SocketEdgeKind::ConfigurationInput {
-                size = (Some("500".to_string()), Some("500".to_string()));
-                break;
-            }
-        }
-
-        size
-    };
-
     // NOTE(nick): we currently assume all nodes created through this route are configuration nodes.
     NodePosition::new(
         &ctx,
@@ -76,78 +56,33 @@ pub async fn create_node(
         DiagramKind::Configuration,
         request.x.clone(),
         request.y.clone(),
-        width,
-        height,
+        Some("500"),
+        Some("500"),
     )
     .await?;
 
     if let Some(frame_id) = request.parent_id {
-        if let Some(frame) = Component::find_for_node(&ctx, frame_id).await? {
-            let component_socket = {
-                let sockets = component
-                    .schema_variant(&ctx)
-                    .await?
-                    .ok_or(DiagramError::SchemaVariantNotFound)?
-                    .sockets(&ctx)
-                    .await?;
+        let component_socket = Socket::find_frame_socket_for_node(
+            &ctx,
+            *node.id(),
+            SocketEdgeKind::ConfigurationOutput,
+        )
+        .await?;
+        let frame_socket =
+            Socket::find_frame_socket_for_node(&ctx, frame_id, SocketEdgeKind::ConfigurationInput)
+                .await?;
 
-                let mut socket = None;
+        let _connection = Connection::new(
+            &ctx,
+            *node.id(),
+            *component_socket.id(),
+            frame_id,
+            *frame_socket.id(),
+            EdgeKind::Symbolic,
+        )
+        .await?;
 
-                for s in sockets {
-                    if s.name() == "Frame" && *s.edge_kind() == SocketEdgeKind::ConfigurationOutput
-                    {
-                        socket = Some(s);
-                        break;
-                    }
-                }
-
-                match socket {
-                    None => {
-                        return Err(DiagramError::FrameSocketNotFound(*schema_variant_id));
-                    }
-                    Some(socket) => socket,
-                }
-            };
-
-            let frame_socket = {
-                let frame_schema_variant = frame
-                    .schema_variant(&ctx)
-                    .await?
-                    .ok_or(DiagramError::SchemaVariantNotFound)?;
-
-                let sockets = frame_schema_variant.sockets(&ctx).await?;
-
-                let mut socket = None;
-
-                for s in sockets {
-                    if s.name() == "Frame" && *s.edge_kind() == SocketEdgeKind::ConfigurationInput {
-                        socket = Some(s);
-                        break;
-                    }
-                }
-
-                match socket {
-                    None => {
-                        return Err(DiagramError::FrameSocketNotFound(
-                            *frame_schema_variant.id(),
-                        ));
-                    }
-                    Some(socket) => socket,
-                }
-            };
-
-            let _connection = Connection::new(
-                &ctx,
-                *node.id(),
-                *component_socket.id(),
-                frame_id,
-                *frame_socket.id(),
-                EdgeKind::Symbolic,
-            )
-            .await?;
-
-            connect_component_sockets_to_frame(&ctx, frame_id, *node.id()).await?;
-        }
+        connect_component_sockets_to_frame(&ctx, frame_id, *node.id()).await?;
     }
 
     // TODO(nick,theo): create a component-specific event once the endpoints are cleaner (i.e. we

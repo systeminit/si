@@ -20,10 +20,10 @@ use crate::{
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many,
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeValueError, AttributeValueId, BuiltinsError, DalContext, DiagramKind,
-    ExternalProvider, ExternalProviderError, Func, FuncError, HistoryEventError, InternalProvider,
-    Prop, PropError, PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy, WsEventError,
+    AttributeValueError, AttributeValueId, BuiltinsError, DalContext, ExternalProvider,
+    ExternalProviderError, Func, FuncError, HistoryEventError, InternalProvider, Prop, PropError,
+    PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel, StandardModelError, Timestamp,
+    Visibility, WriteTenancy, WsEventError,
 };
 use crate::{AttributeReadContext, AttributeValue, RootPropChild};
 use crate::{FuncBackendResponseType, FuncId};
@@ -204,7 +204,7 @@ impl SchemaVariant {
             *identity_func_binding.id(),
             *identity_func_binding_return_value.id(),
             SocketArity::Many,
-            DiagramKind::Configuration,
+            true,
         )
         .await?;
 
@@ -218,7 +218,7 @@ impl SchemaVariant {
             *identity_func_binding.id(),
             *identity_func_binding_return_value.id(),
             SocketArity::One,
-            DiagramKind::Configuration,
+            true,
         )
         .await?;
 

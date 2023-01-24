@@ -355,7 +355,7 @@ pub async fn create_schema_variant_with_root(
     let input_socket = Socket::new(
         ctx,
         "input",
-        SocketKind::Provider,
+        SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::Many,
         &DiagramKind::Configuration,
@@ -370,7 +370,7 @@ pub async fn create_schema_variant_with_root(
     let output_socket = Socket::new(
         ctx,
         "output",
-        SocketKind::Provider,
+        SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
         &DiagramKind::Configuration,

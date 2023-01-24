@@ -4,8 +4,7 @@ use crate::{component::ComponentKind, schema::variant::leaves::LeafInput};
 use crate::{
     func::argument::FuncArgument, socket::SocketArity, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsError, BuiltinsResult,
-    DalContext, DiagramKind, ExternalProvider, InternalProvider, PropKind, SchemaVariant,
-    StandardModel,
+    DalContext, ExternalProvider, InternalProvider, PropKind, SchemaVariant, StandardModel,
 };
 
 mod kubernetes_deployment_spec;
@@ -108,7 +107,7 @@ impl MigrationDriver {
             identity_func_item.func_binding_id,
             identity_func_item.func_binding_return_value_id,
             SocketArity::Many,
-            DiagramKind::Configuration,
+            false,
         )
         .await?;
 
@@ -293,7 +292,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
@@ -306,7 +305,7 @@ impl MigrationDriver {
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
                 SocketArity::Many,
-                DiagramKind::Configuration,
+                false,
             )
             .await?;
 
