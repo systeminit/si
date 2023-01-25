@@ -28,7 +28,7 @@ impl PropertyEditorValues {
     ) -> PropertyEditorResult<Self> {
         let mut root_value_id = None;
         let mut values = HashMap::new();
-        let mut child_values: HashMap<PropertyEditorValueId, Vec<(PropertyEditorValueId, i64)>> =
+        let mut child_values: HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>> =
             HashMap::new();
         let mut work_queue = AttributeValue::list_payload_for_read_context(
             ctx,
@@ -85,24 +85,16 @@ impl PropertyEditorValues {
                 child_values
                     .entry(parent_id.into())
                     .or_default()
-                    .push((work_attribute_value_id.into(), work.prop.index()));
+                    .push(work_attribute_value_id.into());
             } else {
                 root_value_id = Some(work_attribute_value_id.into());
             }
         }
 
-        // Note: hackish ordering to ensure consistency in the frontend
-        for value in child_values.values_mut() {
-            value.sort_by_key(|a| a.1)
-        }
-
         if let Some(root_value_id) = root_value_id {
             Ok(PropertyEditorValues {
                 root_value_id,
-                child_values: child_values
-                    .into_iter()
-                    .map(|(k, list)| (k, list.into_iter().map(|(v, _)| v).collect()))
-                    .collect(),
+                child_values,
                 values,
             })
         } else {
