@@ -85,6 +85,13 @@ const routes: RouteRecordRaw[] = [
               import("@/components/Workspace/WorkspaceCustomizePackages.vue"),
             props: true,
           },
+          {
+            path: "a/:assetId?",
+            name: "workspace-lab-assets",
+            component: () =>
+              import("@/organisms/Workspace/WorkspaceCustomizeAssets.vue"),
+            props: true,
+          },
         ],
       },
       {

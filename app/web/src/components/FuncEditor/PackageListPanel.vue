@@ -3,6 +3,7 @@
     <template #tabs>
       <SiTabHeader :key="0">FUNCTIONS</SiTabHeader>
       <SiTabHeader :key="1">PACKAGES</SiTabHeader>
+      <SiTabHeader :key="2">ASSETS</SiTabHeader>
     </template>
     <template #panels>
       <TabPanel />

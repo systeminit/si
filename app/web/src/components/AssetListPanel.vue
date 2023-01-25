@@ -1,12 +1,14 @@
 <template>
-  <SiTabGroup @change="onTabChange">
+  <SiTabGroup :selected-index="2" @change="onTabChange">
     <template #tabs>
       <SiTabHeader :key="0">FUNCTIONS</SiTabHeader>
       <SiTabHeader :key="1">PACKAGES</SiTabHeader>
       <SiTabHeader :key="2">ASSETS</SiTabHeader>
     </template>
     <template #panels>
-      <TabPanel :key="0" class="h-full overflow-auto flex flex-col">
+      <TabPanel />
+      <TabPanel />
+      <TabPanel :key="2" class="h-full overflow-auto flex flex-col">
         <RequestStatusMessage
           :request-status="loadFuncsReqStatus"
           loading-message="Loading functions..."
@@ -69,7 +71,6 @@
           </ul>
         </template>
       </TabPanel>
-      <TabPanel />
     </template>
     <Modal
       ref="createBuiltinModalRef"
@@ -104,13 +105,7 @@ import { TabPanel } from "@headlessui/vue";
 import { storeToRefs } from "pinia";
 import _ from "lodash";
 import { useRouter } from "vue-router";
-import SiTabGroup from "@/components/SiTabGroup.vue";
-import SiTabHeader from "@/components/SiTabHeader.vue";
-import SiCollapsible from "@/components/SiCollapsible.vue";
-import SiFuncListItem from "@/components/SiFuncListItem.vue";
-import SiSearch from "@/components/SiSearch.vue";
 import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
-import NewFuncDropdown from "@/components/NewFuncDropdown.vue";
 import Modal from "@/ui-lib/modals/Modal.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
@@ -119,7 +114,13 @@ import VormInput from "@/ui-lib/forms/VormInput.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
-import FuncSkeleton from "@/components/FuncSkeleton.vue";
+import NewFuncDropdown from "./NewFuncDropdown.vue";
+import FuncSkeleton from "./FuncSkeleton.vue";
+import SiSearch from "./SiSearch.vue";
+import SiFuncListItem from "./SiFuncListItem.vue";
+import SiCollapsible from "./SiCollapsible.vue";
+import SiTabHeader from "./SiTabHeader.vue";
+import SiTabGroup from "./SiTabGroup.vue";
 
 const router = useRouter();
 const routeToFunc = useRouteToFunc();
