@@ -44,4 +44,5 @@ thiserror = { version = "1.0" }
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }
+pretty_assertions_sorted = "1.1.2"
 serde_url_params = "0.2.1"

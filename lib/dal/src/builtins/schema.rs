@@ -64,6 +64,7 @@ pub async fn migrate(
         }
         BuiltinSchemaOption::Some(provided_set) => {
             info!("migrating schemas based on a provided set of names (this should only be possible when running tests)");
+            debug!("provided set of builtin schemas: {:?}", &provided_set);
             (false, provided_set)
         }
     };

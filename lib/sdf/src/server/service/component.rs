@@ -8,9 +8,9 @@ use dal::change_status::ChangeStatusError;
 use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeContextBuilderError,
     AttributePrototypeArgumentError, AttributePrototypeError, AttributeValueError,
-    ComponentError as DalComponentError, DiagramError, ExternalProviderError, FuncBindingError,
-    InternalProviderError, SchemaError as DalSchemaError, StandardModelError, TransactionsError,
-    WsEventError,
+    ComponentError as DalComponentError, ComponentId, DiagramError, ExternalProviderError,
+    FuncBindingError, InternalProviderError, SchemaError as DalSchemaError, StandardModelError,
+    TransactionsError, WsEventError,
 };
 use thiserror::Error;
 
@@ -35,8 +35,8 @@ pub enum ComponentError {
     Component(#[from] DalComponentError),
     #[error("component name not found")]
     ComponentNameNotFound,
-    #[error("component not found")]
-    ComponentNotFound,
+    #[error("component not found for id: {0}")]
+    ComponentNotFound(ComponentId),
     #[error("dal schema error: {0}")]
     DalSchema(#[from] DalSchemaError),
     #[error("invalid request")]

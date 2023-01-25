@@ -23,7 +23,7 @@ pub struct UpdatePropertyEditorValueRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatePropertyEditorValueResponse {
-    success: bool,
+    pub success: bool,
 }
 
 pub async fn update_property_editor_value(

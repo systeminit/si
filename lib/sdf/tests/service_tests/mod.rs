@@ -7,6 +7,7 @@ use tower::ServiceExt;
 
 mod change_set;
 mod component;
+mod scenario;
 mod schema;
 mod secret;
 mod session;
@@ -40,7 +41,13 @@ pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
         dbg!(&body_json);
         assert_eq!(status, StatusCode::OK);
     }
-    serde_json::from_value(body_json).expect("response is not a valid rust struct")
+    match serde_json::from_value(body_json.clone()) {
+        Ok(body) => body,
+        Err(e) => {
+            dbg!(&body_json);
+            panic!("response is not a valid rust struct: {e:?}");
+        }
+    }
 }
 
 pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
@@ -70,13 +77,18 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
         .expect("cannot read body");
     if status != StatusCode::OK {
         dbg!(&body);
-        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            StatusCode::OK, // expected,
+            status,         // actual
+        );
     }
     let body_json: serde_json::Value = match serde_json::from_slice(&body) {
         Ok(body_json) => body_json,
-        Err(_e) => {
+        Err(e) => {
             dbg!(&body);
-            panic!("response is not valid json");
+            panic!(
+                "response is not valid json (perhaps (de)serialization casing is the cause): {e:?}",
+            );
         }
     };
 
@@ -135,7 +147,10 @@ pub async fn api_request<Req: Serialize, Res: DeserializeOwned>(
         serde_json::from_slice(&body).expect("response is not valid json");
     if status != StatusCode::OK {
         dbg!(&body_json);
-        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            StatusCode::OK, // expected
+            status,         // actual
+        );
     }
     serde_json::from_value(body_json).expect("response is not a valid rust struct")
 }

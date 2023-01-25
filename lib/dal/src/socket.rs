@@ -12,6 +12,8 @@ use crate::{
     Visibility,
 };
 
+const FIND_BY_NAME_FOR_EDGE_KIND_AND_NODE: &str =
+    include_str!("queries/socket/find_by_name_for_edge_kind_and_node.sql");
 const FIND_FRAME_SOCKET_FOR_NODE: &str =
     include_str!("queries/socket/find_frame_socket_for_node.sql");
 const LIST_FOR_COMPONENT: &str = include_str!("queries/socket/list_for_component.sql");
@@ -250,5 +252,32 @@ impl Socket {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find a [`Socket`] by a provided name for a given [`SocketEdgeKind`] and
+    /// a given [`NodeId`](crate::Node).
+    #[instrument(skip_all)]
+    pub async fn find_by_name_for_edge_kind_and_node(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        socket_edge_kind: SocketEdgeKind,
+        node_id: NodeId,
+    ) -> SocketResult<Option<Self>> {
+        let name = name.as_ref();
+        let maybe_row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_BY_NAME_FOR_EDGE_KIND_AND_NODE,
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &name,
+                    &socket_edge_kind.as_ref(),
+                    &node_id,
+                ],
+            )
+            .await?;
+        Ok(standard_model::option_object_from_row(maybe_row)?)
     }
 }

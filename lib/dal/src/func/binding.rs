@@ -1,4 +1,3 @@
-use crate::{FuncError, Tenancy};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use si_data_nats::NatsError;
@@ -24,12 +23,13 @@ use crate::func::backend::{
     FuncBackend, FuncDispatch, FuncDispatchContext,
 };
 use crate::func::execution::FuncExecutionPk;
-use crate::DalContext;
+use crate::FuncError;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     Func, FuncBackendError, FuncBackendKind, HistoryEventError, StandardModel, StandardModelError,
     Timestamp, Visibility,
 };
+use crate::{DalContext, Tenancy};
 
 use super::{
     binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
@@ -67,14 +67,11 @@ pub enum FuncBindingError {
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
 
-// A `FuncBinding` binds an execution context to a `Func`, so that it can be
-// executed. So for example, you would create a `FuncBinding` with the arguments
-// to the Func, and then say that this binding `belongs_to` a `prop`, or a `schema`,
-// etc.
 pk!(FuncBindingPk);
 pk!(FuncBindingId);
 
-// NOTE(nick,jacob): the [`HashMap`] of input sockets will likely live here in the future.
+/// A [`FuncBinding`] binds an execution context (including arguments) to a [`Func`](crate::Func),
+/// so that it can be executed.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncBinding {
     pk: FuncBindingPk,

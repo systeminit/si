@@ -98,7 +98,7 @@ impl PropertyEditorProp {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PropertyEditorPropKind {
     Array,

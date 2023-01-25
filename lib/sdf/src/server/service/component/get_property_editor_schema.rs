@@ -34,7 +34,7 @@ pub async fn get_property_editor_schema(
 
     let component = Component::get_by_id(&ctx, &request.component_id)
         .await?
-        .ok_or(ComponentError::ComponentNotFound)?;
+        .ok_or(ComponentError::ComponentNotFound(request.component_id))?;
     let schema_variant_id = *component
         .schema_variant(&ctx)
         .await?
