@@ -1,5 +1,10 @@
 <template>
-  <div v-if="packageStore.selectedPackage" class="flex flex-col">
+  <RequestStatusMessage
+    v-if="loadPackagesReqStatus.isPending"
+    :request-status="loadPackagesReqStatus"
+    show-loader-without-message
+  />
+  <div v-else-if="packageStore.selectedPackage && slug" class="flex flex-col">
     <div
       class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-between"
     >
@@ -38,8 +43,10 @@ import { ref } from "vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 
 import { usePackageStore } from "@/store/package.store";
+import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 
 const packageStore = usePackageStore();
+const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
 const disableInstallButton = ref(false);
 
 defineProps<{

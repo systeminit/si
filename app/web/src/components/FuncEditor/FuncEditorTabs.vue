@@ -3,8 +3,15 @@
     v-if="selectedFuncId === nilId()"
     class="p-2 text-center text-neutral-400 dark:text-neutral-300"
   >
-    <template v-if="funcId">Function "{{ funcId }}" does not exist!</template>
-    <template v-else>Select a function to edit it.</template>
+    <RequestStatusMessage
+      v-if="loadFuncsReqStatus.isPending || funcReqStatus.isPending"
+      :request-status="loadFuncsReqStatus"
+      show-loader-without-message
+    />
+    <template v-else-if="loadFuncsReqStatus.isSuccess">
+      <template v-if="funcId">Function "{{ funcId }}" does not exist!</template>
+      <template v-else>Select a function to edit it.</template>
+    </template>
   </div>
   <SiTabGroup
     v-else
@@ -71,6 +78,7 @@ import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { themeClasses } from "@/ui-lib/theme_tools";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 
 defineProps({
   funcId: { type: String },
@@ -85,6 +93,8 @@ const {
   getFuncByIndex,
   getIndexForFunc,
 } = storeToRefs(funcStore);
+const loadFuncsReqStatus = funcStore.getRequestStatus("FETCH_FUNC_LIST");
+const funcReqStatus = funcStore.getRequestStatus("FETCH_FUNC");
 
 const closeFunc = (funcId: string) => {
   const funcIndex = getIndexForFunc.value(funcId);

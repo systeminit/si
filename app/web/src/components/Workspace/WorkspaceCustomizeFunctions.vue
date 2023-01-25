@@ -3,9 +3,10 @@
   <SiPanel remember-size-key="func-picker" side="left" :min-size="300">
     <div class="flex flex-col h-full">
       <ChangeSetPanel />
-      <div class="relative flex-grow">
+
+      <CustomizeTabs :selected-index="0">
         <FuncListPanel />
-      </div>
+      </CustomizeTabs>
     </div>
   </SiPanel>
   <div
@@ -31,6 +32,7 @@ import FuncDetails from "@/components/FuncEditor/FuncDetails.vue";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { useFuncStore } from "@/store/func/funcs.store";
 import SiPanel from "@/components/SiPanel.vue";
+import CustomizeTabs from "../CustomizeTabs.vue";
 
 const funcStore = useFuncStore();
 const { selectedFuncId } = storeToRefs(funcStore);

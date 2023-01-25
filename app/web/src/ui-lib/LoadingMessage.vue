@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="computedMessage || $slots.default"
+    v-if="computedMessage || $slots.default || noMessage"
     class="w-full flex flex-col items-center gap-4 p-xl"
   >
     <Icon name="loader" size="2xl" />
@@ -16,6 +16,7 @@ import { ApiRequestStatus } from "@/store/lib/pinia_api_tools";
 import Icon from "./icons/Icon.vue";
 
 const props = defineProps({
+  noMessage: { type: Boolean, default: false },
   message: { type: String },
   requestMessage: { type: String },
   requestStatus: { type: Object as PropType<ApiRequestStatus> },

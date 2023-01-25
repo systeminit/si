@@ -5,9 +5,9 @@
       <ChangeSetPanel
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
-      <div class="relative flex-grow">
+      <CustomizeTabs :selected-index="2">
         <AssetListPanel />
-      </div>
+      </CustomizeTabs>
     </div>
   </SiPanel>
   <div
@@ -29,6 +29,7 @@ import { usePackageStore } from "@/store/package.store";
 import ChangeSetPanel from "../ChangeSetPanel.vue";
 import SiPanel from "../SiPanel.vue";
 import AssetListPanel from "../AssetListPanel.vue";
+import CustomizeTabs from "../CustomizeTabs.vue";
 
 const packageStore = usePackageStore();
 const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");

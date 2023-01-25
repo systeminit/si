@@ -5,9 +5,9 @@
       <ChangeSetPanel
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
-      <div class="relative flex-grow">
+      <CustomizeTabs :selected-index="1">
         <PackageListPanel />
-      </div>
+      </CustomizeTabs>
     </div>
   </SiPanel>
   <div
@@ -31,6 +31,7 @@ import PackageDisplay from "@/components/PackageDisplay.vue";
 import PackageDetailsPanel from "@/components/PackageDetailsPanel.vue";
 import { usePackageStore } from "@/store/package.store";
 import SiPanel from "@/components/SiPanel.vue";
+import CustomizeTabs from "../CustomizeTabs.vue";
 
 const packageStore = usePackageStore();
 const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");

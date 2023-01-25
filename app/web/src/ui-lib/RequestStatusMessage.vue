@@ -3,6 +3,7 @@
     <LoadingMessage
       :request-status="requestStatus"
       :request-message="loadingMessage"
+      :no-message="showLoaderWithoutMessage"
     />
     <ErrorMessage :request-status="requestStatus" />
   </div>
@@ -15,6 +16,7 @@ import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import LoadingMessage from "@/ui-lib/LoadingMessage.vue";
 
 defineProps({
+  showLoaderWithoutMessage: { type: Boolean, default: false },
   loadingMessage: { type: String },
   requestStatus: { type: Object as PropType<ApiRequestStatus> },
 });
