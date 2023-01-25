@@ -20,7 +20,7 @@ mod properties;
 pub async fn create_schema_with_object_and_string_prop(
     ctx: &DalContext,
 ) -> (Schema, SchemaVariant, Prop, Prop, Prop, RootProp) {
-    let octx = ctx.clone_with_universal_head();
+    let octx = ctx.clone_with_head();
     let ctx = &octx;
     let mut schema = create_schema(ctx).await;
     let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
@@ -67,7 +67,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     Prop,
     RootProp,
 ) {
-    let octx = ctx.clone_with_universal_head();
+    let octx = ctx.clone_with_head();
     let ctx = &octx;
     let mut schema = create_schema(ctx).await;
     let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
@@ -116,7 +116,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
 pub async fn create_schema_with_string_props(
     ctx: &DalContext,
 ) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
-    let octx = ctx.clone_with_universal_head();
+    let octx = ctx.clone_with_head();
     let ctx = &octx;
     let mut schema = create_schema(ctx).await;
     let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
@@ -150,7 +150,7 @@ pub async fn create_schema_with_string_props(
 pub async fn create_schema_with_array_of_string_props(
     ctx: &DalContext,
 ) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
-    let octx = ctx.clone_with_universal_head();
+    let octx = ctx.clone_with_head();
     let ctx = &octx;
 
     let mut schema = create_schema(ctx).await;
@@ -192,7 +192,7 @@ pub async fn create_schema_with_nested_array_objects(
     Prop,
     RootProp,
 ) {
-    let octx = ctx.clone_with_universal_head();
+    let octx = ctx.clone_with_head();
     let ctx = &octx;
 
     let mut schema = create_schema(ctx).await;
@@ -242,7 +242,7 @@ pub async fn create_schema_with_nested_array_objects(
 /// }
 /// ```
 pub async fn create_simple_map(ctx: &DalContext) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
-    let octx = ctx.clone_with_universal_head();
+    let octx = ctx.clone_with_head();
     let ctx = &octx;
     let mut schema = create_schema(ctx).await;
     let (mut schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
@@ -283,7 +283,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
     Prop,
     RootProp,
 ) {
-    let octx = ctx.clone_with_universal_head();
+    let octx = ctx.clone_with_head();
     let ctx = &octx;
 
     let mut schema = create_schema(ctx).await;

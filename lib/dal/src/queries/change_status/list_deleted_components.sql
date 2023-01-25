@@ -11,11 +11,9 @@ WHERE visibility_deleted_at IS NOT NULL
 
   -- Scope the tenancy one last time
   AND in_tenancy_v1($1,
-                    tenancy_universal,
-                    tenancy_billing_account_ids,
+                    tenancy_billing_account_pks,
                     tenancy_organization_ids,
                     tenancy_workspace_ids)
 
 ORDER BY component_id DESC,
-         component_name DESC,
-         components.tenancy_universal
+         component_name DESC

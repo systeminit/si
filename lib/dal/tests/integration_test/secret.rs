@@ -20,7 +20,7 @@ async fn new_encrypted_secret(ctx: &DalContext, nba: &BillingAccountSignup) {
         *nba.key_pair.id(),
         SecretVersion::V1,
         SecretAlgorithm::Sealedbox,
-        *nba.billing_account.id(),
+        *nba.billing_account.pk(),
     )
     .await
     .expect("failed to create secret");
@@ -39,7 +39,7 @@ async fn new_encrypted_secret(ctx: &DalContext, nba: &BillingAccountSignup) {
 
 #[test]
 async fn secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let og_secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.id()).await;
+    let og_secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.pk()).await;
 
     let secret = Secret::get_by_id(ctx, og_secret.id())
         .await
@@ -50,7 +50,7 @@ async fn secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
 
 #[test]
 async fn encrypted_secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.id()).await;
+    let secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.pk()).await;
 
     let encrypted_secret = EncryptedSecret::get_by_id(ctx, secret.id())
         .await
@@ -65,7 +65,7 @@ async fn encrypted_secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup
 
 #[test]
 async fn secret_update_name(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let mut secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.id()).await;
+    let mut secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.pk()).await;
 
     let original_name = secret.name().to_string();
     secret
@@ -97,7 +97,7 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nba: &BillingAccountSignup
         *nba.key_pair.id(),
         Default::default(),
         Default::default(),
-        *nba.billing_account.id(),
+        *nba.billing_account.pk(),
     )
     .await
     .expect("failed to create encrypted secret");

@@ -91,8 +91,8 @@ pub use attribute::{
     },
 };
 pub use billing_account::{
-    BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountId,
-    BillingAccountPk, BillingAccountSignup,
+    BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountPk,
+    BillingAccountSignup,
 };
 pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
@@ -282,6 +282,8 @@ pub enum ModelError {
     PgError(#[from] PgError),
     #[error("transactions error")]
     Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    BillingAccount(#[from] BillingAccountError),
 }
 
 pub type ModelResult<T> = Result<T, ModelError>;
@@ -333,8 +335,10 @@ pub async fn migrate_builtins(
         council_subject_prefix,
     );
     let dal_context = services_context.into_builder();
-    let request_context = RequestContext::new_universal_head(HistoryActor::SystemInit);
-    let ctx = dal_context.build(request_context).await?;
+    let mut ctx = dal_context.build_default().await?;
+    let billing_account = BillingAccount::builtin(&ctx).await?;
+    ctx.update_to_billing_account_tenancies(*billing_account.pk());
+
     builtins::migrate(&ctx, skip_migrating_schemas).await?;
     ctx.commit().await?;
     Ok(())

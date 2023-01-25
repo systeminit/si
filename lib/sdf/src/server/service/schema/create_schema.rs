@@ -29,7 +29,7 @@ pub async fn create_schema(
         .build(
             dal::context::AccessBuilder::new(
                 read_tenancy,
-                WriteTenancy::new_billing_account(claim.billing_account_id),
+                WriteTenancy::new_billing_account(claim.billing_account_pk),
                 history_actor,
             )
             .build(request.visibility),

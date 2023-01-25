@@ -11,10 +11,10 @@ use dal::{
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    BillingAccount, BillingAccountId, ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind,
-    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
-    Node, Organization, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariantId, Secret,
-    SecretKind, SecretObjectType, StandardModel, User, Visibility, Workspace, WriteTenancy,
+    BillingAccount, BillingAccountPk, ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind,
+    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, KeyPair, Node,
+    Organization, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariantId, Secret, SecretKind,
+    SecretObjectType, StandardModel, User, Visibility, Workspace,
 };
 use lazy_static::lazy_static;
 use names::{Generator, Name};
@@ -265,9 +265,9 @@ pub async fn create_billing_account(ctx: &DalContext) -> BillingAccount {
     create_billing_account_with_name(ctx, name).await
 }
 
-pub async fn create_organization(ctx: &DalContext) -> Organization {
+pub async fn create_organization(ctx: &DalContext, bid: BillingAccountPk) -> Organization {
     let name = generate_fake_name();
-    Organization::new(ctx, &name)
+    Organization::new(ctx, &name, bid)
         .await
         .expect("cannot create organization")
 }
@@ -279,37 +279,37 @@ pub async fn create_workspace(ctx: &DalContext) -> Workspace {
         .expect("cannot create workspace")
 }
 
-pub async fn create_key_pair(ctx: &DalContext) -> KeyPair {
+pub async fn create_key_pair(ctx: &DalContext, billing_account_pk: BillingAccountPk) -> KeyPair {
     let name = generate_fake_name();
-    KeyPair::new(ctx, &name)
+    KeyPair::new(ctx, &name, billing_account_pk)
         .await
         .expect("cannot create key_pair")
 }
 
-pub async fn create_user(ctx: &DalContext) -> User {
+pub async fn create_user(ctx: &DalContext, bid: BillingAccountPk) -> User {
     let name = generate_fake_name();
     User::new(
         ctx,
         &name,
         &format!("{}@test.systeminit.com", name),
         "liesAreTold",
+        bid,
     )
     .await
     .expect("cannot create user")
 }
 
-pub async fn create_group(ctx: &DalContext) -> Group {
+pub async fn create_group(ctx: &DalContext, bid: BillingAccountPk) -> Group {
     let name = generate_fake_name();
-    Group::new(ctx, &name).await.expect("cannot create group")
+    Group::new(ctx, &name, bid)
+        .await
+        .expect("cannot create group")
 }
 
 pub async fn billing_account_signup(
     ctx: &DalContext,
     jwt_secret_key: &JwtSecretKey,
 ) -> (BillingAccountSignup, String) {
-    let _write_tenancy = WriteTenancy::new_universal();
-    let _visibility = Visibility::new_head(false);
-    let _history_actor = HistoryActor::SystemInit;
     let billing_account_name = generate_fake_name();
     let user_name = format!("frank {}", billing_account_name);
     let user_email = format!("{}@example.com", billing_account_name);
@@ -326,7 +326,7 @@ pub async fn billing_account_signup(
     .expect("cannot signup a new billing_account");
     let auth_token = nba
         .user
-        .login(ctx, jwt_secret_key, nba.billing_account.id(), "snakes")
+        .login(ctx, jwt_secret_key, nba.billing_account.pk(), "snakes")
         .await
         .expect("cannot log in newly created user");
     (nba, auth_token)
@@ -487,7 +487,7 @@ pub async fn encrypt_message(
 pub async fn create_secret(
     ctx: &DalContext,
     key_pair_id: KeyPairId,
-    billing_account_id: BillingAccountId,
+    billing_account_pk: BillingAccountPk,
 ) -> Secret {
     let name = generate_fake_name();
     EncryptedSecret::new(
@@ -499,7 +499,7 @@ pub async fn create_secret(
         key_pair_id,
         Default::default(),
         Default::default(),
-        billing_account_id,
+        billing_account_pk,
     )
     .await
     .expect("cannot create secret")
@@ -510,7 +510,7 @@ pub async fn create_secret_with_message(
     ctx: &DalContext,
     key_pair_id: KeyPairId,
     message: &serde_json::Value,
-    billing_account_id: BillingAccountId,
+    billing_account_pk: BillingAccountPk,
 ) -> Secret {
     let name = generate_fake_name();
     EncryptedSecret::new(
@@ -522,7 +522,7 @@ pub async fn create_secret_with_message(
         key_pair_id,
         Default::default(),
         Default::default(),
-        billing_account_id,
+        billing_account_pk,
     )
     .await
     .expect("cannot create secret")

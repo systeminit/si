@@ -5,7 +5,7 @@ use dal::{
         binding::FuncBindingId,
         binding_return_value::FuncBindingReturnValueId,
     },
-    BillingAccount, BillingAccountId, BillingAccountSignup, ChangeSet, Component, DalContext,
+    BillingAccount, BillingAccountPk, BillingAccountSignup, ChangeSet, Component, DalContext,
     DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor, JwtSecretKey, Node, Prop,
     PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, User,
     Visibility,
@@ -34,7 +34,7 @@ pub async fn billing_account_signup(
 ) -> Result<(BillingAccountSignup, String)> {
     use color_eyre::eyre::WrapErr;
 
-    let ctx = ctx.clone_with_universal_head();
+    let ctx = ctx.clone_with_head();
 
     let billing_account_name = generate_fake_name();
     let user_name = format!("frank {}", billing_account_name);
@@ -52,24 +52,27 @@ pub async fn billing_account_signup(
     .wrap_err("cannot signup a new billing_account")?;
     let auth_token = nba
         .user
-        .login(&ctx, jwt_secret_key, nba.billing_account.id(), "snakes")
+        .login(&ctx, jwt_secret_key, nba.billing_account.pk(), "snakes")
         .await
         .wrap_err("cannot log in newly created user")?;
     Ok((nba, auth_token))
 }
 
-pub async fn create_group(ctx: &DalContext) -> Group {
+pub async fn create_group(ctx: &DalContext, bid: BillingAccountPk) -> Group {
     let name = generate_fake_name();
-    Group::new(ctx, &name).await.expect("cannot create group")
+    Group::new(ctx, &name, bid)
+        .await
+        .expect("cannot create group")
 }
 
-pub async fn create_user(ctx: &DalContext) -> User {
+pub async fn create_user(ctx: &DalContext, bid: BillingAccountPk) -> User {
     let name = generate_fake_name();
     User::new(
         ctx,
         &name,
         &format!("{}@test.systeminit.com", name),
         "liesAreTold",
+        bid,
     )
     .await
     .expect("cannot create user")
@@ -91,7 +94,7 @@ pub async fn create_billing_account(ctx: &DalContext) -> BillingAccount {
 
 pub async fn create_change_set(
     ctx: &DalContext,
-    _billing_account_id: BillingAccountId,
+    _billing_account_pk: BillingAccountPk,
 ) -> ChangeSet {
     let name = generate_fake_name();
     ChangeSet::new(ctx, &name, None)
@@ -106,10 +109,10 @@ pub fn create_visibility_for_change_set(change_set: &ChangeSet) -> Visibility {
 /// Creates a new [`Visibility`] backed by a new [`ChangeSet`]
 pub async fn create_visibility_for_new_change_set(
     ctx: &DalContext,
-    billing_account_id: BillingAccountId,
+    billing_account_pk: BillingAccountPk,
 ) -> Visibility {
     let _history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(ctx, billing_account_id).await;
+    let change_set = create_change_set(ctx, billing_account_pk).await;
 
     create_visibility_for_change_set(&change_set)
 }
@@ -118,7 +121,7 @@ pub async fn create_change_set_and_update_ctx(ctx: &mut DalContext, nba: &Billin
     ctx.update_to_workspace_tenancies(*nba.workspace.id())
         .await
         .expect("failed to update dal context to workspace tenancies");
-    let visibility = create_visibility_for_new_change_set(ctx, *nba.billing_account.id()).await;
+    let visibility = create_visibility_for_new_change_set(ctx, *nba.billing_account.pk()).await;
     ctx.update_visibility(visibility);
 }
 
@@ -128,23 +131,23 @@ pub async fn create_ctx_for_new_change_set(
     nba: &BillingAccountSignup,
 ) -> DalContext {
     let mut ctx = builder
-        .build(RequestContext::new_universal_head(HistoryActor::SystemInit))
+        .build(RequestContext::default())
         .await
         .expect("failed to build dal context");
     ctx.update_to_workspace_tenancies(*nba.workspace.id())
         .await
         .expect("failed to update dal context to workspace tenancies");
 
-    let visibility = create_visibility_for_new_change_set(&ctx, *nba.billing_account.id()).await;
+    let visibility = create_visibility_for_new_change_set(&ctx, *nba.billing_account.pk()).await;
     ctx.update_visibility(visibility);
     ctx
 }
 
 pub async fn new_ctx_for_new_change_set(
     ctx: &DalContext,
-    billing_account_id: BillingAccountId,
+    billing_account_pk: BillingAccountPk,
 ) -> DalContext {
-    let visibility = create_visibility_for_new_change_set(ctx, billing_account_id).await;
+    let visibility = create_visibility_for_new_change_set(ctx, billing_account_pk).await;
     ctx.clone_with_new_visibility(visibility)
 }
 

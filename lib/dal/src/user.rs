@@ -11,9 +11,9 @@ use tokio::task::JoinError;
 use crate::jwt_key::{get_jwt_signing_key, JwtKeyError};
 use crate::standard_model::option_object_from_row;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    BillingAccount, BillingAccountId, DalContext, HistoryEventError, JwtSecretKey, StandardModel,
-    StandardModelError, Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_accessor, BillingAccount,
+    BillingAccountError, BillingAccountPk, DalContext, HistoryEventError, JwtSecretKey,
+    StandardModel, StandardModelError, Timestamp, Visibility,
 };
 
 const USER_PASSWORD: &str = include_str!("queries/user/password.sql");
@@ -42,6 +42,8 @@ pub enum UserError {
     JwtKey(#[from] JwtKeyError),
     #[error("jwt: {0}")]
     JwtSimple(#[from] jwt_simple::Error),
+    #[error(transparent)]
+    BillingAccount(#[from] Box<BillingAccountError>),
 }
 
 pub type UserResult<T> = Result<T, UserError>;
@@ -54,6 +56,7 @@ pub struct User {
     pk: UserPk,
     id: UserId,
     name: String,
+    billing_account_pk: BillingAccountPk,
     email: String,
     #[serde(flatten)]
     tenancy: WriteTenancy,
@@ -80,6 +83,7 @@ impl User {
         name: impl AsRef<str>,
         email: impl AsRef<str>,
         password: impl AsRef<str>,
+        billing_account_pk: BillingAccountPk,
     ) -> UserResult<Self> {
         let name = name.as_ref();
         let email = email.as_ref();
@@ -90,13 +94,14 @@ impl User {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM user_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM user_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &name,
                     &email,
                     &encrypted_password.as_ref(),
+                    &billing_account_pk,
                 ],
             )
             .await?;
@@ -106,16 +111,13 @@ impl User {
 
     standard_model_accessor!(name, String, UserResult);
     standard_model_accessor!(email, String, UserResult);
-    standard_model_belongs_to!(
-        lookup_fn: billing_account,
-        set_fn: set_billing_account,
-        unset_fn: unset_billing_account,
-        table: "user_belongs_to_billing_account",
-        model_table: "billing_accounts",
-        belongs_to_id: BillingAccountId,
-        returns: BillingAccount,
-        result: UserResult,
-    );
+    standard_model_accessor!(billing_account_pk, Pk(BillingAccountPk), UserResult);
+
+    pub async fn billing_account(&self, ctx: &DalContext) -> UserResult<BillingAccount> {
+        Ok(BillingAccount::get_by_pk(ctx, &self.billing_account_pk)
+            .await
+            .map_err(Box::new)?)
+    }
 
     pub async fn find_by_email(
         ctx: &DalContext,
@@ -150,20 +152,20 @@ impl User {
         &self,
         ctx: &DalContext,
         jwt_secret_key: &JwtSecretKey,
-        billing_account_id: &BillingAccountId,
+        billing_account_pk: &BillingAccountPk,
         password: impl Into<String>,
     ) -> UserResult<String> {
         let row = ctx
             .txns()
             .pg()
-            .query_one(USER_PASSWORD, &[&self.pk()])
+            .query_one(USER_PASSWORD, &[&self.pk(), billing_account_pk])
             .await?;
         let current_password: Vec<u8> = row.try_get("password")?;
         let verified = verify_password(password, current_password).await?;
         if !verified {
             return Err(UserError::MismatchedPassword);
         }
-        let user_claim = UserClaim::new(*self.id(), *billing_account_id);
+        let user_claim = UserClaim::new(*self.id(), *billing_account_pk);
 
         let claims = Claims::with_custom_claims(user_claim, Duration::from_days(1))
             .with_audience("https://app.systeminit.com")
@@ -179,14 +181,14 @@ impl User {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct UserClaim {
     pub user_id: UserId,
-    pub billing_account_id: BillingAccountId,
+    pub billing_account_pk: BillingAccountPk,
 }
 
 impl UserClaim {
-    pub fn new(user_id: UserId, billing_account_id: BillingAccountId) -> Self {
+    pub fn new(user_id: UserId, billing_account_pk: BillingAccountPk) -> Self {
         UserClaim {
             user_id,
-            billing_account_id,
+            billing_account_pk,
         }
     }
 

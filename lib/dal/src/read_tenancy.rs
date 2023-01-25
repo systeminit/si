@@ -4,7 +4,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    BillingAccountId, OrganizationId, StandardModelError, Visibility, WorkspaceError, WorkspaceId,
+    BillingAccountPk, OrganizationId, StandardModelError, Visibility, WorkspaceError, WorkspaceId,
 };
 
 const GET_WORKSPACE: &str = include_str!("queries/read_tenancy/get_workspace.sql");
@@ -30,10 +30,8 @@ pub type ReadTenancyResult<T> = Result<T, ReadTenancyError>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct ReadTenancy {
-    #[serde(rename = "tenancy_universal")]
-    universal: bool,
-    #[serde(rename = "tenancy_billing_account_ids")]
-    billing_account_ids: Vec<BillingAccountId>,
+    #[serde(rename = "tenancy_billing_account_pks")]
+    billing_account_pks: Vec<BillingAccountPk>,
     #[serde(rename = "tenancy_organization_ids")]
     organization_ids: Vec<OrganizationId>,
     #[serde(rename = "tenancy_workspace_ids")]
@@ -41,23 +39,13 @@ pub struct ReadTenancy {
 }
 
 impl ReadTenancy {
-    pub fn billing_accounts(&self) -> &[BillingAccountId] {
-        &self.billing_account_ids
+    pub fn billing_accounts(&self) -> &[BillingAccountPk] {
+        &self.billing_account_pks
     }
 
-    pub fn new_universal() -> Self {
+    pub fn new_billing_account(billing_account_pks: Vec<BillingAccountPk>) -> Self {
         Self {
-            universal: true,
-            billing_account_ids: Vec::new(),
-            organization_ids: Vec::new(),
-            workspace_ids: Vec::new(),
-        }
-    }
-
-    pub fn new_billing_account(billing_account_ids: Vec<BillingAccountId>) -> Self {
-        Self {
-            universal: true,
-            billing_account_ids,
+            billing_account_pks,
             organization_ids: Vec::new(),
             workspace_ids: Vec::new(),
         }
@@ -68,7 +56,7 @@ impl ReadTenancy {
         organization_ids: Vec<OrganizationId>,
         visibility: &Visibility,
     ) -> ReadTenancyResult<Self> {
-        let mut billing_account_ids = Vec::with_capacity(organization_ids.len());
+        let mut billing_account_pks = Vec::with_capacity(organization_ids.len());
         for organization_id in &organization_ids {
             let row = txn
                 .query_opt(GET_ORGANIZATION, &[organization_id, visibility])
@@ -76,12 +64,11 @@ impl ReadTenancy {
                 .ok_or(ReadTenancyError::BillingAccountNotFoundForOrganization(
                     *organization_id,
                 ))?;
-            let billing_account_id = row.try_get("billing_account_id")?;
-            billing_account_ids.push(billing_account_id);
+            let billing_account_pk = row.try_get("billing_account_pk")?;
+            billing_account_pks.push(billing_account_pk);
         }
         Ok(Self {
-            universal: true,
-            billing_account_ids,
+            billing_account_pks,
             organization_ids,
             workspace_ids: Vec::new(),
         })
@@ -93,7 +80,7 @@ impl ReadTenancy {
         visibility: &Visibility,
     ) -> ReadTenancyResult<Self> {
         let mut organization_ids = Vec::new();
-        let mut billing_account_ids = Vec::new();
+        let mut billing_account_pks = Vec::new();
 
         for workspace_id in &workspace_ids {
             let row = txn
@@ -102,20 +89,14 @@ impl ReadTenancy {
                 .ok_or(ReadTenancyError::WorkspaceNotFound(*workspace_id))?;
             let organization_id = row.try_get("organization_id")?;
             organization_ids.push(organization_id);
-            let billing_account_id = row.try_get("billing_account_id")?;
-            billing_account_ids.push(billing_account_id);
+            let billing_account_pk = row.try_get("billing_account_pk")?;
+            billing_account_pks.push(billing_account_pk);
         }
         Ok(Self {
             organization_ids,
-            billing_account_ids,
+            billing_account_pks,
             workspace_ids,
-            universal: true,
         })
-    }
-
-    pub fn into_local(mut self) -> Self {
-        self.universal = false;
-        self
     }
 }
 

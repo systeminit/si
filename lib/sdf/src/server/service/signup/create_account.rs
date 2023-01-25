@@ -1,7 +1,7 @@
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use dal::{BillingAccount, HistoryActor, RequestContext};
+use dal::{BillingAccount, RequestContext};
 use telemetry::prelude::*;
 
 use crate::{
@@ -37,9 +37,7 @@ pub async fn create_account(
         return Err(SignupError::InvalidSignupSecret);
     }
 
-    let ctx = builder
-        .build(RequestContext::new_universal_head(HistoryActor::SystemInit))
-        .await?;
+    let ctx = builder.build(RequestContext::default()).await?;
 
     let _billing_acct = BillingAccount::signup(
         &ctx,

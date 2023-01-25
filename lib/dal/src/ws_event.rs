@@ -9,7 +9,7 @@ use crate::{
     qualification::QualificationCheckPayload,
     status::StatusMessage,
     workflow::{CommandOutput, CommandReturn},
-    ActorView, AttributeValueId, BillingAccountId, ChangeSetPk, ComponentId, DalContext, PropId,
+    ActorView, AttributeValueId, BillingAccountPk, ChangeSetPk, ComponentId, DalContext, PropId,
     ReadTenancy, SchemaPk, SocketId, StandardModelError,
 };
 
@@ -81,7 +81,7 @@ impl AttributeValueStatusUpdate {
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct WsEvent {
     version: i64,
-    billing_account_ids: Vec<BillingAccountId>,
+    billing_account_pks: Vec<BillingAccountPk>,
     actor: ActorView,
     change_set_pk: ChangeSetPk,
     payload: WsPayload,
@@ -89,34 +89,34 @@ pub struct WsEvent {
 
 impl WsEvent {
     pub async fn new(ctx: &DalContext, payload: WsPayload) -> WsEventResult<Self> {
-        let billing_account_ids = Self::billing_account_id_from_tenancy(ctx.read_tenancy());
+        let billing_account_pks = Self::billing_account_pk_from_tenancy(ctx.read_tenancy());
         let change_set_pk = ctx.visibility().change_set_pk;
         let actor = ActorView::from_history_actor(ctx, *ctx.history_actor()).await?;
 
         Ok(WsEvent {
             version: 1,
-            billing_account_ids,
+            billing_account_pks,
             actor,
             change_set_pk,
             payload,
         })
     }
 
-    pub fn billing_account_id_from_tenancy(tenancy: &ReadTenancy) -> Vec<BillingAccountId> {
+    pub fn billing_account_pk_from_tenancy(tenancy: &ReadTenancy) -> Vec<BillingAccountPk> {
         tenancy.billing_accounts().into()
     }
 
     pub async fn publish(&self, ctx: &DalContext) -> WsEventResult<()> {
-        for billing_account_id in self.billing_account_ids.iter() {
-            let subject = format!("si.billing_account_id.{}.event", billing_account_id);
+        for billing_account_pk in self.billing_account_pks.iter() {
+            let subject = format!("si.billing_account_pk.{}.event", billing_account_pk);
             ctx.nats_txn().publish(subject, &self).await?;
         }
         Ok(())
     }
 
     pub async fn publish_immediately(&self, ctx: &DalContext) -> WsEventResult<()> {
-        for billing_account_id in self.billing_account_ids.iter() {
-            let subject = format!("si.billing_account_id.{}.event", billing_account_id);
+        for billing_account_pk in self.billing_account_pks.iter() {
+            let subject = format!("si.billing_account_pk.{}.event", billing_account_pk);
             let msg_bytes = serde_json::to_vec(self)?;
             ctx.nats_conn().publish(subject, msg_bytes).await?;
         }

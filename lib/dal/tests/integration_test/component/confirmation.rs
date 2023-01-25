@@ -17,7 +17,7 @@ use veritech_client::ResourceStatus;
 #[test]
 async fn add_and_run_confirmations(mut octx: DalContext, wid: WorkspaceId) {
     let ctx = &mut octx;
-    ctx.update_to_universal_head();
+    ctx.update_to_head();
 
     let mut schema = create_schema(ctx).await;
     let (mut schema_variant, _root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;

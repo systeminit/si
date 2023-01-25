@@ -1,6 +1,4 @@
-use dal::{
-    node::NodeKind, DalContext, HistoryActor, Node, StandardModel, Visibility, WriteTenancy,
-};
+use dal::{node::NodeKind, DalContext, Node, StandardModel};
 use dal_test::{
     test,
     test_harness::{create_component_and_schema, create_node},
@@ -8,9 +6,6 @@ use dal_test::{
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let _write_tenancy = WriteTenancy::new_universal();
-    let _visibility = Visibility::new_head(false);
-    let _history_actor = HistoryActor::SystemInit;
     let _node = Node::new(ctx, &NodeKind::Configuration)
         .await
         .expect("cannot create node");

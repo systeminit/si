@@ -2,8 +2,7 @@ CREATE TABLE users
 (
     pk                          ident primary key default ident_create_v1(),
     id                          ident not null default ident_create_v1(),
-    tenancy_universal           bool                     NOT NULL,
-    tenancy_billing_account_ids ident[],
+    tenancy_billing_account_pks ident[],
     tenancy_organization_ids    ident[],
     tenancy_workspace_ids       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
@@ -12,14 +11,13 @@ CREATE TABLE users
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL,
     email                       text                     NOT NULL,
-    password                    bytea                    NOT NULL
+    password                    bytea                    NOT NULL,
+    billing_account_pk          ident                    NOT NULL
 );
 SELECT standard_model_table_constraints_v1('users');
-SELECT belongs_to_table_create_v1('user_belongs_to_billing_account', 'users', 'billing_accounts');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('users', 'model', 'user', 'User'),
-       ('user_belongs_to_billing_account', 'belongs_to', 'user.billing_account', 'User <> Billing Account');
+VALUES ('users', 'model', 'user', 'User');
 
 CREATE OR REPLACE FUNCTION user_create_v1(
     this_tenancy jsonb,
@@ -27,6 +25,7 @@ CREATE OR REPLACE FUNCTION user_create_v1(
     this_name text,
     this_email text,
     this_password bytea,
+    this_billing_account_pk ident,
     OUT object json) AS
 $$
 DECLARE
@@ -37,12 +36,12 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
-    INSERT INTO users (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids, tenancy_workspace_ids,
-                       visibility_change_set_pk, visibility_deleted_at, name, email, password)
-    VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
+    INSERT INTO users (tenancy_billing_account_pks, tenancy_organization_ids, tenancy_workspace_ids,
+                       visibility_change_set_pk, visibility_deleted_at, name, email, password, billing_account_pk)
+    VALUES (this_tenancy_record.tenancy_billing_account_pks,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at,
-            this_name, this_email, this_password)
+            this_name, this_email, this_password, this_billing_account_pk)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

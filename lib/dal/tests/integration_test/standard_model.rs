@@ -1,48 +1,46 @@
 use dal::{
-    component::ComponentKind, standard_model, BillingAccount, BillingAccountPk,
-    BillingAccountSignup, ChangeSet, ChangeSetPk, DalContext, Func, FuncBackendKind, Group,
-    GroupId, KeyPair, Schema, StandardModel, User, UserId, WriteTenancy,
+    component::ComponentKind, standard_model, BillingAccountPk, ChangeSet, ChangeSetPk, DalContext,
+    Func, FuncBackendKind, Group, GroupId, Schema, SchemaVariant, StandardModel, User, UserId,
 };
 use dal_test::{
     test,
     test_harness::{
-        create_billing_account, create_billing_account_with_name, create_func, create_group,
-        create_key_pair, create_schema, create_user, create_visibility_head,
+        create_func, create_group, create_schema, create_schema_variant, create_user,
+        create_visibility_head,
     },
 };
 use itertools::Itertools;
 
 #[test]
-async fn get_by_pk(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let retrieved = standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
+async fn get_by_pk(ctx: &DalContext) {
+    let schema = create_schema(ctx).await;
+    let retrieved: Schema = standard_model::get_by_pk(ctx, "schemas", schema.pk())
         .await
-        .expect("cannot get billing account by pk");
+        .expect("cannot get schema by pk");
 
-    assert_eq!(nba.billing_account, retrieved);
+    assert_eq!(schema, retrieved);
 }
 
 #[test]
 async fn get_by_id(ctx: &DalContext) {
-    let billing_account = create_billing_account_with_name(ctx, "coheed").await;
+    let schema = create_schema(ctx).await;
     let head_visibility = create_visibility_head();
     let head_ctx = ctx.clone_with_new_visibility(head_visibility);
 
-    let no_head: Option<BillingAccount> =
-        standard_model::get_by_id(&head_ctx, "billing_accounts", billing_account.id())
-            .await
-            .expect("could not get billing account by id");
+    let no_head: Option<Schema> = standard_model::get_by_id(&head_ctx, "schemas", schema.id())
+        .await
+        .expect("could not get schema by id");
 
     assert!(no_head.is_none(), "head object exists when it should not");
 
-    let for_change_set: BillingAccount =
-        standard_model::get_by_id(ctx, "billing_accounts", billing_account.id())
-            .await
-            .expect("could not get billing account by id")
-            .expect("change set object should exist but it does not");
-    assert_eq!(&for_change_set.id(), &billing_account.id());
+    let for_change_set: Schema = standard_model::get_by_id(ctx, "schemas", schema.id())
+        .await
+        .expect("could not get schema by id")
+        .expect("change set object should exist but it does not");
+    assert_eq!(&for_change_set.id(), &schema.id());
     assert_eq!(
         &for_change_set.visibility().change_set_pk,
-        &billing_account.visibility().change_set_pk
+        &schema.visibility().change_set_pk
     );
 
     let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
@@ -55,11 +53,10 @@ async fn get_by_id(ctx: &DalContext) {
         .await
         .expect("cannot apply change set");
 
-    let for_head: BillingAccount =
-        standard_model::get_by_id(&head_ctx, "billing_accounts", billing_account.id())
-            .await
-            .expect("could not get billing account by id")
-            .expect("change set object should exist but it does not");
+    let for_head: Schema = standard_model::get_by_id(&head_ctx, "schemas", schema.id())
+        .await
+        .expect("could not get schema by id")
+        .expect("change set object should exist but it does not");
     assert_ne!(&for_head.pk(), &for_change_set.pk());
     assert_eq!(&for_head.id(), &for_change_set.id());
     assert_eq!(&for_head.visibility().change_set_pk, &ChangeSetPk::NONE,);
@@ -67,57 +64,45 @@ async fn get_by_id(ctx: &DalContext) {
 
 #[test]
 async fn list(ctx: &DalContext) {
-    let _coheed_billing_account = create_billing_account_with_name(ctx, "coheed").await;
-    let _spiritbox_billing_account = create_billing_account_with_name(ctx, "spiritbox").await;
-    let _zeal_billing_account = create_billing_account_with_name(ctx, "zeal and ardor").await;
+    let first_schema = create_schema(ctx).await;
+    let second_schema = create_schema(ctx).await;
+    let third_schema = create_schema(ctx).await;
 
     let head_visibility = create_visibility_head();
     let head_ctx = ctx.clone_with_new_visibility(head_visibility);
 
-    let no_head: Vec<BillingAccount> = standard_model::list(&head_ctx, "billing_accounts")
+    let at_head: Vec<Schema> = standard_model::list(&head_ctx, "schemas")
         .await
-        .expect("could not get billing account by id");
-    assert_eq!(
-        no_head.len(),
-        1,
-        "there are no objects beyond the default to list for head"
+        .expect("could not get schema by id");
+    assert!(
+        !at_head.iter().any(
+            |el| vec![first_schema.id(), second_schema.id(), third_schema.id()].contains(&el.id())
+        ),
+        "schemas are in the set"
     );
 
-    let change_set_set: Vec<BillingAccount> = standard_model::list(ctx, "billing_accounts")
+    let at_change_set: Vec<Schema> = standard_model::list(ctx, "schemas")
         .await
-        .expect("could not get billing account by id");
-    assert_eq!(
-        change_set_set.len(),
-        4,
-        "there are 5 objects to list for change set"
-    );
+        .expect("could not list schema");
     assert!(
-        change_set_set.iter().any(|ba| ba.name() == "coheed"),
-        "coheed is in the set"
-    );
-    assert!(
-        change_set_set.iter().any(|ba| ba.name() == "spiritbox"),
-        "spiritbox is in the set"
-    );
-    assert!(
-        change_set_set
-            .iter()
-            .any(|ba| ba.name() == "zeal and ardor"),
-        "zeal and ardor is in the set"
+        at_change_set.iter().any(|el| vec![
+            first_schema.id(),
+            second_schema.id(),
+            third_schema.id()
+        ]
+        .contains(&el.id())),
+        "schemas aren't in the set"
     );
 }
 
 #[test]
-async fn update(ctx: &mut DalContext, nba: &BillingAccountSignup) {
-    // Guess what--a billing account's tenancy is universal! So let's make sure our DalContext is
-    // appropriately set up
-    ctx.update_write_tenancy(WriteTenancy::new_universal());
-
+async fn update(ctx: &mut DalContext) {
+    let schema = create_schema(ctx).await;
     let _updated_at = standard_model::update(
         ctx,
-        "billing_accounts",
+        "schemas",
         "name",
-        nba.billing_account.id(),
+        schema.id(),
         &"funtime",
         standard_model::TypeHint::Text,
     )
@@ -126,70 +111,64 @@ async fn update(ctx: &mut DalContext, nba: &BillingAccountSignup) {
 }
 
 #[test]
-async fn delete(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let _updated_at =
-        standard_model::delete_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
-            .await
-            .expect("cannot delete field");
-
-    let soft_deleted: BillingAccount =
-        standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
-            .await
-            .expect("cannot get billing account");
-
-    assert!(
-        soft_deleted.visibility().deleted_at.is_some(),
-        "should be deleted"
-    );
-}
-
-#[test]
-async fn hard_delete(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let ba: BillingAccount =
-        standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
-            .await
-            .expect("cannot get billing account");
-
-    let ba_pk = *ba.pk();
-    let hard_deleted = ba.hard_delete(ctx).await.expect("could not hard delete");
-    assert_eq!(&ba_pk, hard_deleted.pk());
-
-    assert!(
-        standard_model::get_by_pk::<BillingAccountPk, BillingAccount>(
-            ctx,
-            "billing_accounts",
-            hard_deleted.pk(),
-        )
-        .await
-        .is_err()
-    );
-}
-
-#[test]
-async fn undelete(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let _updated_at =
-        standard_model::delete_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
-            .await
-            .expect("cannot delete field");
-
-    let soft_deleted: BillingAccount =
-        standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
-            .await
-            .expect("cannot get billing account");
-
-    assert!(
-        soft_deleted.visibility().deleted_at.is_some(),
-        "should be deleted"
-    );
-
-    let _updated_at = standard_model::undelete(ctx, "billing_accounts", nba.billing_account.pk())
+async fn delete(ctx: &DalContext) {
+    let schema = create_schema(ctx).await;
+    let _updated_at = standard_model::delete_by_pk(ctx, "schemas", schema.pk())
         .await
         .expect("cannot delete field");
 
-    let soft_undeleted: BillingAccount =
-        standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
+    let soft_deleted: Schema = standard_model::get_by_pk(ctx, "schemas", schema.pk())
+        .await
+        .expect("cannot get schema");
+
+    assert!(
+        soft_deleted.visibility().deleted_at.is_some(),
+        "should be deleted"
+    );
+}
+
+#[test]
+async fn hard_delete(ctx: &DalContext) {
+    let schema = create_schema(ctx).await;
+    let s: Schema = standard_model::get_by_pk(ctx, "schemas", schema.pk())
+        .await
+        .expect("cannot get schema");
+    assert_eq!(s, schema);
+
+    let hard_deleted = s.hard_delete(ctx).await.expect("could not hard delete");
+    assert_eq!(schema.pk(), hard_deleted.pk());
+
+    assert!(
+        standard_model::get_by_pk::<_, Schema>(ctx, "schemas", hard_deleted.pk(),)
             .await
-            .expect("cannot get billing account");
+            .is_err()
+    );
+}
+
+#[test]
+async fn undelete(ctx: &DalContext) {
+    let schema = create_schema(ctx).await;
+
+    let _updated_at = standard_model::delete_by_pk(ctx, "schemas", schema.pk())
+        .await
+        .expect("cannot delete field");
+
+    let soft_deleted: Schema = standard_model::get_by_pk(ctx, "schemas", schema.pk())
+        .await
+        .expect("cannot get schema");
+
+    assert!(
+        soft_deleted.visibility().deleted_at.is_some(),
+        "should be deleted"
+    );
+
+    let _updated_at = standard_model::undelete(ctx, "schemas", schema.pk())
+        .await
+        .expect("cannot delete field");
+
+    let soft_undeleted: Schema = standard_model::get_by_pk(ctx, "schemas", schema.pk())
+        .await
+        .expect("cannot get schemas");
 
     assert!(
         soft_undeleted.visibility().deleted_at.is_none(),
@@ -199,96 +178,80 @@ async fn undelete(ctx: &DalContext, nba: &BillingAccountSignup) {
 
 #[test]
 async fn set_belongs_to(ctx: &DalContext) {
-    let first_billing_account = create_billing_account_with_name(ctx, "coheed").await;
-    let second_billing_account = create_billing_account_with_name(ctx, "cambria").await;
-    let key_pair = create_key_pair(ctx).await;
+    let schema = create_schema(ctx).await;
+    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
-    standard_model::set_belongs_to(
-        ctx,
-        "key_pair_belongs_to_billing_account",
-        key_pair.id(),
-        first_billing_account.id(),
-    )
-    .await
-    .expect("cannot set billing account for key pair");
+    let second_schema = create_schema(ctx).await;
 
-    let found_billing_account = key_pair
-        .billing_account(ctx)
+    // Schema variant creation already sets belongs to
+    let found_schema = schema_variant
+        .schema(ctx)
         .await
-        .expect("cannot retrieve billing account from key pair")
-        .expect("cannot find billing account for key pair");
-    assert_eq!(first_billing_account.id(), found_billing_account.id());
+        .expect("cannot retrieve schema from variant")
+        .expect("cannot find schema from variant");
+    assert_eq!(found_schema, schema);
 
     // You can replace the existing belongs to relationship by calling it again with a new id
     standard_model::set_belongs_to(
         ctx,
-        "key_pair_belongs_to_billing_account",
-        key_pair.id(),
-        second_billing_account.id(),
+        "schema_variant_belongs_to_schema",
+        schema_variant.id(),
+        second_schema.id(),
     )
     .await
-    .expect("cannot update billing account for key pair");
+    .expect("cannot update variant for schema");
 
-    let found_billing_account = key_pair
-        .billing_account(ctx)
+    let found_schema = schema_variant
+        .schema(ctx)
         .await
-        .expect("cannot retrieve billing account from key pair")
-        .expect("cannot find billing account for key pair");
-    assert_eq!(second_billing_account.id(), found_billing_account.id());
+        .expect("cannot retrieve schema from variant")
+        .expect("cannot find schema from variant");
+    assert_eq!(found_schema, second_schema);
 }
 
 #[test]
-async fn unset_belongs_to(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let key_pair = create_key_pair(ctx).await;
+async fn unset_belongs_to(ctx: &DalContext) {
+    let schema = create_schema(ctx).await;
+    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
-    standard_model::set_belongs_to(
-        ctx,
-        "key_pair_belongs_to_billing_account",
-        key_pair.id(),
-        nba.billing_account.id(),
-    )
-    .await
-    .expect("cannot set billing account for key pair");
-
-    standard_model::unset_belongs_to(ctx, "key_pair_belongs_to_billing_account", key_pair.id())
+    // Schema variant creation already sets belongs to
+    let found_schema = schema_variant
+        .schema(ctx)
         .await
-        .expect("cannot set billing account for key pair");
+        .expect("cannot retrieve schema from variant")
+        .expect("cannot find schema from variant");
+    assert_eq!(found_schema, schema);
+
+    standard_model::unset_belongs_to(ctx, "schema_variant_belongs_to_schema", schema_variant.id())
+        .await
+        .expect("cannot set variant for schema");
 }
 
 #[test]
 async fn belongs_to(ctx: &DalContext) {
-    let billing_account = create_billing_account_with_name(ctx, "coheed").await;
-    let key_pair = create_key_pair(ctx).await;
-
-    standard_model::set_belongs_to(
-        ctx,
-        "key_pair_belongs_to_billing_account",
-        key_pair.id(),
-        billing_account.id(),
-    )
-    .await
-    .expect("cannot set billing account for key pair");
+    let schema = create_schema(ctx).await;
+    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
     let visibility_head = create_visibility_head();
     let head_ctx = ctx.clone_with_new_visibility(visibility_head);
-    let no_head: Option<BillingAccount> = standard_model::belongs_to(
+    let no_head: Option<Schema> = standard_model::belongs_to(
         &head_ctx,
-        "key_pair_belongs_to_billing_account",
-        "billing_accounts",
-        key_pair.id(),
+        "schema_variant_belongs_to_schema",
+        "schemas",
+        schema_variant.id(),
     )
     .await
-    .expect("cannot get billing account for key pair");
+    .expect("cannot update variant for schema");
     assert!(no_head.is_none(), "head relationship should not exist");
 
-    let has_change_set: Option<BillingAccount> = standard_model::belongs_to(
+    let has_change_set: Option<Schema> = standard_model::belongs_to(
         ctx,
-        "key_pair_belongs_to_billing_account",
-        "billing_accounts",
-        key_pair.id(),
+        "schema_variant_belongs_to_schema",
+        "schemas",
+        schema_variant.id(),
     )
     .await
-    .expect("cannot get billing account for key pair");
+    .expect("cannot fetch variant for schema");
     assert!(
         has_change_set.is_some(),
         "change set relationship should exist"
@@ -304,95 +267,78 @@ async fn belongs_to(ctx: &DalContext) {
         .await
         .expect("cannot apply change set");
 
-    let has_head: Option<BillingAccount> = standard_model::belongs_to(
+    let has_head: Option<Schema> = standard_model::belongs_to(
         &head_ctx,
-        "key_pair_belongs_to_billing_account",
-        "billing_accounts",
-        key_pair.id(),
+        "schema_variant_belongs_to_schema",
+        "schemas",
+        schema_variant.id(),
     )
     .await
-    .expect("cannot get billing account for key pair");
+    .expect("cannot fetch variant for schema");
     assert!(has_head.is_some(), "head relationship should exist");
 
     standard_model::unset_belongs_to(
         &head_ctx,
-        "key_pair_belongs_to_billing_account",
-        key_pair.id(),
+        "schema_variant_belongs_to_schema",
+        schema_variant.id(),
     )
     .await
-    .expect("cannot set billing account for key pair");
-    let has_head: Option<BillingAccount> = standard_model::belongs_to(
+    .expect("cannot unset variant for schema");
+    let no_head: Option<Schema> = standard_model::belongs_to(
         &head_ctx,
-        "key_pair_belongs_to_billing_account",
-        "billing_accounts",
-        key_pair.id(),
+        "schema_variant_belongs_to_schema",
+        "schemas",
+        schema_variant.id(),
     )
     .await
-    .expect("cannot get billing account for key pair");
+    .expect("cannot get variant from schema");
     assert!(
-        has_head.is_none(),
+        no_head.is_none(),
         "head relationship should no longer exist"
     );
 }
 
 #[test]
 async fn has_many(ctx: &DalContext) {
-    let billing_account = create_billing_account_with_name(ctx, "coheed").await;
-    let a_key_pair = create_key_pair(ctx).await;
-    standard_model::set_belongs_to(
-        ctx,
-        "key_pair_belongs_to_billing_account",
-        a_key_pair.id(),
-        billing_account.id(),
-    )
-    .await
-    .expect("cannot set billing account for key pair");
-
-    let b_key_pair = create_key_pair(ctx).await;
-    standard_model::set_belongs_to(
-        ctx,
-        "key_pair_belongs_to_billing_account",
-        b_key_pair.id(),
-        billing_account.id(),
-    )
-    .await
-    .expect("cannot set billing account for key pair");
+    let schema = create_schema(ctx).await;
+    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
+    let second_schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
     let visibility_head = create_visibility_head();
     let head_ctx = ctx.clone_with_new_visibility(visibility_head);
-    let no_head: Vec<KeyPair> = standard_model::has_many(
+    let no_head: Vec<SchemaVariant> = standard_model::has_many(
         &head_ctx,
-        "key_pair_belongs_to_billing_account",
-        "key_pairs",
-        billing_account.id(),
+        "schema_variant_belongs_to_schema",
+        "schema_variants",
+        schema.id(),
     )
     .await
-    .expect("cannot get key pairs for billing account");
-    assert_eq!(no_head.len(), 0, "head relationship should not exist");
+    .expect("cannot get variants from schemas");
+    assert!(no_head.is_empty(), "head relationship should not exist");
 
-    let key_pairs: Vec<KeyPair> = standard_model::has_many(
+    let schema_variants: Vec<SchemaVariant> = standard_model::has_many(
         ctx,
-        "key_pair_belongs_to_billing_account",
-        "key_pairs",
-        billing_account.id(),
+        "schema_variant_belongs_to_schema",
+        "schema_variants",
+        schema.id(),
     )
     .await
-    .expect("cannot get key pair for billing account");
-    assert_eq!(key_pairs.len(), 2);
+    .expect("cannot get variants from schemas");
+    assert_eq!(schema_variants.len(), 2);
     assert_eq!(
-        key_pairs
+        schema_variants
             .into_iter()
-            .filter(|k| k == &a_key_pair || k == &b_key_pair)
+            .filter(|k| k == &schema_variant || k == &second_schema_variant)
             .count(),
         2
     );
 }
 
 #[test]
-async fn associate_many_to_many(ctx: &DalContext) {
-    let group = create_group(ctx).await;
-    let user_one = create_user(ctx).await;
-    let user_two = create_user(ctx).await;
+async fn associate_many_to_many(ctx: &DalContext, bid: BillingAccountPk) {
+    let group = create_group(ctx, bid).await;
+    let user_one = create_user(ctx, bid).await;
+    let user_two = create_user(ctx, bid).await;
     standard_model::associate_many_to_many(
         ctx,
         "group_many_to_many_users",
@@ -412,10 +358,10 @@ async fn associate_many_to_many(ctx: &DalContext) {
 }
 
 #[test]
-async fn disassociate_many_to_many(ctx: &DalContext) {
-    let group = create_group(ctx).await;
-    let user_one = create_user(ctx).await;
-    let user_two = create_user(ctx).await;
+async fn disassociate_many_to_many(ctx: &DalContext, bid: BillingAccountPk) {
+    let group = create_group(ctx, bid).await;
+    let user_one = create_user(ctx, bid).await;
+    let user_two = create_user(ctx, bid).await;
     standard_model::associate_many_to_many(
         ctx,
         "group_many_to_many_users",
@@ -443,10 +389,10 @@ async fn disassociate_many_to_many(ctx: &DalContext) {
 }
 
 #[test]
-async fn disassociate_all_many_to_many(ctx: &DalContext) {
-    let group = create_group(ctx).await;
-    let user_one = create_user(ctx).await;
-    let user_two = create_user(ctx).await;
+async fn disassociate_all_many_to_many(ctx: &DalContext, bid: BillingAccountPk) {
+    let group = create_group(ctx, bid).await;
+    let user_one = create_user(ctx, bid).await;
+    let user_two = create_user(ctx, bid).await;
     standard_model::associate_many_to_many(
         ctx,
         "group_many_to_many_users",
@@ -469,12 +415,12 @@ async fn disassociate_all_many_to_many(ctx: &DalContext) {
 }
 
 #[test]
-async fn many_to_many(ctx: &DalContext) {
-    let group_one = create_group(ctx).await;
-    let group_two = create_group(ctx).await;
+async fn many_to_many(ctx: &DalContext, bid: BillingAccountPk) {
+    let group_one = create_group(ctx, bid).await;
+    let group_two = create_group(ctx, bid).await;
 
-    let user_one = create_user(ctx).await;
-    let user_two = create_user(ctx).await;
+    let user_one = create_user(ctx, bid).await;
+    let user_two = create_user(ctx, bid).await;
     standard_model::associate_many_to_many(
         ctx,
         "group_many_to_many_users",
@@ -619,9 +565,9 @@ async fn many_to_many(ctx: &DalContext) {
 }
 
 #[test]
-async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext) {
-    let group = create_group(ctx).await;
-    let user_one = create_user(ctx).await;
+async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext, bid: BillingAccountPk) {
+    let group = create_group(ctx, bid).await;
+    let user_one = create_user(ctx, bid).await;
     standard_model::associate_many_to_many(
         ctx,
         "group_many_to_many_users",
@@ -642,9 +588,6 @@ async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext) {
 
 #[test]
 async fn find_by_attr(ctx: &mut DalContext) {
-    let _billing_account = create_billing_account(ctx).await;
-    ctx.update_to_universal_head();
-
     let schema_one = create_schema(ctx).await;
 
     let result: Vec<Schema> =
@@ -674,9 +617,6 @@ async fn find_by_attr(ctx: &mut DalContext) {
 
 #[test]
 async fn find_by_attr_in(ctx: &mut DalContext) {
-    let _billing_account = create_billing_account(ctx).await;
-    ctx.update_to_universal_head();
-
     // There are some functions in here already but we don't want to rely on
     // them existing for the test to pass
     let first_result: Vec<Func> = standard_model::find_by_attr_in(
@@ -735,9 +675,6 @@ async fn find_by_attr_in(ctx: &mut DalContext) {
 
 #[test]
 async fn find_by_attr_not_in(ctx: &mut DalContext) {
-    let _billing_account = create_billing_account(ctx).await;
-    ctx.update_to_universal_head();
-
     let func_one = create_func(ctx).await;
     let func_two = create_func(ctx).await;
 

@@ -34,6 +34,4 @@ WHERE in_attribute_context_v1(
               attribute_values
           )
 ORDER BY attribute_values.attribute_context_prop_id,
-         attribute_values.attribute_context_component_id DESC,
-         attribute_values.tenancy_universal
--- bools sort false first ascending.
+         attribute_values.attribute_context_component_id DESC

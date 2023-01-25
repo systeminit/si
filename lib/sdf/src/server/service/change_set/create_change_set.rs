@@ -24,7 +24,7 @@ pub async fn create_change_set(
     Json(request): Json<CreateChangeSetRequest>,
 ) -> ChangeSetResult<Json<CreateChangeSetResponse>> {
     let mut ctx = builder.build(request_ctx.build_head()).await?;
-    ctx.update_write_tenancy(WriteTenancy::new_billing_account(claim.billing_account_id));
+    ctx.update_write_tenancy(WriteTenancy::new_billing_account(claim.billing_account_pk));
 
     let change_set = ChangeSet::new(&ctx, request.change_set_name, None).await?;
 

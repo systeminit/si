@@ -1,4 +1,4 @@
-use dal::{DalContext, HistoryActor, Prop, PropKind, StandardModel, Visibility, WriteTenancy};
+use dal::{DalContext, Prop, PropKind, StandardModel};
 use dal_test::helpers::generate_fake_name;
 use dal_test::{
     test,
@@ -8,9 +8,6 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new(ctx: &DalContext) {
-    let _write_tenancy = WriteTenancy::new_universal();
-    let _visibility = Visibility::new_head(false);
-    let _history_actor = HistoryActor::SystemInit;
     let prop = Prop::new(ctx, "coolness", PropKind::String, None)
         .await
         .expect("cannot create prop");

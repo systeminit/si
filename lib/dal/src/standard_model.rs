@@ -817,15 +817,6 @@ pub trait StandardModel {
 
         Ok(obj)
     }
-
-    /// Builtin objects have universal tenancy and are at the HEAD changeset
-    #[instrument(skip_all)]
-    fn is_builtin(&self) -> bool
-    where
-        Self: Send + Sync + Sized,
-    {
-        self.tenancy().universal() && self.visibility().is_head()
-    }
 }
 
 #[macro_export]

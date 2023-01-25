@@ -27,6 +27,4 @@ WHERE in_attribute_context_v1(
               av
           )
 ORDER BY av.attribute_context_prop_id,
-         av.attribute_context_component_id DESC,
-         av.tenancy_universal
--- bools sort false first ascending.
+         av.attribute_context_component_id DESC

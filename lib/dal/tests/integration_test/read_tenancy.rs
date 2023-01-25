@@ -1,5 +1,5 @@
 use dal::{
-    BillingAccountId, BillingAccountSignup, DalContext, JwtSecretKey, OrganizationId, ReadTenancy,
+    BillingAccountPk, BillingAccountSignup, DalContext, JwtSecretKey, OrganizationId, ReadTenancy,
     StandardModel, WorkspaceId, WriteTenancy,
 };
 use dal_test::{test, test_harness::billing_account_signup};
@@ -10,7 +10,7 @@ async fn check_organization_specific_billing_account(
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
-    let read_tenancy = ReadTenancy::new_billing_account(vec![*nba.billing_account.id()]);
+    let read_tenancy = ReadTenancy::new_billing_account(vec![*nba.billing_account.pk()]);
     let write_tenancy = WriteTenancy::new_organization(*nba.organization.id());
 
     let check = write_tenancy
@@ -30,7 +30,7 @@ async fn check_organization_in_billing_account(
         ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.id()], ctx.visibility())
             .await
             .expect("unable to set organization read read_tenancy");
-    let write_tenancy = WriteTenancy::new_billing_account(*nba.billing_account.id());
+    let write_tenancy = WriteTenancy::new_billing_account(*nba.billing_account.pk());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -45,7 +45,7 @@ async fn check_workspace_specific_billing_account(
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
-    let read_tenancy = ReadTenancy::new_billing_account(vec![*nba.billing_account.id()]);
+    let read_tenancy = ReadTenancy::new_billing_account(vec![*nba.billing_account.pk()]);
     let write_tenancy = WriteTenancy::new_workspace(*nba.workspace.id());
 
     let check = write_tenancy
@@ -67,9 +67,9 @@ async fn check_workspace_in_billing_account(
             .expect("unable to set workspace read read_tenancy");
     assert_eq!(
         read_tenancy.billing_accounts(),
-        vec![*nba.billing_account.id()]
+        vec![*nba.billing_account.pk()]
     );
-    let write_tenancy = WriteTenancy::new_billing_account(*nba.billing_account.id());
+    let write_tenancy = WriteTenancy::new_billing_account(*nba.billing_account.pk());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -90,7 +90,7 @@ async fn check_workspace_specific_organization(
             .expect("unable to set organization read read_tenancy");
     assert_eq!(
         read_tenancy.billing_accounts(),
-        vec![*nba.billing_account.id()]
+        vec![*nba.billing_account.pk()]
     );
     let write_tenancy = WriteTenancy::new_workspace(*nba.workspace.id());
 
@@ -121,56 +121,8 @@ async fn check_workspace_in_organization(
 }
 
 #[test]
-async fn check_universal(ctx: &DalContext) {
-    let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountId::NONE]);
-
-    let write_tenancy = WriteTenancy::new_billing_account(BillingAccountId::generate());
-    let check = write_tenancy
-        .check(ctx.pg_txn(), &read_tenancy)
-        .await
-        .expect("cannot check tenancy");
-    assert!(!check);
-
-    let write_tenancy = WriteTenancy::new_organization(OrganizationId::generate());
-    let check = write_tenancy
-        .check(ctx.pg_txn(), &read_tenancy)
-        .await
-        .expect("cannot check tenancy");
-    assert!(!check);
-
-    let write_tenancy = WriteTenancy::new_workspace(WorkspaceId::generate());
-    let check = write_tenancy
-        .check(ctx.pg_txn(), &read_tenancy)
-        .await
-        .expect("cannot check tenancy");
-    assert!(!check);
-
-    let write_tenancy =
-        WriteTenancy::new_billing_account(BillingAccountId::generate()).into_universal();
-    let check = write_tenancy
-        .check(ctx.pg_txn(), &read_tenancy)
-        .await
-        .expect("cannot check tenancy");
-    assert!(check);
-
-    let write_tenancy = WriteTenancy::new_organization(OrganizationId::generate()).into_universal();
-    let check = write_tenancy
-        .check(ctx.pg_txn(), &read_tenancy)
-        .await
-        .expect("cannot check tenancy");
-    assert!(check);
-
-    let write_tenancy = WriteTenancy::new_workspace(WorkspaceId::generate()).into_universal();
-    let check = write_tenancy
-        .check(ctx.pg_txn(), &read_tenancy)
-        .await
-        .expect("cannot check tenancy");
-    assert!(check);
-}
-
-#[test]
 async fn check_billing_account_pk_identical(ctx: &DalContext) {
-    let bid = BillingAccountId::generate();
+    let bid = BillingAccountPk::generate();
     let read_tenancy = ReadTenancy::new_billing_account(vec![bid]);
     let write_tenancy = WriteTenancy::new_billing_account(bid);
 
@@ -183,14 +135,14 @@ async fn check_billing_account_pk_identical(ctx: &DalContext) {
 
 #[test]
 async fn check_billing_account_pk_overlapping(ctx: &DalContext) {
-    let bid = BillingAccountId::generate();
+    let bid = BillingAccountPk::generate();
     let read_tenancy = ReadTenancy::new_billing_account(vec![
-        BillingAccountId::generate(),
+        BillingAccountPk::generate(),
         bid,
-        BillingAccountId::generate(),
-        BillingAccountId::generate(),
-        BillingAccountId::generate(),
-        BillingAccountId::generate(),
+        BillingAccountPk::generate(),
+        BillingAccountPk::generate(),
+        BillingAccountPk::generate(),
+        BillingAccountPk::generate(),
     ]);
     let write_tenancy = WriteTenancy::new_billing_account(bid);
 
@@ -203,8 +155,8 @@ async fn check_billing_account_pk_overlapping(ctx: &DalContext) {
 
 #[test]
 async fn check_billing_account_pk_mismatched(ctx: &DalContext) {
-    let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountId::generate()]);
-    let write_tenancy = WriteTenancy::new_billing_account(BillingAccountId::generate());
+    let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountPk::generate()]);
+    let write_tenancy = WriteTenancy::new_billing_account(BillingAccountPk::generate());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -215,7 +167,7 @@ async fn check_billing_account_pk_mismatched(ctx: &DalContext) {
 
 #[test]
 async fn check_billing_account_pk_mismatched_level(ctx: &DalContext) {
-    let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountId::generate()]);
+    let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountPk::generate()]);
     let write_tenancy = WriteTenancy::new_organization(OrganizationId::generate());
 
     let check = write_tenancy

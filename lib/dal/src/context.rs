@@ -12,7 +12,7 @@ use crate::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::JobProducer,
     },
-    BillingAccountId, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError, StandardModel,
+    BillingAccountPk, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError, StandardModel,
     Visibility, WorkspaceId, WriteTenancy, WriteTenancyError,
 };
 
@@ -306,29 +306,14 @@ impl DalContext {
         new
     }
 
-    /// Updates this context with universal-scoped read/write tenancies and a head [`Visibility`].
-    pub fn update_to_universal_head(&mut self) {
-        self.read_tenancy = ReadTenancy::new_universal();
-        self.write_tenancy = WriteTenancy::new_universal();
-        self.visibility = Visibility::new_head(false);
-    }
-
-    /// Clones a new context from this one with universal-scoped read/write tenancies and a head
-    /// [`Visibility`].
-    pub fn clone_with_universal_head(&self) -> Self {
-        let mut new = self.clone();
-        new.update_to_universal_head();
-        new
-    }
-
     /// Updates this context with read/write tenancies for a specific billing account.
-    pub fn update_to_billing_account_tenancies(&mut self, bid: BillingAccountId) {
+    pub fn update_to_billing_account_tenancies(&mut self, bid: BillingAccountPk) {
         self.read_tenancy = ReadTenancy::new_billing_account(vec![bid]);
         self.write_tenancy = WriteTenancy::new_billing_account(bid);
     }
 
     /// Clones a new context from this one with read/write tenancies for a specific billing account.
-    pub fn clone_with_new_billing_account_tenancies(&self, bid: BillingAccountId) -> Self {
+    pub fn clone_with_new_billing_account_tenancies(&self, bid: BillingAccountPk) -> Self {
         let mut new = self.clone();
         new.update_to_billing_account_tenancies(bid);
         new
@@ -458,6 +443,17 @@ impl DalContext {
 
         Ok(is_in_our_tenancy)
     }
+
+    /// Copies every single row from `Self::builtin()` to our tenancy on head change-set
+    /// Needed to remove universal tenancy while packages aren't a thing
+    #[instrument(skip_all)]
+    pub async fn import_builtins(&self) -> Result<(), TransactionsError> {
+        self.txns()
+            .pg()
+            .execute("SELECT import_builtins_v1($1)", &[self.write_tenancy()])
+            .await?;
+        Ok(())
+    }
 }
 
 impl From<DalContext> for Transactions {
@@ -481,20 +477,6 @@ pub struct RequestContext {
 }
 
 impl RequestContext {
-    /// Builds a new [`RequestContext`] with universal read/write tenancies and a head
-    /// [`Visibility`] and the given [`HistoryActor`].
-    pub fn new_universal_head(history_actor: HistoryActor) -> Self {
-        let visibility = Visibility::new_head(false);
-        let read_tenancy = ReadTenancy::new_universal();
-        let write_tenancy = WriteTenancy::new_universal();
-        Self {
-            read_tenancy,
-            write_tenancy,
-            visibility,
-            history_actor,
-        }
-    }
-
     /// Get a reference to the request context's read tenancy.
     #[must_use]
     pub fn read_tenancy(&self) -> &ReadTenancy {
@@ -521,8 +503,18 @@ impl RequestContext {
 }
 
 impl Default for RequestContext {
+    /// Builds a new [`RequestContext`] with no read/write tenancies (only usable for managing BillingAccounts)
+    /// and a head [`Visibility`] and the given [`HistoryActor`].
     fn default() -> Self {
-        Self::new_universal_head(HistoryActor::SystemInit)
+        let visibility = Visibility::new_head(false);
+        let read_tenancy = ReadTenancy::new_billing_account(Vec::new());
+        let write_tenancy = WriteTenancy::new_empty();
+        Self {
+            read_tenancy,
+            write_tenancy,
+            visibility,
+            history_actor: HistoryActor::SystemInit,
+        }
     }
 }
 

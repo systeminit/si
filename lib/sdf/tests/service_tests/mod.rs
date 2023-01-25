@@ -263,9 +263,7 @@ macro_rules! test_setup {
             );
             let builder = services_context.into_builder();
             let ctx = builder
-                .build(dal::RequestContext::new_universal_head(
-                    dal::HistoryActor::SystemInit,
-                ))
+                .build(::dal::RequestContext::default())
                 .await
                 .expect("cannot start transactions");
 

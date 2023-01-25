@@ -199,6 +199,10 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
             .set_hidden(ctx, func_metadata.hidden.unwrap_or(false))
             .await
             .expect("cannot set func hidden");
+        new_func
+            .set_builtin(ctx, true)
+            .await
+            .expect("cannot set func builtin");
 
         if let Some(arguments) = func_metadata.arguments {
             for arg in arguments {

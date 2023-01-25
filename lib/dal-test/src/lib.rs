@@ -79,25 +79,6 @@ pub struct DalContextHeadRef<'a>(pub &'a DalContext);
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].
 pub struct DalContextHeadMutRef<'a>(pub &'a mut DalContext);
 
-/// A [`DalContext`] with universal read/write tenancies and a head visibility.
-///
-/// To use a borrowed `DalContext` version, use [`DalContextUniversalHeadRef`].
-/// To use mutably borrowed `DalContext` version, use [`DalContextUniversalHeadMutRef`].
-pub struct DalContextUniversalHead(pub DalContext);
-
-/// A reference to a [`DalContext`] with universal read/write tenancies and a head visibility.
-///
-/// To use an owned `DalContext` version, use [`DalContextUniversalHead`].
-/// To use mutably borrowed `DalContext` version, use [`DalContextUniversalHeadMutRef`].
-pub struct DalContextUniversalHeadRef<'a>(pub &'a DalContext);
-
-/// A mutable reference to a [`DalContext`] with universal read/write tenancies and a head
-/// visibility.
-///
-/// To use an owned `DalContext` version, use [`DalContextUniversalHead`].
-/// To use a borrowed `DalContext` version, use [`DalContextUniversalHeadRef`].
-pub struct DalContextUniversalHeadMutRef<'a>(pub &'a mut DalContext);
-
 #[derive(Clone, Debug)]
 pub struct Config {
     pg_pool: PgPoolConfig,
