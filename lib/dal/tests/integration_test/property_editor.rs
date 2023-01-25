@@ -1,24 +1,93 @@
+use dal::func::argument::FuncArgumentKind;
 use dal::{
     generate_name,
     property_editor::{schema::PropertyEditorSchema, values::PropertyEditorValues},
-    Component, DalContext, Schema, StandardModel,
+    Component, DalContext, Func, FuncArgument, FuncBackendKind, FuncBackendResponseType, LeafInput,
+    LeafInputLocation, LeafKind, PropKind, Schema, SchemaVariant, StandardModel,
 };
 use dal_test::test;
+use dal_test::test_harness::{create_prop_and_set_parent, create_schema};
 
 #[test]
 async fn property_editor_schema(ctx: &DalContext) {
-    let schema = Schema::find_by_attr(ctx, "name", &"Region".to_string())
+    let schema = create_schema(ctx).await;
+    let (mut schema_variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0")
         .await
-        .expect("cannot find Region schema")
-        .pop()
-        .expect("no Region schema found");
-    let schema_variant_id = schema
-        .default_schema_variant_id()
-        .expect("missing default schema variant id");
-    let _property_editor_schema = PropertyEditorSchema::for_schema_variant(ctx, *schema_variant_id)
+        .expect("could not create schema variant");
+
+    // Create a docker-image-ish schema variant.
+    let _poop_prop =
+        create_prop_and_set_parent(ctx, PropKind::Boolean, "poop", root_prop.domain_prop_id).await;
+    let exposed_ports_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::Array,
+        "ExposedPorts",
+        root_prop.domain_prop_id,
+    )
+    .await;
+    let _exposed_port_prop = create_prop_and_set_parent(
+        ctx,
+        PropKind::String,
+        "ExposedPort",
+        *exposed_ports_prop.id(),
+    )
+    .await;
+    let mut qualification_func = Func::new(
+        ctx,
+        "test:qualification",
+        FuncBackendKind::JsAttribute,
+        FuncBackendResponseType::Qualification,
+    )
+    .await
+    .expect("could not create func");
+    let qualification_func_id = *qualification_func.id();
+    let code = "function isQualified(input) {
+        return {
+            result: (input.domain?.poop ?? false) ? 'success' : 'failure'
+        };
+    }";
+    qualification_func
+        .set_code_plaintext(ctx, Some(code))
         .await
-        .expect("cannot create property editor schema from schema variant");
-    // NOTE: Some day, this test should.. test something. For now, though - we'll do it live.
+        .expect("set code");
+    qualification_func
+        .set_handler(ctx, Some("isQualified"))
+        .await
+        .expect("set handler");
+    let qualified_func_argument = FuncArgument::new(
+        ctx,
+        "domain",
+        FuncArgumentKind::Object,
+        None,
+        qualification_func_id,
+    )
+    .await
+    .expect("could not create func argument");
+    SchemaVariant::add_leaf(
+        ctx,
+        qualification_func_id,
+        *schema_variant.id(),
+        None,
+        LeafKind::Qualification,
+        vec![LeafInput {
+            location: LeafInputLocation::Domain,
+            func_argument_id: *qualified_func_argument.id(),
+        }],
+    )
+    .await
+    .expect("could not add leaf");
+
+    // Finalize the schema variant.
+    schema_variant
+        .finalize(ctx, None)
+        .await
+        .expect("could not finalize");
+
+    // TODO(nick): do something interesting with this.
+    let _property_editor_schema =
+        PropertyEditorSchema::for_schema_variant(ctx, *schema_variant.id())
+            .await
+            .expect("cannot create property editor schema from schema variant");
 }
 
 #[test]

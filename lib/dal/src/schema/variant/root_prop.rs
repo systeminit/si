@@ -81,13 +81,17 @@ impl RootProp {
             .await?;
         let root_prop_id = *root_prop.id();
 
+        // FIXME(nick): we rely on ULID ordering for now, so the si prop tree creation has to come
+        // before the domain prop tree creation. Once index maps for objects are added, this
+        // can be moved back to its original location with the other prop tree creation methods.
+        let (si_specific_prop_id, si_child_name_prop_id) =
+            Self::setup_si(ctx, root_prop_id).await?;
+
         let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object, None).await?;
         domain_specific_prop
             .set_parent_prop(ctx, root_prop_id)
             .await?;
 
-        let (si_specific_prop_id, si_child_name_prop_id) =
-            Self::setup_si(ctx, root_prop_id).await?;
         let resource_specific_prop_id = Self::setup_resource(ctx, root_prop_id).await?;
         let code_specific_prop_id = Self::setup_code(ctx, root_prop_id).await?;
         let qualification_specific_prop_id = Self::setup_qualification(ctx, root_prop_id).await?;

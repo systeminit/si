@@ -127,7 +127,6 @@ pub struct Prop {
     widget_kind: WidgetKind,
     widget_options: Option<Value>,
     doc_link: Option<String>,
-    index: i64,
     hidden: bool,
     #[serde(flatten)]
     tenancy: WriteTenancy,
@@ -188,7 +187,6 @@ impl Prop {
     standard_model_accessor!(widget_kind, Enum(WidgetKind), PropResult);
     standard_model_accessor!(widget_options, Option<Value>, PropResult);
     standard_model_accessor!(doc_link, Option<String>, PropResult);
-    standard_model_accessor!(index, i64, PropResult);
     standard_model_accessor!(hidden, bool, PropResult);
 
     // FIXME(nick): change the relationship to a "belongs to" relationship and the name to
