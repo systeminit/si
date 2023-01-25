@@ -1,10 +1,13 @@
+use dal::edge::EdgeKind;
+use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
     func::backend::js_command::CommandRunResult, generate_name, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentType,
-    ComponentView, DalContext, Edge, ExternalProvider, InternalProvider, Prop, PropId, PropKind,
-    SchemaVariant, SocketArity, StandardModel, Visibility, WorkspaceId,
+    ComponentView, Connection, DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider,
+    Prop, PropId, PropKind, SchemaVariant, SocketArity, StandardModel, Visibility, WorkspaceId,
 };
 use dal_test::{
+    helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     helpers::setup_identity_func,
     test,
     test_harness::{
@@ -494,5 +497,183 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
             }
         }], // expected
         noctua_component_view.properties // actual
+    );
+}
+
+#[test]
+async fn create_delete_and_restore_components(ctx: &DalContext) {
+    let mut harness = SchemaBuiltinsTestHarness::new();
+    let nginx_container = harness
+        .create_component(ctx, "nginx", Builtin::DockerImage)
+        .await;
+    let butane_instance = harness
+        .create_component(ctx, "userdata", Builtin::CoreOsButane)
+        .await;
+
+    let docker_image_schema_variant =
+        SchemaVariant::get_by_id(ctx, &nginx_container.schema_variant_id)
+            .await
+            .expect("could not find schema variant by id")
+            .expect("schema variant by id not found");
+    let butane_schema_variant = SchemaVariant::get_by_id(ctx, &butane_instance.schema_variant_id)
+        .await
+        .expect("could not find schema variant by id")
+        .expect("schema variant by id not found");
+
+    let docker_image_sockets = docker_image_schema_variant
+        .sockets(ctx)
+        .await
+        .expect("cannot fetch sockets");
+    let butane_sockets = butane_schema_variant
+        .sockets(ctx)
+        .await
+        .expect("cannot fetch sockets");
+
+    let from_container_image_socket = docker_image_sockets
+        .iter()
+        .find(|s| {
+            s.edge_kind() == &SocketEdgeKind::ConfigurationOutput
+                && s.kind() == &SocketKind::Provider
+                && s.diagram_kind() == &DiagramKind::Configuration
+                && s.arity() == &SocketArity::Many
+                && s.name() == "Container Image"
+        })
+        .expect("cannot find output socket");
+
+    let to_container_image_socket = butane_sockets
+        .iter()
+        .find(|s| {
+            s.edge_kind() == &SocketEdgeKind::ConfigurationInput
+                && s.kind() == &SocketKind::Provider
+                && s.diagram_kind() == &DiagramKind::Configuration
+                && s.arity() == &SocketArity::Many
+                && s.name() == "Container Image"
+        })
+        .expect("cannot find input socket");
+
+    let _connection = Connection::new(
+        ctx,
+        nginx_container.node_id,
+        *from_container_image_socket.id(),
+        butane_instance.node_id,
+        *to_container_image_socket.id(),
+        EdgeKind::Configuration,
+    )
+    .await
+    .expect("could not create connection");
+
+    // required to happen *AFTER* the connection to trigger a dependantValuesUpdate
+    nginx_container
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/domain/image",
+            Some(serde_json::json!["nginx"]),
+        )
+        .await;
+
+    // check that the value of the butane instance
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "userdata",
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "systemd": {
+                    "units": [
+                        {
+                            "name": "nginx.service",
+                            "enabled": true,
+                            "contents": "[Unit]\nDescription=Nginx\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill nginx\nExecStartPre=-/bin/podman rm nginx\nExecStartPre=/bin/podman pull nginx\nExecStart=/bin/podman run --name nginx nginx\n\n[Install]\nWantedBy=multi-user.target",
+                        }
+                    ],
+                },
+                "variant": "fcos",
+                "version": "1.4.0",
+            },
+            "code": {
+                "si:generateButaneIgnition": {
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Nginx\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill nginx\\nExecStartPre=-/bin/podman rm nginx\\nExecStartPre=/bin/podman pull nginx\\nExecStart=/bin/podman run --name nginx nginx\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"nginx.service\"\n      }\n    ]\n  }\n}",
+                    "format": "json",
+                },
+            },
+        }], // expected
+        butane_instance
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
+    );
+
+    // delete the nginx container
+    let comp = Component::get_by_id(ctx, &nginx_container.component_id)
+        .await
+        .expect("could not find component by id");
+    let _result = comp.unwrap().delete_and_propagate(ctx).await;
+
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "userdata",
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "systemd": {
+                    "units": [],
+                },
+                "variant": "fcos",
+                "version": "1.4.0",
+            },
+            "code": {
+                "si:generateButaneIgnition": {
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  }\n}",
+                    "format": "json",
+                },
+            },
+        }], // expected
+        butane_instance
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
+    );
+
+    let _result = Component::restore_by_id(ctx, nginx_container.component_id).await;
+
+    // check that the value of the butane instance
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "userdata",
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "systemd": {
+                    "units": [
+                        {
+                            "name": "nginx.service",
+                            "enabled": true,
+                            "contents": "[Unit]\nDescription=Nginx\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill nginx\nExecStartPre=-/bin/podman rm nginx\nExecStartPre=/bin/podman pull nginx\nExecStart=/bin/podman run --name nginx nginx\n\n[Install]\nWantedBy=multi-user.target",
+                        }
+                    ],
+                },
+                "variant": "fcos",
+                "version": "1.4.0",
+            },
+            "code": {
+                "si:generateButaneIgnition": {
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Nginx\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill nginx\\nExecStartPre=-/bin/podman rm nginx\\nExecStartPre=/bin/podman pull nginx\\nExecStart=/bin/podman run --name nginx nginx\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"nginx.service\"\n      }\n    ]\n  }\n}",
+                    "format": "json",
+                },
+            },
+        }], // expected
+        butane_instance
+            .component_view_properties(ctx)
+            .await
+            .drop_qualification()
+            .to_value() // actual
     );
 }
