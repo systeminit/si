@@ -140,9 +140,7 @@ pub use node_menu::NodeMenuError;
 pub use node_position::{
     NodePosition, NodePositionError, NodePositionId, NodePositionPk, NodePositionResult,
 };
-pub use organization::{
-    Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
-};
+pub use organization::{Organization, OrganizationError, OrganizationPk, OrganizationResult};
 pub use prop::{Prop, PropError, PropId, PropKind, PropPk, PropResult};
 pub use prototype_context::HasPrototypeContext;
 pub use prototype_list_for_func::{

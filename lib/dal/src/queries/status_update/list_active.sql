@@ -5,7 +5,7 @@ WHERE change_set_pk = $1
  AND in_tenancy_v1(
      $2,
      status_updates.tenancy_billing_account_pks,
-     status_updates.tenancy_organization_ids,
+     status_updates.tenancy_organization_pks,
      status_updates.tenancy_workspace_ids
  )
 ORDER BY created_at;

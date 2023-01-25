@@ -3,7 +3,7 @@ CREATE TABLE validation_prototypes
     pk                          ident primary key default ident_create_v1(),
     id                          ident not null default ident_create_v1(),
     tenancy_billing_account_pks ident[],
-    tenancy_organization_ids    ident[],
+    tenancy_organization_pks    ident[],
     tenancy_workspace_ids       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
@@ -40,7 +40,7 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO validation_prototypes (tenancy_billing_account_pks,
-                                       tenancy_organization_ids,
+                                       tenancy_organization_pks,
                                        tenancy_workspace_ids,
                                        visibility_change_set_pk,
                                        visibility_deleted_at,
@@ -50,7 +50,7 @@ BEGIN
                                        schema_id,
                                        schema_variant_id)
     VALUES (this_tenancy_record.tenancy_billing_account_pks,
-            this_tenancy_record.tenancy_organization_ids,
+            this_tenancy_record.tenancy_organization_pks,
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,

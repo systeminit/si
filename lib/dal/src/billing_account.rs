@@ -171,19 +171,14 @@ impl BillingAccount {
 
         let organization = Organization::new(&ctx, "default", *billing_account.pk()).await?;
 
-        let organization_read_tenancy = ReadTenancy::new_organization(
-            ctx.txns().pg(),
-            vec![*organization.id()],
-            ctx.visibility(),
-        )
-        .await?;
+        let organization_read_tenancy =
+            ReadTenancy::new_organization(ctx.txns().pg(), vec![*organization.pk()]).await?;
         let organization_write_tenancy: WriteTenancy =
-            WriteTenancy::new_organization(*organization.id());
+            WriteTenancy::new_organization(*organization.pk());
         ctx.update_read_tenancy(organization_read_tenancy);
         ctx.update_write_tenancy(organization_write_tenancy);
 
-        let workspace = Workspace::new(&ctx, "default").await?;
-        workspace.set_organization(&ctx, organization.id()).await?;
+        let workspace = Workspace::new(&ctx, "default", *organization.pk()).await?;
 
         let workspace_read_tenancy =
             ReadTenancy::new_workspace(ctx.txns().pg(), vec![*workspace.id()], ctx.visibility())

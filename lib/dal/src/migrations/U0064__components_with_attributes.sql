@@ -9,7 +9,7 @@ SELECT components.id                                     AS component_id,
        internal_providers.id                             AS internal_provider_id,
        attribute_values.id                               AS attribute_value_id,
        func_binding_return_values.tenancy_billing_account_pks,
-       func_binding_return_values.tenancy_organization_ids,
+       func_binding_return_values.tenancy_organization_pks,
        func_binding_return_values.tenancy_workspace_ids,
        func_binding_return_values.visibility_change_set_pk,
        func_binding_return_values.visibility_deleted_at,
@@ -43,7 +43,7 @@ AS $$
     SELECT in_tenancy_v1(
         this_read_tenancy,
         record_to_check.tenancy_billing_account_pks,
-        record_to_check.tenancy_organization_ids,
+        record_to_check.tenancy_organization_pks,
         record_to_check.tenancy_workspace_ids
     )
 $$;
@@ -76,7 +76,7 @@ AS $$
         in_tenancy_v1(
             this_read_tenancy,
             record_to_check.tenancy_billing_account_pks,
-            record_to_check.tenancy_organization_ids,
+            record_to_check.tenancy_organization_pks,
             record_to_check.tenancy_workspace_ids
         )
         AND is_visible_v1(
