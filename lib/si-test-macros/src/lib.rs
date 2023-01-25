@@ -114,7 +114,7 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 ///    in the billing account which is not in a change set nor an edit session
 /// * `DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_>`: a mutable reference to a DAL context
 ///    for a workspace in the billing account which is not in a change set nor an edit session
-/// * `oid: OrganizationId`: the organization ID of the billing account created for this test
+/// * `oid: OrganizationPk`: the organization PK of the billing account created for this test
 /// * `services_ctx: ServicesContext`: a services context object, used to create DAL contexts
 /// * `handle: ShutdownHandle`: the shutdown handle for the Veritech server running alongside each
 ///    test

@@ -15,9 +15,8 @@ use crate::{
     schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
     AttributePrototypeError, AttributeValueError, Component, DalContext, FuncError,
-    HistoryEventError, Organization, OrganizationId, PropError, ReadTenancyError, StandardModel,
-    StandardModelError, Timestamp, ValidationPrototypeError, Visibility, Workspace, WorkspaceId,
-    WsEventError,
+    HistoryEventError, PropError, ReadTenancyError, StandardModel, StandardModelError, Timestamp,
+    ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
 pub use ui_menu::SchemaUiMenu;
@@ -144,21 +143,6 @@ impl Schema {
         default_schema_variant_id,
         Option<Pk(SchemaVariantId)>,
         SchemaResult
-    );
-
-    standard_model_many_to_many!(
-        lookup_fn: organizations,
-        associate_fn: add_organization,
-        disassociate_fn: remove_organization,
-        disassociate_all_fn: remove_all_organizations,
-        table_name: "schema_many_to_many_organization",
-        left_table: "schemas",
-        left_id: SchemaId,
-        right_table: "organizations",
-        right_id: OrganizationId,
-        which_table_is_this: "left",
-        returns: Organization,
-        result: SchemaResult,
     );
 
     standard_model_many_to_many!(

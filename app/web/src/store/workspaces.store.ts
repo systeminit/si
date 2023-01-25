@@ -10,13 +10,13 @@ import { useRouterStore } from "./router.store";
 import { useAuthStore } from "./auth.store";
 
 type WorkspaceId = string;
-type OrganizationId = string;
+type OrganizationPk = string;
 
 export const useWorkspacesStore = addStoreHooks(
   defineStore("workspaces", {
     state: () => ({
       workspacesById: {} as Record<WorkspaceId, Workspace>,
-      organizationsById: {} as Record<OrganizationId, Organization>,
+      organizationsById: {} as Record<OrganizationPk, Organization>,
     }),
     getters: {
       allWorkspaces: (state) => _.values(state.workspacesById),

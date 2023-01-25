@@ -15,7 +15,7 @@ CREATE TABLE func_executions
     output_stream                jsonb,
     function_failure             jsonb,
     tenancy_billing_account_pks  ident[],
-    tenancy_organization_ids     ident[],
+    tenancy_organization_pks     ident[],
     tenancy_workspace_ids        ident[],
     created_at                   timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                   timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP()
@@ -43,7 +43,7 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
 
     INSERT INTO func_executions (tenancy_billing_account_pks,
-                                 tenancy_organization_ids,
+                                 tenancy_organization_pks,
                                  tenancy_workspace_ids,
                                  state,
                                  func_id,
@@ -54,7 +54,7 @@ BEGIN
                                  handler,
                                  code_base64)
     VALUES (this_tenancy_record.tenancy_billing_account_pks,
-            this_tenancy_record.tenancy_organization_ids,
+            this_tenancy_record.tenancy_organization_pks,
             this_tenancy_record.tenancy_workspace_ids,
             this_state,
             this_func_id,

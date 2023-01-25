@@ -12,7 +12,7 @@ use crate::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::JobProducer,
     },
-    BillingAccountPk, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError, StandardModel,
+    BillingAccountPk, HistoryActor, OrganizationPk, ReadTenancy, ReadTenancyError, StandardModel,
     Visibility, WorkspaceId, WriteTenancy, WriteTenancyError,
 };
 
@@ -322,10 +322,9 @@ impl DalContext {
     /// Updates this context with read/write tenancies for a specific organization.
     pub async fn update_to_organization_tenancies(
         &mut self,
-        oid: OrganizationId,
+        oid: OrganizationPk,
     ) -> Result<(), TransactionsError> {
-        self.read_tenancy =
-            ReadTenancy::new_organization(self.txns().pg(), vec![oid], self.visibility()).await?;
+        self.read_tenancy = ReadTenancy::new_organization(self.txns().pg(), vec![oid]).await?;
         self.write_tenancy = WriteTenancy::new_organization(oid);
         Ok(())
     }
@@ -333,7 +332,7 @@ impl DalContext {
     /// Clones a new context from this one with read/write tenancies for a specific organization.
     pub async fn clone_with_new_organization_tenancies(
         &self,
-        oid: OrganizationId,
+        oid: OrganizationPk,
     ) -> Result<DalContext, TransactionsError> {
         let mut new = self.clone();
         new.update_to_organization_tenancies(oid).await?;
