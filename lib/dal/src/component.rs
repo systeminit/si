@@ -23,14 +23,13 @@ use crate::socket::SocketEdgeKind;
 use crate::standard_model::object_from_row;
 use crate::validation::ValidationConstructorError;
 use crate::ws_event::WsEventError;
-use crate::NodeKind;
 use crate::{
     func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributePrototypeId, AttributeReadContext, CodeLanguage,
-    ComponentType, DalContext, Edge, EdgeError, ExternalProvider, ExternalProviderError,
+    ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderError,
     ExternalProviderId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError,
     InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
     PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
@@ -38,7 +37,9 @@ use crate::{
     ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationError};
+use crate::{Edge, NodeKind};
 
+use crate::job::definition::DependentValuesUpdate;
 pub use view::{ComponentView, ComponentViewError};
 
 pub mod code;
@@ -1036,7 +1037,6 @@ impl Component {
     }
 
     pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> ComponentResult<()> {
-        // TODO - This is temporary for now until we allow deleting frames
         if self.get_type(ctx).await? != ComponentType::Component {
             return Err(ComponentError::Frame);
         }
@@ -1045,16 +1045,28 @@ impl Component {
             return Err(ComponentError::ComponentProtected(self.id));
         }
 
-        let edges = Edge::list_for_component(ctx, self.id).await?;
-        for mut edge in edges {
-            edge.delete_and_propagate(ctx).await?;
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3, $4)",
+                &[
+                    ctx.read_tenancy(),
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    self.id(),
+                ],
+            )
+            .await?;
+        let mut attr_values: Vec<AttributeValue> = standard_model::objects_from_rows(rows)?;
+
+        for attr_value in attr_values.iter_mut() {
+            attr_value.update_from_prototype_function(ctx).await?;
         }
 
-        for mut node in self.node(ctx).await? {
-            node.delete_by_id(ctx).await?;
-        }
+        let ids = attr_values.iter().map(|av| *av.id()).collect();
 
-        self.delete_by_id(ctx).await?;
+        ctx.enqueue_job(DependentValuesUpdate::new(ctx, ids)).await;
 
         Ok(())
     }
