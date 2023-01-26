@@ -35,6 +35,11 @@ export type Package = {
   // TODO FUTURE - what other info would be useful here?
 };
 
+export type Asset = {
+  id: number;
+  displayName: string;
+};
+
 export const usePackageStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;

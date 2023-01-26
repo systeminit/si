@@ -86,7 +86,6 @@
 import { computed, ref } from "vue";
 import { storeToRefs } from "pinia";
 import _ from "lodash";
-import { useRouter } from "vue-router";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
@@ -102,7 +101,6 @@ import VButton2 from "@/ui-lib/VButton2.vue";
 import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 import FuncSkeleton from "@/components/FuncSkeleton.vue";
 
-const router = useRouter();
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
 const loadFuncsReqStatus = funcStore.getRequestStatus("FETCH_FUNC_LIST");
@@ -178,8 +176,4 @@ async function tryCreateBuiltinFunc() {
     throw new Error("Cannot create builtin funcs outside of dev mode");
   }
 }
-
-const onTabChange = () => {
-  router.push({ name: "workspace-lab-packages" });
-};
 </script>

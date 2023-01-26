@@ -14,37 +14,39 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
     <div class="inset-2 bottom-0 absolute w-full h-full">
-      asset display goes here
+      <AssetDisplay :slug="assetSlug" />
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    asset details goes here
+    <AssetDetailsPanel :slug="assetSlug" />
   </SiPanel>
 </template>
 
 <script lang="ts" setup>
 import { watch } from "vue";
 import _ from "lodash";
-import { usePackageStore } from "@/store/package.store";
+import { useAssetStore } from "@/store/asset.store";
 import ChangeSetPanel from "../ChangeSetPanel.vue";
 import SiPanel from "../SiPanel.vue";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
+import AssetDisplay from "../AssetDisplay.vue";
+import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 
-const packageStore = usePackageStore();
-const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
+const assetStore = useAssetStore();
+const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSETS");
 
 const props = defineProps<{
-  packageSlug?: string;
+  assetSlug?: string;
   workspaceId: string;
   changeSetId: string;
 }>();
 
 watch(
-  [() => props.packageSlug, loadPackagesReqStatus],
+  [() => props.assetSlug, loadAssetsReqStatus],
   () => {
-    if (loadPackagesReqStatus.value.isSuccess && props.packageSlug) {
-      packageStore.setSelectedPackageBySlug(props.packageSlug);
+    if (loadAssetsReqStatus.value.isSuccess && props.assetSlug) {
+      assetStore.setSelectedAssetBySlug(props.assetSlug);
     }
   },
   { immediate: true },
