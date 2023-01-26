@@ -1,8 +1,6 @@
 CREATE TABLE status_updates
 (
     pk                          ident primary key default ident_create_v1(),
-    tenancy_billing_account_pks ident[],
-    tenancy_organization_pks    ident[],
     tenancy_workspace_pks       ident[],
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -29,10 +27,8 @@ BEGIN
                                     'running_dependent_value_ids', '[]'::jsonb,
                                     'completed_dependent_value_ids', '[]'::jsonb);
 
-    INSERT INTO status_updates (tenancy_billing_account_pks, tenancy_organization_pks,
-                                tenancy_workspace_pks, change_set_pk, data)
-    VALUES (this_tenancy_record.tenancy_billing_account_pks,
-            this_tenancy_record.tenancy_organization_pks, this_tenancy_record.tenancy_workspace_pks,
+    INSERT INTO status_updates (tenancy_workspace_pks, change_set_pk, data)
+    VALUES (this_tenancy_record.tenancy_workspace_pks,
             this_change_set_pk, this_data)
     RETURNING * INTO this_new_row;
 

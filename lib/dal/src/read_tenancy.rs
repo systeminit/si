@@ -28,71 +28,18 @@ pub type ReadTenancyResult<T> = Result<T, ReadTenancyError>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct ReadTenancy {
-    #[serde(rename = "tenancy_billing_account_pks")]
-    billing_account_pks: Vec<BillingAccountPk>,
-    #[serde(rename = "tenancy_organization_pks")]
-    organization_pks: Vec<OrganizationPk>,
-    #[serde(rename = "tenancy_workspace_pks")]
-    workspace_pks: Vec<WorkspacePk>,
+    #[serde(rename = "tenancy_workspace_pk")]
+    workspace_pk: Option<WorkspacePk>,
 }
 
 impl ReadTenancy {
-    pub fn billing_accounts(&self) -> &[BillingAccountPk] {
-        &self.billing_account_pks
-    }
-
-    pub fn new_billing_account(billing_account_pks: Vec<BillingAccountPk>) -> Self {
+    pub fn new(
+        txn: &PgTxn,
+        workspace_pk: Option<WorkspacePk>,
+    ) ->Self {
         Self {
-            billing_account_pks,
-            organization_pks: Vec::new(),
-            workspace_pks: Vec::new(),
+            workspace_pk,
         }
-    }
-
-    pub async fn new_organization(
-        txn: &PgTxn,
-        organization_pks: Vec<OrganizationPk>,
-    ) -> ReadTenancyResult<Self> {
-        let mut billing_account_pks = Vec::with_capacity(organization_pks.len());
-        for organization_pk in &organization_pks {
-            let row = txn
-                .query_opt(GET_ORGANIZATION, &[organization_pk])
-                .await?
-                .ok_or(ReadTenancyError::BillingAccountNotFoundForOrganization(
-                    *organization_pk,
-                ))?;
-            let billing_account_pk = row.try_get("billing_account_pk")?;
-            billing_account_pks.push(billing_account_pk);
-        }
-        Ok(Self {
-            billing_account_pks,
-            organization_pks,
-            workspace_pks: Vec::new(),
-        })
-    }
-
-    pub async fn new_workspace(
-        txn: &PgTxn,
-        workspace_pks: Vec<WorkspacePk>,
-    ) -> ReadTenancyResult<Self> {
-        let mut organization_pks = Vec::new();
-        let mut billing_account_pks = Vec::new();
-
-        for workspace_pk in &workspace_pks {
-            let row = txn
-                .query_opt(GET_WORKSPACE, &[workspace_pk])
-                .await?
-                .ok_or(ReadTenancyError::WorkspaceNotFound(*workspace_pk))?;
-            let organization_pk = row.try_get("organization_pk")?;
-            organization_pks.push(organization_pk);
-            let billing_account_pk = row.try_get("billing_account_pk")?;
-            billing_account_pks.push(billing_account_pk);
-        }
-        Ok(Self {
-            organization_pks,
-            billing_account_pks,
-            workspace_pks,
-        })
     }
 }
 

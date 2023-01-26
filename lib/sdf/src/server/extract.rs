@@ -373,7 +373,7 @@ async fn tenancy_from_request<P: Send>(
     ctx.update_write_tenancy(write_tenancy.clone());
 
     let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&ctx)
+        .clone_into_read_tenancy()
         .await
         .map_err(internal_error)?;
 

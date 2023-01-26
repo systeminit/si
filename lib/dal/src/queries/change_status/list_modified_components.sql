@@ -12,10 +12,7 @@ FROM components_with_attributes AS components
                                                               FROM components
                                                               WHERE visibility_change_set_pk = ident_nil_v1()
                                                                 AND visibility_deleted_at IS NULL
-                                                                AND in_tenancy_v1($1,
-                                                                                  tenancy_billing_account_pks,
-                                                                                  tenancy_organization_pks,
-                                                                                  tenancy_workspace_pks))
+                                                                AND in_tenancy_v1($1, tenancy_workspace_pks))
 
                        -- Compare only to the current change set
                        AND visibility_change_set_pk = $2
@@ -24,19 +21,13 @@ FROM components_with_attributes AS components
                        AND visibility_deleted_at IS NULL
 
                        -- Scope the tenancy one last time
-                       AND in_tenancy_v1($1,
-                                         tenancy_billing_account_pks,
-                                         tenancy_organization_pks,
-                                         tenancy_workspace_pks)
+                       AND in_tenancy_v1($1, tenancy_workspace_pks)
 
 
                      ORDER BY attribute_context_component_id DESC) AS attribute_values
                     ON components.component_id = attribute_values.attribute_context_component_id
 
-WHERE in_tenancy_v1($1,
-                    tenancy_billing_account_pks,
-                    tenancy_organization_pks,
-                    tenancy_workspace_pks)
+WHERE in_tenancy_v1($1, tenancy_workspace_pks)
 
 ORDER BY component_id DESC,
          component_name DESC

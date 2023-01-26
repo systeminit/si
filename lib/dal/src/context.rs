@@ -433,7 +433,7 @@ impl DalContext {
         &self,
         object: &T,
     ) -> Result<bool, TransactionsError> {
-        let read_tenancy = object.tenancy().clone_into_read_tenancy(self).await?;
+        let read_tenancy = object.tenancy().clone_into_read_tenancy();
         let is_in_our_tenancy = self
             .write_tenancy()
             .check(self.pg_txn(), &read_tenancy)

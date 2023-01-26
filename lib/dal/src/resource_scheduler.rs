@@ -69,7 +69,7 @@ impl ResourceScheduler {
             let builder = self.services_context.clone().into_builder();
             let mut ctx = builder.build_default().await?;
 
-            let read_tenancy = component.tenancy().clone_into_read_tenancy(&ctx).await?;
+            let read_tenancy = component.tenancy().clone_into_read_tenancy().await?;
             ctx.update_tenancies(read_tenancy, component.tenancy().clone());
 
             component.act(&ctx, "refresh").await?;
