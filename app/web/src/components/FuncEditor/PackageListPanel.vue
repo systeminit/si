@@ -51,6 +51,7 @@
 </template>
 
 <script lang="ts" setup>
+import { onMounted } from "vue";
 import SiPackageListItem from "@/components/SiPackageListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { usePackageStore } from "@/store/package.store";
@@ -60,4 +61,14 @@ import SiCollapsible from "../SiCollapsible.vue";
 
 const packageStore = usePackageStore();
 const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
+
+const props = defineProps({
+  slug: { type: String },
+});
+
+onMounted(() => {
+  if (!props.slug) {
+    packageStore.setSelectedPackageId(null);
+  }
+});
 </script>

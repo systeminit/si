@@ -6,7 +6,7 @@
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
       <CustomizeTabs :selected-index="2">
-        <AssetListPanel />
+        <AssetListPanel :slug="assetSlug" />
       </CustomizeTabs>
     </div>
   </SiPanel>

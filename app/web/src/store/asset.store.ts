@@ -127,7 +127,7 @@ export const useAssetStore = () => {
             documentationUrl: "https://www.systeminit.com/",
           };
 
-          this.assetsById[this.lastAssignedId] = newAsset;
+          this.assetsById[`${this.lastAssignedId}`] = newAsset;
           return newAsset;
         },
 

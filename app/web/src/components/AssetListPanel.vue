@@ -34,6 +34,7 @@
 <script lang="ts" setup>
 import _ from "lodash";
 import { useRouter } from "vue-router";
+import { onMounted } from "vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { useAssetStore } from "@/store/asset.store";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
@@ -43,6 +44,16 @@ import AssetListItem from "./AssetListItem.vue";
 const router = useRouter();
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSETS");
+
+const props = defineProps({
+  slug: { type: String },
+});
+
+onMounted(() => {
+  if (!props.slug) {
+    assetStore.setSelectedAssetId(null);
+  }
+});
 
 const newAsset = () => {
   const asset = assetStore.createNewAsset();
