@@ -41,7 +41,7 @@ async fn create_secret() {
         key_pair_id: *nba.key_pair.id(),
         version: SecretVersion::V1,
         algorithm: SecretAlgorithm::Sealedbox,
-        workspace_id: *nba.workspace.id(),
+        workspace_pk: *nba.workspace.pk(),
         visibility,
     };
 

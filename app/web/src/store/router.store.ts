@@ -15,8 +15,8 @@ export const useRouterStore = defineStore("router", {
     currentRoute: null as RouteLocationNormalizedLoaded | null,
   }),
   getters: {
-    urlSelectedWorkspaceId: (state) => {
-      return castNumericParam(state.currentRoute?.params?.workspaceId);
+    urlSelectedWorkspacePk: (state) => {
+      return castNumericParam(state.currentRoute?.params?.workspacePk);
     },
     urlSelectedChangeSetId: (state) => {
       return castNumericParam(state.currentRoute?.params?.changeSetId);

@@ -1,5 +1,5 @@
-import { StandardModel } from "@/api/sdf/dal/standard_model";
-
-export interface Workspace extends StandardModel {
+export interface Workspace {
+  pk: string;
   name: string;
+  organization_pk: string;
 }

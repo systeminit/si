@@ -7,7 +7,7 @@ CREATE TABLE history_events
     data                        jsonb                    NOT NULL,
     tenancy_billing_account_pks ident[],
     tenancy_organization_pks    ident[],
-    tenancy_workspace_ids       ident[],
+    tenancy_workspace_pks       ident[],
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP()
 );
@@ -28,10 +28,10 @@ BEGIN
     RAISE LOG 'PROFILING history_event_create_v1 POST TENANCY SELECT: %', clock_timestamp();
     RAISE LOG 'PROFILING history_event_create_v1 PRE INSERT: %', clock_timestamp();
     INSERT INTO history_events (label, actor, message, data, tenancy_billing_account_pks,
-                                tenancy_organization_pks, tenancy_workspace_ids)
+                                tenancy_organization_pks, tenancy_workspace_pks)
     VALUES (this_label, this_actor, this_message, this_data,
 	    this_tenancy_record.tenancy_billing_account_pks,
-            this_tenancy_record.tenancy_organization_pks, this_tenancy_record.tenancy_workspace_ids)
+            this_tenancy_record.tenancy_organization_pks, this_tenancy_record.tenancy_workspace_pks)
     RETURNING * INTO this_new_row;
     RAISE LOG 'PROFILING history_event_create_v1 POST INSERT: %', clock_timestamp();
     RAISE LOG 'PROFILING history_event_create_v1 PRE ROW TO JSON: %', clock_timestamp();

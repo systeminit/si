@@ -4,7 +4,7 @@ CREATE TABLE encrypted_secrets
     id                          ident not null default ident_create_v1(),
     tenancy_billing_account_pks ident[],
     tenancy_organization_pks    ident[],
-    tenancy_workspace_ids       ident[],
+    tenancy_workspace_pks       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
@@ -18,15 +18,11 @@ CREATE TABLE encrypted_secrets
     algorithm                   text                     NOT NULL
 );
 SELECT standard_model_table_constraints_v1('encrypted_secrets');
-SELECT belongs_to_table_create_v1('encrypted_secret_belongs_to_workspace', 'encrypted_secrets', 'workspaces');
 SELECT belongs_to_table_create_v1('encrypted_secret_belongs_to_key_pair', 'encrypted_secrets', 'key_pairs');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('encrypted_secrets', 'model', 'encrypted_secret', 'Encrypted Secret'),
-       ('encrypted_secret_belongs_to_workspace', 'belongs_to', 'encrypted_secret.workspace',
-        'Encrypted Secret <> Workspace'),
-       ('encrypted_secret_belongs_to_key_pair', 'belongs_to', 'encrypted_secret.key_pair',
-        'Encrypted Secret <> Key Pair');
+       ('encrypted_secret_belongs_to_key_pair', 'belongs_to', 'encrypted_secret.key_pair', 'Encrypted Secret <> Key Pair');
 
 -- The Rust type `Secret` will use this view as its source-of-truth "table" as
 -- it is a read-only subset of encrypted_secrets data
@@ -35,7 +31,7 @@ SELECT pk,
        id,
        tenancy_billing_account_pks,
        tenancy_organization_pks,
-       tenancy_workspace_ids,
+       tenancy_workspace_pks,
        visibility_change_set_pk,
        visibility_deleted_at,
        created_at,
@@ -60,7 +56,7 @@ AS $$
         this_read_tenancy,
         record_to_check.tenancy_billing_account_pks,
         record_to_check.tenancy_organization_pks,
-        record_to_check.tenancy_workspace_ids
+        record_to_check.tenancy_workspace_pks
     )
 $$;
 
@@ -93,7 +89,7 @@ AS $$
             this_read_tenancy,
             record_to_check.tenancy_billing_account_pks,
             record_to_check.tenancy_organization_pks,
-            record_to_check.tenancy_workspace_ids
+            record_to_check.tenancy_workspace_pks
         )
         AND is_visible_v1(
             this_visibility,
@@ -139,7 +135,7 @@ BEGIN
 
     INSERT INTO encrypted_secrets (tenancy_billing_account_pks,
                                    tenancy_organization_pks,
-                                   tenancy_workspace_ids,
+                                   tenancy_workspace_pks,
                                    visibility_change_set_pk,
                                    visibility_deleted_at,
                                    name,
@@ -151,7 +147,7 @@ BEGIN
                                    algorithm)
     VALUES (this_tenancy_record.tenancy_billing_account_pks,
             this_tenancy_record.tenancy_organization_pks,
-            this_tenancy_record.tenancy_workspace_ids,
+            this_tenancy_record.tenancy_workspace_pks,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_name,

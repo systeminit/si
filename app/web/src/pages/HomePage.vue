@@ -44,7 +44,7 @@ function autoSelectWorkspace() {
 
   router.push({
     name: "workspace-single",
-    params: { workspaceId: workspaces.value[0].id },
+    params: { workspacePk: workspaces.value[0].pk },
   });
 }
 

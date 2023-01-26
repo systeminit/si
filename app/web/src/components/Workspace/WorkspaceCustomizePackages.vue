@@ -37,7 +37,7 @@ const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
 
 const props = defineProps<{
   packageSlug?: string;
-  workspaceId: string;
+  workspacePk: string;
   changeSetId: string;
 }>();
 

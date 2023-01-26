@@ -7,7 +7,7 @@ use axum::{
 };
 use dal::{
     context::{self, DalContextBuilder, ServicesContext},
-    ReadTenancy, RequestContext, User, UserClaim, WorkspaceId, WriteTenancy,
+    ReadTenancy, RequestContext, User, UserClaim, WorkspacePk, WriteTenancy,
 };
 use hyper::StatusCode;
 use si_data_pg::{InstrumentedClient, InstrumentedTransaction, PgError};
@@ -357,12 +357,12 @@ async fn tenancy_from_request<P: Send>(
         .map_err(internal_error)?;
 
     let headers = req.headers();
-    let write_tenancy = if let Some(workspace_header_value) = headers.get("WorkspaceId") {
-        let workspace_id = workspace_header_value.to_str().map_err(internal_error)?;
-        let workspace_id = workspace_id
-            .parse::<WorkspaceId>()
+    let write_tenancy = if let Some(workspace_header_value) = headers.get("WorkspacePk") {
+        let workspace_pk = workspace_header_value.to_str().map_err(internal_error)?;
+        let workspace_pk = workspace_pk
+            .parse::<WorkspacePk>()
             .map_err(not_acceptable_error)?;
-        WriteTenancy::new_workspace(workspace_id)
+        WriteTenancy::new_workspace(workspace_pk)
     } else if headers.get("Authorization").is_some() {
         WriteTenancy::new_billing_account(claim.billing_account_pk)
     } else {

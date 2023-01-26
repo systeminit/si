@@ -181,9 +181,8 @@ impl BillingAccount {
         let workspace = Workspace::new(&ctx, "default", *organization.pk()).await?;
 
         let workspace_read_tenancy =
-            ReadTenancy::new_workspace(ctx.txns().pg(), vec![*workspace.id()], ctx.visibility())
-                .await?;
-        let workspace_write_tenancy = WriteTenancy::new_workspace(*workspace.id());
+            ReadTenancy::new_workspace(ctx.txns().pg(), vec![*workspace.pk()]).await?;
+        let workspace_write_tenancy = WriteTenancy::new_workspace(*workspace.pk());
         ctx.update_read_tenancy(workspace_read_tenancy);
         ctx.update_write_tenancy(workspace_write_tenancy);
 
@@ -242,8 +241,7 @@ impl BillingAccount {
 
         let mut workspace_ctx = ctx.clone();
         let read_tenancy =
-            ReadTenancy::new_workspace(ctx.txns().pg(), vec![*workspace.id()], ctx.visibility())
-                .await?;
+            ReadTenancy::new_workspace(ctx.txns().pg(), vec![*workspace.pk()]).await?;
         workspace_ctx.update_read_tenancy(read_tenancy);
 
         let result = BillingAccountDefaults {

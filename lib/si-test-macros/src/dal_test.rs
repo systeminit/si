@@ -174,8 +174,8 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "WorkspaceId" => {
-                                let var = expander.setup_workspace_id();
+                            "WorkspacePk" => {
+                                let var = expander.setup_workspace_pk();
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
@@ -288,7 +288,7 @@ struct FnSetupExpander {
     billing_account_signup: Option<(Arc<Ident>, Arc<Ident>)>,
     billing_account_pk: Option<Arc<Ident>>,
     organization_pk: Option<Arc<Ident>>,
-    workspace_id: Option<Arc<Ident>>,
+    workspace_pk: Option<Arc<Ident>>,
     dal_context_default: Option<Arc<Ident>>,
     dal_context_default_mut: Option<Arc<Ident>>,
     dal_context_head: Option<Arc<Ident>>,
@@ -317,7 +317,7 @@ impl FnSetupExpander {
             billing_account_signup: None,
             billing_account_pk: None,
             organization_pk: None,
-            workspace_id: None,
+            workspace_pk: None,
             dal_context_default: None,
             dal_context_default_mut: None,
             dal_context_head: None,
@@ -629,21 +629,21 @@ impl FnSetupExpander {
         self.organization_pk.as_ref().unwrap().clone()
     }
 
-    fn setup_workspace_id(&mut self) -> Arc<Ident> {
-        if let Some(ref idents) = self.workspace_id {
+    fn setup_workspace_pk(&mut self) -> Arc<Ident> {
+        if let Some(ref idents) = self.workspace_pk {
             return idents.clone();
         }
 
         let bas = self.setup_billing_account_signup();
         let nba = bas.0.as_ref();
 
-        let var = Ident::new("nba_workspace_id", Span::call_site());
+        let var = Ident::new("nba_workspace_pk", Span::call_site());
         self.code.extend(quote! {
-            let #var = *#nba.workspace.id();
+            let #var = *#nba.workspace.pk();
         });
-        self.workspace_id = Some(Arc::new(var));
+        self.workspace_pk = Some(Arc::new(var));
 
-        self.workspace_id.as_ref().unwrap().clone()
+        self.workspace_pk.as_ref().unwrap().clone()
     }
 
     fn setup_dal_context_default(&mut self) -> Arc<Ident> {
@@ -723,7 +723,7 @@ impl FnSetupExpander {
                         #transactions.clone(),
                     );
                 ctx
-                    .update_to_workspace_tenancies(*#nba.workspace.id())
+                    .update_to_workspace_tenancies(*#nba.workspace.pk())
                     .await
                     .wrap_err("failed to update dal context to workspace tenancies")?;
 
@@ -756,7 +756,7 @@ impl FnSetupExpander {
                         #transactions.clone(),
                     );
                 ctx
-                    .update_to_workspace_tenancies(*#nba.workspace.id())
+                    .update_to_workspace_tenancies(*#nba.workspace.pk())
                     .await
                     .wrap_err("failed to update dal context to workspace tenancies")?;
                 ctx
@@ -789,7 +789,7 @@ impl FnSetupExpander {
                         #transactions.clone(),
                     );
                 ctx
-                    .update_to_workspace_tenancies(*#nba.workspace.id())
+                    .update_to_workspace_tenancies(*#nba.workspace.pk())
                     .await
                     .wrap_err("failed to update dal context to workspace tenancies")?;
                 ctx

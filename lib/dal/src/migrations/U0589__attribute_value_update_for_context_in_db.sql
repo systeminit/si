@@ -1790,7 +1790,7 @@ $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION tenancy_build_from_parts(this_billing_account_pks ident[],
                                                     this_organization_pks    ident[],
-                                                    this_workspace_ids       ident[],
+                                                    this_workspace_pks       ident[],
                                                     OUT new_tenancy          jsonb
 )
 AS
@@ -1798,7 +1798,7 @@ $$
 BEGIN
     new_tenancy := jsonb_build_object('billing_account_pks', this_billing_account_pks,
                                       'organization_pks',    this_organization_pks,
-                                      'workspace_ids',       this_workspace_ids);
+                                      'workspace_pks',       this_workspace_pks);
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
@@ -1815,7 +1815,7 @@ DECLARE
 BEGIN
     this_write_tenancy_record := jsonb_to_record(this_write_tenancy);
 
-    IF this_write_tenancy_record.workspace_ids IS NULL || array_length(this_write_tenancy_record.workspace_ids, 1) = 0 THEN
+    IF this_write_tenancy_record.workspace_pks IS NULL || array_length(this_write_tenancy_record.workspace_pks, 1) = 0 THEN
         IF this_write_tenancy_record.organization_pks IS NULL || array_length(this_write_tenancy_record.organization_pks, 1) = 0 THEN
             -- New billing account read tenancy
             read_tenancy := tenancy_build_from_parts(true,
@@ -1849,7 +1849,7 @@ BEGIN
              SELECT DISTINCT ON (id) organization_pk AS organization_pk
              FROM workspaces
              WHERE is_visible_v1(this_visibility, workspaces)
-                   AND id = ANY(this_write_tenancy_record.workspace_ids)
+                   AND id = ANY(this_write_tenancy_record.workspace_pks)
              ORDER BY id,
                       visibility_deleted_at DESC NULLS FIRST
         ) AS org
@@ -1864,7 +1864,7 @@ BEGIN
         read_tenancy := tenancy_build_from_parts(true,
                                                  billing_account_pks,
                                                  organization_pks,
-                                                 this_write_tenancy_record.workspace_ids);
+                                                 this_write_tenancy_record.workspace_pks);
     END IF;
 END;
 $$ LANGUAGE PLPGSQL PARALLEL SAFE;

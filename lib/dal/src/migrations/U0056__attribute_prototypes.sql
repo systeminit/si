@@ -4,7 +4,7 @@ CREATE TABLE attribute_prototypes
     id                                     ident not null default ident_create_v1(),
     tenancy_billing_account_pks            ident[],
     tenancy_organization_pks               ident[],
-    tenancy_workspace_ids                  ident[],
+    tenancy_workspace_pks                  ident[],
     visibility_change_set_pk               ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at                  timestamp with time zone,
     attribute_context_prop_id              ident,
@@ -41,7 +41,7 @@ BEGIN
 
     INSERT INTO attribute_prototypes (tenancy_billing_account_pks,
                                       tenancy_organization_pks,
-                                      tenancy_workspace_ids,
+                                      tenancy_workspace_pks,
                                       visibility_change_set_pk,
                                       visibility_deleted_at,
                                       attribute_context_prop_id,
@@ -52,7 +52,7 @@ BEGIN
                                       key)
     VALUES (this_tenancy_record.tenancy_billing_account_pks,
             this_tenancy_record.tenancy_organization_pks,
-            this_tenancy_record.tenancy_workspace_ids,
+            this_tenancy_record.tenancy_workspace_pks,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_attribute_context_record.attribute_context_prop_id,

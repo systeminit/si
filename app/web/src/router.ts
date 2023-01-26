@@ -31,7 +31,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     name: "workspace-single",
-    path: "/w/:workspaceId",
+    path: "/w/:workspacePk",
     component: () => import("@/pages/WorkspaceSinglePage.vue"),
     // TODO: will probably want a workspace "home" page at some point
     redirect(to) {

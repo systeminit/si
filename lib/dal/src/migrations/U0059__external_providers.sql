@@ -4,7 +4,7 @@ CREATE TABLE external_providers
     id                          ident not null default ident_create_v1(),
     tenancy_billing_account_pks ident[],
     tenancy_organization_pks    ident[],
-    tenancy_workspace_ids       ident[],
+    tenancy_workspace_pks       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
@@ -22,7 +22,7 @@ CREATE UNIQUE INDEX unique_external_providers
                            schema_variant_id,
                            tenancy_billing_account_pks,
                            tenancy_organization_pks,
-                           tenancy_workspace_ids,
+                           tenancy_workspace_pks,
                            visibility_change_set_pk,
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL;
@@ -57,7 +57,7 @@ BEGIN
 
     INSERT INTO external_providers (tenancy_billing_account_pks,
                                     tenancy_organization_pks,
-                                    tenancy_workspace_ids,
+                                    tenancy_workspace_pks,
                                     visibility_change_set_pk,
                                     visibility_deleted_at,
                                     schema_id,
@@ -66,7 +66,7 @@ BEGIN
                                     type_definition)
     VALUES (this_tenancy_record.tenancy_billing_account_pks,
             this_tenancy_record.tenancy_organization_pks,
-            this_tenancy_record.tenancy_workspace_ids,
+            this_tenancy_record.tenancy_workspace_pks,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_schema_id,

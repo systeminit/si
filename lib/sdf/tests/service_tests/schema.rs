@@ -78,7 +78,7 @@ async fn list_schemas() {
 
     let request = ListSchemaRequest {
         visibility,
-        workspace_id: *nba.workspace.id(),
+        workspace_pk: *nba.workspace.pk(),
     };
     let response: ListSchemaResponse =
         api_request_auth_query(app, "/api/schema/list_schemas", &auth_token, &request).await;
@@ -128,7 +128,7 @@ async fn get_schemas() {
     let request = GetSchemaRequest {
         visibility,
         schema_id: *schema_one.id(),
-        workspace_id: *nba.workspace.id(),
+        workspace_pk: *nba.workspace.pk(),
     };
     let response: GetSchemaResponse =
         api_request_auth_query(app, "/api/schema/get_schema", &auth_token, &request).await;
