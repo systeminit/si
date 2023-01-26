@@ -32,6 +32,7 @@
         >{{ assetStore.selectedAsset.createdBy }}
       </div>
     </div>
+    <!-- TODO(wendy) - this should be a code editor and not just a viewer -->
     <CodeViewer :code="assetStore.selectedAsset.code">
       <template #title>
         <div class="truncate">

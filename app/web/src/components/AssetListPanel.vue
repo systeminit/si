@@ -10,7 +10,13 @@
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
         <!-- TODO - currently this button doesn't do anything -->
-        <VButton2 label="Add Asset" tone="action" icon="plus" size="sm" />
+        <VButton2
+          label="Add Asset"
+          tone="action"
+          icon="plus"
+          size="sm"
+          @click="newAsset"
+        />
       </div>
       <SiSearch auto-search placeholder="search assets" />
       <div
@@ -27,12 +33,23 @@
 
 <script lang="ts" setup>
 import _ from "lodash";
+import { useRouter } from "vue-router";
 import SiSearch from "@/components/SiSearch.vue";
 import { useAssetStore } from "@/store/asset.store";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import AssetListItem from "./AssetListItem.vue";
 
+const router = useRouter();
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSETS");
+
+const newAsset = () => {
+  const asset = assetStore.createNewAsset();
+  assetStore.setSelectedAssetId(asset.id);
+  router.push({
+    name: "workspace-lab-assets",
+    params: { assetSlug: asset.slug },
+  });
+};
 </script>

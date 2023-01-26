@@ -28,6 +28,7 @@ export const useAssetStore = () => {
       state: () => ({
         assetsById: {} as Record<AssetId, Asset>,
         selectedAssetId: null as AssetId | null,
+        lastAssignedId: null as number | null, // TODO - this won't be needed once we have the backend involved
       }),
       getters: {
         assets: (state) => _.values(state.assetsById),
@@ -95,9 +96,39 @@ export const useAssetStore = () => {
               category: "mock AWS",
               documentationUrl: "https://www.systeminit.com/",
             };
+            this.lastAssignedId = i;
           }
 
           return assets;
+        },
+
+        createNewAsset() {
+          if (this.lastAssignedId) {
+            this.lastAssignedId += 1;
+          } else {
+            this.lastAssignedId = 1;
+          }
+
+          const newAsset = {
+            id: `${this.lastAssignedId}`,
+            displayName: `new asset ${Math.floor(Math.random() * 10000)}${
+              Math.floor(Math.random() * 20) === 0
+                ? " omg has such a long name the name is so long you can't even believe how long it is!"
+                : ""
+            }`,
+            slug: `test${this.lastAssignedId}`,
+            code: "",
+            color: this.generateMockColor(),
+            version: "0.0",
+            createdAt: new Date(),
+            createdBy: "you",
+            description: "",
+            category: "",
+            documentationUrl: "https://www.systeminit.com/",
+          };
+
+          this.assetsById[this.lastAssignedId] = newAsset;
+          return newAsset;
         },
 
         async LOAD_ASSETS() {
