@@ -363,7 +363,7 @@ mod tests {
                 assert!(!success.unset);
             }
             FunctionResult::Failure(failure) => {
-                panic!("function did not succeed and should have: {:?}", failure)
+                panic!("function did not succeed and should have: {failure:?}")
             }
         }
     }
@@ -533,7 +533,7 @@ mod tests {
                 assert!(success.valid);
             }
             FunctionResult::Failure(failure) => {
-                panic!("function did not succeed and should have: {:?}", failure)
+                panic!("function did not succeed and should have: {failure:?}")
             }
         }
     }
@@ -571,7 +571,7 @@ mod tests {
                 // TODO(fnichol): add more assertions as we add fields
             }
             FunctionResult::Failure(failure) => {
-                panic!("function did not succeed and should have: {:?}", failure)
+                panic!("function did not succeed and should have: {failure:?}")
             }
         }
     }

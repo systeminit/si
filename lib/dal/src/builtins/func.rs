@@ -52,7 +52,7 @@ impl FunctionMetadata {
             _ => None,
         };
 
-        let code_file = extension.map(|e| format!("{}.{}", func_name, e));
+        let code_file = extension.map(|e| format!("{func_name}.{e}"));
 
         let arguments = Some(
             FuncArgument::list_for_func(ctx, *f.id())
@@ -126,8 +126,7 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
                 .file_stem()
                 .ok_or_else(|| {
                     BuiltinsError::FuncMetadata(format!(
-                        "Unable to determine base file name for {:?}",
-                        builtin_path
+                        "Unable to determine base file name for {builtin_path:?}"
                     ))
                 })?
                 .to_string_lossy()
@@ -155,21 +154,17 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
 
             let metadata_base_path = builtin_path.parent().ok_or_else(|| {
                 BuiltinsError::FuncMetadata(format!(
-                    "Cannot determine parent path of {:?}",
-                    builtin_path
+                    "Cannot determine parent path of {builtin_path:?}"
                 ))
             })?;
             let func_path = metadata_base_path.join(std::path::Path::new(&code_file));
 
             let code = FUNC_BUILTIN_BY_PATH
                 .get(func_path.as_os_str().to_str().ok_or_else(|| {
-                    BuiltinsError::FuncMetadata(format!(
-                        "Unable to convert {:?} to &str",
-                        func_path
-                    ))
+                    BuiltinsError::FuncMetadata(format!("Unable to convert {func_path:?} to &str"))
                 })?)
                 .ok_or_else(|| {
-                    BuiltinsError::FuncMetadata(format!("Code file not found: {:?}", code_file))
+                    BuiltinsError::FuncMetadata(format!("Code file not found: {code_file:?}"))
                 })?;
             let code = base64::encode(code.contents_str);
             new_func

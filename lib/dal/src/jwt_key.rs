@@ -147,7 +147,7 @@ pub async fn get_jwt_validation_key(
     let key: String = row.try_get("public_key")?;
 
     tokio::task::spawn_blocking(move || {
-        RS256PublicKey::from_pem(&key).map_err(|err| JwtKeyError::KeyFromPem(format!("{}", err)))
+        RS256PublicKey::from_pem(&key).map_err(|err| JwtKeyError::KeyFromPem(format!("{err}")))
     })
     .instrument(trace_span!(
         "from_pem",
@@ -169,7 +169,7 @@ pub async fn validate_bearer_token(
     };
 
     let metadata =
-        Token::decode_metadata(&token).map_err(|err| JwtKeyError::Metadata(format!("{}", err)))?;
+        Token::decode_metadata(&token).map_err(|err| JwtKeyError::Metadata(format!("{err}")))?;
     let key_id = metadata
         .key_id()
         .ok_or_else(|| JwtKeyError::Metadata("missing key id".into()))?;
@@ -177,7 +177,7 @@ pub async fn validate_bearer_token(
     let claims = tokio::task::spawn_blocking(move || {
         public_key
             .verify_token::<UserClaim>(&token, None)
-            .map_err(|err| JwtKeyError::Verify(format!("{}", err)))
+            .map_err(|err| JwtKeyError::Verify(format!("{err}")))
     })
     .instrument(trace_span!(
         "verfy_token",
@@ -200,7 +200,7 @@ pub async fn validate_bearer_token_api_client(
     };
 
     let metadata =
-        Token::decode_metadata(token).map_err(|err| JwtKeyError::Metadata(format!("{}", err)))?;
+        Token::decode_metadata(token).map_err(|err| JwtKeyError::Metadata(format!("{err}")))?;
     let key_id = metadata
         .key_id()
         .ok_or_else(|| JwtKeyError::Metadata("missing key id".into()))?;
@@ -208,7 +208,7 @@ pub async fn validate_bearer_token_api_client(
     let public_key = get_jwt_validation_key(ctx, key_id).await?;
     let claims = public_key
         .verify_token::<ApiClaim>(token, None)
-        .map_err(|err| JwtKeyError::Verify(format!("{}", err)))?;
+        .map_err(|err| JwtKeyError::Verify(format!("{err}")))?;
     Ok(claims)
 }
 
@@ -232,8 +232,8 @@ pub async fn get_jwt_signing_key(
         .map_err(|()| JwtKeyError::Decrypt)?;
     let key = String::from_utf8(key_bytes)?;
     let key_pair =
-        RS256KeyPair::from_pem(&key).map_err(|err| JwtKeyError::KeyFromPem(format!("{}", err)))?;
-    let key_pair_with_id = key_pair.with_key_id(&format!("{}", pk));
+        RS256KeyPair::from_pem(&key).map_err(|err| JwtKeyError::KeyFromPem(format!("{err}")))?;
+    let key_pair_with_id = key_pair.with_key_id(&format!("{pk}"));
     Ok(key_pair_with_id)
 }
 

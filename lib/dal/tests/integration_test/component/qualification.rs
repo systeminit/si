@@ -161,7 +161,7 @@ async fn add_and_list_qualifications(ctx: &DalContext) {
                 );
                 test_qualification = Some(found_qualification);
             }
-            _ => panic!("found unexpected qualification: {:?}", found_qualification),
+            _ => panic!("found unexpected qualification: {found_qualification:?}"),
         }
     }
     let all_fields_valid_qualification =

@@ -22,7 +22,7 @@ impl JobQueueProcessor for SyncProcessor {
         job.set_sync();
         job.run(ctx)
             .await
-            .unwrap_or_else(|e| panic!("Failure processing background job:\n  {:?}\n\n{}", job, e));
+            .unwrap_or_else(|e| panic!("Failure processing background job:\n  {job:?}\n\n{e}"));
     }
 
     async fn process_queue(&self) -> JobQueueProcessorResult<()> {

@@ -179,7 +179,7 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            _ => panic!("unexpected argument type: {:?}", type_path),
+                            _ => panic!("unexpected argument type: {type_path:?}"),
                         };
                     }
                 }
@@ -235,15 +235,15 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                                     let var = var.as_ref();
                                     expander.push_arg(parse_quote! {&#var});
                                 }
-                                _ => panic!("unexpected argument reference type: {:?}", type_ref),
+                                _ => panic!("unexpected argument reference type: {type_ref:?}"),
                             }
                         }
                     }
                     unsupported => {
-                        panic!("argument reference type not supported: {:?}", unsupported)
+                        panic!("argument reference type not supported: {unsupported:?}")
                     }
                 },
-                unsupported => panic!("argument type not supported: {:?}", unsupported),
+                unsupported => panic!("argument type not supported: {unsupported:?}"),
             },
             FnArg::Receiver(_) => {
                 panic!("argument does not support receiver/method style (i.e. using `self`)")

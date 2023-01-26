@@ -234,7 +234,7 @@ async fn handle_stderr(
                     line = line.replace(credential.as_str(), "[redacted]").into();
                 }
             }
-            eprintln!("{}", line);
+            eprintln!("{line}");
         }
         Ok(())
     }

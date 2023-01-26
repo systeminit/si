@@ -459,8 +459,7 @@ mod tests {
         env::var(ENVVAR).ok().map(Cow::Owned).unwrap_or_else(|| {
             if !Path::new(DEFAULT).exists() {
                 panic!(
-                    "lang server not yet built at {}. Override default by setting {}",
-                    DEFAULT, ENVVAR
+                    "lang server not yet built at {DEFAULT}. Override default by setting {ENVVAR}"
                 );
             }
             Cow::Borrowed(DEFAULT)
@@ -542,7 +541,7 @@ mod tests {
         for _ in 0..2 {
             match progress.next().await {
                 Some(Ok(_)) => assert!(true),
-                Some(Err(err)) => panic!("failed to receive ping; err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive ping; err={err:?}"),
                 None => panic!("stream ended early"),
             }
         }
@@ -576,7 +575,7 @@ mod tests {
         for _ in 0..2 {
             match progress.next().await {
                 Some(Ok(_)) => assert!(true),
-                Some(Err(err)) => panic!("failed to receive ping; err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive ping; err={err:?}"),
                 None => panic!("stream ended early"),
             }
         }
@@ -654,7 +653,7 @@ mod tests {
 
         match client.execute_ping().await {
             Err(ClientError::WebsocketConnection(_)) => assert!(true),
-            Err(unexpected) => panic!("unexpected error: {:?}", unexpected),
+            Err(unexpected) => panic!("unexpected error: {unexpected:?}"),
             Ok(_) => panic!("stream not expected"),
         }
     }
@@ -686,7 +685,7 @@ mod tests {
 
         match client.execute_ping().await {
             Err(ClientError::WebsocketConnection(_)) => assert!(true),
-            Err(unexpected) => panic!("unexpected error: {:?}", unexpected),
+            Err(unexpected) => panic!("unexpected error: {unexpected:?}"),
             Ok(_) => panic!("stream not expected"),
         }
     }
@@ -741,29 +740,29 @@ mod tests {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "2")
             }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={err:?}"),
             None => panic!("output stream ended early"),
         };
         match progress.next().await {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "my butt")
             }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={err:?}"),
             None => panic!("output stream ended early"),
         };
         // TODO(fnichol): until we've determined how to handle processing the result server side,
         // we're going to see a heartbeat come back when a request is processed
         match progress.next().await {
             Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
+            Some(Err(err)) => panic!("failed to receive heartbeat: err={err:?}"),
             None => panic!("output stream ended early"),
         }
         match progress.next().await {
             None => assert!(true),
-            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+            Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
         };
         // Get the result
         let result = progress.finish().await.expect("failed to return result");
@@ -773,7 +772,7 @@ mod tests {
                 assert_eq!(success.data, json!({"a": "b"}));
             }
             FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
+                panic!("result should be success; failure={failure:?}")
             }
         }
     }
@@ -830,29 +829,29 @@ mod tests {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "2")
             }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={err:?}"),
             None => panic!("output stream ended early"),
         };
         match progress.next().await {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "my butt")
             }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={err:?}"),
             None => panic!("output stream ended early"),
         };
         // TODO(fnichol): until we've determined how to handle processing the result server side,
         // we're going to see a heartbeat come back when a request is processed
         match progress.next().await {
             Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {unexpected:?}"),
+            Some(Err(err)) => panic!("failed to receive heartbeat: err={err:?}"),
             None => panic!("output stream ended early"),
         }
         match progress.next().await {
             None => assert!(true),
-            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+            Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
         };
         // Get the result
         let result = progress.finish().await.expect("failed to return result");
@@ -862,7 +861,7 @@ mod tests {
                 assert_eq!(success.data, json!({"a": "b"}));
             }
             FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
+                panic!("result should be success; failure={failure:?}")
             }
         }
     }
@@ -906,7 +905,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'bubblegum' output: err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive 'bubblegum' output: err={err:?}"),
                 None => panic!("output stream ended early"),
             };
         }
@@ -918,7 +917,7 @@ mod tests {
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
                 Some(Err(err)) => {
-                    panic!("failed to receive 'all out of gum' output: err={:?}", err)
+                    panic!("failed to receive 'all out of gum' output: err={err:?}")
                 }
                 None => panic!("output stream ended early"),
             };
@@ -930,7 +929,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
             };
         }
         let result = progress.finish().await.expect("failed to return result");
@@ -939,7 +938,7 @@ mod tests {
                 assert!(success.valid);
             }
             FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
+                panic!("result should be success; failure={failure:?}")
             }
         }
     }
@@ -1001,7 +1000,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'first' output: err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
                 None => panic!("output stream ended early"),
             };
         }
@@ -1012,7 +1011,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'second' output: err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
                 None => panic!("output stream ended early"),
             }
         }
@@ -1023,7 +1022,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
             };
         }
         let result = progress.finish().await.expect("failed to return result");
@@ -1032,7 +1031,7 @@ mod tests {
                 // TODO(fnichol): assert some result data
             }
             FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
+                panic!("result should be success; failure={failure:?}")
             }
         }
     }
@@ -1076,7 +1075,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'first' output: err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
                 None => panic!("output stream ended early"),
             };
         }
@@ -1087,7 +1086,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'second' output: err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
                 None => panic!("output stream ended early"),
             };
         }
@@ -1098,7 +1097,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
             };
         }
         // Get the result
@@ -1108,7 +1107,7 @@ mod tests {
                 // TODO(fnichol): assert some result data
             }
             FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
+                panic!("result should be success; failure={failure:?}")
             }
         }
     }
@@ -1150,7 +1149,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'first' output: err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
                 None => panic!("output stream ended early"),
             };
         }
@@ -1161,7 +1160,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'second' output: err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
                 None => panic!("output stream ended early"),
             }
         }
@@ -1172,7 +1171,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
             };
         }
         let result = progress.finish().await.expect("failed to return result");
@@ -1181,7 +1180,7 @@ mod tests {
                 // TODO(fnichol): assert some result data
             }
             FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
+                panic!("result should be success; failure={failure:?}")
             }
         }
     }
@@ -1224,7 +1223,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'first' output: err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive 'first' output: err={err:?}"),
                 None => panic!("output stream ended early"),
             };
         }
@@ -1235,7 +1234,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(Err(err)) => panic!("failed to receive 'second' output: err={:?}", err),
+                Some(Err(err)) => panic!("failed to receive 'second' output: err={err:?}"),
                 None => panic!("output stream ended early"),
             };
         }
@@ -1246,7 +1245,7 @@ mod tests {
                     break;
                 }
                 Some(Ok(ProgressMessage::Heartbeat)) => continue,
-                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+                Some(unexpected) => panic!("output stream should be done: {unexpected:?}"),
             };
         }
         // Get the result
@@ -1256,7 +1255,7 @@ mod tests {
                 // TODO(fnichol): assert some result data
             }
             FunctionResult::Failure(failure) => {
-                panic!("result should be success; failure={:?}", failure)
+                panic!("result should be success; failure={failure:?}")
             }
         }
     }

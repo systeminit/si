@@ -341,7 +341,7 @@ async fn remove_least_specific(ctx: &DalContext) {
         {
             assert_eq!(prototype.id(), &id);
         } else {
-            panic!("expected least-specific context not allowed for removal error, found the following result: {:?}", result);
+            panic!("expected least-specific context not allowed for removal error, found the following result: {result:?}");
         }
     }
 }

@@ -153,7 +153,7 @@ impl AttributeView {
                                 if let Some(object) = write_location.as_object_mut() {
                                     if let Some(key) = attribute_value.key() {
                                         object.insert(key.to_string(), found_value.clone());
-                                        format!("{}/{}", insertion_pointer, key)
+                                        format!("{insertion_pointer}/{key}")
                                     } else {
                                         object.insert(prop.name().to_string(), found_value.clone());
                                         format!("{}/{}", insertion_pointer, prop.name())

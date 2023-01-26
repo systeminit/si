@@ -156,7 +156,7 @@ impl WorkflowView {
             match step {
                 WorkflowStep::Workflow { workflow, args } => {
                     if recursion_marker.contains(&workflow) {
-                        panic!("Recursive workflow found: {}", workflow);
+                        panic!("Recursive workflow found: {workflow}");
                     }
 
                     let key = format!("{workflow}-{}", serde_json::to_string(&args)?);

@@ -261,8 +261,7 @@ impl Prop {
                     .map_err(|e| PropError::AttributeValue(format!("{e}")))?
                     .ok_or_else(|| {
                         PropError::AttributeValue(format!(
-                            "missing attribute value for context: {:?}",
-                            parent_attribute_read_context
+                            "missing attribute value for context: {parent_attribute_read_context:?}"
                         ))
                     })?;
 

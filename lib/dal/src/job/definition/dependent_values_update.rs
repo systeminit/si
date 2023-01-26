@@ -407,8 +407,7 @@ async fn dependency_graph_to_dot(
         let external_provider_id = attr_val.context.external_provider_id();
         let component_id = attr_val.context.component_id();
         node_definitions.push_str(&format!(
-            "\"{node_id}\"[label=\"\\lAttribute Value: {node_id}\\n\\lProp: {prop_id}\\lInternal Provider: {internal_provider_id}\\lExternal Provider: {external_provider_id}\\lComponent: {component_id}\"];",
-            node_id = attr_val_id,
+            "\"{attr_val_id}\"[label=\"\\lAttribute Value: {attr_val_id}\\n\\lProp: {prop_id}\\lInternal Provider: {internal_provider_id}\\lExternal Provider: {external_provider_id}\\lComponent: {component_id}\"];",
         ));
     }
 

@@ -18,7 +18,7 @@ pub async fn signup(
 
     let billing_account_name = generate_fake_name();
     let user_name = generate_fake_name();
-    let user_email = format!("{}@example.com", user_name);
+    let user_email = format!("{user_name}@example.com");
     let user_password = "snakes";
 
     let result = BillingAccount::signup(

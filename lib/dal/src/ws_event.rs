@@ -108,7 +108,7 @@ impl WsEvent {
 
     pub async fn publish(&self, ctx: &DalContext) -> WsEventResult<()> {
         for billing_account_pk in self.billing_account_pks.iter() {
-            let subject = format!("si.billing_account_pk.{}.event", billing_account_pk);
+            let subject = format!("si.billing_account_pk.{billing_account_pk}.event");
             ctx.nats_txn().publish(subject, &self).await?;
         }
         Ok(())
@@ -116,7 +116,7 @@ impl WsEvent {
 
     pub async fn publish_immediately(&self, ctx: &DalContext) -> WsEventResult<()> {
         for billing_account_pk in self.billing_account_pks.iter() {
-            let subject = format!("si.billing_account_pk.{}.event", billing_account_pk);
+            let subject = format!("si.billing_account_pk.{billing_account_pk}.event");
             let msg_bytes = serde_json::to_vec(self)?;
             ctx.nats_conn().publish(subject, msg_bytes).await?;
         }

@@ -46,10 +46,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
     for validation_status in &validation_statuses {
         if validation_status.attribute_value_id == updated_region_attribute_value_id {
             if expected_validation_status.is_some() {
-                panic!(
-                    "found more than one expected validation status: {:?}",
-                    validation_statuses
-                );
+                panic!("found more than one expected validation status: {validation_statuses:?}");
             }
             expected_validation_status = Some(validation_status.clone());
         }
@@ -61,10 +58,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
     for validation_error in &expected_validation_status.errors {
         if validation_error.kind == ValidationErrorKind::StringNotInStringArray {
             if found_expected_validation_error {
-                panic!(
-                    "found more than one expected validation error: {:?}",
-                    validation_error
-                );
+                panic!("found more than one expected validation error: {validation_error:?}");
             }
             found_expected_validation_error = true;
         }
@@ -102,10 +96,7 @@ async fn aws_region_field_validation(ctx: &DalContext) {
     for validation_status in &validation_statuses {
         if validation_status.attribute_value_id == updated_region_attribute_value_id {
             if expected_validation_status.is_some() {
-                panic!(
-                    "found more than one expected validation status: {:?}",
-                    validation_statuses
-                );
+                panic!("found more than one expected validation status: {validation_statuses:?}");
             }
             expected_validation_status = Some(validation_status.clone());
         }
