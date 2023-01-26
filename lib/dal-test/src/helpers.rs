@@ -37,8 +37,8 @@ pub async fn billing_account_signup(
     let ctx = ctx.clone_with_head();
 
     let billing_account_name = generate_fake_name();
-    let user_name = format!("frank {}", billing_account_name);
-    let user_email = format!("{}@example.com", billing_account_name);
+    let user_name = format!("frank {billing_account_name}");
+    let user_email = format!("{billing_account_name}@example.com");
     let user_password = "snakes";
 
     let nba = BillingAccount::signup(
@@ -70,7 +70,7 @@ pub async fn create_user(ctx: &DalContext, bid: BillingAccountPk) -> User {
     User::new(
         ctx,
         &name,
-        &format!("{}@test.systeminit.com", name),
+        &format!("{name}@test.systeminit.com"),
         "liesAreTold",
         bid,
     )

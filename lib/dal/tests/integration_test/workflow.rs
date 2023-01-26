@@ -10,7 +10,7 @@ async fn resolve(ctx: &DalContext) {
         .await
         .expect("unable to find func")
         .pop()
-        .unwrap_or_else(|| panic!("function not found: {}", name));
+        .unwrap_or_else(|| panic!("function not found: {name}"));
     let mut tree = WorkflowView::resolve(
         ctx,
         &func,
@@ -189,7 +189,7 @@ async fn run(ctx: &DalContext) {
         .await
         .expect("unable to find func")
         .pop()
-        .unwrap_or_else(|| panic!("function not found: {}", name));
+        .unwrap_or_else(|| panic!("function not found: {name}"));
     let tree = WorkflowView::resolve(
         ctx,
         &func,

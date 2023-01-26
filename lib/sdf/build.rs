@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .strip_suffix(NEWLINE)
         .ok_or_else(|| BuildError::StripNewlineSuffixReturnedEmpty(stdout.clone()))?;
 
-    println!("cargo:rustc-env=SI_CURRENT_GIT_SHA={}", sha);
+    println!("cargo:rustc-env=SI_CURRENT_GIT_SHA={sha}");
     Ok(())
 }
 

@@ -21,15 +21,12 @@ pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
     let auth_token = auth_token.as_ref();
     let uri_str = uri.as_ref();
     let params = serde_url_params::to_string(&request).expect("cannot serialize params");
-    let uri = format!("{}?{}", uri_str, params);
+    let uri = format!("{uri_str}?{params}");
     let mut api_request = Request::builder()
         .method(Method::GET)
         .uri(uri)
         .header(http::header::CONTENT_TYPE, "application/json")
-        .header(
-            http::header::AUTHORIZATION,
-            format!("Bearer {}", auth_token),
-        );
+        .header(http::header::AUTHORIZATION, format!("Bearer {auth_token}"));
 
     // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
     let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
@@ -69,10 +66,7 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
         .method(method)
         .uri(uri)
         .header(http::header::CONTENT_TYPE, "application/json")
-        .header(
-            http::header::AUTHORIZATION,
-            format!("Bearer {}", auth_token),
-        );
+        .header(http::header::AUTHORIZATION, format!("Bearer {auth_token}"));
 
     // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
     let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
@@ -121,10 +115,7 @@ pub async fn api_request_auth_empty<Res: DeserializeOwned>(
         .method(method)
         .uri(uri)
         .header(http::header::CONTENT_TYPE, "application/json")
-        .header(
-            http::header::AUTHORIZATION,
-            format!("Bearer {}", auth_token),
-        );
+        .header(http::header::AUTHORIZATION, format!("Bearer {auth_token}"));
 
     let api_request = api_request
         .body(Body::empty())

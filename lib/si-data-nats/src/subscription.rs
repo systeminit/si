@@ -48,7 +48,7 @@ impl Subscription {
             messaging_operation: "process",
             messaging_subject: subject.clone(),
             process_otel_kind: FormattedSpanKind(SpanKind::Consumer).to_string(),
-            process_otel_name: format!("{} process", subject),
+            process_otel_name: format!("{subject} process"),
         };
 
         Self {

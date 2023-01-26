@@ -205,10 +205,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
     for validation_error in &match_validation_status.errors {
         if validation_error.kind == ValidationErrorKind::StringDoesNotEqual {
             if found_match_validation_error {
-                panic!(
-                    "found more than one match validation error: {:?}",
-                    validation_error
-                );
+                panic!("found more than one match validation error: {validation_error:?}");
             }
             found_match_validation_error = true;
         }
@@ -220,10 +217,7 @@ async fn check_validations_for_component(ctx: &DalContext) {
     for validation_error in &prefix_validation_status.errors {
         if validation_error.kind == ValidationErrorKind::StringDoesNotHavePrefix {
             if found_prefix_validation_error {
-                panic!(
-                    "found more than one prefix validation error: {:?}",
-                    validation_error
-                );
+                panic!("found more than one prefix validation error: {validation_error:?}");
             }
             found_prefix_validation_error = true;
         }
@@ -501,8 +495,7 @@ fn get_validation_status(
         if validation_status.attribute_value_id == attribute_value_id {
             if the_validation_status.is_some() {
                 panic!(
-                    "found more than one validation status for that attribute_value_id: {:?}",
-                    validation_statuses
+                    "found more than one validation status for that attribute_value_id: {validation_statuses:?}"
                 );
             }
             the_validation_status = Some(validation_status.clone());
@@ -564,10 +557,7 @@ async fn ensure_validations_are_sourced_correctly(ctx: &DalContext) {
         // Now, we can find the expected validation status.
         if validation_status.attribute_value_id == updated_region_attribute_value_id {
             if expected_validation_status.is_some() {
-                panic!(
-                    "found more than one expected validation status: {:?}",
-                    validation_statuses
-                );
+                panic!("found more than one expected validation status: {validation_statuses:?}");
             }
             expected_validation_status = Some(validation_status.clone());
         }

@@ -101,7 +101,7 @@ async fn fail(ctx: &mut DalContext) {
         .await
         .expect("unable to find func")
         .pop()
-        .unwrap_or_else(|| panic!("function not found: {}", name));
+        .unwrap_or_else(|| panic!("function not found: {name}"));
 
     let component = create_component_and_schema(ctx).await;
     let schema = component

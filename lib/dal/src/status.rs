@@ -563,8 +563,7 @@ impl StatusUpdater {
                     .map_err(StatusUpdaterError::metadata)?
                     .ok_or_else(|| {
                         StatusUpdaterError::GenericError(format!(
-                            "Unable to load schema variant from component {}",
-                            component_id
+                            "Unable to load schema variant from component {component_id}"
                         ))
                     })?;
 

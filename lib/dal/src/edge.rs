@@ -553,7 +553,7 @@ impl Edge {
         ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
             .await;
 
-        println!("Searching for original edge {}", edge_id);
+        println!("Searching for original edge {edge_id}");
 
         Ok(Edge::get_by_id(ctx, &edge_id).await?)
     }

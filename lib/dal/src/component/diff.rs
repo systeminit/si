@@ -58,9 +58,9 @@ impl ComponentDiff {
             let mut lines = Vec::new();
             for diff_object in diff::lines(&prev_json, &curr_json) {
                 let line = match diff_object {
-                    diff::Result::Left(left) => format!("-{}", left),
-                    diff::Result::Both(unchanged, _) => format!(" {}", unchanged),
-                    diff::Result::Right(right) => format!("+{}", right),
+                    diff::Result::Left(left) => format!("-{left}"),
+                    diff::Result::Both(unchanged, _) => format!(" {unchanged}"),
+                    diff::Result::Right(right) => format!("+{right}"),
                 };
                 lines.push(line);
             }

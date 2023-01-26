@@ -352,7 +352,7 @@ pub fn generate_name() -> String {
             NAME_CHARSET[idx] as char
         })
         .collect();
-    format!("si-{}", unique_id)
+    format!("si-{unique_id}")
 }
 
 #[derive(

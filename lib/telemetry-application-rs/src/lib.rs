@@ -415,7 +415,7 @@ impl TracingDirectives {
                     "{},{}",
                     "info",
                     mods.iter()
-                        .map(|m| format!("{}=info", m))
+                        .map(|m| format!("{m}=info"))
                         .collect::<Vec<_>>()
                         .join(",")
                 )),
@@ -426,7 +426,7 @@ impl TracingDirectives {
                     "{},{}",
                     "info",
                     mods.iter()
-                        .map(|m| format!("{}=debug", m))
+                        .map(|m| format!("{m}=debug"))
                         .collect::<Vec<_>>()
                         .join(",")
                 )),
@@ -437,7 +437,7 @@ impl TracingDirectives {
                     "{},{}",
                     "info",
                     mods.iter()
-                        .map(|m| format!("{}=trace", m))
+                        .map(|m| format!("{m}=trace"))
                         .collect::<Vec<_>>()
                         .join(",")
                 )),
@@ -448,7 +448,7 @@ impl TracingDirectives {
                     "{},{}",
                     "debug",
                     mods.iter()
-                        .map(|m| format!("{}=trace", m))
+                        .map(|m| format!("{m}=trace"))
                         .collect::<Vec<_>>()
                         .join(",")
                 )),
@@ -459,7 +459,7 @@ impl TracingDirectives {
                     "{},{}",
                     "trace",
                     mods.iter()
-                        .map(|m| format!("{}=trace", m))
+                        .map(|m| format!("{m}=trace"))
                         .collect::<Vec<_>>()
                         .join(",")
                 )),

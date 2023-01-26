@@ -283,7 +283,7 @@ impl Fix {
                 error!("Unable to run fix: {e}");
                 // If the workflow had an error, we can record an error completion status with
                 // the error as a message.
-                self.stamp_finished(ctx, FixCompletionStatus::Error, Some(format!("{:?}", e)))
+                self.stamp_finished(ctx, FixCompletionStatus::Error, Some(format!("{e:?}")))
                     .await?;
                 Ok(Vec::new())
             }
