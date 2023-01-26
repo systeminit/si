@@ -21,7 +21,6 @@ type QualificationStats = {
 export const useQualificationsStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
-  const workspacePk = changeSetsStore.selectedWorkspacePk;
   return addStoreHooks(
     defineStore(`cs${changeSetId || "NONE"}/qualifications`, {
       state: () => ({
@@ -116,7 +115,6 @@ export const useQualificationsStore = () => {
             params: {
               componentId,
               visibility_change_set_pk: changeSetId,
-              workspacePk,
             },
             onSuccess: (response) => {
               this.qualificationsByComponentId[componentId] = response;

@@ -14,7 +14,7 @@ pub async fn signup(
     HandlerContext(builder): HandlerContext,
     JwtSecretKey(_jwt_secret_key): JwtSecretKey,
 ) -> TestResult<Json<SignupResponse>> {
-    let ctx = builder.build(RequestContext::default()).await?;
+    let mut ctx = builder.build(RequestContext::default()).await?;
 
     let billing_account_name = generate_fake_name();
     let user_name = generate_fake_name();
@@ -22,7 +22,7 @@ pub async fn signup(
     let user_password = "snakes";
 
     let result = BillingAccount::signup(
-        &ctx,
+        &mut ctx,
         &billing_account_name,
         &user_name,
         &user_email,

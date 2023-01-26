@@ -662,10 +662,9 @@ impl FnSetupExpander {
         self.code.extend(quote! {
             let #var = {
                 let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
-                ::dal_test::helpers::create_change_set_and_update_ctx(
-                    &mut ctx,
-                    &#nba,
-                ).await;
+                ctx.update_read_tenancy(::dal::ReadTenancy::new(*#nba.workspace.pk()));
+                ctx.update_write_tenancy(::dal::WriteTenancy::new(*#nba.workspace.pk()));
+                ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx).await;
                 ctx
             };
         });
@@ -690,10 +689,9 @@ impl FnSetupExpander {
         self.code.extend(quote! {
             let mut #var = {
                 let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
-                ::dal_test::helpers::create_change_set_and_update_ctx(
-                    &mut ctx,
-                    &#nba,
-                ).await;
+                ctx.update_read_tenancy(::dal::ReadTenancy::new(*#nba.workspace.pk()));
+                ctx.update_write_tenancy(::dal::WriteTenancy::new(*#nba.workspace.pk()));
+                ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx).await;
                 ctx
             };
         });

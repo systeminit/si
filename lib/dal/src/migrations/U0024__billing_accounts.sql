@@ -28,11 +28,3 @@ BEGIN
     object := row_to_json(this_new_row);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
-
-CREATE OR REPLACE FUNCTION billing_account_upsert_builtin_v1(OUT object json) AS
-$$
-BEGIN
-    INSERT INTO billing_accounts (pk, name) VALUES (ident_nil_v1(), 'builtin') ON CONFLICT (pk) DO NOTHING;
-    SELECT row_to_json(billing_accounts.*) INTO STRICT object FROM billing_accounts WHERE pk = ident_nil_v1();
-END;
-$$ LANGUAGE PLPGSQL VOLATILE;

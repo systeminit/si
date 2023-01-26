@@ -16,8 +16,8 @@ use crate::standard_model::objects_from_rows;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
     AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
-    Func, FuncError, HistoryEventError, InternalProviderError, Node, PropId, ReadTenancyError,
-    Socket, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    Func, FuncError, HistoryEventError, InternalProviderError, Node, PropId, Socket, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
@@ -48,8 +48,6 @@ pub enum EdgeError {
     Node(#[from] NodeError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("standard model error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]

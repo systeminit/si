@@ -54,10 +54,10 @@ async fn apply(ctx: &mut DalContext, bid: BillingAccountPk) {
 }
 
 #[test]
-async fn list_open(DalContextHeadRef(ctx): DalContextHeadRef<'_>, bid: BillingAccountPk) {
-    let a_change_set = create_change_set(ctx, bid).await;
-    let b_change_set = create_change_set(ctx, bid).await;
-    let mut c_change_set = create_change_set(ctx, bid).await;
+async fn list_open(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
+    let a_change_set = create_change_set(ctx).await;
+    let b_change_set = create_change_set(ctx).await;
+    let mut c_change_set = create_change_set(ctx).await;
 
     let full_list = ChangeSet::list_open(ctx)
         .await
@@ -94,8 +94,8 @@ async fn list_open(DalContextHeadRef(ctx): DalContextHeadRef<'_>, bid: BillingAc
 }
 
 #[test]
-async fn get_by_pk(DalContextHeadRef(ctx): DalContextHeadRef<'_>, bid: BillingAccountPk) {
-    let change_set = create_change_set(ctx, bid).await;
+async fn get_by_pk(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
+    let change_set = create_change_set(ctx).await;
     let result = ChangeSet::get_by_pk(ctx, &change_set.pk)
         .await
         .expect("cannot get change set by pk")

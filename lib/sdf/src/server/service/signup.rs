@@ -7,8 +7,8 @@ use axum::{
 use thiserror::Error;
 
 use dal::{
-    BillingAccountError, ComponentError, NodeError, NodePositionError, ReadTenancyError,
-    SchemaError, StandardModelError, TransactionsError,
+    BillingAccountError, ComponentError, NodeError, NodePositionError, SchemaError,
+    StandardModelError, TransactionsError,
 };
 
 pub mod create_account;
@@ -36,8 +36,6 @@ pub enum SignupError {
     Node(#[from] NodeError),
     #[error("NodePosition error: {0}")]
     NodePosition(#[from] NodePositionError),
-    #[error("ReadTenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type SignupResult<T> = std::result::Result<T, SignupError>;

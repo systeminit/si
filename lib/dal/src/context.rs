@@ -12,9 +12,11 @@ use crate::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::JobProducer,
     },
-    BillingAccountPk, HistoryActor, OrganizationPk, ReadTenancy, ReadTenancyError, StandardModel,
-    Visibility, WorkspacePk, WriteTenancy, WriteTenancyError,
+    BillingAccountPk, HistoryActor, ReadTenancy, StandardModel, Visibility, WorkspacePk,
+    WriteTenancy, WriteTenancyError,
 };
+
+const GET_BILLING_ACCOUNT: &str = include_str!("queries/context_get_billing_account.sql");
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -306,46 +308,13 @@ impl DalContext {
         new
     }
 
-    /// Updates this context with read/write tenancies for a specific billing account.
-    pub fn update_to_billing_account_tenancies(&mut self, bid: BillingAccountPk) {
-        self.read_tenancy = ReadTenancy::new_billing_account(vec![bid]);
-        self.write_tenancy = WriteTenancy::new_billing_account(bid);
-    }
-
-    /// Clones a new context from this one with read/write tenancies for a specific billing account.
-    pub fn clone_with_new_billing_account_tenancies(&self, bid: BillingAccountPk) -> Self {
-        let mut new = self.clone();
-        new.update_to_billing_account_tenancies(bid);
-        new
-    }
-
-    /// Updates this context with read/write tenancies for a specific organization.
-    pub async fn update_to_organization_tenancies(
-        &mut self,
-        oid: OrganizationPk,
-    ) -> Result<(), TransactionsError> {
-        self.read_tenancy = ReadTenancy::new_organization(self.txns().pg(), vec![oid]).await?;
-        self.write_tenancy = WriteTenancy::new_organization(oid);
-        Ok(())
-    }
-
-    /// Clones a new context from this one with read/write tenancies for a specific organization.
-    pub async fn clone_with_new_organization_tenancies(
-        &self,
-        oid: OrganizationPk,
-    ) -> Result<DalContext, TransactionsError> {
-        let mut new = self.clone();
-        new.update_to_organization_tenancies(oid).await?;
-        Ok(new)
-    }
-
     /// Updates this context with read/write tenancies for a specific workspace.
     pub async fn update_to_workspace_tenancies(
         &mut self,
         wid: WorkspacePk,
     ) -> Result<(), TransactionsError> {
-        self.read_tenancy = ReadTenancy::new_workspace(self.txns().pg(), vec![wid]).await?;
-        self.write_tenancy = WriteTenancy::new_workspace(wid);
+        self.read_tenancy = ReadTenancy::new(wid);
+        self.write_tenancy = WriteTenancy::new(wid);
         Ok(())
     }
 
@@ -357,6 +326,22 @@ impl DalContext {
         let mut new = self.clone();
         new.update_to_workspace_tenancies(wid).await?;
         Ok(new)
+    }
+
+    pub async fn find_billing_account_pk_for_workspace(
+        &self,
+        workspace_pk: WorkspacePk,
+    ) -> Result<BillingAccountPk, TransactionsError> {
+        Self::raw_find_billing_account_pk_for_workspace(self.txns().pg(), workspace_pk).await
+    }
+
+    pub async fn raw_find_billing_account_pk_for_workspace(
+        txn: &PgTxn,
+        workspace_pk: WorkspacePk,
+    ) -> Result<BillingAccountPk, TransactionsError> {
+        let row = txn.query_one(GET_BILLING_ACCOUNT, &[&workspace_pk]).await?;
+        let pk = row.try_get("pk")?;
+        Ok(pk)
     }
 
     pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
@@ -433,7 +418,7 @@ impl DalContext {
         &self,
         object: &T,
     ) -> Result<bool, TransactionsError> {
-        let read_tenancy = object.tenancy().clone_into_read_tenancy(self).await?;
+        let read_tenancy = object.tenancy().clone_into_read_tenancy();
         let is_in_our_tenancy = self
             .write_tenancy()
             .check(self.pg_txn(), &read_tenancy)
@@ -501,11 +486,11 @@ impl RequestContext {
 }
 
 impl Default for RequestContext {
-    /// Builds a new [`RequestContext`] with no read/write tenancies (only usable for managing BillingAccounts)
+    /// Builds a new [`RequestContext`] with no read/write tenancies (only usable for managing BillingAccounts/Organizations/Workspaces)
     /// and a head [`Visibility`] and the given [`HistoryActor`].
     fn default() -> Self {
         let visibility = Visibility::new_head(false);
-        let read_tenancy = ReadTenancy::new_billing_account(Vec::new());
+        let read_tenancy = ReadTenancy::new_empty();
         let write_tenancy = WriteTenancy::new_empty();
         Self {
             read_tenancy,
@@ -658,8 +643,6 @@ pub enum TransactionsError {
     Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
-    #[error(transparent)]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]

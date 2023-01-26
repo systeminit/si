@@ -17,7 +17,7 @@ use dal::{
     AttributePrototypeArgumentId, AttributePrototypeError, AttributePrototypeId,
     AttributeValueError, ComponentError, ComponentId, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncBindingError, FuncId, InternalProviderError, InternalProviderId,
-    PropError, PropId, PrototypeListForFuncError, ReadTenancyError, SchemaVariantId, StandardModel,
+    PropError, PropId, PrototypeListForFuncError, SchemaVariantId, StandardModel,
     StandardModelError, TransactionsError, ValidationPrototype, ValidationPrototypeError,
     ValidationPrototypeId, Visibility, WriteTenancyError, WsEventError,
 };
@@ -40,8 +40,6 @@ pub enum FuncError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("write tenancy error: {0}")]
     WriteTenancy(#[from] WriteTenancyError),
     #[error(transparent)]

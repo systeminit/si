@@ -12,7 +12,7 @@ use crate::{
     func::binding::FuncBindingId,
     func::execution::{FuncExecution, FuncExecutionError, FuncExecutionPk},
     impl_standard_model, pk, standard_model, standard_model_accessor, DalContext, FuncId,
-    HistoryEventError, ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility,
+    HistoryEventError, StandardModel, StandardModelError, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -29,8 +29,6 @@ pub enum FuncBindingReturnValueError {
     Nats(#[from] NatsError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]

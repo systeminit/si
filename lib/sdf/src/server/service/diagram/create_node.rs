@@ -6,7 +6,7 @@ use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
 use dal::{
     generate_name, Component, ComponentId, Connection, DiagramKind, NodePosition, Schema, SchemaId,
-    Socket, StandardModel, Visibility, WorkspacePk, WsEvent,
+    Socket, StandardModel, Visibility, WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -20,7 +20,6 @@ pub struct CreateNodeRequest {
     pub parent_id: Option<NodeId>,
     pub x: String,
     pub y: String,
-    pub workspace_pk: WorkspacePk,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

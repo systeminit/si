@@ -6,7 +6,7 @@ use dal::{
     generate_name,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
     ChangeSet, ChangeSetStatus, Component, ComponentView, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, SchemaVariant, StandardModel, Visibility, WorkspacePk,
+    FuncBackendResponseType, SchemaVariant, StandardModel, Visibility,
 };
 
 use dal_test::test;
@@ -15,7 +15,7 @@ use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
 
 #[test]
-async fn add_and_run_confirmations(mut octx: DalContext, wid: WorkspacePk) {
+async fn add_and_run_confirmations(mut octx: DalContext) {
     let ctx = &mut octx;
     ctx.update_to_head();
 
@@ -88,10 +88,6 @@ async fn add_and_run_confirmations(mut octx: DalContext, wid: WorkspacePk) {
         .await
         .expect("unable to finalize schema variant");
 
-    // Update to the workspace tenancy and enter a new change set.
-    ctx.update_to_workspace_tenancies(wid)
-        .await
-        .expect("could not update to workspace tenancies");
     let new_change_set = ChangeSet::new(ctx, generate_name(), None)
         .await
         .expect("could not create new change set");

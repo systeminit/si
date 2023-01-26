@@ -33,8 +33,8 @@ use crate::{
     AttributeContextError, AttributePrototypeArgumentError, Component, ComponentId, DalContext,
     Func, FuncBackendKind, FuncBackendResponseType, FuncBinding, FuncError, HistoryEventError,
     IndexMap, InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind,
-    ReadTenancyError, StandardModel, StandardModelError, StatusUpdaterError, Timestamp,
-    TransactionsError, Visibility, WriteTenancy, WsEventError,
+    StandardModel, StandardModelError, StatusUpdaterError, Timestamp, TransactionsError,
+    Visibility, WriteTenancy, WsEventError,
 };
 
 pub mod view;
@@ -161,8 +161,6 @@ pub enum AttributeValueError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("Unable to create parent AttributeValue: {0}")]
     UnableToCreateParent(String),
     #[error("the root prop id stack cannot be empty while work queue is not empty")]

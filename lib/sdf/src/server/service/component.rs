@@ -8,8 +8,8 @@ use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeContextBuilderError,
     AttributePrototypeArgumentError, AttributePrototypeError, AttributeValueError,
     ComponentError as DalComponentError, DiagramError, ExternalProviderError, FuncBindingError,
-    InternalProviderError, ReadTenancyError, SchemaError as DalSchemaError, StandardModelError,
-    TransactionsError, WsEventError,
+    InternalProviderError, SchemaError as DalSchemaError, StandardModelError, TransactionsError,
+    WsEventError,
 };
 use thiserror::Error;
 
@@ -45,8 +45,6 @@ pub enum ComponentError {
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
     #[error("diagram error: {0}")]

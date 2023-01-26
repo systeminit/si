@@ -431,6 +431,7 @@ mod tests {
         use sodiumoxide::crypto::box_;
 
         use super::*;
+        use crate::WorkspacePk;
 
         fn encrypted_secret(
             name: impl Into<String>,
@@ -438,6 +439,7 @@ mod tests {
             kind: SecretKind,
             crypted: impl Into<Vec<u8>>,
             billing_account_pk: BillingAccountPk,
+            wid: WorkspacePk,
         ) -> EncryptedSecret {
             let name = name.into();
             let crypted = crypted.into();
@@ -452,7 +454,7 @@ mod tests {
                 crypted,
                 version: Default::default(),
                 algorithm: Default::default(),
-                tenancy: WriteTenancy::new_billing_account(billing_account_pk),
+                tenancy: WriteTenancy::new(wid),
                 timestamp: Timestamp::now(),
                 visibility: Visibility::new_head(false),
             }
@@ -483,6 +485,7 @@ mod tests {
                 SecretKind::DockerHub,
                 crypted,
                 BillingAccountPk::NONE,
+                WorkspacePk::NONE,
             );
             let decrypted = encrypted
                 .into_decrypted(&pkey, &skey)

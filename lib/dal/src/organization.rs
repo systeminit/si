@@ -5,9 +5,12 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    pk, standard_model_accessor_ro, BillingAccount, BillingAccountError, BillingAccountPk,
-    DalContext, HistoryEvent, HistoryEventError, Timestamp, TransactionsError,
+    pk, standard_model, standard_model_accessor_ro, BillingAccount, BillingAccountError,
+    BillingAccountPk, DalContext, HistoryEvent, HistoryEventError, StandardModelError, Timestamp,
+    TransactionsError,
 };
+
+const ORGANIZATION_GET_BY_PK: &str = include_str!("queries/organization/get_by_pk.sql");
 
 #[derive(Error, Debug)]
 pub enum OrganizationError {
@@ -23,6 +26,8 @@ pub enum OrganizationError {
     BillingAccount(#[from] Box<BillingAccountError>),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
 }
 
 pub type OrganizationResult<T> = Result<T, OrganizationError>;
@@ -64,10 +69,9 @@ impl Organization {
         let json: serde_json::Value = row.try_get("object")?;
         let object: Self = serde_json::from_value(json)?;
 
-        // Ensures HistoryEvent gets stored in our billing account
-        let ctx = ctx.clone_with_new_organization_tenancies(object.pk).await?;
+        // HistoryEvent won't be accessible by any tenancy (null tenancy_workspace_pk)
         let _history_event = HistoryEvent::new(
-            &ctx,
+            ctx,
             "organization.create".to_owned(),
             "Organization created".to_owned(),
             &serde_json::json![{ "visibility": ctx.visibility() }],
@@ -78,6 +82,19 @@ impl Organization {
 
     standard_model_accessor_ro!(name, String);
     standard_model_accessor_ro!(billing_account_pk, BillingAccountPk);
+
+    pub async fn get_by_pk(
+        ctx: &DalContext,
+        pk: &OrganizationPk,
+    ) -> OrganizationResult<Organization> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(ORGANIZATION_GET_BY_PK, &[&pk])
+            .await?;
+        let result = standard_model::object_from_row(row)?;
+        Ok(result)
+    }
 
     pub async fn billing_account(&self, ctx: &DalContext) -> OrganizationResult<BillingAccount> {
         Ok(BillingAccount::get_by_pk(ctx, &self.billing_account_pk)

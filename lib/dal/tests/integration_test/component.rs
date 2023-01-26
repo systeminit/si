@@ -4,7 +4,7 @@ use dal::{
     func::backend::js_command::CommandRunResult, generate_name, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentType,
     ComponentView, Connection, DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider,
-    Prop, PropId, PropKind, SchemaVariant, SocketArity, StandardModel, Visibility, WorkspacePk,
+    Prop, PropId, PropKind, SchemaVariant, SocketArity, StandardModel, Visibility,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
@@ -78,7 +78,7 @@ async fn name_from_context(ctx: &DalContext) {
 }
 
 #[test]
-async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: WorkspacePk) {
+async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext) {
     // Start on head visibility.
     ctx.update_to_head();
 
@@ -91,10 +91,6 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: Works
         .await
         .expect("cannot finalize schema variant");
 
-    // Switch to workspace tenancy with a new change set.
-    ctx.update_to_workspace_tenancies(wid)
-        .await
-        .expect("could not update to workspace tenancies");
     let new_change_set = ChangeSet::new(ctx, generate_name(), None)
         .await
         .expect("could not create new change set");
@@ -216,7 +212,7 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: Works
 }
 
 #[test]
-async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: WorkspacePk) {
+async fn dependent_values_resource_intelligence(mut octx: DalContext) {
     // Switch to head visibility to author schemas and intra-schema-variant relationships.
     let ctx = &mut octx;
     ctx.update_to_head();
@@ -323,10 +319,6 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: Works
     .await
     .expect("could not create attribute prototype argument");
 
-    // Create both components.
-    ctx.update_to_workspace_tenancies(wid)
-        .await
-        .expect("could not update to workspace tenancies");
     let new_change_set = ChangeSet::new(ctx, generate_name(), None)
         .await
         .expect("could not create new change set");

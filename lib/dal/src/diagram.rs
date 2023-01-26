@@ -17,8 +17,8 @@ use crate::socket::SocketError;
 use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributeValueError,
     ChangeSetPk, ComponentError, DalContext, Edge, EdgeError, Node, NodeError, NodeKind,
-    NodePosition, NodePositionError, PropError, ReadTenancyError, SchemaError, SocketId,
-    StandardModel, StandardModelError,
+    NodePosition, NodePositionError, PropError, SchemaError, SocketId, StandardModel,
+    StandardModelError,
 };
 
 pub mod connection;
@@ -70,8 +70,6 @@ pub enum DiagramError {
     Node(#[from] NodeError),
     #[error("node position error: {0}")]
     NodePosition(#[from] NodePositionError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema not found")]

@@ -2,7 +2,6 @@ use axum::extract::Query;
 use axum::Json;
 use dal::{
     qualification::QualificationSubCheckStatus, Component, ComponentId, StandardModel, Visibility,
-    WorkspacePk,
 };
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +11,6 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetComponentsMetadataRequest {
-    pub workspace_pk: WorkspacePk,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

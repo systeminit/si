@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
+use si_data_pg::PgError;
 use thiserror::Error;
 
 use crate::component::confirmation::ConfirmationRunPayload;
@@ -10,7 +11,7 @@ use crate::{
     status::StatusMessage,
     workflow::{CommandOutput, CommandReturn},
     ActorView, AttributeValueId, BillingAccountPk, ChangeSetPk, ComponentId, DalContext, PropId,
-    ReadTenancy, SchemaPk, SocketId, StandardModelError,
+    ReadTenancy, SchemaPk, SocketId, StandardModelError, TransactionsError,
 };
 
 #[derive(Error, Debug)]
@@ -20,7 +21,13 @@ pub enum WsEventError {
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error(transparent)]
+    Pg(#[from] PgError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
+    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error("no workspace in tenancy: {0:?}")]
+    NoWorkspaceInTenancy(ReadTenancy),
 }
 
 pub type WsEventResult<T> = Result<T, WsEventError>;
@@ -89,7 +96,18 @@ pub struct WsEvent {
 
 impl WsEvent {
     pub async fn new(ctx: &DalContext, payload: WsPayload) -> WsEventResult<Self> {
-        let billing_account_pks = Self::billing_account_pk_from_tenancy(ctx.read_tenancy());
+        let workspace_pk = match ctx.read_tenancy().workspace_pk() {
+            Some(pk) => pk,
+            None => {
+                return Err(WsEventError::NoWorkspaceInTenancy(
+                    ctx.read_tenancy().clone(),
+                ));
+            }
+        };
+        let billing_account_pks = vec![
+            ctx.find_billing_account_pk_for_workspace(workspace_pk)
+                .await?,
+        ];
         let change_set_pk = ctx.visibility().change_set_pk;
         let actor = ActorView::from_history_actor(ctx, *ctx.history_actor()).await?;
 
@@ -100,10 +118,6 @@ impl WsEvent {
             change_set_pk,
             payload,
         })
-    }
-
-    pub fn billing_account_pk_from_tenancy(tenancy: &ReadTenancy) -> Vec<BillingAccountPk> {
-        tenancy.billing_accounts().into()
     }
 
     pub async fn publish(&self, ctx: &DalContext) -> WsEventResult<()> {

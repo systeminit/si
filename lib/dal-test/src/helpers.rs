@@ -7,8 +7,8 @@ use dal::{
     },
     BillingAccount, BillingAccountPk, BillingAccountSignup, ChangeSet, Component, DalContext,
     DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor, JwtSecretKey, Node, Prop,
-    PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, User,
-    Visibility,
+    PropId, ReadTenancy, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    StandardModel, User, Visibility, WriteTenancy,
 };
 use names::{Generator, Name};
 
@@ -34,7 +34,7 @@ pub async fn billing_account_signup(
 ) -> Result<(BillingAccountSignup, String)> {
     use color_eyre::eyre::WrapErr;
 
-    let ctx = ctx.clone_with_head();
+    let mut ctx = ctx.clone_with_head();
 
     let billing_account_name = generate_fake_name();
     let user_name = format!("frank {billing_account_name}");
@@ -42,7 +42,7 @@ pub async fn billing_account_signup(
     let user_password = "snakes";
 
     let nba = BillingAccount::signup(
-        &ctx,
+        &mut ctx,
         &billing_account_name,
         &user_name,
         &user_email,
@@ -52,7 +52,7 @@ pub async fn billing_account_signup(
     .wrap_err("cannot signup a new billing_account")?;
     let auth_token = nba
         .user
-        .login(&ctx, jwt_secret_key, nba.billing_account.pk(), "snakes")
+        .login(&ctx, jwt_secret_key, nba.workspace.pk(), "snakes")
         .await
         .wrap_err("cannot log in newly created user")?;
     Ok((nba, auth_token))
@@ -92,10 +92,7 @@ pub async fn create_billing_account(ctx: &DalContext) -> BillingAccount {
     create_billing_account_with_name(ctx, name).await
 }
 
-pub async fn create_change_set(
-    ctx: &DalContext,
-    _billing_account_pk: BillingAccountPk,
-) -> ChangeSet {
+pub async fn create_change_set(ctx: &DalContext) -> ChangeSet {
     let name = generate_fake_name();
     ChangeSet::new(ctx, &name, None)
         .await
@@ -107,21 +104,15 @@ pub fn create_visibility_for_change_set(change_set: &ChangeSet) -> Visibility {
 }
 
 /// Creates a new [`Visibility`] backed by a new [`ChangeSet`]
-pub async fn create_visibility_for_new_change_set(
-    ctx: &DalContext,
-    billing_account_pk: BillingAccountPk,
-) -> Visibility {
+pub async fn create_visibility_for_new_change_set(ctx: &DalContext) -> Visibility {
     let _history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(ctx, billing_account_pk).await;
+    let change_set = create_change_set(ctx).await;
 
     create_visibility_for_change_set(&change_set)
 }
 
-pub async fn create_change_set_and_update_ctx(ctx: &mut DalContext, nba: &BillingAccountSignup) {
-    ctx.update_to_workspace_tenancies(*nba.workspace.pk())
-        .await
-        .expect("failed to update dal context to workspace tenancies");
-    let visibility = create_visibility_for_new_change_set(ctx, *nba.billing_account.pk()).await;
+pub async fn create_change_set_and_update_ctx(ctx: &mut DalContext) {
+    let visibility = create_visibility_for_new_change_set(ctx).await;
     ctx.update_visibility(visibility);
 }
 
@@ -134,20 +125,17 @@ pub async fn create_ctx_for_new_change_set(
         .build(RequestContext::default())
         .await
         .expect("failed to build dal context");
-    ctx.update_to_workspace_tenancies(*nba.workspace.pk())
-        .await
-        .expect("failed to update dal context to workspace tenancies");
+    ctx.update_tenancies(
+        ReadTenancy::new(*nba.workspace.pk()),
+        WriteTenancy::new(*nba.workspace.pk()),
+    );
+    create_change_set_and_update_ctx(&mut ctx).await;
 
-    let visibility = create_visibility_for_new_change_set(&ctx, *nba.billing_account.pk()).await;
-    ctx.update_visibility(visibility);
     ctx
 }
 
-pub async fn new_ctx_for_new_change_set(
-    ctx: &DalContext,
-    billing_account_pk: BillingAccountPk,
-) -> DalContext {
-    let visibility = create_visibility_for_new_change_set(ctx, billing_account_pk).await;
+pub async fn new_ctx_for_new_change_set(ctx: &DalContext) -> DalContext {
+    let visibility = create_visibility_for_new_change_set(ctx).await;
     ctx.clone_with_new_visibility(visibility)
 }
 

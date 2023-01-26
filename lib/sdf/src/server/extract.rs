@@ -7,7 +7,7 @@ use axum::{
 };
 use dal::{
     context::{self, DalContextBuilder, ServicesContext},
-    ReadTenancy, RequestContext, User, UserClaim, WorkspacePk, WriteTenancy,
+    ReadTenancy, RequestContext, User, UserClaim, WriteTenancy,
 };
 use hyper::StatusCode;
 use si_data_pg::{InstrumentedClient, InstrumentedTransaction, PgError};
@@ -110,6 +110,7 @@ impl PgRwTxn {
     }
 }
 
+#[derive(Debug)]
 pub struct PgRoTxn(InstrumentedClient);
 
 #[async_trait]
@@ -270,8 +271,9 @@ where
         let claim = UserClaim::from_bearer_token(&ctx, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
-        let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_pk]);
-        ctx.update_read_tenancy(read_tenancy);
+        let write_tenancy = WriteTenancy::new(claim.workspace_pk);
+        let read_tenancy = write_tenancy.clone_into_read_tenancy();
+        ctx.update_tenancies(read_tenancy, write_tenancy);
 
         User::authorize(&ctx, &claim.user_id)
             .await
@@ -305,8 +307,9 @@ where
         let claim = UserClaim::from_bearer_token(&ctx, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
-        let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_pk]);
-        ctx.update_read_tenancy(read_tenancy);
+        let write_tenancy = WriteTenancy::new(claim.workspace_pk);
+        let read_tenancy = write_tenancy.clone_into_read_tenancy();
+        ctx.update_tenancies(read_tenancy, write_tenancy);
 
         User::authorize(&ctx, &claim.user_id)
             .await
@@ -356,55 +359,15 @@ async fn tenancy_from_request<P: Send>(
         .await
         .map_err(internal_error)?;
 
-    let headers = req.headers();
-    let write_tenancy = if let Some(workspace_header_value) = headers.get("WorkspacePk") {
-        let workspace_pk = workspace_header_value.to_str().map_err(internal_error)?;
-        let workspace_pk = workspace_pk
-            .parse::<WorkspacePk>()
-            .map_err(not_acceptable_error)?;
-        WriteTenancy::new_workspace(workspace_pk)
-    } else if headers.get("Authorization").is_some() {
-        WriteTenancy::new_billing_account(claim.billing_account_pk)
-    } else {
-        // Should only happen at signup where the billing account creation doesn't depend on any tenancy
-        // Empty tenancy means things can be written, but won't ever be read, with exception of billing accounts
-        WriteTenancy::new_empty()
-    };
-    ctx.update_write_tenancy(write_tenancy.clone());
-
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&ctx)
-        .await
-        .map_err(internal_error)?;
-
-    // Ensures user can access workspace specified by id
-    if !read_tenancy.billing_accounts().is_empty()
-        && !read_tenancy
-            .billing_accounts()
-            .contains(&claim.billing_account_pk)
-    {
-        return Err(not_acceptable_error("failed to determine valid tenacy"));
-    }
+    let write_tenancy = WriteTenancy::new(claim.workspace_pk);
+    let read_tenancy = write_tenancy.clone_into_read_tenancy();
+    ctx.update_tenancies(read_tenancy.clone(), write_tenancy.clone());
 
     Ok(Tenancy(write_tenancy, read_tenancy))
 }
 
 fn internal_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
     let status_code = StatusCode::INTERNAL_SERVER_ERROR;
-    (
-        status_code,
-        Json(serde_json::json!({
-            "error": {
-                "message": message.to_string(),
-                "statusCode": status_code.as_u16(),
-                "code": 42,
-            },
-        })),
-    )
-}
-
-fn not_acceptable_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
-    let status_code = StatusCode::NOT_ACCEPTABLE;
     (
         status_code,
         Json(serde_json::json!({

@@ -6,8 +6,8 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, node::NodeId, pk, standard_model, standard_model_accessor,
-    standard_model_belongs_to, DiagramKind, HistoryEventError, Node, ReadTenancyError,
-    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    standard_model_belongs_to, DiagramKind, HistoryEventError, Node, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -18,8 +18,6 @@ pub enum NodePositionError {
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
 }
 
 const LIST_FOR_NODE: &str = include_str!("queries/node_position_list_for_node.sql");

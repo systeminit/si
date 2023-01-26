@@ -5,9 +5,11 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    pk, standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, OrganizationPk,
-    Timestamp, TransactionsError,
+    pk, standard_model, standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError,
+    OrganizationPk, StandardModelError, Timestamp, TransactionsError,
 };
+
+const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
 
 #[derive(Error, Debug)]
 pub enum WorkspaceError {
@@ -21,6 +23,8 @@ pub enum WorkspaceError {
     HistoryEvent(#[from] HistoryEventError),
     #[error(transparent)]
     Transactions(#[from] Box<TransactionsError>),
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
 }
 
 pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
@@ -42,8 +46,23 @@ impl Workspace {
     }
 
     #[instrument(skip_all)]
+    pub async fn builtin(ctx: &DalContext) -> WorkspaceResult<Self> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM workspace_find_or_create_builtin_v1()",
+                &[],
+            )
+            .await?;
+
+        let object = standard_model::object_from_row(row)?;
+        Ok(object)
+    }
+
+    #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext,
+        ctx: &mut DalContext,
         name: impl AsRef<str>,
         organization_pk: OrganizationPk,
     ) -> WorkspaceResult<Self> {
@@ -62,13 +81,12 @@ impl Workspace {
         let json: serde_json::Value = row.try_get("object")?;
         let object: Self = serde_json::from_value(json)?;
 
-        // Ensures HistoryEvent gets stored in our workspace
-        let ctx = ctx
-            .clone_with_new_workspace_tenancies(object.pk)
+        ctx.update_to_workspace_tenancies(object.pk)
             .await
             .map_err(Box::new)?;
+
         let _history_event = HistoryEvent::new(
-            &ctx,
+            ctx,
             "organization.create".to_owned(),
             "Organization created".to_owned(),
             &serde_json::json![{ "visibility": ctx.visibility() }],
@@ -77,5 +95,16 @@ impl Workspace {
         Ok(object)
     }
 
+    pub async fn get_by_pk(ctx: &DalContext, pk: &WorkspacePk) -> WorkspaceResult<Workspace> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(WORKSPACE_GET_BY_PK, &[&pk])
+            .await?;
+        let result = standard_model::object_from_row(row)?;
+        Ok(result)
+    }
+
     standard_model_accessor_ro!(name, String);
+    standard_model_accessor_ro!(organization_pk, OrganizationPk);
 }

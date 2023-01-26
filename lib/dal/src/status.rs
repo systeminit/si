@@ -413,7 +413,7 @@ pub enum StatusUpdaterError {
     #[error("component error {0}")]
     Component(#[from] ComponentError),
     /// When a realtime update fails to send
-    #[error("error publishing realtime update")]
+    #[error("error publishing realtime update {0}")]
     PublishRealtime(#[from] WsEventError),
     /// When a status update error is returned
     #[error(transparent)]
