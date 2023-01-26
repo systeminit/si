@@ -1,7 +1,4 @@
-use dal::{
-    component::ComponentKind, schema::SchemaUiMenu, BillingAccountSignup, DalContext, Schema,
-    StandardModel,
-};
+use dal::{component::ComponentKind, schema::SchemaUiMenu, DalContext, Schema, StandardModel};
 
 use dal_test::{test, test_harness::create_schema};
 
@@ -13,27 +10,6 @@ async fn new(ctx: &DalContext) {
     let _schema = Schema::new(ctx, "mastodon", &ComponentKind::Standard)
         .await
         .expect("cannot create schema");
-}
-
-#[test]
-async fn workspaces(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let schema = Schema::new(ctx, "mastodon", &ComponentKind::Standard)
-        .await
-        .expect("cannot create schema");
-    schema
-        .add_workspace(ctx, nba.workspace.id())
-        .await
-        .expect("cannot add organization");
-
-    let relations = schema.workspaces(ctx).await.expect("cannot get workspaces");
-    assert_eq!(relations, vec![nba.workspace.clone()]);
-
-    schema
-        .remove_workspace(ctx, nba.workspace.id())
-        .await
-        .expect("cannot remove workspace");
-    let relations = schema.workspaces(ctx).await.expect("cannot get workspace");
-    assert_eq!(relations, vec![]);
 }
 
 #[test]

@@ -6,5 +6,5 @@ WHERE
         $1,
         change_sets.tenancy_billing_account_pks,
         change_sets.tenancy_organization_pks,
-        change_sets.tenancy_workspace_ids
+        change_sets.tenancy_workspace_pks
     )

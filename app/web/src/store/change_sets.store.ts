@@ -19,10 +19,10 @@ export function changeSetIdNil(): string {
 
 export function useChangeSetsStore() {
   const workspacesStore = useWorkspacesStore();
-  const workspaceId = workspacesStore.selectedWorkspaceId;
+  const workspacePk = workspacesStore.selectedWorkspacePk;
 
   return addStoreHooks(
-    defineStore(`w${workspaceId || "NONE"}/change-sets`, {
+    defineStore(`w${workspacePk || "NONE"}/change-sets`, {
       state: () => ({
         changeSetsById: {} as Record<ChangeSetId, ChangeSet>,
         selectedChangeSetId: null as ChangeSetId | null,
@@ -47,7 +47,7 @@ export function useChangeSetsStore() {
             : null,
 
         // expose here so other stores can get it without needing to call useWorkspaceStore directly
-        selectedWorkspaceId: () => workspaceId,
+        selectedWorkspacePk: () => workspacePk,
       },
       actions: {
         async FETCH_CHANGE_SETS() {
@@ -116,7 +116,7 @@ export function useChangeSetsStore() {
           // - select one created by you
           // - track last selected in localstorage and select that one...
           const lastChangeSetId = storage.getItem(
-            `SI:LAST_CHANGE_SET/${workspaceId}`,
+            `SI:LAST_CHANGE_SET/${workspacePk}`,
           );
           if (!lastChangeSetId) return false;
           if (
@@ -129,15 +129,15 @@ export function useChangeSetsStore() {
         },
       },
       onActivated() {
-        if (!workspaceId) return;
+        if (!workspacePk) return;
         this.FETCH_CHANGE_SETS();
         const stopWatchSelectedChangeSet = watch(
           () => this.selectedChangeSet,
           () => {
             // store last used change set (per workspace) in localstorage
-            if (this.selectedChangeSet && workspaceId) {
+            if (this.selectedChangeSet && workspacePk) {
               storage.setItem(
-                `SI:LAST_CHANGE_SET/${workspaceId}`,
+                `SI:LAST_CHANGE_SET/${workspacePk}`,
                 this.selectedChangeSet.pk,
               );
             }
@@ -147,7 +147,7 @@ export function useChangeSetsStore() {
 
         const realtimeStore = useRealtimeStore();
         // TODO: if selected change set gets cancelled/applied, need to show error if by other user, and switch to head...
-        realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
+        realtimeStore.subscribe(this.$id, `workspace/${workspacePk}`, [
           {
             eventType: "ChangeSetCreated",
             callback: this.FETCH_CHANGE_SETS,

@@ -498,7 +498,7 @@ impl Component {
             .pg_txn()
             .query_opt(
                 "SELECT id FROM components WHERE id = $1 AND in_tenancy_v1($2, components.tenancy_billing_account_pks,
-                                                                           components.tenancy_organization_pks, components.tenancy_workspace_ids) LIMIT 1",
+                                                                           components.tenancy_organization_pks, components.tenancy_workspace_pks) LIMIT 1",
                 &[
                     &id,
                     ctx.read_tenancy(),

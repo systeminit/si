@@ -1,6 +1,6 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{secret::SecretView, Secret, StandardModel, Visibility, WorkspaceId};
+use dal::{secret::SecretView, Secret, StandardModel, Visibility, WorkspacePk};
 use serde::{Deserialize, Serialize};
 
 use super::SecretResult;
@@ -9,7 +9,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListSecretRequest {
-    pub workspace_id: WorkspaceId,
+    pub workspace_pk: WorkspacePk,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

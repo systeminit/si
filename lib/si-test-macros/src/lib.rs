@@ -118,7 +118,7 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 /// * `services_ctx: ServicesContext`: a services context object, used to create DAL contexts
 /// * `handle: ShutdownHandle`: the shutdown handle for the Veritech server running alongside each
 ///    test
-/// * `wid: WorkspaceId`: the workspace ID of the billing account created for this test
+/// * `wid: WorkspacePk: the workspace PK of the billing account created for this test
 ///
 /// # Referenced/Borrowed Types
 ///

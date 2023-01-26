@@ -7,7 +7,7 @@ WHERE e.id IN (SELECT id
                  AND in_tenancy_v1($1,
                                    tenancy_billing_account_pks,
                                    tenancy_organization_pks,
-                                   tenancy_workspace_ids))
+                                   tenancy_workspace_pks))
 
   AND visibility_change_set_pk = $2
   AND visibility_deleted_at IS NOT NULL
@@ -19,5 +19,5 @@ WHERE e.id IN (SELECT id
   AND in_tenancy_v1($1,
                     tenancy_billing_account_pks,
                     tenancy_organization_pks,
-                    tenancy_workspace_ids)
+                    tenancy_workspace_pks)
 ORDER BY e.id DESC

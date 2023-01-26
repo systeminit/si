@@ -118,7 +118,7 @@ pub async fn create_visibility_for_new_change_set(
 }
 
 pub async fn create_change_set_and_update_ctx(ctx: &mut DalContext, nba: &BillingAccountSignup) {
-    ctx.update_to_workspace_tenancies(*nba.workspace.id())
+    ctx.update_to_workspace_tenancies(*nba.workspace.pk())
         .await
         .expect("failed to update dal context to workspace tenancies");
     let visibility = create_visibility_for_new_change_set(ctx, *nba.billing_account.pk()).await;
@@ -134,7 +134,7 @@ pub async fn create_ctx_for_new_change_set(
         .build(RequestContext::default())
         .await
         .expect("failed to build dal context");
-    ctx.update_to_workspace_tenancies(*nba.workspace.id())
+    ctx.update_to_workspace_tenancies(*nba.workspace.pk())
         .await
         .expect("failed to update dal context to workspace tenancies");
 

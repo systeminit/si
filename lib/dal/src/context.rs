@@ -13,7 +13,7 @@ use crate::{
         producer::JobProducer,
     },
     BillingAccountPk, HistoryActor, OrganizationPk, ReadTenancy, ReadTenancyError, StandardModel,
-    Visibility, WorkspaceId, WriteTenancy, WriteTenancyError,
+    Visibility, WorkspacePk, WriteTenancy, WriteTenancyError,
 };
 
 /// A context type which contains handles to common core service dependencies.
@@ -342,10 +342,9 @@ impl DalContext {
     /// Updates this context with read/write tenancies for a specific workspace.
     pub async fn update_to_workspace_tenancies(
         &mut self,
-        wid: WorkspaceId,
+        wid: WorkspacePk,
     ) -> Result<(), TransactionsError> {
-        self.read_tenancy =
-            ReadTenancy::new_workspace(self.txns().pg(), vec![wid], self.visibility()).await?;
+        self.read_tenancy = ReadTenancy::new_workspace(self.txns().pg(), vec![wid]).await?;
         self.write_tenancy = WriteTenancy::new_workspace(wid);
         Ok(())
     }
@@ -353,7 +352,7 @@ impl DalContext {
     /// Clones a new context from this one with read/write tenancies for a specific workspace.
     pub async fn clone_with_new_workspace_tenancies(
         &self,
-        wid: WorkspaceId,
+        wid: WorkspacePk,
     ) -> Result<DalContext, TransactionsError> {
         let mut new = self.clone();
         new.update_to_workspace_tenancies(wid).await?;

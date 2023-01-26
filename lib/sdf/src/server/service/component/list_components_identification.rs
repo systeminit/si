@@ -3,7 +3,7 @@ use axum::Json;
 use chrono::{DateTime, Utc};
 use dal::{
     node::Node, ComponentId, DiagramKind, LabelEntry, LabelList, ResourceView, SchemaId,
-    SchemaVariantId, StandardModel, Visibility, WorkspaceId,
+    SchemaVariantId, StandardModel, Visibility, WorkspacePk,
 };
 use dal::{ActorView, ComponentStatus, DalContext, HistoryActorTimestamp};
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListComponentsIdentificationRequest {
-    pub workspace_id: WorkspaceId,
+    pub workspace_pk: WorkspacePk,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

@@ -16,7 +16,7 @@ use crate::{
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
     AttributePrototypeError, AttributeValueError, Component, DalContext, FuncError,
     HistoryEventError, PropError, ReadTenancyError, StandardModel, StandardModelError, Timestamp,
-    ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WsEventError,
+    ValidationPrototypeError, Visibility, WsEventError,
 };
 
 pub use ui_menu::SchemaUiMenu;
@@ -143,21 +143,6 @@ impl Schema {
         default_schema_variant_id,
         Option<Pk(SchemaVariantId)>,
         SchemaResult
-    );
-
-    standard_model_many_to_many!(
-        lookup_fn: workspaces,
-        associate_fn: add_workspace,
-        disassociate_fn: remove_workspace,
-        disassociate_all_fn: remove_all_workspaces,
-        table_name: "schema_many_to_many_workspace",
-        left_table: "schemas",
-        left_id: SchemaId,
-        right_table: "workspaces",
-        right_id: WorkspaceId,
-        which_table_is_this: "left",
-        returns: Workspace,
-        result: SchemaResult,
     );
 
     standard_model_has_many!(

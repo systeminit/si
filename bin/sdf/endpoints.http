@@ -32,7 +32,7 @@ Content-Type: application/json
 POST http://localhost:8080/api/dev/save_func
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
-workspaceid: 1
+WorkspacePk: 1
 
 {
   "id": 21,
@@ -51,7 +51,7 @@ workspaceid: 1
 POST http://localhost:8080/api/diagram/connect_component_to_frame
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
-workspaceid: 1
+WorkspacePk: 1
 
 {
   "fromNodeId": 2,
@@ -63,37 +63,37 @@ workspaceid: 1
 POST http://localhost:8080/api/diagram/delete_connection
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
-workspaceid: 01GPC2ZVVMSQ0AWPBW9DS87A0E
+WorkspacePk: 01GPC2ZVVMSQ0AWPBW9DS87A0E
 
 {
   "visibility_change_set_pk": "01GPGYWTG6B7RSP1X9YNH52799",
   "edgeId": "01GPH1C0K2T7WSVSAHJDC4KC5A",
-  "workspaceId": "01GPC2ZVVMSQ0AWPBW9DS87A0E"
+  "workspacePk": "01GPC2ZVVMSQ0AWPBW9DS87A0E"
 }
 
 ### Get Diagram
 
 GET http://localhost:8080/api/diagram/get_diagram?visibility_change_set_pk=01GQ35YNM21H71VVDTRN8YJJP2
 authorization: Bearer {{auth_token}}
-WorkspaceId: 01GQ35YGTWRYNMNHP7QA8A1XD1
+WorkspacePk: 01GQ35YGTWRYNMNHP7QA8A1XD1
 
 ### Restore Edge
 POST http://localhost:8080/api/diagram/restore_connection
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
-workspaceid: 01GQ35YGTWRYNMNHP7QA8A1XD1
+WorkspacePk: 01GQ35YGTWRYNMNHP7QA8A1XD1
 
 {
   "visibility_change_set_pk": "01GQ37T27VP4WEN5TBN7VE3YXH",
   "edgeId": "01GQ37D814ZRGF52RAVMVHNZ5S",
-  "workspaceId": "01GQ35YGTWRYNMNHP7QA8A1XD1"
+  "workspacePk": "01GQ35YGTWRYNMNHP7QA8A1XD1"
 }
 
 ### Delete Component
 POST http://localhost:8080/api/diagram/delete_component
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
-workspaceid: 01GQJPSJ6E5QVJV3Z5X6WMPM14
+WorkspacePk: 01GQJPSJ6E5QVJV3Z5X6WMPM14
 
 {
   "visibility_change_set_pk": "01GQJPTHW71B8Y4YG7DF4EVBN1",
@@ -104,7 +104,7 @@ workspaceid: 01GQJPSJ6E5QVJV3Z5X6WMPM14
 POST http://localhost:8080/api/diagram/restore_component
 Authorization: Bearer {{auth_token}}
 Content-Type: application/json
-workspaceid: 01GQJPSJ6E5QVJV3Z5X6WMPM14
+WorkspacePk: 01GQJPSJ6E5QVJV3Z5X6WMPM14
 
 {
   "visibility_change_set_pk": "01GQJPTHW71B8Y4YG7DF4EVBN1",

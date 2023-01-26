@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
   <RealtimeConnectionStatus />
-  <router-view :key="selectedWorkspace?.id" />
+  <router-view :key="selectedWorkspace?.pk" />
   <Teleport to="body">
     <canvas
       id="confetti"

@@ -1,6 +1,6 @@
 use dal::{
     BillingAccountPk, BillingAccountSignup, DalContext, JwtSecretKey, OrganizationPk, ReadTenancy,
-    StandardModel, WorkspaceId, WriteTenancy,
+    WorkspacePk, WriteTenancy,
 };
 use dal_test::{test, test_harness::billing_account_signup};
 
@@ -45,7 +45,7 @@ async fn check_workspace_specific_billing_account(
     _jwt_secret_key: &JwtSecretKey,
 ) {
     let read_tenancy = ReadTenancy::new_billing_account(vec![*nba.billing_account.pk()]);
-    let write_tenancy = WriteTenancy::new_workspace(*nba.workspace.id());
+    let write_tenancy = WriteTenancy::new_workspace(*nba.workspace.pk());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -60,10 +60,9 @@ async fn check_workspace_in_billing_account(
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
-    let read_tenancy =
-        ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.id()], ctx.visibility())
-            .await
-            .expect("unable to set workspace read read_tenancy");
+    let read_tenancy = ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.pk()])
+        .await
+        .expect("unable to set workspace read read_tenancy");
     assert_eq!(
         read_tenancy.billing_accounts(),
         vec![*nba.billing_account.pk()]
@@ -90,7 +89,7 @@ async fn check_workspace_specific_organization(
         read_tenancy.billing_accounts(),
         vec![*nba.billing_account.pk()]
     );
-    let write_tenancy = WriteTenancy::new_workspace(*nba.workspace.id());
+    let write_tenancy = WriteTenancy::new_workspace(*nba.workspace.pk());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -105,10 +104,9 @@ async fn check_workspace_in_organization(
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
-    let read_tenancy =
-        ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.id()], ctx.visibility())
-            .await
-            .expect("unable to set workspace read read_tenancy");
+    let read_tenancy = ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.pk()])
+        .await
+        .expect("unable to set workspace read read_tenancy");
     let write_tenancy = WriteTenancy::new_organization(*nba.organization.pk());
 
     let check = write_tenancy
@@ -231,11 +229,10 @@ async fn check_organization_pk_mismatched(ctx: &DalContext, jwt_secret_key: &Jwt
 #[test]
 async fn check_workspace_pk_identical(ctx: &DalContext, jwt_secret_key: &JwtSecretKey) {
     let (nba, _) = billing_account_signup(ctx, jwt_secret_key).await;
-    let read_tenancy =
-        ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.id()], ctx.visibility())
-            .await
-            .expect("unable to set workspace read read_tenancy");
-    let write_tenancy = WriteTenancy::new_workspace(*nba.workspace.id());
+    let read_tenancy = ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.pk()])
+        .await
+        .expect("unable to set workspace read read_tenancy");
+    let write_tenancy = WriteTenancy::new_workspace(*nba.workspace.pk());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -252,15 +249,14 @@ async fn check_workspace_pk_overlapping(ctx: &DalContext, jwt_secret_key: &JwtSe
     let read_tenancy = ReadTenancy::new_workspace(
         ctx.pg_txn(),
         vec![
-            *nba.workspace.id(),
-            *nba2.workspace.id(),
-            *nba3.workspace.id(),
+            *nba.workspace.pk(),
+            *nba2.workspace.pk(),
+            *nba3.workspace.pk(),
         ],
-        ctx.visibility(),
     )
     .await
     .expect("unable to set workspace read read_tenancy");
-    let write_tenancy = WriteTenancy::new_workspace(*nba2.workspace.id());
+    let write_tenancy = WriteTenancy::new_workspace(*nba2.workspace.pk());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -272,11 +268,10 @@ async fn check_workspace_pk_overlapping(ctx: &DalContext, jwt_secret_key: &JwtSe
 #[test]
 async fn check_workspace_pk_mismatched(ctx: &DalContext, jwt_secret_key: &JwtSecretKey) {
     let (nba, _) = billing_account_signup(ctx, jwt_secret_key).await;
-    let read_tenancy =
-        ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.id()], ctx.visibility())
-            .await
-            .expect("unable to set workspace read read_tenancy");
-    let write_tenancy = WriteTenancy::new_workspace(WorkspaceId::NONE);
+    let read_tenancy = ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.pk()])
+        .await
+        .expect("unable to set workspace read read_tenancy");
+    let write_tenancy = WriteTenancy::new_workspace(WorkspacePk::NONE);
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)

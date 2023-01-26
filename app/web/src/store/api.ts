@@ -30,11 +30,11 @@ api.interceptors.request.use((config) => {
   if (authStore.token) {
     config.headers.authorization = `Bearer ${authStore.token}`;
   }
-  // automatically set selected workspace id header
+  // automatically set selected workspace pk header
   // we will probably want to do something similar with change-set
-  // also need to remove workspace id from body params in many places
-  if (workspacesStore.selectedWorkspaceId) {
-    config.headers.WorkspaceId = workspacesStore.selectedWorkspaceId;
+  // also need to remove workspace pk from body params in many places
+  if (workspacesStore.selectedWorkspacePk) {
+    config.headers.WorkspacePk = workspacesStore.selectedWorkspacePk;
   }
   return config;
 });

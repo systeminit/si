@@ -2,7 +2,7 @@ CREATE TYPE tenancy_record_v1 as
 (
     tenancy_billing_account_pks ident[],
     tenancy_organization_pks    ident[],
-    tenancy_workspace_ids       ident[]
+    tenancy_workspace_pks       ident[]
 );
 
 CREATE OR REPLACE FUNCTION tenancy_json_to_columns_v1(this_tenancy jsonb,
@@ -15,7 +15,7 @@ BEGIN
     FROM jsonb_to_record(this_tenancy) AS x(
                                             tenancy_billing_account_pks ident[],
                                             tenancy_organization_pks ident[],
-                                            tenancy_workspace_ids ident[]
+                                            tenancy_workspace_pks ident[]
         )
     INTO result;
 END ;
@@ -25,7 +25,7 @@ CREATE OR REPLACE FUNCTION in_tenancy_v1(
     read_tenancy                    jsonb,
     row_tenancy_billing_account_pks ident[],
     row_tenancy_organization_pks    ident[],
-    row_tenancy_workspace_ids       ident[]
+    row_tenancy_workspace_pks       ident[]
 )
 RETURNS bool
 LANGUAGE sql
@@ -37,5 +37,5 @@ SELECT
     -- the same for a ident[], so we translate the jsonb array into a PG array, and use ARRAY && ARRAY for the check.
     (translate(read_tenancy ->> 'tenancy_billing_account_pks', '[]', '{}')::ident[] && row_tenancy_billing_account_pks)
     OR (translate(read_tenancy ->> 'tenancy_organization_pks', '[]', '{}')::ident[] && row_tenancy_organization_pks)
-    OR (translate(read_tenancy ->> 'tenancy_workspace_ids', '[]', '{}')::ident[] && row_tenancy_workspace_ids)
+    OR (translate(read_tenancy ->> 'tenancy_workspace_pks', '[]', '{}')::ident[] && row_tenancy_workspace_pks)
 $$;

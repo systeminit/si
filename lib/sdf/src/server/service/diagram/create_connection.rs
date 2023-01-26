@@ -2,7 +2,7 @@ use axum::Json;
 use dal::edge::EdgeKind;
 use dal::{
     job::definition::DependentValuesUpdate, node::NodeId, socket::SocketId, AttributeReadContext,
-    AttributeValue, Connection, ExternalProvider, Node, StandardModel, Visibility, WorkspaceId,
+    AttributeValue, Connection, ExternalProvider, Node, StandardModel, Visibility, WorkspacePk,
     WsEvent,
 };
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,7 @@ pub struct CreateConnectionRequest {
     pub from_socket_id: SocketId,
     pub to_node_id: NodeId,
     pub to_socket_id: SocketId,
-    pub workspace_id: WorkspaceId,
+    pub workspace_pk: WorkspacePk,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

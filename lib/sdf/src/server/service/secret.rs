@@ -3,7 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{KeyPairError, StandardModelError, TransactionsError, WorkspaceId, WsEventError};
+use dal::{KeyPairError, StandardModelError, TransactionsError, WorkspacePk, WsEventError};
 use thiserror::Error;
 
 pub mod create_secret;
@@ -25,7 +25,7 @@ pub enum SecretError {
     #[error(transparent)]
     ContextTransactions(#[from] TransactionsError),
     #[error("workspace not found: {0}")]
-    WorkspaceNotFound(WorkspaceId),
+    WorkspaceNotFound(WorkspacePk),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
 }

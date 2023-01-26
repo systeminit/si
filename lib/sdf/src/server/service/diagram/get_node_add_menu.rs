@@ -1,6 +1,6 @@
 use axum::Json;
 use dal::node_menu::GenerateMenuItem;
-use dal::{Visibility, WorkspaceId};
+use dal::{Visibility, WorkspacePk};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
@@ -9,7 +9,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetNodeAddMenuRequest {
-    pub workspace_id: WorkspaceId,
+    pub workspace_pk: WorkspacePk,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

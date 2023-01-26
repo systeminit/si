@@ -1,5 +1,5 @@
 use axum::{extract::Query, Json};
-use dal::{Schema, SchemaId, StandardModel, Visibility, WorkspaceId};
+use dal::{Schema, SchemaId, StandardModel, Visibility, WorkspacePk};
 use serde::{Deserialize, Serialize};
 
 use super::{SchemaError, SchemaResult};
@@ -9,7 +9,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[serde(rename_all = "camelCase")]
 pub struct GetSchemaRequest {
     pub schema_id: SchemaId,
-    pub workspace_id: WorkspaceId,
+    pub workspace_pk: WorkspacePk,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

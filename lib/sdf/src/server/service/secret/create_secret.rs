@@ -1,7 +1,7 @@
 use axum::Json;
 use dal::{
     key_pair::KeyPairId, EncryptedSecret, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
-    SecretVersion, Visibility, WorkspaceId, WsEvent,
+    SecretVersion, Visibility, WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +19,7 @@ pub struct CreateSecretRequest {
     pub key_pair_id: KeyPairId,
     pub version: SecretVersion,
     pub algorithm: SecretAlgorithm,
-    pub workspace_id: WorkspaceId,
+    pub workspace_pk: WorkspacePk,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
