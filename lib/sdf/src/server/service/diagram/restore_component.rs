@@ -21,7 +21,7 @@ pub async fn restore_component(
 ) -> DiagramResult<()> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    Component::restore_by_id(&ctx, request.component_id).await?;
+    Component::restore_and_propagate(&ctx, request.component_id).await?;
 
     WsEvent::change_set_written(&ctx)
         .await?

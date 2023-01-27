@@ -631,7 +631,7 @@ async fn create_delete_and_restore_components(ctx: &DalContext) {
             .to_value() // actual
     );
 
-    let _result = Component::restore_by_id(ctx, nginx_container.component_id).await;
+    let _result = Component::restore_and_propagate(ctx, nginx_container.component_id).await;
 
     // check that the value of the butane instance
     assert_eq!(

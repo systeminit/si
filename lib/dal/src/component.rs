@@ -23,6 +23,7 @@ use crate::socket::SocketEdgeKind;
 use crate::standard_model::object_from_row;
 use crate::validation::ValidationConstructorError;
 use crate::ws_event::WsEventError;
+use crate::NodeKind;
 use crate::{
     func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
@@ -37,7 +38,6 @@ use crate::{
     ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationError};
-use crate::{Edge, NodeKind};
 
 use crate::job::definition::DependentValuesUpdate;
 pub use view::{ComponentView, ComponentViewError};
@@ -1037,6 +1037,7 @@ impl Component {
     }
 
     pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> ComponentResult<()> {
+        // TODO - This is temporary for now until we allow deleting frames
         if self.get_type(ctx).await? != ComponentType::Component {
             return Err(ComponentError::Frame);
         }
@@ -1071,30 +1072,28 @@ impl Component {
         Ok(())
     }
 
-    pub async fn restore_by_id(
+    pub async fn restore_and_propagate(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Self> {
-        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
+    ) -> ComponentResult<Option<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                "SELECT * FROM component_restore_and_propagate_v1($1, $2, $3)",
+                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+        let mut attr_values: Vec<AttributeValue> = standard_model::objects_from_rows(rows)?;
 
-        for edge in Edge::list_for_component(ctx_with_deleted, component_id).await? {
-            Edge::restore_by_id(ctx, *edge.id()).await?;
+        for attr_value in attr_values.iter_mut() {
+            attr_value.update_from_prototype_function(ctx).await?;
         }
 
-        // TODO: When components that don't exist on HEAD but got deleted on the changeset try to
-        // be restored, get_by_id does not find them, even with a "valid" visibility. we should discuss this
-        let comp = Component::get_by_id(ctx_with_deleted, &component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(component_id))?;
+        let ids = attr_values.iter().map(|av| *av.id()).collect();
 
-        for node in comp.node(ctx_with_deleted).await? {
-            node.hard_delete(ctx_with_deleted).await?;
-        }
+        ctx.enqueue_job(DependentValuesUpdate::new(ctx, ids)).await;
 
-        comp.hard_delete(ctx_with_deleted).await?;
-
-        Component::get_by_id(ctx, &component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(component_id))
+        Ok(Component::get_by_id(ctx, &component_id).await?)
     }
 }
