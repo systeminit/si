@@ -4,7 +4,7 @@ use dal::{
     func::backend::js_command::CommandRunResult, generate_name, AttributePrototypeArgument,
     AttributeReadContext, AttributeValue, ChangeSet, ChangeSetStatus, Component, ComponentType,
     ComponentView, Connection, DalContext, DiagramKind, Edge, ExternalProvider, InternalProvider,
-    Prop, PropId, PropKind, SchemaVariant, SocketArity, StandardModel, Visibility, WorkspaceId,
+    Prop, PropId, PropKind, SchemaVariant, SocketArity, StandardModel, Visibility, WorkspacePk,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
@@ -78,7 +78,7 @@ async fn name_from_context(ctx: &DalContext) {
 }
 
 #[test]
-async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: WorkspaceId) {
+async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: WorkspacePk) {
     // Start on head visibility.
     ctx.update_to_head();
 
@@ -216,7 +216,7 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext, wid: Works
 }
 
 #[test]
-async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: WorkspaceId) {
+async fn dependent_values_resource_intelligence(mut octx: DalContext, wid: WorkspacePk) {
     // Switch to head visibility to author schemas and intra-schema-variant relationships.
     let ctx = &mut octx;
     ctx.update_to_head();

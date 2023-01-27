@@ -2,7 +2,7 @@ use axum::extract::Query;
 use axum::Json;
 use dal::{
     qualification::QualificationView, Component, ComponentId, StandardModel, Visibility,
-    WorkspaceId,
+    WorkspacePk,
 };
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[serde(rename_all = "camelCase")]
 pub struct ListQualificationsRequest {
     pub component_id: ComponentId,
-    pub workspace_id: WorkspaceId,
+    pub workspace_pk: WorkspacePk,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

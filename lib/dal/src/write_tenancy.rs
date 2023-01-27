@@ -4,7 +4,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    BillingAccountPk, DalContext, OrganizationPk, ReadTenancy, ReadTenancyError, WorkspaceId,
+    BillingAccountPk, DalContext, OrganizationPk, ReadTenancy, ReadTenancyError, WorkspacePk,
 };
 
 #[derive(Error, Debug)]
@@ -21,8 +21,8 @@ pub struct WriteTenancy {
     billing_account_pks: Vec<BillingAccountPk>,
     #[serde(rename = "tenancy_organization_pks")]
     organization_pks: Vec<OrganizationPk>,
-    #[serde(rename = "tenancy_workspace_ids")]
-    workspace_ids: Vec<WorkspaceId>,
+    #[serde(rename = "tenancy_workspace_pks")]
+    workspace_pks: Vec<WorkspacePk>,
 }
 
 impl WriteTenancy {
@@ -34,15 +34,15 @@ impl WriteTenancy {
         &self.organization_pks
     }
 
-    pub fn workspaces(&self) -> &[WorkspaceId] {
-        &self.workspace_ids
+    pub fn workspaces(&self) -> &[WorkspacePk] {
+        &self.workspace_pks
     }
 
     pub fn new_empty() -> Self {
         Self {
             billing_account_pks: Vec::new(),
             organization_pks: Vec::new(),
-            workspace_ids: Vec::new(),
+            workspace_pks: Vec::new(),
         }
     }
 
@@ -50,7 +50,7 @@ impl WriteTenancy {
         Self {
             billing_account_pks: vec![bid],
             organization_pks: Vec::new(),
-            workspace_ids: Vec::new(),
+            workspace_pks: Vec::new(),
         }
     }
 
@@ -58,15 +58,15 @@ impl WriteTenancy {
         Self {
             billing_account_pks: Vec::new(),
             organization_pks: vec![id],
-            workspace_ids: Vec::new(),
+            workspace_pks: Vec::new(),
         }
     }
 
-    pub fn new_workspace(id: WorkspaceId) -> Self {
+    pub fn new_workspace(id: WorkspacePk) -> Self {
         Self {
             billing_account_pks: Vec::new(),
             organization_pks: Vec::new(),
-            workspace_ids: vec![id],
+            workspace_pks: vec![id],
         }
     }
 
@@ -79,7 +79,7 @@ impl WriteTenancy {
                     read_tenancy,
                     &self.billing_account_pks,
                     &self.organization_pks,
-                    &self.workspace_ids,
+                    &self.workspace_pks,
                 ],
             )
             .await?;
@@ -91,15 +91,14 @@ impl WriteTenancy {
         self,
         ctx: &DalContext,
     ) -> Result<ReadTenancy, ReadTenancyError> {
-        let read_tenancy = if self.workspace_ids.is_empty() {
+        let read_tenancy = if self.workspace_pks.is_empty() {
             if self.organization_pks.is_empty() {
                 ReadTenancy::new_billing_account(self.billing_account_pks)
             } else {
                 ReadTenancy::new_organization(ctx.txns().pg(), self.organization_pks).await?
             }
         } else {
-            ReadTenancy::new_workspace(ctx.txns().pg(), self.workspace_ids, ctx.visibility())
-                .await?
+            ReadTenancy::new_workspace(ctx.txns().pg(), self.workspace_pks).await?
         };
         Ok(read_tenancy)
     }

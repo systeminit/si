@@ -78,10 +78,10 @@ export interface ConfirmationStats {
 export type ConfirmationStatus = "success" | "failure" | "running";
 export const useFixesStore = () => {
   const workspacesStore = useWorkspacesStore();
-  const workspaceId = workspacesStore.selectedWorkspaceId;
+  const workspacePk = workspacesStore.selectedWorkspacePk;
 
   return addStoreHooks(
-    defineStore(`w${workspaceId || "NONE"}/fixes`, {
+    defineStore(`w${workspacePk || "NONE"}/fixes`, {
       state: () => ({
         confirmations: [] as Array<Confirmation>,
         recommendations: [] as Array<Recommendation>,
@@ -315,7 +315,7 @@ export const useFixesStore = () => {
         this.LOAD_FIX_BATCHES();
 
         const realtimeStore = useRealtimeStore();
-        realtimeStore.subscribe(this.$id, `workspace/${workspaceId}/head`, [
+        realtimeStore.subscribe(this.$id, `workspace/${workspacePk}/head`, [
           {
             eventType: "RanConfirmations",
             callback: (_update) => {

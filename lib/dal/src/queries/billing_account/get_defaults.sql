@@ -7,5 +7,5 @@ INNER JOIN workspaces
 WHERE organizations.billing_account_pk = $1
   AND organizations.name = 'default'
   AND organizations.visibility_deleted_at IS NULL
-ORDER BY organizations.pk, workspaces.id
+ORDER BY organizations.pk, workspaces.pk
 LIMIT 1;

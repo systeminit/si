@@ -4,7 +4,7 @@ CREATE TABLE node_positions
     id                          ident not null default ident_create_v1(),
     tenancy_billing_account_pks ident[],
     tenancy_organization_pks    ident[],
-    tenancy_workspace_ids       ident[],
+    tenancy_workspace_pks       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
@@ -41,11 +41,11 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO node_positions (tenancy_billing_account_pks, tenancy_organization_pks,
-                                tenancy_workspace_ids,
+                                tenancy_workspace_pks,
                                 visibility_change_set_pk, visibility_deleted_at,
                                 diagram_kind, x, y, width, height)
     VALUES (this_tenancy_record.tenancy_billing_account_pks,
-            this_tenancy_record.tenancy_organization_pks, this_tenancy_record.tenancy_workspace_ids,
+            this_tenancy_record.tenancy_organization_pks, this_tenancy_record.tenancy_workspace_pks,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at, this_diagram_kind,
             this_x, this_y, this_width, this_height)

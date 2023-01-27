@@ -153,7 +153,7 @@ const wipeRef = ref<InstanceType<typeof Wipe>>();
 const mergeButtonRef = ref();
 
 const workspacesStore = useWorkspacesStore();
-const selectedWorkspaceId = computed(() => workspacesStore.selectedWorkspaceId);
+const selectedWorkspacePk = computed(() => workspacesStore.selectedWorkspacePk);
 
 const changeSetsStore = useChangeSetsStore();
 const openChangeSets = computed(() => changeSetsStore.openChangeSets);
@@ -294,10 +294,10 @@ watch(
 
 // Navigates to the workspace fix page
 const navigateToFixMode = async () => {
-  if (selectedWorkspaceId.value) {
+  if (selectedWorkspacePk.value) {
     await router.push({
       name: "workspace-fix",
-      params: { workspaceId: selectedWorkspaceId.value },
+      params: { workspacePk: selectedWorkspacePk.value },
     });
   } else {
     // Fallback to the workspace list page in the case we can't yet determine

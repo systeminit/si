@@ -42,11 +42,11 @@ export interface SetTypeArgs {
 export const useComponentAttributesStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
-  const workspaceId = changeSetsStore.selectedWorkspaceId;
+  const workspacePk = changeSetsStore.selectedWorkspacePk;
 
   const visibilityParams = {
     visibility_change_set_pk: changeSetId,
-    workspaceId,
+    workspacePk,
   };
 
   return addStoreHooks(

@@ -9,30 +9,30 @@ import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { useRouterStore } from "./router.store";
 import { useAuthStore } from "./auth.store";
 
-type WorkspaceId = string;
+type WorkspacePk = string;
 type OrganizationPk = string;
 
 export const useWorkspacesStore = addStoreHooks(
   defineStore("workspaces", {
     state: () => ({
-      workspacesById: {} as Record<WorkspaceId, Workspace>,
-      organizationsById: {} as Record<OrganizationPk, Organization>,
+      workspacesByPk: {} as Record<WorkspacePk, Workspace>,
+      organizationsByPk: {} as Record<OrganizationPk, Organization>,
     }),
     getters: {
-      allWorkspaces: (state) => _.values(state.workspacesById),
-      allOrganizations: (state) => _.values(state.organizationsById),
-      selectedWorkspaceId(): WorkspaceId | null {
-        return this.selectedWorkspace?.id || null;
+      allWorkspaces: (state) => _.values(state.workspacesByPk),
+      allOrganizations: (state) => _.values(state.organizationsByPk),
+      selectedWorkspacePk(): WorkspacePk | null {
+        return this.selectedWorkspace?.pk || null;
       },
       selectedWorkspace: (state) => {
         const routerStore = useRouterStore();
-        const urlSelectedWorkspaceId = routerStore.urlSelectedWorkspaceId;
-        return urlSelectedWorkspaceId
-          ? state.workspacesById[urlSelectedWorkspaceId as WorkspaceId] || null
+        const urlSelectedWorkspacePk = routerStore.urlSelectedWorkspacePk;
+        return urlSelectedWorkspacePk
+          ? state.workspacesByPk[urlSelectedWorkspacePk as WorkspacePk] || null
           : null;
       },
       // only have one org for now...
-      selectedOrganization: (state) => _.values(state.organizationsById)[0],
+      selectedOrganization: (state) => _.values(state.organizationsByPk)[0],
     },
     actions: {
       async FETCH_USER_WORKSPACES() {
@@ -44,9 +44,9 @@ export const useWorkspacesStore = addStoreHooks(
           // something like `/users/USER_ID/workspaces`, `/my/workspaces`, etc
           url: "/session/get_defaults",
           onSuccess: (response) => {
-            // this.workspacesById = _.keyBy(response.workspaces, "id");
-            this.workspacesById = _.keyBy([response.workspace], "id");
-            this.organizationsById = _.keyBy([response.organization], "id");
+            // this.workspacesByPk = _.keyBy(response.workspaces, "pk");
+            this.workspacesByPk = _.keyBy([response.workspace], "pk");
+            this.organizationsByPk = _.keyBy([response.organization], "pk");
 
             // NOTE - we could cache this stuff in localstorage too to avoid showing loading state
             // but this is a small optimization to make later...

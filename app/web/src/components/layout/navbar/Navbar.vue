@@ -25,8 +25,8 @@
             <template #dropdownContent>
               <DropdownMenuItem
                 v-for="workspace in workspaces"
-                :key="workspace.id"
-                :checked="workspace.id === selectedWorkspaceId"
+                :key="workspace.pk"
+                :checked="workspace.pk === selectedWorkspacePk"
                 :label="workspace.name"
               />
             </template>
@@ -61,7 +61,7 @@ const logo = computed(() => (isDevMode ? SiLogoWtsDev : SiLogoWts));
 
 const workspacesStore = useWorkspacesStore();
 const workspaces = computed(() => workspacesStore.allWorkspaces);
-const selectedWorkspaceId = computed(() => workspacesStore.selectedWorkspaceId);
+const selectedWorkspacePk = computed(() => workspacesStore.selectedWorkspacePk);
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);
 
 const workspacesReqStatus = workspacesStore.getRequestStatus(

@@ -6,6 +6,6 @@ WHERE change_set_pk = $1
      $2,
      status_updates.tenancy_billing_account_pks,
      status_updates.tenancy_organization_pks,
-     status_updates.tenancy_workspace_ids
+     status_updates.tenancy_workspace_pks
  )
 ORDER BY created_at;

@@ -63,7 +63,7 @@ async fn list_components_identification() {
 
     let request = ListComponentsIdentificationRequest {
         visibility,
-        workspace_id: *nba.workspace.id(),
+        workspace_pk: *nba.workspace.pk(),
     };
     let response: ListComponentsIdentificationResponse = api_request_auth_query(
         app.clone(),
@@ -94,7 +94,7 @@ async fn list_components_identification() {
 
     let request = ListComponentsIdentificationRequest {
         visibility,
-        workspace_id: *nba.workspace.id(),
+        workspace_pk: *nba.workspace.pk(),
     };
     let response: ListComponentsIdentificationResponse = api_request_auth_query(
         app,
@@ -159,7 +159,7 @@ async fn get_components_metadata() {
 
     let request = GetComponentsMetadataRequest {
         visibility,
-        workspace_id: *nba.workspace.id(),
+        workspace_pk: *nba.workspace.pk(),
     };
     let response: GetComponentsMetadataResponse = api_request_auth_query(
         app,

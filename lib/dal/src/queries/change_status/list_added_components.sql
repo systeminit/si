@@ -11,7 +11,7 @@ WHERE component_id NOT IN (SELECT id
                              AND in_tenancy_v1($1,
                                                tenancy_billing_account_pks,
                                                tenancy_organization_pks,
-                                               tenancy_workspace_ids))
+                                               tenancy_workspace_pks))
 
   -- Compare only to the current change set
   AND visibility_change_set_pk = $2
@@ -23,7 +23,7 @@ WHERE component_id NOT IN (SELECT id
   AND in_tenancy_v1($1,
                     tenancy_billing_account_pks,
                     tenancy_organization_pks,
-                    tenancy_workspace_ids)
+                    tenancy_workspace_pks)
 
 ORDER BY component_id DESC,
          component_name DESC

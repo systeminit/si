@@ -118,7 +118,7 @@ const changeStatusToIconMap: Record<ChangeStatus, DiagramStatusIcon> = {
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
-  const workspaceId = workspacesStore.selectedWorkspaceId;
+  const workspacePk = workspacesStore.selectedWorkspacePk;
 
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
@@ -134,7 +134,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   // and need to make sure it's done consistently (right now some endpoints vary slightly)
   const visibilityParams = {
     visibility_change_set_pk: changeSetId,
-    workspaceId,
+    workspacePk,
   };
 
   return addStoreHooks(

@@ -30,12 +30,12 @@ pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
 
     // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
     let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
-    if let Some(workspace_id) = request_json
+    if let Some(workspace_pk) = request_json
         .as_object()
-        .and_then(|obj| obj.get("workspaceId"))
+        .and_then(|obj| obj.get("workspacePk"))
         .and_then(|value| value.as_str())
     {
-        api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
+        api_request = api_request.header("WorkspacePk", &workspace_pk.to_string());
     }
 
     let api_request = api_request
@@ -70,12 +70,12 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
 
     // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
     let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
-    if let Some(workspace_id) = request_json
+    if let Some(workspace_pk) = request_json
         .as_object()
-        .and_then(|obj| obj.get("workspaceId"))
+        .and_then(|obj| obj.get("workspacePk"))
         .and_then(|value| value.as_str())
     {
-        api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
+        api_request = api_request.header("WorkspacePk", &workspace_pk.to_string());
     }
 
     let api_request = api_request
@@ -145,12 +145,12 @@ pub async fn api_request<Req: Serialize, Res: DeserializeOwned>(
 
     // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
     let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
-    if let Some(workspace_id) = request_json
+    if let Some(workspace_pk) = request_json
         .as_object()
-        .and_then(|obj| obj.get("workspaceId"))
+        .and_then(|obj| obj.get("workspacePk"))
         .and_then(|value| value.as_str())
     {
-        api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
+        api_request = api_request.header("WorkspacePk", &workspace_pk.to_string());
     }
 
     let api_request = api_request
@@ -288,15 +288,11 @@ macro_rules! test_setup {
             let visibility = ::dal::Visibility::new_head(false);
 
             ctx.update_read_tenancy(
-                ::dal::ReadTenancy::new_workspace(
-                    ctx.pg_txn(),
-                    vec![*$nba.workspace.id()],
-                    &visibility,
-                )
-                .await
-                .expect("cannot construct read tenancy"),
+                ::dal::ReadTenancy::new_workspace(ctx.pg_txn(), vec![*$nba.workspace.pk()])
+                    .await
+                    .expect("cannot construct read tenancy"),
             );
-            ctx.update_write_tenancy(::dal::WriteTenancy::new_workspace(*$nba.workspace.id()));
+            ctx.update_write_tenancy(::dal::WriteTenancy::new_workspace(*$nba.workspace.pk()));
             ctx.update_visibility(visibility);
             ctx.update_history_actor(::dal::HistoryActor::SystemInit);
             ctx

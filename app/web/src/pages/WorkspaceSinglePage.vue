@@ -15,7 +15,7 @@
     </template>
     <template v-else-if="!selectedWorkspace">
       <div class="flex-grow p-lg flex flex-col items-center">
-        <ErrorMessage>Cannot find workspace {{ workspaceId }}</ErrorMessage>
+        <ErrorMessage>Cannot find workspace {{ workspacePk }}</ErrorMessage>
       </div>
     </template>
 
@@ -87,7 +87,7 @@ import PlaceholderComposeView from "@/components/layout/PlaceholderComposeView.v
 import StatusBar from "@/components/StatusBar.vue";
 
 const props = defineProps({
-  workspaceId: { type: String, required: true },
+  workspacePk: { type: String, required: true },
   changeSetId: { type: String as PropType<string | "auto"> },
 });
 

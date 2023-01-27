@@ -6,7 +6,7 @@ use dal::{
     generate_name,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
     ChangeSet, ChangeSetStatus, Component, ComponentView, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, SchemaVariant, StandardModel, Visibility, WorkspaceId,
+    FuncBackendResponseType, SchemaVariant, StandardModel, Visibility, WorkspacePk,
 };
 
 use dal_test::test;
@@ -15,7 +15,7 @@ use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
 
 #[test]
-async fn add_and_run_confirmations(mut octx: DalContext, wid: WorkspaceId) {
+async fn add_and_run_confirmations(mut octx: DalContext, wid: WorkspacePk) {
     let ctx = &mut octx;
     ctx.update_to_head();
 

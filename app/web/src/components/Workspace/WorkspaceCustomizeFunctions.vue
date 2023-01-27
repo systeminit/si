@@ -37,7 +37,7 @@ const { selectedFuncId } = storeToRefs(funcStore);
 
 const props = defineProps<{
   funcId?: string;
-  workspaceId: string;
+  workspacePk: string;
   changeSetId: string;
 }>();
 
