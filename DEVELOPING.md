@@ -493,17 +493,28 @@ You can combine this with the `DEBUG` environment variable for `lang-js` for eve
 DEBUG=* SI_TEST_LOG=info cargo test -p dal --test integration <your-test> -- --nocapture
 ```
 
-#### Migrations Running Too Slow? Try Disabling Builtin Schema Migrations!
+#### Migrations Running Too Slow? Try Disabling or Choosing Builtin Schema Migrations!
 
 If your integration test does not rely on builtin `Schema(s)` and `SchemaVariant(s)` (e.g. "Docker Image" and
-"AWS EC2"), you can disable migrating them  with an environment variable.
+"AWS EC2"), you can disable migrating them by passing in `"none"` or `"false"` (or some variant of them) to the
+appropriate environment variable.
 
 ```shell
-SI_TEST_SKIP_MIGRATING_SCHEMAS=true cargo test -p dal --test integration <your-test>
+SI_TEST_BUILTIN_SCHEMAS=none cargo test -p dal --test integration <your-test>
 ```
 
-You will likely notice a dramatic difference in end-to-end wall clock time since the database will skip migrating
-builtin `Schema(s)` and `SchemaVariant(s)` entirely.
+You can also choose individual builtins to migrate with a comma-separated list.
+
+```shell
+SI_TEST_BUILTIN_SCHEMAS="Schema One,Schema Two" cargo test -p dal --test integration <your-test>
+```
+
+If you want migrations to run as they would by default, remove the environment variable or set it to `"all"` or `"true"`
+(or some variant of them).
+
+```shell
+SI_TEST_BUILTIN_SCHEMAS=all cargo test -p dal --test integration <your-test>
+```
 
 ### Debugging Integration Tests with Database Contents
 

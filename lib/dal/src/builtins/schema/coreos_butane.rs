@@ -12,20 +12,16 @@ use crate::{
     StandardModel,
 };
 
-// Definitions
-const BUTANE_DEFINITION: &str = include_str!("definitions/coreos/butane.json");
-
-// Reference: https://getfedora.org/
-const COREOS_NODE_COLOR: i64 = 0xE26B70;
+const BUTANE_DEFINITION: &str = include_str!("definitions/coreos_butane.json");
 
 impl MigrationDriver {
-    pub async fn migrate_coreos(&self, ctx: &DalContext) -> BuiltinsResult<()> {
-        self.migrate_butane(ctx, "CoreOS").await?;
-        Ok(())
-    }
-
     /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).
-    async fn migrate_butane(&self, ctx: &DalContext, ui_menu_category: &str) -> BuiltinsResult<()> {
+    pub async fn migrate_coreos_butane(
+        &self,
+        ctx: &DalContext,
+        ui_menu_category: &str,
+        node_color: i64,
+    ) -> BuiltinsResult<()> {
         let definition: SchemaVariantDefinition = serde_json::from_str(BUTANE_DEFINITION)?;
 
         let (
@@ -42,7 +38,7 @@ impl MigrationDriver {
                 None,
                 ui_menu_category,
                 ComponentKind::Standard,
-                Some(COREOS_NODE_COLOR),
+                Some(node_color),
                 Some(definition),
             )
             .await?
