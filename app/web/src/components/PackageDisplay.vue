@@ -1,6 +1,11 @@
 <template>
+  <RequestStatusMessage
+    v-if="loadPackagesReqStatus.isPending"
+    :request-status="loadPackagesReqStatus"
+    show-loader-without-message
+  />
   <div
-    v-if="
+    v-else-if="
       packageStore.selectedPackage && packageStore.selectedPackage.slug === slug
     "
     class="p-sm flex flex-col h-full"
@@ -65,9 +70,11 @@
 <script lang="ts" setup>
 import { usePackageStore } from "@/store/package.store";
 import Icon from "@/ui-lib/icons/Icon.vue";
+import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import Timestamp from "@/ui-lib/Timestamp.vue";
 
 const packageStore = usePackageStore();
+const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
 
 defineProps<{
   slug?: string;

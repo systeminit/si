@@ -1,0 +1,54 @@
+<!-- eslint-disable vue/no-multiple-template-root -->
+<template>
+  <SiPanel remember-size-key="func-picker" side="left" :min-size="300">
+    <div class="flex flex-col h-full">
+      <ChangeSetPanel
+        class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
+      />
+      <CustomizeTabs :selected-index="2">
+        <AssetListPanel :slug="assetSlug" />
+      </CustomizeTabs>
+    </div>
+  </SiPanel>
+  <div
+    class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
+  >
+    <div class="inset-2 bottom-0 absolute w-full h-full">
+      <AssetDisplay :slug="assetSlug" />
+    </div>
+  </div>
+  <SiPanel remember-size-key="func-details" side="right" :min-size="200">
+    <AssetDetailsPanel :slug="assetSlug" />
+  </SiPanel>
+</template>
+
+<script lang="ts" setup>
+import { watch } from "vue";
+import _ from "lodash";
+import { useAssetStore } from "@/store/asset.store";
+import ChangeSetPanel from "../ChangeSetPanel.vue";
+import SiPanel from "../SiPanel.vue";
+import AssetListPanel from "../AssetListPanel.vue";
+import CustomizeTabs from "../CustomizeTabs.vue";
+import AssetDisplay from "../AssetDisplay.vue";
+import AssetDetailsPanel from "../AssetDetailsPanel.vue";
+
+const assetStore = useAssetStore();
+const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSETS");
+
+const props = defineProps<{
+  assetSlug?: string;
+  workspaceId: string;
+  changeSetId: string;
+}>();
+
+watch(
+  [() => props.assetSlug, loadAssetsReqStatus],
+  () => {
+    if (loadAssetsReqStatus.value.isSuccess && props.assetSlug) {
+      assetStore.setSelectedAssetBySlug(props.assetSlug);
+    }
+  },
+  { immediate: true },
+);
+</script>

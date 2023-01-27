@@ -1,7 +1,7 @@
 <template>
   <svg
-    width="75"
-    height="50"
+    :width="width"
+    :height="height"
     viewBox="0 0 75 50"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
@@ -38,12 +38,28 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, PropType } from "vue";
 
-const props = defineProps<{
-  color: string;
-  class?: string;
-}>();
+export type NodeSkeletonSizes = "mini" | "standard";
+
+const props = defineProps({
+  color: { type: String, required: true },
+  class: { type: String },
+  size: { type: String as PropType<NodeSkeletonSizes>, default: "standard" },
+});
 
 const classes = computed(() => props.class);
+
+const width = computed(() => {
+  if (props.size === "mini") {
+    return 25;
+  }
+  return 75;
+});
+const height = computed(() => {
+  if (props.size === "mini") {
+    return 17;
+  }
+  return 50;
+});
 </script>
