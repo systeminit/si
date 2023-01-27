@@ -6,9 +6,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    DalContext, HistoryEventError, Organization, OrganizationId, StandardModel, StandardModelError,
-    Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_accessor, DalContext,
+    HistoryEventError, OrganizationPk, StandardModel, StandardModelError, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -54,14 +53,23 @@ impl_standard_model! {
 
 impl Workspace {
     #[instrument(skip_all)]
-    pub async fn new(ctx: &DalContext, name: impl AsRef<str>) -> WorkspaceResult<Self> {
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl AsRef<str>,
+        organization_pk: OrganizationPk,
+    ) -> WorkspaceResult<Self> {
         let name = name.as_ref();
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM workspace_create_v1($1, $2, $3)",
-                &[ctx.write_tenancy(), &ctx.visibility(), &name],
+                "SELECT object FROM workspace_create_v1($1, $2, $3, $4)",
+                &[
+                    ctx.write_tenancy(),
+                    &ctx.visibility(),
+                    &name,
+                    &organization_pk,
+                ],
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
@@ -69,15 +77,4 @@ impl Workspace {
     }
 
     standard_model_accessor!(name, String, WorkspaceResult);
-
-    standard_model_belongs_to!(
-        lookup_fn: organization,
-        set_fn: set_organization,
-        unset_fn: unset_organization,
-        table: "workspace_belongs_to_organization",
-        model_table: "organizations",
-        belongs_to_id: OrganizationId,
-        returns: Organization,
-        result: WorkspaceResult,
-    );
 }

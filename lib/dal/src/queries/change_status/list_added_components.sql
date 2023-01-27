@@ -10,7 +10,7 @@ WHERE component_id NOT IN (SELECT id
                              AND visibility_deleted_at IS NULL
                              AND in_tenancy_v1($1,
                                                tenancy_billing_account_pks,
-                                               tenancy_organization_ids,
+                                               tenancy_organization_pks,
                                                tenancy_workspace_ids))
 
   -- Compare only to the current change set
@@ -22,7 +22,7 @@ WHERE component_id NOT IN (SELECT id
   -- Scope the tenancy one last time
   AND in_tenancy_v1($1,
                     tenancy_billing_account_pks,
-                    tenancy_organization_ids,
+                    tenancy_organization_pks,
                     tenancy_workspace_ids)
 
 ORDER BY component_id DESC,

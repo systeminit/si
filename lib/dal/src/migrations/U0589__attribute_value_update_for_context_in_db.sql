@@ -1789,7 +1789,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION tenancy_build_from_parts(this_billing_account_pks ident[],
-                                                    this_organization_ids    ident[],
+                                                    this_organization_pks    ident[],
                                                     this_workspace_ids       ident[],
                                                     OUT new_tenancy          jsonb
 )
@@ -1797,7 +1797,7 @@ AS
 $$
 BEGIN
     new_tenancy := jsonb_build_object('billing_account_pks', this_billing_account_pks,
-                                      'organization_ids',    this_organization_ids,
+                                      'organization_pks',    this_organization_pks,
                                       'workspace_ids',       this_workspace_ids);
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
@@ -1811,12 +1811,12 @@ $$
 DECLARE
     this_write_tenancy_record tenancy_record_v1;
     billing_account_pks       ident[];
-    organization_ids          ident[];
+    organization_pks          ident[];
 BEGIN
     this_write_tenancy_record := jsonb_to_record(this_write_tenancy);
 
     IF this_write_tenancy_record.workspace_ids IS NULL || array_length(this_write_tenancy_record.workspace_ids, 1) = 0 THEN
-        IF this_write_tenancy_record.organization_ids IS NULL || array_length(this_write_tenancy_record.organization_ids, 1) = 0 THEN
+        IF this_write_tenancy_record.organization_pks IS NULL || array_length(this_write_tenancy_record.organization_pks, 1) = 0 THEN
             -- New billing account read tenancy
             read_tenancy := tenancy_build_from_parts(true,
                                                      this_write_tenancy_record.billing_account_pks,
@@ -1830,41 +1830,40 @@ BEGIN
                 SELECT DISTINCT ON (billing_account_pk) billing_account_pk
                 FROM organizations
                 WHERE is_visible_v1(this_visibility, organizations)
-                      AND id = ANY(this_write_tenancy_record.organization_ids)
+                      AND id = ANY(this_write_tenancy_record.organization_pks)
                 ORDER BY id, visibility_deleted_at DESC NULLS FIRST
             ) AS x;
 
             read_tenancy := tenancy_build_from_parts(true,
                                                      billing_account_pks,
-                                                     this_write_tenancy_record.organization_ids,
+                                                     this_write_tenancy_record.organization_pks,
                                                      ARRAY[]::ident[]);
         END IF;
     ELSE
         -- New workspace read tenancy
-        SELECT COALESCE(array_agg(org.organization_id),        ARRAY[]::ident[]),
+        SELECT COALESCE(array_agg(org.organization_pk),        ARRAY[]::ident[]),
                COALESCE(array_agg(billing.billing_account_pk), ARRAY[]::ident[])
-        INTO organization_ids,
+        INTO organization_pks,
              billing_account_pks
         FROM (
-             SELECT DISTINCT ON (object_id) belongs_to_id AS organization_id
-             FROM workspace_belongs_to_organization
-             WHERE is_visible_v1(this_visibility, workspace_belongs_to_organization)
-                   AND object_id = ANY(this_write_tenancy_record.workspace_ids)
-             ORDER BY object_id,
-                      visibility_change_set_pk DESC,
+             SELECT DISTINCT ON (id) organization_pk AS organization_pk
+             FROM workspaces
+             WHERE is_visible_v1(this_visibility, workspaces)
+                   AND id = ANY(this_write_tenancy_record.workspace_ids)
+             ORDER BY id,
                       visibility_deleted_at DESC NULLS FIRST
         ) AS org
         INNER JOIN (
-            SELECT DISTINCT ON (id) billing_account_pk, id AS organization_id
+            SELECT DISTINCT ON (id) billing_account_pk, id AS organization_pk
             FROM organizations
             WHERE is_visible_v1(this_visibility, organizations)
             ORDER BY id,
                      visibility_deleted_at DESC NULLS FIRST
-        ) AS billing ON org.organization_id = billing.organization_id;
+        ) AS billing ON org.organization_pk = billing.organization_pk;
 
         read_tenancy := tenancy_build_from_parts(true,
                                                  billing_account_pks,
-                                                 organization_ids,
+                                                 organization_pks,
                                                  this_write_tenancy_record.workspace_ids);
     END IF;
 END;

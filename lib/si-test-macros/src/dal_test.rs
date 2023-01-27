@@ -159,8 +159,8 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "OrganizationId" => {
-                                let var = expander.setup_organization_id();
+                            "OrganizationPk" => {
+                                let var = expander.setup_organization_pk();
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
@@ -287,7 +287,7 @@ struct FnSetupExpander {
     transactions: Option<Arc<Ident>>,
     billing_account_signup: Option<(Arc<Ident>, Arc<Ident>)>,
     billing_account_pk: Option<Arc<Ident>>,
-    organization_id: Option<Arc<Ident>>,
+    organization_pk: Option<Arc<Ident>>,
     workspace_id: Option<Arc<Ident>>,
     dal_context_default: Option<Arc<Ident>>,
     dal_context_default_mut: Option<Arc<Ident>>,
@@ -316,7 +316,7 @@ impl FnSetupExpander {
             transactions: None,
             billing_account_signup: None,
             billing_account_pk: None,
-            organization_id: None,
+            organization_pk: None,
             workspace_id: None,
             dal_context_default: None,
             dal_context_default_mut: None,
@@ -612,21 +612,21 @@ impl FnSetupExpander {
         self.billing_account_pk.as_ref().unwrap().clone()
     }
 
-    fn setup_organization_id(&mut self) -> Arc<Ident> {
-        if let Some(ref idents) = self.organization_id {
+    fn setup_organization_pk(&mut self) -> Arc<Ident> {
+        if let Some(ref idents) = self.organization_pk {
             return idents.clone();
         }
 
         let bas = self.setup_billing_account_signup();
         let nba = bas.0.as_ref();
 
-        let var = Ident::new("nba_organization_id", Span::call_site());
+        let var = Ident::new("nba_organization_pk", Span::call_site());
         self.code.extend(quote! {
-            let #var = *#nba.organization.id();
+            let #var = *#nba.organization.pk();
         });
-        self.organization_id = Some(Arc::new(var));
+        self.organization_pk = Some(Arc::new(var));
 
-        self.organization_id.as_ref().unwrap().clone()
+        self.organization_pk.as_ref().unwrap().clone()
     }
 
     fn setup_workspace_id(&mut self) -> Arc<Ident> {

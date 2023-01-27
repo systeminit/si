@@ -16,33 +16,6 @@ async fn new(ctx: &DalContext) {
 }
 
 #[test]
-async fn organizations(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let schema = Schema::new(ctx, "mastodon", &ComponentKind::Standard)
-        .await
-        .expect("cannot create schema");
-    schema
-        .add_organization(ctx, nba.organization.id())
-        .await
-        .expect("cannot add organization");
-
-    let relations = schema
-        .organizations(ctx)
-        .await
-        .expect("cannot get organization");
-    assert_eq!(relations, vec![nba.organization.clone()]);
-
-    schema
-        .remove_organization(ctx, nba.organization.id())
-        .await
-        .expect("cannot remove organization");
-    let relations = schema
-        .organizations(ctx)
-        .await
-        .expect("cannot get organizations");
-    assert_eq!(relations, vec![]);
-}
-
-#[test]
 async fn workspaces(ctx: &DalContext, nba: &BillingAccountSignup) {
     let schema = Schema::new(ctx, "mastodon", &ComponentKind::Standard)
         .await

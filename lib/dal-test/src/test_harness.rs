@@ -13,8 +13,8 @@ use dal::{
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     BillingAccount, BillingAccountPk, ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind,
     EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, KeyPair, Node,
-    Organization, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariantId, Secret, SecretKind,
-    SecretObjectType, StandardModel, User, Visibility, Workspace,
+    Organization, OrganizationPk, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariantId,
+    Secret, SecretKind, SecretObjectType, StandardModel, User, Visibility, Workspace,
 };
 use lazy_static::lazy_static;
 use names::{Generator, Name};
@@ -272,9 +272,9 @@ pub async fn create_organization(ctx: &DalContext, bid: BillingAccountPk) -> Org
         .expect("cannot create organization")
 }
 
-pub async fn create_workspace(ctx: &DalContext) -> Workspace {
+pub async fn create_workspace(ctx: &DalContext, oid: OrganizationPk) -> Workspace {
     let name = generate_fake_name();
-    Workspace::new(ctx, &name)
+    Workspace::new(ctx, &name, oid)
         .await
         .expect("cannot create workspace")
 }

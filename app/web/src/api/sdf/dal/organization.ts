@@ -1,5 +1,5 @@
-import { StandardModel } from "@/api/sdf/dal/standard_model";
-
-export interface Organization extends StandardModel {
+export interface Organization {
+  pk: string;
   name: string;
+  billing_account_pk: string;
 }

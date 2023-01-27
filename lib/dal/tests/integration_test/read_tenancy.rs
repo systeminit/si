@@ -1,5 +1,5 @@
 use dal::{
-    BillingAccountPk, BillingAccountSignup, DalContext, JwtSecretKey, OrganizationId, ReadTenancy,
+    BillingAccountPk, BillingAccountSignup, DalContext, JwtSecretKey, OrganizationPk, ReadTenancy,
     StandardModel, WorkspaceId, WriteTenancy,
 };
 use dal_test::{test, test_harness::billing_account_signup};
@@ -11,7 +11,7 @@ async fn check_organization_specific_billing_account(
     _jwt_secret_key: &JwtSecretKey,
 ) {
     let read_tenancy = ReadTenancy::new_billing_account(vec![*nba.billing_account.pk()]);
-    let write_tenancy = WriteTenancy::new_organization(*nba.organization.id());
+    let write_tenancy = WriteTenancy::new_organization(*nba.organization.pk());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -26,10 +26,9 @@ async fn check_organization_in_billing_account(
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
-    let read_tenancy =
-        ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.id()], ctx.visibility())
-            .await
-            .expect("unable to set organization read read_tenancy");
+    let read_tenancy = ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.pk()])
+        .await
+        .expect("unable to set organization read read_tenancy");
     let write_tenancy = WriteTenancy::new_billing_account(*nba.billing_account.pk());
 
     let check = write_tenancy
@@ -84,10 +83,9 @@ async fn check_workspace_specific_organization(
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
-    let read_tenancy =
-        ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.id()], ctx.visibility())
-            .await
-            .expect("unable to set organization read read_tenancy");
+    let read_tenancy = ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.pk()])
+        .await
+        .expect("unable to set organization read read_tenancy");
     assert_eq!(
         read_tenancy.billing_accounts(),
         vec![*nba.billing_account.pk()]
@@ -111,7 +109,7 @@ async fn check_workspace_in_organization(
         ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.id()], ctx.visibility())
             .await
             .expect("unable to set workspace read read_tenancy");
-    let write_tenancy = WriteTenancy::new_organization(*nba.organization.id());
+    let write_tenancy = WriteTenancy::new_organization(*nba.organization.pk());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -168,7 +166,7 @@ async fn check_billing_account_pk_mismatched(ctx: &DalContext) {
 #[test]
 async fn check_billing_account_pk_mismatched_level(ctx: &DalContext) {
     let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountPk::generate()]);
-    let write_tenancy = WriteTenancy::new_organization(OrganizationId::generate());
+    let write_tenancy = WriteTenancy::new_organization(OrganizationPk::generate());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -179,11 +177,10 @@ async fn check_billing_account_pk_mismatched_level(ctx: &DalContext) {
 
 #[test]
 async fn check_organization_pk_identical(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let read_tenancy =
-        ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.id()], ctx.visibility())
-            .await
-            .expect("unable to set organization read read_tenancy");
-    let write_tenancy = WriteTenancy::new_organization(*nba.organization.id());
+    let read_tenancy = ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.pk()])
+        .await
+        .expect("unable to set organization read read_tenancy");
+    let write_tenancy = WriteTenancy::new_organization(*nba.organization.pk());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -200,15 +197,14 @@ async fn check_organization_pk_overlapping(ctx: &DalContext, jwt_secret_key: &Jw
     let read_tenancy = ReadTenancy::new_organization(
         ctx.pg_txn(),
         vec![
-            *nba.organization.id(),
-            *nba2.organization.id(),
-            *nba3.organization.id(),
+            *nba.organization.pk(),
+            *nba2.organization.pk(),
+            *nba3.organization.pk(),
         ],
-        ctx.visibility(),
     )
     .await
     .expect("unable to set organization read read_tenancy");
-    let write_tenancy = WriteTenancy::new_organization(*nba2.organization.id());
+    let write_tenancy = WriteTenancy::new_organization(*nba2.organization.pk());
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
@@ -220,11 +216,10 @@ async fn check_organization_pk_overlapping(ctx: &DalContext, jwt_secret_key: &Jw
 #[test]
 async fn check_organization_pk_mismatched(ctx: &DalContext, jwt_secret_key: &JwtSecretKey) {
     let (nba, _) = billing_account_signup(ctx, jwt_secret_key).await;
-    let read_tenancy =
-        ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.id()], ctx.visibility())
-            .await
-            .expect("unable to set organization read read_tenancy");
-    let write_tenancy = WriteTenancy::new_organization(OrganizationId::NONE);
+    let read_tenancy = ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.pk()])
+        .await
+        .expect("unable to set organization read read_tenancy");
+    let write_tenancy = WriteTenancy::new_organization(OrganizationPk::NONE);
 
     let check = write_tenancy
         .check(ctx.pg_txn(), &read_tenancy)
