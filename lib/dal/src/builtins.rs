@@ -3,6 +3,7 @@
 //! [migrate()](crate::builtins::migrate()) function. However, they may have some functionality
 //! exposed for "dev mode" use cases.
 
+use std::collections::HashSet;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -108,24 +109,34 @@ pub enum BuiltinsError {
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
 
+/// This enum drives what builtin [`Schemas`](crate::Schema) to migrate.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum BuiltinSchemaOption {
+    /// Migrate everything (default behavior and the only option in production).
+    All,
+    /// Migrate nothing (available in tests only).
+    None,
+    // Migrate _some_ things based on user input (available in tests only).
+    Some(HashSet<String>),
+}
+
 /// Migrate all "builtins" in a definitive order.
 ///
 /// 1. [`Funcs`](crate::Func)
 /// 1. [`WorkflowPrototypes`](crate::workflow_prototype::WorkflowPrototype)
 /// 1. [`Schemas`](crate::Schema)
-pub async fn migrate(ctx: &DalContext, skip_migrating_schemas: bool) -> BuiltinsResult<()> {
+pub async fn migrate(
+    ctx: &DalContext,
+    builtin_schema_option: BuiltinSchemaOption,
+) -> BuiltinsResult<()> {
     info!("migrating functions");
     func::migrate(ctx).await?;
 
     info!("migrating workflows");
     workflow::migrate(ctx).await?;
 
-    if skip_migrating_schemas {
-        info!("skipping migrating schemas (this should only be possible when running integration tests)");
-    } else {
-        info!("migrating schemas");
-        schema::migrate(ctx).await?;
-    }
+    // Log the status of schema migrations once we evaluate the option.
+    schema::migrate(ctx, builtin_schema_option).await?;
 
     info!("completed migrating functions, workflows and schemas");
     Ok(())

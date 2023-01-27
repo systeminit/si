@@ -69,6 +69,7 @@ pub mod workspace;
 pub mod write_tenancy;
 pub mod ws_event;
 
+use crate::builtins::BuiltinSchemaOption;
 pub use action_prototype::{
     ActionPrototype, ActionPrototypeContext, ActionPrototypeError, ActionPrototypeId,
 };
@@ -303,7 +304,7 @@ pub async fn migrate_all(
         veritech,
         encryption_key,
         council_subject_prefix,
-        false,
+        BuiltinSchemaOption::All,
     )
     .await?;
     Ok(())
@@ -322,7 +323,7 @@ pub async fn migrate_builtins(
     veritech: veritech_client::Client,
     encryption_key: &EncryptionKey,
     council_subject_prefix: String,
-    skip_migrating_schemas: bool,
+    builtin_schema_option: BuiltinSchemaOption,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         pg.clone(),
@@ -337,7 +338,7 @@ pub async fn migrate_builtins(
     let billing_account = BillingAccount::builtin(&ctx).await?;
     ctx.update_to_billing_account_tenancies(*billing_account.pk());
 
-    builtins::migrate(&ctx, skip_migrating_schemas).await?;
+    builtins::migrate(&ctx, builtin_schema_option).await?;
     ctx.commit().await?;
     Ok(())
 }

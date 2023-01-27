@@ -1,5 +1,5 @@
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
 use crate::attribute::context::AttributeContextBuilder;
@@ -15,25 +15,141 @@ use crate::{
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
-    AttributeReadContext, AttributeValue, BuiltinsError, BuiltinsResult, DalContext,
-    ExternalProvider, Func, FuncError, FuncId, InternalProvider, Prop, PropError, PropId, PropKind,
-    Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
+    AttributeReadContext, AttributeValue, BuiltinSchemaOption, BuiltinsError, BuiltinsResult,
+    DalContext, ExternalProvider, Func, FuncError, FuncId, InternalProvider, Prop, PropError,
+    PropId, PropKind, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
     ValidationPrototype, ValidationPrototypeContext,
 };
 
-mod aws;
-mod coreos;
-mod docker;
-mod kubernetes;
-mod systeminit;
+mod aws_ami;
+mod aws_ec2_instance;
+mod aws_egress;
+mod aws_eip;
+mod aws_ingress;
+mod aws_keypair;
+mod aws_region;
+mod aws_security_group;
+mod coreos_butane;
+mod docker_hub_credential;
+mod docker_image;
+mod kubernetes_deployment;
+mod kubernetes_namespace;
+mod systeminit_generic_frame;
 
-pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
+const NODE_COLOR_FRAMES: i64 = 0xFFFFFF;
+// Reference: https://aws.amazon.com/trademark-guidelines/
+const NODE_COLOR_AWS: i64 = 0xFF9900;
+// Reference: https://getfedora.org/
+const NODE_COLOR_COREOS: i64 = 0xE26B70;
+// Reference: https://www.docker.com/company/newsroom/media-resources/
+const NODE_COLOR_DOCKER: i64 = 0x4695E7;
+// This node color is purely meant the complement existing node colors.
+// It does not reflect an official branding Kubernetes color.
+const NODE_COLOR_KUBERNETES: i64 = 0x30BA78;
+
+pub async fn migrate(
+    ctx: &DalContext,
+    builtin_schema_option: BuiltinSchemaOption,
+) -> BuiltinsResult<()> {
+    // Determine whether or not to migrate everything based on the option provided.
+    let (migrate_all, specific_builtin_schemas) = match builtin_schema_option {
+        BuiltinSchemaOption::All => {
+            info!("migrating schemas");
+            (true, HashSet::new())
+        }
+        BuiltinSchemaOption::None => {
+            info!("skipping migrating schemas (this should only be possible when running tests)");
+            return Ok(());
+        }
+        BuiltinSchemaOption::Some(provided_set) => {
+            info!("migrating schemas based on a provided set of names (this should only be possible when running tests)");
+            (false, provided_set)
+        }
+    };
+
+    // Once we know what to migrate, create the driver.
     let driver = MigrationDriver::new(ctx).await?;
-    driver.migrate_docker(ctx).await?;
-    driver.migrate_kubernetes(ctx).await?;
-    driver.migrate_coreos(ctx).await?;
-    driver.migrate_aws(ctx).await?;
-    driver.migrate_systeminit(ctx).await?;
+
+    // Perform migrations.
+    if migrate_all || specific_builtin_schemas.contains("docker image") {
+        driver
+            .migrate_docker_image(ctx, "Docker", NODE_COLOR_DOCKER)
+            .await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("docker hub credential") {
+        driver
+            .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
+            .await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("kubernetes deployment") {
+        driver
+            .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+            .await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("kubernetes namespace") {
+        driver
+            .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+            .await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("coreos butane") {
+        driver
+            .migrate_coreos_butane(ctx, "CoreOS", NODE_COLOR_COREOS)
+            .await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("aws ami") {
+        driver.migrate_aws_ami(ctx, "AWS", NODE_COLOR_AWS).await?;
+    }
+    if migrate_all
+        || specific_builtin_schemas.contains("aws ec2")
+        || specific_builtin_schemas.contains("aws ec2 instance")
+    {
+        driver
+            .migrate_aws_ec2_instance(ctx, "AWS", NODE_COLOR_AWS)
+            .await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("aws region") {
+        driver
+            .migrate_aws_region(ctx, "AWS", NODE_COLOR_AWS)
+            .await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("aws eip") {
+        driver.migrate_aws_eip(ctx, "AWS", NODE_COLOR_AWS).await?;
+    }
+    if migrate_all
+        || specific_builtin_schemas.contains("aws key pair")
+        || specific_builtin_schemas.contains("aws keypair")
+    {
+        driver
+            .migrate_aws_keypair(ctx, "AWS", NODE_COLOR_AWS)
+            .await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("aws ingress") {
+        driver
+            .migrate_aws_ingress(ctx, "AWS", NODE_COLOR_AWS)
+            .await?;
+    }
+    if migrate_all || specific_builtin_schemas.contains("aws egress") {
+        driver
+            .migrate_aws_egress(ctx, "AWS", NODE_COLOR_AWS)
+            .await?;
+    }
+    if migrate_all
+        || specific_builtin_schemas.contains("aws security group")
+        || specific_builtin_schemas.contains("aws securitygroup")
+    {
+        driver
+            .migrate_aws_security_group(ctx, "AWS", NODE_COLOR_AWS)
+            .await?;
+    }
+    if migrate_all
+        || specific_builtin_schemas.contains("systeminit generic frame")
+        || specific_builtin_schemas.contains("si generic frame")
+        || specific_builtin_schemas.contains("generic frame")
+    {
+        driver
+            .migrate_systeminit_generic_frame(ctx, "Frames", NODE_COLOR_FRAMES)
+            .await?;
+    }
     Ok(())
 }
 
