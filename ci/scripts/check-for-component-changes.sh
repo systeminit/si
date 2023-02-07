@@ -139,11 +139,11 @@ echo "Pinga:    ${PINGA_CHANGES}"
 echo "Council:    ${COUNCIL_CHANGES}"
 echo "::endgroup::"
 
-echo "::set-output name=component--nats::${NATS_CHANGES}"
-echo "::set-output name=component--otelcol::${OTELCOL_CHANGES}"
-echo "::set-output name=component--postgres::${POSTGRES_CHANGES}"
-echo "::set-output name=bin--sdf::${SDF_CHANGES}"
-echo "::set-output name=bin--veritech::${VERITECH_CHANGES}"
-echo "::set-output name=app--web::${WEB_CHANGES}"
-echo "::set-output name=bin--pinga::${PINGA_CHANGES}"
-echo "::set-output name=bin--council::${COUNCIL_CHANGES}"
+echo "name=component--nats::${NATS_CHANGES}" >> $GITHUB_OUTPUT
+echo "name=component--otelcol::${OTELCOL_CHANGES}" >> $GITHUB_OUTPUT
+echo "name=component--postgres::${POSTGRES_CHANGES}" >> $GITHUB_OUTPUT
+echo "name=bin--sdf::${SDF_CHANGES}" >> $GITHUB_OUTPUT
+echo "name=bin--veritech::${VERITECH_CHANGES}" >> $GITHUB_OUTPUT
+echo "name=app--web::${WEB_CHANGES}" >> $GITHUB_OUTPUT
+echo "name=bin--pinga::${PINGA_CHANGES}" >> $GITHUB_OUTPUT
+echo "name=bin--council::${COUNCIL_CHANGES}" >> $GITHUB_OUTPUT
