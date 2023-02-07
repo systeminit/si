@@ -2,8 +2,6 @@ CREATE TABLE validation_resolvers
 (
     pk                                           ident primary key default ident_create_v1(),
     id                                           ident not null default ident_create_v1(),
-    tenancy_billing_account_pks                  ident[],
-    tenancy_organization_pks                     ident[],
     tenancy_workspace_pks                        ident[],
     visibility_change_set_pk                     ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at                        timestamp with time zone,
@@ -18,8 +16,6 @@ CREATE TABLE validation_resolvers
 CREATE UNIQUE INDEX unique_validation_resolver_value_live ON validation_resolvers (
 	validation_func_binding_id,
 	attribute_value_id,
-	tenancy_billing_account_pks,
-	tenancy_organization_pks,
 	tenancy_workspace_pks,
 	visibility_change_set_pk,
 	(visibility_deleted_at IS NULL))
@@ -67,9 +63,7 @@ BEGIN
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC NULLS FIRST;
 
-    INSERT INTO validation_resolvers (tenancy_billing_account_pks,
-                                      tenancy_organization_pks,
-                                      tenancy_workspace_pks,
+    INSERT INTO validation_resolvers (tenancy_workspace_pks,
                                       visibility_change_set_pk,
                                       visibility_deleted_at,
                                       validation_prototype_id,
@@ -77,9 +71,7 @@ BEGIN
                                       validation_func_id,
                                       validation_func_binding_id,
                                       attribute_value_func_binding_return_value_id)
-    VALUES (this_write_tenancy_record.tenancy_billing_account_pks,
-            this_write_tenancy_record.tenancy_organization_pks,
-            this_write_tenancy_record.tenancy_workspace_pks,
+    VALUES (this_write_tenancy_record.tenancy_workspace_pks,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_validation_prototype_id,

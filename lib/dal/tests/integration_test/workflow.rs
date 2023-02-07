@@ -183,21 +183,27 @@ async fn resolve(ctx: &DalContext) {
 }
 
 #[test]
-async fn run(ctx: &DalContext) {
+async fn run(ctx: DalContext) {
     let name = "si:poemWorkflow";
-    let func = Func::find_by_attr(ctx, "name", &name)
+    let func = Func::find_by_attr(&ctx, "name", &name)
         .await
         .expect("unable to find func")
         .pop()
         .unwrap_or_else(|| panic!("function not found: {name}"));
     let tree = WorkflowView::resolve(
-        ctx,
+        &ctx,
         &func,
         serde_json::Value::String("Domingos Passos".to_owned()),
     )
     .await
     .expect("unable to resolve workflow");
 
+    // Needed as workflow run create new transactions
+    let ctx = ctx
+        .commit_and_continue()
+        .await
+        .expect("unable to commit transaction");
+
     // Text output is checked at WorkflowRunner tests as they actually order it
-    tree.run(ctx, 0).await.expect("unable to run workflow");
+    tree.run(&ctx, 0).await.expect("unable to run workflow");
 }

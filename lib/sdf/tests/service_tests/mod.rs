@@ -22,21 +22,11 @@ pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
     let uri_str = uri.as_ref();
     let params = serde_url_params::to_string(&request).expect("cannot serialize params");
     let uri = format!("{uri_str}?{params}");
-    let mut api_request = Request::builder()
+    let api_request = Request::builder()
         .method(Method::GET)
         .uri(uri)
         .header(http::header::CONTENT_TYPE, "application/json")
         .header(http::header::AUTHORIZATION, format!("Bearer {auth_token}"));
-
-    // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
-    let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
-    if let Some(workspace_pk) = request_json
-        .as_object()
-        .and_then(|obj| obj.get("workspacePk"))
-        .and_then(|value| value.as_str())
-    {
-        api_request = api_request.header("WorkspacePk", &workspace_pk.to_string());
-    }
 
     let api_request = api_request
         .body(Body::empty())
@@ -62,21 +52,11 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
 ) -> Res {
     let auth_token = auth_token.as_ref();
     let uri = uri.as_ref();
-    let mut api_request = Request::builder()
+    let api_request = Request::builder()
         .method(method)
         .uri(uri)
         .header(http::header::CONTENT_TYPE, "application/json")
         .header(http::header::AUTHORIZATION, format!("Bearer {auth_token}"));
-
-    // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
-    let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
-    if let Some(workspace_pk) = request_json
-        .as_object()
-        .and_then(|obj| obj.get("workspacePk"))
-        .and_then(|value| value.as_str())
-    {
-        api_request = api_request.header("WorkspacePk", &workspace_pk.to_string());
-    }
 
     let api_request = api_request
         .body(Body::from(
@@ -138,20 +118,10 @@ pub async fn api_request<Req: Serialize, Res: DeserializeOwned>(
     request: &Req,
 ) -> Res {
     let uri = uri.as_ref();
-    let mut api_request = Request::builder()
+    let api_request = Request::builder()
         .method(Method::POST)
         .uri(uri)
         .header(http::header::CONTENT_TYPE, "application/json");
-
-    // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
-    let request_json = serde_json::to_value(request).expect("cannot serialize params to json");
-    if let Some(workspace_pk) = request_json
-        .as_object()
-        .and_then(|obj| obj.get("workspacePk"))
-        .and_then(|value| value.as_str())
-    {
-        api_request = api_request.header("WorkspacePk", &workspace_pk.to_string());
-    }
 
     let api_request = api_request
         .body(Body::from(
@@ -253,13 +223,13 @@ macro_rules! test_setup {
                 $council_subject_prefix.to_owned(),
             );
             let builder = services_context.into_builder();
-            let ctx = builder
+            let mut ctx = builder
                 .build(::dal::RequestContext::default())
                 .await
                 .expect("cannot start transactions");
 
             let ($nba, $auth_token) =
-                ::dal_test::test_harness::billing_account_signup(&ctx, &$jwt_secret_key).await;
+                ::dal_test::test_harness::billing_account_signup(&mut ctx, &$jwt_secret_key).await;
 
             ctx.commit().await.expect("cannot finish setup");
 
@@ -287,12 +257,8 @@ macro_rules! test_setup {
 
             let visibility = ::dal::Visibility::new_head(false);
 
-            ctx.update_read_tenancy(
-                ::dal::ReadTenancy::new_workspace(ctx.pg_txn(), vec![*$nba.workspace.pk()])
-                    .await
-                    .expect("cannot construct read tenancy"),
-            );
-            ctx.update_write_tenancy(::dal::WriteTenancy::new_workspace(*$nba.workspace.pk()));
+            ctx.update_read_tenancy(::dal::ReadTenancy::new(*$nba.workspace.pk()));
+            ctx.update_write_tenancy(::dal::WriteTenancy::new(*$nba.workspace.pk()));
             ctx.update_visibility(visibility);
             ctx.update_history_actor(::dal::HistoryActor::SystemInit);
             ctx

@@ -13,7 +13,7 @@ use crate::standard_model::option_object_from_row;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, BillingAccount,
     BillingAccountError, BillingAccountPk, DalContext, HistoryEventError, JwtSecretKey,
-    StandardModel, StandardModelError, Timestamp, Visibility,
+    StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility, WorkspacePk,
 };
 
 const USER_PASSWORD: &str = include_str!("queries/user/password.sql");
@@ -44,6 +44,8 @@ pub enum UserError {
     JwtSimple(#[from] jwt_simple::Error),
     #[error(transparent)]
     BillingAccount(#[from] Box<BillingAccountError>),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type UserResult<T> = Result<T, UserError>;
@@ -152,20 +154,20 @@ impl User {
         &self,
         ctx: &DalContext,
         jwt_secret_key: &JwtSecretKey,
-        billing_account_pk: &BillingAccountPk,
+        workspace_pk: &WorkspacePk,
         password: impl Into<String>,
     ) -> UserResult<String> {
         let row = ctx
             .txns()
             .pg()
-            .query_one(USER_PASSWORD, &[&self.pk(), billing_account_pk])
+            .query_one(USER_PASSWORD, &[&self.pk(), workspace_pk])
             .await?;
         let current_password: Vec<u8> = row.try_get("password")?;
         let verified = verify_password(password, current_password).await?;
         if !verified {
             return Err(UserError::MismatchedPassword);
         }
-        let user_claim = UserClaim::new(*self.id(), *billing_account_pk);
+        let user_claim = UserClaim::new(*self.id(), *workspace_pk);
 
         let claims = Claims::with_custom_claims(user_claim, Duration::from_days(1))
             .with_audience("https://app.systeminit.com")
@@ -181,14 +183,14 @@ impl User {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct UserClaim {
     pub user_id: UserId,
-    pub billing_account_pk: BillingAccountPk,
+    pub workspace_pk: WorkspacePk,
 }
 
 impl UserClaim {
-    pub fn new(user_id: UserId, billing_account_pk: BillingAccountPk) -> Self {
+    pub fn new(user_id: UserId, workspace_pk: WorkspacePk) -> Self {
         UserClaim {
             user_id,
-            billing_account_pk,
+            workspace_pk,
         }
     }
 
@@ -198,6 +200,15 @@ impl UserClaim {
     ) -> UserResult<UserClaim> {
         let claims = crate::jwt_key::validate_bearer_token(ctx, &token).await?;
         Ok(claims.custom)
+    }
+
+    pub async fn find_billing_account_pk_for_workspace(
+        &self,
+        ctx: &DalContext,
+    ) -> UserResult<BillingAccountPk> {
+        Ok(ctx
+            .find_billing_account_pk_for_workspace(self.workspace_pk)
+            .await?)
     }
 }
 

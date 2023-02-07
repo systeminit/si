@@ -32,3 +32,13 @@ BEGIN
     object := row_to_json(this_new_row);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
+
+CREATE OR REPLACE FUNCTION workspace_find_or_create_builtin_v1(OUT object json) AS
+$$
+BEGIN
+    INSERT INTO billing_accounts (pk, name) VALUES (ident_nil_v1(), 'builtin') ON CONFLICT (pk) DO NOTHING;
+    INSERT INTO organizations (pk, name, billing_account_pk) VALUES (ident_nil_v1(), 'builtin', ident_nil_v1()) ON CONFLICT (pk) DO NOTHING;
+    INSERT INTO workspaces (pk, name, organization_pk) VALUES (ident_nil_v1(), 'builtin', ident_nil_v1()) ON CONFLICT (pk) DO NOTHING;
+    SELECT row_to_json(workspaces.*) INTO STRICT object FROM workspaces WHERE pk = ident_nil_v1();
+END;
+$$ LANGUAGE PLPGSQL VOLATILE;

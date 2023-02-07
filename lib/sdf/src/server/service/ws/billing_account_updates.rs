@@ -1,25 +1,28 @@
+use super::WsError;
 use axum::{
     extract::{ws::WebSocket, Extension, WebSocketUpgrade},
     response::IntoResponse,
 };
-use dal::BillingAccountPk;
+use dal::{BillingAccountPk, DalContext};
 use si_data_nats::NatsClient;
+use si_data_pg::PgTxn;
 use telemetry::prelude::*;
 use tokio::sync::broadcast;
 
 use crate::server::{
-    extract::{Nats, WsAuthorization},
+    extract::{Nats, PgPool, WsAuthorization},
     routes::ShutdownBroadcast,
 };
 
-#[instrument(skip(wsu, nats))]
+#[instrument(skip(wsu, nats, pool))]
 #[allow(clippy::unused_async)]
 pub async fn billing_account_updates(
     wsu: WebSocketUpgrade,
     Nats(nats): Nats,
+    PgPool(pool): PgPool,
     WsAuthorization(claim): WsAuthorization,
     Extension(shutdown_broadcast): Extension<ShutdownBroadcast>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, WsError> {
     async fn handle_socket(
         socket: WebSocket,
         nats: NatsClient,
@@ -39,8 +42,12 @@ pub async fn billing_account_updates(
         }
     }
 
+    let conn = pool.get().await?;
+    let txn = PgTxn::create(conn).await?;
+    let bid =
+        DalContext::raw_find_billing_account_pk_for_workspace(&txn, claim.workspace_pk).await?;
     let shutdown = shutdown_broadcast.subscribe();
-    wsu.on_upgrade(move |socket| handle_socket(socket, nats, shutdown, claim.billing_account_pk))
+    Ok(wsu.on_upgrade(move |socket| handle_socket(socket, nats, shutdown, bid)))
 }
 
 async fn run_billing_account_updates_proto(

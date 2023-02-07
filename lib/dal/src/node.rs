@@ -12,7 +12,7 @@ use crate::edge::EdgeKind;
 use crate::{
     impl_standard_model, pk, schema::variant::SchemaVariantError, standard_model,
     standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryEventError,
-    ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{DalContext, Edge, SchemaError};
 
@@ -39,8 +39,6 @@ pub enum NodeError {
     SchemaMissingDefaultVariant,
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("component is None")]
     ComponentIsNone,
     #[error("could not find node with ID: {0}")]

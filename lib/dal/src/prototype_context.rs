@@ -1,6 +1,6 @@
 use crate::{
-    ComponentId, DalContext, FuncError, FuncId, ReadTenancyError, SchemaId, SchemaVariantId,
-    StandardModel, StandardModelError, TransactionsError, WriteTenancyError,
+    ComponentId, DalContext, FuncError, FuncId, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, TransactionsError, WriteTenancyError,
 };
 use std::future::Future;
 use thiserror::Error;
@@ -11,8 +11,6 @@ pub enum PrototypeContextError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("write tenancy error: {0}")]
     WriteTenancy(#[from] WriteTenancyError),
     #[error(transparent)]

@@ -9,8 +9,8 @@ use crate::{
     pk, schema::variant::SchemaVariantError, standard_model, standard_model_accessor_ro,
     Capability, CapabilityError, DalContext, Group, GroupError, HistoryActor, HistoryEvent,
     HistoryEventError, KeyPair, KeyPairError, NodeError, Organization, OrganizationError,
-    ReadTenancy, ReadTenancyError, SchemaError, StandardModel, StandardModelError, Timestamp,
-    TransactionsError, User, UserError, Workspace, WorkspaceError, WriteTenancy,
+    ReadTenancy, SchemaError, StandardModel, StandardModelError, Timestamp, TransactionsError,
+    User, UserError, Workspace, WorkspaceError,
 };
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("queries/billing_account/get_by_name.sql");
@@ -53,8 +53,6 @@ pub enum BillingAccountError {
     SchemaVariantNotFound,
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
-    #[error(transparent)]
-    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type BillingAccountResult<T> = Result<T, BillingAccountError>;
@@ -74,21 +72,6 @@ pub struct BillingAccount {
 impl BillingAccount {
     pub fn pk(&self) -> &BillingAccountPk {
         &self.pk
-    }
-
-    #[instrument(skip_all)]
-    pub async fn builtin(ctx: &DalContext) -> BillingAccountResult<Self> {
-        let row = ctx
-            .txns()
-            .pg()
-            .query_one(
-                "SELECT object FROM billing_account_upsert_builtin_v1()",
-                &[],
-            )
-            .await?;
-
-        let object = standard_model::object_from_row(row)?;
-        Ok(object)
     }
 
     #[instrument(skip_all)]
@@ -112,10 +95,9 @@ impl BillingAccount {
         let json: serde_json::Value = row.try_get("object")?;
         let object: Self = serde_json::from_value(json)?;
 
-        // Ensures HistoryEvent gets stored in our billing account
-        let ctx = ctx.clone_with_new_billing_account_tenancies(object.pk);
+        // HistoryEvent won't be accessible by any tenancy (null tenancy_workspace_pk)
         let _history_event = HistoryEvent::new(
-            &ctx,
+            ctx,
             "billing_account.create".to_owned(),
             "Billing Account created".to_owned(),
             &serde_json::json![{ "visibility": ctx.visibility() }],
@@ -128,21 +110,20 @@ impl BillingAccount {
     standard_model_accessor_ro!(description, Option<String>);
 
     pub async fn signup(
-        ctx: &DalContext,
+        ctx: &mut DalContext,
         billing_account_name: impl AsRef<str>,
         user_name: impl AsRef<str>,
         user_email: impl AsRef<str>,
         user_password: impl AsRef<str>,
     ) -> BillingAccountResult<BillingAccountSignup> {
-        let billing_account = BillingAccount::new(ctx, billing_account_name, None).await?;
+        let billing_account = BillingAccount::new(&*ctx, billing_account_name, None).await?;
+        let organization = Organization::new(&*ctx, "default", *billing_account.pk()).await?;
+        let workspace = Workspace::new(ctx, "default", *organization.pk()).await?;
 
-        let billing_account_tenancy = WriteTenancy::new_billing_account(*billing_account.pk());
-        let mut ctx = ctx.clone_with_new_write_tenancy(billing_account_tenancy);
-
-        let key_pair = KeyPair::new(&ctx, "default", *billing_account.pk()).await?;
+        let key_pair = KeyPair::new(&*ctx, "default", *billing_account.pk()).await?;
 
         let user = User::new(
-            &ctx,
+            &*ctx,
             &user_name,
             &user_email,
             &user_password,
@@ -154,7 +135,7 @@ impl BillingAccount {
 
         // TODO: remove the bobo user before we ship!
         let user_bobo = User::new(
-            &ctx,
+            &*ctx,
             &user_name,
             &format!("bobo-{}", user_email.as_ref()),
             &user_password,
@@ -162,29 +143,12 @@ impl BillingAccount {
         )
         .await?;
 
-        let admin_group = Group::new(&ctx, "administrators", *billing_account.pk()).await?;
-        admin_group.add_user(&ctx, user.id()).await?;
-        admin_group.add_user(&ctx, user_bobo.id()).await?;
+        let admin_group = Group::new(&*ctx, "administrators", *billing_account.pk()).await?;
+        admin_group.add_user(&*ctx, user.id()).await?;
+        admin_group.add_user(&*ctx, user_bobo.id()).await?;
 
-        let any_cap = Capability::new(&ctx, "any", "any").await?;
-        any_cap.set_group(&ctx, admin_group.id()).await?;
-
-        let organization = Organization::new(&ctx, "default", *billing_account.pk()).await?;
-
-        let organization_read_tenancy =
-            ReadTenancy::new_organization(ctx.txns().pg(), vec![*organization.pk()]).await?;
-        let organization_write_tenancy: WriteTenancy =
-            WriteTenancy::new_organization(*organization.pk());
-        ctx.update_read_tenancy(organization_read_tenancy);
-        ctx.update_write_tenancy(organization_write_tenancy);
-
-        let workspace = Workspace::new(&ctx, "default", *organization.pk()).await?;
-
-        let workspace_read_tenancy =
-            ReadTenancy::new_workspace(ctx.txns().pg(), vec![*workspace.pk()]).await?;
-        let workspace_write_tenancy = WriteTenancy::new_workspace(*workspace.pk());
-        ctx.update_read_tenancy(workspace_read_tenancy);
-        ctx.update_write_tenancy(workspace_write_tenancy);
+        let any_cap = Capability::new(&*ctx, "any", "any").await?;
+        any_cap.set_group(&*ctx, admin_group.id()).await?;
 
         ctx.import_builtins().await?;
 
@@ -240,8 +204,7 @@ impl BillingAccount {
         let workspace: Workspace = serde_json::from_value(workspace_json)?;
 
         let mut workspace_ctx = ctx.clone();
-        let read_tenancy =
-            ReadTenancy::new_workspace(ctx.txns().pg(), vec![*workspace.pk()]).await?;
+        let read_tenancy = ReadTenancy::new(*workspace.pk());
         workspace_ctx.update_read_tenancy(read_tenancy);
 
         let result = BillingAccountDefaults {

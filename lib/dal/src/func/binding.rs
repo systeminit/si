@@ -27,8 +27,8 @@ use crate::func::execution::FuncExecutionPk;
 use crate::DalContext;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Func, FuncBackendError, FuncBackendKind, HistoryEventError, ReadTenancyError, StandardModel,
-    StandardModelError, Timestamp, Visibility,
+    Func, FuncBackendError, FuncBackendKind, HistoryEventError, StandardModel, StandardModelError,
+    Timestamp, Visibility,
 };
 
 use super::{
@@ -63,8 +63,6 @@ pub enum FuncBindingError {
     StandardModelError(#[from] StandardModelError),
     #[error("func execution tracking error: {0}")]
     FuncExecutionError(#[from] FuncExecutionError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;

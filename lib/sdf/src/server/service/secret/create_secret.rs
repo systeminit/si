@@ -1,7 +1,7 @@
 use axum::Json;
 use dal::{
     key_pair::KeyPairId, EncryptedSecret, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
-    SecretVersion, Visibility, WorkspacePk, WsEvent,
+    SecretVersion, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +19,6 @@ pub struct CreateSecretRequest {
     pub key_pair_id: KeyPairId,
     pub version: SecretVersion,
     pub algorithm: SecretAlgorithm,
-    pub workspace_pk: WorkspacePk,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -47,7 +46,7 @@ pub async fn create_secret(
         request.key_pair_id,
         request.version,
         request.algorithm,
-        claim.billing_account_pk,
+        claim.find_billing_account_pk_for_workspace(&ctx).await?,
     )
     .await?;
 

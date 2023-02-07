@@ -3,7 +3,9 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{KeyPairError, StandardModelError, TransactionsError, WorkspacePk, WsEventError};
+use dal::{
+    KeyPairError, StandardModelError, TransactionsError, UserError, WorkspacePk, WsEventError,
+};
 use thiserror::Error;
 
 pub mod create_secret;
@@ -28,6 +30,8 @@ pub enum SecretError {
     WorkspaceNotFound(WorkspacePk),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+    #[error(transparent)]
+    User(#[from] UserError),
 }
 
 pub type SecretResult<T> = std::result::Result<T, SecretError>;

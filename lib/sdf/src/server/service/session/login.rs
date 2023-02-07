@@ -33,8 +33,8 @@ pub async fn login(
     let mut ctx = builder
         .build(
             AccessBuilder::new(
-                // Empty tenancy means things can be written, but won't ever be read
-                ReadTenancy::new_billing_account(Vec::new()),
+                // Empty tenancy means things can be written, but won't ever be read, with the exception of billing accounts, organizations and workspaces
+                ReadTenancy::new_empty(),
                 WriteTenancy::new_empty(),
                 HistoryActor::SystemInit,
             )
@@ -44,11 +44,12 @@ pub async fn login(
     let billing_account = BillingAccount::find_by_name(&ctx, &request.billing_account_name)
         .await?
         .ok_or(SessionError::LoginFailed)?;
+    let billing_account_defaults = BillingAccount::get_defaults(&ctx, billing_account.pk()).await?;
 
     // Update context tenancies
     ctx.update_tenancies(
-        ReadTenancy::new_billing_account(vec![*billing_account.pk()]),
-        WriteTenancy::new_billing_account(*billing_account.pk()),
+        ReadTenancy::new(*billing_account_defaults.workspace.pk()),
+        WriteTenancy::new(*billing_account_defaults.workspace.pk()),
     );
 
     let user = User::find_by_email(&ctx, &request.user_email)
@@ -62,7 +63,7 @@ pub async fn login(
         .login(
             &ctx,
             &jwt_secret_key,
-            billing_account.pk(),
+            billing_account_defaults.workspace.pk(),
             &request.user_password,
         )
         .await

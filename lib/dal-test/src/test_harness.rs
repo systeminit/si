@@ -272,7 +272,7 @@ pub async fn create_organization(ctx: &DalContext, bid: BillingAccountPk) -> Org
         .expect("cannot create organization")
 }
 
-pub async fn create_workspace(ctx: &DalContext, oid: OrganizationPk) -> Workspace {
+pub async fn create_workspace(ctx: &mut DalContext, oid: OrganizationPk) -> Workspace {
     let name = generate_fake_name();
     Workspace::new(ctx, &name, oid)
         .await
@@ -307,7 +307,7 @@ pub async fn create_group(ctx: &DalContext, bid: BillingAccountPk) -> Group {
 }
 
 pub async fn billing_account_signup(
-    ctx: &DalContext,
+    ctx: &mut DalContext,
     jwt_secret_key: &JwtSecretKey,
 ) -> (BillingAccountSignup, String) {
     let billing_account_name = generate_fake_name();
@@ -326,7 +326,7 @@ pub async fn billing_account_signup(
     .expect("cannot signup a new billing_account");
     let auth_token = nba
         .user
-        .login(ctx, jwt_secret_key, nba.billing_account.pk(), "snakes")
+        .login(&*ctx, jwt_secret_key, nba.workspace.pk(), "snakes")
         .await
         .expect("cannot log in newly created user");
     (nba, auth_token)

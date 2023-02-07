@@ -27,7 +27,7 @@ async fn list_components_identification() {
         veritech,
         encr_key,
         app,
-        nba,
+        _nba,
         auth_token,
         dal_ctx,
         _job_processor,
@@ -61,10 +61,7 @@ async fn list_components_identification() {
 
     dal_ctx.commit().await.expect("cannot commit transaction");
 
-    let request = ListComponentsIdentificationRequest {
-        visibility,
-        workspace_pk: *nba.workspace.pk(),
-    };
+    let request = ListComponentsIdentificationRequest { visibility };
     let response: ListComponentsIdentificationResponse = api_request_auth_query(
         app.clone(),
         "/api/component/list_components_identification",
@@ -92,10 +89,7 @@ async fn list_components_identification() {
             .collect()
     );
 
-    let request = ListComponentsIdentificationRequest {
-        visibility,
-        workspace_pk: *nba.workspace.pk(),
-    };
+    let request = ListComponentsIdentificationRequest { visibility };
     let response: ListComponentsIdentificationResponse = api_request_auth_query(
         app,
         "/api/component/list_components_identification",
@@ -137,7 +131,7 @@ async fn get_components_metadata() {
         veritech,
         encr_key,
         app,
-        nba,
+        _nba,
         auth_token,
         dal_ctx,
         _job_processor,
@@ -157,10 +151,7 @@ async fn get_components_metadata() {
 
     dal_ctx.commit().await.expect("cannot commit transaction");
 
-    let request = GetComponentsMetadataRequest {
-        visibility,
-        workspace_pk: *nba.workspace.pk(),
-    };
+    let request = GetComponentsMetadataRequest { visibility };
     let response: GetComponentsMetadataResponse = api_request_auth_query(
         app,
         "/api/component/get_components_metadata",

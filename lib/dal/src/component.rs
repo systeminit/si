@@ -33,7 +33,7 @@ use crate::{
     ComponentType, DalContext, Edge, EdgeError, ExternalProvider, ExternalProviderError,
     ExternalProviderId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError,
     InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
-    PropId, ReadTenancyError, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
+    PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
     StandardModelError, Timestamp, TransactionsError, ValidationPrototypeError,
     ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WriteTenancy,
 };
@@ -160,8 +160,6 @@ pub enum ComponentError {
     ValidationPrototypeMismatch(SchemaVariantId),
     #[error("qualification error: {0}")]
     Qualification(#[from] QualificationError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("workspace not found")]
     WorkspaceNotFound,
     #[error("organization not found")]
@@ -497,8 +495,7 @@ impl Component {
         let row = ctx
             .pg_txn()
             .query_opt(
-                "SELECT id FROM components WHERE id = $1 AND in_tenancy_v1($2, components.tenancy_billing_account_pks,
-                                                                           components.tenancy_organization_pks, components.tenancy_workspace_pks) LIMIT 1",
+                "SELECT id FROM components WHERE id = $1 AND in_tenancy_v1($2, components.tenancy_workspace_pks) LIMIT 1",
                 &[
                     &id,
                     ctx.read_tenancy(),

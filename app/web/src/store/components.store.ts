@@ -134,7 +134,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   // and need to make sure it's done consistently (right now some endpoints vary slightly)
   const visibilityParams = {
     visibility_change_set_pk: changeSetId,
-    workspacePk,
   };
 
   return addStoreHooks(

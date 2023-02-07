@@ -8,8 +8,8 @@ use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
     ComponentType, DiagramError as DalDiagramError, EdgeError, InternalProviderError, NodeError,
-    NodeKind, NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
-    SchemaVariantId, StandardModelError, TransactionsError,
+    NodeKind, NodeMenuError, NodePositionError, SchemaError as DalSchemaError, SchemaVariantId,
+    StandardModelError, TransactionsError,
 };
 use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
@@ -86,8 +86,6 @@ pub enum DiagramError {
     NodePosition(#[from] NodePositionError),
     #[error("dal diagram error: {0}")]
     DiagramError(#[from] DalDiagramError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("not authorized")]
     NotAuthorized,
     #[error("invalid system")]

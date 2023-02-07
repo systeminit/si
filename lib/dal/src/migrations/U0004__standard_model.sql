@@ -179,10 +179,7 @@ BEGIN
 
     /* First, try the update - if it works, we're all set. */
     EXECUTE format('UPDATE %1$I SET %2$I = %6$L, updated_at = clock_timestamp() WHERE id = %5$L '
-                   '  AND in_tenancy_v1(%3$L, '
-                   '                    %1$I.tenancy_billing_account_pks, '
-                   '                    %1$I.tenancy_organization_pks, '
-                   '                    %1$I.tenancy_workspace_pks) '
+                   '  AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pks) '
                    '  AND %1$I.visibility_change_set_pk = %4$L '
                    '  AND %1$I.visibility_deleted_at IS NULL '
                    ' RETURNING updated_at',
@@ -214,8 +211,6 @@ BEGIN
                     'pk',
                     'created_at',
                     'updated_at',
-                    'tenancy_billing_account_pks',
-                    'tenancy_organization_pks',
                     'tenancy_workspace_pks'
                   )
               AND information_schema.columns.is_generated = 'NEVER'
@@ -223,16 +218,11 @@ BEGIN
             EXECUTE format('INSERT INTO %1$I ( '
                            '    %2$s, '
                            '    visibility_change_set_pk, '
-                           '    tenancy_billing_account_pks, '
-                           '    tenancy_organization_pks, '
                            '    tenancy_workspace_pks, '
                            '    %3$s) '
-                           ' SELECT %4$L, %5$L, %8$L, %9$L, %10$L, %3$s FROM %1$I WHERE '
+                           ' SELECT %4$L, %5$L, %8$L, %3$s FROM %1$I WHERE '
                            ' %1$I.id = %6$L '
-                           ' AND in_tenancy_v1(%7$L, '
-                           '                   %1$I.tenancy_billing_account_pks, '
-                           '                   %1$I.tenancy_organization_pks, '
-                           '                   %1$I.tenancy_workspace_pks) '
+                           ' AND in_tenancy_v1(%7$L, %1$I.tenancy_workspace_pks) '
                            ' AND %1$I.visibility_change_set_pk = ident_nil_v1() '
                            ' AND %1$I.visibility_deleted_at IS NULL '
                            ' RETURNING updated_at',
@@ -243,8 +233,6 @@ BEGIN
                            this_visibility_row.visibility_change_set_pk,
                            this_id,
                            this_read_tenancy,
-                           this_write_tenancy_row.tenancy_billing_account_pks,
-                           this_write_tenancy_row.tenancy_organization_pks,
                            this_write_tenancy_row.tenancy_workspace_pks
                         ) INTO updated_at;
         END IF;
@@ -394,10 +382,7 @@ BEGIN
     this_table := this_table_text::regclass;
     EXECUTE format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp(), updated_at = clock_timestamp() '
                    'WHERE pk = %3$L '
-                   '  AND in_tenancy_v1(%2$L, '
-                   '                    %1$I.tenancy_billing_account_pks, '
-                   '                    %1$I.tenancy_organization_pks, '
-                   '                    %1$I.tenancy_workspace_pks) '
+                   '  AND in_tenancy_v1(%2$L, %1$I.tenancy_workspace_pks) '
                    ' RETURNING updated_at',
                    this_table, this_tenancy, this_pk) INTO updated_at;
 END;
@@ -415,10 +400,7 @@ BEGIN
     this_table := this_table_text::regclass;
     EXECUTE format('UPDATE %1$I SET visibility_deleted_at = NULL, updated_at = clock_timestamp() '
                    'WHERE pk = %3$L '
-                   '  AND in_tenancy_v1(%2$L, '
-                   '                    %1$I.tenancy_billing_account_pks, '
-                   '                    %1$I.tenancy_organization_pks, '
-                   '                    %1$I.tenancy_workspace_pks) '
+                   '  AND in_tenancy_v1(%2$L, %1$I.tenancy_workspace_pks) '
                    ' RETURNING updated_at',
                    this_table, this_tenancy, this_pk) INTO updated_at;
 END;
@@ -631,8 +613,6 @@ BEGIN
                            ' id                          ident not null default ident_create_v1(), '
                            ' object_id                   ident                   NOT NULL, '
                            ' belongs_to_id               ident                   NOT NULL, '
-                           ' tenancy_billing_account_pks ident[], '
-                           ' tenancy_organization_pks    ident[], '
                            ' tenancy_workspace_pks       ident[], '
                            ' visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(), '
                            ' visibility_deleted_at       timestamp with time zone, '
@@ -640,9 +620,7 @@ BEGIN
                            ' updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP() '
                            '); '
                            'CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
-                           '                                    tenancy_billing_account_pks, '
                            '                                    tenancy_workspace_pks, '
-                           '                                    tenancy_organization_pks, '
                            '                                    visibility_change_set_pk, '
                            '                                    (visibility_deleted_at IS NULL)) '
                            '                    WHERE visibility_deleted_at IS NULL; '
@@ -653,9 +631,7 @@ BEGIN
                            '    ADD CONSTRAINT %1$s_belongs_to_id_is_valid '
                            '        CHECK (check_id_in_table_v1(%3$L, belongs_to_id)); '
                            'CREATE UNIQUE INDEX %1$s_single_association ON %1$I (object_id, '
-                           '                                        tenancy_billing_account_pks, '
                            '                                        tenancy_workspace_pks, '
-                           '                                        tenancy_organization_pks, '
                            '                                        visibility_change_set_pk, '
                            '                                        (visibility_deleted_at IS NULL)) '
                            '                    WHERE visibility_deleted_at IS NULL; '
@@ -685,8 +661,6 @@ BEGIN
                            'AS $in_tenancy_fn$ '
                            '    SELECT in_tenancy_v1( '
                            '        read_tenancy, '
-                           '        record_to_check.tenancy_billing_account_pks, '
-                           '        record_to_check.tenancy_organization_pks, '
                            '        record_to_check.tenancy_workspace_pks '
                            '    ) '
                            '$in_tenancy_fn$; '
@@ -702,8 +676,6 @@ BEGIN
                            '    SELECT '
                            '        in_tenancy_v1( '
                            '            read_tenancy, '
-                           '            record_to_check.tenancy_billing_account_pks, '
-                           '            record_to_check.tenancy_organization_pks, '
                            '            record_to_check.tenancy_workspace_pks '
                            '        ) '
                            '        AND is_visible_v1( '
@@ -743,9 +715,7 @@ DECLARE
     alter_query text;
 BEGIN
     alter_query := format('CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
-                          '                                    tenancy_billing_account_pks, '
                           '                                    tenancy_workspace_pks, '
-                          '                                    tenancy_organization_pks, '
                           '                                    visibility_change_set_pk, '
                           '                                    (visibility_deleted_at IS NULL)) '
                           '                    WHERE visibility_deleted_at IS NULL; '
@@ -776,8 +746,6 @@ BEGIN
                           'AS $in_tenancy_fn$ '
                           '    SELECT in_tenancy_v1( '
                           '        read_tenancy, '
-                          '        record_to_check.tenancy_billing_account_pks, '
-                          '        record_to_check.tenancy_organization_pks, '
                           '        record_to_check.tenancy_workspace_pks '
                           '    ) '
                           '$in_tenancy_fn$; '
@@ -793,8 +761,6 @@ BEGIN
                           '    SELECT '
                           '        in_tenancy_v1( '
                           '            read_tenancy, '
-                          '            record_to_check.tenancy_billing_account_pks, '
-                          '            record_to_check.tenancy_organization_pks, '
                           '            record_to_check.tenancy_workspace_pks '
                           '        ) '
                           '        AND is_visible_v1( '
@@ -846,8 +812,6 @@ BEGIN
                            ' id                          ident not null default ident_create_v1(), '
                            ' left_object_id              ident                   NOT NULL, '
                            ' right_object_id             ident                   NOT NULL, '
-                           ' tenancy_billing_account_pks ident[], '
-                           ' tenancy_organization_pks    ident[], '
                            ' tenancy_workspace_pks       ident[], '
                            ' visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(), '
                            ' visibility_deleted_at       timestamp with time zone, '
@@ -855,9 +819,7 @@ BEGIN
                            ' updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP() '
                            '); '
                            'CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
-                           '                                    tenancy_billing_account_pks, '
                            '                                    tenancy_workspace_pks, '
-                           '                                    tenancy_organization_pks, '
                            '                                    visibility_change_set_pk, '
                            '                                    (visibility_deleted_at IS NULL)) '
                            '                    WHERE visibility_deleted_at IS NULL; '
@@ -869,9 +831,7 @@ BEGIN
                            '        CHECK (check_id_in_table_v1(%3$L, right_object_id)); '
                            'CREATE UNIQUE INDEX %1$s_no_duplicate_associations ON %1$I (left_object_id, '
                            '                                    right_object_id, '
-                           '                                    tenancy_billing_account_pks, '
                            '                                    tenancy_workspace_pks, '
-                           '                                    tenancy_organization_pks, '
                            '                                    visibility_change_set_pk, '
                            '                                    (visibility_deleted_at IS NULL)) '
                            '                    WHERE visibility_deleted_at IS NULL; '
@@ -901,8 +861,6 @@ BEGIN
                            'AS $in_tenancy_fn$ '
                            '    SELECT in_tenancy_v1( '
                            '        read_tenancy, '
-                           '        record_to_check.tenancy_billing_account_pks, '
-                           '        record_to_check.tenancy_organization_pks, '
                            '        record_to_check.tenancy_workspace_pks '
                            '    ) '
                            '$in_tenancy_fn$; '
@@ -918,8 +876,6 @@ BEGIN
                            '    SELECT '
                            '        in_tenancy_v1( '
                            '            read_tenancy, '
-                           '            record_to_check.tenancy_billing_account_pks, '
-                           '            record_to_check.tenancy_organization_pks, '
                            '            record_to_check.tenancy_workspace_pks '
                            '        ) '
                            '        AND is_visible_v1( '
@@ -967,21 +923,16 @@ BEGIN
 
     insert_query :=
             format('INSERT INTO %1$I (left_object_id, right_object_id, '
-                   '                  tenancy_billing_account_pks, tenancy_organization_pks, '
                    '                  tenancy_workspace_pks, visibility_change_set_pk, '
                    '                  visibility_deleted_at) '
                    'VALUES (%2$L, '
                    '        %3$L, '
                    '        %4$L, '
                    '        %5$L, '
-                   '        %6$L, '
-                   '        %7$L, '
-                   '        %8$L)',
+                   '        %6$L) ',
                    this_table_name,
                    this_left_object_id,
                    this_right_object_id,
-                   this_tenancy_record.tenancy_billing_account_pks,
-                   this_tenancy_record.tenancy_organization_pks,
                    this_tenancy_record.tenancy_workspace_pks,
                    this_visibility_record.visibility_change_set_pk,
                    this_visibility_record.visibility_deleted_at
@@ -1006,10 +957,7 @@ BEGIN
             format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
                    '  WHERE left_object_id = %2$L '
                    '    AND right_object_id = %3$L '
-                   '    AND in_tenancy_v1(%4$L, '
-                   '                    %1$I.tenancy_billing_account_pks, '
-                   '                    %1$I.tenancy_organization_pks, '
-                   '                    %1$I.tenancy_workspace_pks) '
+                   '    AND in_tenancy_v1(%4$L, %1$I.tenancy_workspace_pks) '
                    '    AND is_visible_v1(%5$L, '
                    '                    %1$I.visibility_change_set_pk, '
                    '                    %1$I.visibility_deleted_at)',
@@ -1037,10 +985,7 @@ BEGIN
     update_query :=
             format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
                    '  WHERE left_object_id = %2$L '
-                   '    AND in_tenancy_v1(%3$L, '
-                   '                    %1$I.tenancy_billing_account_pks, '
-                   '                    %1$I.tenancy_organization_pks, '
-                   '                    %1$I.tenancy_workspace_pks) '
+                   '    AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pks) '
                    '    AND is_visible_v1(%4$L, '
                    '                    %1$I.visibility_change_set_pk, '
                    '                    %1$I.visibility_deleted_at)',
@@ -1099,21 +1044,16 @@ BEGIN
 
     insert_query :=
             format(' INSERT INTO %1$I (object_id, belongs_to_id, '
-                   '                  tenancy_billing_account_pks, tenancy_organization_pks, '
                    '                  tenancy_workspace_pks, visibility_change_set_pk, '
                    '                  visibility_deleted_at) '
                    ' VALUES (%2$L, '
                    '         %3$L, '
                    '         %4$L, '
                    '         %5$L, '
-                   '         %6$L, '
-                   '         %7$L, '
-                   '         %8$L)',
+                   '         %6$L) ',
                    this_table_name,
                    this_object_id,
                    this_belongs_to_id,
-                   this_write_tenancy_record.tenancy_billing_account_pks,
-                   this_write_tenancy_record.tenancy_organization_pks,
                    this_write_tenancy_record.tenancy_workspace_pks,
                    this_visibility_record.visibility_change_set_pk,
                    this_visibility_record.visibility_deleted_at
@@ -1136,10 +1076,7 @@ BEGIN
     update_query :=
             format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
                    '  WHERE object_id = %2$L '
-                   '    AND in_tenancy_v1(%3$L, '
-                   '                    %1$I.tenancy_billing_account_pks, '
-                   '                    %1$I.tenancy_organization_pks, '
-                   '                    %1$I.tenancy_workspace_pks) '
+                   '    AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pks) '
                    '    AND is_visible_v1(%4$L, '
                    '                    %1$I.visibility_change_set_pk, '
                    '                    %1$I.visibility_deleted_at)',
@@ -1167,10 +1104,7 @@ BEGIN
             format('DELETE FROM %1$I '
                    '  WHERE object_id = %2$L '
                    '        AND visibility_change_set_pk = (%4$L ->> visibility_change_set_pk)::ident '
-                   '        AND in_tenancy_v1(%3$L, '
-                   '                        %1$I.tenancy_billing_account_pks, '
-                   '                        %1$I.tenancy_organization_pks, '
-                   '                        %1$I.tenancy_workspace_pks)',
+                   '        AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pks)',
                    this_table_name,
                    this_object_id,
                    this_tenancy,
@@ -1194,10 +1128,7 @@ BEGIN
     update_query :=
             format('UPDATE %1$I SET visibility_deleted_at = clock_timestamp() '
                    '  WHERE belongs_to_id = %2$L '
-                   '    AND in_tenancy_v1(%3$L, '
-                   '                      %1$I.tenancy_billing_account_pks, '
-                   '                      %1$I.tenancy_organization_pks, '
-                   '                      %1$I.tenancy_workspace_pks) '
+                   '    AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pks) '
                    '    AND is_visible_v1(%4$L, '
                    '                      %1$I.visibility_change_set_pk, '
                    '                      %1$I.visibility_deleted_at)',
@@ -1225,10 +1156,7 @@ BEGIN
             format('DELETE FROM %1$I '
                    '  WHERE belongs_to_id = %2$L '
                    '        AND visibility_change_set_pk = (%4$L ->> visibility_change_set_pk)::ident '
-                   '        AND in_tenancy_v1(%3$L, '
-                   '                        %1$I.tenancy_billing_account_pks, '
-                   '                        %1$I.tenancy_organization_pks, '
-                   '                        %1$I.tenancy_workspace_pks)',
+                   '        AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pks)',
                    this_table_name,
                    this_belongs_to_id,
                    this_tenancy,
@@ -1246,7 +1174,7 @@ DECLARE
     standard_model            standard_models%ROWTYPE;
     this_table_name           regclass;
     insert_column_names       text;
-    source_billing_account_pk ident;
+    source_workspace_pk ident;
 BEGIN
     FOR standard_model IN SELECT * FROM standard_models
         LOOP
@@ -1255,35 +1183,25 @@ BEGIN
             SELECT string_agg(information_schema.columns.column_name::text, ',')
             FROM information_schema.columns
             WHERE information_schema.columns.table_name = standard_model.table_name
-              AND information_schema.columns.column_name NOT IN ('pk', 'created_at', 'tenancy_billing_account_pks', 'tenancy_organization_pks', 'tenancy_workspace_pks', 'visibility_change_set_pk')
+              AND information_schema.columns.column_name NOT IN ('pk', 'created_at', 'tenancy_workspace_pks', 'visibility_change_set_pk')
               AND information_schema.columns.is_generated = 'NEVER'
             INTO insert_column_names;
 
             SELECT (object ->> 'pk')::ident
-            INTO source_billing_account_pk
-            FROM billing_account_upsert_builtin_v1();
+            INTO source_workspace_pk
+            FROM workspace_find_or_create_builtin_v1();
 
             -- No history events for this update
-            EXECUTE format('INSERT INTO %1$I (tenancy_billing_account_pks,
-                                              tenancy_organization_pks,
-                                              tenancy_workspace_pks,
+            EXECUTE format('INSERT INTO %1$I (tenancy_workspace_pks,
                                               visibility_change_set_pk,
                                               %2$s)
-                           SELECT %3$L::ident[], %4$L::ident[], %5$L::ident[], ident_nil_v1(), %2$s
+                           SELECT %3$L::ident[], ident_nil_v1(), %2$s
                            FROM %1$I
-                           WHERE in_tenancy_v1(%6$L, %1$I.tenancy_billing_account_pks,
-                                                     %1$I.tenancy_organization_pks,
-                                                     %1$I.tenancy_workspace_pks)',
+                           WHERE in_tenancy_v1(%4$L, %1$I.tenancy_workspace_pks)',
                            this_table_name,
                            insert_column_names,
-                           ARRAY(SELECT json_array_elements_text((destination_tenancy -> 'tenancy_billing_account_pks')::json)),
-                           ARRAY(SELECT json_array_elements_text((destination_tenancy -> 'tenancy_organization_pks')::json)),
                            ARRAY(SELECT json_array_elements_text((destination_tenancy -> 'tenancy_workspace_pks')::json)),
-                           jsonb_build_object(
-                               'tenancy_billing_account_pks', array[source_billing_account_pk],
-                               'tenancy_organization_pks', '{}'::json,
-                               'tenancy_workspace_pks', '{}'::json
-                           ));
+                           jsonb_build_object('tenancy_workspace_pks', array[source_workspace_pk]));
         END LOOP;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

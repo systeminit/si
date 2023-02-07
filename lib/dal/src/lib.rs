@@ -150,7 +150,7 @@ pub use prototype_list_for_func::{
 pub use provider::external::{ExternalProvider, ExternalProviderError, ExternalProviderId};
 pub use provider::internal::{InternalProvider, InternalProviderError, InternalProviderId};
 pub use qualification::{QualificationError, QualificationView};
-pub use read_tenancy::{ReadTenancy, ReadTenancyError};
+pub use read_tenancy::ReadTenancy;
 pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
 pub use schema::variant::leaves::LeafInput;
 pub use schema::variant::leaves::LeafInputLocation;
@@ -282,7 +282,7 @@ pub enum ModelError {
     #[error("transactions error")]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
-    BillingAccount(#[from] BillingAccountError),
+    Workspace(#[from] WorkspaceError),
 }
 
 pub type ModelResult<T> = Result<T, ModelError>;
@@ -335,8 +335,9 @@ pub async fn migrate_builtins(
     );
     let dal_context = services_context.into_builder();
     let mut ctx = dal_context.build_default().await?;
-    let billing_account = BillingAccount::builtin(&ctx).await?;
-    ctx.update_to_billing_account_tenancies(*billing_account.pk());
+
+    let workspace = Workspace::builtin(&ctx).await?;
+    ctx.update_to_workspace_tenancies(*workspace.pk()).await?;
 
     builtins::migrate(&ctx, builtin_schema_option).await?;
     ctx.commit().await?;

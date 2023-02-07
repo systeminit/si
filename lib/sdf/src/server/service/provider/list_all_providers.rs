@@ -1,6 +1,6 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{ExternalProvider, InternalProvider, SchemaVariantId, Visibility, WorkspacePk};
+use dal::{ExternalProvider, InternalProvider, SchemaVariantId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -10,7 +10,6 @@ use crate::service::provider::ProviderResult;
 #[serde(rename_all = "camelCase")]
 pub struct ListAllProviderRequest {
     pub schema_variant_id: SchemaVariantId,
-    pub workspace_pk: Option<WorkspacePk>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }

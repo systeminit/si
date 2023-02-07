@@ -15,7 +15,7 @@ use crate::{
     schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
     AttributePrototypeError, AttributeValueError, Component, DalContext, FuncError,
-    HistoryEventError, PropError, ReadTenancyError, StandardModel, StandardModelError, Timestamp,
+    HistoryEventError, PropError, StandardModel, StandardModelError, Timestamp,
     ValidationPrototypeError, Visibility, WsEventError,
 };
 
@@ -62,8 +62,6 @@ pub enum SchemaError {
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("socket error: {0}")]

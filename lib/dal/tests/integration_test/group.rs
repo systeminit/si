@@ -6,8 +6,6 @@ use dal_test::{
 
 #[test]
 async fn new(ctx: &mut DalContext, bid: BillingAccountPk) {
-    ctx.update_to_billing_account_tenancies(bid);
-
     let _group = Group::new(ctx, "funky", bid)
         .await
         .expect("cannot create group");
@@ -15,8 +13,6 @@ async fn new(ctx: &mut DalContext, bid: BillingAccountPk) {
 
 #[test]
 async fn add_user(ctx: &mut DalContext, bid: BillingAccountPk) {
-    ctx.update_to_billing_account_tenancies(bid);
-
     let group = create_group(ctx, bid).await;
     let user_one = create_user(ctx, bid).await;
     let user_two = create_user(ctx, bid).await;
@@ -33,8 +29,6 @@ async fn add_user(ctx: &mut DalContext, bid: BillingAccountPk) {
 
 #[test]
 async fn remove_user(ctx: &mut DalContext, bid: BillingAccountPk) {
-    ctx.update_to_billing_account_tenancies(bid);
-
     let group = create_group(ctx, bid).await;
     let user_one = create_user(ctx, bid).await;
     let user_two = create_user(ctx, bid).await;
@@ -60,8 +54,6 @@ async fn remove_user(ctx: &mut DalContext, bid: BillingAccountPk) {
 
 #[test]
 async fn users(ctx: &mut DalContext, bid: BillingAccountPk) {
-    ctx.update_to_billing_account_tenancies(bid);
-
     let group = create_group(ctx, bid).await;
     let user_one = create_user(ctx, bid).await;
     let user_two = create_user(ctx, bid).await;

@@ -20,8 +20,8 @@ use crate::{
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, standard_model_many_to_many, AttributeContext,
     AttributeContextBuilderError, AttributeReadContext, DalContext, Func, FuncId,
-    HistoryEventError, ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType};
 
@@ -56,8 +56,6 @@ pub enum PropError {
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("cannot set parent for a non object, array, or map prop: id {0} is a {1}. Bug!")]
     ParentNotAllowed(PropId, PropKind),
 }

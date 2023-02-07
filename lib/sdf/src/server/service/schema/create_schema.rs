@@ -1,7 +1,7 @@
 use super::SchemaResult;
-use crate::server::extract::{Authorization, HandlerContext, HistoryActor, Tenancy};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
-use dal::{component::ComponentKind, Schema, Visibility, WriteTenancy, WsEvent};
+use dal::{component::ComponentKind, Schema, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -20,21 +20,10 @@ pub struct CreateSchemaResponse {
 
 pub async fn create_schema(
     HandlerContext(builder): HandlerContext,
-    Authorization(claim): Authorization,
-    Tenancy(_write_tenancy, read_tenancy): Tenancy,
-    HistoryActor(history_actor): HistoryActor,
+    AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CreateSchemaRequest>,
 ) -> SchemaResult<Json<CreateSchemaResponse>> {
-    let ctx = builder
-        .build(
-            dal::context::AccessBuilder::new(
-                read_tenancy,
-                WriteTenancy::new_billing_account(claim.billing_account_pk),
-                history_actor,
-            )
-            .build(request.visibility),
-        )
-        .await?;
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let schema = Schema::new(&ctx, &request.name, &ComponentKind::Standard).await?;
     let response = CreateSchemaResponse { schema };

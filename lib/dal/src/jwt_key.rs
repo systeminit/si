@@ -15,7 +15,7 @@ use tokio::{
     task::JoinError,
 };
 
-use crate::{pk, BillingAccountPk, DalContext, UserClaim, UserPk};
+use crate::{pk, DalContext, UserClaim, UserPk, WorkspacePk};
 
 const JWT_KEY_EXISTS: &str = include_str!("queries/jwt_key/exists.sql");
 const JWT_KEY_GET_LATEST_PRIVATE_KEY: &str =
@@ -67,13 +67,13 @@ pk!(ApiClientPk);
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct SiClaims {
     pub user_pk: UserPk,
-    pub billing_account_pk: BillingAccountPk,
+    pub workspace_pk: WorkspacePk,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct ApiClaim {
     pub api_client_pk: ApiClientPk,
-    pub billing_account_pk: BillingAccountPk,
+    pub workspace_pk: WorkspacePk,
 }
 
 pk!(JwtPk);

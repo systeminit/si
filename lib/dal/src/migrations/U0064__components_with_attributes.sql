@@ -8,8 +8,6 @@ SELECT components.id                                     AS component_id,
        prop_many_to_many_schema_variants.left_object_id  AS root_prop_id,
        internal_providers.id                             AS internal_provider_id,
        attribute_values.id                               AS attribute_value_id,
-       func_binding_return_values.tenancy_billing_account_pks,
-       func_binding_return_values.tenancy_organization_pks,
        func_binding_return_values.tenancy_workspace_pks,
        func_binding_return_values.visibility_change_set_pk,
        func_binding_return_values.visibility_deleted_at,
@@ -42,8 +40,6 @@ IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
 AS $$
     SELECT in_tenancy_v1(
         this_read_tenancy,
-        record_to_check.tenancy_billing_account_pks,
-        record_to_check.tenancy_organization_pks,
         record_to_check.tenancy_workspace_pks
     )
 $$;
@@ -75,8 +71,6 @@ AS $$
     SELECT
         in_tenancy_v1(
             this_read_tenancy,
-            record_to_check.tenancy_billing_account_pks,
-            record_to_check.tenancy_organization_pks,
             record_to_check.tenancy_workspace_pks
         )
         AND is_visible_v1(

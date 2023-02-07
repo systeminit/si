@@ -37,10 +37,10 @@ pub async fn create_account(
         return Err(SignupError::InvalidSignupSecret);
     }
 
-    let ctx = builder.build(RequestContext::default()).await?;
+    let mut ctx = builder.build(RequestContext::default()).await?;
 
     let _billing_acct = BillingAccount::signup(
-        &ctx,
+        &mut ctx,
         &request.billing_account_name,
         &request.user_name,
         &request.user_email,

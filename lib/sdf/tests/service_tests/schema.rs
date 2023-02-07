@@ -62,7 +62,7 @@ async fn list_schemas() {
         _veritech,
         _encr_key,
         app,
-        nba,
+        _nba,
         auth_token,
         dal_ctx,
         _job_processor,
@@ -76,10 +76,7 @@ async fn list_schemas() {
     let visibility = *dal_ctx.visibility();
     dal_ctx.commit().await.expect("cannot commit txn");
 
-    let request = ListSchemaRequest {
-        visibility,
-        workspace_pk: *nba.workspace.pk(),
-    };
+    let request = ListSchemaRequest { visibility };
     let response: ListSchemaResponse =
         api_request_auth_query(app, "/api/schema/list_schemas", &auth_token, &request).await;
 
@@ -114,7 +111,7 @@ async fn get_schemas() {
         _veritech,
         _encr_key,
         app,
-        nba,
+        _nba,
         auth_token,
         dal_ctx,
         _job_processor,
@@ -128,7 +125,6 @@ async fn get_schemas() {
     let request = GetSchemaRequest {
         visibility,
         schema_id: *schema_one.id(),
-        workspace_pk: *nba.workspace.pk(),
     };
     let response: GetSchemaResponse =
         api_request_auth_query(app, "/api/schema/get_schema", &auth_token, &request).await;

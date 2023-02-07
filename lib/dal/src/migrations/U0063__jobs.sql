@@ -2,8 +2,6 @@ CREATE TABLE job_failures
 (
     pk                          ident primary key default ident_create_v1(),
     id                          ident not null default ident_create_v1(),
-    tenancy_billing_account_pks ident[],
-    tenancy_organization_pks    ident[],
     tenancy_workspace_pks       ident[],
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
@@ -30,12 +28,10 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
-    INSERT INTO job_failures (tenancy_billing_account_pks, tenancy_organization_pks,
-                              tenancy_workspace_pks,
+    INSERT INTO job_failures (tenancy_workspace_pks,
                               visibility_change_set_pk, visibility_deleted_at,
                               kind, message)
-    VALUES (this_tenancy_record.tenancy_billing_account_pks,
-            this_tenancy_record.tenancy_organization_pks, this_tenancy_record.tenancy_workspace_pks,
+    VALUES (this_tenancy_record.tenancy_workspace_pks,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at, this_kind, this_message)
     RETURNING * INTO this_new_row;

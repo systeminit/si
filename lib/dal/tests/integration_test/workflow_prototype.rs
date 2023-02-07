@@ -120,28 +120,34 @@ async fn resolve(ctx: &DalContext) {
 }
 
 #[test]
-async fn run(ctx: &DalContext) {
+async fn run(ctx: DalContext) {
     let title = "Refresh Docker Image";
-    let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
+    let prototype = WorkflowPrototype::find_by_attr(&ctx, "title", &title)
         .await
         .expect("unable to find workflow by attr")
         .pop()
         .expect("unable to find docker image resource refresh workflow prototype");
 
-    let schema = Schema::find_by_attr(ctx, "name", &"Docker Image")
+    let schema = Schema::find_by_attr(&ctx, "name", &"Docker Image")
         .await
         .expect("unable to find docker image schema")
         .pop()
         .expect("unable to find docker image");
-    let component = create_component_for_schema(ctx, schema.id()).await;
+    let component = create_component_for_schema(&ctx, schema.id()).await;
 
     let tree = prototype
-        .resolve(ctx, *component.id())
+        .resolve(&ctx, *component.id())
         .await
         .expect("unable to resolve prototype")
-        .tree(ctx)
+        .tree(&ctx)
         .await
         .expect("unable to extract tree");
 
-    tree.run(ctx, 0).await.expect("unable to run workflow");
+    // Needed as workflow run create new transactions
+    let ctx = ctx
+        .commit_and_continue()
+        .await
+        .expect("unable to commit transaction");
+
+    tree.run(&ctx, 0).await.expect("unable to run workflow");
 }

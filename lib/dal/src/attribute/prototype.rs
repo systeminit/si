@@ -29,8 +29,8 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, ComponentId,
     DalContext, ExternalProviderId, HistoryEventError, InternalProviderId, PropError, PropKind,
-    ReadTenancy, ReadTenancyError, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
-    Visibility, WriteTenancy,
+    ReadTenancy, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 pub mod argument;
@@ -101,8 +101,6 @@ pub enum AttributePrototypeError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
     #[error("cannot remove prototype with a least-specific context: {0}")]
     LeastSpecificContextPrototypeRemovalNotAllowed(AttributePrototypeId),
     #[error("cannot remove value with a least-specific context: {0}")]

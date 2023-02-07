@@ -1,13 +1,11 @@
 use dal::{
     BillingAccountPk, BillingAccountSignup, DalContext, JwtSecretKey, ReadTenancy, StandardModel,
-    User,
+    User, WorkspacePk,
 };
 use dal_test::test;
 
 #[test]
-async fn new(ctx: &mut DalContext, bid: BillingAccountPk) {
-    ctx.update_to_billing_account_tenancies(bid);
-
+async fn new(ctx: &DalContext, bid: BillingAccountPk) {
     let _user = User::new(
         ctx,
         "funky",
@@ -20,16 +18,19 @@ async fn new(ctx: &mut DalContext, bid: BillingAccountPk) {
 }
 
 #[test]
-async fn login(ctx: &mut DalContext, bid: BillingAccountPk, jwt_secret_key: &JwtSecretKey) {
-    ctx.update_to_billing_account_tenancies(bid);
-
+async fn login(
+    ctx: &DalContext,
+    bid: BillingAccountPk,
+    jwt_secret_key: &JwtSecretKey,
+    wid: WorkspacePk,
+) {
     let password = "snakesOnAPlane123";
     let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password, bid)
         .await
         .expect("cannot create user");
 
     let _jwt = user
-        .login(ctx, jwt_secret_key, &bid, password)
+        .login(ctx, jwt_secret_key, &wid, password)
         .await
         .expect("cannot get jwt");
 }
@@ -50,9 +51,7 @@ async fn find_by_email(ctx: &mut DalContext, bid: BillingAccountPk) {
         "user by email does not match created user"
     );
 
-    ctx.update_read_tenancy(ReadTenancy::new_billing_account(vec![
-        BillingAccountPk::generate(),
-    ]));
+    ctx.update_read_tenancy(ReadTenancy::new(WorkspacePk::generate()));
 
     let fail_user = User::find_by_email(ctx, "bobotclown@systeminit.com")
         .await
@@ -64,9 +63,7 @@ async fn find_by_email(ctx: &mut DalContext, bid: BillingAccountPk) {
 }
 
 #[test]
-async fn authorize(ctx: &mut DalContext, nba: &BillingAccountSignup) {
-    ctx.update_to_billing_account_tenancies(*nba.billing_account.pk());
-
+async fn authorize(ctx: &DalContext, nba: &BillingAccountSignup) {
     let worked = User::authorize(ctx, nba.user.id())
         .await
         .expect("admin group user should be authorized");
