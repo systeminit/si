@@ -2,7 +2,7 @@ CREATE TABLE encrypted_secrets
 (
     pk                          ident primary key default ident_create_v1(),
     id                          ident not null default ident_create_v1(),
-    tenancy_workspace_pks       ident[],
+    tenancy_workspace_pk        ident,
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
@@ -27,7 +27,7 @@ VALUES ('encrypted_secrets', 'model', 'encrypted_secret', 'Encrypted Secret'),
 CREATE VIEW secrets AS
 SELECT pk,
        id,
-       tenancy_workspace_pks,
+       tenancy_workspace_pk,
        visibility_change_set_pk,
        visibility_deleted_at,
        created_at,
@@ -50,7 +50,7 @@ IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
 AS $$
     SELECT in_tenancy_v1(
         this_read_tenancy,
-        record_to_check.tenancy_workspace_pks
+        record_to_check.tenancy_workspace_pk
     )
 $$;
 
@@ -81,7 +81,7 @@ AS $$
     SELECT
         in_tenancy_v1(
             this_read_tenancy,
-            record_to_check.tenancy_workspace_pks
+            record_to_check.tenancy_workspace_pk
         )
         AND is_visible_v1(
             this_visibility,
@@ -125,7 +125,7 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
-    INSERT INTO encrypted_secrets (tenancy_workspace_pks,
+    INSERT INTO encrypted_secrets (tenancy_workspace_pk,
                                    visibility_change_set_pk,
                                    visibility_deleted_at,
                                    name,
@@ -135,7 +135,7 @@ BEGIN
                                    crypted,
                                    version,
                                    algorithm)
-    VALUES (this_tenancy_record.tenancy_workspace_pks,
+    VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_name,

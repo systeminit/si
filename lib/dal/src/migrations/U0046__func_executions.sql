@@ -14,7 +14,7 @@ CREATE TABLE func_executions
     value                        jsonb,
     output_stream                jsonb,
     function_failure             jsonb,
-    tenancy_workspace_pks        ident[],
+    tenancy_workspace_pk         ident,
     created_at                   timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                   timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP()
 );
@@ -40,7 +40,7 @@ DECLARE
 BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
 
-    INSERT INTO func_executions (tenancy_workspace_pks,
+    INSERT INTO func_executions (tenancy_workspace_pk,
                                  state,
                                  func_id,
                                  func_binding_id,
@@ -49,7 +49,7 @@ BEGIN
                                  backend_response_type,
                                  handler,
                                  code_base64)
-    VALUES (this_tenancy_record.tenancy_workspace_pks,
+    VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_state,
             this_func_id,
             this_func_binding_id,

@@ -15,29 +15,27 @@ pub type WriteTenancyResult<T> = Result<T, WriteTenancyError>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct WriteTenancy {
-    #[serde(rename = "tenancy_workspace_pks")]
-    workspace_pks: Vec<WorkspacePk>,
+    #[serde(rename = "tenancy_workspace_pk")]
+    workspace_pk: Option<WorkspacePk>,
 }
 
 impl WriteTenancy {
-    pub fn new_empty() -> Self {
+    pub fn new(workspace_pk: WorkspacePk) -> Self {
         Self {
-            workspace_pks: Vec::new(),
+            workspace_pk: Some(workspace_pk),
         }
     }
 
-    pub fn new(workspace_pk: WorkspacePk) -> Self {
-        Self {
-            workspace_pks: vec![workspace_pk],
-        }
+    pub fn new_empty() -> Self {
+        Self { workspace_pk: None }
     }
 
     #[instrument(skip_all)]
     pub async fn check(&self, txn: &PgTxn, read_tenancy: &ReadTenancy) -> WriteTenancyResult<bool> {
         let row = txn
             .query_one(
-                "SELECT in_tenancy_v1($1::jsonb, $2::ident[]) AS result",
-                &[read_tenancy, &self.workspace_pks],
+                "SELECT in_tenancy_v1($1::jsonb, $2::ident) AS result",
+                &[read_tenancy, &self.workspace_pk],
             )
             .await?;
         let result = row.try_get("result")?;
@@ -45,8 +43,8 @@ impl WriteTenancy {
     }
 
     pub fn into_read_tenancy(self) -> ReadTenancy {
-        if let Some(pk) = self.workspace_pks.first() {
-            ReadTenancy::new(*pk)
+        if let Some(pk) = self.workspace_pk {
+            ReadTenancy::new(pk)
         } else {
             ReadTenancy::new_empty()
         }
