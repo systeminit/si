@@ -10,7 +10,7 @@ WHERE visibility_deleted_at IS NOT NULL
   AND visibility_change_set_pk = $2
 
   -- Scope the tenancy one last time
-  AND in_tenancy_v1($1, tenancy_workspace_pks)
+  AND in_tenancy_v1($1, tenancy_workspace_pk)
 
 ORDER BY component_id DESC,
          component_name DESC

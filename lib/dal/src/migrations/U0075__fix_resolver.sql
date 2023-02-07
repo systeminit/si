@@ -2,7 +2,7 @@ CREATE TABLE fix_resolvers
 (
     pk                          ident primary key                 default ident_create_v1(),
     id                          ident                    not null default ident_create_v1(),
-    tenancy_workspace_pks       ident[],
+    tenancy_workspace_pk        ident,
     visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
@@ -14,7 +14,7 @@ CREATE TABLE fix_resolvers
 
 CREATE UNIQUE INDEX unique_fix_resolvers
     ON fix_resolvers (attribute_value_id,
-                      tenancy_workspace_pks,
+                      tenancy_workspace_pk,
                       visibility_change_set_pk,
                       (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL;
@@ -39,13 +39,13 @@ BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
-    INSERT INTO fix_resolvers (tenancy_workspace_pks,
+    INSERT INTO fix_resolvers (tenancy_workspace_pk,
                                visibility_change_set_pk,
                                visibility_deleted_at,
                                workflow_prototype_id,
                                attribute_value_id,
                                success)
-    VALUES (this_tenancy_record.tenancy_workspace_pks,
+    VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_workflow_prototype_id,

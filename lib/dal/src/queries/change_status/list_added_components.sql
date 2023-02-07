@@ -8,7 +8,7 @@ WHERE component_id NOT IN (SELECT id
                            FROM components
                            WHERE visibility_change_set_pk = ident_nil_v1()
                              AND visibility_deleted_at IS NULL
-                             AND in_tenancy_v1($1, tenancy_workspace_pks))
+                             AND in_tenancy_v1($1, tenancy_workspace_pk))
 
   -- Compare only to the current change set
   AND visibility_change_set_pk = $2
@@ -17,7 +17,7 @@ WHERE component_id NOT IN (SELECT id
   AND visibility_deleted_at IS NULL
 
   -- Scope the tenancy one last time
-  AND in_tenancy_v1($1, tenancy_workspace_pks)
+  AND in_tenancy_v1($1, tenancy_workspace_pk)
 
 ORDER BY component_id DESC,
          component_name DESC
