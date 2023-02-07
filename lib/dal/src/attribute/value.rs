@@ -1095,34 +1095,6 @@ impl AttributeValue {
             };
         }
 
-        // If a function has no input, we probably don't need to re-execute it.
-        // TODO: we should confirm from a product standpoint whether this is true!
-        // However, if the function code has changed since the last execution, we *should*
-        // re-execute it, since it's a different function now
-        if func_binding_args.is_empty() {
-            let func = Func::get_by_id(ctx, &attribute_prototype.func_id())
-                .await?
-                .ok_or_else(|| {
-                    AttributeValueError::MissingFunc(
-                        "Missing attribute prototype function".to_string(),
-                    )
-                })?;
-
-            if let Some(func_binding) = FuncBinding::get_by_id(ctx, &self.func_binding_id()).await?
-            {
-                // Restricting the re-execution of no-args functions to
-                // JsAttribute funcs for now (unless code has changed!) This
-                // breaks inter_component_identity_update tests otherwise, but
-                // I'm not sure why.
-                if (func_binding.args() == &serde_json::json!({})
-                    || func_binding.backend_kind() != &FuncBackendKind::JsAttribute)
-                    && func_binding.code_sha256() == func.code_sha256()
-                {
-                    return Ok(());
-                }
-            }
-        }
-
         let execution_start = std::time::Instant::now();
         let (func_binding, mut func_binding_return_value) = FuncBinding::create_and_execute(
             ctx,
