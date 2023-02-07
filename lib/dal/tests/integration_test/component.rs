@@ -492,8 +492,17 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
 }
 
 #[test]
-async fn create_delete_and_restore_components(ctx: &DalContext) {
+async fn create_delete_and_restore_components(ctx: &mut DalContext) {
     let mut harness = SchemaBuiltinsTestHarness::new();
+
+    // Restoration is only a well defined operation for objects that existed on HEAD at some point
+    // so for this test, we need to create and merge the component before running delete and restore
+
+    let mut change_set = ChangeSet::new(ctx, generate_name(), None)
+        .await
+        .expect("could not create new change set");
+    ctx.update_visibility(Visibility::new(change_set.pk, None));
+
     let nginx_container = harness
         .create_component(ctx, "nginx", Builtin::DockerImage)
         .await;
@@ -596,6 +605,16 @@ async fn create_delete_and_restore_components(ctx: &DalContext) {
             .drop_qualification()
             .to_value() // actual
     );
+
+    // Apply changeset
+    change_set
+        .apply(ctx)
+        .await
+        .expect("could not apply change set");
+    let change_set_2 = ChangeSet::new(ctx, generate_name(), None)
+        .await
+        .expect("could not create new change set");
+    ctx.update_visibility(Visibility::new(change_set_2.pk, None));
 
     // delete the nginx container
     let comp = Component::get_by_id(ctx, &nginx_container.component_id)
