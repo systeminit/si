@@ -495,7 +495,7 @@ impl Component {
         let row = ctx
             .pg_txn()
             .query_opt(
-                "SELECT id FROM components WHERE id = $1 AND in_tenancy_v1($2, components.tenancy_workspace_pks) LIMIT 1",
+                "SELECT id FROM components WHERE id = $1 AND in_tenancy_v1($2, components.tenancy_workspace_pk) LIMIT 1",
                 &[
                     &id,
                     ctx.read_tenancy(),
