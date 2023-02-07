@@ -7,7 +7,7 @@ AFTER_SHA="${2:-"HEAD"}"
 CHANGED_COMPONENTS="$(
   git --no-pager diff --name-only "$BEFORE_SHA...$AFTER_SHA" \
     | xargs dirname \
-    | grep '^app/\|lib/\|bin/' \
+    | grep '^app/\|lib/\|bin/\|.' \
     | awk -F"/" '{print $1 "/" $2 }' \
     | sort -u
 )"
@@ -18,7 +18,9 @@ echo "::endgroup::"
 
 if [ -z "${SKIP_CHECK:-}" ]; then
   check_targets="$(while IFS= read -r line; do
-    if [[ -f "$line/Makefile" ]]; then
+    if [[ $line = "./" ]]; then
+      echo "check"
+    elif [[ $line != "./" && -f "$line/Makefile" ]]; then
       echo "check//$line"
     fi
   done <<<"$CHANGED_COMPONENTS")"
@@ -30,8 +32,10 @@ if [ -z "${SKIP_CHECK:-}" ]; then
 fi
 
 test_targets="$(while IFS= read -r line; do
-  if [[ -f "$line/Makefile" ]]; then
-    echo "test//$line"
+  if [[ $line = "./" ]]; then
+    echo "check"
+  elif [[ $line != "./" && -f "$line/Makefile" ]]; then
+    echo "check//$line"
   fi
 done <<<"$CHANGED_COMPONENTS")"
 echo "::group::make $test_targets"

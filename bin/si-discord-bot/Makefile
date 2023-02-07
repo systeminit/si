@@ -6,3 +6,7 @@ include ../../mk/typescript.mk
 lint:
 	$(call header,$@)
 	@echo "Skipping '$@' for now"
+
+check:
+	$(call header,$@)
+	@echo "Skipping '$@' for now"
