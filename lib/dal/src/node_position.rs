@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::{
     impl_standard_model, node::NodeId, pk, standard_model, standard_model_accessor,
     standard_model_belongs_to, DiagramKind, HistoryEventError, Node, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -37,7 +37,7 @@ pub struct NodePosition {
     width: Option<String>,
     height: Option<String>,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -72,7 +72,7 @@ impl NodePosition {
             .query_one(
                 "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &diagram_kind.as_ref(),
                     &x.as_ref(),
@@ -90,10 +90,7 @@ impl NodePosition {
     pub async fn list_for_node(ctx: &DalContext, node_id: NodeId) -> NodePositionResult<Vec<Self>> {
         let rows = ctx
             .pg_txn()
-            .query(
-                LIST_FOR_NODE,
-                &[ctx.read_tenancy(), ctx.visibility(), &node_id],
-            )
+            .query(LIST_FOR_NODE, &[ctx.tenancy(), ctx.visibility(), &node_id])
             .await?;
         let objects = standard_model::objects_from_rows(rows)?;
         Ok(objects)

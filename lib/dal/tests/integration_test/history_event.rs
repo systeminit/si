@@ -15,5 +15,5 @@ async fn new(ctx: &DalContext) {
     assert_eq!(&history_event.actor, &HistoryActor::SystemInit);
     assert_eq!(&history_event.message, "change set created");
     assert_eq!(&history_event.data, &serde_json::json!({}));
-    assert_eq!(&history_event.tenancy, ctx.write_tenancy());
+    assert_eq!(&history_event.tenancy, ctx.tenancy());
 }

@@ -1,4 +1,4 @@
-use crate::{FuncError, WriteTenancy};
+use crate::{FuncError, Tenancy};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use si_data_nats::NatsError;
@@ -83,7 +83,7 @@ pub struct FuncBinding {
     backend_kind: FuncBackendKind,
     code_sha256: String,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -116,10 +116,9 @@ impl FuncBinding {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM func_binding_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                "SELECT object FROM func_binding_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    ctx.write_tenancy(),
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &args,
                     &func_id,

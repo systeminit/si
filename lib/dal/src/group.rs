@@ -1,4 +1,4 @@
-use crate::WriteTenancy;
+use crate::Tenancy;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -40,7 +40,7 @@ pub struct Group {
     name: String,
     billing_account_pk: BillingAccountPk,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -69,12 +69,7 @@ impl Group {
             .pg()
             .query_one(
                 "SELECT object FROM group_create_v1($1, $2, $3, $4)",
-                &[
-                    ctx.write_tenancy(),
-                    ctx.visibility(),
-                    &name,
-                    &billing_account_pk,
-                ],
+                &[ctx.tenancy(), ctx.visibility(), &name, &billing_account_pk],
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;

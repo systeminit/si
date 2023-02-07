@@ -2,10 +2,7 @@ use super::SessionError;
 use super::SessionResult;
 use crate::server::extract::{HandlerContext, JwtSecretKey};
 use axum::Json;
-use dal::{
-    context::AccessBuilder, BillingAccount, HistoryActor, ReadTenancy, StandardModel, User,
-    WriteTenancy,
-};
+use dal::{context::AccessBuilder, BillingAccount, HistoryActor, StandardModel, Tenancy, User};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,8 +31,7 @@ pub async fn login(
         .build(
             AccessBuilder::new(
                 // Empty tenancy means things can be written, but won't ever be read, with the exception of billing accounts, organizations and workspaces
-                ReadTenancy::new_empty(),
-                WriteTenancy::new_empty(),
+                Tenancy::new_empty(),
                 HistoryActor::SystemInit,
             )
             .build_head(),
@@ -46,11 +42,7 @@ pub async fn login(
         .ok_or(SessionError::LoginFailed)?;
     let billing_account_defaults = BillingAccount::get_defaults(&ctx, billing_account.pk()).await?;
 
-    // Update context tenancies
-    ctx.update_tenancies(
-        ReadTenancy::new(*billing_account_defaults.workspace.pk()),
-        WriteTenancy::new(*billing_account_defaults.workspace.pk()),
-    );
+    ctx.update_tenancy(Tenancy::new(*billing_account_defaults.workspace.pk()));
 
     let user = User::find_by_email(&ctx, &request.user_email)
         .await?

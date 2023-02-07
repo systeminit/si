@@ -11,7 +11,7 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
     standard_model_accessor, DalContext, HistoryEventError, PropId, SchemaVariantId, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use crate::{PropKind, ValidationPrototypeContext};
 
@@ -61,7 +61,7 @@ pub struct ValidationPrototype {
     #[serde(flatten)]
     context: ValidationPrototypeContext,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -91,7 +91,7 @@ impl ValidationPrototype {
             .query_one(
                 "SELECT object FROM validation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &func_id,
                     &args,
@@ -122,10 +122,7 @@ impl ValidationPrototype {
         let rows = ctx
             .txns()
             .pg()
-            .query(
-                LIST_FOR_PROP,
-                &[ctx.read_tenancy(), ctx.visibility(), &prop_id],
-            )
+            .query(LIST_FOR_PROP, &[ctx.tenancy(), ctx.visibility(), &prop_id])
             .await?;
         let object = objects_from_rows(rows)?;
         Ok(object)
@@ -146,7 +143,7 @@ impl ValidationPrototype {
             .pg()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
-                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
         let object = objects_from_rows(rows)?;
@@ -162,10 +159,7 @@ impl ValidationPrototype {
         let rows = ctx
             .txns()
             .pg()
-            .query(
-                LIST_FOR_FUNC,
-                &[ctx.read_tenancy(), ctx.visibility(), &func_id],
-            )
+            .query(LIST_FOR_FUNC, &[ctx.tenancy(), ctx.visibility(), &func_id])
             .await?;
 
         Ok(objects_from_rows(rows)?)
@@ -181,7 +175,7 @@ impl ValidationPrototype {
             .query(
                 FIND_FOR_CONTEXT,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &context.prop_id(),
                     &context.schema_variant_id(),

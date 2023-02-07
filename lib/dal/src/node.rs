@@ -12,7 +12,7 @@ use crate::edge::EdgeKind;
 use crate::{
     impl_standard_model, pk, schema::variant::SchemaVariantError, standard_model,
     standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryEventError,
-    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use crate::{DalContext, Edge, SchemaError};
 
@@ -81,7 +81,7 @@ pub struct Node {
     id: NodeId,
     kind: NodeKind,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -105,7 +105,7 @@ impl Node {
             .pg()
             .query_one(
                 "SELECT object FROM node_create_v1($1, $2, $3)",
-                &[ctx.write_tenancy(), ctx.visibility(), &kind.as_ref()],
+                &[ctx.tenancy(), ctx.visibility(), &kind.as_ref()],
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
@@ -133,7 +133,7 @@ impl Node {
             .pg()
             .query(
                 LIST_FOR_KIND,
-                &[ctx.write_tenancy(), ctx.visibility(), &kind.as_ref()],
+                &[ctx.tenancy(), ctx.visibility(), &kind.as_ref()],
             )
             .await?;
         let mut node_ids = HashSet::new();
@@ -156,7 +156,7 @@ impl Node {
             .pg()
             .query(
                 LIST_CONNECTED_FOR_KIND,
-                &[ctx.write_tenancy(), ctx.visibility(), &kind.as_ref()],
+                &[ctx.tenancy(), ctx.visibility(), &kind.as_ref()],
             )
             .await?;
         let mut node_ids = HashSet::new();

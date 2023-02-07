@@ -17,7 +17,7 @@ use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
     AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
     Func, FuncError, HistoryEventError, InternalProviderError, Node, PropId, Socket, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
@@ -128,7 +128,7 @@ pub struct Edge {
     tail_object_id: EdgeObjectId,
     tail_socket_id: SocketId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -179,7 +179,7 @@ impl Edge {
             .query_one(
                 "SELECT object FROM edge_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &kind.to_string(),
                     &head_node_id,
@@ -224,7 +224,7 @@ impl Edge {
                 .query_opt(
                     FIND_DELETED_EQUIVALENT,
                     &[
-                        ctx.read_tenancy(),
+                        ctx.tenancy(),
                         &ctx.visibility().change_set_pk,
                         &head_node_id,
                         &head_socket_id,
@@ -309,7 +309,7 @@ impl Edge {
             .pg()
             .query(
                 LIST_PARENTS_FOR_COMPONENT,
-                &[ctx.read_tenancy(), ctx.visibility(), &head_component_id],
+                &[ctx.tenancy(), ctx.visibility(), &head_component_id],
             )
             .await?;
         let objects = rows
@@ -328,7 +328,7 @@ impl Edge {
             .pg()
             .query(
                 LIST_FOR_COMPONENT,
-                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
         Ok(objects_from_rows(rows)?)
@@ -341,7 +341,7 @@ impl Edge {
             .pg()
             .query(
                 LIST_FOR_KIND,
-                &[ctx.read_tenancy(), ctx.visibility(), &kind.as_ref()],
+                &[ctx.tenancy(), ctx.visibility(), &kind.as_ref()],
             )
             .await?;
         Ok(objects_from_rows(rows)?)

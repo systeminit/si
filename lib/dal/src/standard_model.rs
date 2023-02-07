@@ -1,4 +1,4 @@
-use crate::WriteTenancy;
+use crate::Tenancy;
 use chrono::{DateTime, Utc};
 use postgres_types::ToSql;
 use serde::de::DeserializeOwned;
@@ -72,7 +72,7 @@ pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
         .pg()
         .query_opt(
             "SELECT * FROM get_by_id_v1($1, $2, $3, $4)",
-            &[&table, ctx.read_tenancy(), ctx.visibility(), &id],
+            &[&table, ctx.tenancy(), ctx.visibility(), &id],
         )
         .await?;
     object_option_from_row_option(row_option)
@@ -95,7 +95,7 @@ pub async fn find_by_attr<V: Send + Sync + ToString + Debug, OBJECT: Deserialize
             "SELECT * FROM find_by_attr_v1($1, $2, $3, $4, $5)",
             &[
                 &table,
-                ctx.read_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &attr_name,
                 &value.to_string(),
@@ -116,7 +116,7 @@ pub async fn find_by_attr_null<OBJECT: DeserializeOwned>(
         .pg()
         .query(
             "SELECT * FROM find_by_attr_null_v1($1, $2, $3, $4)",
-            &[&table, ctx.read_tenancy(), ctx.visibility(), &attr_name],
+            &[&table, ctx.tenancy(), ctx.visibility(), &attr_name],
         )
         .await?;
     objects_from_rows(rows)
@@ -136,7 +136,7 @@ pub async fn find_by_attr_in<V: Send + Sync + ToString + Debug, OBJECT: Deserial
             "SELECT * FROM find_by_attr_in_v1($1, $2, $3, $4, $5)",
             &[
                 &table,
-                ctx.read_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &attr_name,
                 &value.iter().map(|i| i.to_string()).collect::<Vec<String>>(),
@@ -160,7 +160,7 @@ pub async fn find_by_attr_not_in<V: Send + Sync + ToString + Debug, OBJECT: Dese
             "SELECT * FROM find_by_attr_not_in_v1($1, $2, $3, $4, $5)",
             &[
                 &table,
-                ctx.read_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &attr_name,
                 &value.iter().map(|i| i.to_string()).collect::<Vec<String>>(),
@@ -197,7 +197,7 @@ pub async fn belongs_to<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
             "SELECT * FROM belongs_to_v1($1, $2, $3, $4, $5)",
             &[
                 &table,
-                ctx.read_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &retrieve_table,
                 &id,
@@ -217,11 +217,10 @@ pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + S
     ctx.txns()
         .pg()
         .query_one(
-            "SELECT set_belongs_to_v1($1, $2, $3, $4, $5, $6)",
+            "SELECT set_belongs_to_v1($1, $2, $3, $4, $5)",
             &[
                 &table,
-                ctx.read_tenancy(),
-                ctx.write_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &object_id,
                 &belongs_to_id,
@@ -241,7 +240,7 @@ pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
         .pg()
         .query_one(
             "SELECT unset_belongs_to_v1($1, $2, $3, $4)",
-            &[&table, ctx.write_tenancy(), ctx.visibility(), &object_id],
+            &[&table, ctx.tenancy(), ctx.visibility(), &object_id],
         )
         .await?;
     Ok(())
@@ -257,7 +256,7 @@ pub async fn hard_unset_belongs_to_in_change_set<ObjectId: Send + Sync + ToSql>(
         .pg()
         .query_one(
             "SELECT hard_unset_belongs_to_in_change_set_v1($1, $2, $3, $4)",
-            &[&table, ctx.write_tenancy(), ctx.visibility(), &object_id],
+            &[&table, ctx.tenancy(), ctx.visibility(), &object_id],
         )
         .await?;
     Ok(())
@@ -273,12 +272,7 @@ pub async fn unset_all_belongs_to<BelongsToId: Send + Sync + ToSql>(
         .pg()
         .query_one(
             "SELECT unset_all_belongs_to_v1($1, $2, $3, $4)",
-            &[
-                &table,
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                &belongs_to_id,
-            ],
+            &[&table, ctx.tenancy(), ctx.visibility(), &belongs_to_id],
         )
         .await?;
     Ok(())
@@ -294,12 +288,7 @@ pub async fn hard_unset_all_belongs_to_in_change_set<BelongsToId: Send + Sync + 
         .pg()
         .query_one(
             "SELECT hard_unset_all_belongs_to_in_change_set_v1($1, $2, $3, $4)",
-            &[
-                &table,
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                &belongs_to_id,
-            ],
+            &[&table, ctx.tenancy(), ctx.visibility(), &belongs_to_id],
         )
         .await?;
     Ok(())
@@ -319,7 +308,7 @@ pub async fn has_many<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
             "SELECT * FROM has_many_v1($1, $2, $3, $4, $5)",
             &[
                 &table,
-                ctx.read_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &retrieve_table,
                 &belongs_to_id,
@@ -350,7 +339,7 @@ pub async fn many_to_many<
             "SELECT * FROM many_to_many_v1($1, $2, $3, $4, $5, $6, $7)",
             &[
                 &table,
-                ctx.read_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &left_table,
                 &right_table,
@@ -375,7 +364,7 @@ pub async fn associate_many_to_many<LeftId: Send + Sync + ToSql, RightId: Send +
             "SELECT associate_many_to_many_v1($1, $2, $3, $4, $5)",
             &[
                 &table,
-                ctx.write_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &left_object_id,
                 &right_object_id,
@@ -401,7 +390,7 @@ pub async fn disassociate_many_to_many<
             "SELECT disassociate_many_to_many_v1($1, $2, $3, $4, $5)",
             &[
                 &table,
-                ctx.write_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &left_object_id,
                 &right_object_id,
@@ -421,12 +410,7 @@ pub async fn disassociate_all_many_to_many<LeftId: Send + Sync + ToSql>(
         .pg()
         .query_one(
             "SELECT disassociate_all_many_to_many_v1($1, $2, $3, $4)",
-            &[
-                &table,
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                &left_object_id,
-            ],
+            &[&table, ctx.tenancy(), ctx.visibility(), &left_object_id],
         )
         .await?;
     Ok(())
@@ -475,7 +459,7 @@ where
     VALUE: Send + Sync + ToSql,
 {
     let query = format!(
-        "SELECT updated_at FROM update_by_id_v1($1, $2, $3, $4, $5, $6, $7::{})",
+        "SELECT updated_at FROM update_by_id_v1($1, $2, $3, $4, $5, $6::{})",
         hint.as_ref()
     );
 
@@ -487,8 +471,7 @@ where
             &[
                 &table,
                 &column,
-                ctx.read_tenancy(),
-                ctx.write_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &id,
                 &value,
@@ -509,7 +492,7 @@ pub async fn list<OBJECT: DeserializeOwned>(
         .pg()
         .query(
             "SELECT * FROM list_models_v1($1, $2, $3)",
-            &[&table, ctx.read_tenancy(), ctx.visibility()],
+            &[&table, ctx.tenancy(), ctx.visibility()],
         )
         .await?;
     objects_from_rows(rows)
@@ -525,14 +508,8 @@ pub async fn delete_by_id<ID: Send + Sync + ToSql + std::fmt::Display>(
         .txns()
         .pg()
         .query_one(
-            "SELECT updated_at FROM delete_by_id_v1($1, $2, $3, $4, $5)",
-            &[
-                &table,
-                ctx.read_tenancy(),
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                &id,
-            ],
+            "SELECT updated_at FROM delete_by_id_v1($1, $2, $3, $4)",
+            &[&table, ctx.tenancy(), ctx.visibility(), &id],
         )
         .await?;
     row.try_get("updated_at")
@@ -550,7 +527,7 @@ pub async fn delete_by_pk<PK: Send + Sync + ToSql + std::fmt::Display>(
         .pg()
         .query_one(
             "SELECT updated_at FROM delete_by_pk_v1($1, $2, $3)",
-            &[&table, ctx.read_tenancy(), &pk],
+            &[&table, ctx.tenancy(), &pk],
         )
         .await?;
     row.try_get("updated_at")
@@ -568,7 +545,7 @@ pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
         .pg()
         .query_one(
             "SELECT updated_at FROM undelete_by_pk_v1($1, $2, $3)",
-            &[&table, ctx.read_tenancy(), &pk],
+            &[&table, ctx.tenancy(), &pk],
         )
         .await?;
     row.try_get("updated_at")
@@ -625,8 +602,8 @@ pub trait StandardModel {
     fn visibility(&self) -> &Visibility;
     fn visibility_mut(&mut self) -> &mut Visibility;
 
-    fn tenancy(&self) -> &WriteTenancy;
-    fn tenancy_mut(&mut self) -> &mut WriteTenancy;
+    fn tenancy(&self) -> &Tenancy;
+    fn tenancy_mut(&mut self) -> &mut Tenancy;
 
     fn timestamp(&self) -> &Timestamp;
     fn timestamp_mut(&mut self) -> &mut Timestamp;
@@ -859,11 +836,11 @@ macro_rules! impl_standard_model {
                 &mut self.visibility
             }
 
-            fn tenancy(&self) -> &$crate::WriteTenancy {
+            fn tenancy(&self) -> &$crate::Tenancy {
                 &self.tenancy
             }
 
-            fn tenancy_mut(&mut self) -> &mut $crate::WriteTenancy {
+            fn tenancy_mut(&mut self) -> &mut $crate::Tenancy {
                 &mut self.tenancy
             }
 

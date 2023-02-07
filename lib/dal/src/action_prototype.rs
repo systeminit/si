@@ -10,8 +10,8 @@ use telemetry::prelude::*;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, DalContext,
-    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
-    Visibility, WorkflowPrototype, WorkflowPrototypeId, WriteTenancy,
+    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility, WorkflowPrototype, WorkflowPrototypeId,
 };
 
 const FIND_BY_NAME: &str = include_str!("./queries/action_prototype_find_by_name.sql");
@@ -141,7 +141,7 @@ pub struct ActionPrototype {
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -198,7 +198,7 @@ impl ActionPrototype {
             .query_one(
                 "SELECT object FROM action_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &workflow_prototype_id,
                     &name,
@@ -226,7 +226,7 @@ impl ActionPrototype {
             .query_opt(
                 FIND_BY_NAME,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &name,
                     &schema_variant_id,

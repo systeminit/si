@@ -15,8 +15,8 @@ use crate::{
     impl_standard_model, pk,
     schema::variant::SchemaVariantError,
     standard_model, standard_model_accessor, AttributeReadContext, AttributeValueId, Component,
-    ComponentId, HistoryEventError, StandardModel, StandardModelError, Timestamp,
-    ValidationPrototype, ValidationPrototypeId, Visibility, WriteTenancy,
+    ComponentId, HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp,
+    ValidationPrototype, ValidationPrototypeId, Visibility,
 };
 
 #[allow(clippy::large_enum_variant)]
@@ -76,7 +76,7 @@ pub struct ValidationResolver {
     /// The [`FuncBindingReturnValueId`] that represents the value at this specific position & context.
     attribute_value_func_binding_return_value_id: FuncBindingReturnValueId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -105,10 +105,9 @@ impl ValidationResolver {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM validation_resolver_create_v1($1, $2, $3, $4, $5, $6)",
+                "SELECT object FROM validation_resolver_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    ctx.write_tenancy(),
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &validation_prototype_id,
                     &attribute_value_id,
@@ -148,7 +147,7 @@ impl ValidationResolver {
             .query(
                 FIND_FOR_ATTRIBUTE_VALUE_AND_FUNC_BINDING,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_value_id,
                     &func_id,
@@ -183,7 +182,7 @@ impl ValidationResolver {
             .query(
                 FIND_STATUS,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &context,
                     schema_variant.id(),

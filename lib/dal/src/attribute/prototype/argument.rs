@@ -11,7 +11,7 @@ use crate::{
     func::argument::FuncArgumentId, impl_standard_model, pk,
     provider::internal::InternalProviderId, standard_model, standard_model_accessor,
     AttributePrototypeId, ComponentId, DalContext, ExternalProviderId, HistoryEventError,
-    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
@@ -56,7 +56,7 @@ pub struct AttributePrototypeArgument {
     pk: AttributePrototypeArgumentPk,
     id: AttributePrototypeArgumentId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     visibility: Visibility,
     #[serde(flatten)]
@@ -119,7 +119,7 @@ impl AttributePrototypeArgument {
             .query_one(
                 "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
                     &func_argument_id,
@@ -160,7 +160,7 @@ impl AttributePrototypeArgument {
             .query_one(
                 "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
                     &func_argument_id,
@@ -201,7 +201,7 @@ impl AttributePrototypeArgument {
             .query_one(
                 "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
                     &func_argument_id,
@@ -242,7 +242,7 @@ impl AttributePrototypeArgument {
             .query_one(
                 "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
                     &func_argument_id,
@@ -399,11 +399,7 @@ impl AttributePrototypeArgument {
             .pg()
             .query(
                 LIST_FOR_ATTRIBUTE_PROTOTYPE,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &attribute_prototype_id,
-                ],
+                &[ctx.tenancy(), ctx.visibility(), &attribute_prototype_id],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
@@ -425,7 +421,7 @@ impl AttributePrototypeArgument {
             .query(
                 LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE_AND_HEAD_COMPONENT_ID,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
                     &head_component_id,
@@ -458,7 +454,7 @@ impl AttributePrototypeArgument {
             .pg()
             .query(
                 LIST_FOR_FUNC_ARGUMENT_ID,
-                &[ctx.read_tenancy(), ctx.visibility(), &func_argument_id],
+                &[ctx.tenancy(), ctx.visibility(), &func_argument_id],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
@@ -477,7 +473,7 @@ impl AttributePrototypeArgument {
             .query_opt(
                 FIND_FOR_PROVIDERS_AND_COMPONENTS,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     external_provider_id,
                     internal_provider_id,

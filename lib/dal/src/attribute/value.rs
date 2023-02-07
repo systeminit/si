@@ -33,8 +33,8 @@ use crate::{
     AttributeContextError, AttributePrototypeArgumentError, Component, ComponentId, DalContext,
     Func, FuncBackendKind, FuncBackendResponseType, FuncBinding, FuncError, HistoryEventError,
     IndexMap, InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind,
-    StandardModel, StandardModelError, StatusUpdaterError, Timestamp, TransactionsError,
-    Visibility, WriteTenancy, WsEventError,
+    StandardModel, StandardModelError, StatusUpdaterError, Tenancy, Timestamp, TransactionsError,
+    Visibility, WsEventError,
 };
 
 pub mod view;
@@ -231,7 +231,7 @@ pub struct AttributeValue {
     #[serde(flatten)]
     pub context: AttributeContext,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     visibility: Visibility,
     #[serde(flatten)]
@@ -261,10 +261,9 @@ impl AttributeValue {
             .txns()
             .pg()
             .query_one(
-                "SELECT new_attribute_value AS object FROM attribute_value_new_v1($1, $2, $3, $4, $5, $6, $7)",
+                "SELECT new_attribute_value AS object FROM attribute_value_new_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    ctx.write_tenancy(),
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &func_binding_id,
                     &func_binding_return_value_id,
@@ -332,14 +331,8 @@ impl AttributeValue {
             .txns()
             .pg()
             .query(
-                "SELECT attribute_value_set_parent_attribute_value_v1($1, $2, $3, $4, $5)",
-                &[
-                    ctx.write_tenancy(),
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &self.id,
-                    belongs_to_id,
-                ],
+                "SELECT attribute_value_set_parent_attribute_value_v1($1, $2, $3, $4)",
+                &[ctx.tenancy(), ctx.visibility(), &self.id, belongs_to_id],
             )
             .await?;
 
@@ -401,7 +394,7 @@ impl AttributeValue {
             .query(
                 CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_value_id,
                     &attribute_read_context,
@@ -424,7 +417,7 @@ impl AttributeValue {
             .query_opt(
                 FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &context,
                     &attribute_prototype_id,
@@ -448,7 +441,7 @@ impl AttributeValue {
             .query_opt(
                 FIND_WITH_PARENT_AND_KEY_FOR_CONTEXT,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &context,
                     &parent_attribute_value_id,
@@ -480,7 +473,7 @@ impl AttributeValue {
             .pg()
             .query(
                 LIST_FOR_CONTEXT,
-                &[ctx.read_tenancy(), ctx.visibility(), &context],
+                &[ctx.tenancy(), ctx.visibility(), &context],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
@@ -508,7 +501,7 @@ impl AttributeValue {
             .pg()
             .query(
                 LIST_FOR_CONTEXT,
-                &[ctx.read_tenancy(), ctx.visibility(), &context],
+                &[ctx.tenancy(), ctx.visibility(), &context],
             )
             .await?;
         let maybe_row = rows.pop();
@@ -526,7 +519,7 @@ impl AttributeValue {
             .pg()
             .query_one(
                 FIND_PROP_FOR_VALUE,
-                &[ctx.read_tenancy(), ctx.visibility(), &attribute_value_id],
+                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id],
             )
             .await?;
 
@@ -565,7 +558,7 @@ impl AttributeValue {
             .query(
                 LIST_PAYLOAD_FOR_READ_CONTEXT,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &context,
                     &schema_variant_id,
@@ -626,7 +619,7 @@ impl AttributeValue {
             .query(
                 LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &context,
                     &root_attribute_value_id,
@@ -730,10 +723,9 @@ impl AttributeValue {
         create_child_proxies: bool,
     ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
         let row = ctx.pg_txn().query_one(
-            "SELECT new_attribute_value_id FROM attribute_value_update_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            "SELECT new_attribute_value_id FROM attribute_value_update_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8)",
             &[
-                ctx.write_tenancy(),
-                ctx.read_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &attribute_value_id,
                 &parent_attribute_value_id,
@@ -813,10 +805,9 @@ impl AttributeValue {
         create_child_proxies: bool,
     ) -> AttributeValueResult<AttributeValueId> {
         let row = ctx.pg_txn().query_one(
-            "SELECT new_attribute_value_id FROM attribute_value_insert_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+            "SELECT new_attribute_value_id FROM attribute_value_insert_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7)",
             &[
-                ctx.write_tenancy(),
-                ctx.read_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &item_attribute_context,
                 &array_or_map_attribute_value_id,
@@ -842,13 +833,8 @@ impl AttributeValue {
         let _row = ctx
             .pg_txn()
             .query(
-                "SELECT attribute_value_update_parent_index_map_v1($1, $2, $3, $4)",
-                &[
-                    ctx.write_tenancy(),
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &self.id,
-                ],
+                "SELECT attribute_value_update_parent_index_map_v1($1, $2, $3)",
+                &[ctx.tenancy(), ctx.visibility(), &self.id],
             )
             .await?;
 
@@ -864,10 +850,9 @@ impl AttributeValue {
         let _row = ctx
             .pg_txn()
             .query(
-                "SELECT attribute_value_populate_nested_values_v1($1, $2, $3, $4, $5, $6)",
+                "SELECT attribute_value_populate_nested_values_v1($1, $2, $3, $4, $5)",
                 &[
-                    ctx.write_tenancy(),
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &parent_attribute_value_id,
                     &update_context,
@@ -894,7 +879,7 @@ impl AttributeValue {
             .pg()
             .query_opt(
                 IS_FOR_INTERNAL_PROVIDER_OF_ROOT_PROP,
-                &[&ctx.write_tenancy(), ctx.visibility(), &self.context],
+                &[&ctx.tenancy(), ctx.visibility(), &self.context],
             )
             .await?;
         if let Some(row) = maybe_row {
@@ -918,13 +903,8 @@ impl AttributeValue {
         let _rows = ctx
             .pg_txn()
             .query(
-                "SELECT attribute_value_create_new_affected_values_v1($1, $2, $3, $4)",
-                &[
-                    &ctx.write_tenancy(),
-                    &ctx.read_tenancy(),
-                    &ctx.visibility(),
-                    &attribute_value_ids,
-                ],
+                "SELECT attribute_value_create_new_affected_values_v1($1, $2, $3)",
+                &[&ctx.tenancy(), &ctx.visibility(), &attribute_value_ids],
             )
             .await?;
         info!(
@@ -960,7 +940,7 @@ impl AttributeValue {
             .pg()
             .query(
                 FETCH_UPDATE_GRAPH_DATA,
-                &[&ctx.read_tenancy(), ctx.visibility(), &attribute_value_ids],
+                &[&ctx.tenancy(), ctx.visibility(), &attribute_value_ids],
             )
             .await?;
         info!(
@@ -989,10 +969,9 @@ impl AttributeValue {
         ctx: &DalContext,
     ) -> AttributeValueResult<AttributeValueId> {
         let row = ctx.pg_txn().query_one(
-            "SELECT new_attribute_value_id FROM attribute_value_vivify_value_and_parent_values_raw_v1($1, $2, $3, $4, $5, $6)",
+            "SELECT new_attribute_value_id FROM attribute_value_vivify_value_and_parent_values_raw_v1($1, $2, $3, $4, $5)",
         &[
-            ctx.write_tenancy(),
-            ctx.read_tenancy(),
+            ctx.tenancy(),
             ctx.visibility(),
             &self.context,
             &self.id,

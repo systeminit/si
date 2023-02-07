@@ -1,7 +1,7 @@
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeArgument,
     AttributePrototypeArgumentError, AttributePrototypeId, DalContext, FuncId, HistoryEventError,
-    PropKind, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use postgres_types::{FromSql, ToSql};
 use serde::{Deserialize, Serialize};
@@ -83,7 +83,7 @@ pub struct FuncArgument {
     element_kind: Option<FuncArgumentKind>,
     shape: Option<JsonValue>,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -114,7 +114,7 @@ impl FuncArgument {
             .query_one(
                 "SELECT object FROM func_argument_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &func_id,
                     &name,
@@ -142,10 +142,7 @@ impl FuncArgument {
         let rows = ctx
             .txns()
             .pg()
-            .query(
-                LIST_FOR_FUNC,
-                &[ctx.read_tenancy(), ctx.visibility(), &func_id],
-            )
+            .query(LIST_FOR_FUNC, &[ctx.tenancy(), ctx.visibility(), &func_id])
             .await?;
 
         Ok(standard_model::objects_from_rows(rows)?)
@@ -165,7 +162,7 @@ impl FuncArgument {
             .query(
                 LIST_FOR_FUNC_WITH_PROTOTYPE_ARGUMENTS,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &func_id,
                     &attribute_prototype_id,
@@ -205,7 +202,7 @@ impl FuncArgument {
                 .pg()
                 .query_opt(
                     FIND_BY_NAME_FOR_FUNC,
-                    &[ctx.read_tenancy(), ctx.visibility(), &name, &func_id],
+                    &[ctx.tenancy(), ctx.visibility(), &name, &func_id],
                 )
                 .await?
             {

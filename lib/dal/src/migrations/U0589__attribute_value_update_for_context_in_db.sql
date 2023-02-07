@@ -145,14 +145,10 @@ LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE
 AS $$
-    -- Even though these fields are numeric, when we extract their values we either get a jsonb, or text. We'd
-    -- have to further use jsonb_typeof(...)  to make sure it's actually a 'number' before doing a conversion,
-    -- but checking against a string is good enough for now.
-    SELECT  (this_context ->> 'attribute_context_component_id')::ident      = ident_nil_v1()
+    SELECT  (this_context ->> 'attribute_context_component_id')::ident = ident_nil_v1()
 $$;
 
-CREATE OR REPLACE FUNCTION attribute_value_set_parent_attribute_value_v1(this_write_tenancy             jsonb,
-                                                                         this_read_tenancy              jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_set_parent_attribute_value_v1(this_tenancy                   jsonb,
                                                                          this_visibility                jsonb,
                                                                          this_attribute_value_id        ident,
                                                                          this_parent_attribute_value_id ident) RETURNS void
@@ -167,12 +163,12 @@ BEGIN
     INTO attribute_value_key, attribute_value_context
     FROM attribute_values
     WHERE id = this_attribute_value_id
-          AND in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_values)
+          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
     ORDER BY id,
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC NULLS FIRST;
 
-    potential_duplicate_child_for_parent := attribute_value_find_with_parent_and_key_for_context_v1(this_read_tenancy,
+    potential_duplicate_child_for_parent := attribute_value_find_with_parent_and_key_for_context_v1(this_tenancy,
                                                                                                     this_visibility,
                                                                                                     this_parent_attribute_value_id,
                                                                                                     attribute_value_key,
@@ -184,14 +180,13 @@ BEGIN
               (potential_duplicate_child_for_parent ->> 'id')::ident,
               this_parent_attribute_value_id,
               this_attribute_value_id,
-              this_write_tenancy,
+              this_tenancy,
               this_visibility;
     END IF;
 
     PERFORM set_belongs_to_v1(
         'attribute_value_belongs_to_attribute_value',
-        this_read_tenancy,
-        this_write_tenancy,
+        this_tenancy,
         this_visibility,
         this_attribute_value_id,
         this_parent_attribute_value_id
@@ -200,7 +195,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 DROP FUNCTION IF EXISTS attribute_value_find_with_parent_and_key_for_context_v1;
-CREATE OR REPLACE FUNCTION attribute_value_find_with_parent_and_key_for_context_v1(this_read_tenancy              jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_find_with_parent_and_key_for_context_v1(this_tenancy                   jsonb,
                                                                                    this_visibility                jsonb,
                                                                                    this_parent_attribute_value_id ident,
                                                                                    this_key                       text,
@@ -213,13 +208,13 @@ BEGIN
     SELECT DISTINCT ON (attribute_context_prop_id)
         to_jsonb(av.*)
     INTO attribute_value
-    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
     LEFT JOIN (
         SELECT DISTINCT ON (object_id)
             object_id AS child_attribute_value_id,
             belongs_to_id AS parent_attribute_value_id
         FROM attribute_value_belongs_to_attribute_value
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
+        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
         ORDER BY object_id,
                  visibility_change_set_pk DESC,
                  visibility_deleted_at DESC
@@ -267,7 +262,7 @@ $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
 DROP FUNCTION IF EXISTS ap_find_with_parent_value_and_key_for_context_v1;
 CREATE OR REPLACE FUNCTION ap_find_with_parent_value_and_key_for_context_v1(
-    this_read_tenancy              jsonb,
+    this_tenancy                   jsonb,
     this_visibility                jsonb,
     this_parent_attribute_value_id ident,
     this_key                       text,
@@ -283,15 +278,15 @@ AS $$
         COALESCE(ap.key, '')
     )
         to_jsonb(ap.*)
-    FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
-    INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility) AS avbtap
+    FROM attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
+    INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_tenancy, this_visibility) AS avbtap
         ON ap.id = avbtap.belongs_to_id
-    INNER JOIN attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    INNER JOIN attribute_values_v1(this_tenancy, this_visibility) AS av
         ON avbtap.object_id = av.id
             AND in_attribute_context_v1(this_attribute_context, av)
-    LEFT JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+    LEFT JOIN attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
         ON av.id = avbtav.object_id
-    LEFT JOIN attribute_values_v1(this_read_tenancy, this_visibility) AS parent_av
+    LEFT JOIN attribute_values_v1(this_tenancy, this_visibility) AS parent_av
         ON avbtav.belongs_to_id = parent_av.id
             AND in_attribute_context_v1(this_attribute_context, av)
     WHERE
@@ -312,8 +307,7 @@ AS $$
         ap.attribute_context_component_id DESC
 $$;
 
-CREATE OR REPLACE FUNCTION attribute_prototype_create_intermediate_proxy_values_v1(this_write_tenancy             jsonb,
-                                                                                   this_read_tenancy              jsonb,
+CREATE OR REPLACE FUNCTION attribute_prototype_create_intermediate_proxy_values_v1(this_tenancy                   jsonb,
                                                                                    this_visibility                jsonb,
                                                                                    this_parent_attribute_value_id ident,
                                                                                    this_prototype_id              ident,
@@ -331,28 +325,26 @@ BEGIN
     END IF;
 
     attribute_value := jsonb_populate_record(null::attribute_values,
-                                             attribute_value_find_with_parent_and_prototype_for_context_v1(this_read_tenancy,
+                                             attribute_value_find_with_parent_and_prototype_for_context_v1(this_tenancy,
                                                                                                            this_visibility,
                                                                                                            this_parent_attribute_value_id,
                                                                                                            this_prototype_id,
                                                                                                            this_attribute_context));
     IF attribute_value.id IS NULL THEN
-        PERFORM attribute_prototype_create_intermediate_proxy_values_v1(this_write_tenancy,
-                                                                        this_read_tenancy,
+        PERFORM attribute_prototype_create_intermediate_proxy_values_v1(this_tenancy,
                                                                         this_visibility,
                                                                         this_parent_attribute_value_id,
                                                                         this_prototype_id,
                                                                         attribute_context_less_specific_v1(this_attribute_context));
         proxy_target := jsonb_populate_record(null::attribute_values,
-                                              attribute_value_find_with_parent_and_prototype_for_context_v1(this_read_tenancy,
+                                              attribute_value_find_with_parent_and_prototype_for_context_v1(this_tenancy,
                                                                                                             this_visibility,
                                                                                                             this_parent_attribute_value_id,
                                                                                                             this_prototype_id,
                                                                                                             attribute_context_less_specific_v1(this_attribute_context)));
         IF proxy_target.id IS NOT NULL THEN
             proxy_attribute_value = json_populate_record(null::attribute_values,
-                                                         attribute_value_new_v1(this_write_tenancy,
-                                                                                this_read_tenancy,
+                                                         attribute_value_new_v1(this_tenancy,
                                                                                 this_visibility,
                                                                                 proxy_target.func_binding_id,
                                                                                 proxy_target.func_binding_return_value_id,
@@ -360,15 +352,13 @@ BEGIN
                                                                                 proxy_target.key));
             PERFORM update_by_id_v1('attribute_values',
                                     'proxy_for_attribute_value_id',
-                                    this_read_tenancy,
-                                    this_write_tenancy,
+                                    this_tenancy,
                                     this_visibility,
                                     proxy_attribute_value.id,
                                     proxy_target.id);
             PERFORM set_belongs_to_v1(
                 'attribute_value_belongs_to_attribute_prototype',
-                this_read_tenancy,
-                this_write_tenancy,
+                this_tenancy,
                 this_visibility,
                 proxy_attribute_value.id,
                 this_prototype_id
@@ -377,15 +367,14 @@ BEGIN
             RAISE 'AttributeValue not found for AttributePrototype(%), parent AttributeValue(%) in Tenancy(%), Visibility(%)',
                   this_prototype_id,
                   this_parent_attribute_value_id,
-                  this_read_tenancy,
+                  this_tenancy,
                   this_visibility;
         END IF;
     END IF;
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_prototype_new_v1(this_write_tenancy                jsonb,
-                                                      this_read_tenancy                 jsonb,
+CREATE OR REPLACE FUNCTION attribute_prototype_new_v1(this_tenancy                      jsonb,
                                                       this_visibility                   jsonb,
                                                       this_func_id                      ident,
                                                       this_func_binding_id              ident,
@@ -405,7 +394,7 @@ DECLARE
 BEGIN
     SELECT (ap.object ->> 'id')::ident
     INTO new_attribute_prototype_id
-    FROM attribute_prototype_create_v1(this_write_tenancy,
+    FROM attribute_prototype_create_v1(this_tenancy,
                                        this_visibility,
                                        this_attribute_context,
                                        this_func_id,
@@ -414,7 +403,7 @@ BEGIN
     SELECT DISTINCT ON (id) row_to_json(attribute_prototypes)
     INTO new_attribute_prototype
     FROM attribute_prototypes
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototypes)
+    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_prototypes)
           AND id = new_attribute_prototype_id
     ORDER BY id,
              visibility_change_set_pk DESC,
@@ -422,7 +411,7 @@ BEGIN
 
     SELECT (av.object ->> 'id')::ident
     INTO attribute_value_id
-    FROM attribute_value_create_v1(this_write_tenancy,
+    FROM attribute_value_create_v1(this_tenancy,
                                    this_visibility,
                                    this_attribute_context,
                                    this_func_binding_id,
@@ -430,8 +419,7 @@ BEGIN
                                    this_key) AS av;
     PERFORM set_belongs_to_v1(
         'attribute_value_belongs_to_attribute_prototype',
-        this_read_tenancy,
-        this_write_tenancy,
+        this_tenancy,
         this_visibility,
         attribute_value_id,
         new_attribute_prototype_id
@@ -440,8 +428,7 @@ BEGIN
     IF this_parent_attribute_value_id IS NOT NULL THEN
         PERFORM set_belongs_to_v1(
             'attribute_value_belongs_to_attribute_value',
-            this_read_tenancy,
-            this_write_tenancy,
+            this_tenancy,
             this_visibility,
             attribute_value_id,
             this_parent_attribute_value_id
@@ -451,7 +438,7 @@ BEGIN
     IF NOT attribute_context_is_least_specific_v1(this_attribute_context) THEN
         SELECT attribute_context_from_jsonb_v1(av.attribute_value)
         INTO existing_attribute_value_proxy_context
-        FROM attribute_value_find_with_parent_and_key_for_context_v1(this_read_tenancy,
+        FROM attribute_value_find_with_parent_and_key_for_context_v1(this_tenancy,
                                                                      this_visibility,
                                                                      this_parent_attribute_value_id,
                                                                      this_key,
@@ -462,14 +449,13 @@ BEGIN
         THEN
             SELECT (ap.found_attribute_prototype ->> 'id')::ident
             INTO original_attribute_prototype_id
-            FROM ap_find_with_parent_value_and_key_for_context_v1(this_read_tenancy,
+            FROM ap_find_with_parent_value_and_key_for_context_v1(this_tenancy,
                                                                   this_visibility,
                                                                   this_parent_attribute_value_id,
                                                                   this_key,
                                                                   attribute_context_less_specific_v1(this_attribute_context)) AS ap;
             IF original_attribute_prototype_id IS NOT NULL THEN
-                PERFORM attribute_prototype_create_intermediate_proxy_values_v1(this_write_tenancy,
-                                                                                this_read_tenancy,
+                PERFORM attribute_prototype_create_intermediate_proxy_values_v1(this_tenancy,
                                                                                 this_visibility,
                                                                                 this_parent_attribute_value_id,
                                                                                 original_attribute_prototype_id,
@@ -481,8 +467,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 -- AttributePrototype::new_with_existing_value
-CREATE OR REPLACE FUNCTION attribute_prototype_new_with_attribute_value_v1(this_write_tenancy             jsonb,
-                                                                           this_read_tenancy              jsonb,
+CREATE OR REPLACE FUNCTION attribute_prototype_new_with_attribute_value_v1(this_tenancy                   jsonb,
                                                                            this_visibility                jsonb,
                                                                            this_func_id                   ident,
                                                                            this_attribute_context         jsonb,
@@ -496,7 +481,7 @@ $$
 BEGIN
     SELECT (ap.object ->> 'id')::ident
     INTO new_attribute_prototype_id
-    FROM attribute_prototype_create_v1(this_write_tenancy,
+    FROM attribute_prototype_create_v1(this_tenancy,
                                        this_visibility,
                                        this_attribute_context,
                                        this_func_id,
@@ -504,8 +489,7 @@ BEGIN
 
     PERFORM set_belongs_to_v1(
         'attribute_value_belongs_to_attribute_prototype',
-        this_read_tenancy,
-        this_write_tenancy,
+        this_tenancy,
         this_visibility,
         this_attribute_value_id,
         new_attribute_prototype_id
@@ -514,8 +498,7 @@ BEGIN
     IF this_parent_attribute_value_id IS NOT NULL THEN
         PERFORM set_belongs_to_v1(
             'attribute_value_belongs_to_attribute_value',
-            this_read_tenancy,
-            this_write_tenancy,
+            this_tenancy,
             this_visibility,
             this_attribute_value_id,
             this_parent_attribute_value_id
@@ -523,7 +506,7 @@ BEGIN
     ELSE
         PERFORM unset_belongs_to_v1(
             'attribute_value_belongs_to_attribute_value',
-            this_write_tenancy,
+            this_tenancy,
             this_visibility,
             this_attribute_value_id
         );
@@ -565,7 +548,7 @@ $$;
 -- Changing the return type from the previous version requires dropping & recreating.
 DROP FUNCTION IF EXISTS attribute_value_find_with_key_in_context_v1;
 CREATE OR REPLACE FUNCTION attribute_value_find_with_key_in_context_v1(
-    this_read_tenancy      jsonb,
+    this_tenancy           jsonb,
     this_visibility        jsonb,
     this_key               text,
     this_attribute_context jsonb)
@@ -582,8 +565,8 @@ AS $$
         COALESCE(key, '')
     )
         av.*
-    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
-    LEFT JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+    LEFT JOIN attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
         ON avbtav.object_id = av.id
     WHERE in_attribute_context_v1(this_attribute_context, av)
         AND CASE
@@ -598,8 +581,7 @@ AS $$
             attribute_context_component_id DESC
 $$;
 
-CREATE OR REPLACE FUNCTION attribute_value_new_v1(this_write_tenancy                jsonb,
-                                                  this_read_tenancy                 jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_new_v1(this_tenancy                      jsonb,
                                                   this_visibility                   jsonb,
                                                   this_func_binding_id              ident,
                                                   this_func_binding_return_value_id ident,
@@ -615,20 +597,20 @@ BEGIN
     IF attribute_context_least_specific_is_provider_v1(this_attribute_context) THEN
         SELECT *
         INTO found_attribute_value
-        FROM attribute_value_find_with_key_in_context_v1(this_read_tenancy, this_visibility, this_key, this_attribute_context) AS av
-        WHERE in_tenancy_v1(this_write_tenancy, av);
+        FROM attribute_value_find_with_key_in_context_v1(this_tenancy, this_visibility, this_key, this_attribute_context) AS av
+        WHERE in_tenancy_v1(this_tenancy, av);
 
         IF FOUND
            AND attribute_contexts_match_v1(this_attribute_context, found_attribute_value) THEN
                RAISE 'Found duplicate AttributeValue(%) for provider context(%), Tenancy(%), Visibility(%)',
                      found_attribute_value.id,
                      this_attribute_context,
-                     this_read_tenancy,
+                     this_tenancy,
                      this_visibility;
         END IF;
     END IF;
 
-    new_attribute_value := attribute_value_create_v1(this_write_tenancy,
+    new_attribute_value := attribute_value_create_v1(this_tenancy,
                                                      this_visibility,
                                                      this_attribute_context,
                                                      this_func_binding_id,
@@ -637,8 +619,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_prototype_update_for_context_v1(this_write_tenancy                jsonb,
-                                                                     this_read_tenancy                 jsonb,
+CREATE OR REPLACE FUNCTION attribute_prototype_update_for_context_v1(this_tenancy                      jsonb,
                                                                      this_visibility                   jsonb,
                                                                      this_attribute_prototype_id       ident,
                                                                      this_attribute_context            jsonb,
@@ -658,7 +639,7 @@ BEGIN
     SELECT DISTINCT ON (id) *
     INTO given_attribute_prototype
     FROM attribute_prototypes
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototypes)
+    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_prototypes)
           AND id = this_attribute_prototype_id
     ORDER BY id,
              visibility_change_set_pk DESC,
@@ -667,8 +648,7 @@ BEGIN
     IF attribute_contexts_match_v1(this_attribute_context, given_attribute_prototype) THEN
         new_attribute_prototype_id := given_attribute_prototype.id;
     ELSIF this_existing_attribute_value_id IS NOT NULL THEN
-        new_attribute_prototype_id := attribute_prototype_new_with_attribute_value_v1(this_write_tenancy,
-                                                                                      this_read_tenancy,
+        new_attribute_prototype_id := attribute_prototype_new_with_attribute_value_v1(this_tenancy,
                                                                                       this_visibility,
                                                                                       this_func_id,
                                                                                       this_attribute_context,
@@ -678,15 +658,13 @@ BEGIN
 
         PERFORM update_by_id_v1('attribute_values',
                                 'func_binding_id',
-                                this_read_tenancy,
-                                this_write_tenancy,
+                                this_tenancy,
                                 this_visibility,
                                 this_existing_attribute_value_id,
                                 this_func_binding_id);
     ELSE
         new_attribute_prototype := json_populate_record(null::attribute_prototypes,
-                                                        attribute_prototype_new_v1(this_write_tenancy,
-                                                                                   this_read_tenancy,
+                                                        attribute_prototype_new_v1(this_tenancy,
                                                                                    this_visibility,
                                                                                    this_func_id,
                                                                                    this_func_binding_id,
@@ -699,8 +677,7 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_prototypes',
                             'func_id',
-                            this_read_tenancy,
-                            this_write_tenancy,
+                            this_tenancy,
                             this_visibility,
                             new_attribute_prototype_id,
                             this_func_id);
@@ -708,8 +685,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION func_binding_create_and_execute_v1(
-    this_write_tenancy                   jsonb,
-    this_read_tenancy                    jsonb,
+    this_tenancy                         jsonb,
     this_visibility                      jsonb,
     this_func_args                       jsonb,
     this_func_id                         ident,
@@ -729,14 +705,13 @@ BEGIN
     RAISE DEBUG 'func_binding_create_and_execute_v1: Args(%), FuncId(%)', this_func_args, this_func_id;
     SELECT backend_kind, code_sha256
     INTO STRICT func_backend_kind, code_sha
-    FROM funcs_v1(this_read_tenancy, this_visibility)
+    FROM funcs_v1(this_tenancy, this_visibility)
     WHERE id = this_func_id;
 
     SELECT object
     INTO STRICT func_binding_json
     FROM func_binding_create_v1(
-        this_write_tenancy,
-        this_read_tenancy,
+        this_tenancy,
         this_visibility,
         this_func_args::json,
         this_func_id,
@@ -749,8 +724,7 @@ BEGIN
     SELECT func_binding_return_value_id
     INTO STRICT new_func_binding_return_value_id
     FROM func_binding_execute_v1(
-        this_write_tenancy,
-        this_read_tenancy,
+        this_tenancy,
         this_visibility,
         new_func_binding_id
     );
@@ -759,7 +733,7 @@ $$ LANGUAGE PLPGSQL;
 
 DROP FUNCTION IF EXISTS attribute_value_child_attribute_values_for_context_v1;
 CREATE OR REPLACE FUNCTION attribute_value_child_attribute_values_for_context_v1(
-    this_read_tenancy                jsonb,
+    this_tenancy                     jsonb,
     this_visibility                  jsonb,
     this_original_attribute_value_id ident,
     this_read_attribute_context      jsonb)
@@ -770,8 +744,8 @@ PARALLEL SAFE
 AS $$
     SELECT DISTINCT ON (attribute_context_prop_id, COALESCE(key, ''))
         av.*
-    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
-    INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+    INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
         ON avbtav.object_id = av.id
             AND avbtav.belongs_to_id = this_original_attribute_value_id
     WHERE in_attribute_context_v1(this_read_attribute_context, av)
@@ -782,8 +756,7 @@ AS $$
                 attribute_context_component_id DESC
 $$;
 
-CREATE OR REPLACE FUNCTION attribute_value_populate_child_proxies_for_value_v1(this_write_tenancy               jsonb,
-                                                                               this_read_tenancy                jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_populate_child_proxies_for_value_v1(this_tenancy                     jsonb,
                                                                                this_visibility                  jsonb,
                                                                                this_original_attribute_value_id ident,
                                                                                this_previous_attribute_context  jsonb,
@@ -802,7 +775,7 @@ BEGIN
 
     FOR original_child_value IN
         SELECT *
-        FROM attribute_value_child_attribute_values_for_context_v1(this_read_tenancy,
+        FROM attribute_value_child_attribute_values_for_context_v1(this_tenancy,
                                                                    this_visibility,
                                                                    this_original_attribute_value_id,
                                                                    read_attribute_context)
@@ -816,8 +789,7 @@ BEGIN
             -- under that parent instead of the old one.
             PERFORM set_belongs_to_v1(
                 'attribute_value_belongs_to_attribute_value',
-                this_read_tenancy,
-                this_write_tenancy,
+                this_tenancy,
                 this_visibility,
                 original_child_value.id,
                 this_attribute_value_id
@@ -828,8 +800,7 @@ BEGIN
             -- so that we can do things like add it to the `IndexMap` of the parent (that exists in the desired
             -- context).
             new_child_value := jsonb_populate_record(null::attribute_values,
-                                                     attribute_value_new_v1(this_write_tenancy,
-                                                                            this_read_tenancy,
+                                                     attribute_value_new_v1(this_tenancy,
                                                                             this_visibility,
                                                                             original_child_value.func_binding_id,
                                                                             original_child_value.func_binding_return_value_id,
@@ -837,39 +808,35 @@ BEGIN
                                                                             original_child_value.key));
             SELECT ap.*
             INTO STRICT child_attribute_value_prototype
-            FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
-            INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility) AS avbtap
+            FROM attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
+            INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_tenancy, this_visibility) AS avbtap
                 ON avbtap.belongs_to_id = ap.id
                     AND avbtap.object_id = original_child_value.id;
 
             PERFORM set_belongs_to_v1(
                 'attribute_value_belongs_to_attribute_prototype',
-                this_read_tenancy,
-                this_write_tenancy,
+                this_tenancy,
                 this_visibility,
                 new_child_value.id,
                 child_attribute_value_prototype.id
             );
             PERFORM set_belongs_to_v1(
                 'attribute_value_belongs_to_attribute_value',
-                this_read_tenancy,
-                this_write_tenancy,
+                this_tenancy,
                 this_visibility,
                 new_child_value.id,
                 this_attribute_value_id
             );
             PERFORM update_by_id_v1('attribute_values',
                                     'proxy_for_attribute_value_id',
-                                    this_read_tenancy,
-                                    this_write_tenancy,
+                                    this_tenancy,
                                     this_visibility,
                                     new_child_value.id,
                                     original_child_value.id);
 
             -- Now that we've created a proxy `AttributeValue`, we need to create proxies for all of the
             -- original value's children.
-            PERFORM attribute_value_populate_child_proxies_for_value_v1(this_write_tenancy,
-                                                                        this_read_tenancy,
+            PERFORM attribute_value_populate_child_proxies_for_value_v1(this_tenancy,
                                                                         this_visibility,
                                                                         original_child_value.id,
                                                                         write_attribute_context,
@@ -879,8 +846,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_value_update_for_context_raw_v1(this_write_tenancy                   jsonb,
-                                                                     this_read_tenancy                    jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_update_for_context_raw_v1(this_tenancy                         jsonb,
                                                                      this_visibility                      jsonb,
                                                                      this_attribute_value_id              ident,
                                                                      this_maybe_parent_attribute_value_id ident,
@@ -912,9 +878,8 @@ DECLARE
     prop                            props%ROWTYPE;
     typeof_value                    text;
 BEGIN
-    RAISE DEBUG 'attribute_value_update_for_context_raw_v1: WriteTenancy(%) ReadTenancy(%), Visibility(%) AttributeValue(%) ParentAttributeValue(%) AttributeContext(%) Value(%) Key(%) CreateChild(%)',
-        this_write_tenancy,
-        this_read_tenancy,
+    RAISE DEBUG 'attribute_value_update_for_context_raw_v1: Tenancy(%), Visibility(%) AttributeValue(%) ParentAttributeValue(%) AttributeContext(%) Value(%) Key(%) CreateChild(%)',
+        this_tenancy,
         this_visibility,
         this_attribute_value_id,
         this_maybe_parent_attribute_value_id,
@@ -926,25 +891,25 @@ BEGIN
 
     SELECT *
     INTO given_attribute_value
-    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
     WHERE id = this_attribute_value_id;
     IF NOT FOUND THEN
         RAISE 'Unable to find AttributeValue(%) in Tenancy(%), Visibility(%)', this_attribute_value_id,
-                                                                               this_read_tenancy,
+                                                                               this_tenancy,
                                                                                this_visibility;
     END IF;
 
     SELECT ap.*
     INTO original_attribute_prototype
-    FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
-    INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility) AS avbtap
+    FROM attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
+    INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_tenancy, this_visibility) AS avbtap
         ON avbtap.belongs_to_id = ap.id
             AND avbtap.object_id = given_attribute_value.id;
     IF original_attribute_prototype IS NULL THEN
 	SELECT INTO func_binding_id FROM attribute_value_belongs_to_attribute_prototype as avbtap where avbtap.object_id = given_attribute_value.id;
 	RAISE WARNING '%', func_binding_id;
         RAISE 'Unable to find AttributePrototype for AttributeValue(%), Tenancy(%), Visibility(%)', given_attribute_value.id,
-                                                                                                    this_read_tenancy,
+                                                                                                    this_tenancy,
                                                                                                     this_visibility;
     END IF;
 
@@ -956,19 +921,18 @@ BEGIN
     IF maybe_parent_attribute_value_id IS NOT NULL THEN
         SELECT *
         INTO parent_attribute_value
-        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+        FROM attribute_values_v1(this_tenancy, this_visibility) AS av
         WHERE id = maybe_parent_attribute_value_id;
         IF NOT FOUND THEN
             RAISE 'Unable to find parent AttributeValue(%) in Tenancy(%), Visibility(%)',
                   maybe_parent_attribute_value_id,
-                  this_read_tenancy,
+                  this_tenancy,
                   this_visibility;
         END IF;
 
         parent_attribute_context := this_attribute_context || jsonb_build_object('attribute_context_prop_id', parent_attribute_value.attribute_context_prop_id);
 
-        maybe_parent_attribute_value_id := attribute_value_vivify_value_and_parent_values_raw_v1(this_write_tenancy,
-                                                                                                 this_read_tenancy,
+        maybe_parent_attribute_value_id := attribute_value_vivify_value_and_parent_values_raw_v1(this_tenancy,
                                                                                                  this_visibility,
                                                                                                  parent_attribute_context,
                                                                                                  parent_attribute_value.id,
@@ -985,7 +949,7 @@ BEGIN
         -- Check if we created an appropriate AttributeValue in the process of vivifying the parent
         -- `AttributeValue`s, and populating proxy `AttributeValue`s for their child `AttributeValue`s.
         maybe_attribute_value := jsonb_populate_record(NULL::attribute_values,
-                                                       attribute_value_find_with_parent_and_key_for_context_v1(this_read_tenancy,
+                                                       attribute_value_find_with_parent_and_key_for_context_v1(this_tenancy,
                                                                                                                this_visibility,
                                                                                                                maybe_parent_attribute_value_id,
                                                                                                                given_attribute_value.key,
@@ -998,7 +962,7 @@ BEGIN
             -- We haven't found an appropriate AttributeValue to use, so we need to make one.
             SELECT (av.object ->> 'id')::ident
             INTO attribute_value_id
-            FROM attribute_value_create_v1(this_write_tenancy,
+            FROM attribute_value_create_v1(this_tenancy,
                                            this_visibility,
                                            this_attribute_context,
                                            given_attribute_value.func_binding_id,
@@ -1006,7 +970,7 @@ BEGIN
                                            given_attribute_value.key) AS av;
             IF NOT FOUND THEN
                 RAISE 'Unable to create AttributeValue: attribute_value_create_v1(%, %, %, %, %, %)',
-                      this_write_tenancy,
+                      this_tenancy,
                       this_visibility,
                       this_attribute_context,
                       given_attribute_value.func_binding_id,
@@ -1017,8 +981,7 @@ BEGIN
             IF maybe_parent_attribute_value_id IS NOT NULL THEN
                 PERFORM set_belongs_to_v1(
                     'attribute_value_belongs_to_attribute_value',
-                    this_read_tenancy,
-                    this_write_tenancy,
+                    this_tenancy,
                     this_visibility,
                     attribute_value_id,
                     maybe_parent_attribute_value_id
@@ -1026,8 +989,7 @@ BEGIN
             END IF;
 
             IF this_create_child_proxies THEN
-                PERFORM attribute_value_populate_child_proxies_for_value_v1(this_write_tenancy,
-                                                                            this_read_tenancy,
+                PERFORM attribute_value_populate_child_proxies_for_value_v1(this_tenancy,
                                                                             this_visibility,
                                                                             given_attribute_value.id,
                                                                             this_attribute_context,
@@ -1075,11 +1037,11 @@ BEGIN
     ELSE
         SELECT *
         INTO prop
-        FROM props_v1(this_read_tenancy, this_visibility)
+        FROM props_v1(this_tenancy, this_visibility)
         WHERE id = (this_attribute_context ->> 'attribute_context_prop_id')::ident;
         IF NOT FOUND THEN
             RAISE 'Unable to find Prop(%) in Tenancy(%), Visibility(%)', (this_attribute_context ->> 'attribute_context_prop_id')::ident,
-                                                                         this_read_tenancy,
+                                                                         this_tenancy,
                                                                          this_visibility;
         END IF;
 
@@ -1099,7 +1061,7 @@ BEGIN
         ELSIF prop.kind = 'string' THEN
             func_name := 'si:setString';
         ELSE
-            RAISE 'Unknown Prop(%).kind(%) in Tenancy(%), Visibility(%)', prop.id, prop.kind, this_read_tenancy, this_visibility;
+            RAISE 'Unknown Prop(%).kind(%) in Tenancy(%), Visibility(%)', prop.id, prop.kind, this_tenancy, this_visibility;
         END IF;
     END IF;
 
@@ -1109,19 +1071,18 @@ BEGIN
 
     SELECT *
     INTO func
-    FROM funcs_v1(this_read_tenancy, this_visibility)
+    FROM funcs_v1(this_tenancy, this_visibility)
     WHERE name = func_name;
     IF NOT FOUND THEN
         RAISE 'Unable to find Func(%) in Tenancy(%), Visibility(%)', func_name,
-                                                                     this_read_tenancy,
+                                                                     this_tenancy,
                                                                      this_visibility;
     END IF;
 
     SELECT new_func_binding_id, new_func_binding_return_value_id
     INTO func_binding_id, func_binding_return_value_id
     FROM func_binding_create_and_execute_v1(
-        this_write_tenancy,
-        this_read_tenancy,
+        this_tenancy,
         this_visibility,
         func_args,
         func.id
@@ -1129,14 +1090,12 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_values',
                             'func_binding_id',
-                            this_read_tenancy,
-                            this_write_tenancy,
+                            this_tenancy,
                             this_visibility,
                             attribute_value_id,
                             func_binding_id);
 
-    attribute_prototype_id := attribute_prototype_update_for_context_v1(this_write_tenancy,
-                                                                        this_read_tenancy,
+    attribute_prototype_id := attribute_prototype_update_for_context_v1(this_tenancy,
                                                                         this_visibility,
                                                                         original_attribute_prototype.id,
                                                                         this_attribute_context,
@@ -1146,9 +1105,8 @@ BEGIN
                                                                         maybe_parent_attribute_value_id,
                                                                         attribute_value_id);
     IF attribute_prototype_id IS NULL THEN
-        RAISE 'Unable create AttributePrototype: attribute_prototype_update_for_context_v1(%, %, %, %, %, %, %, %, %, %)',
-              this_write_tenancy,
-              this_read_tenancy,
+        RAISE 'Unable create AttributePrototype: attribute_prototype_update_for_context_v1(%, %, %, %, %, %, %, %, %)',
+              this_tenancy,
               this_visibility,
               original_attribute_prototype.id,
               this_attribute_context,
@@ -1161,8 +1119,7 @@ BEGIN
 
     PERFORM set_belongs_to_v1(
         'attribute_value_belongs_to_attribute_prototype',
-        this_read_tenancy,
-        this_write_tenancy,
+        this_tenancy,
         this_visibility,
         attribute_value_id,
         attribute_prototype_id
@@ -1170,8 +1127,7 @@ BEGIN
 
     PERFORM update_by_id_v1('attribute_values',
                             'func_binding_return_value_id',
-                            this_read_tenancy,
-                            this_write_tenancy,
+                            this_tenancy,
                             this_visibility,
                             attribute_value_id,
                             func_binding_return_value_id);
@@ -1179,20 +1135,18 @@ BEGIN
     -- If the value we just updated is a proxy, we need to seal it to prevent it from automatically updated
     -- by the AttributeValue it is proxying, since we overrode that value.
     IF av.proxy_for_attribute_value_id IS NOT NULL
-        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+        FROM attribute_values_v1(this_tenancy, this_visibility) AS av
         WHERE id = attribute_value_id
     THEN
         PERFORM update_by_id_v1('attribute_values',
                                 'sealed_proxy',
-                                this_read_tenancy,
-                                this_write_tenancy,
+                                this_tenancy,
                                 this_visibility,
                                 attribute_value_id,
                                 true);
     END IF;
 
-    PERFORM attribute_value_update_parent_index_map_v1(this_write_tenancy,
-                                                       this_read_tenancy,
+    PERFORM attribute_value_update_parent_index_map_v1(this_tenancy,
                                                        this_visibility,
                                                        attribute_value_id);
 
@@ -1201,13 +1155,12 @@ BEGIN
     -- values which need to be made into AttributeValues of their own.
     SELECT *
     INTO func_binding_return_value
-    FROM func_binding_return_values_v1(this_read_tenancy, this_visibility)
+    FROM func_binding_return_values_v1(this_tenancy, this_visibility)
     WHERE id = func_binding_return_value_id;
     IF func_binding_return_value.unprocessed_value IS NOT NULL
         AND func_binding_return_value.unprocessed_value != func_binding_return_value.value
     THEN
-        PERFORM attribute_value_populate_nested_values_v1(this_write_tenancy,
-                                                          this_read_tenancy,
+        PERFORM attribute_value_populate_nested_values_v1(this_tenancy,
                                                           this_visibility,
                                                           attribute_value_id,
                                                           this_attribute_context,
@@ -1266,8 +1219,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_value_update_parent_index_map_v1(this_write_tenancy      jsonb,
-                                                                      this_read_tenancy       jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_update_parent_index_map_v1(this_tenancy            jsonb,
                                                                       this_visibility         jsonb,
                                                                       this_attribute_value_id ident) RETURNS void
 AS
@@ -1281,11 +1233,11 @@ DECLARE
 BEGIN
     SELECT av.id, index_map, p.kind
     INTO parent_attribute_value_id, parent_index_map, parent_prop_kind
-    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
-    INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+    INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
         ON avbtav.belongs_to_id = av.id
             AND avbtav.object_id = this_attribute_value_id
-    INNER JOIN props_v1(this_read_tenancy, this_visibility) AS p
+    INNER JOIN props_v1(this_tenancy, this_visibility) AS p
         ON p.id = av.attribute_context_prop_id;
 
     IF parent_attribute_value_id IS NULL
@@ -1295,21 +1247,19 @@ BEGIN
 
     SELECT key
     INTO STRICT child_key
-    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
     WHERE id = this_attribute_value_id;
 
     PERFORM update_by_id_v1('attribute_values',
                             'index_map',
-                            this_read_tenancy,
-                            this_write_tenancy,
+                            this_tenancy,
                             this_visibility,
                             parent_attribute_value_id,
                             index_map_push_v1(parent_index_map, this_attribute_value_id, child_key));
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_value_populate_nested_values_v1(this_write_tenancy             jsonb,
-                                                                     this_read_tenancy              jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_populate_nested_values_v1(this_tenancy                   jsonb,
                                                                      this_visibility                jsonb,
                                                                      this_parent_attribute_value_id ident,
                                                                      this_update_attribute_context  jsonb,
@@ -1338,18 +1288,18 @@ DECLARE
 BEGIN
     SELECT *
     INTO parent_attribute_value
-    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
     WHERE id = this_parent_attribute_value_id;
     IF NOT FOUND THEN
-        RAISE 'Unable to find parent AttributeValue(%) with Tenancy(%) and Visibility(%)', this_parent_attribute_value_id, this_read_tenancy, this_visibility;
+        RAISE 'Unable to find parent AttributeValue(%) with Tenancy(%) and Visibility(%)', this_parent_attribute_value_id, this_tenancy, this_visibility;
     END IF;
 
     SELECT *
     INTO parent_prop
-    FROM props_v1(this_read_tenancy, this_visibility)
+    FROM props_v1(this_tenancy, this_visibility)
     WHERE id = parent_attribute_value.attribute_context_prop_id;
     IF NOT FOUND THEN
-        RAISE 'Unable to find parent Prop(%) with Tenancy(%) and Visibility(%)', parent_attribute_value.attribute_context_prop_id, this_read_tenancy, this_visibility;
+        RAISE 'Unable to find parent Prop(%) with Tenancy(%) and Visibility(%)', parent_attribute_value.attribute_context_prop_id, this_tenancy, this_visibility;
     END IF;
 
     update_read_attribute_context := this_update_attribute_context || jsonb_build_object('attribute_context_prop_id', NULL);
@@ -1360,14 +1310,13 @@ BEGIN
             COALESCE(key, '')
         )
             av.id
-        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
-        INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+        FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+        INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
             ON avbtav.object_id = av.id
                 AND avbtav.belongs_to_id = this_parent_attribute_value_id
         WHERE exact_attribute_context_v1(update_read_attribute_context, av)
     LOOP
-        PERFORM attribute_value_remove_value_and_children_v1(this_write_tenancy,
-                                                             this_read_tenancy,
+        PERFORM attribute_value_remove_value_and_children_v1(this_tenancy,
                                                              this_visibility,
                                                              child_value_id);
     END LOOP;
@@ -1378,16 +1327,16 @@ BEGIN
                   jsonb_typeof(unprocessed_value),
                   parent_prop.id,
                   parent_prop.kind,
-                  this_read_tenancy,
+                  this_tenancy,
                   this_visibility;
         END IF;
 
         SELECT array_agg(obj.key)
         INTO invalid_object_keys
         FROM jsonb_object_keys(unprocessed_value) AS obj(key)
-        LEFT JOIN props_v1(this_read_tenancy, this_visibility) AS p
+        LEFT JOIN props_v1(this_tenancy, this_visibility) AS p
             ON p.name = obj.key
-        LEFT JOIN prop_belongs_to_prop_v1(this_read_tenancy, this_visibility) AS pbtp
+        LEFT JOIN prop_belongs_to_prop_v1(this_tenancy, this_visibility) AS pbtp
             ON pbtp.object_id = p.id
                 AND pbtp.belongs_to_id = parent_prop.id
         WHERE p.name IS NULL;
@@ -1397,28 +1346,27 @@ BEGIN
             RAISE 'attribute_value_populate_nested_values_v1: Invalid object value fields(%) for Prop(%), Tenancy(%), Visibility(%)',
                   invalid_object_keys,
                   parent_prop.id,
-                  this_read_tenancy,
+                  this_tenancy,
                   this_visibility;
         END IF;
 
         SELECT id
         INTO unset_func_id
         FROM find_by_attr_v1('funcs',
-                             this_read_tenancy,
+                             this_tenancy,
                              this_visibility,
                              'name',
                              'si:unset');
 
         IF unset_func_id IS NULL THEN
             RAISE 'attribute_value_populate_nested_values_v1: Unable to find Func(si:unset), Tenancy(%), Visibility(%)',
-                  this_read_tenancy,
+                  this_tenancy,
                   this_visibility;
         END IF;
         SELECT new_func_binding_id, new_func_binding_return_value_id
         INTO unset_func_binding_id, unset_func_binding_return_value_id
         FROM func_binding_create_and_execute_v1(
-            this_write_tenancy,
-            this_read_tenancy,
+            this_tenancy,
             this_visibility,
             'null'::jsonb,
             unset_func_id
@@ -1430,13 +1378,13 @@ BEGIN
             INNER JOIN (
                 SELECT DISTINCT ON (object_id) object_id AS child_prop_id
                 FROM prop_belongs_to_prop
-                WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, prop_belongs_to_prop)
+                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, prop_belongs_to_prop)
                       AND belongs_to_id = parent_prop.id
                 ORDER BY object_id,
                          visibility_change_set_pk DESC,
                          visibility_deleted_at DESC NULLS FIRST
             ) AS pbtp ON pbtp.child_prop_id = props.id
-            WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
+            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
             ORDER BY id,
                      visibility_change_set_pk DESC,
                      visibility_deleted_at DESC NULLS FIRST
@@ -1451,15 +1399,14 @@ BEGIN
 
             field_context := this_update_attribute_context || jsonb_build_object('attribute_context_prop_id', object_field_prop_id);
             attribute_value := jsonb_populate_record(null::attribute_values,
-		                                     attribute_value_find_with_parent_and_key_for_context_v1(this_read_tenancy,
+		                                     attribute_value_find_with_parent_and_key_for_context_v1(this_tenancy,
                                                                                                              this_visibility,
                                                                                                              this_parent_attribute_value_id,
                                                                                                              NULL,
                                                                                                              field_context));
             IF attribute_value IS NULL THEN
                 attribute_value := jsonb_populate_record(null::attribute_values,
-                                                         attribute_value_new_v1(this_write_tenancy,
-                                                                                this_read_tenancy,
+                                                         attribute_value_new_v1(this_tenancy,
                                                                                 this_visibility,
                                                                                 unset_func_binding_id,
                                                                                 unset_func_binding_return_value_id,
@@ -1467,14 +1414,12 @@ BEGIN
                                                                                 NULL));
                 PERFORM set_belongs_to_v1(
                     'attribute_value_belongs_to_attribute_value',
-                    this_read_tenancy,
-                    this_write_tenancy,
+                    this_tenancy,
                     this_visibility,
                     attribute_value.id,
                     this_parent_attribute_value_id
                 );
-                PERFORM attribute_prototype_new_with_attribute_value_v1(this_write_tenancy,
-                                                                        this_read_tenancy,
+                PERFORM attribute_prototype_new_with_attribute_value_v1(this_tenancy,
                                                                         this_visibility,
                                                                         unset_func_id,
                                                                         field_context,
@@ -1483,8 +1428,7 @@ BEGIN
                                                                         attribute_value.id);
             END IF;
 
-            PERFORM attribute_value_update_for_context_without_child_proxies_v1(this_write_tenancy,
-                                                                                this_read_tenancy,
+            PERFORM attribute_value_update_for_context_without_child_proxies_v1(this_tenancy,
                                                                                 this_visibility,
                                                                                 attribute_value.id,
                                                                                 this_parent_attribute_value_id,
@@ -1498,7 +1442,7 @@ BEGIN
                   jsonb_typeof(unprocessed_value),
                   parent_prop.id,
                   parent_prop.kind,
-                  this_read_tenancy,
+                  this_tenancy,
                   this_visibility;
         END IF;
 
@@ -1506,8 +1450,7 @@ BEGIN
             SELECT element
             FROM jsonb_array_elements(unprocessed_value) AS x(element)
         LOOP
-            PERFORM attribute_value_insert_for_context_without_child_proxies_v1(this_write_tenancy,
-                                                                                this_read_tenancy,
+            PERFORM attribute_value_insert_for_context_without_child_proxies_v1(this_tenancy,
                                                                                 this_visibility,
                                                                                 this_update_attribute_context,
                                                                                 this_parent_attribute_value_id,
@@ -1520,7 +1463,7 @@ BEGIN
                   jsonb_typeof(unprocessed_value),
                   parent_prop.id,
                   parent_prop.kind,
-                  this_read_tenancy,
+                  this_tenancy,
                   this_visibility;
         END IF;
 
@@ -1528,8 +1471,7 @@ BEGIN
             SELECT key_name
             FROM jsonb_object_keys(unprocessed_value) AS o(key_name)
         LOOP
-            PERFORM attribute_value_insert_for_context_without_child_proxies_v1(this_write_tenancy,
-                                                                                this_read_tenancy,
+            PERFORM attribute_value_insert_for_context_without_child_proxies_v1(this_tenancy,
                                                                                 this_visibility,
                                                                                 this_update_attribute_context,
                                                                                 this_parent_attribute_value_id,
@@ -1540,15 +1482,14 @@ BEGIN
         RAISE 'attribute_value_populate_nested_values_v1: Unexpected PropKind(%), AttributeValue(%), Tenancy(%), Visibility(%)',
               parent_prop.kind,
               this_parent_attribute_value_id,
-              this_read_tenancy,
+              this_tenancy,
               this_visibility;
     END IF;
 END;
 $$ LANGUAGE PLPGSQL;
 
 DROP FUNCTION IF EXISTS attribute_value_remove_proxies_v1;
-CREATE OR REPLACE FUNCTION attribute_value_remove_proxies_v1(this_write_tenancy      jsonb,
-                                                             this_read_tenancy       jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_remove_proxies_v1(this_tenancy            jsonb,
                                                              this_visibility         jsonb,
                                                              this_attribute_value_id ident) RETURNS void
 AS
@@ -1558,39 +1499,35 @@ DECLARE
 BEGIN
     FOR found_proxy IN
         SELECT av.*
-        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+        FROM attribute_values_v1(this_tenancy, this_visibility) AS av
         WHERE proxy_for_attribute_value_id = this_attribute_value_id
         ORDER BY id
     LOOP
         IF found_proxy.sealed_proxy = TRUE THEN
             PERFORM update_by_id_v1('attribute_values',
                                     'proxy_for_attribute_value_id',
-                                    this_read_tenancy,
-                                    this_write_tenancy,
+                                    this_tenancy,
                                     this_visibility,
                                     found_proxy.id,
                                     NULL);
             PERFORM update_by_id_v1('attribute_values',
                                     'sealed_proxy',
-                                    this_read_tenancy,
-                                    this_write_tenancy,
+                                    this_tenancy,
                                     this_visibility,
                                     found_proxy.id,
                                     FALSE);
         ELSE
-            PERFORM attribute_value_remove_proxies_v1(this_write_tenancy,
-                                                      this_read_tenancy,
+            PERFORM attribute_value_remove_proxies_v1(this_tenancy,
                                                       this_visibility,
                                                       found_proxy.id);
             PERFORM unset_belongs_to_v1(
                 'attribute_value_belongs_to_attribute_prototype',
-                this_write_tenancy,
+                this_tenancy,
                 this_visibility,
 		found_proxy.id
             );
             PERFORM delete_by_id_v1('attribute_values',
-                                    this_read_tenancy,
-                                    this_write_tenancy,
+                                    this_tenancy,
                                     this_visibility,
                                     found_proxy.id);
         END IF;
@@ -1598,8 +1535,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_value_remove_value_and_children_v1(this_write_tenancy             jsonb,
-                                                                        this_read_tenancy              jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_remove_value_and_children_v1(this_tenancy                   jsonb,
                                                                         this_visibility                jsonb,
                                                                         this_parent_attribute_value_id ident) RETURNS void
 AS
@@ -1611,11 +1547,11 @@ DECLARE
 BEGIN
     FOR child_value_id IN
         SELECT av.id
-        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+        FROM attribute_values_v1(this_tenancy, this_visibility) AS av
         INNER JOIN (
             SELECT DISTINCT ON (object_id) object_id AS child_value_id
             FROM attribute_value_belongs_to_attribute_value
-            WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
+            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
                   AND belongs_to_id = this_parent_attribute_value_id
             ORDER BY object_id,
                      visibility_change_set_pk DESC,
@@ -1623,14 +1559,12 @@ BEGIN
         ) AS avbtav ON avbtav.child_value_id = av.id
         ORDER BY id
     LOOP
-        PERFORM attribute_value_remove_value_and_children_v1(this_write_tenancy,
-                                                             this_read_tenancy,
+        PERFORM attribute_value_remove_value_and_children_v1(this_tenancy,
                                                              this_visibility,
                                                              child_value_id);
     END LOOP;
 
-    PERFORM attribute_value_remove_proxies_v1(this_write_tenancy,
-                                              this_read_tenancy,
+    PERFORM attribute_value_remove_proxies_v1(this_tenancy,
                                               this_visibility,
                                               this_parent_attribute_value_id);
 
@@ -1640,36 +1574,35 @@ BEGIN
     INNER JOIN (
         SELECT DISTINCT ON (object_id) belongs_to_id AS prototype_id
         FROM attribute_value_belongs_to_attribute_prototype
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
+        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
               AND object_id = this_parent_attribute_value_id
         ORDER BY object_id,
                  visibility_change_set_pk DESC,
                  visibility_deleted_at DESC NULLS FIRST
     ) AS avbtap ON avbtap.prototype_id = attribute_prototypes.id
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototypes)
+    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_prototypes)
     ORDER BY id,
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC;
     IF attribute_prototype_id IS NULL THEN
         RAISE 'Unable to find AttributePrototype of parent AttributeValue(%) with Tenancy(%) and Visibility(%)', this_parent_attribute_value_id,
-                                                                                                                 this_read_tenancy,
+                                                                                                                 this_tenancy,
                                                                                                                  this_visibility;
     END IF;
 
     PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
-                                this_write_tenancy,
+                                this_tenancy,
                                 this_visibility,
                                 this_parent_attribute_value_id);
 
     PERFORM delete_by_id_v1('attribute_values',
-                            this_read_tenancy,
-                            this_write_tenancy,
+                            this_tenancy,
                             this_visibility,
                             this_parent_attribute_value_id);
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION func_binding_return_value_get_by_func_binding_id_v1(this_read_tenancy    jsonb,
+CREATE OR REPLACE FUNCTION func_binding_return_value_get_by_func_binding_id_v1(this_tenancy         jsonb,
                                                                                this_visibility      jsonb,
                                                                                this_func_binding_id ident,
                                                                                OUT fbrv             jsonb
@@ -1679,14 +1612,13 @@ $$
 BEGIN
     SELECT to_jsonb(func_binding_return_values.*)
     INTO fbrv
-    FROM func_binding_return_values_v1(this_read_tenancy, this_visibility) as func_binding_return_values
+    FROM func_binding_return_values_v1(this_tenancy, this_visibility) as func_binding_return_values
     WHERE func_binding_return_values.func_binding_id = this_func_binding_id;
 END;
 $$ LANGUAGE PLPGSQL PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION func_binding_execute_v1(
-    this_write_tenancy               jsonb,
-    this_read_tenancy                jsonb,
+    this_tenancy                     jsonb,
     this_visibility                  jsonb,
     this_func_binding_id             ident,
     OUT func_binding_return_value_id ident
@@ -1698,21 +1630,21 @@ DECLARE
     func_binding            func_bindings%ROWTYPE;
     func_execution_pk       ident;
     fbrv_id                 ident;
-    read_tenancy            jsonb;
+    tenancy                 jsonb;
     result_value            jsonb;
     result_value_processed  jsonb;
 BEGIN
     -- binding.prepare_execution
     SELECT *
     INTO STRICT func_binding
-    FROM func_bindings_v1(this_read_tenancy, this_visibility)
+    FROM func_bindings_v1(this_tenancy, this_visibility)
     WHERE id = this_func_binding_id;
     RAISE DEBUG 'func_binding_execute_v1: Found FuncBinding(%)', func_binding;
 
     SELECT funcs.*
     INTO STRICT func
-    FROM funcs_v1(this_read_tenancy, this_visibility) AS funcs
-    INNER JOIN func_binding_belongs_to_func_v1(this_read_tenancy, this_visibility)
+    FROM funcs_v1(this_tenancy, this_visibility) AS funcs
+    INNER JOIN func_binding_belongs_to_func_v1(this_tenancy, this_visibility)
         AS func_binding_belongs_to_func
         ON funcs.id = func_binding_belongs_to_func.belongs_to_id
             AND func_binding_belongs_to_func.object_id = func_binding.id;
@@ -1721,7 +1653,7 @@ BEGIN
     SELECT (fe.object ->> 'pk')::ident
     INTO STRICT func_execution_pk
     FROM func_execution_create_v1(
-        this_write_tenancy,
+        this_tenancy,
         'Start'::text,
         func.id,
         func_binding.id,
@@ -1764,7 +1696,7 @@ BEGIN
 
     -- binding.postprocess_execution
     fbrv_id := (func_binding_return_value_create_v1(
-        this_write_tenancy,
+        this_tenancy,
         this_visibility,
         result_value,
         result_value_processed,
@@ -1874,8 +1806,7 @@ $$;
 
 
 -- AttributeValue::update_for_context_without_creating_proxies
-CREATE OR REPLACE FUNCTION attribute_value_update_for_context_without_child_proxies_v1(this_write_tenancy                   jsonb,
-                                                                                       this_read_tenancy                    jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_update_for_context_without_child_proxies_v1(this_tenancy                         jsonb,
                                                                                        this_visibility                      jsonb,
                                                                                        this_attribute_value_id              ident,
                                                                                        this_maybe_parent_attribute_value_id ident,
@@ -1887,8 +1818,7 @@ CREATE OR REPLACE FUNCTION attribute_value_update_for_context_without_child_prox
 AS
 $$
 BEGIN
-    new_attribute_value_id := attribute_value_update_for_context_raw_v1(this_write_tenancy,
-                                                                        this_read_tenancy,
+    new_attribute_value_id := attribute_value_update_for_context_raw_v1(this_tenancy,
                                                                         this_visibility,
                                                                         this_attribute_value_id,
                                                                         this_maybe_parent_attribute_value_id,
@@ -1900,8 +1830,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION attribute_value_vivify_value_and_parent_values_raw_v1(
-    this_write_tenancy         jsonb,
-    this_read_tenancy          jsonb,
+    this_tenancy               jsonb,
     this_visibility            jsonb,
     this_attribute_context     jsonb,
     this_attribute_value_id    ident,
@@ -1918,35 +1847,34 @@ DECLARE
     func_id                         ident;
     maybe_parent_attribute_value_id ident;
 BEGIN
-    RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1(%, %, %, %, %, %)',
-        this_write_tenancy,
-        this_read_tenancy,
+    RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1(%, %, %, %, %)',
+        this_tenancy,
         this_visibility,
         this_attribute_context,
         this_attribute_value_id,
         this_create_child_proxies;
     SELECT *
     INTO attribute_value
-    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
     WHERE id = this_attribute_value_id
     ORDER BY id;
     IF NOT FOUND THEN
         RAISE 'Unable to find AttributeValue(%) with Tenancy(%) and Visibility(%)', this_attribute_value_id,
-                                                                                    this_read_tenancy,
+                                                                                    this_tenancy,
                                                                                     this_visibility;
     END IF;
 
     SELECT *
     INTO prop
-    FROM props_v1(this_read_tenancy, this_visibility) AS p
+    FROM props_v1(this_tenancy, this_visibility) AS p
     WHERE id = attribute_value.attribute_context_prop_id;
     -- If the AttributeValue isn't for a Prop, check if it's for an InternalProvider, and grab the
     -- associated Prop.
     IF NOT FOUND THEN
         SELECT p.*
         INTO prop
-        FROM props_v1(this_read_tenancy, this_visibility) AS p
-        INNER JOIN internal_providers_v1(this_read_tenancy, this_visibility) AS ip
+        FROM props_v1(this_tenancy, this_visibility) AS p
+        INNER JOIN internal_providers_v1(this_tenancy, this_visibility) AS ip
             ON ip.prop_id = p.id
         WHERE ip.id = attribute_value.attribute_context_internal_provider_id;
     END IF;
@@ -1969,14 +1897,14 @@ BEGIN
 
     SELECT belongs_to_id
     INTO STRICT func_id
-    FROM func_binding_belongs_to_func_v1(this_read_tenancy, this_visibility)
+    FROM func_binding_belongs_to_func_v1(this_tenancy, this_visibility)
     WHERE object_id = attribute_value.func_binding_id;
 
     SELECT id
     INTO unset_func_id
     FROM find_by_attr_v1(
         'funcs',
-        this_read_tenancy,
+        this_tenancy,
         this_visibility,
         'name',
         'si:unset'
@@ -1996,15 +1924,14 @@ BEGIN
 
     SELECT belongs_to_id
     INTO maybe_parent_attribute_value_id
-    FROM attribute_value_belongs_to_attribute_value_v1(this_read_tenancy, this_visibility) AS avbtav
+    FROM attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
     WHERE object_id = attribute_value.id;
 
     RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1: Update for context on AttributeValue(%) in AttributeContext(%)',
         attribute_value.id,
         this_attribute_context;
     new_attribute_value_id := attribute_value_update_for_context_raw_v1(
-        this_write_tenancy,
-        this_read_tenancy,
+        this_tenancy,
         this_visibility,
         attribute_value.id,
         maybe_parent_attribute_value_id,
@@ -2022,8 +1949,7 @@ BEGIN
         PERFORM update_by_id_v1(
             'attribute_values',
             'proxy_for_attribute_value_id',
-            this_read_tenancy,
-            this_write_tenancy,
+            this_tenancy,
             this_visibility,
             new_attribute_value_id,
             attribute_value.id
@@ -2032,8 +1958,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_value_vivify_value_and_parent_no_child_proxies_v1(this_write_tenancy         jsonb,
-                                                                                       this_read_tenancy          jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_vivify_value_and_parent_no_child_proxies_v1(this_tenancy               jsonb,
                                                                                        this_visibility            jsonb,
                                                                                        this_attribute_context     jsonb,
                                                                                        this_attribute_value_id    ident,
@@ -2042,8 +1967,7 @@ CREATE OR REPLACE FUNCTION attribute_value_vivify_value_and_parent_no_child_prox
 AS
 $$
 BEGIN
-    new_attribute_value_id := attribute_value_vivify_value_and_parent_values_raw_v1(this_write_tenancy,
-                                                                                    this_read_tenancy,
+    new_attribute_value_id := attribute_value_vivify_value_and_parent_values_raw_v1(this_tenancy,
                                                                                     this_visibility,
                                                                                     this_attribute_context,
                                                                                     this_attribute_value_id,
@@ -2067,8 +1991,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION attribute_value_insert_for_context_without_child_proxies_v1(this_write_tenancy             jsonb,
-                                                                                       this_read_tenancy              jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_insert_for_context_without_child_proxies_v1(this_tenancy                   jsonb,
                                                                                        this_visibility                jsonb,
                                                                                        this_parent_attribute_context  jsonb,
                                                                                        this_parent_attribute_value_id ident,
@@ -2079,8 +2002,7 @@ CREATE OR REPLACE FUNCTION attribute_value_insert_for_context_without_child_prox
 AS
 $$
 BEGIN
-    new_attribute_value_id := attribute_value_insert_for_context_raw_v1(this_write_tenancy,
-                                                                        this_read_tenancy,
+    new_attribute_value_id := attribute_value_insert_for_context_raw_v1(this_tenancy,
                                                                         this_visibility,
                                                                         this_parent_attribute_context,
                                                                         this_parent_attribute_value_id,
@@ -2096,7 +2018,7 @@ CREATE TYPE av_insert_for_context_raw_child_prop_record_v1 AS (
     prop_json                 jsonb
 );
 
-CREATE OR REPLACE FUNCTION props_find_for_attribute_value_v1(this_read_tenancy       jsonb,
+CREATE OR REPLACE FUNCTION props_find_for_attribute_value_v1(this_tenancy            jsonb,
                                                              this_visibility         jsonb,
                                                              this_attribute_value_id ident,
                                                              OUT found_prop jsonb)
@@ -2106,10 +2028,10 @@ BEGIN
     SELECT DISTINCT ON (props.id) to_jsonb(props.*)
     INTO found_prop
     FROM props
-    INNER JOIN attribute_values_v1(this_read_tenancy, this_visibility) AS av ON
+    INNER JOIN attribute_values_v1(this_tenancy, this_visibility) AS av ON
         av.id = this_attribute_value_id
         AND av.attribute_context_prop_id = props.id
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
+    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
     ORDER BY
         props.id,
         props.visibility_change_set_pk DESC,
@@ -2117,8 +2039,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL PARALLEL SAFE;
 
-CREATE OR REPLACE FUNCTION attribute_value_insert_for_context_raw_v1(this_write_tenancy             jsonb,
-                                                                     this_read_tenancy              jsonb,
+CREATE OR REPLACE FUNCTION attribute_value_insert_for_context_raw_v1(this_tenancy                   jsonb,
                                                                      this_visibility                jsonb,
                                                                      this_parent_attribute_context  jsonb,
                                                                      this_parent_attribute_value_id ident,
@@ -2148,21 +2069,21 @@ DECLARE
     unset_func_binding_return_value_id ident;
     unset_func_name                    text;
 BEGIN
-    parent_prop := jsonb_populate_record(null::props, props_find_for_attribute_value_v1(this_read_tenancy,
+    parent_prop := jsonb_populate_record(null::props, props_find_for_attribute_value_v1(this_tenancy,
                                                                                         this_visibility,
                                                                                         this_parent_attribute_value_id));
     IF parent_prop.id IS NULL THEN
         RAISE 'attribute_value_insert_for_context_raw_v1: Unable to find Prop for '
               'AttributeValue(%) in Tenancy(%), Visibility(%)',
               this_parent_attribute_value_id,
-              this_read_tenancy,
+              this_tenancy,
               this_visibility;
     ELSIF parent_prop.kind != 'array' AND parent_prop.kind != 'map' THEN
         RAISE 'attribute_value_insert_for_context_raw_v1: Unable to insert child value for '
               'AttributeValue(%) kind(%), in Tenancy(%), Visibility(%)',
               this_parent_attribute_value_id,
               parent_prop.kind,
-              this_read_tenancy,
+              this_tenancy,
               this_visibility;
     END IF;
 
@@ -2172,7 +2093,7 @@ BEGIN
     INNER JOIN (
         SELECT DISTINCT ON (object_id) object_id AS child_prop_id
         FROM prop_belongs_to_prop
-        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, prop_belongs_to_prop)
+        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, prop_belongs_to_prop)
               AND belongs_to_id = parent_prop.id
         ORDER BY object_id,
                  visibility_change_set_pk DESC,
@@ -2184,7 +2105,7 @@ BEGIN
     IF child_prop IS NULL THEN
         RAISE 'attribute_value_insert_for_context_raw_v1: Unable to find child Prop of Prop(%) in Tenancy(%), Visibility(%)',
               parent_prop.id,
-              this_read_tenancy,
+              this_tenancy,
               this_visibility;
     END IF;
 
@@ -2203,37 +2124,34 @@ BEGIN
     SELECT id
     INTO unset_func_id
     FROM find_by_attr_v1('funcs',
-                         this_read_tenancy,
+                         this_tenancy,
                          this_visibility,
                          'name',
                          unset_func_name);
     IF unset_func_id IS NULL THEN
         RAISE 'attribute_value_insert_for_context_raw_v1: Unable to find Func(%) in Tenancy(%), Visibility(%)',
               unset_func_name,
-              this_read_tenancy,
+              this_tenancy,
               this_visibility;
     END IF;
     SELECT new_func_binding_id, new_func_binding_return_value_id
     INTO unset_func_binding_id, unset_func_binding_return_value_id
     FROM func_binding_create_and_execute_v1(
-        this_write_tenancy,
-        this_read_tenancy,
+        this_tenancy,
         this_visibility,
         'null'::jsonb,
         unset_func_id
     );
 
-    attribute_value := jsonb_populate_record(NULL::attribute_values, attribute_value_new_v1(this_write_tenancy,
-                                                                                            this_read_tenancy,
+    attribute_value := jsonb_populate_record(NULL::attribute_values, attribute_value_new_v1(this_tenancy,
                                                                                             this_visibility,
                                                                                             unset_func_binding_id,
                                                                                             unset_func_binding_return_value_id,
                                                                                             child_attribute_context,
                                                                                             key));
     IF attribute_value.id IS NULL THEN
-        RAISE 'attribute_value_insert_for_context_raw_v1: Unable to create AttributeValue(%, %, %, %, %, %, %)',
-              this_write_tenancy,
-              this_read_tenancy,
+        RAISE 'attribute_value_insert_for_context_raw_v1: Unable to create AttributeValue(%, %, %, %, %, %)',
+              this_tenancy,
               this_visibility,
               unset_func_binding_id,
               unset_func_binding_return_value_id,
@@ -2241,8 +2159,7 @@ BEGIN
               key;
     END IF;
 
-    PERFORM attribute_prototype_new_with_attribute_value_v1(this_write_tenancy,
-                                                            this_read_tenancy,
+    PERFORM attribute_prototype_new_with_attribute_value_v1(this_tenancy,
                                                             this_visibility,
                                                             unset_func_id,
                                                             child_attribute_context,
@@ -2262,7 +2179,7 @@ BEGIN
             INNER JOIN (
                 SELECT DISTINCT ON (object_id) object_id AS child_prop_id
                 FROM prop_belongs_to_prop
-                WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, prop_belongs_to_prop)
+                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, prop_belongs_to_prop)
                       AND belongs_to_id = child_prop.id
                 ORDER BY object_id,
                          visibility_change_set_pk DESC,
@@ -2278,8 +2195,7 @@ BEGIN
                 child_prop := jsonb_populate_record(NULL::props, child_prop_info -> 'prop_json');
                 unset_child_attribute_context := child_attribute_context || jsonb_build_object('attribute_context_prop_id', child_prop.id);
                 prop_attribute_value := jsonb_populate_record(NULL::attribute_values,
-                                                              attribute_value_new_v1(this_write_tenancy,
-                                                                                     this_read_tenancy,
+                                                              attribute_value_new_v1(this_tenancy,
                                                                                      this_visibility,
                                                                                      unset_func_binding_id,
                                                                                      unset_func_binding_return_value_id,
@@ -2287,8 +2203,7 @@ BEGIN
                                                                                      NULL));
                 PERFORM set_belongs_to_v1(
                     'attribute_value_belongs_to_attribute_value',
-                    this_read_tenancy,
-                    this_write_tenancy,
+                    this_tenancy,
                     this_visibility,
                     prop_attribute_value.id,
                     (child_prop_info ->> 'parent_attribute_value_id')::ident
@@ -2299,8 +2214,7 @@ BEGIN
                 -- prop_attribute_value.id as the "this is the AttributeValue the AttributePrototype should use
                 -- as its pre-existing one", and not explicitly setting that AttributeValue's
                 -- AttributePrototype as _new_with_attribute_value_v1 will do that for us.
-                PERFORM attribute_prototype_new_with_attribute_value_v1(this_write_tenancy,
-                                                                        this_read_tenancy,
+                PERFORM attribute_prototype_new_with_attribute_value_v1(this_tenancy,
                                                                         this_visibility,
                                                                         unset_func_id,
                                                                         unset_child_attribute_context,
@@ -2318,13 +2232,13 @@ BEGIN
                         INNER JOIN (
                             SELECT DISTINCT ON (object_id) object_id AS child_prop_id
                             FROM prop_belongs_to_prop
-                            WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, prop_belongs_to_prop)
+                            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, prop_belongs_to_prop)
                                   AND belongs_to_id = child_prop.id
                             ORDER BY object_id,
                                      visibility_change_set_pk DESC,
                                      visibility_deleted_at DESC
                         ) AS pbtp ON pbtp.child_prop_id = props.id
-                        WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
+                        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
                         ORDER BY id,
                                  visibility_change_set_pk DESC,
                                  visibility_deleted_at DESC NULLS FIRST
@@ -2338,8 +2252,7 @@ BEGIN
         END LOOP;
     END IF;
 
-    new_attribute_value_id := attribute_value_update_for_context_raw_v1(this_write_tenancy,
-                                                                        this_read_tenancy,
+    new_attribute_value_id := attribute_value_update_for_context_raw_v1(this_tenancy,
                                                                         this_visibility,
                                                                         attribute_value.id,
                                                                         this_parent_attribute_value_id,

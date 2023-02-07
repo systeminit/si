@@ -9,7 +9,7 @@ use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
-use crate::WriteTenancy;
+use crate::Tenancy;
 use crate::{
     component::ComponentKind, func::binding::FuncBindingError, impl_standard_model, pk,
     schema::ui_menu::SchemaUiMenuId, standard_model, standard_model_accessor,
@@ -89,7 +89,7 @@ pub struct Schema {
     id: SchemaId,
     name: String,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -123,7 +123,7 @@ impl Schema {
             .query_one(
                 "SELECT object FROM schema_create_v1($1, $2, $3, $4)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &name,
                     &component_kind.as_ref(),

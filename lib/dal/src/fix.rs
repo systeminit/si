@@ -15,8 +15,8 @@ use crate::{
     standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
     ActionPrototypeError, AttributeValueId, ComponentError, ComponentId, DalContext,
     FixResolverError, FuncError, HistoryEventError, SchemaError, StandardModel, StandardModelError,
-    Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError, WorkflowRunnerId,
-    WorkflowRunnerStatus, WriteTenancy, WsEvent, WsPayload,
+    Tenancy, Timestamp, Visibility, WorkflowPrototypeId, WorkflowRunnerError, WorkflowRunnerId,
+    WorkflowRunnerStatus, WsEvent, WsPayload,
 };
 use crate::{FixBatch, WorkflowRunner, WsEventResult};
 
@@ -128,7 +128,7 @@ pub struct Fix {
     pk: FixPk,
     id: FixId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -185,7 +185,7 @@ impl Fix {
             .query_one(
                 "SELECT object FROM fix_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_value_id,
                     &component_id,

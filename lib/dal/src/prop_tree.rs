@@ -59,7 +59,7 @@ impl PropTree {
             .pg_txn()
             .query(
                 PROP_TREE_FOR_ALL_SCHEMA_VARIANTS,
-                &[ctx.read_tenancy(), ctx.visibility()],
+                &[ctx.tenancy(), ctx.visibility()],
             )
             .await?;
 

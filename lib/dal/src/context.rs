@@ -12,8 +12,7 @@ use crate::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::JobProducer,
     },
-    BillingAccountPk, HistoryActor, ReadTenancy, StandardModel, Visibility, WorkspacePk,
-    WriteTenancy, WriteTenancyError,
+    BillingAccountPk, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
 };
 
 const GET_BILLING_ACCOUNT: &str = include_str!("queries/context_get_billing_account.sql");
@@ -98,18 +97,15 @@ impl ServicesContext {
     }
 }
 
-/// A context type which holds references to underlying services, transactions, and read/write
-/// context for DAL objects.
+/// A context type which holds references to underlying services, transactions, and context for DAL objects.
 #[derive(Clone, Debug)]
 pub struct DalContext {
     /// A reference to a [`ServicesContext`] which has handles to common core services.
     services_context: ServicesContext,
     /// A reference to a set of atomically related transactions.
     txns: Transactions,
-    /// A suitable read tenancy for the consuming DAL objects.
-    read_tenancy: ReadTenancy,
-    /// A suitable write tenancy for the consuming DAL objects.
-    write_tenancy: WriteTenancy,
+    /// A suitable tenancy for the consuming DAL objects.
+    tenancy: Tenancy,
     /// A suitable [`Visibility`] scope for the consuming DAL objects.
     visibility: Visibility,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
@@ -143,8 +139,7 @@ impl DalContext {
         let conns = self.txns.commit_into_conns().await?;
         let builder = self.services_context.into_builder();
         let request_ctx = RequestContext {
-            read_tenancy: self.read_tenancy,
-            write_tenancy: self.write_tenancy,
+            tenancy: self.tenancy,
             visibility: self.visibility,
             history_actor: self.history_actor,
         };
@@ -178,8 +173,7 @@ impl DalContext {
         let conns = self.txns.rollback_into_conns().await?;
         let builder = self.services_context.into_builder();
         let request_ctx = RequestContext {
-            read_tenancy: self.read_tenancy,
-            write_tenancy: self.write_tenancy,
+            tenancy: self.tenancy,
             visibility: self.visibility,
             history_actor: self.history_actor,
         };
@@ -198,8 +192,7 @@ impl DalContext {
 
     /// Updates this context with all new values from a [`RequestContext`].
     pub fn update_from_request_context(&mut self, request_ctx: RequestContext) {
-        self.read_tenancy = request_ctx.read_tenancy;
-        self.write_tenancy = request_ctx.write_tenancy;
+        self.tenancy = request_ctx.tenancy;
         self.visibility = request_ctx.visibility;
         self.history_actor = request_ctx.history_actor;
     }
@@ -255,44 +248,15 @@ impl DalContext {
         ))
     }
 
-    /// Updates this context with a new [`ReadTenancy`] and [`WriteTenancy`].
-    pub fn update_tenancies(&mut self, read_tenancy: ReadTenancy, write_tenancy: WriteTenancy) {
-        self.read_tenancy = read_tenancy;
-        self.write_tenancy = write_tenancy;
+    /// Updates this context with a new [`Tenancy`]
+    pub fn update_tenancy(&mut self, tenancy: Tenancy) {
+        self.tenancy = tenancy;
     }
 
-    /// Clones a new context from this one with a new [`ReadTenancy`] and [`WriteTenancy`].
-    pub fn clone_with_new_tenancies(
-        &self,
-        read_tenancy: ReadTenancy,
-        write_tenancy: WriteTenancy,
-    ) -> Self {
+    /// Clones a new context from this one with a new [`Tenancy`] and [`Tenancy`].
+    pub fn clone_with_new_tenancy(&self, tenancy: Tenancy) -> Self {
         let mut new = self.clone();
-        new.update_tenancies(read_tenancy, write_tenancy);
-        new
-    }
-
-    /// Updates this context with a new [`WriteTenancy`].
-    pub fn update_write_tenancy(&mut self, write_tenancy: WriteTenancy) {
-        self.write_tenancy = write_tenancy;
-    }
-
-    /// Clones a new context from this one with a new [`WriteTenancy`].
-    pub fn clone_with_new_write_tenancy(&self, write_tenancy: WriteTenancy) -> Self {
-        let mut new = self.clone();
-        new.update_write_tenancy(write_tenancy);
-        new
-    }
-
-    /// Updates this context with a new [`ReadTenancy`].
-    pub fn update_read_tenancy(&mut self, read_tenancy: ReadTenancy) {
-        self.read_tenancy = read_tenancy;
-    }
-
-    /// Clones a new context from this one with a new [`ReadTenancy`].
-    pub fn clone_with_new_read_tenancy(&self, read_tenancy: ReadTenancy) -> Self {
-        let mut new = self.clone();
-        new.update_read_tenancy(read_tenancy);
+        new.update_tenancy(tenancy);
         new
     }
 
@@ -306,26 +270,6 @@ impl DalContext {
         let mut new = self.clone();
         new.update_to_head();
         new
-    }
-
-    /// Updates this context with read/write tenancies for a specific workspace.
-    pub async fn update_to_workspace_tenancies(
-        &mut self,
-        wid: WorkspacePk,
-    ) -> Result<(), TransactionsError> {
-        self.read_tenancy = ReadTenancy::new(wid);
-        self.write_tenancy = WriteTenancy::new(wid);
-        Ok(())
-    }
-
-    /// Clones a new context from this one with read/write tenancies for a specific workspace.
-    pub async fn clone_with_new_workspace_tenancies(
-        &self,
-        wid: WorkspacePk,
-    ) -> Result<DalContext, TransactionsError> {
-        let mut new = self.clone();
-        new.update_to_workspace_tenancies(wid).await?;
-        Ok(new)
     }
 
     pub async fn find_billing_account_pk_for_workspace(
@@ -387,14 +331,9 @@ impl DalContext {
         &self.services_context.encryption_key
     }
 
-    /// Gets a reference to the dal context's read tenancy.
-    pub fn read_tenancy(&self) -> &ReadTenancy {
-        &self.read_tenancy
-    }
-
-    /// Gets a reference to the dal context's write tenancy.
-    pub fn write_tenancy(&self) -> &WriteTenancy {
-        &self.write_tenancy
+    /// Gets a reference to the dal context's tenancy.
+    pub fn tenancy(&self) -> &Tenancy {
+        &self.tenancy
     }
 
     /// Gets the dal context's visibility.
@@ -412,16 +351,15 @@ impl DalContext {
         &self.services_context.council_subject_prefix
     }
 
-    /// Determines if a standard model object matches the write tenancy of the current context and
+    /// Determines if a standard model object matches the tenancy of the current context and
     /// is in the same visibility.
     pub async fn check_tenancy<T: StandardModel>(
         &self,
         object: &T,
     ) -> Result<bool, TransactionsError> {
-        let read_tenancy = object.tenancy().clone_into_read_tenancy();
         let is_in_our_tenancy = self
-            .write_tenancy()
-            .check(self.pg_txn(), &read_tenancy)
+            .tenancy()
+            .check(self.pg_txn(), object.tenancy())
             .await?;
 
         Ok(is_in_our_tenancy)
@@ -433,7 +371,7 @@ impl DalContext {
     pub async fn import_builtins(&self) -> Result<(), TransactionsError> {
         self.txns()
             .pg()
-            .execute("SELECT import_builtins_v1($1)", &[self.write_tenancy()])
+            .execute("SELECT import_builtins_v1($1)", &[self.tenancy()])
             .await?;
         Ok(())
     }
@@ -449,10 +387,8 @@ impl From<DalContext> for Transactions {
 /// of DAL objects.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RequestContext {
-    /// A suitable read tenancy for the consuming DAL objects.
-    pub read_tenancy: ReadTenancy,
-    /// A suitable write tenancy for the consuming DAL objects.
-    pub write_tenancy: WriteTenancy,
+    /// A suitable tenancy for the consuming DAL objects.
+    pub tenancy: Tenancy,
     /// A suitable [`Visibility`] scope for the consuming DAL objects.
     pub visibility: Visibility,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
@@ -460,16 +396,10 @@ pub struct RequestContext {
 }
 
 impl RequestContext {
-    /// Get a reference to the request context's read tenancy.
+    /// Get a reference to the request context's tenancy.
     #[must_use]
-    pub fn read_tenancy(&self) -> &ReadTenancy {
-        &self.read_tenancy
-    }
-
-    /// Get a reference to the request context's write tenancy.
-    #[must_use]
-    pub fn write_tenancy(&self) -> &WriteTenancy {
-        &self.write_tenancy
+    pub fn tenancy(&self) -> &Tenancy {
+        &self.tenancy
     }
 
     /// Get the request context's visibility.
@@ -486,16 +416,12 @@ impl RequestContext {
 }
 
 impl Default for RequestContext {
-    /// Builds a new [`RequestContext`] with no read/write tenancies (only usable for managing BillingAccounts/Organizations/Workspaces)
+    /// Builds a new [`RequestContext`] with no tenancy (only usable for managing BillingAccounts/Organizations/Workspaces)
     /// and a head [`Visibility`] and the given [`HistoryActor`].
     fn default() -> Self {
-        let visibility = Visibility::new_head(false);
-        let read_tenancy = ReadTenancy::new_empty();
-        let write_tenancy = WriteTenancy::new_empty();
         Self {
-            read_tenancy,
-            write_tenancy,
-            visibility,
+            tenancy: Tenancy::new_empty(),
+            visibility: Visibility::new_head(false),
             history_actor: HistoryActor::SystemInit,
         }
     }
@@ -504,24 +430,17 @@ impl Default for RequestContext {
 /// A request context builder which requires a [`Visibility`] to be completed.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AccessBuilder {
-    /// A suitable read tenancy for the consuming DAL objects.
-    read_tenancy: ReadTenancy,
-    /// A suitable write tenancy for the consuming DAL objects.
-    write_tenancy: WriteTenancy,
+    /// A suitable tenancy for the consuming DAL objects.
+    tenancy: Tenancy,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
     history_actor: HistoryActor,
 }
 
 impl AccessBuilder {
-    /// Constructs a new instance given a set of tenancies and a [`HistoryActor`].
-    pub fn new(
-        read_tenancy: ReadTenancy,
-        write_tenancy: WriteTenancy,
-        history_actor: HistoryActor,
-    ) -> Self {
+    /// Constructs a new instance given a tenancy and a [`HistoryActor`].
+    pub fn new(tenancy: Tenancy, history_actor: HistoryActor) -> Self {
         Self {
-            read_tenancy,
-            write_tenancy,
+            tenancy,
             history_actor,
         }
     }
@@ -529,8 +448,7 @@ impl AccessBuilder {
     /// Builds and returns a new [`RequestContext`] using the default [`Visibility`].
     pub fn build_head(self) -> RequestContext {
         RequestContext {
-            read_tenancy: self.read_tenancy,
-            write_tenancy: self.write_tenancy,
+            tenancy: self.tenancy,
             visibility: Visibility::new_head(false),
             history_actor: self.history_actor,
         }
@@ -539,8 +457,7 @@ impl AccessBuilder {
     /// Builds and returns a new [`RequestContext`] using the given [`Visibility`].
     pub fn build(self, visibility: Visibility) -> RequestContext {
         RequestContext {
-            read_tenancy: self.read_tenancy,
-            write_tenancy: self.write_tenancy,
+            tenancy: self.tenancy,
             visibility,
             history_actor: self.history_actor,
         }
@@ -549,7 +466,7 @@ impl AccessBuilder {
 
 impl From<DalContext> for AccessBuilder {
     fn from(ctx: DalContext) -> Self {
-        Self::new(ctx.read_tenancy, ctx.write_tenancy, ctx.history_actor)
+        Self::new(ctx.tenancy, ctx.history_actor)
     }
 }
 
@@ -573,8 +490,7 @@ impl DalContextBuilder {
         Ok(DalContext {
             services_context: self.services_context.clone(),
             txns,
-            read_tenancy: request_context.read_tenancy,
-            write_tenancy: request_context.write_tenancy,
+            tenancy: request_context.tenancy,
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
         })
@@ -596,8 +512,7 @@ impl DalContextBuilder {
         DalContext {
             services_context: self.services_context.clone(),
             txns,
-            read_tenancy: request_context.read_tenancy,
-            write_tenancy: request_context.write_tenancy,
+            tenancy: request_context.tenancy,
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
         }
@@ -646,7 +561,7 @@ pub enum TransactionsError {
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
-    WriteTenancy(#[from] WriteTenancyError),
+    Tenancy(#[from] TenancyError),
 }
 
 /// A type which holds ownership over connections that can be used to start transactions.

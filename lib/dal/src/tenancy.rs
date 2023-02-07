@@ -1,14 +1,25 @@
 use serde::{Deserialize, Serialize};
+use si_data_pg::{PgError, PgTxn};
+use telemetry::prelude::*;
+use thiserror::Error;
 
 use crate::WorkspacePk;
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct ReadTenancy {
+#[derive(Error, Debug)]
+pub enum TenancyError {
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+}
+
+pub type TenancyResult<T> = Result<T, TenancyError>;
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy)]
+pub struct Tenancy {
     #[serde(rename = "tenancy_workspace_pk")]
     workspace_pk: Option<WorkspacePk>,
 }
 
-impl ReadTenancy {
+impl Tenancy {
     pub fn new(workspace_pk: WorkspacePk) -> Self {
         Self {
             workspace_pk: Some(workspace_pk),
@@ -19,12 +30,24 @@ impl ReadTenancy {
         Self { workspace_pk: None }
     }
 
+    #[instrument(skip_all)]
+    pub async fn check(&self, txn: &PgTxn, tenancy: &Tenancy) -> TenancyResult<bool> {
+        let row = txn
+            .query_one(
+                "SELECT in_tenancy_v1($1::jsonb, $2::ident) AS result",
+                &[tenancy, &self.workspace_pk],
+            )
+            .await?;
+        let result = row.try_get("result")?;
+        Ok(result)
+    }
+
     pub fn workspace_pk(&self) -> Option<WorkspacePk> {
         self.workspace_pk
     }
 }
 
-impl postgres_types::ToSql for ReadTenancy {
+impl postgres_types::ToSql for Tenancy {
     fn to_sql(
         &self,
         ty: &postgres_types::Type,

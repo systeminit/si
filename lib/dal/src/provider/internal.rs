@@ -84,7 +84,7 @@ use crate::{
     AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
     AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView, DiagramKind,
     FuncError, FuncId, HistoryEventError, Prop, PropError, SchemaVariant, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use crate::{
     standard_model_has_many, AttributeContext, AttributeContextError, AttributeValue, DalContext,
@@ -195,7 +195,7 @@ pub struct InternalProvider {
     pk: InternalProviderPk,
     id: InternalProviderId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     visibility: Visibility,
     #[serde(flatten)]
@@ -237,7 +237,7 @@ impl InternalProvider {
             .query_one(
                 "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &prop_id,
                     &schema_variant_id,
@@ -301,7 +301,7 @@ impl InternalProvider {
             .query_one(
                 "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &prop_id,
                     &schema_variant_id,
@@ -514,7 +514,7 @@ impl InternalProvider {
             .pg()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
-                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
@@ -531,7 +531,7 @@ impl InternalProvider {
             .pg()
             .query(
                 LIST_EXPLICIT_FOR_SCHEMA_VARIANT,
-                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
@@ -551,12 +551,7 @@ impl InternalProvider {
             .pg()
             .query_opt(
                 FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &schema_variant_id,
-                    &name,
-                ],
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id, &name],
             )
             .await?;
         Ok(object_option_from_row_option(row)?)
@@ -573,7 +568,7 @@ impl InternalProvider {
             .pg()
             .query_opt(
                 FIND_EXPLICIT_FOR_SOCKET,
-                &[ctx.read_tenancy(), ctx.visibility(), &socket_id],
+                &[ctx.tenancy(), ctx.visibility(), &socket_id],
             )
             .await?;
         Ok(object_option_from_row_option(row)?)
@@ -590,11 +585,7 @@ impl InternalProvider {
             .pg()
             .query(
                 LIST_FOR_ATTRIBUTE_PROTOTYPE,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &attribute_prototype_id,
-                ],
+                &[ctx.tenancy(), ctx.visibility(), &attribute_prototype_id],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
@@ -605,10 +596,7 @@ impl InternalProvider {
         let rows = ctx
             .txns()
             .pg()
-            .query(
-                LIST_FOR_INPUT_SOCKETS,
-                &[ctx.read_tenancy(), ctx.visibility()],
-            )
+            .query(LIST_FOR_INPUT_SOCKETS, &[ctx.tenancy(), ctx.visibility()])
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
     }
@@ -628,10 +616,7 @@ impl InternalProvider {
     ) -> InternalProviderResult<Option<Self>> {
         let row = ctx
             .pg_txn()
-            .query_opt(
-                FIND_FOR_PROP,
-                &[ctx.read_tenancy(), ctx.visibility(), &prop_id],
-            )
+            .query_opt(FIND_FOR_PROP, &[ctx.tenancy(), ctx.visibility(), &prop_id])
             .await?;
         Ok(object_option_from_row_option(row)?)
     }

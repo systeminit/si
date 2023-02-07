@@ -22,7 +22,7 @@ async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
         &change_set.note,
         &Some("they are a really good band and you should like them".to_string())
     );
-    assert_eq!(&change_set.tenancy, ctx.write_tenancy());
+    assert_eq!(&change_set.tenancy, ctx.tenancy());
 }
 
 #[test]

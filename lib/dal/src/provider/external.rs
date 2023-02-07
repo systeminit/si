@@ -11,7 +11,7 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     standard_model_has_many, AttributePrototype, AttributePrototypeError, ComponentId, DiagramKind,
     FuncId, HistoryEventError, InternalProviderId, SchemaVariant, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    StandardModelError, Tenancy, Timestamp, Visibility,
 };
 use crate::{
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototypeId,
@@ -79,7 +79,7 @@ pub struct ExternalProvider {
     pk: ExternalProviderPk,
     id: ExternalProviderId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     visibility: Visibility,
     #[serde(flatten)]
@@ -121,7 +121,7 @@ impl ExternalProvider {
             .query_one(
                 "SELECT object FROM external_provider_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &schema_id,
                     &schema_variant_id,
@@ -216,7 +216,7 @@ impl ExternalProvider {
             .pg()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
-                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
@@ -233,7 +233,7 @@ impl ExternalProvider {
             .pg()
             .query_opt(
                 FIND_FOR_SOCKET,
-                &[ctx.read_tenancy(), ctx.visibility(), &socket_id],
+                &[ctx.tenancy(), ctx.visibility(), &socket_id],
             )
             .await?;
         Ok(standard_model::object_option_from_row_option(row)?)
@@ -253,12 +253,7 @@ impl ExternalProvider {
             .pg()
             .query_opt(
                 FIND_FOR_SCHEMA_VARIANT_AND_NAME,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &schema_variant_id,
-                    &name,
-                ],
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id, &name],
             )
             .await?;
         Ok(standard_model::object_option_from_row_option(row)?)
@@ -277,7 +272,7 @@ impl ExternalProvider {
             .query(
                 LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
                     &tail_component_id,
@@ -300,7 +295,7 @@ impl ExternalProvider {
             .pg()
             .query(
                 LIST_FROM_INTERNAL_PROVIDER_USE,
-                &[ctx.read_tenancy(), ctx.visibility(), &internal_provider_id],
+                &[ctx.tenancy(), ctx.visibility(), &internal_provider_id],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)

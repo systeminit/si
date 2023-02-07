@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor_ro, DalContext, PgPoolError,
-    StandardModelError, Timestamp, TransactionsError, Visibility, WriteTenancy,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -41,7 +41,7 @@ pub struct JobFailure {
     message: String,
     solved: bool,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -72,7 +72,7 @@ impl JobFailure {
             .pg()
             .query_one(
                 "SELECT object FROM job_failure_create_v1($1, $2, $3, $4)",
-                &[ctx.write_tenancy(), ctx.visibility(), &kind, &message],
+                &[ctx.tenancy(), ctx.visibility(), &kind, &message],
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;

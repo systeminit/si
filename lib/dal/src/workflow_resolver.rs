@@ -12,8 +12,8 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
     standard_model_accessor, ComponentId, FuncBinding, HistoryEventError, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WorkflowPrototypeId,
-    WorkflowTree, WriteTenancy,
+    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    WorkflowPrototypeId, WorkflowTree,
 };
 
 #[derive(Error, Debug)]
@@ -104,7 +104,7 @@ pub struct WorkflowResolver {
     #[serde(flatten)]
     context: WorkflowResolverContext,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -136,7 +136,7 @@ impl WorkflowResolver {
             .query_one(
                 "SELECT object FROM workflow_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &workflow_prototype_id,
                     &func_id,
@@ -182,7 +182,7 @@ impl WorkflowResolver {
             .query(
                 FIND_FOR_PROTOTYPE,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     workflow_prototype_id,
                     &context.component_id(),

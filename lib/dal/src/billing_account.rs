@@ -9,8 +9,8 @@ use crate::{
     pk, schema::variant::SchemaVariantError, standard_model, standard_model_accessor_ro,
     Capability, CapabilityError, DalContext, Group, GroupError, HistoryActor, HistoryEvent,
     HistoryEventError, KeyPair, KeyPairError, NodeError, Organization, OrganizationError,
-    ReadTenancy, SchemaError, StandardModel, StandardModelError, Timestamp, TransactionsError,
-    User, UserError, Workspace, WorkspaceError,
+    SchemaError, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, User,
+    UserError, Workspace, WorkspaceError,
 };
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("queries/billing_account/get_by_name.sql");
@@ -204,8 +204,7 @@ impl BillingAccount {
         let workspace: Workspace = serde_json::from_value(workspace_json)?;
 
         let mut workspace_ctx = ctx.clone();
-        let read_tenancy = ReadTenancy::new(*workspace.pk());
-        workspace_ctx.update_read_tenancy(read_tenancy);
+        workspace_ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
         let result = BillingAccountDefaults {
             organization,

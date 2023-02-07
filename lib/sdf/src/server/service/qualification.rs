@@ -12,7 +12,7 @@ use thiserror::Error;
 use dal::{qualification::QualificationSummaryError, WsEventError};
 use dal::{
     AttributeValueError, ComponentError, ComponentId, FuncError, FuncId, SchemaError, SchemaId,
-    StandardModelError, TransactionsError, WriteTenancyError,
+    StandardModelError, TenancyError, TransactionsError,
 };
 
 pub mod get_summary;
@@ -40,8 +40,8 @@ pub enum QualificationError {
     Schema(#[from] SchemaError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("write tenancy error: {0}")]
-    WriteTenancy(#[from] WriteTenancyError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]

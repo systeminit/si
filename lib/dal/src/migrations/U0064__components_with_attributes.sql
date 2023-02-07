@@ -31,7 +31,7 @@ FROM components
 -- because we're trying to pretend that the components_with_attributes view is a
 -- "normal" standard model table.
 CREATE OR REPLACE FUNCTION in_tenancy_v1(
-    this_read_tenancy jsonb,
+    this_tenancy      jsonb,
     record_to_check   components_with_attributes
 )
 RETURNS bool
@@ -39,7 +39,7 @@ LANGUAGE sql
 IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
 AS $$
     SELECT in_tenancy_v1(
-        this_read_tenancy,
+        this_tenancy,
         record_to_check.tenancy_workspace_pk
     )
 $$;
@@ -60,7 +60,7 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION in_tenancy_and_visible_v1(
-    this_read_tenancy jsonb,
+    this_tenancy      jsonb,
     this_visibility   jsonb,
     record_to_check   components_with_attributes
 )
@@ -70,7 +70,7 @@ IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
 AS $$
     SELECT
         in_tenancy_v1(
-            this_read_tenancy,
+            this_tenancy,
             record_to_check.tenancy_workspace_pk
         )
         AND is_visible_v1(

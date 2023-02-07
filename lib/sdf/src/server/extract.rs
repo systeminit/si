@@ -7,7 +7,7 @@ use axum::{
 };
 use dal::{
     context::{self, DalContextBuilder, ServicesContext},
-    ReadTenancy, RequestContext, User, UserClaim, WriteTenancy,
+    RequestContext, User, UserClaim,
 };
 use hyper::StatusCode;
 use si_data_pg::{InstrumentedClient, InstrumentedTransaction, PgError};
@@ -24,16 +24,11 @@ where
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Authorization(claim) = Authorization::from_request(req).await?;
-        let mut pg_ro_txn = PgRoTxn::from_request(req).await?;
-        let _pg_txn = pg_ro_txn.start().await.map_err(internal_error)?;
-
-        let history_actor = dal::HistoryActor::from(claim.user_id);
-        let Tenancy(write_tenancy, read_tenancy) = tenancy_from_request(req, &claim).await?;
+        let Tenancy(tenancy) = tenancy_from_claim(&claim).await?;
 
         Ok(Self(context::AccessBuilder::new(
-            read_tenancy,
-            write_tenancy,
-            history_actor,
+            tenancy,
+            dal::HistoryActor::from(claim.user_id),
         )))
     }
 }
@@ -271,9 +266,7 @@ where
         let claim = UserClaim::from_bearer_token(&ctx, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
-        let write_tenancy = WriteTenancy::new(claim.workspace_pk);
-        let read_tenancy = write_tenancy.clone_into_read_tenancy();
-        ctx.update_tenancies(read_tenancy, write_tenancy);
+        ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
 
         User::authorize(&ctx, &claim.user_id)
             .await
@@ -307,9 +300,7 @@ where
         let claim = UserClaim::from_bearer_token(&ctx, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
-        let write_tenancy = WriteTenancy::new(claim.workspace_pk);
-        let read_tenancy = write_tenancy.clone_into_read_tenancy();
-        ctx.update_tenancies(read_tenancy, write_tenancy);
+        ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
 
         User::authorize(&ctx, &claim.user_id)
             .await
@@ -334,7 +325,7 @@ where
     }
 }
 
-pub struct Tenancy(pub WriteTenancy, pub ReadTenancy);
+pub struct Tenancy(pub dal::Tenancy);
 
 #[async_trait]
 impl<P> FromRequest<P> for Tenancy
@@ -345,25 +336,14 @@ where
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Authorization(claim) = Authorization::from_request(req).await?;
-        tenancy_from_request(req, &claim).await
+        tenancy_from_claim(&claim).await
     }
 }
 
-async fn tenancy_from_request<P: Send>(
-    req: &mut RequestParts<P>,
+async fn tenancy_from_claim(
     claim: &UserClaim,
 ) -> Result<Tenancy, (StatusCode, Json<serde_json::Value>)> {
-    let HandlerContext(builder) = HandlerContext::from_request(req).await?;
-    let mut ctx = builder
-        .build(RequestContext::default())
-        .await
-        .map_err(internal_error)?;
-
-    let write_tenancy = WriteTenancy::new(claim.workspace_pk);
-    let read_tenancy = write_tenancy.clone_into_read_tenancy();
-    ctx.update_tenancies(read_tenancy.clone(), write_tenancy.clone());
-
-    Ok(Tenancy(write_tenancy, read_tenancy))
+    Ok(Tenancy(dal::Tenancy::new(claim.workspace_pk)))
 }
 
 fn internal_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::Value>) {

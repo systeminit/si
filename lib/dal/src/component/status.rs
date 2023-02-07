@@ -7,8 +7,8 @@ use crate::standard_model::TypeHint;
 use crate::ComponentId;
 use crate::UserId;
 use crate::{
-    impl_standard_model, pk, standard_model, DalContext, HistoryActor, StandardModelError,
-    Timestamp, Visibility, WriteTenancy,
+    impl_standard_model, pk, standard_model, DalContext, HistoryActor, StandardModelError, Tenancy,
+    Timestamp, Visibility,
 };
 
 pk!(ComponentStatusPk);
@@ -25,7 +25,7 @@ pub struct ComponentStatus {
     // This is a `ComponentId` as the underlying table is parallel to the components table
     id: ComponentId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]

@@ -14,7 +14,7 @@ use crate::{
     component::ComponentKind, edit_field::widget::WidgetKind, impl_standard_model, pk,
     standard_model, standard_model_accessor, DalContext, ExternalProvider, Func, HistoryEventError,
     InternalProvider, NatsError, PgError, Prop, PropId, PropKind, RootProp, Schema, SchemaVariant,
-    SocketArity, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    SocketArity, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -104,7 +104,7 @@ pub struct SchemaVariantDefinition {
     pk: SchemaVariantDefinitionPk,
     id: SchemaVariantDefinitionId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -169,7 +169,7 @@ impl SchemaVariantDefinition {
             .query_one(
                 "SELECT object FROM schema_variant_definition_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
-                ctx.write_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &name,
                 &menu_name,

@@ -74,7 +74,7 @@ impl ComponentChangeStatus {
             .pg()
             .query(
                 LIST_ADDED_COMPONENTS,
-                &[ctx.read_tenancy(), &ctx.visibility().change_set_pk],
+                &[ctx.tenancy(), &ctx.visibility().change_set_pk],
             )
             .await?;
         ComponentChangeStatusGroup::new_from_rows(rows, ChangeStatus::Added)
@@ -89,7 +89,7 @@ impl ComponentChangeStatus {
             .pg()
             .query(
                 LIST_DELETED_COMPONENTS,
-                &[ctx.read_tenancy(), &ctx.visibility().change_set_pk],
+                &[ctx.tenancy(), &ctx.visibility().change_set_pk],
             )
             .await?;
         ComponentChangeStatusGroup::new_from_rows(rows, ChangeStatus::Deleted)
@@ -102,7 +102,7 @@ impl ComponentChangeStatus {
             .pg()
             .query(
                 LIST_DELETED_NODES,
-                &[ctx.read_tenancy(), &ctx.visibility().change_set_pk],
+                &[ctx.tenancy(), &ctx.visibility().change_set_pk],
             )
             .await?;
         Ok(objects_from_rows(rows)?)
@@ -117,7 +117,7 @@ impl ComponentChangeStatus {
             .pg()
             .query(
                 LIST_MODIFIED_COMPONENTS,
-                &[ctx.read_tenancy(), &ctx.visibility().change_set_pk],
+                &[ctx.tenancy(), &ctx.visibility().change_set_pk],
             )
             .await?;
         ComponentChangeStatusGroup::new_from_rows(rows, ChangeStatus::Modified)
@@ -164,7 +164,7 @@ impl EdgeChangeStatus {
             .pg()
             .query(
                 LIST_DELETED_EDGES,
-                &[ctx.read_tenancy(), &ctx.visibility().change_set_pk],
+                &[ctx.tenancy(), &ctx.visibility().change_set_pk],
             )
             .await?;
 

@@ -16,7 +16,7 @@ use telemetry::prelude::*;
 
 use crate::{
     impl_standard_model, pk, standard_model, DalContext, Func, FuncBackendResponseType, FuncError,
-    FuncId, FuncResult, SchemaVariantId, StandardModel, Timestamp, Visibility, WriteTenancy,
+    FuncId, FuncResult, SchemaVariantId, StandardModel, Tenancy, Timestamp, Visibility,
 };
 
 const FIND_FOR_FUNC_AND_SCHEMA_VARIANT: &str =
@@ -58,7 +58,7 @@ pub struct FuncDescription {
     pk: FuncDescriptionPk,
     id: FuncDescriptionId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -116,7 +116,7 @@ impl FuncDescription {
             .query_one(
                 "SELECT object FROM func_description_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &func_id,
                     &schema_variant_id,
@@ -159,7 +159,7 @@ impl FuncDescription {
             .query_opt(
                 FIND_FOR_FUNC_AND_SCHEMA_VARIANT,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &func_id,
                     &schema_variant_id,

@@ -12,9 +12,9 @@ use crate::{
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk, standard_model, standard_model_accessor, Component, ComponentError,
     ComponentId, Func, FuncBindingError, HistoryEventError, InternalProviderError, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WorkflowError,
-    WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowResolverError,
-    WorkflowResolverId, WriteTenancy, WsEventError,
+    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    WorkflowError, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
+    WorkflowResolverError, WorkflowResolverId, WsEventError,
 };
 use crate::{DalContext, FuncError};
 
@@ -128,7 +128,7 @@ pub struct WorkflowRunner {
     #[serde(flatten)]
     context: WorkflowRunnerContext,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -159,7 +159,7 @@ impl WorkflowRunner {
         let row = ctx.txns().pg().query_one(
             "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
             &[
-                ctx.write_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &workflow_prototype_id,
                 &workflow_resolver_id,
@@ -358,7 +358,7 @@ impl WorkflowRunner {
             .query(
                 FIND_FOR_PROTOTYPE,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     workflow_prototype_id,
                     &context.component_id(),

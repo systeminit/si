@@ -257,8 +257,7 @@ macro_rules! test_setup {
 
             let visibility = ::dal::Visibility::new_head(false);
 
-            ctx.update_read_tenancy(::dal::ReadTenancy::new(*$nba.workspace.pk()));
-            ctx.update_write_tenancy(::dal::WriteTenancy::new(*$nba.workspace.pk()));
+            ctx.update_tenancy(::dal::Tenancy::new(*$nba.workspace.pk()));
             ctx.update_visibility(visibility);
             ctx.update_history_actor(::dal::HistoryActor::SystemInit);
             ctx

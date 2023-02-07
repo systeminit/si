@@ -34,8 +34,8 @@ use crate::{
     ExternalProviderId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError,
     InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
     PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
-    StandardModelError, Timestamp, TransactionsError, ValidationPrototypeError,
-    ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WriteTenancy,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, ValidationPrototypeError,
+    ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError,
 };
 use crate::{AttributeValueId, QualificationError};
 
@@ -254,7 +254,7 @@ pub struct Component {
     id: ComponentId,
     kind: ComponentKind,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -308,7 +308,7 @@ impl Component {
             .query_one(
                 "SELECT object FROM component_create_v1($1, $2, $3, $4)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &actor_user_id,
                     &schema.component_kind().as_ref(),
@@ -420,7 +420,7 @@ impl Component {
         result: ComponentResult,
     );
 
-    pub fn tenancy(&self) -> &WriteTenancy {
+    pub fn tenancy(&self) -> &Tenancy {
         &self.tenancy
     }
 
@@ -438,7 +438,7 @@ impl Component {
             .query(
                 LIST_SOCKETS_FOR_SOCKET_EDGE_KIND,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &component_id,
                     &(socket_edge_kind.to_string()),
@@ -454,10 +454,7 @@ impl Component {
         let row = ctx
             .txns()
             .pg()
-            .query_opt(
-                FIND_FOR_NODE,
-                &[ctx.read_tenancy(), ctx.visibility(), &node_id],
-            )
+            .query_opt(FIND_FOR_NODE, &[ctx.tenancy(), ctx.visibility(), &node_id])
             .await?;
         Ok(standard_model::object_option_from_row_option(row)?)
     }
@@ -481,7 +478,7 @@ impl Component {
             .query_one(
                 FIND_ATTRIBUTE_VALUE,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &component_id,
                     &attribute_value_name,
@@ -499,7 +496,7 @@ impl Component {
                 "SELECT id FROM components WHERE id = $1 AND in_tenancy_v1($2, components.tenancy_workspace_pk) LIMIT 1",
                 &[
                     &id,
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                 ],
             )
             .await?;
@@ -515,7 +512,7 @@ impl Component {
             .pg_txn()
             .query(
                 LIST_FOR_SCHEMA_VARIANT,
-                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
 
@@ -699,10 +696,7 @@ impl Component {
     pub async fn find_name(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<String> {
         let row = ctx
             .pg_txn()
-            .query_one(
-                FIND_NAME,
-                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
-            )
+            .query_one(FIND_NAME, &[ctx.tenancy(), ctx.visibility(), &component_id])
             .await?;
         let component_name: serde_json::Value = row.try_get("component_name")?;
         let component_name: Option<String> = serde_json::from_value(component_name)?;
@@ -728,7 +722,7 @@ impl Component {
             .query_one(
                 ROOT_CHILD_ATTRIBUTE_VALUE_FOR_COMPONENT,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &root_prop_child.as_str(),
                     &component_id,
@@ -774,7 +768,7 @@ impl Component {
             .query(
                 LIST_CONNECTED_INPUT_SOCKETS_FOR_ATTRIBUTE_VALUE,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_value_id,
                     &component_id,
@@ -795,7 +789,7 @@ impl Component {
                     component_belongs_to_schema_variant_v1($1, $2)
                     where object_id = $3
                 ",
-                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
 
@@ -1050,13 +1044,8 @@ impl Component {
             .txns()
             .pg()
             .query(
-                "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3, $4)",
-                &[
-                    ctx.read_tenancy(),
-                    ctx.write_tenancy(),
-                    ctx.visibility(),
-                    self.id(),
-                ],
+                "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3)",
+                &[ctx.tenancy(), ctx.visibility(), self.id()],
             )
             .await?;
         let mut attr_values: Vec<AttributeValue> = standard_model::objects_from_rows(rows)?;
@@ -1081,7 +1070,7 @@ impl Component {
             .pg()
             .query(
                 "SELECT * FROM component_restore_and_propagate_v1($1, $2, $3)",
-                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
         let mut attr_values: Vec<AttributeValue> = standard_model::objects_from_rows(rows)?;

@@ -7,8 +7,8 @@ use dal::{
     },
     BillingAccount, BillingAccountPk, BillingAccountSignup, ChangeSet, Component, DalContext,
     DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor, JwtSecretKey, Node, Prop,
-    PropId, ReadTenancy, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId,
-    StandardModel, User, Visibility, WriteTenancy,
+    PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
+    Tenancy, User, Visibility,
 };
 use names::{Generator, Name};
 
@@ -125,10 +125,7 @@ pub async fn create_ctx_for_new_change_set(
         .build(RequestContext::default())
         .await
         .expect("failed to build dal context");
-    ctx.update_tenancies(
-        ReadTenancy::new(*nba.workspace.pk()),
-        WriteTenancy::new(*nba.workspace.pk()),
-    );
+    ctx.update_tenancy(Tenancy::new(*nba.workspace.pk()));
     create_change_set_and_update_ctx(&mut ctx).await;
 
     ctx

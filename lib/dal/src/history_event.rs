@@ -1,4 +1,4 @@
-use crate::WriteTenancy;
+use crate::Tenancy;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display as StrumDisplay;
 use thiserror::Error;
@@ -46,7 +46,7 @@ pub struct HistoryEvent {
     pub message: String,
     pub data: serde_json::Value,
     #[serde(flatten)]
-    pub tenancy: WriteTenancy,
+    pub tenancy: Tenancy,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
@@ -67,13 +67,7 @@ impl HistoryEvent {
             .pg()
             .query_one(
                 "SELECT object FROM history_event_create_v1($1, $2, $3, $4, $5)",
-                &[
-                    &label.to_string(),
-                    &actor,
-                    &message,
-                    &data,
-                    ctx.write_tenancy(),
-                ],
+                &[&label.to_string(), &actor, &message, &data, ctx.tenancy()],
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
