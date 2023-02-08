@@ -179,7 +179,13 @@ const componentsStore = useComponentsStore();
 const diagramEdges = computed(() => {
   // Note(victor): The code below checks whether was only created implicitly, through inheritance from an aggregation frame
   // In the future, it would make more sense for this to be stored on the database
-  const edges = _.map(componentsStore.diagramEdges, (edge) => {
+  const validEdges = _.filter(componentsStore.diagramEdges, (edge) => {
+    return (
+      componentsStore.componentsByNodeId[edge.toNodeId] !== undefined &&
+      componentsStore.componentsByNodeId[edge.fromNodeId] !== undefined
+    );
+  });
+  const edges = _.map(validEdges, (edge) => {
     edge.isInvisible = false;
 
     const toNodeParentId =
@@ -407,6 +413,7 @@ async function executeDeleteSelection() {
       await componentsStore.DELETE_COMPONENT(componentId);
     }
   }
+  componentsStore.setSelectedComponentId(null);
 }
 
 async function triggerRestoreSelection() {

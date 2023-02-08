@@ -205,6 +205,18 @@
         }"
       />
     </v-group>
+    <!--TODO - This will be replaced by Theo's deleted UI work-->
+    <v-rect
+      v-if="node.def.changeStatus === 'deleted'"
+      :config="{
+        width: nodeWidth,
+        height: nodeHeight,
+        x: -halfWidth,
+        y: 0,
+        cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
+        fill: 'rgba(100,100,100,0.70)',
+      }"
+    />
   </v-group>
 </template>
 

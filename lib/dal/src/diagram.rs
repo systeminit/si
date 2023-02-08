@@ -114,32 +114,32 @@ impl Diagram {
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
     /// [`Connections`](crate::Connection).
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
-        let nodes = Node::list(ctx).await?;
-
         let added = ComponentChangeStatus::list_added(ctx).await?;
-        let deleted = ComponentChangeStatus::list_deleted(ctx).await?;
         let modified = ComponentChangeStatus::list_modified(ctx).await?;
 
         let mut stats = Vec::new();
         stats.extend(added);
-        stats.extend(deleted);
         stats.extend(modified);
 
+        let mut nodes = Node::list(ctx).await?;
+        nodes.extend(ComponentChangeStatus::list_deleted_nodes(ctx).await?);
+
         let mut node_views = Vec::with_capacity(nodes.len());
+        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
         for node in &nodes {
             let component = node
-                .component(ctx)
+                .component(ctx_with_deleted)
                 .await?
                 .ok_or(DiagramError::ComponentNotFound)?;
 
             let schema_variant = match node.kind() {
                 NodeKind::Configuration => component
-                    .schema_variant(ctx)
+                    .schema_variant(ctx_with_deleted)
                     .await?
                     .ok_or(DiagramError::SchemaVariantNotFound)?,
             };
 
-            let positions = NodePosition::list_for_node(ctx, *node.id()).await?;
+            let positions = NodePosition::list_for_node(ctx_with_deleted, *node.id()).await?;
 
             // FIXME(nick): handle nodes with no position. Perhaps, we should generate one
             // automatically that is close to the origin, but does not share the same position as
@@ -149,16 +149,25 @@ impl Diagram {
                 None => continue, // Note: do we want to ignore things with no position?
             };
 
-            let maybe_change_status = stats.iter().find(|s| s.component_id == *component.id());
-
-            let change_status = if let Some(status) = maybe_change_status {
-                status.component_status.clone()
+            let change_status = if node.visibility().deleted_at.is_some() {
+                ChangeStatus::Deleted
             } else {
-                ChangeStatus::Unmodified
+                let maybe_change_status = stats.iter().find(|s| s.component_id == *component.id());
+                if let Some(status) = maybe_change_status {
+                    status.component_status.clone()
+                } else {
+                    ChangeStatus::Unmodified
+                }
             };
 
-            let view =
-                DiagramNodeView::new(ctx, node, &position, change_status, &schema_variant).await?;
+            let view = DiagramNodeView::new(
+                ctx_with_deleted,
+                node,
+                &position,
+                change_status,
+                &schema_variant,
+            )
+            .await?;
             node_views.push(view);
         }
 
