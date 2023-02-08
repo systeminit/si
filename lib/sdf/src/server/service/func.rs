@@ -18,8 +18,8 @@ use dal::{
     AttributeValueError, ComponentError, ComponentId, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncBindingError, FuncId, InternalProviderError, InternalProviderId,
     PropError, PropId, PrototypeListForFuncError, SchemaVariantId, StandardModel,
-    StandardModelError, TransactionsError, ValidationPrototype, ValidationPrototypeError,
-    ValidationPrototypeId, Visibility, WriteTenancyError, WsEventError,
+    StandardModelError, TenancyError, TransactionsError, ValidationPrototype,
+    ValidationPrototypeError, ValidationPrototypeId, Visibility, WsEventError,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -40,8 +40,8 @@ pub enum FuncError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("write tenancy error: {0}")]
-    WriteTenancy(#[from] WriteTenancyError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]

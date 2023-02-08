@@ -102,8 +102,7 @@ END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION func_binding_create_v1(
-    this_write_tenancy jsonb,
-    this_read_tenancy jsonb,
+    this_tenancy jsonb,
     this_visibility jsonb,
     this_args json,
     this_func_id ident,
@@ -112,11 +111,11 @@ CREATE OR REPLACE FUNCTION func_binding_create_v1(
     OUT object json) AS
 $$
 DECLARE
-    this_write_tenancy_record tenancy_record_v1;
+    this_tenancy_record       tenancy_record_v1;
     this_visibility_record    visibility_record_v1;
     this_new_row              func_bindings%ROWTYPE;
 BEGIN
-    this_write_tenancy_record := tenancy_json_to_columns_v1(this_write_tenancy);
+    this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO func_bindings (
@@ -127,7 +126,7 @@ BEGIN
         backend_kind,
         code_sha256
     )
-    VALUES (this_write_tenancy_record.tenancy_workspace_pk,
+    VALUES (this_tenancy_record.tenancy_workspace_pk,
         this_visibility_record.visibility_change_set_pk,
         this_visibility_record.visibility_deleted_at,
         this_args,
@@ -137,8 +136,7 @@ BEGIN
     RETURNING * INTO this_new_row;
     PERFORM set_belongs_to_v1(
         'func_binding_belongs_to_func',
-        this_read_tenancy,
-        this_write_tenancy,
+        this_tenancy,
         this_visibility,
         this_new_row.id,
         this_func_id

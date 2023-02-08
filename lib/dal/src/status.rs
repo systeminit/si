@@ -15,7 +15,7 @@ use crate::{
     AttributeValue, AttributeValueError, AttributeValueId, ChangeSetPk, Component, ComponentError,
     ComponentId, ComponentStatus, DalContext, ExternalProvider, ExternalProviderError,
     InternalProvider, InternalProviderError, Prop, PropError, PropId, SchemaVariant, SocketId,
-    StandardModel, StandardModelError, Timestamp, UserId, WriteTenancy, WsEvent, WsEventError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, UserId, WsEvent, WsEventError,
     WsEventResult, WsPayload,
 };
 
@@ -113,7 +113,7 @@ pub struct StatusUpdate {
     /// The primary key
     pub pk: StatusUpdatePk,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     finished_at: Option<DateTime<Utc>>,
@@ -139,7 +139,7 @@ impl StatusUpdate {
             .await?
             .query_one(
                 "SELECT object FROM status_update_create_v1($1, $2, $3)",
-                &[&ctx.visibility().change_set_pk, &actor, ctx.write_tenancy()],
+                &[&ctx.visibility().change_set_pk, &actor, ctx.tenancy()],
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
@@ -183,7 +183,7 @@ impl StatusUpdate {
             .await?
             .query(
                 LIST_ACTIVE,
-                &[&ctx.visibility().change_set_pk, ctx.read_tenancy()],
+                &[&ctx.visibility().change_set_pk, ctx.tenancy()],
             )
             .await?;
         objects_from_rows(rows).map_err(Into::into)

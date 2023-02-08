@@ -29,8 +29,7 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, ComponentId,
     DalContext, ExternalProviderId, HistoryEventError, InternalProviderId, PropError, PropKind,
-    ReadTenancy, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
-    WriteTenancy,
+    SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 pub mod argument;
@@ -80,7 +79,7 @@ pub enum AttributePrototypeError {
     MissingProp,
     #[error("missing attribute value for tenancy {0:?}, visibility {1:?}, prototype {2:?}, with parent attribute value {3:?}")]
     MissingValue(
-        ReadTenancy,
+        Tenancy,
         Visibility,
         AttributePrototypeId,
         Option<AttributeValueId>,
@@ -119,7 +118,7 @@ pub struct AttributePrototype {
     pk: AttributePrototypePk,
     id: AttributePrototypeId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     visibility: Visibility,
     #[serde(flatten)]
@@ -164,10 +163,9 @@ impl AttributePrototype {
         parent_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<Self> {
         let row = ctx.pg_txn().query_one(
-            "SELECT new_attribute_prototype AS object FROM attribute_prototype_new_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            "SELECT new_attribute_prototype AS object FROM attribute_prototype_new_v1($1, $2, $3, $4, $5, $6, $7, $8)",
             &[
-                ctx.write_tenancy(),
-                ctx.read_tenancy(),
+                ctx.tenancy(),
                 ctx.visibility(),
                 &func_id,
                 &func_binding_id,
@@ -202,11 +200,9 @@ impl AttributePrototype {
                                                                       $4,
                                                                       $5,
                                                                       $6,
-                                                                      $7,
-                                                                      $8)",
+                                                                      $7)",
                 &[
-                    ctx.write_tenancy(),
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &func_id,
                     &context,
@@ -235,13 +231,7 @@ impl AttributePrototype {
             .pg()
             .query_one(
                 "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
-                &[
-                    ctx.write_tenancy(),
-                    ctx.visibility(),
-                    &context,
-                    &func_id,
-                    &key,
-                ],
+                &[ctx.tenancy(), ctx.visibility(), &context, &func_id, &key],
             )
             .await?;
 
@@ -492,7 +482,7 @@ impl AttributePrototype {
             .query(
                 LIST_FOR_CONTEXT,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &context,
                     &context.prop_id(),
@@ -516,7 +506,7 @@ impl AttributePrototype {
             .query_opt(
                 FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &context,
                     &parent_attribute_value_id,
@@ -537,7 +527,7 @@ impl AttributePrototype {
             .pg_txn()
             .query(
                 LIST_FROM_INTERNAL_PROVIDER_USE,
-                &[ctx.read_tenancy(), ctx.visibility(), &internal_provider_id],
+                &[ctx.tenancy(), ctx.visibility(), &internal_provider_id],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
@@ -555,7 +545,7 @@ impl AttributePrototype {
             .query(
                 LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &external_provider_id,
                     &tail_component_id,
@@ -588,7 +578,7 @@ impl AttributePrototype {
             .query(
                 ARGUMENT_VALUES_BY_NAME_FOR_HEAD_COMPONENT_ID,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &self.id,
                     &attribute_write_context.component_id(),
@@ -613,7 +603,7 @@ impl AttributePrototype {
             .query(
                 ATTRIBUTE_VALUES_IN_CONTEXT_OR_GREATER,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
                     &context,
@@ -679,7 +669,7 @@ impl AttributePrototype {
                     .await?
             } else {
                 return Err(AttributePrototypeError::MissingValue(
-                    ctx.read_tenancy().clone(),
+                    *ctx.tenancy(),
                     *ctx.visibility(),
                     prototype_id,
                     parent_attribute_value_id,
@@ -728,7 +718,7 @@ impl AttributePrototype {
                 .await?
                 .ok_or_else(|| {
                     AttributePrototypeError::MissingValue(
-                        ctx.read_tenancy().clone(),
+                        *ctx.tenancy(),
                         *ctx.visibility(),
                         *prototype.id(),
                         Some(attribute_value_id),
@@ -763,10 +753,7 @@ impl AttributePrototype {
         let rows = ctx
             .txns()
             .pg()
-            .query(
-                FIND_FOR_FUNC,
-                &[ctx.read_tenancy(), ctx.visibility(), func_id],
-            )
+            .query(FIND_FOR_FUNC, &[ctx.tenancy(), ctx.visibility(), func_id])
             .await?;
 
         Ok(standard_model::objects_from_rows(rows)?)
@@ -782,7 +769,7 @@ impl AttributePrototype {
             .pg_txn()
             .query(
                 FIND_FOR_FUNC_AS_VARIANT_AND_COMPONENT,
-                &[ctx.read_tenancy(), ctx.visibility(), &func_id],
+                &[ctx.tenancy(), ctx.visibility(), &func_id],
             )
             .await?;
 
@@ -807,7 +794,7 @@ impl AttributePrototype {
                 .query(
                     FIND_FOR_CONTEXT_AND_KEY,
                     &[
-                        ctx.read_tenancy(),
+                        ctx.tenancy(),
                         ctx.visibility(),
                         &context.prop_id(),
                         &context.internal_provider_id(),
@@ -823,7 +810,7 @@ impl AttributePrototype {
                 .query(
                     FIND_FOR_CONTEXT_NULL_KEY,
                     &[
-                        ctx.read_tenancy(),
+                        ctx.tenancy(),
                         ctx.visibility(),
                         &context.prop_id(),
                         &context.internal_provider_id(),

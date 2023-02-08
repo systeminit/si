@@ -11,7 +11,7 @@ use crate::{
     status::StatusMessage,
     workflow::{CommandOutput, CommandReturn},
     ActorView, AttributeValueId, BillingAccountPk, ChangeSetPk, ComponentId, DalContext, PropId,
-    ReadTenancy, SchemaPk, SocketId, StandardModelError, TransactionsError,
+    SchemaPk, SocketId, StandardModelError, Tenancy, TransactionsError,
 };
 
 #[derive(Error, Debug)]
@@ -27,7 +27,7 @@ pub enum WsEventError {
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("no workspace in tenancy: {0:?}")]
-    NoWorkspaceInTenancy(ReadTenancy),
+    NoWorkspaceInTenancy(Tenancy),
 }
 
 pub type WsEventResult<T> = Result<T, WsEventError>;
@@ -96,12 +96,10 @@ pub struct WsEvent {
 
 impl WsEvent {
     pub async fn new(ctx: &DalContext, payload: WsPayload) -> WsEventResult<Self> {
-        let workspace_pk = match ctx.read_tenancy().workspace_pk() {
+        let workspace_pk = match ctx.tenancy().workspace_pk() {
             Some(pk) => pk,
             None => {
-                return Err(WsEventError::NoWorkspaceInTenancy(
-                    ctx.read_tenancy().clone(),
-                ));
+                return Err(WsEventError::NoWorkspaceInTenancy(*ctx.tenancy()));
             }
         };
         let billing_account_pks = vec![

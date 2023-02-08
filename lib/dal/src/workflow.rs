@@ -247,8 +247,7 @@ impl WorkflowTree {
             );
             let ctx_builder = services_context.clone().into_builder();
             let request_context = RequestContext {
-                read_tenancy: ctx.read_tenancy().clone(),
-                write_tenancy: ctx.write_tenancy().clone(),
+                tenancy: *ctx.tenancy(),
                 visibility: *ctx.visibility(),
                 history_actor: *ctx.history_actor(),
             };

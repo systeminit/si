@@ -8,8 +8,8 @@ use crate::{
     impl_standard_model, label_list::ToLabelList, pk, standard_model, standard_model_accessor,
     standard_model_belongs_to, standard_model_many_to_many, ComponentId, DalContext, DiagramKind,
     ExternalProvider, ExternalProviderId, HistoryEventError, InternalProvider, InternalProviderId,
-    NodeId, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
-    Visibility, WriteTenancy,
+    NodeId, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    Visibility,
 };
 
 const FIND_FRAME_SOCKET_FOR_NODE: &str =
@@ -103,7 +103,7 @@ pub struct Socket {
     arity: SocketArity,
     required: bool,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -136,7 +136,7 @@ impl Socket {
             .query_one(
                 "SELECT object FROM socket_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &name,
                     &kind.as_ref(),
@@ -209,7 +209,7 @@ impl Socket {
             .query_one(
                 FIND_FRAME_SOCKET_FOR_NODE,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &node_id,
                     &socket_edge_kind.as_ref(),
@@ -230,7 +230,7 @@ impl Socket {
             .pg()
             .query(
                 LIST_FOR_COMPONENT,
-                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)

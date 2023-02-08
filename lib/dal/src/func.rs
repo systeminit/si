@@ -10,7 +10,7 @@ use crate::func::argument::FuncArgumentError;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     DalContext, FuncBinding, FuncDescriptionContents, HistoryEventError, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -97,7 +97,7 @@ pub struct Func {
     code_base64: Option<String>,
     code_sha256: String,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -128,7 +128,7 @@ impl Func {
             .query_one(
                 "SELECT object FROM func_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &name,
                     &backend_kind.as_ref(),
@@ -175,7 +175,7 @@ impl Func {
                 INNER JOIN func_binding_belongs_to_func_v1($1, $2) AS func_binding_belongs_to_func
                     ON funcs.id = func_binding_belongs_to_func.belongs_to_id
                 WHERE func_binding_belongs_to_func.object_id = $3",
-                &[ctx.read_tenancy(), ctx.visibility(), func_binding.id()],
+                &[ctx.tenancy(), ctx.visibility(), func_binding.id()],
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;

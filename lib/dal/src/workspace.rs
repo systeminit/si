@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use crate::{
     pk, standard_model, standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError,
-    OrganizationPk, StandardModelError, Timestamp, TransactionsError,
+    OrganizationPk, StandardModelError, Tenancy, Timestamp, TransactionsError,
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
@@ -81,9 +81,7 @@ impl Workspace {
         let json: serde_json::Value = row.try_get("object")?;
         let object: Self = serde_json::from_value(json)?;
 
-        ctx.update_to_workspace_tenancies(object.pk)
-            .await
-            .map_err(Box::new)?;
+        ctx.update_tenancy(Tenancy::new(object.pk));
 
         let _history_event = HistoryEvent::new(
             ctx,

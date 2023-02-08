@@ -46,7 +46,7 @@ impl PropertyEditorSchema {
             .pg_txn()
             .query(
                 PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT,
-                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant.id()],
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant.id()],
             )
             .await?;
 

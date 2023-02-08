@@ -1,4 +1,4 @@
-use crate::WriteTenancy;
+use crate::Tenancy;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -81,7 +81,7 @@ pub struct FuncExecution {
     output_stream: Option<Vec<OutputStream>>,
     function_failure: Option<FunctionResultFailure>,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
@@ -100,7 +100,7 @@ impl FuncExecution {
             .query_one(
                 "SELECT object FROM func_execution_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     &FuncExecutionState::Start.to_string(),
                     &func.id(),
                     &func_binding.id(),

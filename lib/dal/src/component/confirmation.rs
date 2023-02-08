@@ -92,7 +92,7 @@ impl Component {
             .pg()
             .query(
                 LIST_ALL_RESOURCE_IMPLICIT_INTERNAL_PROVIDER_ATTRIBUTE_VALUES,
-                &[ctx.read_tenancy(), ctx.visibility()],
+                &[ctx.tenancy(), ctx.visibility()],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)

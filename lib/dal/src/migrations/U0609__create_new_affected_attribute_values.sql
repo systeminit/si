@@ -1,6 +1,5 @@
 CREATE OR REPLACE FUNCTION attribute_value_create_appropriate_for_prototype_and_context_v1(
-    this_write_tenancy jsonb,
-    this_read_tenancy jsonb,
+    this_tenancy    jsonb,
     this_visibility jsonb,
     this_attribute_prototype_id ident,
     this_attribute_context jsonb,
@@ -22,9 +21,9 @@ BEGIN
     <<attribute_value_is_appropriate_check>>
     FOR attribute_value IN
         SELECT *
-        FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+        FROM attribute_values_v1(this_tenancy, this_visibility) AS av
                  INNER JOIN (SELECT object_id AS attribute_value_id
-                             FROM attribute_value_belongs_to_attribute_prototype_v1(this_read_tenancy, this_visibility)
+                             FROM attribute_value_belongs_to_attribute_prototype_v1(this_tenancy, this_visibility)
                              WHERE belongs_to_id = this_attribute_prototype_id) AS avbtap
                             ON avbtap.attribute_value_id = av.id
         WHERE in_attribute_context_v1(this_attribute_context, av)
@@ -44,12 +43,12 @@ BEGIN
         -- we'd like to create already exists.
         FOR tmp_attribute_value IN
             SELECT *
-            FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+            FROM attribute_values_v1(this_tenancy, this_visibility) AS av
             WHERE id IN (WITH RECURSIVE recursive_attribute_values
                                             AS (SELECT attribute_value.id AS attribute_value_id
                                                 UNION ALL
                                                 SELECT av.id AS attribute_value_id
-                                                FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+                                                FROM attribute_values_v1(this_tenancy, this_visibility) AS av
                                                          JOIN recursive_attribute_values
                                                               ON av.proxy_for_attribute_value_id =
                                                                  recursive_attribute_values.attribute_value_id
@@ -76,8 +75,7 @@ BEGIN
 
         IF (this_attribute_context ->> 'attribute_context_prop_id')::ident != ident_nil_v1() THEN
             new_attribute_value_id := attribute_value_vivify_value_and_parent_values_raw_v1(
-                    this_write_tenancy,
-                    this_read_tenancy,
+                    this_tenancy,
                     this_visibility,
                     this_attribute_context,
                     attribute_value.id,
@@ -87,11 +85,11 @@ BEGIN
 
             SELECT id
             INTO func_id
-            FROM funcs_v1(this_read_tenancy, this_visibility)
+            FROM funcs_v1(this_tenancy, this_visibility)
             WHERE name = 'si:unset';
             IF NOT FOUND THEN
                 RAISE 'Unable to find Func(%) in Tenancy(%), Visibility(%)', 'si:unset',
-                    this_read_tenancy,
+                    this_tenancy,
                     this_visibility;
             END IF;
 
@@ -99,8 +97,7 @@ BEGIN
             SELECT new_func_binding_id, new_func_binding_return_value_id
             INTO func_binding_id, func_binding_return_value_id
             FROM func_binding_create_and_execute_v1(
-                    this_write_tenancy,
-                    this_read_tenancy,
+                    this_tenancy,
                     this_visibility,
                     'null'::jsonb,
                     func_id
@@ -110,8 +107,7 @@ BEGIN
             SELECT (new_av ->> 'id')::ident
             INTO new_attribute_value_id
             FROM attribute_value_new_v1(
-                         this_write_tenancy,
-                         this_read_tenancy,
+                         this_tenancy,
                          this_visibility,
                          func_binding_id,
                          func_binding_return_value_id,
@@ -121,8 +117,7 @@ BEGIN
         END IF;
         PERFORM set_belongs_to_v1(
                 'attribute_value_belongs_to_attribute_prototype',
-                this_read_tenancy,
-                this_write_tenancy,
+                this_tenancy,
                 this_visibility,
                 new_attribute_value_id,
                 this_attribute_prototype_id
@@ -183,8 +178,7 @@ $$ LANGUAGE PLPGSQL;
 --   * AttributePrototype is the _most specific_ where above is true
 --   * AttributePrototype.context <= InternalProvider AttributeValue.context
 CREATE OR REPLACE FUNCTION attribute_value_create_new_affected_values_v1(
-    this_write_tenancy jsonb,
-    this_read_tenancy jsonb,
+    this_tenancy    jsonb,
     this_visibility jsonb,
     this_attribute_value_id_array ident[]
 ) RETURNS void AS
@@ -217,9 +211,8 @@ DECLARE
     tmp_attribute_context         jsonb;
     tmp_attribute_value           attribute_values%ROWTYPE;
 BEGIN
-    RAISE DEBUG 'attribute_value_create_new_affected_values_v1(%, %, %, %)',
-        this_write_tenancy,
-        this_read_tenancy,
+    RAISE DEBUG 'attribute_value_create_new_affected_values_v1(%, %, %)',
+        this_tenancy,
         this_visibility,
         this_attribute_value_id_array;
 
@@ -235,7 +228,7 @@ BEGIN
         LOOP
             SELECT *
             INTO STRICT source_attribute_value
-            FROM attribute_values_v1(this_read_tenancy, this_visibility)
+            FROM attribute_values_v1(this_tenancy, this_visibility)
             WHERE id = current_attribute_value_id;
             RAISE DEBUG 'attribute_value_create_new_affected_values_v1: source_attribute_value: %', source_attribute_value;
 
@@ -265,7 +258,7 @@ BEGIN
                                             SELECT p.parent_prop_id AS prop_id
                                             FROM (SELECT object_id     AS child_prop_id,
                                                          belongs_to_id AS parent_prop_id
-                                                  FROM prop_belongs_to_prop_v1(this_read_tenancy, this_visibility)) AS p
+                                                  FROM prop_belongs_to_prop_v1(this_tenancy, this_visibility)) AS p
                                                      JOIN parent_prop_tree ON p.child_prop_id = parent_prop_tree.prop_id)
                      SELECT ip.id AS current_internal_provider_id,
                             ip.attribute_prototype_id,
@@ -275,21 +268,21 @@ BEGIN
                                     'attribute_context_internal_provider_id', ip.id,
                                     'attribute_context_external_provider_id', ident_nil_v1()
                                 ) AS tmp_attribute_context
-                     FROM internal_providers_v1(this_read_tenancy, this_visibility) AS ip
+                     FROM internal_providers_v1(this_tenancy, this_visibility) AS ip
                               INNER JOIN parent_prop_tree ON parent_prop_tree.prop_id = ip.prop_id)
 
                     UNION
 
                     -- Find all internal providers that are a child of this prop
                     (WITH RECURSIVE child_prop_tree AS (SELECT object_id as prop_id
-                                                        FROM prop_belongs_to_prop_v1(this_read_tenancy, this_visibility) as pbtp
+                                                        FROM prop_belongs_to_prop_v1(this_tenancy, this_visibility) as pbtp
                                                         WHERE belongs_to_id = source_attribute_value.attribute_context_prop_id
                                                           AND object_id IS NOT NULL
                                                         UNION ALL
                                                         SELECT p.child_prop_id AS prop_id
                                                         FROM (SELECT object_id     AS child_prop_id,
                                                                      belongs_to_id AS parent_prop_id
-                                                              FROM prop_belongs_to_prop_v1(this_read_tenancy, this_visibility)) p
+                                                              FROM prop_belongs_to_prop_v1(this_tenancy, this_visibility)) p
                                                                  INNER JOIN child_prop_tree ON child_prop_tree.prop_id = p.parent_prop_id)
                      SELECT ip.id AS current_internal_provider_id,
                             ip.attribute_prototype_id,
@@ -299,7 +292,7 @@ BEGIN
                                     'attribute_context_internal_provider_id', ip.id,
                                     'attribute_context_external_provider_id', ident_nil_v1()
                                 ) AS tmp_attribute_context
-                     FROM internal_providers_v1(this_read_tenancy, this_visibility) AS ip
+                     FROM internal_providers_v1(this_tenancy, this_visibility) AS ip
                               INNER JOIN child_prop_tree ON child_prop_tree.prop_id = ip.prop_id)
 
                 LOOP
@@ -310,7 +303,7 @@ BEGIN
                     -- Grab the most specific AttributeValue that we already have for this InternalProvider
                     SELECT DISTINCT ON (attribute_context_internal_provider_id) av.*
                     INTO STRICT tmp_attribute_value
-                    FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+                    FROM attribute_values_v1(this_tenancy, this_visibility) AS av
                     WHERE in_attribute_context_v1(tmp_attribute_context, av)
                     ORDER BY attribute_context_internal_provider_id DESC,
                              attribute_context_prop_id DESC,
@@ -332,8 +325,7 @@ BEGIN
                     next_attribute_value_ids := array_append(
                             next_attribute_value_ids,
                             attribute_value_update_for_context_without_child_proxies_v1(
-                                    this_write_tenancy,
-                                    this_read_tenancy,
+                                    this_tenancy,
                                     this_visibility,
                                     tmp_attribute_value.id,
                                     NULL, -- No parent
@@ -358,12 +350,12 @@ BEGIN
                 RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Looking for AttributePrototype that use InternalProvider(%) in AttributeContext(%), Tenancy(%), Visibility(%)',
                     current_internal_provider_id,
                     tmp_attribute_context,
-                    this_read_tenancy,
+                    this_tenancy,
                     this_visibility;
                 FOR attribute_prototype IN
                     SELECT ap.*
-                    FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
-                             INNER JOIN attribute_prototype_arguments_v1(this_read_tenancy, this_visibility) AS apa
+                    FROM attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
+                             INNER JOIN attribute_prototype_arguments_v1(this_tenancy, this_visibility) AS apa
                                         ON ap.id = apa.attribute_prototype_id
                                             AND apa.internal_provider_id = current_internal_provider_id
                                             AND apa.tail_component_id = ident_nil_v1()
@@ -392,9 +384,9 @@ BEGIN
                         <<attribute_values_for_prototype>>
                         FOR tmp_attribute_value IN
                             SELECT av.*
-                            FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+                            FROM attribute_values_v1(this_tenancy, this_visibility) AS av
                                      INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(
-                                    this_read_tenancy, this_visibility) AS avbtap
+                                    this_tenancy, this_visibility) AS avbtap
                                                 ON avbtap.object_id = av.id
                                                     AND avbtap.belongs_to_id = attribute_prototype.id
                             WHERE in_attribute_context_v1(desired_attribute_context, av)
@@ -419,11 +411,11 @@ BEGIN
                             -- AttributePrototype, and not create a new AttributeValue in the specific AttributeContext.
                             FOR proxy_attribute_value IN
                                 WITH RECURSIVE proxy_attribute_values AS (SELECT *
-                                                                          FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+                                                                          FROM attribute_values_v1(this_tenancy, this_visibility) AS av
                                                                           WHERE av.proxy_for_attribute_value_id = tmp_attribute_value.id
                                                                           UNION ALL
                                                                           SELECT av.*
-                                                                          FROM attribute_values_v1(this_read_tenancy, this_visibility) AS av
+                                                                          FROM attribute_values_v1(this_tenancy, this_visibility) AS av
                                                                                    JOIN proxy_attribute_values
                                                                                         ON av.proxy_for_attribute_value_id = proxy_attribute_values.id)
                                 SELECT *
@@ -446,8 +438,7 @@ BEGIN
                             -- is of the AttributeContext that we're interested in, so we should make one.
                             new_attribute_value_id :=
                                     attribute_value_vivify_value_and_parent_no_child_proxies_v1(
-                                            this_write_tenancy,
-                                            this_read_tenancy,
+                                            this_tenancy,
                                             this_visibility,
                                             desired_attribute_context,
                                             tmp_attribute_value.id
@@ -459,8 +450,7 @@ BEGIN
                             -- so that we can find it when we go through to update affected AttributeValues.
                             PERFORM set_belongs_to_v1(
                                     'attribute_value_belongs_to_attribute_prototype',
-                                    this_read_tenancy,
-                                    this_write_tenancy,
+                                    this_tenancy,
                                     this_visibility,
                                     new_attribute_value_id,
                                     attribute_prototype.id
@@ -482,7 +472,7 @@ BEGIN
 
                         SELECT id
                         INTO new_attribute_value_id
-                        FROM attribute_values_v1(this_read_tenancy, this_visibility) as av
+                        FROM attribute_values_v1(this_tenancy, this_visibility) as av
                         WHERE exact_attribute_context_v1(insertion_attribute_context, av);
 
                         IF FOUND THEN
@@ -493,8 +483,7 @@ BEGIN
                         next_attribute_value_ids := array_cat(
                                 next_attribute_value_ids,
                                 attribute_value_create_appropriate_for_prototype_and_context_v1(
-                                        this_write_tenancy,
-                                        this_read_tenancy,
+                                        this_tenancy,
                                         this_visibility,
                                         attribute_prototype.id,
                                         insertion_attribute_context
@@ -513,8 +502,8 @@ BEGIN
                     SELECT apa.head_component_id,
                            ap.id                                     AS attribute_prototype_id,
                            ap.attribute_context_internal_provider_id AS internal_provider_id
-                    FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
-                             INNER JOIN attribute_prototype_arguments_v1(this_read_tenancy, this_visibility) AS apa
+                    FROM attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
+                             INNER JOIN attribute_prototype_arguments_v1(this_tenancy, this_visibility) AS apa
                                         ON apa.attribute_prototype_id = ap.id
                                             AND apa.internal_provider_id =
                                                 source_attribute_value.attribute_context_internal_provider_id
@@ -546,8 +535,7 @@ BEGIN
                     next_attribute_value_ids := array_cat(
                             next_attribute_value_ids,
                             attribute_value_create_appropriate_for_prototype_and_context_v1(
-                                    this_write_tenancy,
-                                    this_read_tenancy,
+                                    this_tenancy,
                                     this_visibility,
                                     attribute_prototype_id,
                                     insertion_attribute_context
@@ -583,16 +571,16 @@ BEGIN
                            ap.attribute_context_internal_provider_id AS internal_provider_id,
                            ap.attribute_context_external_provider_id AS external_provider_id,
                            ap.id                                     AS attribute_prototype_id
-                    FROM attribute_prototypes_v1(this_read_tenancy, this_visibility) AS ap
-                             INNER JOIN attribute_prototype_arguments_v1(this_read_tenancy, this_visibility) AS apa
+                    FROM attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
+                             INNER JOIN attribute_prototype_arguments_v1(this_tenancy, this_visibility) AS apa
                                         ON apa.attribute_prototype_id = ap.id
                                             AND apa.external_provider_id =
                                                 source_attribute_value.attribute_context_external_provider_id
                                             AND
                                            apa.tail_component_id = source_attribute_value.attribute_context_component_id
-                             INNER JOIN component_belongs_to_schema_v1(this_read_tenancy, this_visibility) AS cbts
+                             INNER JOIN component_belongs_to_schema_v1(this_tenancy, this_visibility) AS cbts
                                         ON cbts.object_id = apa.head_component_id
-                             INNER JOIN component_belongs_to_schema_variant_v1(this_read_tenancy,
+                             INNER JOIN component_belongs_to_schema_variant_v1(this_tenancy,
                                                                                this_visibility) cbtsv
                                         ON cbtsv.object_id = apa.head_component_id
                     WHERE in_attribute_context_v1(tmp_attribute_context, ap)
@@ -612,7 +600,7 @@ BEGIN
 
                     SELECT id
                     INTO new_attribute_value_id
-                    FROM attribute_values_v1(this_read_tenancy, this_visibility) as av
+                    FROM attribute_values_v1(this_tenancy, this_visibility) as av
                     WHERE exact_attribute_context_v1(insertion_attribute_context, av);
 
                     IF FOUND THEN
@@ -626,8 +614,7 @@ BEGIN
                     next_attribute_value_ids := array_cat(
                             next_attribute_value_ids,
                             attribute_value_create_appropriate_for_prototype_and_context_v1(
-                                    this_write_tenancy,
-                                    this_read_tenancy,
+                                    this_tenancy,
                                     this_visibility,
                                     attribute_prototype_id,
                                     insertion_attribute_context
@@ -638,7 +625,7 @@ BEGIN
                 -- No idea what kind of AttributeValue this is, but it can't be good.
                 RAISE 'attribute_value_create_new_affected_values_v1: Found an AttributeValue(%) of unknown type. Tenancy(%), Visibility(%)',
                     source_attribute_value.id,
-                    this_read_tenancy,
+                    this_tenancy,
                     this_visibility;
             END IF;
         END LOOP;

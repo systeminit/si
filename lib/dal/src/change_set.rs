@@ -10,8 +10,7 @@ use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
 use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
-    pk, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Timestamp,
-    WriteTenancy,
+    pk, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp,
 };
 use crate::{Component, ComponentError, DalContext, WsEventResult};
 
@@ -58,7 +57,7 @@ pub struct ChangeSet {
     pub note: Option<String>,
     pub status: ChangeSetStatus,
     #[serde(flatten)]
-    pub tenancy: WriteTenancy,
+    pub tenancy: Tenancy,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
@@ -81,7 +80,7 @@ impl ChangeSet {
                     &name,
                     &note,
                     &ChangeSetStatus::Open.to_string(),
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                 ],
             )
             .await?;
@@ -134,7 +133,7 @@ impl ChangeSet {
         let rows = ctx
             .txns()
             .pg()
-            .query(CHANGE_SET_OPEN_LIST, &[ctx.read_tenancy()])
+            .query(CHANGE_SET_OPEN_LIST, &[ctx.tenancy()])
             .await?;
         let results = LabelList::from_rows(rows)?;
         Ok(results)
@@ -148,7 +147,7 @@ impl ChangeSet {
         let row = ctx
             .txns()
             .pg()
-            .query_opt(CHANGE_SET_GET_BY_PK, &[ctx.read_tenancy(), &pk])
+            .query_opt(CHANGE_SET_GET_BY_PK, &[ctx.tenancy(), &pk])
             .await?;
         let change_set: Option<ChangeSet> = object_option_from_row_option(row)?;
         Ok(change_set)

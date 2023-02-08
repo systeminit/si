@@ -20,8 +20,8 @@ use crate::{
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, standard_model_many_to_many, AttributeContext,
     AttributeContextBuilderError, AttributeReadContext, DalContext, Func, FuncId,
-    HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
-    Timestamp, Visibility, WriteTenancy,
+    HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility,
 };
 use crate::{AttributeValueError, AttributeValueId, FuncBackendResponseType};
 
@@ -127,7 +127,7 @@ pub struct Prop {
     doc_link: Option<String>,
     hidden: bool,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -166,7 +166,7 @@ impl Prop {
             .query_one(
                 "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &name,
                     &kind.as_ref(),
@@ -286,7 +286,7 @@ impl Prop {
             .pg_txn()
             .query_opt(
                 FIND_ROOT_FOR_SCHEMA_VARIANT,
-                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
         Ok(object_option_from_row_option(row)?)
@@ -299,7 +299,7 @@ impl Prop {
             .pg_txn()
             .query(
                 ALL_ANCESTOR_PROPS,
-                &[ctx.read_tenancy(), ctx.visibility(), &prop_id],
+                &[ctx.tenancy(), ctx.visibility(), &prop_id],
             )
             .await?;
         Ok(objects_from_rows(rows)?)

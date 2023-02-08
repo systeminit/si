@@ -9,7 +9,7 @@ use crate::fix::{FixCompletionStatus, FixError, FixResult};
 use crate::standard_model::objects_from_rows;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
-    DalContext, Fix, StandardModel, Timestamp, Visibility, WriteTenancy, WsEvent, WsEventResult,
+    DalContext, Fix, StandardModel, Tenancy, Timestamp, Visibility, WsEvent, WsEventResult,
     WsPayload,
 };
 
@@ -25,7 +25,7 @@ pub struct FixBatch {
     pk: FixBatchPk,
     id: FixBatchId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -64,7 +64,7 @@ impl FixBatch {
             .pg()
             .query_one(
                 "SELECT object FROM fix_batch_create_v1($1, $2, $3)",
-                &[ctx.write_tenancy(), ctx.visibility(), &author],
+                &[ctx.tenancy(), ctx.visibility(), &author],
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
@@ -146,7 +146,7 @@ impl FixBatch {
         let rows = ctx
             .txns()
             .pg()
-            .query(LIST_FINISHED, &[ctx.read_tenancy(), ctx.visibility()])
+            .query(LIST_FINISHED, &[ctx.tenancy(), ctx.visibility()])
             .await?;
         Ok(objects_from_rows(rows)?)
     }

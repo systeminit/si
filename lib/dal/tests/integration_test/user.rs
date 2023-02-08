@@ -1,6 +1,6 @@
 use dal::{
-    BillingAccountPk, BillingAccountSignup, DalContext, JwtSecretKey, ReadTenancy, StandardModel,
-    User, WorkspacePk,
+    BillingAccountPk, BillingAccountSignup, DalContext, JwtSecretKey, StandardModel, Tenancy, User,
+    WorkspacePk,
 };
 use dal_test::test;
 
@@ -51,7 +51,7 @@ async fn find_by_email(ctx: &mut DalContext, bid: BillingAccountPk) {
         "user by email does not match created user"
     );
 
-    ctx.update_read_tenancy(ReadTenancy::new(WorkspacePk::generate()));
+    ctx.update_tenancy(Tenancy::new(WorkspacePk::generate()));
 
     let fail_user = User::find_by_email(ctx, "bobotclown@systeminit.com")
         .await

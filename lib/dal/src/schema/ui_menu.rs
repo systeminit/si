@@ -3,7 +3,7 @@ use telemetry::prelude::*;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_belongs_to, DalContext, StandardModel,
-    Timestamp, Visibility, WriteTenancy,
+    Tenancy, Timestamp, Visibility,
 };
 
 use super::{Schema, SchemaId, SchemaResult};
@@ -20,7 +20,7 @@ pub struct SchemaUiMenu {
     name: String,
     category: String,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -52,7 +52,7 @@ impl SchemaUiMenu {
             .query_one(
                 "SELECT object FROM schema_ui_menu_create_v1($1, $2, $3, $4)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &(name.to_string()),
                     &(category.to_string()),
@@ -92,7 +92,7 @@ impl SchemaUiMenu {
             .pg()
             .query_opt(
                 FIND_FOR_SCHEMA,
-                &[ctx.read_tenancy(), ctx.visibility(), &schema_id],
+                &[ctx.tenancy(), ctx.visibility(), &schema_id],
             )
             .await?;
 

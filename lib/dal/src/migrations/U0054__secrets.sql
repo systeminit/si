@@ -41,7 +41,7 @@ FROM encrypted_secrets;
 -- because we're trying to pretend that the secrets view is a "normal" standard model
 -- table.
 CREATE OR REPLACE FUNCTION in_tenancy_v1(
-    this_read_tenancy jsonb,
+    this_tenancy      jsonb,
     record_to_check   secrets
 )
 RETURNS bool
@@ -49,7 +49,7 @@ LANGUAGE sql
 IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
 AS $$
     SELECT in_tenancy_v1(
-        this_read_tenancy,
+        this_tenancy,
         record_to_check.tenancy_workspace_pk
     )
 $$;
@@ -70,7 +70,7 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION in_tenancy_and_visible_v1(
-    this_read_tenancy jsonb,
+    this_tenancy      jsonb,
     this_visibility   jsonb,
     record_to_check   secrets
 )
@@ -80,7 +80,7 @@ IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT
 AS $$
     SELECT
         in_tenancy_v1(
-            this_read_tenancy,
+            this_tenancy,
             record_to_check.tenancy_workspace_pk
         )
         AND is_visible_v1(
@@ -91,7 +91,7 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION secrets_v1(
-    this_read_tenancy jsonb,
+    this_tenancy      jsonb,
     this_visibility   jsonb
 )
 RETURNS SETOF secrets
@@ -100,7 +100,7 @@ STABLE PARALLEL SAFE CALLED ON NULL INPUT
 AS $$
     SELECT DISTINCT ON (id) secrets.*
     FROM secrets
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, secrets)
+    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, secrets)
     ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST
 $$;
 

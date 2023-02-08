@@ -1,4 +1,4 @@
-use crate::{Func, WriteTenancy};
+use crate::{Func, Tenancy};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use si_data_nats::NatsError;
@@ -63,7 +63,7 @@ pub struct FuncBindingReturnValue {
     /// Function Execution IDs can be attached later for lookup and are optional.
     func_execution_pk: FuncExecutionPk,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -96,7 +96,7 @@ impl FuncBindingReturnValue {
             .query_one(
                 "SELECT object FROM func_binding_return_value_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &unprocessed_value,
                     &value,
@@ -145,7 +145,7 @@ impl FuncBindingReturnValue {
             .pg()
             .query_opt(
                 "SELECT fbrv FROM func_binding_return_value_get_by_func_binding_id_v1($1, $2, $3)",
-                &[ctx.read_tenancy(), ctx.visibility(), &func_binding_id],
+                &[ctx.tenancy(), ctx.visibility(), &func_binding_id],
             )
             .await?;
         if let Some(row) = row {

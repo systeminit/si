@@ -1,4 +1,4 @@
-use crate::WriteTenancy;
+use crate::Tenancy;
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -60,7 +60,7 @@ pub struct Secret {
     object_type: SecretObjectType,
     kind: SecretKind,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -165,7 +165,7 @@ pub struct EncryptedSecret {
     version: SecretVersion,
     algorithm: SecretAlgorithm,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -220,7 +220,7 @@ impl EncryptedSecret {
             .query_one(
                 "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &name,
                     &object_type.as_ref(),
@@ -454,7 +454,7 @@ mod tests {
                 crypted,
                 version: Default::default(),
                 algorithm: Default::default(),
-                tenancy: WriteTenancy::new(wid),
+                tenancy: Tenancy::new(wid),
                 timestamp: Timestamp::now(),
                 visibility: Visibility::new_head(false),
             }

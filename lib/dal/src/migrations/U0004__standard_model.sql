@@ -154,8 +154,7 @@ $$ LANGUAGE PLPGSQL STABLE;
 CREATE OR REPLACE FUNCTION update_by_id_v1(
     this_table         text,
     this_column        text,
-    this_read_tenancy  jsonb,
-    this_write_tenancy jsonb,
+    this_tenancy       jsonb,
     this_visibility    jsonb,
     this_id            ident,
     this_value         text,
@@ -164,12 +163,12 @@ AS
 $$
 DECLARE
     this_visibility_row          visibility_record_v1;
-    this_write_tenancy_row       tenancy_record_v1;
+    this_tenancy_record          tenancy_record_v1;
     copy_change_set_column_names text;
     debugging_record_info        record;
 BEGIN
     this_visibility_row = visibility_json_to_columns_v1(this_visibility);
-    this_write_tenancy_row = tenancy_json_to_columns_v1(this_write_tenancy);
+    this_tenancy_record = tenancy_json_to_columns_v1(this_tenancy);
 
     IF this_visibility_row.visibility_deleted_at IS NOT NULL THEN
         RAISE EXCEPTION 'update_by_id_v1: cannot update column % on table % for a deleted record',
@@ -185,7 +184,7 @@ BEGIN
                    ' RETURNING updated_at',
                    this_table,
                    this_column,
-                   this_write_tenancy,
+                   this_tenancy,
                    this_visibility_row.visibility_change_set_pk,
                    this_id,
                    this_value) INTO updated_at;
@@ -232,8 +231,8 @@ BEGIN
                            this_value,
                            this_visibility_row.visibility_change_set_pk,
                            this_id,
-                           this_read_tenancy,
-                           this_write_tenancy_row.tenancy_workspace_pk
+                           this_tenancy,
+			   this_tenancy_record.tenancy_workspace_pk
                         ) INTO updated_at;
         END IF;
 
@@ -248,7 +247,7 @@ BEGIN
                 this_table,
                 this_id,
                 this_value,
-                this_write_tenancy,
+                this_tenancy,
                 this_visibility,
                 this_table,
                 debugging_record_info;
@@ -261,8 +260,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 -- update_by_id_v1 (jsonb)
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
-                                           this_read_tenancy jsonb,
-                                           this_write_tenancy jsonb,
+                                           this_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id ident,
                                            this_value jsonb,
@@ -272,8 +270,7 @@ $$
 BEGIN
     SELECT update_by_id_v1(this_table_text,
                            this_column,
-                           this_read_tenancy,
-                           this_write_tenancy,
+                           this_tenancy,
                            this_visibility,
                            this_id,
                            CAST(this_value as text))
@@ -284,8 +281,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 -- update_by_id_v1 (bool)
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
-                                           this_read_tenancy jsonb,
-                                           this_write_tenancy jsonb,
+                                           this_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id ident,
                                            this_value bool,
@@ -295,8 +291,7 @@ $$
 BEGIN
     SELECT update_by_id_v1(this_table_text,
                            this_column,
-                           this_read_tenancy,
-                           this_write_tenancy,
+                           this_tenancy,
                            this_visibility,
                            this_id,
                            CAST(this_value as text))
@@ -307,8 +302,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 -- update_by_id_v1 (bigint)
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
-                                           this_read_tenancy jsonb,
-                                           this_write_tenancy jsonb,
+                                           this_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id ident,
                                            this_value bigint,
@@ -318,8 +312,7 @@ $$
 BEGIN
     SELECT update_by_id_v1(this_table_text,
                            this_column,
-                           this_read_tenancy,
-                           this_write_tenancy,
+                           this_tenancy,
                            this_visibility,
                            this_id,
                            CAST(this_value as text))
@@ -330,8 +323,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 -- update_by_id_v1 (timestamp with time zone)
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_column text,
-                                           this_read_tenancy jsonb,
-                                           this_write_tenancy jsonb,
+                                           this_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id ident,
                                            this_value timestamp with time zone,
@@ -341,8 +333,7 @@ $$
 BEGIN
     SELECT update_by_id_v1(this_table_text,
                            this_column,
-                           this_read_tenancy,
-                           this_write_tenancy,
+                           this_tenancy,
                            this_visibility,
                            this_id,
                            CAST(this_value as text))
@@ -351,8 +342,7 @@ END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION delete_by_id_v1(this_table_text text,
-                                           this_read_tenancy jsonb,
-                                           this_write_tenancy jsonb,
+                                           this_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id ident,
                                            OUT updated_at timestamp with time zone)
@@ -361,8 +351,7 @@ $$
 BEGIN
     SELECT update_by_id_v1(this_table_text,
                            'visibility_deleted_at',
-                           this_read_tenancy,
-                           this_write_tenancy,
+                           this_tenancy,
                            this_visibility,
                            this_id,
                            CAST(clock_timestamp() as text))
@@ -652,7 +641,7 @@ BEGIN
                            '    ) '
                            '$is_visible_fn$; '
                            'CREATE FUNCTION in_tenancy_v1( '
-                           '    read_tenancy jsonb, '
+                           '    tenancy jsonb, '
                            '    record_to_check %1$I '
                            ') '
                            'RETURNS bool '
@@ -660,12 +649,12 @@ BEGIN
                            'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
                            'AS $in_tenancy_fn$ '
                            '    SELECT in_tenancy_v1( '
-                           '        read_tenancy, '
+                           '        tenancy, '
                            '        record_to_check.tenancy_workspace_pk '
                            '    ) '
                            '$in_tenancy_fn$; '
                            'CREATE FUNCTION in_tenancy_and_visible_v1( '
-                           '    read_tenancy jsonb, '
+                           '    tenancy jsonb, '
                            '    check_visibility jsonb, '
                            '    record_to_check %1$I '
                            ') '
@@ -675,7 +664,7 @@ BEGIN
                            'AS $in_tenancy_and_visible_fn$ '
                            '    SELECT '
                            '        in_tenancy_v1( '
-                           '            read_tenancy, '
+                           '            tenancy, '
                            '            record_to_check.tenancy_workspace_pk '
                            '        ) '
                            '        AND is_visible_v1( '
@@ -685,7 +674,7 @@ BEGIN
                            '        ) '
                            '$in_tenancy_and_visible_fn$; '
                            'CREATE FUNCTION %1$I_v1 ( '
-                           '    this_read_tenancy jsonb, '
+                           '    this_tenancy jsonb, '
                            '    this_visibility jsonb '
                            ') '
                            'RETURNS SETOF %1$I '
@@ -694,7 +683,7 @@ BEGIN
                            'AS $table_view_fn$ '
                            '    SELECT DISTINCT ON (object_id) %1$I.* '
                            '    FROM %1$I '
-                           '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
+                           '    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, %1$I) '
                            '    ORDER BY '
                            '        object_id, '
                            '        visibility_change_set_pk DESC, '
@@ -737,7 +726,7 @@ BEGIN
                           '    ) '
                           '$is_visible_fn$; '
                           'CREATE FUNCTION in_tenancy_v1( '
-                          '    read_tenancy jsonb, '
+                          '    tenancy jsonb, '
                           '    record_to_check %1$I '
                           ') '
                           'RETURNS bool '
@@ -745,12 +734,12 @@ BEGIN
                           'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
                           'AS $in_tenancy_fn$ '
                           '    SELECT in_tenancy_v1( '
-                          '        read_tenancy, '
+                          '        tenancy, '
                           '        record_to_check.tenancy_workspace_pk '
                           '    ) '
                           '$in_tenancy_fn$; '
                           'CREATE FUNCTION in_tenancy_and_visible_v1( '
-                          '    read_tenancy jsonb, '
+                          '    tenancy jsonb, '
                           '    check_visibility jsonb, '
                           '    record_to_check %1$I '
                           ') '
@@ -760,7 +749,7 @@ BEGIN
                           'AS $in_tenancy_and_visible_fn$ '
                           '    SELECT '
                           '        in_tenancy_v1( '
-                          '            read_tenancy, '
+                          '            tenancy, '
                           '            record_to_check.tenancy_workspace_pk '
                           '        ) '
                           '        AND is_visible_v1( '
@@ -770,7 +759,7 @@ BEGIN
                           '        ) '
                           '$in_tenancy_and_visible_fn$; '
                           'CREATE FUNCTION %1$I_v1( '
-                          '  this_read_tenancy jsonb, '
+                          '  this_tenancy jsonb, '
                           '  this_visibility jsonb '
                           ') '
                           'RETURNS SETOF %1$I '
@@ -787,7 +776,7 @@ BEGIN
                           '    AND table_version.visibility_change_set_pk = ident_nil_v1() '
                           '    AND change_set_version.visibility_deleted_at IS NOT NULL '
                           'WHERE '
-                          '  in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, table_version) '
+                          '  in_tenancy_and_visible_v1(this_tenancy, this_visibility, table_version) '
                           '  AND change_set_version.id IS NULL '
                           'ORDER BY table_version.id, table_version.visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
                           '$table_view_fn$; ',
@@ -852,7 +841,7 @@ BEGIN
                            '    ) '
                            '$is_visible_fn$; '
                            'CREATE FUNCTION in_tenancy_v1( '
-                           '    read_tenancy jsonb, '
+                           '    tenancy jsonb, '
                            '    record_to_check %1$I '
                            ') '
                            'RETURNS bool '
@@ -860,12 +849,12 @@ BEGIN
                            'IMMUTABLE PARALLEL SAFE CALLED ON NULL INPUT '
                            'AS $in_tenancy_fn$ '
                            '    SELECT in_tenancy_v1( '
-                           '        read_tenancy, '
+                           '        tenancy, '
                            '        record_to_check.tenancy_workspace_pk '
                            '    ) '
                            '$in_tenancy_fn$; '
                            'CREATE FUNCTION in_tenancy_and_visible_v1( '
-                           '    read_tenancy jsonb, '
+                           '    tenancy jsonb, '
                            '    check_visibility jsonb, '
                            '    record_to_check %1$I '
                            ') '
@@ -875,7 +864,7 @@ BEGIN
                            'AS $in_tenancy_and_visible_fn$ '
                            '    SELECT '
                            '        in_tenancy_v1( '
-                           '            read_tenancy, '
+                           '            tenancy, '
                            '            record_to_check.tenancy_workspace_pk '
                            '        ) '
                            '        AND is_visible_v1( '
@@ -885,7 +874,7 @@ BEGIN
                            '        ) '
                            '$in_tenancy_and_visible_fn$; '
                            'CREATE FUNCTION %1$I_v1 ( '
-                           '    this_read_tenancy jsonb, '
+                           '    this_tenancy jsonb, '
                            '    this_visibility jsonb '
                            ') '
                            'RETURNS SETOF %1$I '
@@ -894,7 +883,7 @@ BEGIN
                            'AS $table_view_fn$ '
                            '    SELECT DISTINCT ON (id) %1$I.* '
                            '    FROM %1$I '
-                           '    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, %1$I) '
+                           '    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, %1$I) '
                            '    ORDER BY id, visibility_change_set_pk DESC, visibility_deleted_at DESC NULLS FIRST '
                            '$table_view_fn$;',
                            this_table_name,
@@ -1001,8 +990,7 @@ $$ LANGUAGE plpgsql VOLATILE;
 
 CREATE OR REPLACE FUNCTION set_belongs_to_v1(
     this_table_name text,
-    this_read_tenancy jsonb,
-    this_write_tenancy jsonb,
+    this_tenancy jsonb,
     this_visibility jsonb,
     this_object_id ident,
     this_belongs_to_id ident
@@ -1010,18 +998,18 @@ CREATE OR REPLACE FUNCTION set_belongs_to_v1(
 $$
 DECLARE
     insert_query              text;
-    this_write_tenancy_record tenancy_record_v1;
+    this_tenancy_record       tenancy_record_v1;
     this_visibility_record    visibility_record_v1;
     this_existing_record_id   ident;
 BEGIN
-    this_write_tenancy_record := tenancy_json_to_columns_v1(this_write_tenancy);
+    this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     SELECT id
     INTO this_existing_record_id
     FROM find_by_attr_v1(
         this_table_name,
-        this_read_tenancy,
+        this_tenancy,
         this_visibility,
         'object_id',
         this_object_id::text
@@ -1033,8 +1021,7 @@ BEGIN
         PERFORM update_by_id_v1(
             this_table_name,
             'belongs_to_id',
-            this_read_tenancy,
-            this_write_tenancy,
+            this_tenancy,
             this_visibility,
             this_existing_record_id,
             this_belongs_to_id
@@ -1054,7 +1041,7 @@ BEGIN
                    this_table_name,
                    this_object_id,
                    this_belongs_to_id,
-                   this_write_tenancy_record.tenancy_workspace_pk,
+                   this_tenancy_record.tenancy_workspace_pk,
                    this_visibility_record.visibility_change_set_pk,
                    this_visibility_record.visibility_deleted_at
                 );
@@ -1171,11 +1158,13 @@ CREATE OR REPLACE FUNCTION import_builtins_v1(destination_tenancy jsonb)
 RETURNS VOID AS
 $$
 DECLARE
-    standard_model            standard_models%ROWTYPE;
-    this_table_name           regclass;
-    insert_column_names       text;
-    source_workspace_pk ident;
+    standard_model              standard_models%ROWTYPE;
+    destination_tenancy_record tenancy_record_v1;
+    this_table_name             regclass;
+    insert_column_names         text;
+    source_workspace_pk         ident;
 BEGIN
+    destination_tenancy_record = tenancy_json_to_columns_v1(destination_tenancy);
     FOR standard_model IN SELECT * FROM standard_models
         LOOP
             this_table_name := standard_model.table_name::regclass;
@@ -1200,7 +1189,7 @@ BEGIN
                            WHERE in_tenancy_v1(%4$L, %1$I.tenancy_workspace_pk)',
                            this_table_name,
                            insert_column_names,
-                           (destination_tenancy ->> 'tenancy_workspace_pk')::ident,
+                           destination_tenancy_record.tenancy_workspace_pk,
                            jsonb_build_object('tenancy_workspace_pk', source_workspace_pk));
         END LOOP;
 END;

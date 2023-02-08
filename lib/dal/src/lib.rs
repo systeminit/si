@@ -48,7 +48,6 @@ pub mod prototype_context;
 pub mod prototype_list_for_func;
 pub mod provider;
 pub mod qualification;
-pub mod read_tenancy;
 pub mod resource_scheduler;
 pub mod schema;
 pub mod secret;
@@ -57,6 +56,7 @@ pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
 pub mod status;
+pub mod tenancy;
 pub mod timestamp;
 pub mod user;
 pub mod validation;
@@ -66,7 +66,6 @@ pub mod workflow_prototype;
 pub mod workflow_resolver;
 pub mod workflow_runner;
 pub mod workspace;
-pub mod write_tenancy;
 pub mod ws_event;
 
 use crate::builtins::BuiltinSchemaOption;
@@ -150,7 +149,6 @@ pub use prototype_list_for_func::{
 pub use provider::external::{ExternalProvider, ExternalProviderError, ExternalProviderId};
 pub use provider::internal::{InternalProvider, InternalProviderError, InternalProviderId};
 pub use qualification::{QualificationError, QualificationView};
-pub use read_tenancy::ReadTenancy;
 pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
 pub use schema::variant::leaves::LeafInput;
 pub use schema::variant::leaves::LeafInputLocation;
@@ -168,6 +166,7 @@ pub use standard_model::{StandardModel, StandardModelError, StandardModelResult}
 pub use status::{
     StatusUpdate, StatusUpdateError, StatusUpdateResult, StatusUpdater, StatusUpdaterError,
 };
+pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserId, UserPk, UserResult};
 pub use validation::prototype::{
@@ -191,7 +190,6 @@ pub use workflow_runner::workflow_runner_state::{
 };
 pub use workflow_runner::{WorkflowRunner, WorkflowRunnerError, WorkflowRunnerId};
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
-pub use write_tenancy::{WriteTenancy, WriteTenancyError};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 #[cfg(debug_assertions)]
@@ -337,7 +335,7 @@ pub async fn migrate_builtins(
     let mut ctx = dal_context.build_default().await?;
 
     let workspace = Workspace::builtin(&ctx).await?;
-    ctx.update_to_workspace_tenancies(*workspace.pk()).await?;
+    ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
     builtins::migrate(&ctx, builtin_schema_option).await?;
     ctx.commit().await?;

@@ -16,7 +16,7 @@ END ;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION in_tenancy_v1(
-    read_tenancy                    jsonb,
+    tenancy                         jsonb,
     row_tenancy_workspace_pk        ident
 )
 RETURNS bool
@@ -25,5 +25,5 @@ IMMUTABLE
 PARALLEL SAFE
 AS $$
 -- If any tenancy is NULL, nothing will match
-SELECT (read_tenancy ->> 'tenancy_workspace_pk')::ident = row_tenancy_workspace_pk
+SELECT (tenancy ->> 'tenancy_workspace_pk')::ident = row_tenancy_workspace_pk
 $$;

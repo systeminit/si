@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, HistoryEventError,
-    StandardModel, StandardModelError, Timestamp, Visibility, WorkflowPrototypeId, WriteTenancy,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WorkflowPrototypeId,
 };
 
 #[derive(Error, Debug)]
@@ -34,7 +34,7 @@ pub struct FixResolver {
     pk: FixResolverPk,
     id: FixResolverId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -72,7 +72,7 @@ impl FixResolver {
             .query_one(
                 "SELECT object FROM fix_resolver_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &workflow_prototype_id,
                     &attribute_value_id,
@@ -95,7 +95,7 @@ impl FixResolver {
             .pg()
             .query_opt(
                 FIND_FOR_CONFIRMATION_ATTRIBUTE_VALUE,
-                &[ctx.read_tenancy(), ctx.visibility(), &attribute_value_id],
+                &[ctx.tenancy(), ctx.visibility(), &attribute_value_id],
             )
             .await?;
         let object = standard_model::option_object_from_row(row)?;

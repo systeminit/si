@@ -1,4 +1,3 @@
-use crate::WriteTenancy;
 use jwt_simple::{algorithms::RSAKeyPairLike, claims::Claims, reexports::coarsetime::Duration};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
@@ -13,7 +12,8 @@ use crate::standard_model::option_object_from_row;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, BillingAccount,
     BillingAccountError, BillingAccountPk, DalContext, HistoryEventError, JwtSecretKey,
-    StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility, WorkspacePk,
+    StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
+    WorkspacePk,
 };
 
 const USER_PASSWORD: &str = include_str!("queries/user/password.sql");
@@ -61,7 +61,7 @@ pub struct User {
     billing_account_pk: BillingAccountPk,
     email: String,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -98,7 +98,7 @@ impl User {
             .query_one(
                 "SELECT object FROM user_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &name,
                     &email,
@@ -131,7 +131,7 @@ impl User {
             .pg()
             .query_opt(
                 USER_FIND_BY_EMAIL,
-                &[&email, ctx.read_tenancy(), ctx.visibility()],
+                &[&email, ctx.tenancy(), ctx.visibility()],
             )
             .await?;
         let result = option_object_from_row(maybe_row)?;
@@ -142,10 +142,7 @@ impl User {
         let _row = ctx
             .txns()
             .pg()
-            .query_one(
-                AUTHORIZE_USER,
-                &[ctx.read_tenancy(), ctx.visibility(), &user_id],
-            )
+            .query_one(AUTHORIZE_USER, &[ctx.tenancy(), ctx.visibility(), &user_id])
             .await?;
         Ok(true)
     }

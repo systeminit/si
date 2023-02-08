@@ -662,8 +662,7 @@ impl FnSetupExpander {
         self.code.extend(quote! {
             let #var = {
                 let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
-                ctx.update_read_tenancy(::dal::ReadTenancy::new(*#nba.workspace.pk()));
-                ctx.update_write_tenancy(::dal::WriteTenancy::new(*#nba.workspace.pk()));
+                ctx.update_tenancy(::dal::Tenancy::new(*#nba.workspace.pk()));
                 ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx).await;
                 ctx
             };
@@ -689,8 +688,7 @@ impl FnSetupExpander {
         self.code.extend(quote! {
             let mut #var = {
                 let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
-                ctx.update_read_tenancy(::dal::ReadTenancy::new(*#nba.workspace.pk()));
-                ctx.update_write_tenancy(::dal::WriteTenancy::new(*#nba.workspace.pk()));
+                ctx.update_tenancy(::dal::Tenancy::new(*#nba.workspace.pk()));
                 ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx).await;
                 ctx
             };
@@ -720,10 +718,7 @@ impl FnSetupExpander {
                         ::dal::RequestContext::default(),
                         #transactions.clone(),
                     );
-                ctx
-                    .update_to_workspace_tenancies(*#nba.workspace.pk())
-                    .await
-                    .wrap_err("failed to update dal context to workspace tenancies")?;
+                ctx.update_tenancy(::dal::Tenancy::new(*#nba.workspace.pk()));
 
                 ::dal_test::DalContextHead(ctx)
             };
@@ -753,10 +748,7 @@ impl FnSetupExpander {
                         ::dal::RequestContext::default(),
                         #transactions.clone(),
                     );
-                ctx
-                    .update_to_workspace_tenancies(*#nba.workspace.pk())
-                    .await
-                    .wrap_err("failed to update dal context to workspace tenancies")?;
+                ctx.update_tenancy(::dal::Tenancy::new(*#nba.workspace.pk()));
                 ctx
             };
             let #var = ::dal_test::DalContextHeadRef(&_dchr);
@@ -786,10 +778,7 @@ impl FnSetupExpander {
                         ::dal::RequestContext::default(),
                         #transactions.clone(),
                     );
-                ctx
-                    .update_to_workspace_tenancies(*#nba.workspace.pk())
-                    .await
-                    .wrap_err("failed to update dal context to workspace tenancies")?;
+                ctx.update_tenancy(::dal::Tenancy::new(*#nba.workspace.pk()));
                 ctx
             };
             let #var = ::dal_test::DalContextHeadMutRef(&mut _dchmr);

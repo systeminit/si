@@ -8,7 +8,7 @@ use dal::{
     schema::variant::definition::{
         SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
     },
-    StandardModelError, TransactionsError, WriteTenancyError, WsEventError,
+    StandardModelError, TenancyError, TransactionsError, WsEventError,
 };
 use thiserror::Error;
 
@@ -23,8 +23,8 @@ pub enum SchemaVariantDefinitionError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("write tenancy error: {0}")]
-    WriteTenancy(#[from] WriteTenancyError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]

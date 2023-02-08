@@ -12,7 +12,7 @@ use crate::workflow_runner::WorkflowRunnerResult;
 use crate::{
     impl_standard_model, pk,
     standard_model::{self},
-    Timestamp, Visibility, WriteTenancy,
+    Tenancy, Timestamp, Visibility,
 };
 use crate::{DalContext, WorkflowRunnerId};
 
@@ -59,7 +59,7 @@ pub struct WorkflowRunnerState {
     pk: WorkflowRunnerStatePk,
     id: WorkflowRunnerStateId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     visibility: Visibility,
     #[serde(flatten)]
@@ -104,7 +104,7 @@ impl WorkflowRunnerState {
             .query_one(
                 "SELECT object FROM workflow_runner_state_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &workflow_runner_id,
                     &status.as_ref(),
@@ -128,7 +128,7 @@ impl WorkflowRunnerState {
             .pg()
             .query_opt(
                 FIND_FOR_WORKFLOW_RUNNER,
-                &[ctx.read_tenancy(), ctx.visibility(), &workflow_runner_id],
+                &[ctx.tenancy(), ctx.visibility(), &workflow_runner_id],
             )
             .await?;
         let object: Option<Self> = option_object_from_row(row)?;

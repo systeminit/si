@@ -35,7 +35,7 @@ use syn::{parse_macro_input, AttributeArgs, ItemFn};
 ///
 /// * a fully signed up billing account
 /// * with an open change set and edit session
-/// * with the billing account's workspace read and write tenancy
+/// * with the billing account's workspace tenancy
 /// * with the `SystemInit` history actor
 ///
 /// ```ignore

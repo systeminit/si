@@ -1,4 +1,4 @@
-use crate::WriteTenancy;
+use crate::Tenancy;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -52,7 +52,7 @@ pub struct KeyPair {
     secret_key: BoxSecretKey,
     created_lamport_clock: u64,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -83,7 +83,7 @@ impl KeyPair {
             .query_one(
                 "SELECT object FROM key_pair_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    ctx.write_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &name,
                     &billing_account_pk,
@@ -105,7 +105,7 @@ impl KeyPair {
             .pg()
             .query_one(
                 PUBLIC_KEY_GET_CURRENT,
-                &[ctx.read_tenancy(), ctx.visibility(), &billing_account_pk],
+                &[ctx.tenancy(), ctx.visibility(), &billing_account_pk],
             )
             .await?;
         let object = standard_model::object_from_row(row)?;
@@ -153,7 +153,7 @@ pub struct PublicKey {
     public_key: BoxPublicKey,
     created_lamport_clock: u64,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -170,7 +170,7 @@ impl PublicKey {
             .pg()
             .query_one(
                 PUBLIC_KEY_GET_CURRENT,
-                &[ctx.read_tenancy(), ctx.visibility(), &billing_account_pk],
+                &[ctx.tenancy(), ctx.visibility(), &billing_account_pk],
             )
             .await?;
         let object = standard_model::object_from_row(row)?;

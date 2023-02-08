@@ -1,6 +1,6 @@
 use crate::{
     standard_model::objects_from_rows, DalContext, FuncId, StandardModel, StandardModelError,
-    TransactionsError, WriteTenancyError,
+    TenancyError, TransactionsError,
 };
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
@@ -12,8 +12,8 @@ pub enum PrototypeListForFuncError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     PgPool(#[from] si_data_pg::PgPoolError),
-    #[error("write tenancy error: {0}")]
-    WriteTenancy(#[from] WriteTenancyError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
@@ -45,7 +45,7 @@ pub async fn prototype_list_for_func<T: DeserializeOwned>(
         .pg()
         .query(
             "SELECT * FROM prototype_list_for_func_v1($1, $2, $3, $4)",
-            &[&table_name, ctx.read_tenancy(), ctx.visibility(), &func_id],
+            &[&table_name, ctx.tenancy(), ctx.visibility(), &func_id],
         )
         .await?;
 

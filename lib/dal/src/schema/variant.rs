@@ -23,8 +23,8 @@ use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
     AttributeValueError, AttributeValueId, BuiltinsError, DalContext, ExternalProvider,
     ExternalProviderError, Func, FuncError, HistoryEventError, InternalProvider, Prop, PropError,
-    PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel, StandardModelError, Timestamp,
-    Visibility, WriteTenancy, WsEventError,
+    PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility, WsEventError,
 };
 use crate::{AttributeReadContext, AttributeValue, RootPropChild};
 use crate::{FuncBackendResponseType, FuncId};
@@ -148,7 +148,7 @@ pub struct SchemaVariant {
     pk: SchemaVariantPk,
     id: SchemaVariantId,
     #[serde(flatten)]
-    tenancy: WriteTenancy,
+    tenancy: Tenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -186,7 +186,7 @@ impl SchemaVariant {
             .pg()
             .query_one(
                 "SELECT object FROM schema_variant_create_v1($1, $2, $3)",
-                &[ctx.write_tenancy(), ctx.visibility(), &name],
+                &[ctx.tenancy(), ctx.visibility(), &name],
             )
             .await?;
         let object: SchemaVariant = standard_model::finish_create_from_row(ctx, row).await?;
@@ -437,7 +437,7 @@ impl SchemaVariant {
             .pg()
             .query(
                 LIST_ROOT_SI_CHILD_PROPS,
-                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;
         Ok(objects_from_rows(rows)?)
@@ -450,10 +450,7 @@ impl SchemaVariant {
         let rows = ctx
             .txns()
             .pg()
-            .query(
-                ALL_PROPS,
-                &[ctx.read_tenancy(), ctx.visibility(), self.id()],
-            )
+            .query(ALL_PROPS, &[ctx.tenancy(), ctx.visibility(), self.id()])
             .await?;
         let results = objects_from_rows(rows)?;
         Ok(results)
@@ -473,7 +470,7 @@ impl SchemaVariant {
             .query_one(
                 FIND_LEAF_ITEM_PROP,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &schema_variant_id,
                     &leaf_map_prop_name,
@@ -497,7 +494,7 @@ impl SchemaVariant {
             .query_one(
                 FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER,
                 &[
-                    ctx.read_tenancy(),
+                    ctx.tenancy(),
                     ctx.visibility(),
                     &schema_variant_id,
                     &root_prop_child.as_str(),
