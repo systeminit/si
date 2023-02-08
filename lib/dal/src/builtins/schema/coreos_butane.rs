@@ -1,5 +1,5 @@
 use crate::schema::variant::definition::{
-    SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
+    SchemaVariantDefinition, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
 };
 use crate::schema::variant::leaves::LeafKind;
 use crate::{
@@ -28,6 +28,9 @@ impl MigrationDriver {
         let definition: SchemaVariantDefinitionJson = serde_json::from_str(BUTANE_DEFINITION)?;
         let metadata: SchemaVariantDefinitionMetadataJson =
             serde_json::from_str(BUTANE_DEFINITION_METADATA)?;
+
+        SchemaVariantDefinition::new_from_structs(ctx, metadata.clone(), definition.clone())
+            .await?;
 
         let (
             _schema,

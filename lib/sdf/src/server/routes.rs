@@ -102,6 +102,10 @@ pub fn routes(
         .nest("/api/session", crate::server::service::session::routes())
         .nest("/api/signup", crate::server::service::signup::routes())
         .nest("/api/status", crate::server::service::status::routes())
+        .nest(
+            "/api/variant_def",
+            crate::server::service::variant_definition::routes(),
+        )
         .nest("/api/workflow", crate::server::service::workflow::routes())
         .nest("/api/ws", crate::server::service::ws::routes());
 

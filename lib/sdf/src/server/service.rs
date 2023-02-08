@@ -10,6 +10,7 @@ pub mod secret;
 pub mod session;
 pub mod signup;
 pub mod status;
+pub mod variant_definition;
 pub mod workflow;
 pub mod ws;
 
