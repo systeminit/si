@@ -1,0 +1,53 @@
+use super::SchemaVariantDefinitionResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
+use axum::{extract::Query, Json};
+use dal::{
+    schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
+    StandardModel, Visibility,
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListVariantDefsRequest {
+    #[serde(flatten)]
+    pub visibility: Visibility,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListedVariantDef {
+    pub id: SchemaVariantDefinitionId,
+    pub name: String,
+    pub menu_name: Option<String>,
+    pub category: String,
+    pub color: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ListVariantDefsResponse {
+    pub variant_defs: Vec<ListedVariantDef>,
+}
+
+pub async fn list_variant_defs(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    Query(request): Query<ListVariantDefsRequest>,
+) -> SchemaVariantDefinitionResult<Json<ListVariantDefsResponse>> {
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    let variant_defs: Vec<ListedVariantDef> = SchemaVariantDefinition::list(&ctx)
+        .await?
+        .iter()
+        .map(|def| ListedVariantDef {
+            id: def.id().to_owned(),
+            name: def.name().to_owned(),
+            menu_name: def.menu_name().map(|menu_name| menu_name.to_owned()),
+            category: def.category().to_owned(),
+            color: def.color().to_owned(),
+        })
+        .collect();
+
+    Ok(Json(ListVariantDefsResponse { variant_defs }))
+}
