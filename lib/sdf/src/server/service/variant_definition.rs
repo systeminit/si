@@ -1,22 +1,21 @@
-use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{
-    extract::Query,
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use dal::{
-    component::ComponentKind,
     schema::variant::definition::{
-        SchemaVariantDefinition, SchemaVariantDefinitionError as DalSchemaVariantDefinitionError,
-        SchemaVariantDefinitionId,
+        SchemaVariantDefinitionError as DalSchemaVariantDefinitionError, SchemaVariantDefinitionId,
     },
-    StandardModel, StandardModelError, TransactionsError, Visibility, WriteTenancyError,
-    WsEventError,
+    StandardModelError, TransactionsError, WriteTenancyError, WsEventError,
 };
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+pub mod create_variant_def;
+pub mod get_variant_def;
+pub mod list_variant_defs;
+pub mod save_variant_def;
 
 #[derive(Error, Debug)]
 pub enum SchemaVariantDefinitionError {
@@ -54,105 +53,19 @@ impl IntoResponse for SchemaVariantDefinitionError {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ListVariantDefsRequest {
-    #[serde(flatten)]
-    pub visibility: Visibility,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ListedVariantDef {
-    pub id: SchemaVariantDefinitionId,
-    pub name: String,
-    pub menu_name: Option<String>,
-    pub category: String,
-    pub color: String,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ListVariantDefsResponse {
-    pub variant_defs: Vec<ListedVariantDef>,
-}
-
-pub async fn list_variant_defs(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    Query(request): Query<ListVariantDefsRequest>,
-) -> SchemaVariantDefinitionResult<Json<ListVariantDefsResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
-
-    let variant_defs: Vec<ListedVariantDef> = SchemaVariantDefinition::list(&ctx)
-        .await?
-        .iter()
-        .map(|def| ListedVariantDef {
-            id: def.id().to_owned(),
-            name: def.name().to_owned(),
-            menu_name: def.menu_name().map(|menu_name| menu_name.to_owned()),
-            category: def.category().to_owned(),
-            color: def.color().to_owned(),
-        })
-        .collect();
-
-    Ok(Json(ListVariantDefsResponse { variant_defs }))
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GetVariantDefRequest {
-    pub id: SchemaVariantDefinitionId,
-    #[serde(flatten)]
-    pub visibility: Visibility,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GetVariantDefResponse {
-    pub id: SchemaVariantDefinitionId,
-    pub name: String,
-    pub menu_name: Option<String>,
-    pub category: String,
-    pub color: String,
-    pub component_kind: ComponentKind,
-    pub link: Option<String>,
-    pub definition: String,
-}
-
-impl From<SchemaVariantDefinition> for GetVariantDefResponse {
-    fn from(variant: SchemaVariantDefinition) -> Self {
-        GetVariantDefResponse {
-            id: *variant.id(),
-            name: variant.name().to_string(),
-            menu_name: variant.menu_name().map(|menu_name| menu_name.to_string()),
-            category: variant.category().to_string(),
-            color: variant.color().to_string(),
-            component_kind: *variant.component_kind(),
-            link: variant.link().map(|link| link.to_string()),
-            definition: variant.definition().to_string(),
-        }
-    }
-}
-
-pub async fn get_variant_def(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    Query(request): Query<GetVariantDefRequest>,
-) -> SchemaVariantDefinitionResult<Json<GetVariantDefResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
-
-    let variant_def = SchemaVariantDefinition::get_by_id(&ctx, &request.id)
-        .await?
-        .ok_or(SchemaVariantDefinitionError::VariantDefnitionNotFound(
-            request.id,
-        ))?;
-
-    Ok(Json(variant_def.into()))
-}
-
 pub fn routes() -> Router {
     Router::new()
-        .route("/list_variant_defs", get(list_variant_defs))
-        .route("/get_variant_def", get(get_variant_def))
+        .route(
+            "/list_variant_defs",
+            get(list_variant_defs::list_variant_defs),
+        )
+        .route("/get_variant_def", get(get_variant_def::get_variant_def))
+        .route(
+            "/save_variant_def",
+            post(save_variant_def::save_variant_def),
+        )
+        .route(
+            "/create_variant_def",
+            post(create_variant_def::create_variant_def),
+        )
 }
