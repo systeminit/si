@@ -4,6 +4,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use dal::change_status::ChangeStatusError;
 use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeContextBuilderError,
     AttributePrototypeArgumentError, AttributePrototypeError, AttributeValueError,
@@ -70,6 +71,8 @@ pub enum ComponentError {
     AttributeValueNotFound,
     #[error("attribute prototype not found")]
     AttributePrototypeNotFound,
+    #[error("change status error: {0}")]
+    ChangeStatus(#[from] ChangeStatusError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema not found")]

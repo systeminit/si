@@ -1,6 +1,7 @@
 use axum::extract::Query;
 use axum::Json;
 use chrono::{DateTime, Utc};
+use dal::change_status::ComponentChangeStatus;
 use dal::{
     node::Node, ComponentId, DiagramKind, LabelEntry, LabelList, ResourceView, SchemaId,
     SchemaVariantId, StandardModel, Visibility,
@@ -66,25 +67,27 @@ pub async fn list_components_identification(
 ) -> ComponentResult<Json<ListComponentsIdentificationResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let nodes = Node::list(&ctx).await?;
+    let mut nodes = Node::list(&ctx).await?;
+    nodes.extend(ComponentChangeStatus::list_deleted_nodes(&ctx).await?);
 
+    let ctx_with_deleted = &ctx.clone_with_delete_visibility();
     let mut label_entries = Vec::with_capacity(nodes.len());
     for node in &nodes {
-        let component = match node.component(&ctx).await? {
+        let component = match node.component(ctx_with_deleted).await? {
             Some(component) => component,
             None => continue,
         };
-        let component_status = ComponentStatus::get_by_id(&ctx, component.id())
+        let component_status = ComponentStatus::get_by_id(ctx_with_deleted, component.id())
             .await?
             .ok_or(ComponentError::ComponentNotFound)?;
-        let resource = ResourceView::new(component.resource(&ctx).await?);
+        let resource = ResourceView::new(component.resource(ctx_with_deleted).await?);
 
         let schema_variant = component
-            .schema_variant(&ctx)
+            .schema_variant(ctx_with_deleted)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let schema = component
-            .schema(&ctx)
+            .schema(ctx_with_deleted)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
 
@@ -111,7 +114,7 @@ pub async fn list_components_identification(
             updated_at,
         };
         label_entries.push(LabelEntry {
-            label: component.name(&ctx).await?,
+            label: component.name(ctx_with_deleted).await?,
             value,
         });
     }
