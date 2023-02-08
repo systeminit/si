@@ -463,7 +463,7 @@ impl InternalProvider {
         let (func_binding, func_binding_return_value) = FuncBinding::create_and_execute(
             ctx,
             serde_json::to_value(FuncBackendIdentityArgs {
-                identity: found_attribute_view.value().clone(),
+                identity: Some(found_attribute_view.value().clone()),
             })?,
             *func.id(),
         )

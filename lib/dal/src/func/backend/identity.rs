@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendIdentityArgs {
-    pub identity: serde_json::Value,
+    pub identity: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -23,6 +23,7 @@ impl FuncBackend for FuncBackendIdentity {
     async fn inline(
         self: Box<Self>,
     ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
-        Ok((Some(self.args.identity.clone()), Some(self.args.identity)))
+        let identity_val = serde_json::to_value(self.args.identity.clone())?;
+        Ok((Some(identity_val.clone()), Some(identity_val)))
     }
 }

@@ -30,7 +30,7 @@ use crate::{
     ActionPrototypeError, AttributeContext, AttributeContextBuilderError, AttributeContextError,
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributePrototypeId, AttributeReadContext, CodeLanguage,
-    ComponentType, DalContext, Edge, EdgeError, ExternalProvider, ExternalProviderError,
+    ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderError,
     ExternalProviderId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError,
     InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
     PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
@@ -39,6 +39,7 @@ use crate::{
 };
 use crate::{AttributeValueId, QualificationError};
 
+use crate::job::definition::DependentValuesUpdate;
 pub use view::{ComponentView, ComponentViewError};
 
 pub mod code;
@@ -1045,44 +1046,54 @@ impl Component {
             return Err(ComponentError::ComponentProtected(self.id));
         }
 
-        let edges = Edge::list_for_component(ctx, self.id).await?;
-        for mut edge in edges {
-            edge.delete_and_propagate(ctx).await?;
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3, $4)",
+                &[
+                    ctx.read_tenancy(),
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    self.id(),
+                ],
+            )
+            .await?;
+        let mut attr_values: Vec<AttributeValue> = standard_model::objects_from_rows(rows)?;
+
+        for attr_value in attr_values.iter_mut() {
+            attr_value.update_from_prototype_function(ctx).await?;
         }
 
-        for mut node in self.node(ctx).await? {
-            node.delete_by_id(ctx).await?;
-        }
+        let ids = attr_values.iter().map(|av| *av.id()).collect();
 
-        self.delete_by_id(ctx).await?;
+        ctx.enqueue_job(DependentValuesUpdate::new(ctx, ids)).await;
 
         Ok(())
     }
 
-    pub async fn restore_by_id(
+    pub async fn restore_and_propagate(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Self> {
-        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
+    ) -> ComponentResult<Option<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                "SELECT * FROM component_restore_and_propagate_v1($1, $2, $3)",
+                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+        let mut attr_values: Vec<AttributeValue> = standard_model::objects_from_rows(rows)?;
 
-        for edge in Edge::list_for_component(ctx_with_deleted, component_id).await? {
-            Edge::restore_by_id(ctx, *edge.id()).await?;
+        for attr_value in attr_values.iter_mut() {
+            attr_value.update_from_prototype_function(ctx).await?;
         }
 
-        // TODO: When components that don't exist on HEAD but got deleted on the changeset try to
-        // be restored, get_by_id does not find them, even with a "valid" visibility. we should discuss this
-        let comp = Component::get_by_id(ctx_with_deleted, &component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(component_id))?;
+        let ids = attr_values.iter().map(|av| *av.id()).collect();
 
-        for node in comp.node(ctx_with_deleted).await? {
-            node.hard_delete(ctx_with_deleted).await?;
-        }
+        ctx.enqueue_job(DependentValuesUpdate::new(ctx, ids)).await;
 
-        comp.hard_delete(ctx_with_deleted).await?;
-
-        Component::get_by_id(ctx, &component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(component_id))
+        Ok(Component::get_by_id(ctx, &component_id).await?)
     }
 }

@@ -421,33 +421,10 @@ impl Edge {
             .await?
             .ok_or(EdgeError::AttributeValueNotFound)?;
 
-        let sibling_arguments = AttributePrototypeArgument::find_by_attr(
-            ctx,
-            "external_provider_id",
-            external_provider.id(),
-        )
-        .await?;
+        attr_value.update_from_prototype_function(ctx).await?;
 
-        let arg_count = sibling_arguments.len();
-
-        if arg_count > 0 {
-            attr_value.update_from_prototype_function(ctx).await?;
-
-            ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
-                .await;
-        } else {
-            let attr_val_context = attr_value.context;
-            attr_value.unset_attribute_prototype(ctx).await?;
-
-            attr_value.delete_by_id(ctx).await?;
-
-            let att_val = AttributeValue::find_for_context(ctx, attr_val_context.into())
-                .await?
-                .ok_or(EdgeError::AttributeValueNotFound)?;
-
-            ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*att_val.id()]))
-                .await;
-        }
+        ctx.enqueue_job(DependentValuesUpdate::new(ctx, vec![*attr_value.id()]))
+            .await;
 
         Ok(())
     }
