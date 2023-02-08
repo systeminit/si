@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   ci:
-    timeout-minutes: 20
+    timeout-minutes: 30
     name: Pull Request Checks
     runs-on: self-hosted
     steps:
