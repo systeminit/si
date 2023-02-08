@@ -12,9 +12,9 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::SchemaError;
 use crate::{
     component::ComponentKind, edit_field::widget::WidgetKind, impl_standard_model, pk,
-    standard_model, DalContext, ExternalProvider, Func, HistoryEventError, InternalProvider,
-    NatsError, PgError, Prop, PropId, PropKind, RootProp, Schema, SchemaVariant, SocketArity,
-    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    standard_model, standard_model_accessor, DalContext, ExternalProvider, Func, HistoryEventError,
+    InternalProvider, NatsError, PgError, Prop, PropId, PropKind, RootProp, Schema, SchemaVariant,
+    SocketArity, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -31,8 +31,6 @@ pub enum SchemaVariantDefinitionError {
     StandardModelError(#[from] StandardModelError),
     #[error("error decoding code_base64: {0}")]
     Decode(#[from] base64::DecodeError),
-    //    #[error("schema variant error: {0}")]
-    //    SchemaVariant(#[from] SchemaVariantError),
     #[error("{0} is not a valid hex color string")]
     InvalidHexColor(String),
 }
@@ -185,6 +183,18 @@ impl SchemaVariantDefinition {
 
         Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
+
+    standard_model_accessor!(name, String, SchemaVariantDefinitionResult);
+    standard_model_accessor!(menu_name, Option<String>, SchemaVariantDefinitionResult);
+    standard_model_accessor!(category, String, SchemaVariantDefinitionResult);
+    standard_model_accessor!(color, String, SchemaVariantDefinitionResult);
+    standard_model_accessor!(
+        component_kind,
+        Enum(ComponentKind),
+        SchemaVariantDefinitionResult
+    );
+    standard_model_accessor!(link, Option<String>, SchemaVariantDefinitionResult);
+    standard_model_accessor!(definition, String, SchemaVariantDefinitionResult);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
