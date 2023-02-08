@@ -10,6 +10,7 @@ use thiserror::Error;
 use crate::attribute::context::AttributeContextBuilder;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::internal::InternalProviderError;
+use crate::schema::variant::definition::SchemaVariantDefinitionError;
 use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::standard_model::object_from_row;
 use crate::{
@@ -133,6 +134,8 @@ pub enum SchemaVariantError {
     /// [`AttributeValueId`](crate::AttributeValue).
     #[error("no parent found for attribute value: {0}")]
     AttributeValueDoesNotHaveParent(AttributeValueId),
+    #[error("schema variant definition error")]
+    SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
@@ -170,7 +173,7 @@ impl_standard_model! {
 }
 
 impl SchemaVariant {
-    // Create a [`SchemaVariant`](Self) with a [`RootProp`](crate::schema::RootProp).
+    /// Create a [`SchemaVariant`](Self) with a [`RootProp`](crate::schema::RootProp).
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,

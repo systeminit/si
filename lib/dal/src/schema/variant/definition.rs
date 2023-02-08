@@ -1,16 +1,43 @@
 //! Create a [`SchemaVariant`](crate::SchemaVariant) with a [`Prop`](crate::Prop) tree via a
-//! "definition" struct, usually provided via a "definition" file.
+//! [`SchemaVariantDefinition`], stored in the database.
 
 use async_recursion::async_recursion;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use telemetry::prelude::*;
+use thiserror::Error;
 
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
+use crate::SchemaError;
 use crate::{
-    edit_field::widget::WidgetKind, DalContext, ExternalProvider, Func, InternalProvider, Prop,
-    PropId, PropKind, RootProp, SchemaId, SchemaVariant, SocketArity, StandardModel,
+    component::ComponentKind, edit_field::widget::WidgetKind, impl_standard_model, pk,
+    standard_model, DalContext, ExternalProvider, Func, HistoryEventError, InternalProvider,
+    NatsError, PgError, Prop, PropId, PropKind, RootProp, Schema, SchemaVariant, SocketArity,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
+
+#[derive(Error, Debug)]
+pub enum SchemaVariantDefinitionError {
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("standard model error: {0}")]
+    StandardModelError(#[from] StandardModelError),
+    #[error("error decoding code_base64: {0}")]
+    Decode(#[from] base64::DecodeError),
+    //    #[error("schema variant error: {0}")]
+    //    SchemaVariant(#[from] SchemaVariantError),
+    #[error("{0} is not a valid hex color string")]
+    InvalidHexColor(String),
+}
+
+pub type SchemaVariantDefinitionResult<T> = Result<T, SchemaVariantDefinitionError>;
 
 /// A cache of [`PropIds`](crate::Prop) where the _key_ is a tuple corresponding to the
 /// [`Prop`](crate::Prop) name and the _parent_ [`PropId`](crate::Prop) who's child is the
@@ -54,17 +81,186 @@ impl Default for PropCache {
     }
 }
 
+pub fn hex_color_to_i64(color: &str) -> SchemaVariantDefinitionResult<i64> {
+    let bytes: Vec<u8> = match hex::decode(color) {
+        Ok(bytes) => bytes,
+        Err(_) => Err(SchemaVariantDefinitionError::InvalidHexColor(
+            color.to_string(),
+        ))?,
+    };
+
+    if bytes.len() != 3 {
+        return Err(SchemaVariantDefinitionError::InvalidHexColor(
+            color.to_string(),
+        ));
+    }
+
+    Ok(((bytes[0] as i64) << 16) + ((bytes[1] as i64) << 8) + bytes[2] as i64)
+}
+
+pk!(SchemaVariantDefinitionPk);
+pk!(SchemaVariantDefinitionId);
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct SchemaVariantDefinition {
+    pk: SchemaVariantDefinitionPk,
+    id: SchemaVariantDefinitionId,
+    #[serde(flatten)]
+    tenancy: WriteTenancy,
+    #[serde(flatten)]
+    timestamp: Timestamp,
+    #[serde(flatten)]
+    visibility: Visibility,
+
+    /// Name for this variant. Actually, this is the name for this [`Schema`](crate::Schema), we're
+    /// punting on the issue of multiple variants for the moment.
+    name: String,
+    /// Override for the UI name for this schema
+    menu_name: Option<String>,
+    /// The category this schema variant belongs to
+    category: String,
+    /// The color for the component on the component diagram as a hex string
+    color: String,
+    component_kind: ComponentKind,
+    link: Option<String>,
+    definition: String,
+}
+
+impl_standard_model! {
+    model: SchemaVariantDefinition,
+    pk: SchemaVariantDefinitionPk,
+    id: SchemaVariantDefinitionId,
+    table_name: "schema_variant_definitions",
+    history_event_label_base: "schema_variant_definition",
+    history_event_message_name: "Schema Variant Definition",
+}
+
+impl SchemaVariantDefinition {
+    #[instrument(skip_all)]
+    pub async fn new_from_structs(
+        ctx: &DalContext,
+        metadata: SchemaVariantDefinitionMetadataJson,
+        definition: SchemaVariantDefinitionJson,
+    ) -> SchemaVariantDefinitionResult<SchemaVariantDefinition> {
+        SchemaVariantDefinition::new(
+            ctx,
+            metadata.name,
+            metadata.menu_name,
+            metadata.category,
+            metadata.link,
+            metadata.color,
+            metadata.component_kind,
+            serde_json::to_string(&definition)?,
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn new(
+        ctx: &DalContext,
+        name: String,
+        menu_name: Option<String>,
+        category: String,
+        link: Option<String>,
+        color: String,
+        component_kind: ComponentKind,
+        definition: String,
+    ) -> SchemaVariantDefinitionResult<SchemaVariantDefinition> {
+        let row = ctx.txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM schema_variant_definition_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                &[
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                &name,
+                &menu_name,
+                &category,
+                &link,
+                &color,
+                &component_kind.as_ref(),
+                &definition,
+                ]
+            ).await?;
+
+        Ok(standard_model::finish_create_from_row(ctx, row).await?)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaVariantDefinitionMetadataJson {
+    /// Name for this variant. Actually, this is the name for this [`Schema`](crate::Schema), we're
+    /// punting on the issue of multiple variants for the moment.
+    pub name: String,
+    /// Override for the UI name for this schema
+    #[serde(alias = "menu_name")]
+    pub menu_name: Option<String>,
+    /// The category this schema variant belongs to
+    pub category: String,
+    /// The color for the component on the component diagram as a hex string
+    pub color: String,
+    #[serde(alias = "component_kind")]
+    pub component_kind: ComponentKind,
+    pub link: Option<String>,
+}
+
+impl From<SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
+    fn from(value: SchemaVariantDefinition) -> Self {
+        SchemaVariantDefinitionMetadataJson {
+            name: value.name,
+            menu_name: value.menu_name,
+            category: value.category,
+            color: value.color,
+            component_kind: value.component_kind,
+            link: value.link,
+        }
+    }
+}
+
+impl From<&SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
+    fn from(value: &SchemaVariantDefinition) -> Self {
+        SchemaVariantDefinitionMetadataJson {
+            name: value.name.clone(),
+            menu_name: value.menu_name.clone(),
+            category: value.category.clone(),
+            color: value.color.clone(),
+            component_kind: value.component_kind,
+            link: value.link.clone(),
+        }
+    }
+}
+
+impl SchemaVariantDefinitionMetadataJson {
+    #[instrument(skip_all)]
+    pub fn new(
+        name: impl AsRef<str>,
+        menu_name: Option<&str>,
+        category: impl AsRef<str>,
+        color: impl AsRef<str>,
+        component_kind: ComponentKind,
+        link: Option<&str>,
+    ) -> SchemaVariantDefinitionMetadataJson {
+        SchemaVariantDefinitionMetadataJson {
+            name: name.as_ref().to_string(),
+            menu_name: menu_name.map(|s| s.to_string()),
+            category: category.as_ref().to_string(),
+            color: color.as_ref().to_string(),
+            component_kind,
+            link: link.map(|l| l.to_string()),
+        }
+    }
+
+    pub fn color_as_i64(&self) -> SchemaVariantDefinitionResult<i64> {
+        hex_color_to_i64(&self.color)
+    }
+}
+
 /// The definition for a [`SchemaVariant`](crate::SchemaVariant)'s [`Prop`](crate::Prop) tree (and
 /// more in the future).
-#[derive(Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SchemaVariantDefinition {
-    /// The name of the [`SchemaVariant`](crate::SchemaVariant). This is _not_ the name of the
-    /// [`Schema`](crate::Schema) and will default to "v0" if empty.
-    name: Option<String>,
-    /// A map of documentation links to reference. To reference links (values) specify the key via
-    /// the "doc_link_ref" field for a [`PropDefinition`].
-    doc_links: HashMap<String, String>,
+pub struct SchemaVariantDefinitionJson {
     /// The immediate child [`Props`](crate::Prop) underneath "/root/domain".
     #[serde(default)]
     props: Vec<PropDefinition>,
@@ -78,9 +274,28 @@ pub struct SchemaVariantDefinition {
     /// [`variant`](crate::SchemaVariant).
     #[serde(default)]
     output_sockets: Vec<SocketDefinition>,
+    /// A map of documentation links to reference. To reference links (values) specify the key via
+    /// the "doc_link_ref" field for a [`PropDefinition`].
+    doc_links: Option<HashMap<String, String>>,
 }
 
-#[derive(Deserialize)]
+impl TryFrom<SchemaVariantDefinition> for SchemaVariantDefinitionJson {
+    type Error = SchemaVariantDefinitionError;
+
+    fn try_from(value: SchemaVariantDefinition) -> Result<Self, Self::Error> {
+        Ok(serde_json::from_str(&value.definition)?)
+    }
+}
+
+impl TryFrom<&SchemaVariantDefinition> for SchemaVariantDefinitionJson {
+    type Error = SchemaVariantDefinitionError;
+
+    fn try_from(value: &SchemaVariantDefinition) -> Result<Self, Self::Error> {
+        Ok(serde_json::from_str(&value.definition)?)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PropWidgetDefinition {
     /// The [`kind`](crate::edit_field::widget::WidgetKind) of the [`Prop`](crate::Prop) to be created.
@@ -91,7 +306,7 @@ pub struct PropWidgetDefinition {
 }
 
 /// The definition for a [`Prop`](crate::Prop) in a [`SchemaVariant`](crate::SchemaVariant).
-#[derive(Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PropDefinition {
     /// The name of the [`Prop`](crate::Prop) to be created.
@@ -99,7 +314,7 @@ pub struct PropDefinition {
     /// The [`kind`](crate::PropKind) of the [`Prop`](crate::Prop) to be created.
     kind: PropKind,
     /// An optional reference to a documentation link in the "doc_links" field for the
-    /// [`SchemaVariantDefinition`] for the [`Prop`](crate::Prop) to be created.
+    /// [`SchemaVariantDefinitionJson`] for the [`Prop`](crate::Prop) to be created.
     doc_link_ref: Option<String>,
     /// An optional documentation link for the [`Prop`](crate::Prop) to be created.
     doc_link: Option<String>,
@@ -118,7 +333,7 @@ pub struct PropDefinition {
 
 /// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`](crate::SchemaVariant).
 /// A corresponding [`provider`](crate::provider) will be created as well.
-#[derive(Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SocketDefinition {
     /// The name of the [`Socket`](crate::Socket) to be created.
@@ -128,14 +343,15 @@ pub struct SocketDefinition {
     arity: Option<SocketArity>,
 }
 
+// Not sure if this fits here still
 impl SchemaVariant {
     /// Create a [`SchemaVariant`] like [`usual`](Self::new()), but use the
     /// [`SchemaVariantDefinition`] to create a [`Prop`](crate::Prop) tree as well with a
     /// [`cache`](PropCache).
     pub async fn new_with_definition(
         ctx: &DalContext,
-        schema_id: SchemaId,
-        schema_variant_definition: SchemaVariantDefinition,
+        schema_variant_definition_metadata: SchemaVariantDefinitionMetadataJson,
+        schema_variant_definition: SchemaVariantDefinitionJson,
     ) -> SchemaVariantResult<(
         Self,
         RootProp,
@@ -143,22 +359,37 @@ impl SchemaVariant {
         Vec<InternalProvider>,
         Vec<ExternalProvider>,
     )> {
-        let name = match schema_variant_definition.name {
-            Some(name) => name,
-            None => "v0".to_string(),
+        let variant_name = "v0".to_string();
+
+        let schema_name = schema_variant_definition_metadata.name.clone();
+
+        let schema_id = match Schema::schema_for_name(ctx, &schema_name).await {
+            Ok(schema) => *schema.id(),
+            Err(SchemaError::NotFoundByName(_)) => {
+                let schema = Schema::new(ctx, &schema_name, &ComponentKind::Standard)
+                    .await
+                    .map_err(Box::new)?;
+                *schema.id()
+            }
+            Err(e) => Err(Box::new(e))?,
         };
-        let (schema_variant, root_prop) = Self::new(ctx, schema_id, name).await?;
+
+        let (mut schema_variant, root_prop) = Self::new(ctx, schema_id, variant_name).await?;
         let schema_variant_id = *schema_variant.id();
 
         // NOTE(nick): allow users to use a definition without props... just in case, I guess.
         let mut prop_cache = PropCache::new();
+        let doc_links = schema_variant_definition
+            .doc_links
+            .clone()
+            .unwrap_or_default();
         for prop_definition in schema_variant_definition.props {
             Self::walk_definition(
                 ctx,
                 &mut prop_cache,
                 prop_definition,
                 root_prop.domain_prop_id,
-                &schema_variant_definition.doc_links,
+                &doc_links,
             )
             .await?;
         }
@@ -217,6 +448,13 @@ impl SchemaVariant {
                 external_providers.push(external_provider);
             }
         }
+
+        schema_variant
+            .set_color(
+                ctx,
+                Some(schema_variant_definition_metadata.color_as_i64()?),
+            )
+            .await?;
 
         Ok((
             schema_variant,
@@ -318,5 +556,25 @@ impl SchemaVariant {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decode_hex_colors() {
+        let colors: [&str; 5] = ["ababab", "ffffff", "caffed", "00ff00", "badf00"];
+
+        for hex_color in colors {
+            assert_eq!(
+                *hex_color.to_string(),
+                format!(
+                    "{:06x}",
+                    hex_color_to_i64(hex_color).expect("able to convert hex")
+                )
+            );
+        }
     }
 }

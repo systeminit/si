@@ -1,6 +1,7 @@
 use crate::builtins::schema::MigrationDriver;
 use crate::builtins::BuiltinsError;
 use crate::component::ComponentKind;
+use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafInput;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
@@ -31,16 +32,19 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         ui_menu_category: &str,
-        node_color: i64,
+        node_color: &str,
     ) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
-                "Security Group",
-                None,
-                ui_menu_category,
-                ComponentKind::Standard,
-                Some(node_color),
+                SchemaVariantDefinitionMetadataJson::new(
+                    "Security Group",
+                    None::<&str>,
+                    ui_menu_category,
+                    node_color,
+                    ComponentKind::Standard,
+                    None,
+                ),
                 None,
             )
             .await?

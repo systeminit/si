@@ -1,5 +1,6 @@
-use crate::component::ComponentKind;
-use crate::schema::variant::definition::SchemaVariantDefinition;
+use crate::schema::variant::definition::{
+    SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
+};
 use crate::schema::variant::leaves::LeafKind;
 use crate::{
     builtins::schema::MigrationDriver,
@@ -12,17 +13,21 @@ use crate::{
     StandardModel,
 };
 
+// Definitions
 const BUTANE_DEFINITION: &str = include_str!("definitions/coreos_butane.json");
+const BUTANE_DEFINITION_METADATA: &str = include_str!("definitions/coreos_butane.metadata.json");
 
 impl MigrationDriver {
     /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).
     pub async fn migrate_coreos_butane(
         &self,
         ctx: &DalContext,
-        ui_menu_category: &str,
-        node_color: i64,
+        _ui_menu_category: &str,
+        _node_color: &str,
     ) -> BuiltinsResult<()> {
-        let definition: SchemaVariantDefinition = serde_json::from_str(BUTANE_DEFINITION)?;
+        let definition: SchemaVariantDefinitionJson = serde_json::from_str(BUTANE_DEFINITION)?;
+        let metadata: SchemaVariantDefinitionMetadataJson =
+            serde_json::from_str(BUTANE_DEFINITION_METADATA)?;
 
         let (
             _schema,
@@ -32,15 +37,7 @@ impl MigrationDriver {
             explicit_internal_providers,
             external_providers,
         ) = match self
-            .create_schema_and_variant(
-                ctx,
-                "Butane",
-                None,
-                ui_menu_category,
-                ComponentKind::Standard,
-                Some(node_color),
-                Some(definition),
-            )
+            .create_schema_and_variant(ctx, metadata, Some(definition))
             .await?
         {
             Some(tuple) => tuple,

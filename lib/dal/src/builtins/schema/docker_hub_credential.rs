@@ -1,3 +1,4 @@
+use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafInputLocation;
 use crate::schema::variant::leaves::LeafKind;
 use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput};
@@ -11,16 +12,19 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         ui_menu_category: &str,
-        node_color: i64,
+        node_color: &str,
     ) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
-                "Docker Hub Credential",
-                Some(String::from("Credential")),
-                ui_menu_category,
-                ComponentKind::Credential,
-                Some(node_color),
+                SchemaVariantDefinitionMetadataJson::new(
+                    "Docker Hub Credential",
+                    Some("Credential"),
+                    ui_menu_category,
+                    node_color,
+                    ComponentKind::Credential,
+                    None,
+                ),
                 None,
             )
             .await?

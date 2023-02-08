@@ -43,6 +43,7 @@ url = "2.2.2"
 veritech-client = { path = "../../lib/veritech-client" }
 which = "4.3.0"
 ulid = { version = "1", features = ["serde"] }
+hex = "0.4.3"
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }

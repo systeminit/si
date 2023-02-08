@@ -811,6 +811,7 @@ dependencies = [
  "dyn-clone",
  "faktory-async",
  "futures",
+ "hex",
  "iftree",
  "itertools",
  "jwt-simple",

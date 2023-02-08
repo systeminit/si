@@ -6,11 +6,12 @@ use crate::attribute::context::AttributeContextBuilder;
 use crate::edit_field::widget::WidgetKind;
 use crate::func::argument::{FuncArgument, FuncArgumentId};
 use crate::func::backend::validation::FuncBackendValidationArgs;
-use crate::schema::variant::definition::{PropCache, SchemaVariantDefinition};
+use crate::schema::variant::definition::{
+    PropCache, SchemaVariantDefinitionJson, SchemaVariantDefinitionMetadataJson,
+};
 use crate::schema::{RootProp, SchemaUiMenu};
 use crate::validation::Validation;
 use crate::{
-    component::ComponentKind,
     func::{
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
@@ -36,16 +37,16 @@ mod kubernetes_deployment;
 mod kubernetes_namespace;
 mod systeminit_generic_frame;
 
-const NODE_COLOR_FRAMES: i64 = 0xFFFFFF;
+const NODE_COLOR_FRAMES: &str = "FFFFFF";
 // Reference: https://aws.amazon.com/trademark-guidelines/
-const NODE_COLOR_AWS: i64 = 0xFF9900;
+const NODE_COLOR_AWS: &str = "FF9900";
 // Reference: https://getfedora.org/
-const NODE_COLOR_COREOS: i64 = 0xE26B70;
+const NODE_COLOR_COREOS: &str = "E26B70";
 // Reference: https://www.docker.com/company/newsroom/media-resources/
-const NODE_COLOR_DOCKER: i64 = 0x4695E7;
+const NODE_COLOR_DOCKER: &str = "4695E7";
 // This node color is purely meant the complement existing node colors.
 // It does not reflect an official branding Kubernetes color.
-const NODE_COLOR_KUBERNETES: i64 = 0x30BA78;
+const NODE_COLOR_KUBERNETES: &str = "30BA78";
 
 pub async fn migrate(
     ctx: &DalContext,
@@ -287,12 +288,8 @@ impl MigrationDriver {
     pub async fn create_schema_and_variant(
         &self,
         ctx: &DalContext,
-        schema_name: impl AsRef<str>,
-        override_ui_menu_name: Option<String>,
-        ui_menu_category: impl AsRef<str>,
-        component_kind: ComponentKind,
-        node_color: Option<i64>,
-        definition: Option<SchemaVariantDefinition>,
+        definition_metadata: SchemaVariantDefinitionMetadataJson,
+        definition: Option<SchemaVariantDefinitionJson>,
     ) -> BuiltinsResult<
         Option<(
             Schema,
@@ -303,42 +300,48 @@ impl MigrationDriver {
             Vec<ExternalProvider>,
         )>,
     > {
-        let schema_name = schema_name.as_ref();
-
         // NOTE(nick): There's one issue here. If the schema kind has changed, then this check will be
         // inaccurate. As a result, we will be unable to re-create the schema without manual intervention.
         // This should be fine since this code should likely only last as long as default schemas need to
         // be created... which is hopefully not long.... hopefully...
-        let default_schema_exists = !Schema::find_by_attr(ctx, "name", &schema_name.to_string())
-            .await?
-            .is_empty();
+        let default_schema_exists =
+            !Schema::find_by_attr(ctx, "name", &definition_metadata.name.to_string())
+                .await?
+                .is_empty();
         if default_schema_exists {
-            info!("skipping {schema_name} schema (already migrated)");
+            info!(
+                "skipping {} schema (already migrated)",
+                &definition_metadata.name
+            );
             return Ok(None);
         }
-        info!("migrating {schema_name} schema");
+        info!("migrating {} schema", &definition_metadata.name);
 
         // Create the schema and a ui menu.
-        let mut schema = Schema::new(ctx, schema_name, &component_kind).await?;
-        let ui_menu_name = match override_ui_menu_name {
-            Some(provided_override) => provided_override,
-            None => schema_name.to_string(),
+        let mut schema = Schema::new(
+            ctx,
+            definition_metadata.name.clone(),
+            &definition_metadata.component_kind,
+        )
+        .await?;
+
+        let ui_menu_name = match definition_metadata.menu_name {
+            Some(ref provided_override) => provided_override.to_owned(),
+            None => definition_metadata.name.clone(),
         };
-        let ui_menu = SchemaUiMenu::new(ctx, ui_menu_name, ui_menu_category).await?;
+        let ui_menu = SchemaUiMenu::new(ctx, ui_menu_name, &definition_metadata.category).await?;
         ui_menu.set_schema(ctx, schema.id()).await?;
 
         // NOTE(nick): D.R.Y. not desired, but feel free to do so.
         if let Some(definition) = definition {
             let (
-                mut schema_variant,
+                schema_variant,
                 root_prop,
                 prop_cache,
                 explicit_internal_providers,
                 external_providers,
-            ) = SchemaVariant::new_with_definition(ctx, *schema.id(), definition).await?;
-            if node_color.is_some() {
-                schema_variant.set_color(ctx, node_color).await?;
-            }
+            ) = SchemaVariant::new_with_definition(ctx, definition_metadata.clone(), definition)
+                .await?;
             schema
                 .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
                 .await?;
@@ -353,9 +356,9 @@ impl MigrationDriver {
         } else {
             let (mut schema_variant, root_prop) =
                 SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-            if node_color.is_some() {
-                schema_variant.set_color(ctx, node_color).await?;
-            }
+            schema_variant
+                .set_color(ctx, Some(definition_metadata.color_as_i64()?))
+                .await?;
             schema
                 .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
                 .await?;

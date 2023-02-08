@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafKind;
 use crate::{action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation};
 use crate::{builtins::schema::MigrationDriver, schema::variant::leaves::LeafInput};
@@ -16,16 +17,19 @@ impl MigrationDriver {
         &self,
         ctx: &DalContext,
         ui_menu_category: &str,
-        node_color: i64,
+        node_color: &str,
     ) -> BuiltinsResult<()> {
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
-                "Docker Image",
-                Some(String::from("Image")),
-                ui_menu_category,
-                ComponentKind::Standard,
-                Some(node_color),
+                SchemaVariantDefinitionMetadataJson::new(
+                    "Docker Image",
+                    Some("Image"),
+                    ui_menu_category,
+                    node_color,
+                    ComponentKind::Standard,
+                    None,
+                ),
                 None,
             )
             .await?
