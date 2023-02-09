@@ -19,203 +19,247 @@
         y: -4,
         cornerRadius: CORNER_RADIUS + 3,
         stroke: SELECTION_COLOR,
-        strokeWidth: isSelected ? 5 : 2,
+        strokeWidth: isSelected ? 3 : 1,
         listening: false,
       }"
     />
-    <!-- box background - also used by layout manager to figure out nodes location and size -->
-    <v-rect
+
+    <!-- node background same color as grid bg, so that it still looks faded but is not see-through -->
+    <!-- <v-rect
+      v-if="isDeleted"
       :config="{
-        id: `${node.uniqueKey}--bg`,
         width: nodeWidth,
         height: nodeHeight,
         x: -halfWidth,
         y: 0,
         cornerRadius: CORNER_RADIUS,
-        fill: colors.bodyBg,
-        fillAfterStrokeEnabled: true,
-        stroke: colors.headerBg,
-        strokeWidth: 2,
-        shadowColor: 'black',
-        shadowBlur: 8,
-        shadowOffset: { x: 3, y: 3 },
-        shadowOpacity: 0.4,
-        shadowEnabled: false,
-      }"
-    />
-
-    <!-- header background -->
-    <v-rect
-      :config="{
-        cornerRadius: [CORNER_RADIUS, CORNER_RADIUS, 0, 0],
-        fill: colors.headerBg,
-        x: -halfWidth,
-        y: 0,
-        width: nodeWidth,
-        height: headerTextHeight,
+        fill:
+          theme === 'dark' ? CORE_COLORS.neutral[900] : CORE_COLORS.neutral[50],
         listening: false,
       }"
-    />
-
-    <!-- type icon -->
-    <DiagramIcon
-      v-if="node.def.typeIcon"
-      :icon="node.def.typeIcon"
-      :color="colors.headerText"
-      :config="{
-        x: -halfWidth + 2,
-        y: 2,
-        width: 20,
-        height: 20,
-      }"
-    />
-
-    <!-- header text -->
-    <v-text
-      ref="titleTextRef"
-      :config="{
-        x: -halfWidth + 24,
-        y: 0,
-        verticalAlign: 'top',
-        align: 'center',
-        text: node.def.title,
-        width: nodeWidth - 24 - 24,
-        padding: 6,
-        fill: colors.headerText,
-        fontStyle: 'bold',
-        fontFamily: DIAGRAM_FONT_FAMILY,
-        listening: false,
-      }"
-    />
-
-    <v-text
-      ref="subtitleTextRef"
-      :config="{
-        x: -halfWidth,
-        y: nodeHeaderHeight,
-        verticalAlign: 'top',
-        align: 'center',
-        text: node.def.subtitle,
-        width: nodeWidth,
-        padding: 5,
-        fill: colors.bodyText,
-        fontFamily: DIAGRAM_FONT_FAMILY,
-        listening: false,
-      }"
-    />
-
-    <!-- sockets -->
-    <v-group
-      :config="{
-        x: -halfWidth - 1,
-        y: nodeHeaderHeight + subtitleTextHeight + SOCKET_MARGIN_TOP,
-      }"
-    >
-      <DiagramNodeSocket
-        v-for="(socket, i) in leftSockets"
-        :key="socket.uniqueKey"
-        :socket="socket"
-        :y="i * SOCKET_GAP"
-        :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
-        :draw-edge-state="drawEdgeState"
-        :node-width="nodeWidth"
-        @hover:start="emit('hover:start', socket)"
-        @hover:end="emit('hover:end', socket)"
-      />
-    </v-group>
+    /> -->
 
     <v-group
       :config="{
-        x: halfWidth + 1,
-        y:
-          nodeHeaderHeight +
-          SOCKET_MARGIN_TOP +
-          subtitleTextHeight +
-          SOCKET_GAP * leftSockets.length,
+        ...(node.def.changeStatus === 'deleted' && { opacity: 0.5 }),
       }"
     >
-      <DiagramNodeSocket
-        v-for="(socket, i) in rightSockets"
-        :key="socket.uniqueKey"
-        :socket="socket"
-        :y="i * SOCKET_GAP"
-        :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
-        :draw-edge-state="drawEdgeState"
-        :node-width="nodeWidth"
-        @hover:start="emit('hover:start', socket)"
-        @hover:end="emit('hover:end', socket)"
-      />
-    </v-group>
-
-    <!-- status icons -->
-    <v-group
-      v-if="node.def.statusIcons?.length"
-      :config="{
-        x: halfWidth - node.def.statusIcons.length * 22 - 2,
-        y:
-          nodeHeaderHeight +
-          subtitleTextHeight +
-          SOCKET_MARGIN_TOP +
-          SOCKET_GAP * (leftSockets.length + rightSockets.length),
-      }"
-    >
-      <DiagramIcon
-        v-for="(statusIcon, i) in node.def.statusIcons"
-        :key="`status-icon-${i}`"
-        :icon="statusIcon.icon"
-        :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
-        :config="{
-          x: i * 22,
-          y: 0,
-          width: 20,
-          height: 20,
-        }"
-      />
-    </v-group>
-
-    <!--  spinner overlay  -->
-    <v-group
-      ref="overlay"
-      :config="{
-        x: -halfWidth,
-        y: nodeHeaderHeight,
-        opacity: 0,
-        listening: false,
-      }"
-    >
-      <!--  transparent overlay  -->
+      <!-- box background - also used by layout manager to figure out nodes location and size -->
       <v-rect
         :config="{
+          id: `${node.uniqueKey}--bg`,
           width: nodeWidth,
-          height: nodeBodyHeight,
-          x: 0,
+          height: nodeHeight,
+          x: -halfWidth,
           y: 0,
-          cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
-          fill: 'rgba(255,255,255,0.70)',
+          cornerRadius: CORNER_RADIUS,
+          fill: colors.bodyBg,
+          fillAfterStrokeEnabled: true,
+          stroke: colors.border,
+          strokeWidth: 4,
+          shadowColor: 'black',
+          shadowBlur: 8,
+          shadowOffset: { x: 3, y: 3 },
+          shadowOpacity: 0.4,
+          shadowEnabled: false,
         }"
       />
-      <DiagramIcon
-        icon="loader"
-        :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
+
+      <!-- header background -->
+      <!-- <v-rect
         :config="{
-          x: halfWidth - overlayIconSize / 2,
-          y: nodeBodyHeight / 2 - overlayIconSize / 2,
-          width: overlayIconSize,
-          height: overlayIconSize,
+          cornerRadius: [CORNER_RADIUS, CORNER_RADIUS, 0, 0],
+          fill: colors.headerBg,
+          x: -halfWidth,
+          y: 0,
+          width: nodeWidth,
+          height: headerTextHeight,
+          listening: false,
+        }"
+      /> -->
+
+      <!-- package/type icon -->
+      <DiagramIcon
+        v-if="node.def.typeIcon"
+        :icon="node.def.typeIcon"
+        :color="colors.icon"
+        :size="22"
+        :x="-halfWidth + 5"
+        :y="5"
+        origin="top-left"
+      />
+
+      <!-- header text -->
+      <v-text
+        ref="titleTextRef"
+        :config="{
+          x: -halfWidth + 24 + 8,
+          y: 4,
+          verticalAlign: 'top',
+          align: 'left',
+          text: node.def.title,
+          width: nodeWidth - 24 - 6,
+          padding: 0,
+          fill: colors.headerText,
+          fontStyle: 'bold',
+          fontFamily: DIAGRAM_FONT_FAMILY,
+          listening: false,
         }"
       />
+
+      <v-text
+        ref="subtitleTextRef"
+        :config="{
+          x: -halfWidth + 24 + 8,
+          y: headerTextHeight + 6,
+          verticalAlign: 'top',
+          align: 'left',
+          text: node.def.subtitle,
+          width: nodeWidth - 24 - 6,
+          padding: 0,
+          fill: colors.bodyText,
+          fontFamily: DIAGRAM_FONT_FAMILY,
+          fontSize: 11,
+          fontStyle: 'italic',
+          listening: false,
+        }"
+      />
+
+      <!-- header bottom border -->
+      <v-line
+        :config="{
+          points: [-halfWidth, nodeHeaderHeight, halfWidth, nodeHeaderHeight],
+          stroke: colors.border,
+          strokeWidth: 1,
+          listening: false,
+          opacity: 0.7,
+        }"
+      />
+
+      <!-- sockets -->
+      <v-group
+        :config="{
+          x: -halfWidth,
+          y: nodeHeaderHeight + subtitleTextHeight + SOCKET_MARGIN_TOP,
+        }"
+      >
+        <DiagramNodeSocket
+          v-for="(socket, i) in leftSockets"
+          :key="socket.uniqueKey"
+          :socket="socket"
+          :y="i * SOCKET_GAP"
+          :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
+          :draw-edge-state="drawEdgeState"
+          :node-width="nodeWidth"
+          @hover:start="onSocketHoverStart(socket)"
+          @hover:end="onSocketHoverEnd(socket)"
+        />
+      </v-group>
+
+      <v-group
+        :config="{
+          x: halfWidth,
+          y:
+            nodeHeaderHeight +
+            SOCKET_MARGIN_TOP +
+            subtitleTextHeight +
+            SOCKET_GAP * leftSockets.length,
+        }"
+      >
+        <DiagramNodeSocket
+          v-for="(socket, i) in rightSockets"
+          :key="socket.uniqueKey"
+          :socket="socket"
+          :y="i * SOCKET_GAP"
+          :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
+          :draw-edge-state="drawEdgeState"
+          :node-width="nodeWidth"
+          @hover:start="onSocketHoverStart(socket)"
+          @hover:end="onSocketHoverEnd(socket)"
+        />
+      </v-group>
+
+      <!-- status icons -->
+      <v-group
+        v-if="node.def.statusIcons?.length"
+        :config="{
+          x: halfWidth - node.def.statusIcons.length * 22 - 2,
+          y:
+            nodeHeaderHeight +
+            subtitleTextHeight +
+            SOCKET_MARGIN_TOP +
+            SOCKET_GAP * (leftSockets.length + rightSockets.length),
+        }"
+      >
+        <DiagramIcon
+          v-for="(statusIcon, i) in node.def.statusIcons"
+          :key="`status-icon-${i}`"
+          :icon="statusIcon.icon"
+          :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
+          :size="20"
+          :x="i * 22"
+          :y="0"
+          origin="top-left"
+        />
+      </v-group>
+
+      <!--  spinner overlay  -->
+      <v-group
+        ref="overlay"
+        :config="{
+          x: -halfWidth,
+          y: nodeHeaderHeight,
+          opacity: 0,
+          listening: false,
+        }"
+      >
+        <!--  transparent overlay  -->
+        <v-rect
+          :config="{
+            width: nodeWidth,
+            height: nodeBodyHeight,
+            x: 0,
+            y: 0,
+            cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
+            fill: 'rgba(255,255,255,0.70)',
+          }"
+        />
+        <DiagramIcon
+          icon="loader"
+          :color="diagramConfig?.toneColors?.info || '#AAA'"
+          :size="overlayIconSize"
+          :x="halfWidth"
+          :y="nodeBodyHeight / 2"
+        />
+      </v-group>
     </v-group>
-    <!--TODO - This will be replaced by Theo's deleted UI work-->
-    <v-rect
-      v-if="node.def.changeStatus === 'deleted'"
-      :config="{
-        width: nodeWidth,
-        height: nodeHeight,
-        x: -halfWidth,
-        y: 0,
-        cornerRadius: [0, 0, CORNER_RADIUS, CORNER_RADIUS],
-        fill: 'rgba(100,100,100,0.70)',
-      }"
+
+    <!-- change status indicators -->
+    <!-- deleted X overlay (large centered) -->
+    <DiagramIcon
+      v-if="isDeleted"
+      icon="x"
+      :color="diagramConfig?.toneColors?.destructive"
+      :size="DELETED_X_SIZE"
+      :x="0"
+      :y="nodeHeight / 2"
+    />
+
+    <!-- added/modified indicator (smaller, bottom left) -->
+    <DiagramIcon
+      v-if="isAdded || isModified"
+      :icon="isAdded ? 'plus' : 'tilde'"
+      :bg-color="
+        isAdded
+          ? diagramConfig?.toneColors?.success
+          : diagramConfig?.toneColors?.warning
+      "
+      circle-bg
+      :color="theme === 'dark' ? '#000' : '#FFF'"
+      :size="20"
+      :x="halfWidth - 5 - 10"
+      :y="nodeHeaderHeight / 2"
+      origin="center"
     />
   </v-group>
 </template>
@@ -229,11 +273,13 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
+import { colors as CORE_COLORS } from "../../utils/design_token_values";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
   DiagramElementUniqueKey,
   DiagramNodeData,
+  DiagramSocketData,
 } from "./diagram_types";
 import DiagramNodeSocket from "./DiagramNodeSocket.vue";
 
@@ -275,6 +321,12 @@ const emit = defineEmits(["resize", "hover:start", "hover:end"]);
 
 const { theme } = useTheme();
 const diagramConfig = useDiagramConfig();
+
+const isDeleted = computed(() => props.node.def.changeStatus === "deleted");
+const isModified = computed(() => props.node.def.changeStatus === "modified");
+const isAdded = computed(() => props.node.def.changeStatus === "added");
+
+const DELETED_X_SIZE = 100;
 
 // template refs
 const titleTextRef = ref();
@@ -328,7 +380,9 @@ function recalcHeaderHeight() {
     : 10;
 }
 
-const nodeHeaderHeight = computed(() => headerTextHeight.value);
+const nodeHeaderHeight = computed(
+  () => headerTextHeight.value + subtitleTextHeight.value + 6 + 4,
+);
 const nodeBodyHeight = computed(() => {
   return (
     subtitleTextHeight.value +
@@ -363,24 +417,27 @@ const colors = computed(() => {
 
   const bodyText = theme.value === "dark" ? "#FFF" : "#000";
   return {
-    headerBg: primaryColor.toRgbString(),
-    headerText,
+    border: primaryColor.toRgbString(),
+    icon: primaryColor.toRgbString(),
+    // headerBg: primaryColor.toRgbString(),
+    // headerText,
+    headerBg: bodyBg.toRgbString(),
+    headerText: bodyText,
+
     bodyBg: bodyBg.toRgbString(),
     bodyText,
   };
 });
 
 const overlay = ref();
-watch([() => props.node.def.isLoading, overlay], ([isLoading]) => {
-  if (_.isNil(overlay)) return;
-  const node = overlay.value.getNode();
-
+watch([() => props.node.def.isLoading, overlay], () => {
+  const node = overlay.value?.getNode();
+  if (!node) return;
   const transition = new Tween({
     node,
     duration: 0.1,
-    opacity: isLoading ? 1 : 0,
+    opacity: props.node.def.isLoading ? 1 : 0,
   });
-
   transition.play();
 });
 
@@ -389,5 +446,11 @@ function onMouseOver(_e: KonvaEventObject<MouseEvent>) {
 }
 function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:end");
+}
+function onSocketHoverStart(socket: DiagramSocketData) {
+  emit("hover:start", !isDeleted.value ? socket : undefined);
+}
+function onSocketHoverEnd(socket: DiagramSocketData) {
+  emit("hover:end", !isDeleted.value ? socket : undefined);
 }
 </script>

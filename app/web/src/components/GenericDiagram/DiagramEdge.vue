@@ -2,24 +2,39 @@
   <v-group v-if="shouldDraw && points && centerPoint">
     <v-line
       :config="{
-        visible: isSelected,
+        visible: isHovered || isSelected,
         points,
         stroke: SELECTION_COLOR,
-        strokeWidth: 7,
+        strokeWidth: isSelected ? 7 : 4,
         listening: false,
       }"
     />
+    <!-- <v-line
+      :config="{
+        points,
+        stroke: '#000',
+        strokeWidth: 4,
+        listening: false,
+        opacity: 0.4,
+      }"
+      @mouseover="onMouseOver"
+      @mouseout="onMouseOut"
+      @mousedown="onMouseDown"
+    /> -->
     <v-line
       :config="{
         id: edge.uniqueKey,
         points,
         stroke: strokeColor,
-        strokeWidth: isHovered ? 3 : 2,
+        strokeWidth: 2,
         hitStrokeWidth: 8,
         listening: !edge.def.isInvisible,
         opacity: isDeleted ? 0.5 : 1,
         dash: [10, 10],
         dashEnabled: isDeleted,
+        shadowColor: '#000',
+        shadowBlur: 1,
+        shadowEnabled: isHovered || isSelected,
       }"
       @mouseover="onMouseOver"
       @mouseout="onMouseOut"
@@ -31,37 +46,23 @@
       :config="{
         x: centerPoint.x,
         y: centerPoint.y,
+        listening: false,
       }"
     >
       <template v-if="isAdded">
-        <v-circle
-          :config="{
-            width: 18,
-            height: 18,
-            fill: diagramConfig?.toneColors?.success,
-          }"
-        />
         <DiagramIcon
           icon="plus"
-          color="#FFFFFF"
-          :config="{
-            x: -10,
-            y: -10,
-            width: 20,
-            height: 20,
-          }"
+          :color="theme === 'dark' ? colors.shade[100] : colors.shade[0]"
+          circle-bg
+          :bg-color="diagramConfig?.toneColors?.success"
+          :size="20"
         />
       </template>
       <template v-else>
         <DiagramIcon
           icon="x"
           :color="diagramConfig?.toneColors?.destructive"
-          :config="{
-            x: -13,
-            y: -13,
-            width: 26,
-            height: 26,
-          }"
+          :size="26"
         />
       </template>
     </v-group>
@@ -107,6 +108,10 @@ const { theme } = useTheme();
 const isDeleted = computed(() => props.edge.def.changeStatus === "deleted");
 const isAdded = computed(() => props.edge.def.changeStatus === "added");
 
+const defaultStrokeColor = computed(() =>
+  theme.value === "dark" ? colors.shade[0] : colors.shade[100],
+);
+
 const strokeColor = computed(() => {
   if (isDevMode && props.edge.def.isInvisible) {
     return "rgba(100,50,255,0.1)";
@@ -114,7 +119,7 @@ const strokeColor = computed(() => {
 
   if (isAdded.value) return colors.success[500];
   if (isDeleted.value) return colors.destructive[500];
-  return theme.value === "dark" ? colors.shade[0] : colors.shade[100];
+  return defaultStrokeColor.value;
 });
 
 const points = computed(() => {

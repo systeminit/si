@@ -53,14 +53,21 @@
           icon="trash-restore"
           @select="triggerRestoreSelection"
         >
-          Restore deleted edge
+          Restore edge
         </DropdownMenuItem>
         <DropdownMenuItem v-else icon="trash" @select="triggerDeleteSelection">
           Delete edge
         </DropdownMenuItem>
       </template>
       <template v-else-if="selectedComponentId">
-        <DropdownMenuItem icon="trash" @select="triggerDeleteSelection">
+        <DropdownMenuItem
+          v-if="selectedComponent.changeStatus === 'deleted'"
+          icon="trash-restore"
+          @select="triggerRestoreSelection"
+        >
+          Restore component
+        </DropdownMenuItem>
+        <DropdownMenuItem v-else icon="trash" @select="triggerDeleteSelection">
           Delete component
         </DropdownMenuItem>
       </template>

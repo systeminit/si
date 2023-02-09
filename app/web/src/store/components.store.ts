@@ -249,129 +249,100 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           const qualificationsStore = useQualificationsStore();
           const fixesStore = useFixesStore();
 
-          return (filter: string | "") => {
-            const searchTerm = filter?.toLowerCase();
-            const treeView: ComponentTreeNode[] = [];
-            const queue: ComponentTreeNode[] = [];
-            const unusedComps: Record<string, Component> = {};
-            const compList = _.map(this.allComponents, (c) => {
-              const matchesFilter =
-                c.displayName.toLowerCase().includes(searchTerm) ||
-                c.schemaName.toLowerCase().includes(searchTerm);
+          return {};
 
-              let qualificationStatus =
-                qualificationsStore.qualificationStatusByComponentId[c.id];
-              let confirmationStatus: ConfirmationStatus | undefined =
-                fixesStore.confirmationStatusByComponentId[c.id];
-              const changeStatus = this.componentChangeStatusById[c.id];
+          // return (filter: string | "") => {
+          //   const searchTerm = filter?.toLowerCase();
+          //   const treeView: ComponentTreeNode[] = [];
+          //   const queue: ComponentTreeNode[] = [];
+          //   const unusedComps: Record<string, Component> = {};
+          //   const compList = _.map(this.allComponents, (c) => {
+          //     const matchesFilter =
+          //       c.displayName.toLowerCase().includes(searchTerm) ||
+          //       c.schemaName.toLowerCase().includes(searchTerm);
 
-              if (c.isGroup) {
-                // eslint-disable-next-line @typescript-eslint/no-this-alias
-                const compStore = this;
-                qualificationStatus = (function calculateQualificationStatus(
-                  comp: Component,
-                ): QualificationStatus {
-                  return _.reduce(
-                    comp.childIds,
-                    (collector, childId) => {
-                      const childComp = compStore.componentsByNodeId[childId];
-                      let childQualificationStatus =
-                        qualificationsStore.qualificationStatusByComponentId[
-                          childComp.id
-                        ];
-                      if (childComp.isGroup) {
-                        childQualificationStatus =
-                          calculateQualificationStatus(childComp);
-                      }
+          //     let qualificationStatus =
+          //       qualificationsStore.qualificationStatusByComponentId[c.id];
+          //     let confirmationStatus: ConfirmationStatus | undefined =
+          //       fixesStore.confirmationStatusByComponentId[c.id];
+          //     const changeStatus = this.componentChangeStatusById[c.id];
 
-                      switch (collector) {
-                        case "failure":
-                          return collector;
-                        case "running":
-                          return childQualificationStatus === "failure"
-                            ? "failure"
-                            : collector;
-                        case "success":
-                        default:
-                          return childQualificationStatus;
-                      }
-                    },
-                    "success" as QualificationStatus,
-                  );
-                })(c);
+          //     if (c.isGroup) {
+          //       // eslint-disable-next-line @typescript-eslint/no-this-alias
+          //       const compStore = this;
+          //       qualificationStatus = (function calculateQualificationStatus(
+          //         comp: Component,
+          //       ): QualificationStatus {
+          //         return _.reduce(
+          //           comp.childIds,
+          //           (collector, childId) => {
+          //             const childComp = compStore.componentsByNodeId[childId];
+          //             let childQualificationStatus =
+          //               qualificationsStore.qualificationStatusByComponentId[
+          //                 childComp.id
+          //               ];
+          //             if (childComp.isGroup) {
+          //               childQualificationStatus =
+          //                 calculateQualificationStatus(childComp);
+          //             }
 
-                confirmationStatus = (function calculateConfirmationStatus(
-                  comp: Component,
-                ): ConfirmationStatus | undefined {
-                  return _.reduce(
-                    comp.childIds,
-                    (collector: ConfirmationStatus | undefined, childId) => {
-                      const childComp = compStore.componentsByNodeId[childId];
-                      let childConfirmation: ConfirmationStatus | undefined =
-                        fixesStore.confirmationStatusByComponentId[
-                          childComp.id
-                        ];
-
-                      if (childComp.isGroup) {
-                        childConfirmation =
-                          calculateConfirmationStatus(childComp);
-                      }
-
-                      if (collector === "failure") return collector;
-                      else if (collector === "running")
-                        return childConfirmation === "failure"
-                          ? "failure"
-                          : collector;
-                      else if (collector === "success")
-                        return childConfirmation ?? "success";
-                      else return childConfirmation;
-                    },
-                    undefined,
-                  );
-                })(c);
-              }
-
-              return {
-                ...c,
-                matchesFilter,
-                typeIcon: c?.icon || "logo-si",
-                statusIcons: {
-                  change: changeStatusToIconMap[changeStatus],
-                  qualification:
-                    qualificationStatusToIconMap[
-                      qualificationStatus as QualificationStatus
-                    ],
-                  confirmation: (confirmationStatus
-                    ? confirmationStatusToIconMap[confirmationStatus]
-                    : undefined) ?? {
-                    icon: "minus",
-                    tone: "neutral",
-                  },
-                },
-              };
-            });
-            for (const comp of compList) {
-              if (comp.parentId === undefined) {
-                treeView.push(comp);
-                queue.push(comp);
-              } else {
-                unusedComps[comp.nodeId] = comp;
-              }
-            }
-            while (queue.length > 0) {
-              const item = queue.shift();
-              if (!item) continue;
-              for (const children of item.childIds ?? []) {
-                if (item.children === undefined) {
-                  item.children = [];
-                }
-                const child = unusedComps[children];
-                item.children.push(child);
-                queue.push(child);
-              }
-            }
-            return treeView;
-          };
+          //             switch (collector) {
+          //               case "failure":
+          //                 return collector;
+          //               case "running":
+          //                 return childQualificationStatus === "failure"
+          //                   ? "failure"
+          //                   : collector;
+          //               case "success":
+          //               default:
+          //                 return childQualificationStatus as QualificationStatus;
+          //             },
+          //             'success',
+          //           );
+          //         })(c);
+          //       }
+                
+          //     return {
+          //       ...c,
+          //       matchesFilter,
+          //       typeIcon: c?.icon || "logo-si",
+          //       statusIcons: {
+          //         change: changeStatusToIconMap[changeStatus],
+          //         qualification:
+          //           qualificationStatusToIconMap[
+          //             qualificationStatus as QualificationStatus
+          //           ],
+          //         confirmation: (confirmationStatus
+          //           ? confirmationStatusToIconMap[confirmationStatus]
+          //           : undefined) ?? {
+          //           icon: "minus",
+          //           tone: "neutral",
+          //         },
+          //       },
+          //     };
+          //   });
+          //   for (const comp of compList) {
+          //     if (comp.parentId === undefined) {
+          //       treeView.push(comp);
+          //       queue.push(comp);
+          //     } else {
+          //       unusedComps[comp.nodeId] = comp;
+          //     }
+          //   }
+          //   while (queue.length > 0) {
+          //     const item = queue.shift();
+          //     if (!item) continue;
+          //     for (const children of item.childIds ?? []) {
+          //       if (item.children === undefined) {
+          //         item.children = [];
+          //       }
+          //       const child = unusedComps[children];
+          //       item.children.push(child);
+          //       queue.push(child);
+          //     }
+          //   }
+          //   return treeView;
+          // };
         },
 
         diagramEdges: (state) => _.values(state.diagramEdgesById),
@@ -415,11 +386,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               parentId: component.parentId,
               childIds: component.childIds,
               nodeType: component.nodeType,
+              ...component,
+              // swapping "id" to be node id and passing along component id separately for the diagram
+              // this is gross and needs to go, but will happen later
+              id: component.nodeId,
+              componentId: component.id,
+              title: component.displayName,
+              subtitle: component.schemaName,
               isLoading:
                 !!statusStore.componentStatusById[componentId]?.isUpdating,
               typeIcon: component?.icon || "logo-si",
               statusIcons: _.compact([
-                changeStatusToIconMap[changeStatus],
                 qualificationStatusToIconMap[qualificationStatus],
                 confirmationStatusToIconMap[confirmationStatus] || {
                   icon: "minus",

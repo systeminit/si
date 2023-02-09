@@ -20,7 +20,7 @@ export const RESIZE_HANDLE_SIZE = 40;
 // spacing between sockets
 export const SOCKET_GAP = 22;
 // spacing above/below sockets within the node
-export const SOCKET_MARGIN_TOP = 10; // less because there is also a subtitle with some padding
+export const SOCKET_MARGIN_TOP = 8; // less because there is also a subtitle with some padding
 export const NODE_PADDING_BOTTOM = 10; //
 // width/height of sockets
 export const SOCKET_SIZE = 15;

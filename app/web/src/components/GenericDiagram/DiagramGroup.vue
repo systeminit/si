@@ -224,12 +224,9 @@
       <DiagramIcon
         icon="loader"
         :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
-        :config="{
-          x: halfWidth - overlayIconSize / 2,
-          y: nodeBodyHeight / 2 - overlayIconSize / 2,
-          width: overlayIconSize,
-          height: overlayIconSize,
-        }"
+        :size="overlayIconSize"
+        :x="halfWidth"
+        :y="nodeBodyHeight / 2"
       />
     </v-group>
   </v-group>

@@ -107,12 +107,9 @@ overflow hidden */
           <DiagramIcon
             icon="loader"
             :color="diagramConfig?.toneColors?.['info'] || '#AAA'"
-            :config="{
-              x: pendingInsert.position!.x - 30,
-              y: pendingInsert.position!.y - 30,
-              width: 60,
-              height: 60,
-            }"
+            :size="60"
+            :x="pendingInsert.position!.x"
+            :y="pendingInsert.position!.y"
           />
         </template>
 
