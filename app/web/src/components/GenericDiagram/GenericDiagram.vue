@@ -918,7 +918,7 @@ function endDragElements() {
     if (!movedElementPositions[el.uniqueKey]) return;
 
     const parentId =
-      movedElementParent[el.uniqueKey] || el.def.parentId || undefined;
+      movedElementParent[el.uniqueKey] || el.def.parentNodeId || undefined;
     if (parentId === undefined) {
       // handle dragging items into a group
       const elShape = kStage.findOne(`#${el.uniqueKey}--bg`);
@@ -951,7 +951,10 @@ function endDragElements() {
 
         return rectContainsAnother(elRect, groupRect);
       });
-      if (newContainingGroup && el.def.parentId !== newContainingGroup.def.id) {
+      if (
+        newContainingGroup &&
+        el.def.parentNodeId !== newContainingGroup.def.id
+      ) {
         emit("group-elements", {
           group: newContainingGroup,
           elements: [el],
@@ -972,7 +975,7 @@ function endDragElements() {
       // for now only dealing with nodes... will be fixed later
       const childEls = _.filter(
         nodes.value,
-        (n) => n.def.parentId === el.def.id,
+        (n) => n.def.parentNodeId === el.def.id,
       );
       _.each(childEls, (childEl) => {
         emit("move-element", {
@@ -1019,9 +1022,9 @@ function onDragElementsMove() {
     );
 
     // block moving components outside of their group
-    if (el.def.parentId) {
+    if (el.def.parentNodeId) {
       const parentGroup = getElementByKey(
-        DiagramGroupData.generateUniqueKey(el.def.parentId),
+        DiagramGroupData.generateUniqueKey(el.def.parentNodeId),
       );
       if (!parentGroup) throw new Error("parent group not found");
 
@@ -1064,7 +1067,7 @@ function onDragElementsMove() {
         const parent = queue.shift();
         const x = _.filter(
           groups.value,
-          (n) => n.def.parentId === parent?.def.id,
+          (n) => n.def.parentNodeId === parent?.def.id,
         );
         _.each(x, (childGroup) => {
           queue.push(childGroup);
@@ -1075,12 +1078,12 @@ function onDragElementsMove() {
       const nodeChildrenOfGroups = _.filter(
         nodes.value,
         (n) =>
-          _.find(includedGroups, (g) => g.def.id === n.def.parentId) !==
+          _.find(includedGroups, (g) => g.def.id === n.def.parentNodeId) !==
           undefined,
       );
 
       const childEls = _.concat(
-        _.filter(nodes.value, (n) => n.def.parentId === el.def.id),
+        _.filter(nodes.value, (n) => n.def.parentNodeId === el.def.id),
         includedGroups,
         nodeChildrenOfGroups,
       );
@@ -1253,7 +1256,7 @@ watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
   const boxDictionary: Record<string, IRect> = {};
 
   for (const group of groups.value) {
-    const childIds = group.def.childIds;
+    const childIds = group.def.childNodeIds;
     if (!childIds) continue;
 
     let top;
@@ -1502,7 +1505,7 @@ function onResizeMove() {
   }
 
   // Make sure the frame doesn't get larger than parent
-  const parentId = movedElementParent[resizeTargetKey] || node.parentId;
+  const parentId = movedElementParent[resizeTargetKey] || node.parentNodeId;
 
   if (parentId) {
     // Resized element with top-left corner xy coordinates instead of top-center

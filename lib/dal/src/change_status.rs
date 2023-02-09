@@ -41,7 +41,7 @@ pub enum ChangeStatus {
 
 /// A collection of statistics for [`Components`](crate::Component) in the current
 /// [`ChangeSet`](crate::ChangeSet).
-#[derive(Deserialize, Serialize, Debug, Default)]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentChangeStatus {
     stats: Vec<ComponentChangeStatusGroup>,
@@ -125,7 +125,7 @@ impl ComponentChangeStatus {
 }
 
 /// An individual unit containing metadata for each "counting" statistic.
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentChangeStatusGroup {
     pub component_id: ComponentId,

@@ -7,6 +7,7 @@
       </Inline>
     </div> -->
 
+    <div class="px-xs pt-xs text-xs">{{ selectedComponent.id }}</div>
     <ComponentCard :component-id="selectedComponent.id" class="m-xs" />
 
     <div class="m-xs mt-0 text-xs italic text-neutral-300">
@@ -102,7 +103,9 @@
             </TabPanel>
 
             <TabPanel class="w-full h-full overflow-hidden">
-              <template v-if="codeReqStatus.isPending"> Loading code...</template>
+              <template v-if="codeReqStatus.isPending">
+                Loading code...</template
+              >
               <template v-else-if="codeReqStatus.isError">
                 <ErrorMessage :request-status="codeReqStatus" />
               </template>
@@ -150,8 +153,8 @@
             </TabPanel>
           </template>
         </SiTabGroup>
-    </div>
-  </template>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -191,7 +194,10 @@ const selectedComponentCode = computed(
 // this component has a :key so a new instance will be re-mounted when the selected component changes
 // so we can use mounted hooks to trigger fetching data
 onBeforeMount(() => {
-  if (selectedComponentId.value) {
+  if (
+    selectedComponentId.value &&
+    selectedComponent.value?.changeStatus !== "deleted"
+  ) {
     componentsStore.FETCH_COMPONENT_CODE(selectedComponentId.value);
   }
 });

@@ -196,7 +196,7 @@ const diagramEdges = computed(() => {
     edge.isInvisible = false;
 
     const toNodeParentId =
-      componentsStore.componentsByNodeId[edge.toNodeId].parentId;
+      componentsStore.componentsByNodeId[edge.toNodeId].parentNodeId;
 
     if (toNodeParentId) {
       const toNodeParentComp =
@@ -210,7 +210,7 @@ const diagramEdges = computed(() => {
     }
 
     const fromNodeParentId =
-      componentsStore.componentsByNodeId[edge.fromNodeId].parentId;
+      componentsStore.componentsByNodeId[edge.fromNodeId].parentNodeId;
 
     if (fromNodeParentId) {
       const fromParentComp =
@@ -280,12 +280,12 @@ async function onDrawEdge(newEdge: DrawEdgeEvent) {
   } else {
     await componentsStore.CREATE_COMPONENT_CONNECTION(
       {
-        nodeId: newEdge.fromSocket.parent.def.id,
-        socketId: newEdge.fromSocket.def.id,
+        nodeId: fromNodeId,
+        socketId: fromSocketId,
       },
       {
-        nodeId: newEdge.toSocket.parent.def.id,
-        socketId: newEdge.toSocket.def.id,
+        nodeId: toNodeId,
+        socketId: toSocketId,
       },
     );
   }

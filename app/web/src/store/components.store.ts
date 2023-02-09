@@ -8,7 +8,9 @@ import {
   DiagramContent,
   DiagramEdgeDef,
   DiagramNodeDef,
+  DiagramSocketDef,
   DiagramStatusIcon,
+  GridPoint,
   Size2D,
 } from "@/components/GenericDiagram/diagram_types";
 import { MenuItem } from "@/api/sdf/dal/menu";
@@ -18,15 +20,11 @@ import {
   DiagramSchemaVariants,
 } from "@/api/sdf/dal/diagram";
 import { ComponentStats, ChangeStatus } from "@/api/sdf/dal/change_set";
-import { LabelList } from "@/api/sdf/dal/label_list";
-import {
-  ComponentDiff,
-  ComponentIdentification,
-  ComponentIdentificationTimestamp,
-} from "@/api/sdf/dal/component";
+import { ComponentDiff } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { IconNames } from "@/ui-lib/icons/icon_set";
+import { ActorView } from "@/api/sdf/dal/history_actor";
 import { ChangeSetId, useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import {
@@ -39,27 +37,40 @@ import { useStatusStore } from "./status.store";
 
 export type ComponentId = string;
 export type ComponentNodeId = string;
-type Component = {
-  nodeId: ComponentNodeId;
+
+type RawComponent = {
   id: ComponentId;
-  isGroup: boolean;
+  nodeId: ComponentNodeId;
   displayName: string;
-  parentId?: ComponentNodeId;
-  childIds?: ComponentNodeId[];
   schemaName: string;
   schemaId: string;
   schemaVariantId: string;
   schemaVariantName: string;
-  icon: IconNames;
+  schemaCategory: string; // I _think_ this will evolve into something like `packageSlug`
   color: string;
   nodeType: "component" | "configurationFrame" | "aggregationFrame";
-  changeStatus?: ChangeStatus;
-  // TODO: probably want to move this to a different store and not load it all the time
-  resource: Resource;
-  matchesFilter: boolean;
-  createdAt: ComponentIdentificationTimestamp;
-  updatedAt: ComponentIdentificationTimestamp;
+  position: GridPoint;
+  changeStatus: ChangeStatus;
+  resource: Resource; // TODO: probably want to move this to a different store and not load it all the time
+  sockets: DiagramSocketDef[];
+  createdInfo: ActorAndTimestamp;
+  updatedInfo: ActorAndTimestamp;
+  deletedAt?: string; // TODO: introduce timestamp string type? maybe convert in the request chain?
+  // deletedInfo?: ActorAndTimestamp;
 };
+
+type FullComponent = RawComponent & {
+  parentNodeId?: ComponentNodeId;
+  childNodeIds?: ComponentNodeId[];
+  isGroup: boolean;
+  matchesFilter: boolean;
+  icon: IconNames;
+};
+
+export interface ActorAndTimestamp {
+  actor: ActorView;
+  timestamp: string;
+}
 
 export type EdgeId = string;
 export type SocketId = string;
@@ -77,7 +88,7 @@ export type ComponentTreeNode = {
   children?: ComponentTreeNode[];
   typeIcon?: string;
   statusIcons?: StatusIconsSet;
-} & Component;
+} & FullComponent;
 
 export type MenuSchema = {
   id: SchemaId;
@@ -118,7 +129,7 @@ const changeStatusToIconMap: Record<ChangeStatus, DiagramStatusIcon> = {
 
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
-  const workspacePk = workspacesStore.selectedWorkspacePk;
+  const workspaceId = workspacesStore.selectedWorkspacePk;
 
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
@@ -134,6 +145,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   // and need to make sure it's done consistently (right now some endpoints vary slightly)
   const visibilityParams = {
     visibility_change_set_pk: changeSetId,
+    workspaceId,
   };
 
   return addStoreHooks(
@@ -142,16 +154,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         // components within this changeset
         // componentsById: {} as Record<ComponentId, Component>,
         // connectionsById: {} as Record<ConnectionId, Connection>,
-        componentIdentificationsById: {} as Record<
-          ComponentId,
-          ComponentIdentification
-        >,
-        componentChangeStatusById: {} as Record<ComponentId, ChangeStatus>,
 
         componentCodeViewsById: {} as Record<ComponentId, CodeView[]>,
         componentDiffsById: {} as Record<ComponentId, ComponentDiff>,
 
-        rawDiagramNodes: [] as DiagramNodeDef[],
+        rawComponentsById: {} as Record<ComponentId, RawComponent>,
+
         diagramEdgesById: {} as Record<EdgeId, DiagramEdgeDef>,
         schemaVariantsById: {} as Record<SchemaVariantId, DiagramSchemaVariant>,
         rawNodeAddMenu: [] as MenuItem[],
@@ -173,180 +181,196 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
       getters: {
         // transforming the diagram-y data back into more generic looking data
         // TODO: ideally we just fetch it like this...
-        componentsById(): Record<ComponentId, Component> {
-          const diagramNodesByComponentId = _.keyBy(
-            this.rawDiagramNodes,
-            (n) => n.componentId,
-          );
-          return _.pickBy(
-            _.mapValues(this.componentIdentificationsById, (ci) => {
-              const diagramNode = diagramNodesByComponentId[ci.componentId];
-              if (!diagramNode) return;
 
-              // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
-              // and eventually can just assume the icon is `logo-${name}`
-              const typeIcon =
-                {
-                  AWS: "logo-aws",
-                  CoreOS: "logo-coreos",
-                  Docker: "logo-docker",
-                  Kubernetes: "logo-k8s",
-                }[diagramNode?.category || ""] || "logo-si"; // fallback to SI logo
+        componentsById(): Record<ComponentId, FullComponent> {
+          return _.mapValues(this.rawComponentsById, (rc) => {
+            // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
+            // and eventually can just assume the icon is `logo-${name}`
+            const typeIcon =
+              {
+                AWS: "logo-aws",
+                CoreOS: "logo-coreos",
+                Docker: "logo-docker",
+                Kubernetes: "logo-k8s",
+              }[rc?.schemaCategory || ""] || "logo-si"; // fallback to SI logo
 
-              const socketToFrame = _.find(
-                diagramNode?.sockets,
-                (s) => s.label === "Frame" && s.direction === "output",
+            const socketToFrame = _.find(
+              rc?.sockets,
+              (s) => s.label === "Frame" && s.direction === "output",
+            );
+            const socketFromChildren = _.find(
+              rc?.sockets,
+              (s) => s.label === "Frame" && s.direction === "input",
+            );
+            const frameEdge = _.find(
+              this.diagramEdges,
+              (edge) =>
+                edge.fromNodeId === rc.nodeId &&
+                edge.fromSocketId === socketToFrame?.id,
+            );
+            const frameChildIds = _.filter(this.diagramEdges, (s) => {
+              return (
+                s.toSocketId === socketFromChildren?.id &&
+                s.toNodeId === rc.nodeId
               );
-              const socketFromChildren = _.find(
-                diagramNode?.sockets,
-                (s) => s.label === "Frame" && s.direction === "input",
-              );
-              const frameEdge = _.find(
-                this.diagramEdges,
-                (edge) =>
-                  edge.fromNodeId === diagramNode?.id &&
-                  edge.fromSocketId === socketToFrame?.id,
-              );
-              const frameChildIds = _.filter(this.diagramEdges, (s) => {
-                return (
-                  s.toSocketId === socketFromChildren?.id &&
-                  s.toNodeId === diagramNode?.id
-                );
-              }).map((i) => i.fromNodeId);
+            }).map((i) => i.fromNodeId);
 
-              return {
-                id: ci.componentId,
-                nodeId: diagramNode.id,
-                // TODO: return this info from the backend (and not in category)
-                parentId: frameEdge?.toNodeId,
-                childIds: socketFromChildren ? frameChildIds : undefined,
-                displayName: diagramNode?.subtitle,
-                schemaId: ci.schemaId,
-                schemaName: ci.schemaName,
-                schemaVariantId: ci.schemaVariantId,
-                schemaVariantName: ci.schemaVariantName,
-                // TODO: probably want to move this into its own store
-                resource: ci.resource,
-                icon: typeIcon,
-                color: diagramNode?.color,
-                changeStatus: this.componentChangeStatusById[ci.componentId],
-                nodeType: diagramNode?.nodeType,
-                isGroup: diagramNode?.nodeType !== "component",
-                createdAt: ci.createdAt,
-                updatedAt: ci.updatedAt,
-              } as Component;
-            }),
-            (ci) => ci,
-          ) as Record<string, Component>;
+            return {
+              ...rc,
+              parentNodeId: frameEdge?.toNodeId,
+              childNodeIds: socketFromChildren ? frameChildIds : undefined,
+              icon: typeIcon,
+              isGroup: rc.nodeType !== "component",
+            } as FullComponent;
+          });
         },
-        componentsByNodeId(): Record<ComponentNodeId, Component> {
+        componentChangeStatusById(): Record<ComponentId, ChangeStatus> {
+          return {};
+        },
+
+        componentsByNodeId(): Record<ComponentNodeId, FullComponent> {
           return _.keyBy(_.values(this.componentsById), (c) => c.nodeId);
         },
-        allComponents(): Component[] {
+        allComponents(): FullComponent[] {
           return _.values(this.componentsById);
         },
         filteredComponentTree() {
           const qualificationsStore = useQualificationsStore();
           const fixesStore = useFixesStore();
 
-          return {};
+          return (filter: string | "") => {
+            const searchTerm = filter?.toLowerCase();
+            const treeView: ComponentTreeNode[] = [];
+            const queue: ComponentTreeNode[] = [];
+            const unusedComps: Record<string, FullComponent> = {};
+            const compList = _.compact(
+              _.map(this.allComponents, (c) => {
+                const matchesFilter =
+                  c.displayName.toLowerCase().includes(searchTerm) ||
+                  c.schemaName.toLowerCase().includes(searchTerm);
 
-          // return (filter: string | "") => {
-          //   const searchTerm = filter?.toLowerCase();
-          //   const treeView: ComponentTreeNode[] = [];
-          //   const queue: ComponentTreeNode[] = [];
-          //   const unusedComps: Record<string, Component> = {};
-          //   const compList = _.map(this.allComponents, (c) => {
-          //     const matchesFilter =
-          //       c.displayName.toLowerCase().includes(searchTerm) ||
-          //       c.schemaName.toLowerCase().includes(searchTerm);
+                let qualificationStatus =
+                  qualificationsStore.qualificationStatusByComponentId[c.id];
+                let confirmationStatus: ConfirmationStatus | undefined =
+                  fixesStore.confirmationStatusByComponentId[c.id];
+                const changeStatus = this.componentChangeStatusById[c.id];
 
-          //     let qualificationStatus =
-          //       qualificationsStore.qualificationStatusByComponentId[c.id];
-          //     let confirmationStatus: ConfirmationStatus | undefined =
-          //       fixesStore.confirmationStatusByComponentId[c.id];
-          //     const changeStatus = this.componentChangeStatusById[c.id];
+                if (c.isGroup) {
+                  // eslint-disable-next-line @typescript-eslint/no-this-alias
+                  const compStore = this;
+                  qualificationStatus = (function calculateQualificationStatus(
+                    comp: FullComponent,
+                  ): QualificationStatus {
+                    return _.reduce(
+                      comp.childNodeIds,
+                      (collector, childId) => {
+                        const childComp = compStore.componentsByNodeId[childId];
+                        let childQualificationStatus =
+                          qualificationsStore.qualificationStatusByComponentId[
+                            childComp.id
+                          ];
+                        if (childComp.isGroup) {
+                          childQualificationStatus =
+                            calculateQualificationStatus(childComp);
+                        }
 
-          //     if (c.isGroup) {
-          //       // eslint-disable-next-line @typescript-eslint/no-this-alias
-          //       const compStore = this;
-          //       qualificationStatus = (function calculateQualificationStatus(
-          //         comp: Component,
-          //       ): QualificationStatus {
-          //         return _.reduce(
-          //           comp.childIds,
-          //           (collector, childId) => {
-          //             const childComp = compStore.componentsByNodeId[childId];
-          //             let childQualificationStatus =
-          //               qualificationsStore.qualificationStatusByComponentId[
-          //                 childComp.id
-          //               ];
-          //             if (childComp.isGroup) {
-          //               childQualificationStatus =
-          //                 calculateQualificationStatus(childComp);
-          //             }
+                        switch (collector) {
+                          case "failure":
+                            return collector;
+                          case "running":
+                            return childQualificationStatus === "failure"
+                              ? "failure"
+                              : collector;
+                          case "success":
+                          default:
+                            return childQualificationStatus;
+                        }
+                      },
+                      "success" as QualificationStatus,
+                    );
+                  })(c);
 
-          //             switch (collector) {
-          //               case "failure":
-          //                 return collector;
-          //               case "running":
-          //                 return childQualificationStatus === "failure"
-          //                   ? "failure"
-          //                   : collector;
-          //               case "success":
-          //               default:
-          //                 return childQualificationStatus as QualificationStatus;
-          //             },
-          //             'success',
-          //           );
-          //         })(c);
-          //       }
-                
-          //     return {
-          //       ...c,
-          //       matchesFilter,
-          //       typeIcon: c?.icon || "logo-si",
-          //       statusIcons: {
-          //         change: changeStatusToIconMap[changeStatus],
-          //         qualification:
-          //           qualificationStatusToIconMap[
-          //             qualificationStatus as QualificationStatus
-          //           ],
-          //         confirmation: (confirmationStatus
-          //           ? confirmationStatusToIconMap[confirmationStatus]
-          //           : undefined) ?? {
-          //           icon: "minus",
-          //           tone: "neutral",
-          //         },
-          //       },
-          //     };
-          //   });
-          //   for (const comp of compList) {
-          //     if (comp.parentId === undefined) {
-          //       treeView.push(comp);
-          //       queue.push(comp);
-          //     } else {
-          //       unusedComps[comp.nodeId] = comp;
-          //     }
-          //   }
-          //   while (queue.length > 0) {
-          //     const item = queue.shift();
-          //     if (!item) continue;
-          //     for (const children of item.childIds ?? []) {
-          //       if (item.children === undefined) {
-          //         item.children = [];
-          //       }
-          //       const child = unusedComps[children];
-          //       item.children.push(child);
-          //       queue.push(child);
-          //     }
-          //   }
-          //   return treeView;
-          // };
+                  confirmationStatus = (function calculateConfirmationStatus(
+                    comp: FullComponent,
+                  ): ConfirmationStatus | undefined {
+                    return _.reduce(
+                      comp.childNodeIds,
+                      (
+                        collector: ConfirmationStatus | undefined,
+                        childNodeId,
+                      ) => {
+                        const childComp =
+                          compStore.componentsByNodeId[childNodeId];
+                        let childConfirmation: ConfirmationStatus | undefined =
+                          fixesStore.confirmationStatusByComponentId[
+                            childComp.id
+                          ];
+
+                        if (childComp.isGroup) {
+                          childConfirmation =
+                            calculateConfirmationStatus(childComp);
+                        }
+
+                        if (collector === "failure") return collector;
+                        else if (collector === "running")
+                          return childConfirmation === "failure"
+                            ? "failure"
+                            : collector;
+                        else if (collector === "success")
+                          return childConfirmation ?? "success";
+                        else return childConfirmation;
+                      },
+                      undefined,
+                    );
+                  })(c);
+                }
+
+                return {
+                  ...c,
+                  matchesFilter,
+                  typeIcon: c?.icon || "logo-si",
+                  statusIcons: {
+                    change: changeStatusToIconMap[changeStatus],
+                    qualification:
+                      qualificationStatusToIconMap[
+                        qualificationStatus as QualificationStatus
+                      ],
+                    confirmation: (confirmationStatus
+                      ? confirmationStatusToIconMap[confirmationStatus]
+                      : undefined) ?? {
+                      icon: "minus",
+                      tone: "neutral",
+                    },
+                  },
+                };
+              }),
+            );
+            for (const comp of compList) {
+              if (comp.parentNodeId === undefined) {
+                treeView.push(comp);
+                queue.push(comp);
+              } else {
+                unusedComps[comp.nodeId] = comp;
+              }
+            }
+            while (queue.length > 0) {
+              const item = queue.shift();
+              if (!item) continue;
+              for (const children of item.childNodeIds ?? []) {
+                if (item.children === undefined) {
+                  item.children = [];
+                }
+                const child = unusedComps[children];
+                item.children.push(child);
+                queue.push(child);
+              }
+            }
+            return treeView;
+          };
         },
 
         diagramEdges: (state) => _.values(state.diagramEdgesById),
-        selectedComponent(): Component {
+        selectedComponent(): FullComponent {
           return this.componentsById[this.selectedComponentId || 0];
         },
         selectedEdge(): DiagramEdgeDef {
@@ -359,7 +383,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           return this.componentCodeViewsById[this.selectedComponentId || 0];
         },
 
-        lastSelectedComponent(): Component {
+        lastSelectedComponent(): FullComponent {
           return this.componentsById[this.lastSelectedComponentId || 0];
         },
 
@@ -370,22 +394,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           // adding logo and qualification info into the nodes
           // TODO: probably want to include logo directly
-          return _.map(this.rawDiagramNodes, (node) => {
-            const componentId = node.componentId;
+          return _.map(this.allComponents, (component) => {
+            const componentId = component.id;
 
             const qualificationStatus =
               qualificationsStore.qualificationStatusByComponentId[componentId];
             const confirmationStatus =
               fixesStore.statusByComponentId[componentId];
-            const changeStatus = this.componentChangeStatusById[componentId];
-
-            const component = this.componentsById[componentId];
 
             return {
-              ...node,
-              parentId: component.parentId,
-              childIds: component.childIds,
-              nodeType: component.nodeType,
               ...component,
               // swapping "id" to be node id and passing along component id separately for the diagram
               // this is gross and needs to go, but will happen later
@@ -500,34 +517,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         // actually fetches diagram-style data, but we have a computed getter to turn back into more generic component data above
         async FETCH_DIAGRAM_DATA() {
-          return new ApiRequest<DiagramContent>({
+          return new ApiRequest<{
+            components: RawComponent[];
+            edges: DiagramEdgeDef[];
+          }>({
             url: "diagram/get_diagram",
             params: {
               ...visibilityParams,
             },
             onSuccess: (response) => {
-              // for now just storing the diagram-y data
-              // but I think ideally we fetch more generic component data and then transform into diagram format as necessary
-              this.rawDiagramNodes = response.nodes;
-
+              this.rawComponentsById = _.keyBy(response.components, "id");
               this.diagramEdgesById = _.keyBy(response.edges, "id");
-            },
-          });
-        },
-        // fetches a dropdown-style list of some component data, also including resources?
-        async FETCH_COMPONENTS() {
-          return new ApiRequest<{ list: LabelList<ComponentIdentification> }>({
-            url: "component/list_components_identification",
-            params: {
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              // endpoint returns dropdown-y data
-              const rawIdentifications = _.map(response.list, "value");
-              this.componentIdentificationsById = _.keyBy(
-                rawIdentifications,
-                (c) => c.componentId,
-              );
             },
           });
         },
@@ -556,24 +556,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
             onSuccess: (response) => {
               this.rawNodeAddMenu = response;
-            },
-          });
-        },
-
-        async FETCH_CHANGE_STATS() {
-          return new ApiRequest<{ componentStats: ComponentStats }>({
-            url: "change_set/get_stats",
-            params: {
-              ...visibilityParams,
-            },
-            onSuccess: (response) => {
-              this.componentChangeStatusById = _.transform(
-                response.componentStats.stats,
-                (acc, cs) => {
-                  acc[cs.componentId] = cs.componentStatus;
-                },
-                {} as Record<ComponentId, ChangeStatus>,
-              );
             },
           });
         },
@@ -839,10 +821,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         if (!changeSetId) return;
 
         this.FETCH_DIAGRAM_DATA();
-        this.FETCH_COMPONENTS();
         this.FETCH_AVAILABLE_SCHEMAS();
         this.FETCH_NODE_ADD_MENU();
-        this.FETCH_CHANGE_STATS();
 
         const realtimeStore = useRealtimeStore();
 
@@ -857,8 +837,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
               // probably want to get pushed updates instead of blindly re-fetching, but this is the first step of getting things working
               this.FETCH_DIAGRAM_DATA();
-              this.FETCH_COMPONENTS();
-              this.FETCH_CHANGE_STATS();
             },
           },
           {

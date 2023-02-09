@@ -23,7 +23,6 @@ pub mod get_property_editor_schema;
 pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod insert_property_editor_value;
-pub mod list_components_identification;
 pub mod list_qualifications;
 pub mod set_type;
 pub mod update_property_editor_value;
@@ -113,10 +112,6 @@ impl IntoResponse for ComponentError {
 
 pub fn routes() -> Router {
     Router::new()
-        .route(
-            "/list_components_identification",
-            get(list_components_identification::list_components_identification),
-        )
         .route(
             "/get_components_metadata",
             get(get_components_metadata::get_components_metadata),

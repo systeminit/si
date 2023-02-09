@@ -8,7 +8,7 @@ use crate::change_status::{
     ChangeStatus, ChangeStatusError, ComponentChangeStatus, EdgeChangeStatus,
 };
 use crate::diagram::connection::{Connection, DiagramEdgeView};
-use crate::diagram::node::DiagramNodeView;
+use crate::diagram::node::DiagramComponentView;
 use crate::edge::EdgeKind;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
@@ -105,7 +105,7 @@ pub enum DiagramKind {
 #[serde(rename_all = "camelCase")]
 pub struct Diagram {
     /// The shape of assembled [`Node`](crate::Node) information to render graphical/visual nodes.
-    nodes: Vec<DiagramNodeView>,
+    components: Vec<DiagramComponentView>,
     /// The shape of assembled [`Edge`](crate::Edge) information to render graphical/visual edges.
     edges: Vec<DiagramEdgeView>,
 }
@@ -114,17 +114,14 @@ impl Diagram {
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
     /// [`Connections`](crate::Connection).
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
-        let added = ComponentChangeStatus::list_added(ctx).await?;
+        // let added = ComponentChangeStatus::list_added(ctx).await?;
         let modified = ComponentChangeStatus::list_modified(ctx).await?;
-
-        let mut stats = Vec::new();
-        stats.extend(added);
-        stats.extend(modified);
+        println!("{:#?}", modified);
 
         let mut nodes = Node::list(ctx).await?;
         nodes.extend(ComponentChangeStatus::list_deleted_nodes(ctx).await?);
 
-        let mut node_views = Vec::with_capacity(nodes.len());
+        let mut component_views = Vec::with_capacity(nodes.len());
         let ctx_with_deleted = &ctx.clone_with_delete_visibility();
         for node in &nodes {
             let component = node
@@ -149,26 +146,15 @@ impl Diagram {
                 None => continue, // Note: do we want to ignore things with no position?
             };
 
-            let change_status = if node.visibility().deleted_at.is_some() {
-                ChangeStatus::Deleted
-            } else {
-                let maybe_change_status = stats.iter().find(|s| s.component_id == *component.id());
-                if let Some(status) = maybe_change_status {
-                    status.component_status.clone()
-                } else {
-                    ChangeStatus::Unmodified
-                }
-            };
+            let is_modified = modified.clone()
+                .iter()
+                .find(|s| s.component_id == *component.id())
+                .is_some();
+                
 
-            let view = DiagramNodeView::new(
-                ctx_with_deleted,
-                node,
-                &position,
-                change_status,
-                &schema_variant,
-            )
-            .await?;
-            node_views.push(view);
+            let view =
+                DiagramComponentView::new(ctx_with_deleted, &component, node, &position, is_modified, &schema_variant).await?;
+            component_views.push(view);
         }
 
         let mut edges: Vec<DiagramEdgeView> = Edge::list(ctx)
@@ -201,12 +187,12 @@ impl Diagram {
 
         Ok(Self {
             edges,
-            nodes: node_views,
+            components: component_views,
         })
     }
 
-    pub fn nodes(&self) -> &[DiagramNodeView] {
-        &self.nodes
+    pub fn components(&self) -> &[DiagramComponentView] {
+        &self.components
     }
 
     pub fn edges(&self) -> &[DiagramEdgeView] {
