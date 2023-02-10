@@ -3091,6 +3091,7 @@ dependencies = [
  "names",
  "nix",
  "pathdiff",
+ "pretty_assertions_sorted",
  "rand",
  "serde",
  "serde_json",

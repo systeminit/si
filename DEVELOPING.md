@@ -166,12 +166,6 @@ First, we run `veritech`.
 make run//bin/veritech
 ```
 
-In another terminal pane, run `sdf`.
-
-```bash
-make run//bin/sdf
-```
-
 In another terminal pane, run `pinga`.
 
 ```bash
@@ -182,6 +176,12 @@ In another terminal pane, run `council`.
 
 ```bash
 make run//bin/council
+```
+
+In another terminal pane, run `sdf`.
+
+```bash
+make run//bin/sdf
 ```
 
 In a final terminal pane, execute the following command:
@@ -506,8 +506,11 @@ SI_TEST_BUILTIN_SCHEMAS=none cargo test -p dal --test integration <your-test>
 You can also choose individual builtins to migrate with a comma-separated list.
 
 ```shell
-SI_TEST_BUILTIN_SCHEMAS="Schema One,Schema Two" cargo test -p dal --test integration <your-test>
+SI_TEST_BUILTIN_SCHEMAS=Schema One,Schema Two cargo test -p dal --test integration <your-test>
 ```
+
+> Note: you may not want to wrap your list in `"` characters, depending on your development environment as they may
+> be unintentionally included in the list item(s).
 
 If you want migrations to run as they would by default, remove the environment variable or set it to `"all"` or `"true"`
 (or some variant of them).

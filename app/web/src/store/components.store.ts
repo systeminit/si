@@ -640,7 +640,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           position: Vector2d,
           parentId?: string,
         ) {
-          return new ApiRequest<{ componentId: ComponentId }>({
+          return new ApiRequest<{
+            componentId: ComponentId;
+            nodeId: ComponentNodeId;
+          }>({
             method: "post",
             url: "diagram/create_node",
             params: {

@@ -41,6 +41,10 @@ pub enum PropertyEditorError {
     ValidationResolver(#[from] ValidationResolverError),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
+    #[error("no value(s) found for property editor prop id: {0}")]
+    NoValuesFoundForPropertyEditorProp(PropertyEditorPropId),
+    #[error("too many values found (likely not the prop for an element of a map or an array) for property editor prop id: {0}")]
+    TooManyValuesFoundForPropertyEditorProp(PropertyEditorPropId),
 }
 
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
@@ -51,6 +55,12 @@ pk!(PropertyEditorPropId);
 
 impl From<AttributeValueId> for PropertyEditorValueId {
     fn from(id: AttributeValueId) -> Self {
+        Self::from(ulid::Ulid::from(id))
+    }
+}
+
+impl From<PropertyEditorValueId> for AttributeValueId {
+    fn from(id: PropertyEditorValueId) -> Self {
         Self::from(ulid::Ulid::from(id))
     }
 }

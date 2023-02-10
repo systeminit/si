@@ -31,7 +31,7 @@ pub async fn set_type(
 
     let component = Component::get_by_id(&ctx, &request.component_id)
         .await?
-        .ok_or(ComponentError::ComponentNotFound)?;
+        .ok_or(ComponentError::ComponentNotFound(request.component_id))?;
 
     // If no type was found, default to a standard "component".
     let component_type: ComponentType = match request.value {

@@ -55,7 +55,7 @@ async fn find_frame_socket_for_node(ctx: &DalContext) {
         .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
-    let (_, node) = Component::new(ctx, "MUSTANG GT PERFORMANCE PACK", *schema_variant.id())
+    let (_, node) = Component::new(ctx, "Hog Island", *schema_variant.id())
         .await
         .expect("could not create component");
 
@@ -141,7 +141,7 @@ async fn list_for_component(ctx: &DalContext) {
         .finalize(ctx, None)
         .await
         .expect("cannot finalize schema variant");
-    let (component, _) = Component::new(ctx, "MUSTANG GT PERFORMANCE PACK", *schema_variant.id())
+    let (component, _) = Component::new(ctx, "Hog Island", *schema_variant.id())
         .await
         .expect("could not create component");
 
@@ -166,5 +166,74 @@ async fn list_for_component(ctx: &DalContext) {
     assert_eq!(
         expected_sockets, // expected
         found_sockets,    // actual
+    );
+}
+
+#[test]
+async fn find_by_name_for_edge_kind_and_node(ctx: &DalContext) {
+    let schema = create_schema(ctx).await;
+    let (mut schema_variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0")
+        .await
+        .expect("cannot create schema variant");
+
+    // Create some additional sockets from the defaults.
+    let output_socket = Socket::new(
+        ctx,
+        "output",
+        SocketKind::Standalone,
+        &SocketEdgeKind::ConfigurationOutput,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+        Some(*schema_variant.id()),
+    )
+    .await
+    .expect("could not create socket");
+    let input_socket = Socket::new(
+        ctx,
+        "input",
+        SocketKind::Standalone,
+        &SocketEdgeKind::ConfigurationInput,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+        Some(*schema_variant.id()),
+    )
+    .await
+    .expect("could not create socket");
+
+    // Finalize the schema variant and create the component.
+    schema_variant
+        .finalize(ctx, None)
+        .await
+        .expect("cannot finalize schema variant");
+    let (_component, node) = Component::new(ctx, "Hog Island", *schema_variant.id())
+        .await
+        .expect("could not create component");
+
+    // Test our query.
+    let found_output_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "output",
+        SocketEdgeKind::ConfigurationOutput,
+        *node.id(),
+    )
+    .await
+    .expect("could not perform query")
+    .expect("socket not found");
+    let found_input_socket = Socket::find_by_name_for_edge_kind_and_node(
+        ctx,
+        "input",
+        SocketEdgeKind::ConfigurationInput,
+        *node.id(),
+    )
+    .await
+    .expect("could not perform query")
+    .expect("socket not found");
+    assert_eq!(
+        *output_socket.id(),       // expected
+        *found_output_socket.id(), // actual
+    );
+    assert_eq!(
+        *input_socket.id(),       // expected
+        *found_input_socket.id(), // actual
     );
 }

@@ -28,6 +28,7 @@ pub struct CreateNodeRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CreateNodeResponse {
     pub component_id: ComponentId,
+    pub node_id: NodeId,
 }
 
 pub async fn create_node(
@@ -95,5 +96,6 @@ pub async fn create_node(
 
     Ok(Json(CreateNodeResponse {
         component_id: *component.id(),
+        node_id: *node.id(),
     }))
 }

@@ -116,7 +116,7 @@ impl Diagram {
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
         // let added = ComponentChangeStatus::list_added(ctx).await?;
         let modified = ComponentChangeStatus::list_modified(ctx).await?;
-        println!("{:#?}", modified);
+        println!("{modified:#?}");
 
         let mut nodes = Node::list(ctx).await?;
         nodes.extend(ComponentChangeStatus::list_deleted_nodes(ctx).await?);

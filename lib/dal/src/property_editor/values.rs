@@ -9,15 +9,15 @@ use crate::property_editor::{PropertyEditorError, PropertyEditorResult};
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use crate::{
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId, DalContext,
-    Prop, StandardModel,
+    Prop, PropId, StandardModel,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PropertyEditorValues {
-    root_value_id: PropertyEditorValueId,
+    pub root_value_id: PropertyEditorValueId,
     pub values: HashMap<PropertyEditorValueId, PropertyEditorValue>,
-    child_values: HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>>,
+    pub child_values: HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>>,
 }
 
 impl PropertyEditorValues {
@@ -104,16 +104,24 @@ impl PropertyEditorValues {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PropertyEditorValue {
-    id: PropertyEditorValueId,
+    pub id: PropertyEditorValueId,
     prop_id: PropertyEditorPropId,
-    key: Option<String>,
+    pub key: Option<String>,
     value: Value,
     is_from_external_source: bool,
 }
 
 impl PropertyEditorValue {
+    pub fn attribute_value_id(&self) -> AttributeValueId {
+        self.id.into()
+    }
+
     pub fn value(&self) -> Value {
         self.value.clone()
+    }
+
+    pub fn prop_id(&self) -> PropId {
+        self.prop_id.into()
     }
 
     /// Returns the [`Prop`](crate::Prop) corresponding to the "prop_id" field.
