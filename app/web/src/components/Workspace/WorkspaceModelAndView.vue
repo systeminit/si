@@ -3,22 +3,15 @@
   <SiPanel remember-size-key="changeset-and-asset" side="left" :min-size="250">
     <div class="flex flex-col h-full">
       <ChangeSetPanel v-if="!isViewMode" />
-
-      <SiTabGroup class="relative flex-grow">
-        <template #tabs>
-          <SiTabHeader v-if="!isViewMode">Asset Palette</SiTabHeader>
-          <SiTabHeader>Diagram Outline</SiTabHeader>
-        </template>
-
-        <template #panels>
-          <TabPanel v-if="!isViewMode">
-            <AssetPalette />
-          </TabPanel>
-          <TabPanel>
-            <ComponentOutline @right-click-item="onOutlineRightClick" />
-          </TabPanel>
-        </template>
-      </SiTabGroup>
+      <TabGroup start-selected-tab-slug="asset-palette">
+        <TabGroupItem v-if="!isViewMode" label="Asset Palette">
+          <AssetPalette />
+        </TabGroupItem>
+        <TabGroupItem label="Diagram Outline">
+          <ComponentOutline @right-click-item="onOutlineRightClick" />
+        </TabGroupItem>
+      </TabGroup>
+      >>>>>>> 8e02bb5d (feat(web) - TabGroup to replace SiTabGroup)
     </div>
   </SiPanel>
 
@@ -113,16 +106,12 @@
 </template>
 
 <script lang="ts" setup>
-import { TabPanel } from "@headlessui/vue";
 import _ from "lodash";
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import plur from "plur";
-
 import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
-import SiTabGroup from "@/components/SiTabGroup.vue";
-import SiTabHeader from "@/components/SiTabHeader.vue";
 import {
   ComponentId,
   EdgeId,
@@ -135,6 +124,8 @@ import Modal from "@/ui-lib/modals/Modal.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
 import SiPanel from "@/components/SiPanel.vue";
+import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
+import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
