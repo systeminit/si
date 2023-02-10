@@ -6,7 +6,10 @@ use crate::change_status::ChangeStatus;
 use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
-use crate::{DalContext, DiagramError, Node, NodePosition, SchemaVariant, StandardModel, Component, ChangeSetPk, ComponentStatus, ActorView, HistoryActorTimestamp, ResourceView};
+use crate::{
+    ActorView, ChangeSetPk, Component, ComponentStatus, DalContext, DiagramError,
+    HistoryActorTimestamp, Node, NodePosition, ResourceView, SchemaVariant, StandardModel,
+};
 
 #[derive(
     AsRefStr,
@@ -141,7 +144,7 @@ pub struct DiagramComponentView {
     schema_variant_id: String,
     schema_variant_name: String,
     schema_category: Option<String>,
-    
+
     sockets: Option<Vec<SocketView>>,
     position: GridPoint,
     size: Option<Size2D>,
@@ -203,21 +206,15 @@ impl DiagramComponentView {
             .await?
             .ok_or(DiagramError::ComponentNotFound)?;
 
-        let created_info = HistoryEventMetadata::from_history_actor_timestamp(
-            &ctx,
-            component_status.creation(),
-        )
-        .await?;
-        let updated_info = HistoryEventMetadata::from_history_actor_timestamp(
-            &ctx,
-            component_status.update(),
-        )
-        .await?;
+        let created_info =
+            HistoryEventMetadata::from_history_actor_timestamp(&ctx, component_status.creation())
+                .await?;
+        let updated_info =
+            HistoryEventMetadata::from_history_actor_timestamp(&ctx, component_status.update())
+                .await?;
 
         // TODO(theo): probably dont want to fetch this here and load totally separately, but we inherited from existing endpoints
         let resource = ResourceView::new(component.resource(&ctx).await?);
-
-
 
         Ok(Self {
             id: component.id().to_string(),
@@ -268,7 +265,6 @@ impl DiagramComponentView {
         &self.size
     }
 }
-
 
 // TODO(theo,victor): this should probably move and be used more generally in a few places?
 

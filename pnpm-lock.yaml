@@ -71,6 +71,7 @@ importers:
       local-storage-fallback: ^4.1.2
       lodash: ^4.17.21
       pinia: ^2.0.22
+      plur: ^5.1.0
       postcss: ^8.4.16
       postcss-comment: ^2.0.0
       postcss-each: ^1.1.0
@@ -122,6 +123,7 @@ importers:
       local-storage-fallback: 4.1.2
       lodash: 4.17.21
       pinia: 2.0.23_zwu2zepfy3m6u2gunxlolp35gi
+      plur: 5.1.0
       reconnecting-websocket: 4.4.0
       tailwindcss: 3.2.2_postcss@8.4.18
       tinycolor2: 1.4.2
@@ -4438,6 +4440,11 @@ packages:
       p-is-promise: 3.0.0
     dev: true
 
+  /irregular-plurals/3.4.0:
+    resolution: {integrity: sha512-YXxECO/W6N9aMBVKMKKZ8TXESgq7EFrp3emCGGUcrYY1cgJIeZjoB75MTu8qi+NAKntS9NwPU8VdcQ3r6E6aWQ==}
+    engines: {node: '>=8'}
+    dev: false
+
   /is-arrayish/0.2.1:
     resolution: {integrity: sha512-zz06S8t0ozoDXMG+ube26zeCTNXcKIPJZJi8hBrF4idCLms4CG9QtK7qBl1boi5ODzFpjswb5JPmHCbMpjaYzg==}
     dev: true
@@ -5944,6 +5951,13 @@ packages:
       - encoding
       - supports-color
     dev: true
+
+  /plur/5.1.0:
+    resolution: {integrity: sha512-VP/72JeXqak2KiOzjgKtQen5y3IZHn+9GOuLDafPv0eXa47xq0At93XahYBs26MsifCQ4enGKwbjBTKgb9QJXg==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+    dependencies:
+      irregular-plurals: 3.4.0
+    dev: false
 
   /postcss-comment/2.0.0:
     resolution: {integrity: sha512-5zT5iKU7c0tK9KJFNrVf+g1MGTkzf/4V3e0Zzm2g1uoFQC5jeTHmB9O1iAqh97+jnKpc6al204e0pwFUiCwseg==}

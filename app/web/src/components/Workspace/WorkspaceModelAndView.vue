@@ -16,10 +16,10 @@
           </TabPanel>
           <TabPanel>
             <DiagramOutline
-              :selected-component-id="selectedComponentId ?? undefined"
               @select="onOutlineSelectComponent"
               @multiselect="onOutlineMultiSelectComponent"
               @pan="onOutlinePanToComponent"
+              @click.right.prevent="onRightClickOutlineElement"
             />
           </TabPanel>
         </template>
@@ -46,37 +46,7 @@
       @right-click-element="onRightClickElement"
     />
 
-    <DropdownMenu ref="contextMenuRef">
-      <template v-if="selectedEdgeId">
-        <DropdownMenuItem
-          v-if="selectedEdge.changeStatus === 'deleted'"
-          icon="trash-restore"
-          @select="triggerRestoreSelection"
-        >
-          Restore edge
-        </DropdownMenuItem>
-        <DropdownMenuItem v-else icon="trash" @select="triggerDeleteSelection">
-          Delete edge
-        </DropdownMenuItem>
-      </template>
-      <template v-else-if="selectedComponentId">
-        <DropdownMenuItem
-          v-if="selectedComponent.changeStatus === 'deleted'"
-          icon="trash-restore"
-          @select="triggerRestoreSelection"
-        >
-          Restore component
-        </DropdownMenuItem>
-        <DropdownMenuItem v-else icon="trash" @select="triggerDeleteSelection">
-          Delete component
-        </DropdownMenuItem>
-      </template>
-      <template v-else>
-        <DropdownMenuItem icon="help-circle" disabled>
-          empty menu?
-        </DropdownMenuItem>
-      </template>
-    </DropdownMenu>
+    <DropdownMenu ref="contextMenuRef" :items="rightClickMenuItems" />
   </div>
 
   <SiPanel
@@ -141,13 +111,16 @@ import { TabPanel } from "@headlessui/vue";
 import _ from "lodash";
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import plur from "plur";
+
 import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import SiTabGroup from "@/components/SiTabGroup.vue";
 import SiTabHeader from "@/components/SiTabHeader.vue";
 import { useComponentsStore } from "@/store/components.store";
-import DropdownMenu from "@/ui-lib/menus/DropdownMenu.vue";
-import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
+import DropdownMenu, {
+  MenuItemObjectDef,
+} from "@/ui-lib/menus/DropdownMenu.vue";
 import Modal from "@/ui-lib/modals/Modal.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
@@ -239,6 +212,7 @@ const selectedEdge = computed(() => componentsStore.selectedEdge);
 const diagramCustomConfig = {};
 
 const selectedComponent = computed(() => componentsStore.selectedComponent);
+const selectedComponents = computed(() => componentsStore.selectedComponents);
 
 const insertCallbacks: Record<string, () => void> = {};
 
@@ -397,6 +371,9 @@ function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
   // TODO: make actually do something, probably also want to handle different types
   contextMenuRef.value?.open(rightClickEventInfo.e, true);
 }
+function onRightClickOutlineElement(e: MouseEvent) {
+  contextMenuRef.value?.open(e, true);
+}
 
 function triggerDeleteSelection() {
   // event is triggered regardless of selection
@@ -427,8 +404,7 @@ async function triggerRestoreSelection() {
   if (selectedEdgeId.value) {
     await componentsStore.RESTORE_EDGE(selectedEdgeId.value);
   } else if (selectedComponentIds.value) {
-    // eslint-disable-next-line no-alert
-    alert("restore!");
+    await componentsStore.RESTORE_COMPONENTS(selectedComponentIds.value);
   }
 }
 
@@ -471,4 +447,73 @@ function onGroupElements({ group, elements }: GroupEvent) {
     componentsStore.CONNECT_COMPONENT_TO_FRAME(element.def.id, group.def.id);
   }
 }
+
+const rightClickMenuItems = computed(() => {
+  const items: MenuItemObjectDef[] = [];
+  if (selectedEdgeId.value) {
+    // single selected edge
+    if (selectedEdge.value.changeStatus === "deleted") {
+      items.push({
+        label: "Restore edge",
+        icon: "trash-restore",
+        onSelect: triggerRestoreSelection,
+      });
+    } else {
+      items.push({
+        label: "Delete edge",
+        icon: "trash",
+        onSelect: triggerDeleteSelection,
+      });
+    }
+  } else if (selectedComponentId.value) {
+    // single selected component
+    if (selectedComponent.value.changeStatus === "deleted") {
+      items.push({
+        label: "Restore component",
+        icon: "trash-restore",
+        onSelect: triggerRestoreSelection,
+      });
+    } else {
+      items.push({
+        label: "Delete component",
+        icon: "trash",
+        onSelect: triggerDeleteSelection,
+      });
+    }
+  } else if (selectedComponentIds.value.length) {
+    // Multiple selected components
+    const restorableComponents = _.filter(
+      selectedComponents.value,
+      (c) => c.changeStatus === "deleted",
+    );
+    const deletableComponents = _.reject(
+      selectedComponents.value,
+      (c) => c.changeStatus === "deleted",
+    );
+    if (deletableComponents.length > 0) {
+      items.push({
+        label: `Delete ${deletableComponents.length} ${plur(
+          "component",
+          deletableComponents.length,
+        )}`,
+        icon: "trash",
+        onSelect: triggerRestoreSelection,
+      });
+    }
+    if (restorableComponents.length > 0) {
+      items.push({
+        label: `Restore ${restorableComponents.length} ${plur(
+          "component",
+          restorableComponents.length,
+        )}`,
+        icon: "trash-restore",
+        onSelect: triggerRestoreSelection,
+      });
+    }
+  }
+  if (!items.length) {
+    items.push({ label: "empty menu" });
+  }
+  return items;
+});
 </script>

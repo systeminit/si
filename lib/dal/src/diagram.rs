@@ -146,14 +146,21 @@ impl Diagram {
                 None => continue, // Note: do we want to ignore things with no position?
             };
 
-            let is_modified = modified.clone()
+            let is_modified = modified
+                .clone()
                 .iter()
                 .find(|s| s.component_id == *component.id())
                 .is_some();
-                
 
-            let view =
-                DiagramComponentView::new(ctx_with_deleted, &component, node, &position, is_modified, &schema_variant).await?;
+            let view = DiagramComponentView::new(
+                ctx_with_deleted,
+                &component,
+                node,
+                &position,
+                is_modified,
+                &schema_variant,
+            )
+            .await?;
             component_views.push(view);
         }
 

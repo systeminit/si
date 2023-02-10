@@ -5,8 +5,8 @@ use dal_test::{
     test,
     test_harness::{create_component_for_schema_variant, create_schema, create_schema_variant},
 };
-use sdf::service::component::{
-    get_components_metadata::{GetComponentsMetadataRequest, GetComponentsMetadataResponse},
+use sdf::service::component::get_components_metadata::{
+    GetComponentsMetadataRequest, GetComponentsMetadataResponse,
 };
 
 use crate::{service_tests::api_request_auth_query, test_setup};

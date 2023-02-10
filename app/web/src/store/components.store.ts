@@ -1,11 +1,11 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
+import async from "async";
 import { Vector2d } from "konva/lib/types";
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
 
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import {
-  DiagramContent,
   DiagramEdgeDef,
   DiagramNodeDef,
   DiagramSocketDef,
@@ -37,6 +37,10 @@ import { useStatusStore } from "./status.store";
 
 export type ComponentId = string;
 export type ComponentNodeId = string;
+export type EdgeId = string;
+export type SocketId = string;
+type SchemaId = string;
+type SchemaVariantId = string;
 
 type RawComponent = {
   id: ComponentId;
@@ -55,8 +59,7 @@ type RawComponent = {
   sockets: DiagramSocketDef[];
   createdInfo: ActorAndTimestamp;
   updatedInfo: ActorAndTimestamp;
-  deletedAt?: string; // TODO: introduce timestamp string type? maybe convert in the request chain?
-  // deletedInfo?: ActorAndTimestamp;
+  deletedInfo?: ActorAndTimestamp;
 };
 
 type FullComponent = RawComponent & {
@@ -67,16 +70,24 @@ type FullComponent = RawComponent & {
   icon: IconNames;
 };
 
+type Edge = {
+  id: EdgeId;
+  fromNodeId: ComponentNodeId;
+  fromSocketId: SocketId;
+  toNodeId: ComponentNodeId;
+  toSocketId: SocketId;
+  isInvisible?: boolean;
+  /** change status of edge in relation to head */
+  changeStatus?: ChangeStatus;
+  createdInfo: ActorAndTimestamp;
+  // updatedInfo?: ActorAndTimestamp; // currently we dont ever update an edge...
+  deletedInfo?: ActorAndTimestamp;
+};
+
 export interface ActorAndTimestamp {
   actor: ActorView;
   timestamp: string;
 }
-
-export type EdgeId = string;
-export type SocketId = string;
-
-type SchemaId = string;
-type SchemaVariantId = string;
 
 export type StatusIconsSet = {
   change?: DiagramStatusIcon;
@@ -160,7 +171,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         rawComponentsById: {} as Record<ComponentId, RawComponent>,
 
-        diagramEdgesById: {} as Record<EdgeId, DiagramEdgeDef>,
+        edgesById: {} as Record<EdgeId, Edge>,
         schemaVariantsById: {} as Record<SchemaVariantId, DiagramSchemaVariant>,
         rawNodeAddMenu: [] as MenuItem[],
 
@@ -203,12 +214,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               (s) => s.label === "Frame" && s.direction === "input",
             );
             const frameEdge = _.find(
-              this.diagramEdges,
+              this.allEdges,
               (edge) =>
                 edge.fromNodeId === rc.nodeId &&
                 edge.fromSocketId === socketToFrame?.id,
             );
-            const frameChildIds = _.filter(this.diagramEdges, (s) => {
+            const frameChildIds = _.filter(this.allEdges, (s) => {
               return (
                 s.toSocketId === socketFromChildren?.id &&
                 s.toNodeId === rc.nodeId
@@ -369,12 +380,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           };
         },
 
-        diagramEdges: (state) => _.values(state.diagramEdgesById),
+        allEdges: (state) => _.values(state.edgesById),
         selectedComponent(): FullComponent {
           return this.componentsById[this.selectedComponentId || 0];
         },
-        selectedEdge(): DiagramEdgeDef {
-          return this.diagramEdgesById[this.selectedEdgeId || 0];
+        selectedComponents(): FullComponent[] {
+          return _.compact(
+            _.map(this.selectedComponentIds, (id) => this.componentsById[id]),
+          );
+        },
+        selectedEdge(): Edge {
+          return this.edgesById[this.selectedEdgeId || 0];
         },
         selectedComponentDiff(): ComponentDiff | undefined {
           return this.componentDiffsById[this.selectedComponentId || 0];
@@ -424,12 +440,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
 
-        edgesByFromNodeId(): Record<ComponentNodeId, DiagramEdgeDef[]> {
-          return _.groupBy(this.diagramEdges, (e) => e.fromNodeId);
+        diagramEdges(): DiagramEdgeDef[] {
+          return this.allEdges;
         },
 
-        edgesByToNodeId(): Record<ComponentNodeId, DiagramEdgeDef[]> {
-          return _.groupBy(this.diagramEdges, (e) => e.toNodeId);
+        edgesByFromNodeId(): Record<ComponentNodeId, Edge[]> {
+          return _.groupBy(this.allEdges, (e) => e.fromNodeId);
+        },
+
+        edgesByToNodeId(): Record<ComponentNodeId, Edge[]> {
+          return _.groupBy(this.allEdges, (e) => e.toNodeId);
         },
 
         schemaVariants: (state) => _.values(state.schemaVariantsById),
@@ -488,7 +508,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           // TODO: this is ugly... much of this logic is duplicated in GenericDiagram
 
           const connectedNodes: Record<ComponentId, ComponentId[]> = {};
-          _.each(_.values(state.diagramEdgesById), (edge) => {
+          _.each(_.values(state.edgesById), (edge) => {
             const fromNodeId = edge.fromNodeId;
             const toNodeId = edge.toNodeId;
             connectedNodes[fromNodeId] ||= [];
@@ -519,15 +539,41 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         async FETCH_DIAGRAM_DATA() {
           return new ApiRequest<{
             components: RawComponent[];
-            edges: DiagramEdgeDef[];
+            edges: Edge[];
           }>({
             url: "diagram/get_diagram",
             params: {
               ...visibilityParams,
             },
             onSuccess: (response) => {
+              // TODO: remove this temporary fix
+              _.each(response.components, (c) => {
+                /* eslint-disable @typescript-eslint/no-explicit-any */
+                if ((c as any).deletedAt) {
+                  c.deletedInfo = {
+                    actor: { kind: "user", label: "You", id: "123" },
+                    timestamp: (c as any).deletedAt,
+                  };
+                  delete (c as any).deletedAt;
+                }
+              });
+
+              const now = new Date().toISOString();
+              _.each(response.edges, (e) => {
+                e.createdInfo = {
+                  timestamp: now,
+                  actor: { label: "You", kind: "user" },
+                };
+                if (e.changeStatus === "deleted") {
+                  e.deletedInfo = {
+                    timestamp: now,
+                    actor: { label: "You", kind: "user" },
+                  };
+                }
+              });
+
               this.rawComponentsById = _.keyBy(response.components, "id");
-              this.diagramEdgesById = _.keyBy(response.edges, "id");
+              this.edgesById = _.keyBy(response.edges, "id");
             },
           });
         },
@@ -634,24 +680,26 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             },
             onSuccess: (response) => {
               // change our temporary id to the real one
-              this.diagramEdgesById[response.connection.id] =
-                this.diagramEdgesById[tempId];
-              delete this.diagramEdgesById[tempId];
+              this.edgesById[response.connection.id] = this.edgesById[tempId];
+              delete this.edgesById[tempId];
               // TODO: store component details rather than waiting for re-fetch
             },
             optimistic: () => {
-              this.diagramEdgesById[tempId] = {
+              const nowTs = new Date().toISOString();
+              this.edgesById[tempId] = {
                 id: tempId,
-                // type?: string;
-                // name?: string;
                 fromNodeId: from.nodeId,
                 fromSocketId: from.socketId,
                 toNodeId: to.nodeId,
                 toSocketId: to.socketId,
                 changeStatus: "added",
+                createdInfo: {
+                  timestamp: nowTs,
+                  actor: { kind: "user", label: "You" },
+                },
               };
               return () => {
-                delete this.diagramEdgesById[tempId];
+                delete this.edgesById[tempId];
               };
             },
           });
@@ -715,23 +763,25 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
-              if (this.diagramEdgesById[edgeId].changeStatus === "added") {
-                const originalEdge = this.diagramEdgesById[edgeId];
-                delete this.diagramEdgesById[edgeId];
+              if (this.edgesById[edgeId].changeStatus === "added") {
+                const originalEdge = this.edgesById[edgeId];
+                delete this.edgesById[edgeId];
                 this.selectedEdgeId = null;
                 return () => {
-                  this.diagramEdgesById[edgeId] = originalEdge;
+                  this.edgesById[edgeId] = originalEdge;
                   this.selectedEdgeId = edgeId;
                 };
               } else {
-                const originalStatus =
-                  this.diagramEdgesById[edgeId].changeStatus;
-                this.diagramEdgesById[edgeId].changeStatus = "deleted";
-                this.diagramEdgesById[edgeId].deletedAt = new Date();
+                const originalStatus = this.edgesById[edgeId].changeStatus;
+                this.edgesById[edgeId].changeStatus = "deleted";
+                this.edgesById[edgeId].deletedInfo = {
+                  timestamp: new Date().toISOString(),
+                  actor: { kind: "user", label: "You" },
+                };
 
                 return () => {
-                  this.diagramEdgesById[edgeId].changeStatus = originalStatus;
-                  delete this.diagramEdgesById[edgeId]?.deletedAt;
+                  this.edgesById[edgeId].changeStatus = originalStatus;
+                  delete this.edgesById[edgeId]?.deletedInfo;
                   this.selectedEdgeId = edgeId;
                 };
               }
@@ -752,12 +802,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
             optimistic: () => {
-              const originalEdge = this.diagramEdgesById[edgeId];
-              delete this.diagramEdgesById[edgeId]?.deletedAt;
-              this.diagramEdgesById[edgeId].changeStatus = "unmodified";
+              const originalEdge = this.edgesById[edgeId];
+              delete this.edgesById[edgeId]?.deletedInfo;
+              this.edgesById[edgeId].changeStatus = "unmodified";
 
               return () => {
-                this.diagramEdgesById[edgeId] = originalEdge;
+                this.edgesById[edgeId] = originalEdge;
                 this.selectedEdgeId = edgeId;
               };
             },
@@ -776,6 +826,34 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             onSuccess: (response) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
+          });
+        },
+        async RESTORE_COMPONENT(componentId: ComponentId) {
+          return new ApiRequest({
+            method: "post",
+            url: "diagram/restore_component",
+            keyRequestStatusBy: componentId,
+            params: {
+              componentId,
+              ...visibilityParams,
+            },
+            onSuccess: (response) => {
+              // this.componentDiffsById[componentId] = response.componentDiff;
+            },
+          });
+        },
+
+        // TODO: maybe want the backend to handle this bulk calls instead
+        // so it can optimize how it handles updates / queueing
+        async DELETE_COMPONENTS(componentIds: ComponentId[]) {
+          await async.eachSeries(componentIds, async (componentId) => {
+            await this.DELETE_COMPONENT(componentId);
+          });
+        },
+        async RESTORE_COMPONENTS(componentIds: ComponentId[]) {
+          // TODO: maybe want the backend to handle this all at once?
+          await async.eachSeries(componentIds, async (componentId) => {
+            await this.RESTORE_COMPONENT(componentId);
           });
         },
 

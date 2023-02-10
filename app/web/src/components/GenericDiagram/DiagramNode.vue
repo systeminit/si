@@ -273,7 +273,6 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Tween } from "konva/lib/Tween";
 import { Vector2d } from "konva/lib/types";
 import { useTheme } from "@/ui-lib/theme_tools";
-import { colors as CORE_COLORS } from "../../utils/design_token_values";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeData,
@@ -408,7 +407,6 @@ watch([nodeWidth, nodeHeight, position], () => {
 
 const colors = computed(() => {
   const primaryColor = tinycolor(props.node.def.color || DEFAULT_NODE_COLOR);
-  const headerText = primaryColor.isDark() ? "#FFF" : "#000";
 
   // body bg
   const bodyBgHsl = primaryColor.toHsl();

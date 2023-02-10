@@ -46,6 +46,10 @@ module.exports = {
       width: themeValues.width,
       // TODO: change from extends to override once we remove references to those sizes
       screens: themeValues.screens,
+
+      fontSize: {
+        "2xs": "0.5rem",
+      },
     },
   },
   variants: {

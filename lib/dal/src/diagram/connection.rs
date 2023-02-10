@@ -92,14 +92,10 @@ impl Connection {
 #[serde(rename_all = "camelCase")]
 pub struct DiagramEdgeView {
     id: String,
-    #[serde(rename = "type")]
-    ty: Option<String>,
-    name: Option<String>,
     from_node_id: String,
     from_socket_id: String,
     to_node_id: String,
     to_socket_id: String,
-    is_bidirectional: Option<bool>,
     change_status: ChangeStatus,
 }
 
@@ -113,13 +109,10 @@ impl DiagramEdgeView {
     pub fn from_with_change_status(conn: Connection, change_status: ChangeStatus) -> Self {
         Self {
             id: conn.id.to_string(),
-            ty: None,
-            name: None,
             from_node_id: conn.source.node_id.to_string(),
             from_socket_id: conn.source.socket_id.to_string(),
             to_node_id: conn.destination.node_id.to_string(),
             to_socket_id: conn.destination.socket_id.to_string(),
-            is_bidirectional: Some(false),
             change_status,
         }
     }

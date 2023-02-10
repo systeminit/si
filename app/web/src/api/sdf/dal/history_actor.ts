@@ -2,4 +2,4 @@
 // person, service, etc.
 export type ActorView =
   | { kind: "system"; label: string }
-  | { kind: "user"; label: string; id: string };
+  | { kind: "user"; label: string; id?: string };

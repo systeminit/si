@@ -69,9 +69,6 @@ const component = computed(
   () => componentsStore.componentsById[props.componentId],
 );
 
-const componentColor = tinycolor(component.value.color || "#FFF");
-const componentColorIsDark = componentColor.isDark();
-
 const primaryColor = tinycolor(component.value.color);
 
 // body bg

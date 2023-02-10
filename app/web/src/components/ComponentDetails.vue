@@ -7,50 +7,16 @@
       </Inline>
     </div> -->
 
-    <div class="px-xs pt-xs text-xs">{{ selectedComponent.id }}</div>
-    <ComponentCard :component-id="selectedComponent.id" class="m-xs" />
-
-    <div class="m-xs mt-0 text-xs italic text-neutral-300">
-      <Inline
-        spacing="2xs"
-        :class="
-          clsx(selectedComponent.changeStatus === 'added' && 'text-success-500')
-        "
-      >
-        <Icon name="plus-circle" size="xs" />
-        {{ formatters.timeAgo(selectedComponent.createdInfo.timestamp) }} by
-        {{ selectedComponent.createdInfo.actor.label }}
-      </Inline>
-      <Inline
-        v-if="
-          (selectedComponent.changeStatus === 'modified' ||
-            selectedComponent.changeStatus === 'unmodified') &&
-          selectedComponent.createdInfo.timestamp !==
-            selectedComponent.updatedInfo.timestamp
-        "
-        spacing="2xs"
-        :class="
-          clsx(
-            selectedComponent.changeStatus === 'modified' && 'text-warning-500',
-          )
-        "
-      >
-        <Icon name="tilde-circle" size="xs" />
-        {{ formatters.timeAgo(selectedComponent.updatedInfo.timestamp) }} by
-        {{ selectedComponent.updatedInfo.actor.label }}
-      </Inline>
-      <Inline
-        v-if="selectedComponent.changeStatus === 'deleted'"
-        class="text-destructive-500"
-        spacing="2xs"
-      >
-        <Icon name="minus-circle" size="xs" />
-        <!-- {{ formatters.timeAgo(selectedComponent.updatedInfo.timestamp) }} by
-        {{ selectedComponent.updatedInfo.actor.label }} -->
-        {{ formatters.timeAgo(selectedComponent.deletedAt) }} by
-        {{ selectedComponent.createdInfo.actor.label }}
-      </Inline>
+    <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
+      COMPONENT ID = {{ selectedComponent.id }}
     </div>
+    <ComponentCard :component-id="selectedComponent.id" class="m-xs" />
+    <DetailsPanelTimestamps
+      :change-status="selectedComponent.changeStatus"
+      :created="selectedComponent.createdInfo"
+      :modified="selectedComponent.updatedInfo"
+      :deleted="selectedComponent.deletedInfo"
+    />
 
     <div
       v-if="currentStatus"
@@ -83,9 +49,22 @@
     </div>
 
     <template v-if="selectedComponent.changeStatus === 'deleted'">
-      <p>DELETED!</p>
-      <VButton2 />
+      <Stack class="p-sm">
+        <ErrorMessage icon="alert-triangle" tone="warning">
+          This component will be removed from your model when this change set is
+          merged
+        </ErrorMessage>
+        <VButton2
+          tone="shade"
+          variant="ghost"
+          size="md"
+          icon="trash-restore"
+          label="Restore component"
+          @click="emit('restore')"
+        />
+      </Stack>
     </template>
+
     <template v-else>
       <div class="flex-grow relative">
         <SiTabGroup>
@@ -159,7 +138,6 @@
 </template>
 
 <script lang="ts" setup>
-import clsx from "clsx";
 import { TabPanel } from "@headlessui/vue";
 import { computed, onBeforeMount } from "vue";
 import { useComponentsStore } from "@/store/components.store";
@@ -172,15 +150,18 @@ import HealthIcon from "@/components/HealthIcon.vue";
 import Timestamp from "@/ui-lib/Timestamp.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
-import Inline from "@/ui-lib/layout/Inline.vue";
-import formatters from "@/ui-lib/helpers/formatting";
+import VButton2 from "@/ui-lib/VButton2.vue";
+import Stack from "@/ui-lib/layout/Stack.vue";
 import ComponentCard from "./ComponentCard.vue";
+import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 
 const props = defineProps<{
   disabled?: boolean;
 }>();
 
 const emit = defineEmits(["delete", "restore"]);
+
+const DEV_MODE = import.meta.env.DEV;
 
 const componentsStore = useComponentsStore();
 
