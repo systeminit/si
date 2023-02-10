@@ -37,10 +37,11 @@ impl MigrationDriver {
                 ctx,
                 SchemaVariantDefinitionMetadataJson::new(
                     "Ingress",
-                    None::<&str>,
+                    None,
                     ui_menu_category,
                     node_color,
                     ComponentKind::Standard,
+                    None,
                     None,
                 ),
                 None,

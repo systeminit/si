@@ -13,7 +13,8 @@ CREATE TABLE schema_variant_definitions
     link                        text,
     color                       varchar(6)               NOT NULL DEFAULT '000000',
     component_kind              text                     NOT NULL,
-    definition                  text                     NOT NULL DEFAULT ''
+    definition                  text                     NOT NULL DEFAULT '',
+    description                 text
 );
 SELECT standard_model_table_constraints_v1('schema_variant_definitions');
 
@@ -30,6 +31,7 @@ CREATE OR REPLACE FUNCTION schema_variant_definition_create_v1(
     this_color text,
     this_component_kind text,
     this_definition text,
+    this_description text,
     OUT object json) AS
 $$
 DECLARE
@@ -42,13 +44,14 @@ BEGIN
 
     INSERT INTO schema_variant_definitions (
         tenancy_workspace_pk, visibility_change_set_pk, visibility_deleted_at,
-        name, menu_name, category, link, definition, color, component_kind
+        name, menu_name, category, link, definition, color, component_kind,
+        description
     ) VALUES (
         this_tenancy_record.tenancy_workspace_pk,
         this_visibility_record.visibility_change_set_pk,
         this_visibility_record.visibility_deleted_at, this_name,
         this_menu_name, this_category, this_link, this_definition, this_color,
-        this_component_kind
+        this_component_kind, this_description
     )
     RETURNING * INTO this_new_row;
 

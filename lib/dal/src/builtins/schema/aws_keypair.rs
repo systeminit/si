@@ -40,10 +40,11 @@ impl MigrationDriver {
                 ctx,
                 SchemaVariantDefinitionMetadataJson::new(
                     "Key Pair",
-                    None::<&str>,
+                    None,
                     ui_menu_category,
                     node_color,
                     ComponentKind::Standard,
+                    None,
                     None,
                 ),
                 None,

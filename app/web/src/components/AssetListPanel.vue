@@ -25,7 +25,7 @@
         Select an asset to view or edit it.
       </div>
       <ul class="overflow-y-auto min-h-[200px]">
-        <AssetListItem v-for="a in assetStore.assetsById" :key="a.id" :a="a" />
+        <AssetListItem v-for="a in assetStore.assetList" :key="a.id" :a="a" />
       </ul>
     </template>
   </div>
@@ -43,24 +43,24 @@ import AssetListItem from "./AssetListItem.vue";
 
 const router = useRouter();
 const assetStore = useAssetStore();
-const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSETS");
+const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
 const props = defineProps({
-  slug: { type: String },
+  assetId: { type: String },
 });
 
 onMounted(() => {
-  if (!props.slug) {
-    assetStore.setSelectedAssetId(null);
+  if (!props.assetId) {
+    assetStore.SELECT_ASSET(null);
   }
 });
 
 const newAsset = () => {
   const asset = assetStore.createNewAsset();
-  assetStore.setSelectedAssetId(asset.id);
+  assetStore.SELECT_ASSET(asset.id);
   router.push({
     name: "workspace-lab-assets",
-    params: { assetSlug: asset.slug },
+    params: { assetId: asset.id },
   });
 };
 </script>

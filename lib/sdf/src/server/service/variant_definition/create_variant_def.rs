@@ -15,8 +15,8 @@ pub struct CreateVariantDefRequest {
     pub menu_name: Option<String>,
     pub category: String,
     pub color: String,
-    pub component_kind: Option<ComponentKind>,
     pub link: Option<String>,
+    pub description: Option<String>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -42,7 +42,8 @@ pub async fn create_variant_def(
         request.category,
         request.link,
         request.color,
-        request.component_kind.unwrap_or(ComponentKind::Standard),
+        ComponentKind::Standard,
+        request.description,
         "".to_string(),
     )
     .await?;

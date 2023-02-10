@@ -2,30 +2,48 @@ import { defineStore } from "pinia";
 import _ from "lodash";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
+import { Visibility } from "@/api/sdf/dal/visibility";
+import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
 
 export type AssetId = string;
 
-export type Asset = {
+export interface ListVariantDefsResponse {
+  variantDefs: ListedVariantDef[];
+}
+
+export interface ListedVariantDef {
   id: AssetId;
-  displayName: string;
-  slug: string;
-  code: string;
-  color: string;
-  version: string;
-  createdAt: Date;
-  createdBy: string;
-  description: string;
+  name: string;
+  menuName?: string;
   category: string;
-  documentationUrl: string;
-};
+  color: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface VariantDef extends ListedVariantDef {
+  link?: string;
+  definition: string;
+}
+
+export type Asset = VariantDef;
+export type AssetListEntry = ListedVariantDef;
+
+export const assetDisplayName = (asset: Asset | AssetListEntry) =>
+  asset.menuName ?? asset.name;
 
 export const useAssetStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
+  const visibility = {
+    visibility_change_set_pk: changeSetId ?? nilId(),
+  };
   return addStoreHooks(
     defineStore(`cs${changeSetId || "NONE"}/asset`, {
       state: () => ({
+        assetList: [] as ListedVariantDef[],
         assetsById: {} as Record<AssetId, Asset>,
         selectedAssetId: null as AssetId | null,
         lastAssignedId: null as number | null, // TODO - this won't be needed once we have the backend involved
@@ -46,15 +64,18 @@ export const useAssetStore = () => {
             }
           }
         },
-        setSelectedAssetBySlug(selection: string | null) {
+
+        async SELECT_ASSET(selection: AssetId | null) {
           if (!selection) {
-            this.selectedAssetId = null;
-          } else {
-            const pkg = _.find(this.assets, (p) => p.slug === selection);
-            if (pkg) {
-              this.selectedAssetId = pkg.id;
-            }
+            this.setSelectedAssetId(selection);
+            return;
           }
+
+          if (!this.assetsById[selection]) {
+            await this.LOAD_ASSET(selection);
+          }
+
+          this.setSelectedAssetId(selection);
         },
 
         // MOCK DATA GENERATION
@@ -73,31 +94,6 @@ export const useAssetStore = () => {
 
         generateMockAssets() {
           const assets = {} as Record<AssetId, Asset>;
-          const amount = 5 + Math.floor(Math.random() * 20);
-
-          for (let i = 0; i < amount; i++) {
-            assets[i] = {
-              id: `${i}`,
-              displayName: `test asset ${Math.floor(Math.random() * 10000)}${
-                Math.floor(Math.random() * 20) === 0
-                  ? " omg has such a long name the name is so long you can't even believe how long it is!"
-                  : ""
-              }`,
-              slug: `test${i}`,
-              code: "here is where the code goes! this is just a mock\n\n\n\n\nYeah nothing to see here\n\n\n\n\n\n\n\n\n\n\n\n\njust testing the display of the CodeViewer for this spot\n\n\n\n\n\n\n\nCool.",
-              color: this.generateMockColor(),
-              version: "13.12",
-              createdAt: new Date(
-                new Date().getTime() - Math.random() * 10000000000,
-              ),
-              createdBy: "Fake McMock",
-              description:
-                "this is where the description will go, currently this is just mock data",
-              category: "mock AWS",
-              documentationUrl: "https://www.systeminit.com/",
-            };
-            this.lastAssignedId = i;
-          }
 
           return assets;
         },
@@ -111,40 +107,46 @@ export const useAssetStore = () => {
 
           const newAsset = {
             id: `${this.lastAssignedId}`,
-            displayName: `new asset ${Math.floor(Math.random() * 10000)}${
+            name: `new asset ${Math.floor(Math.random() * 10000)}${
               Math.floor(Math.random() * 20) === 0
                 ? " omg has such a long name the name is so long you can't even believe how long it is!"
                 : ""
             }`,
-            slug: `test${this.lastAssignedId}`,
-            code: "",
+            definition: "",
             color: this.generateMockColor(),
-            version: "0.0",
-            createdAt: new Date(),
-            createdBy: "you",
             description: "",
             category: "",
-            documentationUrl: "https://www.systeminit.com/",
+            link: "https://www.systeminit.com/",
+            createdAt: new Date(),
+            updatedAt: new Date(),
           };
 
           this.assetsById[`${this.lastAssignedId}`] = newAsset;
           return newAsset;
         },
 
-        async LOAD_ASSETS() {
-          return new ApiRequest({
-            url: "/session/restore_authentication", // TODO - replace with real API request
-            onSuccess: () => {
-              if (!this.assetsById[0]) {
-                // only generate mock assets if we haven't done so yet
-                this.assetsById = this.generateMockAssets();
-              }
+        async LOAD_ASSET(assetId: AssetId) {
+          return new ApiRequest<Asset, Visibility & { id: AssetId }>({
+            url: "/variant_def/get_variant_def",
+            params: { id: assetId, ...visibility },
+            onSuccess: (response) => {
+              this.assetsById[response.id] = response;
+            },
+          });
+        },
+
+        async LOAD_ASSET_LIST() {
+          return new ApiRequest<ListVariantDefsResponse, Visibility>({
+            url: "/variant_def/list_variant_defs",
+            params: { ...visibility },
+            onSuccess: (response) => {
+              this.assetList = response.variantDefs;
             },
           });
         },
       },
       onActivated() {
-        this.LOAD_ASSETS();
+        this.LOAD_ASSET_LIST();
       },
     }),
   )();
