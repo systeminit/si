@@ -12,6 +12,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::{Client, EncryptionKey};
 
+use crate::builtins::BuiltinSchemaOption;
+
 pub mod action_prototype;
 pub mod actor_view;
 pub mod attribute;
@@ -68,7 +70,6 @@ pub mod workflow_runner;
 pub mod workspace;
 pub mod ws_event;
 
-use crate::builtins::BuiltinSchemaOption;
 pub use action_prototype::{
     ActionPrototype, ActionPrototypeContext, ActionPrototypeError, ActionPrototypeId,
 };
@@ -156,6 +157,7 @@ pub use schema::variant::leaves::LeafKind;
 pub use schema::variant::root_prop::component_type::ComponentType;
 pub use schema::variant::root_prop::RootProp;
 pub use schema::variant::root_prop::RootPropChild;
+pub use schema::variant::SchemaVariantError;
 pub use schema::{Schema, SchemaError, SchemaId, SchemaPk, SchemaVariant, SchemaVariantId};
 pub use secret::{
     DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretKind,

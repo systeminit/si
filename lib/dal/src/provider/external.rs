@@ -5,13 +5,12 @@ use thiserror::Error;
 
 use crate::func::binding::FuncBindingId;
 use crate::func::binding_return_value::FuncBindingReturnValueId;
-use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     standard_model_has_many, AttributePrototype, AttributePrototypeError, ComponentId, DiagramKind,
-    FuncId, HistoryEventError, InternalProviderId, SchemaVariant, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    FuncId, HistoryEventError, InternalProviderId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility,
 };
 use crate::{
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototypeId,
@@ -161,24 +160,12 @@ impl ExternalProvider {
             &SocketEdgeKind::ConfigurationOutput,
             &arity,
             &DiagramKind::Configuration,
+            Some(schema_variant_id),
         )
         .await?;
         socket
             .set_external_provider(ctx, external_provider.id())
             .await?;
-
-        let variant = SchemaVariant::get_by_id(ctx, external_provider.schema_variant_id())
-            .await?
-            .ok_or_else(|| {
-                ExternalProviderError::SchemaVariant(
-                    SchemaVariantError::NotFound(*external_provider.schema_variant_id())
-                        .to_string(),
-                )
-            })?;
-        variant
-            .add_socket(ctx, socket.id())
-            .await
-            .map_err(|err| ExternalProviderError::SchemaVariant(err.to_string()))?;
 
         Ok((external_provider, socket))
     }

@@ -15,6 +15,7 @@ async fn new(ctx: &DalContext) {
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
         &DiagramKind::Configuration,
+        None,
     )
     .await
     .expect("cannot create schema ui menu");
@@ -32,6 +33,7 @@ async fn set_required(ctx: &DalContext) {
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::One,
         &DiagramKind::Configuration,
+        None,
     )
     .await
     .expect("unable to create socket");
@@ -111,23 +113,25 @@ async fn list_for_component(ctx: &DalContext) {
         .expect("cannot create schema variant");
 
     // Create some additional sockets from the defaults.
-    Socket::new(
+    let output_socket = Socket::new(
         ctx,
         "output",
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
         &DiagramKind::Configuration,
+        Some(*schema_variant.id()),
     )
     .await
     .expect("could not create socket");
-    Socket::new(
+    let input_socket = Socket::new(
         ctx,
         "input",
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::Many,
         &DiagramKind::Configuration,
+        Some(*schema_variant.id()),
     )
     .await
     .expect("could not create socket");
@@ -157,6 +161,8 @@ async fn list_for_component(ctx: &DalContext) {
         .iter()
         .map(|s| *s.id())
         .collect::<Vec<SocketId>>();
+    assert!(found_sockets.contains(output_socket.id()));
+    assert!(found_sockets.contains(input_socket.id()));
     assert_eq!(
         expected_sockets, // expected
         found_sockets,    // actual

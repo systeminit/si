@@ -20,12 +20,17 @@ const LIST_FOR_COMPONENT: &str = include_str!("queries/socket/list_for_component
 pub enum SocketError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("socket not found: {0}")]
-    NotFound(SocketId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+
+    /// Propagate a [`SchemaVariantError`](crate::SchemaVariantError) wrapped as a string.
+    #[error("schema variant error: {0}")]
+    SchemaVariant(String),
+    /// Could not find the [`SchemaVariant`](crate::SchemaVariant) by id.
+    #[error("schema variant not found by id: {0}")]
+    SchemaVariantNotFound(SchemaVariantId),
 }
 
 pub type SocketResult<T> = Result<T, SocketError>;
@@ -120,14 +125,14 @@ impl_standard_model! {
 }
 
 impl Socket {
-    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
         kind: SocketKind,
-        edge_kind: &SocketEdgeKind,
+        socket_edge_kind: &SocketEdgeKind,
         arity: &SocketArity,
         diagram_kind: &DiagramKind,
+        schema_variant_id: Option<SchemaVariantId>,
     ) -> SocketResult<Self> {
         let name = name.as_ref();
         let row = ctx
@@ -140,13 +145,24 @@ impl Socket {
                     ctx.visibility(),
                     &name,
                     &kind.as_ref(),
-                    &edge_kind.as_ref(),
+                    &socket_edge_kind.as_ref(),
                     &arity.as_ref(),
                     &diagram_kind.as_ref(),
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(ctx, row).await?;
+        let object: Socket = standard_model::finish_create_from_row(ctx, row).await?;
+
+        if let Some(schema_variant_id) = schema_variant_id {
+            let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
+                .await
+                .map_err(|e| SocketError::SchemaVariant(e.to_string()))?
+                .ok_or(SocketError::SchemaVariantNotFound(schema_variant_id))?;
+            schema_variant
+                .add_socket(ctx, &object.id)
+                .await
+                .map_err(|e| SocketError::SchemaVariant(e.to_string()))?
+        }
 
         Ok(object)
     }

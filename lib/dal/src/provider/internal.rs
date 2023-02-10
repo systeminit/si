@@ -76,15 +76,14 @@ use crate::attribute::context::AttributeContextBuilder;
 use crate::func::backend::identity::FuncBackendIdentityArgs;
 use crate::func::binding::{FuncBindingError, FuncBindingId};
 use crate::func::binding_return_value::FuncBindingReturnValueId;
-use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 use crate::standard_model::object_option_from_row_option;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
     AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView, DiagramKind,
-    FuncError, FuncId, HistoryEventError, Prop, PropError, SchemaVariant, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    FuncError, FuncId, HistoryEventError, Prop, PropError, StandardModel, StandardModelError,
+    Tenancy, Timestamp, Visibility,
 };
 use crate::{
     standard_model_has_many, AttributeContext, AttributeContextError, AttributeValue, DalContext,
@@ -345,24 +344,12 @@ impl InternalProvider {
             &SocketEdgeKind::ConfigurationInput,
             &arity,
             &DiagramKind::Configuration,
+            Some(schema_variant_id),
         )
         .await?;
         socket
             .set_internal_provider(ctx, explicit_internal_provider.id())
             .await?;
-
-        let variant = SchemaVariant::get_by_id(ctx, explicit_internal_provider.schema_variant_id())
-            .await?
-            .ok_or_else(|| {
-                InternalProviderError::SchemaVariant(
-                    SchemaVariantError::NotFound(*explicit_internal_provider.schema_variant_id())
-                        .to_string(),
-                )
-            })?;
-        variant
-            .add_socket(ctx, socket.id())
-            .await
-            .map_err(|err| InternalProviderError::SchemaVariant(err.to_string()))?;
 
         Ok((explicit_internal_provider, socket))
     }
