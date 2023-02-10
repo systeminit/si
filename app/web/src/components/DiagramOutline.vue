@@ -27,10 +27,6 @@ import SiSearch from "@/components/SiSearch.vue";
 import ComponentTree from "@/components/ComponentTree.vue";
 import { useComponentsStore } from "@/store/components.store";
 
-const props = defineProps<{
-  selectedComponentId?: string;
-}>();
-
 const emit = defineEmits<{
   (e: "select", componentId: string): void;
   (e: "multiselect", componentId: string): void;

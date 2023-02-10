@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 
@@ -5,7 +6,10 @@ use crate::change_status::ChangeStatus;
 use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
-use crate::{DalContext, DiagramError, Node, NodePosition, SchemaVariant, StandardModel};
+use crate::{
+    ActorView, ChangeSetPk, Component, ComponentStatus, DalContext, DiagramError,
+    HistoryActorTimestamp, Node, NodePosition, ResourceView, SchemaVariant, StandardModel,
+};
 
 #[derive(
     AsRefStr,
@@ -130,41 +134,48 @@ impl Size2D {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct DiagramNodeView {
+pub struct DiagramComponentView {
     id: String,
-    component_id: String,
-    #[serde(rename = "type")]
-    ty: Option<String>,
-    title: String,
-    category: Option<String>,
-    subtitle: Option<String>,
-    content: Option<String>,
+    node_id: String,
+    display_name: Option<String>,
+
+    schema_name: String,
+    schema_id: String,
+    schema_variant_id: String,
+    schema_variant_name: String,
+    schema_category: Option<String>,
+
     sockets: Option<Vec<SocketView>>,
     position: GridPoint,
     size: Option<Size2D>,
     color: Option<String>,
     node_type: String,
     change_status: ChangeStatus,
+    resource: ResourceView,
+
+    created_info: HistoryEventMetadata,
+    updated_info: HistoryEventMetadata,
+
+    // TODO: get the right history event so we can show the actor
+    // deleted_info: Option<HistoryEventMetadata>,
+    deleted_at: Option<DateTime<Utc>>,
 }
 
-impl DiagramNodeView {
+impl DiagramComponentView {
     pub async fn new(
         ctx: &DalContext,
+        component: &Component,
         node: &Node,
         position: &NodePosition,
-        change_status: ChangeStatus,
+        is_modified: bool,
         schema_variant: &SchemaVariant,
     ) -> DiagramResult<Self> {
-        let component = node
-            .component(ctx)
-            .await?
-            .ok_or(DiagramError::ComponentNotFound)?;
         let schema = schema_variant
             .schema(ctx)
             .await?
             .ok_or(DiagramError::SchemaNotFound)?;
 
-        let category = SchemaUiMenu::find_for_schema(ctx, *schema.id())
+        let schema_category = SchemaUiMenu::find_for_schema(ctx, *schema.id())
             .await?
             .map(|um| um.category().to_string());
 
@@ -180,14 +191,41 @@ impl DiagramNodeView {
         let x = position.x().parse::<f64>()?;
         let y = position.y().parse::<f64>()?;
 
+        let change_status = if node.visibility().deleted_at.is_some() {
+            ChangeStatus::Deleted
+        } else if node.visibility().change_set_pk != ChangeSetPk::NONE {
+            ChangeStatus::Added
+        } else if is_modified {
+            ChangeStatus::Modified
+        } else {
+            ChangeStatus::Unmodified
+        };
+
+        // TODO: not really the right error...?
+        let component_status = ComponentStatus::get_by_id(ctx, component.id())
+            .await?
+            .ok_or(DiagramError::ComponentNotFound)?;
+
+        let created_info =
+            HistoryEventMetadata::from_history_actor_timestamp(ctx, component_status.creation())
+                .await?;
+        let updated_info =
+            HistoryEventMetadata::from_history_actor_timestamp(ctx, component_status.update())
+                .await?;
+
+        // TODO(theo): probably dont want to fetch this here and load totally separately, but we inherited from existing endpoints
+        let resource = ResourceView::new(component.resource(ctx).await?);
+
         Ok(Self {
-            id: node.id().to_string(),
-            component_id: component.id().to_string(),
-            ty: None,
-            title: schema.name().to_owned(),
-            category,
-            subtitle: Some(component.name(ctx).await?),
-            content: None,
+            id: component.id().to_string(),
+            node_id: node.id().to_string(),
+            display_name: Some(component.name(ctx).await?),
+
+            schema_name: schema.name().to_owned(),
+            schema_variant_name: schema_variant.name().to_owned(),
+            schema_id: schema.id().to_string(),
+            schema_variant_id: schema_variant.id().to_string(),
+            schema_category,
             sockets: Some(SocketView::list(ctx, schema_variant).await?),
             position: GridPoint {
                 x: x.round() as isize,
@@ -207,6 +245,11 @@ impl DiagramNodeView {
                 .await?
                 .unwrap_or_else(|| "component".to_string()),
             change_status,
+            resource,
+
+            created_info,
+            updated_info,
+            deleted_at: component.visibility().deleted_at, // TODO: get deleted info instead
         })
     }
 
@@ -220,5 +263,28 @@ impl DiagramNodeView {
 
     pub fn size(&self) -> &Option<Size2D> {
         &self.size
+    }
+}
+
+// TODO(theo,victor): this should probably move and be used more generally in a few places?
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryEventMetadata {
+    actor: ActorView,
+    timestamp: DateTime<Utc>,
+}
+
+impl HistoryEventMetadata {
+    async fn from_history_actor_timestamp(
+        ctx: &DalContext,
+        value: HistoryActorTimestamp,
+    ) -> DiagramResult<Self> {
+        let actor = ActorView::from_history_actor(ctx, value.actor).await?;
+
+        Ok(Self {
+            actor,
+            timestamp: value.timestamp,
+        })
     }
 }

@@ -170,7 +170,7 @@ export type DiagramNodeDef = {
   /** unique id of the node's component */
   componentId: ComponentId;
   /** parent frame (or whatever) id */
-  parentId?: DiagramElementId;
+  parentNodeId?: DiagramElementId;
   /** node type within the context of the diagram */
   type?: string | null;
   /** category of diagram node */
@@ -198,7 +198,7 @@ export type DiagramNodeDef = {
   /** if true, node shows the `loading` overlay */
   isLoading: boolean;
   /** the list of childIds related to the node */
-  childIds?: DiagramElementId[];
+  childNodeIds?: DiagramElementId[];
   /** change status of component in relation to head */
   changeStatus?: ChangeStatus;
 };

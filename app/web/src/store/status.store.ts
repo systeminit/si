@@ -182,8 +182,8 @@ export const useStatusStore = (forceChangeSetId?: ChangeSetId) => {
                 isUpdating: false,
                 stepsCountCurrent: 0,
                 stepsCountTotal: 0,
-                lastUpdateAt: new Date(component.updatedAt.timestamp),
-                lastUpdateBy: component.updatedAt.actor,
+                lastUpdateAt: new Date(component.updatedInfo.timestamp),
+                lastUpdateBy: component.updatedInfo.actor,
                 statusMessage: "Component updated",
               };
             }

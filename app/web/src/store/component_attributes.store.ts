@@ -145,8 +145,8 @@ export const useComponentAttributesStore = () => {
                   this.selectedComponent.schemaName === "Generic Frame";
                 const isReadonly =
                   prop.name === "type" &&
-                  this.selectedComponent.childIds !== undefined &&
-                  this.selectedComponent.childIds.length > 0;
+                  this.selectedComponent.childNodeIds !== undefined &&
+                  this.selectedComponent.childNodeIds.length > 0;
 
                 props[propKey] = {
                   ...prop,

@@ -2,16 +2,29 @@
 it from the diagram config's registry of icons */
 
 <template>
-  <KonvaSvgImage
-    :raw-svg="rawSvg"
-    :color="color"
-    :config="config"
-    :spin="icon === 'loader' || spin"
-  />
+  <v-group :config="{ x, y, offset }">
+    <v-circle
+      v-if="circleBg"
+      :config="{
+        width,
+        height,
+        fill: bgColor,
+        offsetX: -width / 2,
+        offsetY: -height / 2,
+      }"
+    />
+    <KonvaSvgImage
+      :raw-svg="rawSvg"
+      :color="color"
+      :config="{ width, height }"
+      :spin="icon === 'loader' || spin"
+    />
+  </v-group>
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import _ from "lodash";
+import { computed, PropType } from "vue";
 import { getIconByName } from "@/ui-lib/icons/icon_set";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 import KonvaSvgImage from "./KonvaSvgImage.vue";
@@ -19,10 +32,34 @@ import KonvaSvgImage from "./KonvaSvgImage.vue";
 const props = defineProps({
   // ideally we'd add the IconNames type
   // but we allow extra icons to be registered for the diagram so we can't
-  icon: { type: String },
+  icon: { type: String, required: true },
+  size: { type: Number, required: true },
+  x: { type: Number, default: 0 },
+  y: { type: Number, default: 0 },
+  color: { type: String, default: "#000000" },
   spin: { type: Boolean },
-  color: { type: String },
-  config: { type: Object, required: true },
+  bgColor: { type: String },
+  circleBg: { type: Boolean },
+  config: { type: Object },
+  origin: {
+    type: String as PropType<
+      "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right"
+    >,
+    default: "center",
+  },
+});
+
+const width = computed(() => props.size);
+const height = computed(() => props.size);
+
+const offset = computed(() => {
+  if (props.origin === "center") {
+    return { x: width.value / 2, y: height.value / 2 };
+  }
+  return {
+    x: props.origin.endsWith("-left") ? 0 : width.value,
+    y: props.origin.startsWith("top-") ? 0 : height.value,
+  };
 });
 
 const diagramConfig = useDiagramConfig();

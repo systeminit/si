@@ -14,7 +14,11 @@
       "
       :style="computedStyle"
     >
-      <slot></slot>
+      <!-- items can be passed in via props -->
+      <DropdownMenuItem v-for="item in items" :key="item.label" v-bind="item" />
+
+      <!-- or use DropdownMenuItem in the default slot -->
+      <slot />
     </div>
   </Teleport>
 </template>
@@ -56,16 +60,23 @@ import {
   inject,
   InjectionKey,
   isRef,
+  PropType,
   provide,
   reactive,
   Ref,
   ref,
   unref,
 } from "vue";
+import DropdownMenuItem from "./DropdownMenuItem.vue";
+
+export type MenuItemObjectDef = InstanceType<typeof DropdownMenuItem>["$props"];
 
 const props = defineProps({
   anchorTo: { type: Object }, // TODO: figure out right type to say "template ref / dom element"
   forceAbove: Boolean,
+  items: {
+    type: Array as PropType<MenuItemObjectDef[]>,
+  },
 });
 
 const internalRef = ref<HTMLElement | null>(null);
@@ -75,28 +86,28 @@ function nextFrame(cb: () => void) {
 }
 
 // Items, registration, settings /////////////////////////////////////////////////////////////////
-const items = reactive({} as Record<string, ComponentInternalInstance>);
+const itemsById = reactive({} as Record<string, ComponentInternalInstance>);
 const sortedItemIds = ref<string[]>([]);
 const focusedItemId = ref<string>();
 const isCheckable = ref(false);
 
 function registerItem(id: string, component: ComponentInternalInstance) {
-  items[id] = component;
+  itemsById[id] = component;
   refreshSortedItemIds();
   refreshSettingsFromItems();
 }
 function unregisterItem(id: string) {
-  delete items[id];
+  delete itemsById[id];
   refreshSortedItemIds();
   refreshSettingsFromItems();
 }
 
 function refreshSortedItemIds() {
   if (!isOpen.value) return;
-  sortedItemIds.value = Object.keys(items).sort((id1, id2) => {
+  sortedItemIds.value = Object.keys(itemsById).sort((id1, id2) => {
     // TODO: extract this logic into utility which we can reuse
-    let domNode1 = items[id1]?.exposed?.domRef;
-    let domNode2 = items[id2]?.exposed?.domRef;
+    let domNode1 = itemsById[id1]?.exposed?.domRef;
+    let domNode2 = itemsById[id2]?.exposed?.domRef;
     if (isRef(domNode1)) domNode1 = domNode1.value;
     if (isRef(domNode2)) domNode2 = domNode2.value;
     if (domNode1.$el) domNode1 = domNode1.$el;
@@ -114,7 +125,7 @@ function refreshSortedItemIds() {
 // ex: the menu being "checkable" is based on if any children have checkable set
 function refreshSettingsFromItems() {
   isCheckable.value = _.some(
-    items,
+    itemsById,
     (item) => item.props?.checked !== undefined,
   );
 }
@@ -140,7 +151,7 @@ const focusedItemIndex = computed({
 });
 const focusedItem = computed(() => {
   if (!focusedItemId.value) return;
-  return items[focusedItemId.value];
+  return itemsById[focusedItemId.value];
 });
 const focusedItemEl = computed(() => {
   // some weird behaviour where things can be inconsistently wrapped in a ref...
@@ -151,7 +162,7 @@ const focusedItemEl = computed(() => {
 });
 
 function focusOnItem(id?: string) {
-  if (id && items[id]) focusedItemId.value = id;
+  if (id && itemsById[id]) focusedItemId.value = id;
   else focusedItemId.value = undefined;
 }
 

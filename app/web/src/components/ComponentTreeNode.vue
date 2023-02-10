@@ -2,6 +2,7 @@
   <li
     class="dark:border-neutral-600 cursor-pointer"
     @click.exact.stop="emit('select', component.id)"
+    @click.right.prevent.exact="emit('select', component.id)"
     @click.meta.stop="emit('multiselect', component.id)"
     @click.ctrl.stop="emit('multiselect', component.id)"
     @dblclick.stop="emit('pan', component.id)"

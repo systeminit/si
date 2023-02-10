@@ -1,7 +1,13 @@
 <template>
   <div
     v-if="computedMessage || $slots.default"
-    class="border border-destructive-500 text-destructive-400 p-xs text-sm rounded-sm flex flex-row items-center"
+    :class="
+      clsx(
+        'border p-xs text-sm rounded-sm flex flex-row items-center',
+        tone === 'destructive' && 'border-destructive-500 text-destructive-400',
+        tone === 'warning' && 'border-warning-500 text-warning-400',
+      )
+    "
   >
     <Icon name="alert-triangle" class="mr-xs flex-none" />
     <div class="flex-grow">
@@ -12,12 +18,15 @@
 
 <script lang="ts" setup>
 import { computed, PropType } from "vue";
+import clsx from "clsx";
 import { ApiRequestStatus } from "@/store/lib/pinia_api_tools";
 import Icon from "./icons/Icon.vue";
+import { Tones } from "./helpers/tones";
 
 const props = defineProps({
   message: { type: String },
   requestStatus: { type: Object as PropType<ApiRequestStatus> },
+  tone: { type: String as PropType<Tones>, default: "destructive" },
 });
 
 const computedMessage = computed(() => {
