@@ -8,12 +8,12 @@
     "
     :to="{
       name: 'workspace-lab-assets',
-      params: { ...route.params, assetSlug: a.slug },
+      params: { ...route.params, assetId: a.id },
     }"
   >
-    <NodeSkeleton :color="a.color" />
+    <NodeSkeleton :color="`#${a.color}`" />
     <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
-      {{ a.displayName }}
+      {{ assetDisplayName(a) }}
     </div>
   </RouterLink>
 </template>
@@ -22,11 +22,15 @@
 import { PropType } from "vue";
 import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
-import { Asset, useAssetStore } from "@/store/asset.store";
+import {
+  AssetListEntry,
+  useAssetStore,
+  assetDisplayName,
+} from "@/store/asset.store";
 import NodeSkeleton from "./NodeSkeleton.vue";
 
 defineProps({
-  a: { type: Object as PropType<Asset>, required: true },
+  a: { type: Object as PropType<AssetListEntry>, required: true },
 });
 
 const route = useRoute();

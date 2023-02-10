@@ -5,6 +5,7 @@ import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { FuncArgument, FuncVariant } from "@/api/sdf/dal/func";
 
+import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
@@ -25,10 +26,6 @@ import {
 } from "./requests/list_input_sources";
 import { execFunc } from "./requests/exec_func";
 import { saveFunc } from "./requests/save_func";
-
-function nilId(): string {
-  return "00000000000000000000000000";
-}
 
 export const nullEditingFunc: EditingFunc = {
   id: nilId(),

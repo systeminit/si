@@ -28,6 +28,7 @@
     "pretty": true,
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
+    "allowJs": true, // this fixes volar for me
   },
   "include": [
     "src/**/*.ts",

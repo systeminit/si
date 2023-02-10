@@ -122,6 +122,7 @@ pub struct SchemaVariantDefinition {
     component_kind: ComponentKind,
     link: Option<String>,
     definition: String,
+    description: Option<String>,
 }
 
 impl_standard_model! {
@@ -148,6 +149,7 @@ impl SchemaVariantDefinition {
             metadata.link,
             metadata.color,
             metadata.component_kind,
+            metadata.description,
             serde_json::to_string(&definition)?,
         )
         .await
@@ -162,24 +164,39 @@ impl SchemaVariantDefinition {
         link: Option<String>,
         color: String,
         component_kind: ComponentKind,
+        description: Option<String>,
         definition: String,
     ) -> SchemaVariantDefinitionResult<SchemaVariantDefinition> {
-        let row = ctx.txns()
+        let row = ctx
+            .txns()
             .pg()
             .query_one(
-                "SELECT object FROM schema_variant_definition_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "SELECT object FROM schema_variant_definition_create_v1(
+                    $1,
+                    $2,
+                    $3,
+                    $4,
+                    $5,
+                    $6,
+                    $7,
+                    $8,
+                    $9,
+                    $10
+                )",
                 &[
-                ctx.tenancy(),
-                ctx.visibility(),
-                &name,
-                &menu_name,
-                &category,
-                &link,
-                &color,
-                &component_kind.as_ref(),
-                &definition,
-                ]
-            ).await?;
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    &name,
+                    &menu_name,
+                    &category,
+                    &link,
+                    &color,
+                    &component_kind.as_ref(),
+                    &definition,
+                    &description,
+                ],
+            )
+            .await?;
 
         Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
@@ -213,6 +230,7 @@ pub struct SchemaVariantDefinitionMetadataJson {
     #[serde(alias = "component_kind")]
     pub component_kind: ComponentKind,
     pub link: Option<String>,
+    pub description: Option<String>,
 }
 
 impl From<SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
@@ -224,6 +242,7 @@ impl From<SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
             color: value.color,
             component_kind: value.component_kind,
             link: value.link,
+            description: value.description,
         }
     }
 }
@@ -237,6 +256,7 @@ impl From<&SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
             color: value.color.clone(),
             component_kind: value.component_kind,
             link: value.link.clone(),
+            description: value.description.clone(),
         }
     }
 }
@@ -244,20 +264,22 @@ impl From<&SchemaVariantDefinition> for SchemaVariantDefinitionMetadataJson {
 impl SchemaVariantDefinitionMetadataJson {
     #[instrument(skip_all)]
     pub fn new(
-        name: impl AsRef<str>,
+        name: &str,
         menu_name: Option<&str>,
-        category: impl AsRef<str>,
-        color: impl AsRef<str>,
+        category: &str,
+        color: &str,
         component_kind: ComponentKind,
         link: Option<&str>,
+        description: Option<&str>,
     ) -> SchemaVariantDefinitionMetadataJson {
         SchemaVariantDefinitionMetadataJson {
-            name: name.as_ref().to_string(),
+            name: name.to_string(),
             menu_name: menu_name.map(|s| s.to_string()),
-            category: category.as_ref().to_string(),
-            color: color.as_ref().to_string(),
+            category: category.to_string(),
+            color: color.to_string(),
             component_kind,
             link: link.map(|l| l.to_string()),
+            description: description.map(|d| d.to_string()),
         }
     }
 

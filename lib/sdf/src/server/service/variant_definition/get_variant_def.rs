@@ -2,9 +2,8 @@ use super::{SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
-    component::ComponentKind,
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
-    StandardModel, Visibility,
+    StandardModel, Timestamp, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -24,22 +23,23 @@ pub struct GetVariantDefResponse {
     pub menu_name: Option<String>,
     pub category: String,
     pub color: String,
-    pub component_kind: ComponentKind,
     pub link: Option<String>,
     pub definition: String,
+    #[serde(flatten)]
+    pub timestamp: Timestamp,
 }
 
 impl From<SchemaVariantDefinition> for GetVariantDefResponse {
-    fn from(variant: SchemaVariantDefinition) -> Self {
+    fn from(def: SchemaVariantDefinition) -> Self {
         GetVariantDefResponse {
-            id: *variant.id(),
-            name: variant.name().to_string(),
-            menu_name: variant.menu_name().map(|menu_name| menu_name.to_string()),
-            category: variant.category().to_string(),
-            color: variant.color().to_string(),
-            component_kind: *variant.component_kind(),
-            link: variant.link().map(|link| link.to_string()),
-            definition: variant.definition().to_string(),
+            id: *def.id(),
+            name: def.name().to_string(),
+            menu_name: def.menu_name().map(|menu_name| menu_name.to_string()),
+            category: def.category().to_string(),
+            color: def.color().to_string(),
+            link: def.link().map(|link| link.to_string()),
+            definition: def.definition().to_string(),
+            timestamp: def.timestamp().to_owned(),
         }
     }
 }

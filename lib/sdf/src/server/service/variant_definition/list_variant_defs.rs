@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
-    StandardModel, Visibility,
+    StandardModel, Timestamp, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +22,8 @@ pub struct ListedVariantDef {
     pub menu_name: Option<String>,
     pub category: String,
     pub color: String,
+    #[serde(flatten)]
+    pub timestamp: Timestamp,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -46,6 +48,7 @@ pub async fn list_variant_defs(
             menu_name: def.menu_name().map(|menu_name| menu_name.to_owned()),
             category: def.category().to_owned(),
             color: def.color().to_owned(),
+            timestamp: def.timestamp().to_owned(),
         })
         .collect();
 

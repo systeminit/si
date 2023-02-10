@@ -24,6 +24,7 @@ impl MigrationDriver {
                     node_color,
                     ComponentKind::Credential,
                     None,
+                    None,
                 ),
                 None,
             )

@@ -54,6 +54,7 @@ impl MigrationDriver {
                     node_color,
                     ComponentKind::Standard,
                     None,
+                    None,
                 ),
                 None,
             )

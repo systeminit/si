@@ -6,7 +6,7 @@
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
       <CustomizeTabs :selected-index="2">
-        <AssetListPanel :slug="assetSlug" />
+        <AssetListPanel :asset-id="assetId" />
       </CustomizeTabs>
     </div>
   </SiPanel>
@@ -14,11 +14,11 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
     <div class="inset-2 bottom-0 absolute w-full h-full">
-      <AssetDisplay :slug="assetSlug" />
+      <AssetDisplay :asset-id="assetId" />
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
-    <AssetDetailsPanel :slug="assetSlug" />
+    <AssetDetailsPanel :asset-id="assetId" />
   </SiPanel>
 </template>
 
@@ -34,19 +34,19 @@ import AssetDisplay from "../AssetDisplay.vue";
 import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 
 const assetStore = useAssetStore();
-const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSETS");
+const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
 const props = defineProps<{
-  assetSlug?: string;
-  workspaceId: string;
+  assetId?: string;
+  workspacePk: string;
   changeSetId: string;
 }>();
 
 watch(
-  [() => props.assetSlug, loadAssetsReqStatus],
+  [() => props.assetId, loadAssetsReqStatus],
   () => {
-    if (loadAssetsReqStatus.value.isSuccess && props.assetSlug) {
-      assetStore.setSelectedAssetBySlug(props.assetSlug);
+    if (loadAssetsReqStatus.value.isSuccess && props.assetId) {
+      assetStore.SELECT_ASSET(props.assetId);
     }
   },
   { immediate: true },
