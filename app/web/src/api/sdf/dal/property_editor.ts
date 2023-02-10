@@ -6,8 +6,6 @@
 
 import { LabelList } from "@/api/sdf/dal/label_list";
 
-import { FuncVariant } from "@/api/sdf/dal/func";
-
 export enum PropertyEditorPropKind {
   Array = "array",
   Boolean = "boolean",
@@ -96,7 +94,6 @@ export interface PropertyEditorValue {
   key?: string;
   value: unknown;
   isFromExternalSource: boolean;
-  func: FuncWithPrototypeContext;
 }
 
 export interface PropertyEditorValues {
@@ -159,14 +156,4 @@ export interface AddToMap {
 export interface PropertyPath {
   displayPath: string[];
   triggerPath: string[];
-}
-
-export interface FuncWithPrototypeContext {
-  id: string;
-  name: string;
-  displayName?: string;
-  variant: FuncVariant;
-  isBuiltin: boolean;
-  attributePrototypeId: string;
-  attributeContextComponentId: string;
 }

@@ -1,14 +1,3 @@
-CREATE TYPE func_with_attribute_prototype_context AS
-(
-    id                             ident,
-    NAME                           text,
-    display_name                   text,
-    backend_kind                   text,
-    backend_response_type          text,
-    is_builtin                     bool,
-    attribute_prototype_id         ident,
-    attribute_context_component_id ident
-);
 CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_and_root_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
@@ -20,8 +9,7 @@ CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_and_roo
                 parent_attribute_value_id        ident,
                 attribute_value_object           json,
                 prop_object                      json,
-                func_binding_return_value_object json,
-                func_with_prototype_context      json
+                func_binding_return_value_object json
             )
 AS
 $$
@@ -35,28 +23,10 @@ BEGIN
         SELECT avbtav.belongs_to_id AS parent_attribute_value_id,
                row_to_json(av.*)    AS attribute_value_object,
                row_to_json(prop.*)  AS prop_object,
-               row_to_json(fbrv.*)  AS func_binding_return_value_object,
-               row_to_json(cast(
-                       ROW (
-                           func.id,
-                           func.name,
-                           func.display_name,
-                           func.backend_kind,
-                           func.backend_response_type,
-			   func.builtin,
-                           ap.id,
-                           ap.attribute_context_component_id
-                           ) AS func_with_attribute_prototype_context
-                   ))               AS func_with_prototype_context
+               row_to_json(fbrv.*)  AS func_binding_return_value_object
         FROM attribute_values_v1(this_tenancy, this_visibility) AS av
                  LEFT JOIN attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
                            ON av.id = avbtav.object_id
-                 INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_tenancy, this_visibility) AS avbtap
-                            ON avbtap.object_id = av.id
-                 INNER JOIN attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
-                            ON avbtap.belongs_to_id = ap.id
-                 INNER JOIN funcs_v1(this_tenancy, this_visibility) AS func
-                            ON ap.func_id = func.id
                  INNER JOIN props_v1(this_tenancy, this_visibility) AS prop
                             ON av.attribute_context_prop_id = prop.id
                  INNER JOIN func_binding_return_values_v1(this_tenancy, this_visibility) AS fbrv
@@ -94,29 +64,10 @@ BEGIN
             SELECT avbtav.belongs_to_id AS parent_attribute_value_id,
                    row_to_json(av.*)    AS attribute_value_object,
                    row_to_json(prop.*)  AS prop_object,
-                   row_to_json(fbrv.*)  AS func_binding_return_value_object,
-                   row_to_json(cast(
-                           ROW (
-                               func.id,
-                               func.name,
-                               func.display_name,
-                               func.backend_kind,
-                               func.backend_response_type,
-			       func.builtin,
-                               ap.id,
-                               ap.attribute_context_component_id
-                               ) AS func_with_attribute_prototype_context
-                       ))               AS func_with_prototype_context
+                   row_to_json(fbrv.*)  AS func_binding_return_value_object
             FROM attribute_values_v1(this_tenancy, this_visibility) AS av
                      LEFT JOIN attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
                                ON av.id = avbtav.object_id
-                     INNER JOIN attribute_value_belongs_to_attribute_prototype_v1(this_tenancy,
-                                                                                  this_visibility) AS avbtap
-                                ON avbtap.object_id = av.id
-                     INNER JOIN attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
-                                ON avbtap.belongs_to_id = ap.id
-                     INNER JOIN funcs_v1(this_tenancy, this_visibility) AS func
-                                ON ap.func_id = func.id
                      INNER JOIN props_v1(this_tenancy, this_visibility) AS prop
                                 ON av.attribute_context_prop_id = prop.id
                      INNER JOIN func_binding_return_values_v1(this_tenancy, this_visibility) AS fbrv
@@ -179,8 +130,7 @@ CREATE OR REPLACE FUNCTION attribute_value_list_payload_for_read_context_v1(
                 parent_attribute_value_id        ident,
                 attribute_value_object           json,
                 prop_object                      json,
-                func_binding_return_value_object json,
-                func_with_prototype_context      json
+                func_binding_return_value_object json
             )
     LANGUAGE SQL
     STABLE
