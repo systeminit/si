@@ -24,13 +24,7 @@
             >Select All
           </VormInput>
           <VButton2
-            :disabled="
-              selectedRecommendations.length < 1 ||
-              fixesStore.populatingFixes ||
-              (fixesStore.runningFixBatch !== undefined &&
-                fixesStore.completedFixesOnRunningBatch.length <
-                  fixesStore.fixesOnRunningBatch.length)
-            "
+            :disabled="disableApply"
             icon="tools"
             tone="action"
             @click="runFixes"
@@ -88,19 +82,19 @@
           >
             <li
               v-for="recommendation in creationRecommendations"
-              :key="`${recommendation.id}-${recommendation.recommendation}`"
+              :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
             >
               <RecommendationSprite
                 :recommendation="recommendation"
                 :selected="
                   recommendationSelection[
-                    `${recommendation.id}-${recommendation.recommendation}`
+                    `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
                   ]
                 "
                 @toggle="
                   (c) => {
                     recommendationSelection[
-                      `${recommendation.id}-${recommendation.recommendation}`
+                      `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
                     ] = c;
                   }
                 "
@@ -121,7 +115,7 @@
               class="absolute top-0 p-4"
             >
               <img
-                v-if="fixesStore.allRecommendations.length > 0"
+                v-if="recommendations.length > 0"
                 src="../assets/images/WhiskersTriumphV1.png"
                 alt="Whiskers the cat, relaxing"
               />
@@ -141,7 +135,6 @@
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
 import { reactive, ref, computed, onBeforeUnmount, onBeforeMount } from "vue";
-import { addSeconds } from "date-fns";
 import clsx from "clsx";
 import SiTabGroup from "@/components/SiTabGroup.vue";
 import SiTabHeader from "@/components/SiTabHeader.vue";
@@ -156,7 +149,7 @@ import RecommendationSprite from "@/components/RecommendationSprite.vue";
 const selectAll = (checked: boolean) => {
   for (const recommendation of creationRecommendations.value) {
     recommendationSelection[
-      `${recommendation.id}-${recommendation.recommendation}`
+      `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
     ] = checked;
   }
 };
@@ -171,20 +164,17 @@ const allSelected = computed(() => {
   return false;
 });
 
-const fixesStore = useFixesStore();
 const recommendations = computed(() =>
-  fixesStore.allRecommendations.filter(
-    (recommendation) =>
-      recommendation.finishedAt === undefined ||
-      recommendation.finishedAt > addSeconds(currentTime.value, -2),
-  ),
+  fixesStore.confirmations.flatMap((c) => c.recommendations),
 );
+
+const fixesStore = useFixesStore();
 const creationRecommendations = computed(() =>
-  recommendations.value.filter((r) => r.recommendationKind === "create"),
+  recommendations.value.filter((r) => r.actionKind === "create"),
 );
 
 const genericRecommendations = computed(() =>
-  recommendations.value.filter((r) => r.recommendationKind === "other"),
+  recommendations.value.filter((r) => r.actionKind === "other"),
 );
 
 const recommendationSelection: Record<string, boolean> = reactive({});
@@ -192,7 +182,7 @@ const selectedRecommendations = computed(() => {
   return creationRecommendations.value.filter((recommendation) => {
     return (
       recommendationSelection[
-        `${recommendation.id}-${recommendation.recommendation}`
+        `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
       ] && recommendation.status === "unstarted"
     );
   });
@@ -201,6 +191,15 @@ const selectedRecommendations = computed(() => {
 const runFixes = () => {
   fixesStore.EXECUTE_FIXES_FROM_RECOMMENDATIONS(selectedRecommendations.value);
 };
+
+const disableApply = computed(
+  () =>
+    selectedRecommendations.value.length < 1 ||
+    fixesStore.populatingFixes ||
+    (fixesStore.runningFixBatch !== undefined &&
+      fixesStore.completedFixesOnRunningBatch.length <
+        fixesStore.fixesOnRunningBatch.length),
+);
 
 const currentTime = ref(new Date());
 let dateIntervalId: Timeout;

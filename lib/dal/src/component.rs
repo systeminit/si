@@ -23,7 +23,6 @@ use crate::socket::SocketEdgeKind;
 use crate::standard_model::object_from_row;
 use crate::validation::ValidationConstructorError;
 use crate::ws_event::WsEventError;
-use crate::NodeKind;
 use crate::{
     func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
@@ -38,6 +37,7 @@ use crate::{
     ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError,
 };
 use crate::{AttributeValueId, QualificationError};
+use crate::{FixResolverError, NodeKind};
 
 use crate::job::definition::DependentValuesUpdate;
 pub use view::{ComponentView, ComponentViewError};
@@ -71,6 +71,8 @@ pub enum ComponentError {
     CodeView(#[from] CodeViewError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("fix resolver error: {0}")]
+    FixResolver(#[from] FixResolverError),
     #[error("unable to delete frame")]
     Frame,
     #[error("component marked as protected: {0}")]
@@ -778,6 +780,8 @@ impl Component {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
+    /// Find the [`SchemaVariantId`](crate::SchemaVariantId) that belongs to the provided
+    /// [`Component`](crate::Component).
     pub async fn schema_variant_id(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -794,6 +798,26 @@ impl Component {
             .await?;
 
         Ok(row.try_get("schema_variant_id")?)
+    }
+
+    /// Find the [`SchemaId`](crate::SchemaId) that belongs to the provided
+    /// [`Component`](crate::Component).
+    pub async fn schema_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<SchemaId> {
+        let row = ctx
+            .pg_txn()
+            .query_one(
+                "select belongs_to_id as schema_id from 
+                    component_belongs_to_schema_v1($1, $2)
+                    where object_id = $3
+                ",
+                &[ctx.tenancy(), ctx.visibility(), &component_id],
+            )
+            .await?;
+
+        Ok(row.try_get("schema_id")?)
     }
 
     /// Gets the [`ComponentType`](crate::ComponentType) of [`self`](Self).

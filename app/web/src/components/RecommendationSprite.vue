@@ -84,7 +84,7 @@
         <div class="py-4 text-sm">
           <div class="flex flex-col">
             <div class="font-bold">Recommendation:</div>
-            <div>{{ recommendation.recommendation }}</div>
+            <div>{{ recommendation.recommendedAction }}</div>
           </div>
         </div>
       </div>
