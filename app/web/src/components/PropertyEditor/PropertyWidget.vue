@@ -52,7 +52,6 @@
       :doc-link="schemaProp.docLink"
       :validation="validation"
       :disabled="disabled"
-      :func="propValue.func"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
@@ -69,7 +68,6 @@
       :doc-link="schemaProp.docLink"
       :validation="validation"
       :disabled="disabled"
-      :func="propValue.func"
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
@@ -157,9 +155,7 @@ import {
   AddToArray,
   AddToMap,
   PropertyPath,
-  FuncWithPrototypeContext,
 } from "@/api/sdf/dal/property_editor";
-import { isCustomizableFuncKind } from "@/api/sdf/dal/func";
 import { tw } from "@/utils/style_helpers";
 import WidgetHeader from "./WidgetHeader.vue";
 import WidgetTextBox from "./WidgetTextBox.vue";
@@ -168,7 +164,6 @@ import WidgetSelectBox from "./WidgetSelectBox.vue";
 import WidgetArray from "./WidgetArray.vue";
 import WidgetMap from "./WidgetMap.vue";
 import WidgetComboBox from "./WidgetComboBox.vue";
-// import WidgetFuncButton from "./WidgetFuncButton.vue";
 
 const INPUT_CLASSES = tw`pl-lg pr-sm pt-sm`;
 
@@ -189,20 +184,9 @@ const emits = defineEmits<{
   (e: "updatedProperty", v: UpdatedProperty): void;
   (e: "addToArray", v: AddToArray): void;
   (e: "addToMap", v: AddToMap): void;
-  (
-    e: "createAttributeFunc",
-    currentFunc: FuncWithPrototypeContext,
-    valueId: string,
-  ): void;
 }>();
 
-// If we have a custom func attached, don't allow them to set the attribute
-const disabled = computed(
-  () =>
-    props.disabled ||
-    isCustomizableFuncKind(props.propValue.func.variant) ||
-    props.schemaProp.isReadonly,
-);
+const disabled = computed(() => props.disabled || props.schemaProp.isReadonly);
 
 const { arrayIndex } = toRefs(props);
 
@@ -221,11 +205,6 @@ const addToArray = (event: AddToArray) => {
 const addToMap = (event: AddToMap) => {
   emits("addToMap", event);
 };
-
-// const onCreateAttributeFunc = (
-//   currentFunc: FuncWithPrototypeContext,
-//   valueId: string,
-// ) => emits("createAttributeFunc", currentFunc, valueId);
 
 const showArrayElementHeader = computed(() => {
   if (_.isUndefined(arrayIndex?.value) && _.isNull(props.propValue.key)) {

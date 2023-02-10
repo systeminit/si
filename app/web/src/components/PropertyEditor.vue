@@ -20,7 +20,6 @@
         @updated-property="updatedProperty($event)"
         @add-to-array="addToArray($event)"
         @add-to-map="addToMap($event)"
-        @create-attribute-func="onCreateAttributeFunc"
       />
     </div>
   </div>
@@ -37,7 +36,6 @@ import {
   AddToArray,
   AddToMap,
   PropertyPath,
-  FuncWithPrototypeContext,
   PropertyEditorValidation,
 } from "@/api/sdf/dal/property_editor";
 import { useComponentsStore } from "@/store/components.store";
@@ -58,12 +56,6 @@ const emits = defineEmits<{
   (e: "updatedProperty", v: UpdatedProperty): void;
   (e: "addToArray", v: AddToArray): void;
   (e: "addToMap", v: AddToMap): void;
-  (
-    e: "createAttributeFunc",
-    currentFunc: FuncWithPrototypeContext,
-    valueId: string,
-    parentValueId?: string,
-  ): void;
 }>();
 
 const values = computed(() => props.editorContext.values);
@@ -337,15 +329,4 @@ const arrayLengthsByPropId = computed(() => {
   }
   return result;
 });
-
-const onCreateAttributeFunc = (
-  currentFunc: FuncWithPrototypeContext,
-  valueId: string,
-) =>
-  emits(
-    "createAttributeFunc",
-    currentFunc,
-    valueId,
-    findParentValue(valueId)?.id,
-  );
 </script>

@@ -122,7 +122,6 @@ impl AttributeView {
                 func_binding_return_value,
                 attribute_value,
                 parent_attribute_value_id,
-                func_with_prototype_context,
             }) = work_queue.pop_front()
             {
                 if let Some(func_binding_return_value) = func_binding_return_value {
@@ -184,7 +183,6 @@ impl AttributeView {
                                 Some(func_binding_return_value),
                                 attribute_value,
                                 parent_attribute_value_id,
-                                func_with_prototype_context,
                             ));
                         }
                     }

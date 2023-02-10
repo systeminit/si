@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::attribute::value::FuncWithPrototypeContext;
 use crate::property_editor::{PropertyEditorError, PropertyEditorResult};
 use crate::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
 use crate::{
@@ -78,7 +77,6 @@ impl PropertyEditorValues {
                         .and_then(|f| f.value().cloned())
                         .unwrap_or(Value::Null),
                     is_from_external_source,
-                    func: work.func_with_prototype_context,
                 },
             );
             if let Some(parent_id) = work.parent_attribute_value_id {
@@ -111,7 +109,6 @@ pub struct PropertyEditorValue {
     key: Option<String>,
     value: Value,
     is_from_external_source: bool,
-    func: FuncWithPrototypeContext,
 }
 
 impl PropertyEditorValue {
