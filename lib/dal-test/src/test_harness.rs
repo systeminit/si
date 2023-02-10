@@ -352,35 +352,29 @@ pub async fn create_schema_variant_with_root(
         .await
         .expect("cannot create schema variant");
 
-    let input_socket = Socket::new(
+    let _input_socket = Socket::new(
         ctx,
         "input",
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationInput,
         &SocketArity::Many,
         &DiagramKind::Configuration,
+        Some(*variant.id()),
     )
     .await
     .expect("Unable to create socket");
-    variant
-        .add_socket(ctx, input_socket.id())
-        .await
-        .expect("Unable to add socket to variant");
 
-    let output_socket = Socket::new(
+    let _output_socket = Socket::new(
         ctx,
         "output",
         SocketKind::Standalone,
         &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
         &DiagramKind::Configuration,
+        Some(*variant.id()),
     )
     .await
     .expect("Unable to create socket");
-    variant
-        .add_socket(ctx, output_socket.id())
-        .await
-        .expect("Unable to add socket to variant");
 
     (variant, root)
 }
