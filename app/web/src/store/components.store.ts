@@ -459,32 +459,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
-              // TODO: remove this temporary fix
-              _.each(response.components, (c) => {
-                /* eslint-disable @typescript-eslint/no-explicit-any */
-                if ((c as any).deletedAt) {
-                  c.deletedInfo = {
-                    actor: { kind: "user", label: "You", id: "123" },
-                    timestamp: (c as any).deletedAt,
-                  };
-                  delete (c as any).deletedAt;
-                }
-              });
-
-              const now = new Date().toISOString();
-              _.each(response.edges, (e) => {
-                e.createdInfo = {
-                  timestamp: now,
-                  actor: { label: "You", kind: "user" },
-                };
-                if (e.changeStatus === "deleted") {
-                  e.deletedInfo = {
-                    timestamp: now,
-                    actor: { label: "You", kind: "user" },
-                  };
-                }
-              });
-
               this.rawComponentsById = _.keyBy(response.components, "id");
               this.edgesById = _.keyBy(response.edges, "id");
             },

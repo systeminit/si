@@ -41,6 +41,7 @@ pub enum TypeHint {
     JsonB,
     SmallInt,
     Text,
+    Ident,
     #[strum(serialize = "timestamp with time zone")]
     TimestampWithTimeZone,
 }
@@ -508,11 +509,11 @@ pub async fn delete_by_id<ID: Send + Sync + ToSql + std::fmt::Display>(
         .txns()
         .pg()
         .query_one(
-            "SELECT updated_at FROM delete_by_id_v1($1, $2, $3, $4)",
+            "SELECT deleted_at FROM delete_by_id_v1($1, $2, $3, $4)",
             &[&table, ctx.tenancy(), ctx.visibility(), &id],
         )
         .await?;
-    row.try_get("updated_at")
+    row.try_get("deleted_at")
         .map_err(|_| StandardModelError::ModelMissing(table.to_string(), id.to_string()))
 }
 
@@ -730,11 +731,11 @@ pub trait StandardModel {
     where
         Self: Send + Sync + Sized,
     {
-        let updated_at: DateTime<Utc> =
+        let deleted_at: DateTime<Utc> =
             crate::standard_model::delete_by_id(ctx, Self::table_name(), self.id()).await?;
 
-        self.visibility_mut().deleted_at = Some(updated_at);
-        self.timestamp_mut().updated_at = updated_at;
+        self.visibility_mut().deleted_at = Some(deleted_at);
+        self.timestamp_mut().updated_at = deleted_at;
 
         HistoryEvent::new(
             ctx,

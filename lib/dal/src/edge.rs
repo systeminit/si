@@ -16,8 +16,8 @@ use crate::standard_model::objects_from_rows;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
     AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
-    Func, FuncError, HistoryEventError, InternalProviderError, Node, PropId, Socket, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    Func, FuncError, HistoryActor, HistoryEventError, InternalProviderError, Node, PropId, Socket,
+    StandardModel, StandardModelError, Tenancy, Timestamp, UserId, Visibility,
 };
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
@@ -129,6 +129,8 @@ pub struct Edge {
     tail_object_kind: VertexObjectKind,
     tail_object_id: EdgeObjectId,
     tail_socket_id: SocketId,
+    pub creation_user_id: Option<UserId>,
+    pub deletion_user_id: Option<UserId>,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -175,11 +177,16 @@ impl Edge {
         tail_object_id: EdgeObjectId,
         tail_socket_id: SocketId,
     ) -> EdgeResult<Self> {
+        let actor_user_id = match ctx.history_actor() {
+            HistoryActor::User(user_id) => Some(*user_id),
+            _ => None,
+        };
+
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM edge_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+                "SELECT object FROM edge_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -192,6 +199,7 @@ impl Edge {
                     &tail_object_kind.to_string(),
                     &tail_object_id,
                     &tail_socket_id,
+                    &actor_user_id,
                 ],
             )
             .await?;
@@ -410,7 +418,19 @@ impl Edge {
         .ok_or(EdgeError::AttributePrototypeNotFound)?;
 
         edge_argument.delete_by_id(ctx).await?;
-        self.delete_by_id(ctx).await?;
+
+        let actor_user_id = match ctx.history_actor() {
+            HistoryActor::User(user_id) => Some(*user_id),
+            _ => None,
+        };
+        let _rows = ctx
+            .txns()
+            .pg()
+            .query(
+                "SELECT * FROM edge_deletion_v1($1, $2, $3, $4)",
+                &[ctx.tenancy(), ctx.visibility(), self.id(), &actor_user_id],
+            )
+            .await?;
 
         let read_context = AttributeReadContext {
             prop_id: Some(PropId::NONE),
@@ -444,6 +464,8 @@ impl Edge {
             return Err(EdgeError::RestoringNonDeletedEdge(edge_id));
         }
 
+        // check if the head or tail are marked as deleted
+        // if this is the case, error out here
         let head_node_id = &deleted_edge.head_node_id();
         let maybe_head_node = Node::get_by_id(ctx_with_deleted, head_node_id).await?;
         let tail_node_id = &deleted_edge.tail_node_id();

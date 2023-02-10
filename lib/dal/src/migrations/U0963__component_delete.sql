@@ -1,7 +1,8 @@
 CREATE OR REPLACE FUNCTION component_delete_and_propagate_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_component_id ident
+    this_component_id ident,
+    this_user_id ident
 )
     RETURNS TABLE
             (
@@ -15,6 +16,7 @@ DECLARE
     peer_component_id    ident;
     internal_provider_id ident;
     external_provider_id ident;
+    deleted_timestamp    timestamp with time zone;
 BEGIN
 
     -- Outgoing Edges
@@ -80,7 +82,15 @@ BEGIN
         PERFORM delete_by_id_v1(table_name, this_tenancy, this_visibility, target_id);
     END LOOP;
 
-    PERFORM delete_by_id_v1('components', this_tenancy, this_visibility, this_component_id);
+    SELECT delete_by_id_v1('components', this_tenancy, this_visibility, this_component_id) INTO deleted_timestamp;
+
+    -- Ensure we now set the actor of who has deleted the component
+    PERFORM update_by_id_v1('components',
+            'deletion_user_id',
+            this_tenancy,
+            this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
+            this_component_id,
+            this_user_id);
 END;
 $$ LANGUAGE PLPGSQL STABLE;
 

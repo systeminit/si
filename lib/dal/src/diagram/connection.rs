@@ -3,9 +3,10 @@ use serde::{Deserialize, Serialize};
 use crate::edge::{Edge, EdgeId, EdgeKind};
 
 use crate::change_status::ChangeStatus;
+use crate::diagram::node::HistoryEventMetadata;
 use crate::diagram::DiagramResult;
 use crate::socket::SocketId;
-use crate::{node::NodeId, DalContext, DiagramError, StandardModel};
+use crate::{node::NodeId, ActorView, DalContext, DiagramError, HistoryActor, StandardModel, User};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -21,6 +22,8 @@ pub struct Connection {
     pub classification: EdgeKind,
     pub source: Vertex,
     pub destination: Vertex,
+    pub created_by: Option<User>,
+    pub deleted_by: Option<User>,
 }
 
 impl Connection {
@@ -63,6 +66,8 @@ impl Connection {
                 node_id: edge.head_node_id(),
                 socket_id: edge.head_socket_id(),
             },
+            created_by: None,
+            deleted_by: None,
         }
     }
 
@@ -97,6 +102,8 @@ pub struct DiagramEdgeView {
     to_node_id: String,
     to_socket_id: String,
     change_status: ChangeStatus,
+    created_info: Option<HistoryEventMetadata>,
+    deleted_info: Option<HistoryEventMetadata>,
 }
 
 impl DiagramEdgeView {
@@ -106,6 +113,31 @@ impl DiagramEdgeView {
 }
 
 impl DiagramEdgeView {
+    pub async fn set_actor_details(&mut self, ctx: &DalContext, edge: &Edge) -> DiagramResult<()> {
+        if let Some(user_id) = edge.creation_user_id {
+            let history_actor = HistoryActor::User(user_id);
+            let actor = ActorView::from_history_actor(ctx, history_actor).await?;
+            self.created_info = Some(HistoryEventMetadata {
+                actor,
+                timestamp: edge.timestamp().created_at,
+            })
+        }
+
+        if let Some(user_id) = edge.deletion_user_id {
+            let history_actor = HistoryActor::User(user_id);
+            let actor = ActorView::from_history_actor(ctx, history_actor).await?;
+            self.deleted_info = Some(HistoryEventMetadata {
+                actor,
+                timestamp: ctx
+                    .visibility()
+                    .deleted_at
+                    .ok_or(DiagramError::DeletionTimeStamp)?,
+            })
+        }
+
+        Ok(())
+    }
+
     pub fn from_with_change_status(conn: Connection, change_status: ChangeStatus) -> Self {
         Self {
             id: conn.id.to_string(),
@@ -114,6 +146,8 @@ impl DiagramEdgeView {
             to_node_id: conn.destination.node_id.to_string(),
             to_socket_id: conn.destination.socket_id.to_string(),
             change_status,
+            created_info: None,
+            deleted_info: None,
         }
     }
 }

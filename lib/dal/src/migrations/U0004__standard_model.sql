@@ -174,14 +174,14 @@ BEGIN
     EXECUTE format('UPDATE %1$I SET %2$I = %6$L, updated_at = clock_timestamp() WHERE id = %5$L '
                    '  AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pk) '
                    '  AND %1$I.visibility_change_set_pk = %4$L '
-                   '  AND %1$I.visibility_deleted_at IS NULL '
+                   '  AND CASE WHEN %7$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE %1$I.visibility_deleted_at = %7$L END '
                    ' RETURNING updated_at',
                    this_table,
                    this_column,
                    this_tenancy,
                    this_visibility_row.visibility_change_set_pk,
                    this_id,
-                   this_value) INTO updated_at;
+                   this_value, this_visibility_row.visibility_deleted_at) INTO updated_at;
 
     /* If updated_at is still null, that is because the update found no rows. We need to first copy the last known
        good data, and then update it. */
@@ -217,7 +217,7 @@ BEGIN
                            ' %1$I.id = %6$L '
                            ' AND in_tenancy_v1(%7$L, %1$I.tenancy_workspace_pk) '
                            ' AND %1$I.visibility_change_set_pk = ident_nil_v1() '
-                           ' AND %1$I.visibility_deleted_at IS NULL '
+                           ' AND CASE WHEN %9$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE %1$I.visibility_deleted_at = %9$L END '
                            ' RETURNING updated_at',
                            this_table,
                            this_column,
@@ -226,8 +226,8 @@ BEGIN
                            this_visibility_row.visibility_change_set_pk,
                            this_id,
                            this_tenancy,
-			   this_tenancy_record.tenancy_workspace_pk
-                        ) INTO updated_at;
+			               this_tenancy_record.tenancy_workspace_pk,
+                           this_visibility_row.visibility_deleted_at) INTO updated_at;
         END IF;
 
         -- If updated_at is still null, then there is a provided tenancy
@@ -339,17 +339,18 @@ CREATE OR REPLACE FUNCTION delete_by_id_v1(this_table_text text,
                                            this_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id ident,
-                                           OUT updated_at timestamp with time zone)
+                                           OUT deleted_at timestamp with time zone)
 AS
 $$
 BEGIN
-    SELECT update_by_id_v1(this_table_text,
+    deleted_at = clock_timestamp();
+
+    PERFORM update_by_id_v1(this_table_text,
                            'visibility_deleted_at',
                            this_tenancy,
                            this_visibility,
                            this_id,
-                           CAST(clock_timestamp() as text))
-    INTO updated_at;
+                           CAST(deleted_at as text));
 END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 

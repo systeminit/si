@@ -34,7 +34,7 @@ use crate::{
     ExternalProviderId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError,
     InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
     PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, ValidationPrototypeError,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, UserId, ValidationPrototypeError,
     ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WsEvent,
     WsEventResult, WsPayload,
 };
@@ -259,6 +259,7 @@ pub struct Component {
     pk: ComponentPk,
     id: ComponentId,
     kind: ComponentKind,
+    pub deletion_user_id: Option<UserId>,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -1086,12 +1087,17 @@ impl Component {
             return Err(ComponentError::ComponentProtected(self.id));
         }
 
+        let actor_user_id = match ctx.history_actor() {
+            HistoryActor::User(user_id) => Some(*user_id),
+            _ => None,
+        };
+
         let rows = ctx
             .txns()
             .pg()
             .query(
-                "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3)",
-                &[ctx.tenancy(), ctx.visibility(), self.id()],
+                "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3, $4)",
+                &[ctx.tenancy(), ctx.visibility(), self.id(), &actor_user_id],
             )
             .await?;
         let mut attr_values: Vec<AttributeValue> = standard_model::objects_from_rows(rows)?;
