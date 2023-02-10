@@ -202,19 +202,19 @@ impl DiagramComponentView {
         };
 
         // TODO: not really the right error...?
-        let component_status = ComponentStatus::get_by_id(&ctx, component.id())
+        let component_status = ComponentStatus::get_by_id(ctx, component.id())
             .await?
             .ok_or(DiagramError::ComponentNotFound)?;
 
         let created_info =
-            HistoryEventMetadata::from_history_actor_timestamp(&ctx, component_status.creation())
+            HistoryEventMetadata::from_history_actor_timestamp(ctx, component_status.creation())
                 .await?;
         let updated_info =
-            HistoryEventMetadata::from_history_actor_timestamp(&ctx, component_status.update())
+            HistoryEventMetadata::from_history_actor_timestamp(ctx, component_status.update())
                 .await?;
 
         // TODO(theo): probably dont want to fetch this here and load totally separately, but we inherited from existing endpoints
-        let resource = ResourceView::new(component.resource(&ctx).await?);
+        let resource = ResourceView::new(component.resource(ctx).await?);
 
         Ok(Self {
             id: component.id().to_string(),

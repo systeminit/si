@@ -149,8 +149,7 @@ impl Diagram {
             let is_modified = modified
                 .clone()
                 .iter()
-                .find(|s| s.component_id == *component.id())
-                .is_some();
+                .any(|s| s.component_id == *component.id());
 
             let view = DiagramComponentView::new(
                 ctx_with_deleted,

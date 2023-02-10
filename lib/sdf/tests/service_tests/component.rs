@@ -1,6 +1,4 @@
-use std::collections::HashSet;
-
-use dal::{Component, StandardModel, Visibility};
+use dal::{StandardModel, Visibility};
 use dal_test::{
     test,
     test_harness::{create_component_for_schema_variant, create_schema, create_schema_variant},

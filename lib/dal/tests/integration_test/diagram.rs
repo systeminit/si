@@ -177,10 +177,10 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
     let diagram = Diagram::assemble(ctx).await.expect("cannot find diagram");
 
     // Check the nodes.
-    assert_eq!(diagram.nodes().len(), 2);
+    assert_eq!(diagram.components().len(), 2);
     assert_eq!(
         diagram
-            .nodes()
+            .components()
             .iter()
             .filter(|n| n.id() == from_docker_hub_credential.node_id.to_string()
                 || n.id() == to_docker_image.node_id.to_string())
@@ -191,7 +191,7 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
     // Check the node positions.
     assert_eq!(
         diagram
-            .nodes()
+            .components()
             .iter()
             .filter(|n| (n.position().x().to_string() == from_node_position.x()
                 && n.position().y().to_string() == from_node_position.y())
@@ -316,7 +316,7 @@ async fn get_diagram_and_delete_connection(ctx: &DalContext) {
     let diagram = Diagram::assemble(ctx).await.expect("cannot find diagram");
 
     // Check the nodes.
-    assert_eq!(diagram.nodes().len(), 2);
+    assert_eq!(diagram.components().len(), 2);
 
     // Check the connection on the diagram.
     assert_eq!(diagram.edges().len(), 1);
@@ -341,7 +341,7 @@ async fn get_diagram_and_delete_connection(ctx: &DalContext) {
     let diagram = Diagram::assemble(ctx).await.expect("cannot find diagram");
 
     // Check the nodes.
-    assert_eq!(diagram.nodes().len(), 2);
+    assert_eq!(diagram.components().len(), 2);
 
     // Check that no connections exist on the diagram.
     assert_eq!(diagram.edges().len(), 0);
