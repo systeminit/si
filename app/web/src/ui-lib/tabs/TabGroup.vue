@@ -1,16 +1,15 @@
 <template>
-  <div ref="internalRef">
+  <div ref="internalRef" class="absolute inset-0 flex flex-col">
     <!-- TabGroupItems go in this slot but are not rendered here. -->
     <div class="hidden"><slot /></div>
 
     <slot v-if="isNoTabs" name="noTabs">No tabs.</slot>
-    <div v-else>
+    <template v-else>
+      <!-- This div holds the actual tabs -->
       <div
         :class="
           clsx(
-            'w-full h-11 relative flex-shrink-0 flex flex-row',
-            topMargin > 0 ? `mt-${topMargin}` : '',
-            'h-11 flex shrink-0 w-full bg-white dark:bg-neutral-800 sticky top-0 z-5 overflow-hidden',
+            'w-full h-11 relative flex flex-row shrink-0 bg-white dark:bg-neutral-800 overflow-hidden mt-2',
           )
         "
       >
@@ -40,6 +39,21 @@
               <component :is="tab.slots.label" />
             </template>
             <template v-else>{{ tab.props.label }}</template>
+            <button
+              v-if="closeable"
+              class="inline-block rounded-full text-neutral-400 ml-1"
+              :class="
+                clsx(
+                  themeClasses(
+                    'hover:text-white hover:bg-neutral-400',
+                    'hover:text-neutral-800 hover:bg-neutral-400',
+                  ),
+                )
+              "
+              @click.stop="emit('closeTab', tab.props.slug)"
+            >
+              <Icon name="x" size="xs" />
+            </button>
           </a>
           <div
             v-if="noAfterMargin === false"
@@ -51,10 +65,19 @@
         ></div>
       </div>
 
-      <div v-if="selectedTabSlug && tabs[selectedTabSlug]">
-        <component :is="tabs[selectedTabSlug].slots.default" />
-      </div>
-    </div>
+      <!-- This template holds the contents of the selected tab -->
+      <template v-if="selectedTabSlug && tabs[selectedTabSlug]">
+        <div v-if="tabs[selectedTabSlug].slots.stickyTop">
+          <component :is="tabs[selectedTabSlug].slots.stickyTop" />
+        </div>
+        <div class="overflow-auto flex-grow">
+          <component :is="tabs[selectedTabSlug].slots.default" />
+        </div>
+        <div v-if="tabs[selectedTabSlug].slots.stickyBottom">
+          <component :is="tabs[selectedTabSlug].slots.stickyBottom" />
+        </div>
+      </template>
+    </template>
   </div>
 </template>
 
@@ -91,6 +114,7 @@ import {
   provide,
   onMounted,
 } from "vue";
+import Icon from "../icons/Icon.vue";
 import { themeClasses } from "../theme_tools";
 import { TabGroupItemDefinition } from "./TabGroupItem.vue";
 
@@ -98,10 +122,15 @@ const internalRef = ref();
 
 const props = defineProps({
   startSelectedTabSlug: { type: String },
-  topMargin: { type: Number, default: 2 },
   noStartMargin: { type: Boolean, default: false },
   noAfterMargin: { type: Boolean, default: false },
+  closeable: { type: Boolean, default: false },
 });
+
+const emit = defineEmits<{
+  (e: "closeTab", slug: string): void;
+  (e: "update:selectedTab", slug: string | undefined): void;
+}>();
 
 const isNoTabs = computed(() => !_.keys(tabs).length);
 
@@ -118,6 +147,7 @@ function unregisterTab(slug: string) {
   delete tabs[slug];
   // refreshSortedTabSlugs();
   refreshSettingsFromTabs();
+  autoSelectTab();
 }
 
 function refreshSettingsFromTabs() {
@@ -127,6 +157,7 @@ function refreshSettingsFromTabs() {
 function selectTab(slug?: string) {
   if (slug && tabs[slug]) selectedTabSlug.value = slug;
   else selectedTabSlug.value = undefined;
+  emit("update:selectedTab", selectedTabSlug.value);
 }
 
 function autoSelectTab() {
@@ -158,4 +189,6 @@ const context = {
   selectTab,
 };
 provide(TabGroupContextInjectionKey, context);
+
+defineExpose({ selectTab });
 </script>

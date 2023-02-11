@@ -119,22 +119,10 @@ export const useFuncStore = () => {
         if (funcId === nilId()) {
           return;
         }
-
-        const existing = this.openFuncsById[funcId];
-        if (existing) {
-          this.selectedFuncId = funcId;
-          this.ADD_FUNC_TO_OPEN_LIST(funcId);
-          return existing;
-        }
-
-        const res = await this.FETCH_FUNC(funcId);
-        // TODO(Wendy) - this code checks if the func exists - perhaps the backend should return a 404 in that case?
-        if (!res.result.success) {
-          return;
-        }
-
         this.selectedFuncId = funcId;
         this.ADD_FUNC_TO_OPEN_LIST(funcId);
+
+        await this.FETCH_FUNC(funcId);
         return this.openFuncsById[funcId];
       },
       ADD_FUNC_TO_OPEN_LIST(funcId: FuncId) {

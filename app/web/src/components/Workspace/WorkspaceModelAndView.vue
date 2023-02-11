@@ -11,7 +11,6 @@
           <ComponentOutline @right-click-item="onOutlineRightClick" />
         </TabGroupItem>
       </TabGroup>
-      >>>>>>> 8e02bb5d (feat(web) - TabGroup to replace SiTabGroup)
     </div>
   </SiPanel>
 

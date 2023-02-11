@@ -3,7 +3,9 @@
     <!-- all rendering is done by the TabGroup parent -->
     <!-- default slot content will not work here -->
     <slot name="label" />
+    <slot name="stickyTop" />
     <slot />
+    <slot name="stickyBottom" />
   </div>
 </template>
 
@@ -14,7 +16,12 @@ import type { Slot } from "vue";
 
 export type TabGroupItemDefinition = {
   props: { slug: string; label: string };
-  slots: { default?: Slot; label?: Slot };
+  slots: {
+    default?: Slot;
+    label?: Slot;
+    stickyTop?: Slot;
+    stickyBottom?: Slot;
+  };
 };
 
 const props = defineProps({

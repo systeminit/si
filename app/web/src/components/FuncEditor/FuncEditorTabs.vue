@@ -1,19 +1,37 @@
 <template>
-  <div
-    v-if="selectedFuncId === nilId()"
-    class="p-2 text-center text-neutral-400 dark:text-neutral-300"
+  <TabGroup
+    ref="tabGroupRef"
+    no-start-margin
+    no-after-margin
+    closeable
+    @close-tab="closeFunc"
+    @update:selected-tab="onTabChange"
   >
-    <RequestStatusMessage
-      v-if="loadFuncsReqStatus.isPending || funcReqStatus.isPending"
-      :request-status="loadFuncsReqStatus"
-      show-loader-without-message
-    />
-    <template v-else-if="loadFuncsReqStatus.isSuccess">
-      <template v-if="funcId">Function "{{ funcId }}" does not exist!</template>
-      <template v-else>Select a function to edit it.</template>
+    <template #noTabs>
+      <div class="p-2 text-center text-neutral-400 dark:text-neutral-300">
+        <RequestStatusMessage
+          v-if="loadFuncsReqStatus.isPending || funcReqStatus.isPending"
+          :request-status="loadFuncsReqStatus"
+          show-loader-without-message
+        />
+        <template v-else-if="loadFuncsReqStatus.isSuccess">
+          <template v-if="funcId"
+            >Function "{{ funcId }}" does not exist!</template
+          >
+          <template v-else>Select a function to edit it.</template>
+        </template>
+      </div>
     </template>
-  </div>
-  <SiTabGroup
+    <TabGroupItem
+      v-for="func in openFuncsList"
+      :key="func.id"
+      :label="func.name"
+      :slug="func.id"
+    >
+      <FuncEditor :func-id="func.id" />
+    </TabGroupItem>
+  </TabGroup>
+  <!-- <SiTabGroup
     v-else
     :selected-index="selectedFuncIndex"
     selected-tab-to-front
@@ -63,13 +81,14 @@
         <FuncEditor :func-id="func.id" />
       </TabPanel>
     </template>
-  </SiTabGroup>
+  </SiTabGroup> -->
 </template>
 
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
 import { storeToRefs } from "pinia";
 import clsx from "clsx";
+import { watch, ref } from "vue";
 import SiTabGroup from "@/components/SiTabGroup.vue";
 import SiTabHeader from "@/components/SiTabHeader.vue";
 import FuncEditor from "@/components/FuncEditor/FuncEditor.vue";
@@ -79,10 +98,14 @@ import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { themeClasses } from "@/ui-lib/theme_tools";
 import DropdownMenuItem from "@/ui-lib/menus/DropdownMenuItem.vue";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
+import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
+import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 
-defineProps({
+const props = defineProps({
   funcId: { type: String },
 });
+
+const tabGroupRef = ref<InstanceType<typeof TabGroup>>();
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
@@ -124,4 +147,22 @@ const routeToFuncByIndex = (index: number) => {
 function nilId(): string {
   return "00000000000000000000000000";
 }
+
+const onTabChange = (slug: string | undefined) => {
+  if (slug) {
+    routeToFunc(slug);
+  }
+};
+
+const selectTabFromURL = () => {
+  if (tabGroupRef.value) {
+    console.log("SELECTING BY URL");
+    tabGroupRef.value.selectTab(props.funcId);
+  }
+};
+
+watch([() => props.funcId], () => {
+  selectTabFromURL();
+  console.log("WATCHER GO NOW!");
+});
 </script>

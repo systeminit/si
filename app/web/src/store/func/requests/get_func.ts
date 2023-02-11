@@ -20,6 +20,7 @@ export const getFunc = (
   new ApiRequest<GetFuncResponse, typeof params>({
     url: "func/get_func",
     params,
+    keyRequestStatusBy: params.id,
     onSuccess,
   });
 

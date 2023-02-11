@@ -69,83 +69,69 @@
 
     <template v-else>
       <div class="flex-grow relative">
-        <SiTabGroup>
-          <template #tabs>
-            <SiTabHeader>Attributes</SiTabHeader>
-            <SiTabHeader>Code</SiTabHeader>
-            <SiTabHeader>Resource</SiTabHeader>
-          </template>
-          <template #panels>
-            <TabPanel class="w-full">
-              <AttributeViewer
-                class="dark:text-neutral-50 text-neutral-900"
-                :disabled="props.disabled"
-              />
-            </TabPanel>
-
-            <TabPanel class="w-full h-full overflow-hidden">
-              <template v-if="codeReqStatus.isPending">
-                Loading code...</template
-              >
-              <template v-else-if="codeReqStatus.isError">
-                <ErrorMessage :request-status="codeReqStatus" />
-              </template>
-              <template
-                v-else-if="codeReqStatus.isSuccess && selectedComponentCode"
-              >
-                <CodeViewer
-                  :code="
-                    selectedComponentCode[0]?.code || '# No code generated yet'
-                  "
-                  class="dark:text-neutral-50 text-neutral-900"
-                >
-                  <template #title>
-                    <span
-                      class="text-lg ml-4 whitespace-nowrap overflow-hidden text-ellipsis"
-                      >{{ selectedComponent.displayName }} Code</span
-                    >
-                  </template>
-                </CodeViewer>
-              </template>
-            </TabPanel>
-
-            <TabPanel class="w-full h-full mt-3">
+        <TabGroup start-selected-tab-slug="attributes">
+          <TabGroupItem label="Attributes" slug="attributes">
+            <AttributeViewer
+              class="dark:text-neutral-50 text-neutral-900"
+              :disabled="props.disabled"
+            />
+          </TabGroupItem>
+          <TabGroupItem label="Code" slug="code">
+            <template v-if="codeReqStatus.isPending"> Loading code...</template>
+            <template v-else-if="codeReqStatus.isError">
+              <ErrorMessage :request-status="codeReqStatus" />
+            </template>
+            <template
+              v-else-if="codeReqStatus.isSuccess && selectedComponentCode"
+            >
               <CodeViewer
                 :code="
-                  selectedComponent.resource.data
-                    ? JSON.stringify(selectedComponent.resource.data, null, 2)
-                    : ''
+                  selectedComponentCode[0]?.code || '# No code generated yet'
                 "
-                class="dark:text-neutral-50 text-neutral-900 pt-4"
+                class="dark:text-neutral-50 text-neutral-900"
               >
                 <template #title>
-                  <HealthIcon
-                    :health="selectedComponent.resource.status"
-                    :message="
-                      selectedComponent.resource.message
-                        ? [selectedComponent.resource.message]
-                        : []
-                    "
-                    :view-details="selectedComponent.resource.logs"
-                    class="ml-3"
-                  />
+                  <span
+                    class="text-lg ml-4 whitespace-nowrap overflow-hidden text-ellipsis"
+                    >{{ selectedComponent.displayName }} Code</span
+                  >
                 </template>
               </CodeViewer>
-            </TabPanel>
-          </template>
-        </SiTabGroup>
+            </template>
+          </TabGroupItem>
+          <TabGroupItem label="Resource" slug="resource">
+            <CodeViewer
+              :code="
+                selectedComponent.resource.data
+                  ? JSON.stringify(selectedComponent.resource.data, null, 2)
+                  : ''
+              "
+              class="dark:text-neutral-50 text-neutral-900 pt-4"
+            >
+              <template #title>
+                <HealthIcon
+                  :health="selectedComponent.resource.status"
+                  :message="
+                    selectedComponent.resource.message
+                      ? [selectedComponent.resource.message]
+                      : []
+                  "
+                  :view-details="selectedComponent.resource.logs"
+                  class="ml-3"
+                />
+              </template>
+            </CodeViewer>
+          </TabGroupItem>
+        </TabGroup>
       </div>
     </template>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { TabPanel } from "@headlessui/vue";
 import { computed, onBeforeMount } from "vue";
 import { useComponentsStore } from "@/store/components.store";
 import { useStatusStore } from "@/store/status.store";
-import SiTabGroup from "@/components/SiTabGroup.vue";
-import SiTabHeader from "@/components/SiTabHeader.vue";
 import AttributeViewer from "@/components/AttributeViewer.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import HealthIcon from "@/components/HealthIcon.vue";
@@ -154,6 +140,8 @@ import Icon from "@/ui-lib/icons/Icon.vue";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import Stack from "@/ui-lib/layout/Stack.vue";
+import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
+import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 

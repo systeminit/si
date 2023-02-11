@@ -20,6 +20,8 @@
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
 import { useRouter } from "vue-router";
+import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
+import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 import SiTabHeader from "./SiTabHeader.vue";
 import SiTabGroup from "./SiTabGroup.vue";
 
