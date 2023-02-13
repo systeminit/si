@@ -27,6 +27,7 @@
 !lib/dal
 !lib/dal-test
 !lib/deadpool-cyclone
+!lib/object-tree
 !lib/sdf
 !lib/veritech-client
 !lib/veritech-core
@@ -34,6 +35,7 @@
 !lib/si-data-faktory
 !lib/si-data-nats
 !lib/si-data-pg
+!lib/si-pkg
 !lib/si-settings
 !lib/si-std
 !lib/si-test-macros

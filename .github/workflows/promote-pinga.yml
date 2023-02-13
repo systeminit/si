@@ -16,6 +16,8 @@ on:
       - lib/si-data-faktory/**
       - lib/si-data-nats/**
       - lib/si-data-pg/**
+      - lib/object-tree/**
+      - lib/si-pkg/**
       - lib/si-settings/**
       - lib/si-std/**
       - lib/telemetry-application-rs/**
