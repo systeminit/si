@@ -24,7 +24,9 @@ pub struct GetVariantDefResponse {
     pub category: String,
     pub color: String,
     pub link: Option<String>,
+    pub description: Option<String>,
     pub definition: String,
+    pub variant_exists: bool,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
@@ -39,7 +41,9 @@ impl From<SchemaVariantDefinition> for GetVariantDefResponse {
             color: def.color().to_string(),
             link: def.link().map(|link| link.to_string()),
             definition: def.definition().to_string(),
+            description: def.description().map(|d| d.to_string()),
             timestamp: def.timestamp().to_owned(),
+            variant_exists: false, // This requires a database call, so this is a dummy value
         }
     }
 }
@@ -57,5 +61,12 @@ pub async fn get_variant_def(
             request.id,
         ))?;
 
-    Ok(Json(variant_def.into()))
+    let variant_exists = variant_def
+        .existing_default_schema_variant_id(&ctx)
+        .await?
+        .is_some();
+    let mut response: GetVariantDefResponse = variant_def.into();
+    response.variant_exists = variant_exists;
+
+    Ok(Json(response))
 }

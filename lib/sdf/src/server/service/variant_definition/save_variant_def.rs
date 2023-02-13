@@ -2,7 +2,6 @@ use super::{SchemaVariantDefinitionError, SchemaVariantDefinitionResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    component::ComponentKind,
     schema::variant::definition::{SchemaVariantDefinition, SchemaVariantDefinitionId},
     StandardModel, Visibility, WsEvent,
 };
@@ -16,9 +15,9 @@ pub struct SaveVariantDefRequest {
     pub menu_name: Option<String>,
     pub category: String,
     pub color: String,
-    pub component_kind: ComponentKind,
     pub link: Option<String>,
     pub definition: String,
+    pub description: Option<String>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -46,10 +45,10 @@ pub async fn save_variant_def(
     variant_def.set_menu_name(&ctx, request.menu_name).await?;
     variant_def.set_category(&ctx, request.category).await?;
     variant_def.set_color(&ctx, request.color).await?;
-    variant_def
-        .set_component_kind(&ctx, request.component_kind)
-        .await?;
     variant_def.set_link(&ctx, request.link).await?;
+    variant_def
+        .set_description(&ctx, request.description)
+        .await?;
     variant_def.set_definition(&ctx, request.definition).await?;
 
     WsEvent::change_set_written(&ctx)

@@ -1,8 +1,8 @@
 <template>
   <div>
     <RequestStatusMessage
-      v-if="loadAssetsReqStatus.isPending"
-      :request-status="loadAssetsReqStatus"
+      v-if="loadAssetReqStatus.isPending"
+      :request-status="loadAssetReqStatus"
       show-loader-without-message
     />
     <div v-else-if="assetStore.selectedAsset && assetId" class="flex flex-col">
@@ -15,6 +15,7 @@
         </div>
         <VButton2
           label="Execute"
+          :disabled="disabled"
           tone="action"
           icon="plus"
           size="md"
@@ -22,30 +23,69 @@
         />
       </div>
       <div class="p-sm flex flex-col">
-        <div class="pb-xs font-bold text-xl">Name:</div>
-        <div class="text-md">
-          {{ assetDisplayName(assetStore.selectedAsset) }}
-        </div>
+        <SiTextBox
+          id="name"
+          v-model="assetStore.selectedAsset.name"
+          :disabled="disabled"
+          title="Name"
+          placeholder="Give this asset a name here..."
+          @blur="updateAsset"
+        />
       </div>
       <div class="p-sm flex flex-col">
-        <div class="pb-xs font-bold text-xl">Category:</div>
-        <div class="text-md">{{ assetStore.selectedAsset.category }}</div>
+        <SiTextBox
+          id="menuName"
+          v-model="assetStore.selectedAsset.menuName"
+          :disabled="disabled"
+          title="Display name"
+          placeholder="Optionally, give the asset a shorter name for display here..."
+          @blur="updateAsset"
+        />
       </div>
       <div class="p-sm flex flex-col">
-        <div class="pb-xs font-bold text-xl">Description:</div>
-        <div class="text-md">{{ assetStore.selectedAsset.description }}</div>
+        <SiTextBox
+          id="category"
+          v-model="assetStore.selectedAsset.category"
+          :disabled="disabled"
+          title="Category"
+          placeholder="Pick a category for this asset"
+          @blur="updateAsset"
+        />
       </div>
       <div class="p-sm flex flex-col">
-        <div class="pb-xs font-bold text-xl">Color:</div>
+        <SiTextBox
+          id="description"
+          v-model="assetStore.selectedAsset.description"
+          :disabled="disabled"
+          title="Description"
+          text-area
+          placeholder="Provide a brief description of this asset here..."
+          @blur="updateAsset"
+        />
+      </div>
+      <div class="p-sm flex items-center">
+        <SiTextBox
+          id="color"
+          v-model="assetStore.selectedAsset.color"
+          :disabled="disabled"
+          title="Color"
+          placeholder="Choose a color for this asset"
+          @blur="updateAsset"
+        />
         <div
-          class="text-md"
-          :style="`color: #${assetStore.selectedAsset.color}`"
-        >
-          #{{ assetStore.selectedAsset.color }}
-        </div>
+          class="box-border h-8 w-8 mt-[23px] ml-auto"
+          :style="`background-color: #${assetStore.selectedAsset.color}`"
+        ></div>
       </div>
       <div class="p-sm flex flex-col">
-        <div class="pb-xs font-bold text-xl">Documentation:</div>
+        <SiTextBox
+          id="link"
+          v-model="assetStore.selectedAsset.link"
+          :disabled="disabled"
+          title="Documentation Link"
+          placeholder="Enter a link to the documentation for this asset here..."
+          @blur="updateAsset"
+        />
         <div class="text-md text-action-500 font-bold">
           <a :href="assetStore.selectedAsset.link" target="_blank">
             Documentation Link
@@ -67,23 +107,31 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import { useAssetStore, assetDisplayName } from "@/store/asset.store";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import Modal from "@/ui-lib/modals/Modal.vue";
+import SiTextBox from "@/components/SiTextBox.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 
 const assetStore = useAssetStore();
-const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
+const loadAssetReqStatus = assetStore.getRequestStatus("LOAD_ASSET");
 const executeAssetModalRef = ref();
 const assetModalTitle = ref("New Asset Created");
+
+const updateAsset = () => {
+  assetStore.SAVE_ASSET(assetStore.selectedAsset);
+};
+
+const disabled = computed(() => assetStore.selectedAsset.variantExists);
 
 defineProps<{
   assetId?: string;
 }>();
 
-const executeAsset = () => {
+const executeAsset = async () => {
+  await assetStore.EXEC_ASSET(assetStore.selectedAsset.id);
   executeAssetModalRef.value.open();
 };
 </script>

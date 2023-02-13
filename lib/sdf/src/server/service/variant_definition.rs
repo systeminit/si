@@ -13,6 +13,7 @@ use dal::{
 use thiserror::Error;
 
 pub mod create_variant_def;
+pub mod exec_variant_def;
 pub mod get_variant_def;
 pub mod list_variant_defs;
 pub mod save_variant_def;
@@ -37,6 +38,8 @@ pub enum SchemaVariantDefinitionError {
     SchemaVariantDefinition(#[from] DalSchemaVariantDefinitionError),
     #[error("Schema Variant Definition {0} not found")]
     VariantDefnitionNotFound(SchemaVariantDefinitionId),
+    #[error("error creating schema variant from definition: {0}")]
+    CouldNotCreateSchemaVariantFromDefinition(String),
 }
 
 pub type SchemaVariantDefinitionResult<T> = Result<T, SchemaVariantDefinitionError>;
@@ -67,5 +70,9 @@ pub fn routes() -> Router {
         .route(
             "/create_variant_def",
             post(create_variant_def::create_variant_def),
+        )
+        .route(
+            "/exec_variant_def",
+            post(exec_variant_def::exec_variant_def),
         )
 }

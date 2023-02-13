@@ -33,7 +33,6 @@
 
 <script lang="ts" setup>
 import _ from "lodash";
-import { useRouter } from "vue-router";
 import { onMounted } from "vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { useAssetStore } from "@/store/asset.store";
@@ -41,7 +40,6 @@ import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import AssetListItem from "./AssetListItem.vue";
 
-const router = useRouter();
 const assetStore = useAssetStore();
 const loadAssetsReqStatus = assetStore.getRequestStatus("LOAD_ASSET_LIST");
 
@@ -55,12 +53,10 @@ onMounted(() => {
   }
 });
 
-const newAsset = () => {
-  const asset = assetStore.createNewAsset();
-  assetStore.SELECT_ASSET(asset.id);
-  router.push({
-    name: "workspace-lab-assets",
-    params: { assetId: asset.id },
-  });
+const newAsset = async () => {
+  const result = await assetStore.CREATE_ASSET(assetStore.createNewAsset());
+  if (result.result.success) {
+    assetStore.SELECT_ASSET(result.result.data.id);
+  }
 };
 </script>

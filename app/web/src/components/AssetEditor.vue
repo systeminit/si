@@ -25,14 +25,18 @@
       </div>
       <div><span class="font-bold">Created By: </span>sally@systeminit.com</div>
     </div>
-    <!-- TODO(wendy) - this should be a code editor and not just a viewer -->
-    <CodeViewer :code="assetStore.selectedAsset.definition">
+    <CodeEditor
+      v-model="editingAsset"
+      json
+      :disabled="assetStore.selectedAsset.variantExists"
+      @change="onChange"
+    >
       <template #title>
         <div class="truncate">
           Code for "{{ assetDisplayName(assetStore.selectedAsset) }}"
         </div>
       </template>
-    </CodeViewer>
+    </CodeEditor>
   </div>
   <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
     <template v-if="assetId">Asset "{{ assetId }}" does not exist!</template>
@@ -41,16 +45,39 @@
 </template>
 
 <script lang="ts" setup>
+import { ref, watch } from "vue";
+import { storeToRefs } from "pinia";
 import { useAssetStore, assetDisplayName } from "@/store/asset.store";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import Timestamp from "@/ui-lib/Timestamp.vue";
-import CodeViewer from "./CodeViewer.vue";
+import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 
 const assetStore = useAssetStore();
+const { selectedAsset } = storeToRefs(assetStore);
 const loadAssetReqStatus = assetStore.getRequestStatus("LOAD_ASSET");
+
+const editingAsset = ref<string>(selectedAsset.value?.definition ?? "");
 
 defineProps<{
   assetId?: string;
 }>();
+
+watch(
+  () => selectedAsset.value,
+  async (selectedAsset) => {
+    if (editingAsset.value !== selectedAsset?.definition) {
+      editingAsset.value = selectedAsset?.definition ?? "";
+    }
+  },
+  { immediate: true },
+);
+
+const onChange = () => {
+  if (selectedAsset.value.definition === editingAsset.value) {
+    return;
+  }
+  selectedAsset.value.definition = editingAsset.value;
+  assetStore.SAVE_ASSET(selectedAsset.value);
+};
 </script>

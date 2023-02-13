@@ -188,7 +188,7 @@ impl TryFrom<&Func> for FuncVariant {
                 _ => Ok(FuncVariant::Attribute),
             },
             (FuncBackendKind::JsCommand, _) => Ok(FuncVariant::Command),
-            (FuncBackendKind::Validation, _) => Ok(FuncVariant::Validation),
+            (FuncBackendKind::JsValidation, _) => Ok(FuncVariant::Validation),
             _ => Err(FuncError::FuncCannotBeTurnedIntoVariant(*func.id())),
         }
     }

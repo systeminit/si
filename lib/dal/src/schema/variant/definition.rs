@@ -14,7 +14,8 @@ use crate::{
     component::ComponentKind, edit_field::widget::WidgetKind, impl_standard_model, pk,
     standard_model, standard_model_accessor, DalContext, ExternalProvider, Func, HistoryEventError,
     InternalProvider, NatsError, PgError, Prop, PropId, PropKind, RootProp, Schema, SchemaVariant,
-    SocketArity, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    SchemaVariantId, SocketArity, StandardModel, StandardModelError, Tenancy, Timestamp,
+    Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -33,6 +34,8 @@ pub enum SchemaVariantDefinitionError {
     Decode(#[from] base64::DecodeError),
     #[error("{0} is not a valid hex color string")]
     InvalidHexColor(String),
+    #[error("Could not check for default variant: {0}")]
+    CouldNotCheckForDefaultVariant(String),
 }
 
 pub type SchemaVariantDefinitionResult<T> = Result<T, SchemaVariantDefinitionError>;
@@ -150,7 +153,7 @@ impl SchemaVariantDefinition {
             metadata.color,
             metadata.component_kind,
             metadata.description,
-            serde_json::to_string(&definition)?,
+            serde_json::to_string_pretty(&definition)?,
         )
         .await
     }
@@ -201,6 +204,23 @@ impl SchemaVariantDefinition {
         Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
 
+    pub async fn existing_default_schema_variant_id(
+        &self,
+        ctx: &DalContext,
+    ) -> SchemaVariantDefinitionResult<Option<SchemaVariantId>> {
+        Ok(
+            match Schema::default_schema_variant_id_for_name(ctx, self.name()).await {
+                Ok(schema_variant_id) => Some(schema_variant_id),
+                Err(SchemaError::NotFoundByName(_)) | Err(SchemaError::NoDefaultVariant(_)) => None,
+                Err(e) => {
+                    return Err(
+                        SchemaVariantDefinitionError::CouldNotCheckForDefaultVariant(e.to_string()),
+                    )
+                }
+            },
+        )
+    }
+
     standard_model_accessor!(name, String, SchemaVariantDefinitionResult);
     standard_model_accessor!(menu_name, Option<String>, SchemaVariantDefinitionResult);
     standard_model_accessor!(category, String, SchemaVariantDefinitionResult);
@@ -211,6 +231,7 @@ impl SchemaVariantDefinition {
         SchemaVariantDefinitionResult
     );
     standard_model_accessor!(link, Option<String>, SchemaVariantDefinitionResult);
+    standard_model_accessor!(description, Option<String>, SchemaVariantDefinitionResult);
     standard_model_accessor!(definition, String, SchemaVariantDefinitionResult);
 }
 
