@@ -60,7 +60,6 @@ import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";
 import { diff as DiffModeParser } from "@codemirror/legacy-modes/mode/diff";
 import clsx from "clsx";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
-// NOTE(nick): this took a long ass time to find. Javascript's JSON mode doesn't work. This does.
 
 import SiButtonIcon from "@/components/SiButtonIcon.vue";
 import { themeClasses, useTheme } from "@/ui-lib/theme_tools";

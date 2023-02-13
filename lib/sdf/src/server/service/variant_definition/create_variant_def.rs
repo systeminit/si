@@ -8,6 +8,12 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 
+const DEFAULT_ASSET_CODE: &str = r#"{
+  "props": [],
+  "inputSockets": [],
+  "outputSockets": []
+}"#;
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateVariantDefRequest {
@@ -44,7 +50,7 @@ pub async fn create_variant_def(
         request.color,
         ComponentKind::Standard,
         request.description,
-        "".to_string(),
+        DEFAULT_ASSET_CODE.to_string(),
     )
     .await?;
 

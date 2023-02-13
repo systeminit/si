@@ -14,7 +14,7 @@
     class="grow overflow-hidden bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold flex flex-col relative"
   >
     <div class="inset-2 bottom-0 absolute w-full h-full">
-      <AssetDisplay :asset-id="assetId" />
+      <AssetEditor :asset-id="assetId" />
     </div>
   </div>
   <SiPanel remember-size-key="func-details" side="right" :min-size="200">
@@ -30,7 +30,7 @@ import ChangeSetPanel from "../ChangeSetPanel.vue";
 import SiPanel from "../SiPanel.vue";
 import AssetListPanel from "../AssetListPanel.vue";
 import CustomizeTabs from "../CustomizeTabs.vue";
-import AssetDisplay from "../AssetDisplay.vue";
+import AssetEditor from "../AssetEditor.vue";
 import AssetDetailsPanel from "../AssetDetailsPanel.vue";
 
 const assetStore = useAssetStore();

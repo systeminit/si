@@ -1,10 +1,12 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
+import omit from "lodash/omit";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";
+import { useRealtimeStore } from "./realtime/realtime.store";
 
 export type AssetId = string;
 
@@ -26,13 +28,20 @@ export interface ListedVariantDef {
 export interface VariantDef extends ListedVariantDef {
   link?: string;
   definition: string;
+  variantExists: boolean;
 }
 
 export type Asset = VariantDef;
 export type AssetListEntry = ListedVariantDef;
+export type AssetSaveRequest = Visibility &
+  Omit<Asset, "createdAt" | "updatedAt" | "variantExists">;
+export type AssetCreateRequest = Omit<
+  AssetSaveRequest,
+  "id" | "definition" | "variantExists"
+>;
 
 export const assetDisplayName = (asset: Asset | AssetListEntry) =>
-  asset.menuName ?? asset.name;
+  (asset.menuName ?? "").length === 0 ? asset.name : asset.menuName;
 
 export const useAssetStore = () => {
   const changeSetsStore = useChangeSetsStore();
@@ -46,7 +55,6 @@ export const useAssetStore = () => {
         assetList: [] as ListedVariantDef[],
         assetsById: {} as Record<AssetId, Asset>,
         selectedAssetId: null as AssetId | null,
-        lastAssignedId: null as number | null, // TODO - this won't be needed once we have the backend involved
       }),
       getters: {
         assets: (state) => _.values(state.assetsById),
@@ -80,7 +88,7 @@ export const useAssetStore = () => {
 
         // MOCK DATA GENERATION
         generateMockColor() {
-          return `#${_.sample([
+          return `${_.sample([
             "FF0000",
             "FFFF00",
             "FF00FF",
@@ -99,14 +107,8 @@ export const useAssetStore = () => {
         },
 
         createNewAsset() {
-          if (this.lastAssignedId) {
-            this.lastAssignedId += 1;
-          } else {
-            this.lastAssignedId = 1;
-          }
-
-          const newAsset = {
-            id: `${this.lastAssignedId}`,
+          return {
+            id: nilId(),
             name: `new asset ${Math.floor(Math.random() * 10000)}${
               Math.floor(Math.random() * 20) === 0
                 ? " omg has such a long name the name is so long you can't even believe how long it is!"
@@ -119,10 +121,40 @@ export const useAssetStore = () => {
             link: "https://www.systeminit.com/",
             createdAt: new Date(),
             updatedAt: new Date(),
+            variantExists: false,
           };
+        },
 
-          this.assetsById[`${this.lastAssignedId}`] = newAsset;
-          return newAsset;
+        async CREATE_ASSET(asset: Asset) {
+          return new ApiRequest<
+            { id: AssetId; success: boolean },
+            AssetCreateRequest
+          >({
+            method: "post",
+            url: "/variant_def/create_variant_def",
+            params: {
+              ...visibility,
+              ...omit(asset, [
+                "id",
+                "variantExists",
+                "createdAt",
+                "updatedAt",
+                "definition",
+              ]),
+            },
+          });
+        },
+
+        async SAVE_ASSET(asset: Asset) {
+          this.assetsById[asset.id] = asset;
+          return new ApiRequest<{ success: boolean }, AssetSaveRequest>({
+            method: "post",
+            url: "/variant_def/save_variant_def",
+            params: {
+              ...visibility,
+              ...omit(asset, ["variantExists", "createdAt", "updatedAt"]),
+            },
+          });
         },
 
         async LOAD_ASSET(assetId: AssetId) {
@@ -144,9 +176,30 @@ export const useAssetStore = () => {
             },
           });
         },
+
+        async EXEC_ASSET(assetId: AssetId) {
+          return new ApiRequest<{ id: string }, Visibility & { id: AssetId }>({
+            method: "post",
+            url: "/variant_def/exec_variant_def",
+            params: { ...visibility, id: assetId },
+          });
+        },
       },
       onActivated() {
         this.LOAD_ASSET_LIST();
+        const realtimeStore = useRealtimeStore();
+        realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
+          {
+            eventType: "ChangeSetWritten",
+            callback: (writtenChangeSetId) => {
+              if (writtenChangeSetId !== changeSetId) return;
+              this.LOAD_ASSET_LIST();
+            },
+          },
+        ]);
+        return () => {
+          realtimeStore.unsubscribe(this.$id);
+        };
       },
     }),
   )();
