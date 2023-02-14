@@ -241,11 +241,11 @@ impl MigrationDriver {
             .get_func_item("si:identity")
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
-        let (image_id_explicit_internal_provider, _input_socket) =
+        let (user_data_explicit_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
-                "Image ID",
+                "User Data",
                 identity_func_item.func_id,
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
@@ -259,6 +259,19 @@ impl MigrationDriver {
                 ctx,
                 *schema_variant.id(),
                 "Security Group ID",
+                identity_func_item.func_id,
+                identity_func_item.func_binding_id,
+                identity_func_item.func_binding_return_value_id,
+                SocketArity::Many,
+                false,
+            )
+            .await?;
+
+        let (image_id_explicit_internal_provider, _input_socket) =
+            InternalProvider::new_explicit_with_socket(
+                ctx,
+                *schema_variant.id(),
+                "Image ID",
                 identity_func_item.func_id,
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
@@ -292,19 +305,6 @@ impl MigrationDriver {
                 false,
             )
             .await?; // TODO(wendy) - Can an EC2 instance have multiple regions? Idk!
-
-        let (user_data_explicit_internal_provider, _input_socket) =
-            InternalProvider::new_explicit_with_socket(
-                ctx,
-                *schema_variant.id(),
-                "User Data",
-                identity_func_item.func_id,
-                identity_func_item.func_binding_id,
-                identity_func_item.func_binding_return_value_id,
-                SocketArity::Many,
-                false,
-            )
-            .await?;
 
         // Qualifications
         let qualification_func_name = "si:qualificationEc2CanRun";
