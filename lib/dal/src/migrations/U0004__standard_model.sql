@@ -170,12 +170,6 @@ BEGIN
     this_visibility_row = visibility_json_to_columns_v1(this_visibility);
     this_tenancy_record = tenancy_json_to_columns_v1(this_tenancy);
 
-    IF this_visibility_row.visibility_deleted_at IS NOT NULL THEN
-        RAISE EXCEPTION 'update_by_id_v1: cannot update column % on table % for a deleted record',
-            this_column,
-            this_table;
-    END IF;
-
     /* First, try the update - if it works, we're all set. */
     EXECUTE format('UPDATE %1$I SET %2$I = %6$L, updated_at = clock_timestamp() WHERE id = %5$L '
                    '  AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pk) '
