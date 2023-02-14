@@ -10,13 +10,12 @@ use crate::component::{
 };
 use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::job::definition::DependentValuesUpdate;
-use crate::ws_event::WsEvent;
 use crate::{
     standard_model, ActionPrototype, ActionPrototypeError, AttributeReadContext,
     AttributeValueError, AttributeValueId, ComponentError, DalContext, Fix, FixResolver,
     FuncBindingReturnValue, FuncDescription, FuncDescriptionContents, FuncId, Node, NodeError,
-    RootPropChild, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, WsEventResult,
-    WsPayload,
+    RootPropChild, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, WsEvent,
+    WsEventResult, WsPayload,
 };
 use crate::{Component, ComponentId};
 
@@ -56,8 +55,8 @@ pub struct Recommendation {
     // TODO(nick,paulo,paul,wendy): yes, these fields are technically already on the confirmation
     // itself and we could just map the recommendations back to the confirmations in the frontend,
     // but we want shit to work again before optimizing. Fix the fix flow!
-    confirmation_attribute_value_id: AttributeValueId,
-    component_id: ComponentId,
+    pub confirmation_attribute_value_id: AttributeValueId,
+    pub component_id: ComponentId,
     component_name: String,
     provider: Option<String>,
 
@@ -136,8 +135,6 @@ impl Component {
                 .collect::<Vec<AttributeValueId>>(),
         ))
         .await;
-
-        WsEvent::ran_confirmations(ctx).await?;
 
         Ok(())
     }
@@ -456,15 +453,15 @@ impl Component {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ConfirmationRunPayload {
+pub struct ConfirmationsUpdatedPayload {
     success: bool,
 }
 
 impl WsEvent {
-    pub async fn ran_confirmations(ctx: &DalContext) -> WsEventResult<Self> {
+    pub async fn confirmations_updated(ctx: &DalContext) -> WsEventResult<Self> {
         WsEvent::new(
             ctx,
-            WsPayload::RanConfirmations(ConfirmationRunPayload { success: true }),
+            WsPayload::ConfirmationsUpdated(ConfirmationsUpdatedPayload { success: true }),
         )
         .await
     }

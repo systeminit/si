@@ -10,6 +10,7 @@
       <VormInput
         v-if="recommendation.status === 'unstarted'"
         :model-value="selected"
+        :disabled="disableCheckbox"
         type="checkbox"
         class="flex-none pl-1"
         no-label
@@ -106,6 +107,7 @@ const props = defineProps({
   recommendation: { type: Object as PropType<Recommendation>, required: true },
   class: { type: String },
   selected: { type: Boolean, default: false },
+  disableCheckbox: { type: Boolean, default: false },
 });
 
 const classes = computed(() => props.class);

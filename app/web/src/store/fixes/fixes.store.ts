@@ -319,13 +319,9 @@ export const useFixesStore = () => {
         const realtimeStore = useRealtimeStore();
         realtimeStore.subscribe(this.$id, `workspace/${workspacePk}/head`, [
           {
-            eventType: "RanConfirmations",
+            eventType: "ConfirmationsUpdated",
             callback: (_update) => {
               this.runningFixBatch = undefined;
-
-              // NOTE(nick): this could be better with us only updating confirmations as they run.
-              // Although, there's a counter-argument: all confirmations should be re-ran once the
-              // "real world" changes, so is incremental updating really better? Maybe?
               this.LOAD_CONFIRMATIONS();
               this.LOAD_FIX_BATCHES();
             },

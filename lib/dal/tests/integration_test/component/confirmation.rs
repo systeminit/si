@@ -6,12 +6,13 @@ use dal::{
     generate_name,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
     ActionPrototype, ActionPrototypeContext, ChangeSet, ChangeSetStatus, Component, ComponentView,
-    DalContext, Func, FuncBackendKind, FuncBackendResponseType, SchemaVariant, StandardModel,
-    Visibility, WorkflowPrototype, WorkflowPrototypeContext,
+    DalContext, Fix, FixBatch, Func, FuncBackendKind, FuncBackendResponseType, SchemaVariant,
+    StandardModel, Visibility, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 use dal::action_prototype::ActionKind;
 use dal::component::confirmation::RecommendationStatus;
+use dal::job::definition::{FixItem, FixesJob};
 use dal_test::test;
 use dal_test::test_harness::{create_schema, create_schema_variant_with_root};
 use pretty_assertions_sorted::assert_eq;
@@ -430,20 +431,29 @@ async fn list_confirmations(mut octx: DalContext) {
         component_view.properties // actual
     );
 
-    // "Create" the resource.
-    component
-        .set_resource(
-            ctx,
-            CommandRunResult {
-                status: ResourceStatus::Ok,
-                value: Some(serde_json::json!["poop"]),
-                message: None,
-                logs: vec![],
-            },
-        )
+    // Run the fix from our recommendation.
+    let batch = FixBatch::new(ctx, "toddhoward@systeminit.com")
         .await
-        .expect("could not set resource");
+        .expect("could not create fix batch");
+    let fix = Fix::new(
+        ctx,
+        *batch.id(),
+        recommendation.confirmation_attribute_value_id,
+        recommendation.component_id,
+        &recommendation.recommended_action,
+    )
+    .await
+    .expect("could not create fix");
+    let fixes = vec![FixItem {
+        id: *fix.id(),
+        attribute_value_id: recommendation.confirmation_attribute_value_id,
+        component_id: recommendation.component_id,
+        action: recommendation.recommended_action,
+    }];
+    ctx.enqueue_job(FixesJob::new(ctx, fixes, *batch.id()))
+        .await;
 
+    // Ensure that our confirmations views look as intended.
     let mut views = Component::list_confirmations(ctx)
         .await
         .expect("could not list confirmations");

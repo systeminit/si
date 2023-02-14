@@ -64,7 +64,7 @@
             <span class="pl-1">{{ creationRecommendations.length }}</span>
           </div>
           <Icon
-            v-if="fixesStore.populatingFixes"
+            v-if="confirmationsInFlight || fixesStore.populatingFixes"
             name="loader"
             size="md"
             class="text-action-500 dark:text-action-100"
@@ -84,6 +84,7 @@
               v-for="recommendation in creationRecommendations"
               :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
             >
+              <!-- TODO(nick,paulo): disable recommendation sprites that aren't ready using "disable-checkbox" -->
               <RecommendationSprite
                 :recommendation="recommendation"
                 :selected="
@@ -191,6 +192,15 @@ const selectedRecommendations = computed(() => {
 const runFixes = () => {
   fixesStore.EXECUTE_FIXES_FROM_RECOMMENDATIONS(selectedRecommendations.value);
 };
+
+const confirmationsInFlight = computed(() => {
+  for (const c of fixesStore.confirmations) {
+    if (c.status === "neverStarted") {
+      return true;
+    }
+  }
+  return false;
+});
 
 const disableApply = computed(
   () =>

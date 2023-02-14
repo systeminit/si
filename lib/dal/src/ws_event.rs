@@ -3,7 +3,7 @@ use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use thiserror::Error;
 
-use crate::component::confirmation::ConfirmationRunPayload;
+use crate::component::confirmation::ConfirmationsUpdatedPayload;
 use crate::{
     component::{code::CodeGeneratedPayload, resource::ResourceRefreshId},
     fix::{batch::FixBatchReturn, FixReturn},
@@ -42,7 +42,7 @@ pub enum WsPayload {
     ChangeSetWritten(ChangeSetPk),
     SchemaCreated(SchemaPk),
     ResourceRefreshed(ResourceRefreshId),
-    RanConfirmations(ConfirmationRunPayload),
+    ConfirmationsUpdated(ConfirmationsUpdatedPayload),
     CheckedQualifications(QualificationCheckPayload),
     CommandOutput(CommandOutput),
     CodeGenerated(CodeGeneratedPayload),
