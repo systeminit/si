@@ -69,6 +69,8 @@ pub enum EdgeError {
     EdgeNotFound(EdgeId),
     #[error("cannot restore non deleted edge with id: {0}")]
     RestoringNonDeletedEdge(EdgeId),
+    #[error("cannot restore edge ({0}) to deleted node: {1}")]
+    RestoringAnEdgeToDeletedNode(EdgeId, NodeId),
     #[error("external provider not found for id: {0}")]
     ExternalProviderNotFound(ExternalProviderId),
     #[error("external provider not found for socket id: {0}")]
@@ -443,7 +445,33 @@ impl Edge {
         }
 
         let head_node_id = &deleted_edge.head_node_id();
+        let maybe_head_node = Node::get_by_id(ctx_with_deleted, head_node_id).await?;
         let tail_node_id = &deleted_edge.tail_node_id();
+        let maybe_tail_node = Node::get_by_id(ctx_with_deleted, tail_node_id).await?;
+
+        // we need to check if the head node is
+        if let Some(head_node) = maybe_head_node {
+            if head_node.visibility().change_set_pk == ctx.visibility().change_set_pk
+                && head_node.visibility().deleted_at.is_some()
+            {
+                return Err(EdgeError::RestoringAnEdgeToDeletedNode(
+                    edge_id,
+                    *head_node.id(),
+                ));
+            }
+        }
+
+        if let Some(tail_node) = maybe_tail_node {
+            if tail_node.visibility().change_set_pk == ctx.visibility().change_set_pk
+                && tail_node.visibility().deleted_at.is_some()
+            {
+                return Err(EdgeError::RestoringAnEdgeToDeletedNode(
+                    edge_id,
+                    *tail_node.id(),
+                ));
+            }
+        }
+
         let head_socket_id = &deleted_edge.head_socket_id();
         let tail_socket_id = &deleted_edge.tail_socket_id();
 
