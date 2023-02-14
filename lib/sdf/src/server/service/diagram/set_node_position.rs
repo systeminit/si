@@ -30,7 +30,8 @@ pub async fn set_node_position(
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SetNodePositionRequest>,
 ) -> DiagramResult<Json<SetNodePositionResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let visibility = Visibility::new_change_set(request.visibility.change_set_pk, true);
+    let ctx = builder.build(request_ctx.build(visibility)).await?;
 
     let (width, height) = {
         let component = dal::Component::find_for_node(&ctx, request.node_id)
