@@ -32,11 +32,7 @@ import {
   useQualificationsStore,
 } from "./qualifications.store";
 import { useWorkspacesStore } from "./workspaces.store";
-import {
-  ConfirmationStatus,
-  FixStatus,
-  useFixesStore,
-} from "./fixes/fixes.store";
+import { ConfirmationStatus, useFixesStore } from "./fixes/fixes.store";
 import { useStatusStore } from "./status.store";
 
 export type ComponentId = string;

@@ -279,6 +279,7 @@ import {
   DiagramElementUniqueKey,
   DiagramNodeData,
   DiagramSocketData,
+  ElementHoverMeta,
 } from "./diagram_types";
 import DiagramNodeSocket from "./DiagramNodeSocket.vue";
 
@@ -316,7 +317,11 @@ const props = defineProps({
   isSelected: Boolean,
 });
 
-const emit = defineEmits(["resize", "hover:start", "hover:end"]);
+const emit = defineEmits<{
+  (e: "hover:start", meta?: ElementHoverMeta): void;
+  (e: "hover:end"): void;
+  (e: "resize"): void;
+}>();
 
 const { theme } = useTheme();
 const diagramConfig = useDiagramConfig();
@@ -446,9 +451,9 @@ function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:end");
 }
 function onSocketHoverStart(socket: DiagramSocketData) {
-  emit("hover:start", !isDeleted.value ? socket : undefined);
+  emit("hover:start", { type: "socket", socket });
 }
-function onSocketHoverEnd(socket: DiagramSocketData) {
-  emit("hover:end", !isDeleted.value ? socket : undefined);
+function onSocketHoverEnd(_socket: DiagramSocketData) {
+  emit("hover:end");
 }
 </script>
