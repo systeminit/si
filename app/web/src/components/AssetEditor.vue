@@ -24,6 +24,11 @@
         <Timestamp :date="assetStore.selectedAsset.createdAt" size="long" />
       </div>
       <div><span class="font-bold">Created By: </span>sally@systeminit.com</div>
+      <SiChip
+        v-if="assetStore.selectedAsset.variantExists"
+        variant="warning"
+        text="read-only"
+      />
     </div>
     <CodeEditor
       v-model="editingAsset"
@@ -50,6 +55,7 @@ import { storeToRefs } from "pinia";
 import { useAssetStore, assetDisplayName } from "@/store/asset.store";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import Timestamp from "@/ui-lib/Timestamp.vue";
+import SiChip from "@/components/SiChip.vue";
 import CodeEditor from "./CodeEditor.vue";
 import NodeSkeleton from "./NodeSkeleton.vue";
 

@@ -3,11 +3,12 @@
     <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
       Add the names of the arguments to this function and their types.
     </h1>
-    <div class="flex flex-row gap-1 items-center">
-      <SiTextBox
+    <Inline align-y="center">
+      <VormInput
         id="newArg"
         v-model="newArg.name"
-        class="flex-1"
+        type="text"
+        no-label
         placeholder="New argument name..."
         :disabled="disabled"
       />
@@ -18,44 +19,38 @@
         :disabled="disabled"
       />
       <VButton
-        class="flex-none"
         label="Add"
         button-rank="primary"
         button-type="success"
         :disabled="disabled"
         @click="addArgument"
       />
-    </div>
+    </Inline>
     <ul>
-      <li
-        v-for="arg in editingArgs"
-        :key="arg.id"
-        class="flex flex-row items-center gap-1"
-      >
-        <SiTextBox
+      <Inline v-for="arg in editingArgs" :key="arg.id" align-y="center">
+        <VormInput
           :id="`arg-name-${arg.id}`"
           v-model="arg.name"
-          class="flex-1"
+          type="text"
+          no-label
           placeholder="Argument name"
           :disabled="disabled"
           @blur="saveArguments"
         />
         <SelectMenu
           v-model="arg.kind"
-          class="flex-auto"
           :options="kindOptions"
           :disabled="disabled"
           @change="saveArguments"
         />
         <VButton
-          class="flex-none"
           label="Del"
           button-rank="primary"
           button-type="destructive"
           :disabled="disabled"
           @click="deleteArgument(arg.name)"
         />
-      </li>
+      </Inline>
     </ul>
   </div>
 </template>
@@ -64,7 +59,8 @@
 import { ref, toRef, watch } from "vue";
 import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
 import VButton from "@/components/VButton.vue";
-import SiTextBox from "@/components/SiTextBox.vue";
+import VormInput from "@/ui-lib/forms/VormInput.vue";
+import Inline from "@/ui-lib/layout/Inline.vue";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 

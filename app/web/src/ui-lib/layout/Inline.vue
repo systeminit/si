@@ -22,7 +22,7 @@ const propsDefinition = {
   ...responsiveVerticalAlignProps,
   collapseBelow: { type: String as PropType<BreakpointNamesWithoutSmallest> },
   tagName: {
-    type: String as PropType<"div" | "section" | "ol" | "ul">,
+    type: String as PropType<"div" | "section" | "ol" | "ul" | "li">,
     default: "div",
   },
   reverse: {

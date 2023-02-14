@@ -344,14 +344,18 @@ pub async fn migrate_builtins(
     Ok(())
 }
 
-pub fn generate_name() -> String {
+pub fn generate_unique_id(length: usize) -> String {
     let mut rng = rand::thread_rng();
-    let unique_id: String = (0..4)
+    (0..length)
         .map(|_| {
             let idx = rng.gen_range(0..NAME_CHARSET.len());
             NAME_CHARSET[idx] as char
         })
-        .collect();
+        .collect()
+}
+
+pub fn generate_name() -> String {
+    let unique_id = generate_unique_id(4);
     format!("si-{unique_id}")
 }
 

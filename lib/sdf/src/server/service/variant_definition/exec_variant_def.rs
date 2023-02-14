@@ -35,7 +35,7 @@ pub async fn exec_variant_def(
 
     let variant_def = SchemaVariantDefinition::get_by_id(&ctx, &request.id)
         .await?
-        .ok_or(SchemaVariantDefinitionError::VariantDefnitionNotFound(
+        .ok_or(SchemaVariantDefinitionError::VariantDefinitionNotFound(
             request.id,
         ))?;
 
