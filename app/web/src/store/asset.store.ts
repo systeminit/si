@@ -39,6 +39,7 @@ export type AssetCreateRequest = Omit<
   AssetSaveRequest,
   "id" | "definition" | "variantExists"
 >;
+export type AssetCloneRequest = Visibility & { id: AssetId };
 
 export const assetDisplayName = (asset: Asset | AssetListEntry) =>
   (asset.menuName ?? "").length === 0 ? asset.name : asset.menuName;
@@ -141,6 +142,20 @@ export const useAssetStore = () => {
                 "updatedAt",
                 "definition",
               ]),
+            },
+          });
+        },
+
+        async CLONE_ASSET(assetId: AssetId) {
+          return new ApiRequest<
+            { id: AssetId; success: boolean },
+            AssetCloneRequest
+          >({
+            method: "post",
+            url: "/variant_def/clone_variant_def",
+            params: {
+              ...visibility,
+              id: assetId,
             },
           });
         },

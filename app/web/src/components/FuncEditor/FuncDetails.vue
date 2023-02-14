@@ -51,30 +51,29 @@
                 Give this qualification a Name, Entrypoint and brief description
                 below.
               </h1>
-              <SiTextBox
-                id="name"
+              <VormInput
                 v-model="editingFunc.name"
+                type="text"
                 title="Name"
                 required
                 placeholder="Type the name of this function here..."
                 :disabled="!isDevMode && editingFunc.isBuiltin"
                 @blur="updateFunc"
               />
-              <SiTextBox
-                id="handler"
+              <VormInput
                 v-model="editingFunc.handler"
+                type="text"
                 title="Entrypoint"
                 required
                 placeholder="The name of the function that will be executed..."
                 :disabled="!isDevMode && editingFunc.isBuiltin"
                 @blur="updateFunc"
               />
-              <SiTextBox
-                id="description"
+              <VormInput
                 v-model="editingFunc.description"
+                type="textarea"
                 placeholder="Provide a brief description of this function here..."
                 title="Description"
-                text-area
                 :disabled="!isDevMode && editingFunc.isBuiltin"
                 @blur="updateFunc"
               />
@@ -173,11 +172,12 @@ import { storeToRefs } from "pinia";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import SiTabGroup from "@/components/SiTabGroup.vue";
 import SiTabHeader from "@/components/SiTabHeader.vue";
+import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore, nullEditingFunc } from "@/store/func/funcs.store";
 import Icon from "@/ui-lib/icons/Icon.vue";
-import SiTextBox from "@/components/SiTextBox.vue";
+import { nilId } from "@/utils/nilId";
 import QualificationDetails from "./QualificationDetails.vue";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
@@ -188,10 +188,6 @@ import ValidationDetails from "./ValidationDetails.vue";
 defineProps({
   funcId: { type: String },
 });
-
-function nilId(): string {
-  return "00000000000000000000000000";
-}
 
 const funcStore = useFuncStore();
 const funcReqStatus = funcStore.getRequestStatus("FETCH_FUNC");

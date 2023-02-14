@@ -7,25 +7,29 @@
     />
     <div v-else-if="assetStore.selectedAsset && assetId" class="flex flex-col">
       <div
-        class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-between"
+        class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-end gap-2"
       >
-        <NodeSkeleton :color="assetStore.selectedAsset.color" size="mini" />
-        <div class="font-bold truncate leading-relaxed">
-          {{ assetDisplayName(assetStore.selectedAsset) }}
-        </div>
         <VButton2
           label="Execute"
           :disabled="disabled"
           tone="action"
-          icon="plus"
+          icon="bolt"
           size="md"
           @click="executeAsset"
         />
+        <VButton2
+          label="Clone"
+          tone="neutral"
+          icon="clipboard-copy"
+          size="md"
+          @click="cloneAsset"
+        />
       </div>
       <div class="p-sm flex flex-col">
-        <SiTextBox
+        <VormInput
           id="name"
           v-model="assetStore.selectedAsset.name"
+          type="text"
           :disabled="disabled"
           title="Name"
           placeholder="Give this asset a name here..."
@@ -33,9 +37,10 @@
         />
       </div>
       <div class="p-sm flex flex-col">
-        <SiTextBox
+        <VormInput
           id="menuName"
           v-model="assetStore.selectedAsset.menuName"
+          type="text"
           :disabled="disabled"
           title="Display name"
           placeholder="Optionally, give the asset a shorter name for display here..."
@@ -43,9 +48,10 @@
         />
       </div>
       <div class="p-sm flex flex-col">
-        <SiTextBox
+        <VormInput
           id="category"
           v-model="assetStore.selectedAsset.category"
+          type="text"
           :disabled="disabled"
           title="Category"
           placeholder="Pick a category for this asset"
@@ -53,20 +59,21 @@
         />
       </div>
       <div class="p-sm flex flex-col">
-        <SiTextBox
+        <VormInput
           id="description"
           v-model="assetStore.selectedAsset.description"
+          type="textarea"
           :disabled="disabled"
           title="Description"
-          text-area
           placeholder="Provide a brief description of this asset here..."
           @blur="updateAsset"
         />
       </div>
       <div class="p-sm flex items-center">
-        <SiTextBox
+        <VormInput
           id="color"
           v-model="assetStore.selectedAsset.color"
+          type="text"
           :disabled="disabled"
           title="Color"
           placeholder="Choose a color for this asset"
@@ -78,7 +85,7 @@
         ></div>
       </div>
       <div class="p-sm flex flex-col">
-        <SiTextBox
+        <VormInput
           id="link"
           v-model="assetStore.selectedAsset.link"
           :disabled="disabled"
@@ -109,11 +116,10 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
-import { useAssetStore, assetDisplayName } from "@/store/asset.store";
+import VormInput from "@/ui-lib/forms/VormInput.vue";
+import { useAssetStore } from "@/store/asset.store";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import Modal from "@/ui-lib/modals/Modal.vue";
-import SiTextBox from "@/components/SiTextBox.vue";
-import NodeSkeleton from "./NodeSkeleton.vue";
 
 const assetStore = useAssetStore();
 const loadAssetReqStatus = assetStore.getRequestStatus("LOAD_ASSET");
@@ -133,5 +139,12 @@ defineProps<{
 const executeAsset = async () => {
   await assetStore.EXEC_ASSET(assetStore.selectedAsset.id);
   executeAssetModalRef.value.open();
+};
+
+const cloneAsset = async () => {
+  const result = await assetStore.CLONE_ASSET(assetStore.selectedAsset.id);
+  if (result.result.success) {
+    assetStore.SELECT_ASSET(result.result.data.id);
+  }
 };
 </script>
