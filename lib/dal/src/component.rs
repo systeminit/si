@@ -17,9 +17,10 @@ use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::{
     FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
 };
+use crate::job::definition::DependentValuesUpdate;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
-use crate::socket::SocketEdgeKind;
+use crate::socket::{SocketEdgeKind, SocketError};
 use crate::standard_model::object_from_row;
 use crate::validation::ValidationConstructorError;
 use crate::ws_event::WsEventError;
@@ -37,9 +38,7 @@ use crate::{
     ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError,
 };
 use crate::{AttributeValueId, QualificationError};
-use crate::{FixResolverError, NodeKind};
-
-use crate::job::definition::DependentValuesUpdate;
+use crate::{Edge, FixResolverError, NodeKind};
 pub use view::{ComponentView, ComponentViewError};
 
 pub mod code;
@@ -73,8 +72,8 @@ pub enum ComponentError {
     Edge(#[from] EdgeError),
     #[error("fix resolver error: {0}")]
     FixResolver(#[from] FixResolverError),
-    #[error("unable to delete frame")]
-    Frame,
+    #[error("unable to delete frame due to attached components")]
+    FrameHasAttachedComponents,
     #[error("component marked as protected: {0}")]
     ComponentProtected(ComponentId),
     #[error(transparent)]
@@ -105,6 +104,8 @@ pub enum ComponentError {
     Validation(#[from] ValidationConstructorError),
     #[error("attribute value does not have a prototype: {0}")]
     MissingAttributePrototype(AttributeValueId),
+    #[error("node not found for component: {0}")]
+    NodeNotFoundForComponent(ComponentId),
     #[error("attribute prototype does not have a function: {0}")]
     MissingAttributePrototypeFunction(AttributePrototypeId),
     #[error("/root/si/name is unset for component {0}")]
@@ -133,6 +134,8 @@ pub enum ComponentError {
     NotFound(ComponentId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("no schema variant for component {0}")]
@@ -1057,7 +1060,25 @@ impl Component {
     pub async fn delete_and_propagate(&mut self, ctx: &DalContext) -> ComponentResult<()> {
         // TODO - This is temporary for now until we allow deleting frames
         if self.get_type(ctx).await? != ComponentType::Component {
-            return Err(ComponentError::Frame);
+            let frame_edges = Edge::list_for_component(ctx, self.id).await?;
+            let frame_node = self
+                .node(ctx)
+                .await?
+                .pop()
+                .ok_or(ComponentError::NodeNotFoundForComponent(self.id))?;
+            let frame_socket = Socket::find_frame_socket_for_node(
+                ctx,
+                *frame_node.id(),
+                SocketEdgeKind::ConfigurationInput,
+            )
+            .await?;
+            let connected_children = frame_edges
+                .into_iter()
+                .filter(|edge| edge.head_socket_id() == *frame_socket.id())
+                .count();
+            if connected_children > 0 {
+                return Err(ComponentError::FrameHasAttachedComponents);
+            }
         }
 
         if self.get_protected(ctx).await? {
