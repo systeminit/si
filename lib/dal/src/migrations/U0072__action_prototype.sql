@@ -1,21 +1,30 @@
 CREATE TABLE action_prototypes
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
-    tenancy_workspace_pk        ident,
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
-    visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    name                        text                     NOT NULL,
-    kind                        text                     NOT NULL,
-    workflow_prototype_id       ident                   NOT NULL,
-    component_id                ident                   NOT NULL,
-    schema_id                   ident                   NOT NULL,
-    schema_variant_id           ident                   NOT NULL
+    pk                       ident primary key                 default ident_create_v1(),
+    id                       ident                    not null default ident_create_v1(),
+    tenancy_workspace_pk     ident,
+    visibility_change_set_pk ident                    NOT NULL DEFAULT ident_nil_v1(),
+    visibility_deleted_at    timestamp with time zone,
+    created_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    name                     text                     NOT NULL,
+    kind                     text                     NOT NULL,
+    workflow_prototype_id    ident                    NOT NULL,
+    component_id             ident                    NOT NULL,
+    schema_id                ident                    NOT NULL,
+    schema_variant_id        ident                    NOT NULL
 );
-SELECT standard_model_table_constraints_v1('action_prototypes');
 
+CREATE UNIQUE INDEX unique_action_prototypes
+    ON action_prototypes (name,
+                          schema_id,
+                          schema_variant_id,
+                          tenancy_workspace_pk,
+                          visibility_change_set_pk,
+                          (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
+
+SELECT standard_model_table_constraints_v1('action_prototypes');
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('action_prototypes', 'model', 'action_prototype', 'Action Prototype');
 

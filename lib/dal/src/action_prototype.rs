@@ -213,7 +213,6 @@ impl ActionPrototype {
         Ok(object)
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn find_by_name(
         ctx: &DalContext,
         name: &str,

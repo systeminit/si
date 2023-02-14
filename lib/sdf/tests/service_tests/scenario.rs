@@ -2,7 +2,7 @@
 //! multiple endpoints to test an end-to-end user scenario.
 
 use dal::qualification::QualificationSubCheckStatus;
-use dal::{ChangeSet, Component, DalContext, Visibility};
+use dal::{Component, DalContext};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
@@ -60,11 +60,9 @@ async fn model_and_fix_flow() {
     .await;
 
     // Enter a new change set. We will not go through the routes for this.
-    let new_change_set = ChangeSet::new(ctx, "bruce springsteen", None)
-        .await
-        .expect("could not create new change set");
-    ctx.update_visibility(Visibility::new(new_change_set.pk, None));
-    assert!(!ctx.visibility().is_head());
+    harness
+        .create_change_set_and_update_ctx(ctx, "bruce springsteen")
+        .await;
 
     // Create all AWS components.
     let region = harness.create_node(ctx, "Region", None).await;
@@ -482,7 +480,8 @@ async fn model_and_fix_flow() {
         butane.view(ctx).await.to_value(), // actual
     );
 
-    // TODO(nick): continue this test starting with "change set apply" and then running the fix
-    // flow. Fortunately, this should be much easier now that the groundwork has been laid for
-    // authoring scenario tests.
+    // Apply the change set and get rolling!
+    harness.apply_change_set_and_update_ctx(ctx).await;
+
+    // TODO(nick): now, list confirmations and "select" recommendations, and run fixes.
 }

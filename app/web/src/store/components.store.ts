@@ -123,12 +123,16 @@ const qualificationStatusToIconMap: Record<
 };
 
 const confirmationStatusToIconMap: Record<
-  "success" | "failure" | "running",
+  ConfirmationStatus,
   DiagramStatusIcon
 > = {
   success: { icon: "check-square", tone: "success" },
   failure: { icon: "x-square", tone: "error" },
   running: { icon: "loader", tone: "info" },
+  neverStarted: {
+    icon: "x-square",
+    tone: "error",
+  },
 };
 
 const changeStatusToIconMap: Record<ChangeStatus, DiagramStatusIcon> = {

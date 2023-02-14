@@ -8,7 +8,6 @@
       <StatusMessageBox :status="confirmation.status" type="confirmation"
         >Status: {{ confirmation.status }}
       </StatusMessageBox>
-
       <div v-if="confirmation.description">
         <b>Description: </b>
         <p>{{ confirmation.description }}</p>

@@ -45,12 +45,16 @@
         <div class="overflow-auto">
           <div
             v-for="fix in selectedFixBatchInfo.fixes"
-            :key="fix.id"
+            :key="fix.attributeValueId"
             :class="
-              fix.id === selectedFixId ? 'bg-action-500' : 'hover:bg-black'
+              fix.attributeValueId ===
+                selectedFix?.confirmationAttributeValueId &&
+              fix.action === selectedFix?.actionName
+                ? 'bg-action-500'
+                : 'hover:bg-black'
             "
             class="py-2 pl-4 pr-3 cursor-pointer flex flex-row items-center leading-tight"
-            @click="selectFix(fix.id)"
+            @click="selectFix(fix.attributeValueId, fix.action)"
           >
             <span class="mr-3 w-full h-full">
               <HealthIcon
@@ -125,19 +129,30 @@ export interface SortOption {
   value: string;
   title: string;
 }
+interface SelectedFix {
+  confirmationAttributeValueId: string;
+  actionName: string;
+}
+
 const sortOptions: SortOption[] = [
   { value: "r", title: "Newest" },
   { value: "o", title: "Oldest" },
 ];
 const selectedSort = ref<SortOption>(sortOptions[0]);
 const selectedFixBatchId = ref<string | null>(null);
-const selectedFixId = ref<string | null>(null);
+const selectedFix = ref<SelectedFix | null>(null);
 const selectFixBatch = (id: string) => {
   selectedFixBatchId.value = id;
-  selectedFixId.value = null;
+  selectedFix.value = null;
 };
-const selectFix = (id: string) => {
-  selectedFixId.value = id;
+const selectFix = (
+  confirmationAttributeValueId: string,
+  actionName: string,
+) => {
+  selectedFix.value = {
+    confirmationAttributeValueId,
+    actionName,
+  };
 };
 const fixesStore = useFixesStore();
 const fixBatchesWithFixes = computed(() =>
@@ -159,7 +174,10 @@ const selectedFixBatchInfo = computed(() => {
 const selectedFixInfo = computed(() => {
   if (selectedFixBatchInfo.value) {
     return selectedFixBatchInfo.value.fixes.find(
-      (fix) => fix.id === selectedFixId.value,
+      (fix) =>
+        fix.attributeValueId ===
+          selectedFix.value?.confirmationAttributeValueId &&
+        fix.action === selectedFix.value?.actionName,
     );
   }
   return null;

@@ -15,7 +15,6 @@ use dal::{
 
 mod confirmations;
 mod list;
-mod recommendations;
 mod run;
 
 #[derive(Error, Debug)]
@@ -76,6 +75,5 @@ pub fn routes() -> Router {
     Router::new()
         .route("/confirmations", get(confirmations::confirmations))
         .route("/list", get(list::list))
-        .route("/recommendations", get(recommendations::recommendations))
         .route("/run", post(run::run))
 }

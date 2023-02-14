@@ -7,9 +7,13 @@ use dal::property_editor::values::PropertyEditorValue;
 use dal::socket::SocketEdgeKind;
 use dal::{
     AttributeValue, AttributeValueId, ComponentId, ComponentView, DalContext, NodeId, Prop,
-    PropKind, Schema, SchemaId, Socket, StandardModel,
+    PropKind, Schema, SchemaId, Socket, StandardModel, Visibility,
 };
 use dal_test::helpers::component_view::ComponentViewProperties;
+use sdf::service::change_set::apply_change_set::{ApplyChangeSetRequest, ApplyChangeSetResponse};
+use sdf::service::change_set::create_change_set::{
+    CreateChangeSetRequest, CreateChangeSetResponse,
+};
 use sdf::service::component::get_property_editor_values::{
     GetPropertyEditorValuesRequest, GetPropertyEditorValuesResponse,
 };
@@ -341,6 +345,35 @@ impl ScenarioHarness {
         let create_node_response: CreateNodeResponse =
             self.query_post("/api/diagram/create_node", &request).await;
         create_node_response.into()
+    }
+
+    /// Create the [`ChangeSet`](dal::ChangeSet) based on the provided [`context`](dal::DalContext).
+    pub async fn create_change_set_and_update_ctx(
+        &self,
+        ctx: &mut DalContext,
+        change_set_name: impl Into<String>,
+    ) {
+        let request = CreateChangeSetRequest {
+            change_set_name: change_set_name.into(),
+        };
+        let response: CreateChangeSetResponse = self
+            .query_post("/api/change_set/create_change_set", &request)
+            .await;
+        ctx.update_visibility(Visibility::new(response.change_set.pk, None));
+        assert!(!ctx.visibility().is_head());
+    }
+
+    /// Apply the [`ChangeSet`](dal::ChangeSet) based on the provided [`context`](dal::DalContext).
+    pub async fn apply_change_set_and_update_ctx(&self, ctx: &mut DalContext) {
+        assert!(!ctx.visibility().is_head());
+        let request = ApplyChangeSetRequest {
+            change_set_pk: ctx.visibility().change_set_pk,
+        };
+        let _response: ApplyChangeSetResponse = self
+            .query_post("/api/change_set/apply_change_set", &request)
+            .await;
+        ctx.update_visibility(Visibility::new_head(false));
+        assert!(ctx.visibility().is_head());
     }
 
     /// Send a "GET" method query to the backend.

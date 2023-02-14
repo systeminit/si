@@ -9,6 +9,7 @@ import { IconNames } from "@/ui-lib/icons/icon_set";
 import { Tones } from "@/ui-lib/helpers/tones";
 
 // TODO: remove this after refactoring StatusMessageBox
+// TODO(nick,paulo,paul,wendy): remove "neverStarted" once the fix flow is working again.
 export type Status =
   | "success"
   | "failure"
@@ -17,6 +18,7 @@ export type Status =
   | "running"
   | "added"
   | "modified"
+  | "neverStarted"
   | "deleted";
 
 export type IconType = "change" | "confirmation" | "qualification" | "fix";

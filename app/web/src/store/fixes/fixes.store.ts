@@ -14,37 +14,41 @@ function nilId(): string {
 }
 
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
-export type RecommendationKind = "create" | "other";
+export type ActionKind = "create" | "other";
 
 export type Confirmation = {
   attributeValueId: AttributeValueId;
   title: string;
   description?: string;
+
+  schemaId: string;
+  schemaVariantId: string;
   componentId: ComponentId;
-  output?: string[];
-  status: "running" | "success" | "failure";
-};
-export type Recommendation = {
-  id: AttributeValueId;
-  name: string;
-  componentName: string;
-  componentId: ComponentId;
+
   schemaName: string;
-  recommendation: string;
-  recommendationKind: RecommendationKind;
-  status: FixStatus;
+  componentName: string;
+
+  output?: string[];
+  status: ConfirmationStatus;
   provider?: string;
-  output?: string; // TODO(victor): output possibly comes from another endpoint, and should be linked at runtime. This is good for now.
-  startedAt?: Date;
-  finishedAt?: Date;
+  recommendations: Recommendation[];
+};
+
+export type Recommendation = {
+  confirmationAttributeValueId: AttributeValueId;
+  componentId: ComponentId;
+  componentName: string;
+  name: string;
+  recommendedAction: string;
+  provider: string;
+  actionKind: ActionKind;
+  status: FixStatus;
 };
 
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.
 // A potential temporary fix: we decide to convert the "string" from the database row into
-// a "date" object within the sdf route(s).
-export type FixId = string;
+
 export type Fix = {
-  id: FixId;
   status: FixStatus;
   action: string;
   schemaName: string;
@@ -72,10 +76,16 @@ export interface ConfirmationStats {
   failure: number;
   success: number;
   running: number;
+  neverStarted: number;
   total: number;
 }
 
-export type ConfirmationStatus = "success" | "failure" | "running";
+// TODO(nick,paulo,paul,wendy): get rid of never started.
+export type ConfirmationStatus =
+  | "success"
+  | "failure"
+  | "running"
+  | "neverStarted";
 export const useFixesStore = () => {
   const workspacesStore = useWorkspacesStore();
   const workspacePk = workspacesStore.selectedWorkspacePk;
@@ -84,7 +94,6 @@ export const useFixesStore = () => {
     defineStore(`w${workspacePk || "NONE"}/fixes`, {
       state: () => ({
         confirmations: [] as Array<Confirmation>,
-        recommendations: [] as Array<Recommendation>,
         fixBatches: [] as Array<FixBatch>,
         runningFixBatch: undefined as FixBatchId | undefined,
         populatingFixes: false,
@@ -131,7 +140,13 @@ export const useFixesStore = () => {
           return obj;
         },
         confirmationStats(): ConfirmationStats {
-          const obj = { failure: 0, success: 0, running: 0, total: 0 };
+          const obj = {
+            failure: 0,
+            success: 0,
+            running: 0,
+            neverStarted: 0,
+            total: 0,
+          };
           for (const confirmation of this.confirmations) {
             obj[confirmation.status]++;
             obj.total++;
@@ -171,12 +186,6 @@ export const useFixesStore = () => {
         finishedConfirmations(): Confirmation[] {
           return this.confirmations.filter((c) => c.status !== "running");
         },
-        allRecommendations(): Recommendation[] {
-          return this.recommendations;
-        },
-        recommendationsByComponentId(): Record<ComponentId, Recommendation> {
-          return _.keyBy(this.allRecommendations, (r) => r.componentId);
-        },
         allFinishedFixBatches(): FixBatch[] {
           return this.fixBatches.filter(
             (f) => f.status !== "running" && f.status !== "unstarted",
@@ -203,8 +212,10 @@ export const useFixesStore = () => {
           return this.fixesOnBatch(this.runningFixBatch);
         },
         unstartedRecommendations(): Recommendation[] {
-          return this.allRecommendations.filter(
-            (recommendation) => recommendation.status === "unstarted",
+          return this.confirmations.flatMap((c) =>
+            c.recommendations.filter(
+              (recommendation) => recommendation.status === "unstarted",
+            ),
           );
         },
       },
@@ -220,15 +231,6 @@ export const useFixesStore = () => {
               this.populatingFixes =
                 response.length === 0 ||
                 response.some((c) => c.status === "running");
-            },
-          });
-        },
-        async LOAD_RECOMMENDATIONS() {
-          return new ApiRequest<Array<Recommendation>>({
-            url: "/fix/recommendations",
-            params: { visibility_change_set_pk: nilId() },
-            onSuccess: (response) => {
-              this.recommendations = response;
             },
           });
         },
@@ -249,20 +251,29 @@ export const useFixesStore = () => {
           return new ApiRequest({
             method: "post",
             params: {
-              list: recommendations.map((fix) => ({
-                attributeValueId: fix.id,
-                componentId: fix.componentId,
-                actionName: fix.recommendation,
+              list: recommendations.map((r) => ({
+                attributeValueId: r.confirmationAttributeValueId,
+                componentId: r.componentId,
+                actionName: r.recommendedAction,
               })),
               visibility_change_set_pk: nilId(),
             },
             url: "/fix/run",
             onSuccess: (response) => {
-              this.recommendations = this.recommendations.map((r) => {
-                if (recommendations.find((rec) => rec.id === r.id)) {
-                  r.status = "running";
+              this.confirmations = this.confirmations.map((c) => {
+                for (const r of c.recommendations) {
+                  if (
+                    recommendations.find(
+                      (rec) =>
+                        rec.confirmationAttributeValueId ===
+                          r.confirmationAttributeValueId &&
+                        rec.recommendedAction === r.recommendedAction,
+                    )
+                  ) {
+                    r.status = "running";
+                  }
                 }
-                return r;
+                return c;
               });
 
               this.runningFixBatch = response.id;
@@ -272,24 +283,26 @@ export const useFixesStore = () => {
               this.fixBatches.push({
                 id: response.id,
                 status: "running",
-                fixes: recommendations.map((r) => {
-                  return {
-                    id: r.id,
-                    attributeValueId: r.id,
-                    status: "running" as FixStatus,
-                    action: r.recommendation,
-                    schemaName: r.schemaName,
-                    componentName: r.componentName,
-                    componentId: r.componentId,
-                    resource: {
-                      status: ResourceHealth.Ok as ResourceHealth,
-                      data: null,
-                      message: null,
-                      logs: [],
-                    },
-                    startedAt: `${new Date()}`,
-                    finishedAt: `${new Date()}`,
-                  };
+                fixes: this.confirmations.flatMap((c) => {
+                  return c.recommendations.map((r) => {
+                    return {
+                      id: c.attributeValueId,
+                      attributeValueId: c.attributeValueId,
+                      status: "running" as FixStatus,
+                      action: r.recommendedAction,
+                      schemaName: c.schemaName,
+                      componentName: c.componentName,
+                      componentId: c.componentId,
+                      resource: {
+                        status: ResourceHealth.Ok as ResourceHealth,
+                        data: null,
+                        message: null,
+                        logs: [],
+                      },
+                      startedAt: `${new Date()}`,
+                      finishedAt: `${new Date()}`,
+                    };
+                  });
                 }),
                 author: authStore.user?.email ?? "...",
                 startedAt: `${new Date()}`,
@@ -298,19 +311,8 @@ export const useFixesStore = () => {
             },
           });
         },
-        updateRecommendation(recommendation: Recommendation) {
-          const index = this.recommendations.findIndex(
-            (r) => r.id === recommendation.id,
-          );
-          if (index === -1) {
-            this.recommendations.push(recommendation);
-          } else {
-            this.recommendations[index] = recommendation;
-          }
-        },
       },
       async onActivated() {
-        this.LOAD_RECOMMENDATIONS();
         this.LOAD_CONFIRMATIONS();
         this.LOAD_FIX_BATCHES();
 
@@ -325,7 +327,6 @@ export const useFixesStore = () => {
               // Although, there's a counter-argument: all confirmations should be re-ran once the
               // "real world" changes, so is incremental updating really better? Maybe?
               this.LOAD_CONFIRMATIONS();
-              this.LOAD_RECOMMENDATIONS();
               this.LOAD_FIX_BATCHES();
             },
           },
@@ -336,25 +337,30 @@ export const useFixesStore = () => {
                 (b) => b.id === update.batchId,
               );
               if (!batch) {
-                this.LOAD_RECOMMENDATIONS();
+                this.LOAD_CONFIRMATIONS();
                 this.LOAD_FIX_BATCHES();
                 return;
               }
               const fix = batch.fixes.find(
                 (f) =>
-                  f.id === update.attributeValueId &&
+                  f.attributeValueId === update.attributeValueId &&
                   f.action === update.action,
               );
               if (!fix) {
-                this.LOAD_RECOMMENDATIONS();
+                this.LOAD_CONFIRMATIONS();
                 this.LOAD_FIX_BATCHES();
                 return;
               }
-              this.recommendations = this.recommendations.map((r) => {
-                if (r.id === fix.id) {
-                  r.status = update.status;
+              this.confirmations = this.confirmations.map((c) => {
+                for (const recommendation of c.recommendations) {
+                  if (
+                    c.attributeValueId === fix.attributeValueId &&
+                    recommendation.recommendedAction === fix.action
+                  ) {
+                    recommendation.status = update.status;
+                  }
                 }
-                return r;
+                return c;
               });
               if (update.status !== fix.status) {
                 fix.status = update.status;
@@ -367,7 +373,7 @@ export const useFixesStore = () => {
             callback: (update) => {
               const batch = this.fixBatches.find((b) => b.id === update.id);
               if (!batch) {
-                this.LOAD_RECOMMENDATIONS();
+                this.LOAD_CONFIRMATIONS();
                 this.LOAD_FIX_BATCHES();
                 return;
               }

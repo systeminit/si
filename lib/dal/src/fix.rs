@@ -22,8 +22,6 @@ use crate::{FixBatch, WorkflowRunner, WsEventResult};
 
 /// Contains the ability to group fixes together.
 pub mod batch;
-/// Contains recommendations that are used to create and run fixes.
-pub mod recommendation;
 /// Contains the ability to resolve _current_ fixes, provided by [`FixResolver`](crate::FixResolver).
 pub mod resolver;
 
