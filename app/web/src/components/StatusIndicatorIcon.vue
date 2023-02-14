@@ -2,6 +2,38 @@
   <Icon :name="iconName" :tone="iconTone" :size="size" />
 </template>
 
+<script lang="ts">
+const CONFIG = {
+  change: {
+    added: { iconName: "plus-circle", tone: "success" },
+    deleted: { iconName: "x", tone: "destructive" },
+    modified: { iconName: "tilde-circle", tone: "warning" },
+    unmodified: { iconName: "none" },
+  },
+  confirmation: {
+    success: { iconName: "check-square", tone: "success" },
+    failure: { iconName: "x-square", tone: "destructive" },
+    running: { iconName: "loader", tone: "action" },
+    _default: { iconName: "minus", tone: "neutral" },
+  },
+  qualification: {
+    success: { iconName: "check-circle", tone: "success" },
+    warning: { iconName: "exclamation-circle", tone: "warning" },
+    failure: { iconName: "x-circle", tone: "destructive" },
+    running: { iconName: "loader", tone: "action" },
+  },
+  fix: {
+    success: { iconName: "check-circle", tone: "success" },
+    failure: { iconName: "x-circle", tone: "destructive" },
+    unstarted: { iconName: "help-circle", tone: "neutral" },
+    running: { iconName: "loader", tone: "action" },
+  },
+};
+
+export type IconType = keyof typeof CONFIG;
+</script>
+
+<!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
 import { computed, PropType } from "vue";
 import Icon, { IconSizes } from "@/ui-lib/icons/Icon.vue";
@@ -19,34 +51,8 @@ export type Status =
   | "added"
   | "modified"
   | "neverStarted"
+  | "unmodified"
   | "deleted";
-
-export type IconType = "change" | "confirmation" | "qualification" | "fix";
-
-const CONFIG = {
-  change: {
-    added: { iconName: "plus-circle", tone: "success" },
-    deleted: { iconName: "minus-circle", tone: "destructive" },
-    modified: { iconName: "tilde-circle", tone: "warning" },
-  },
-  confirmation: {
-    success: { iconName: "check-square", tone: "success" },
-    failure: { iconName: "x-square", tone: "destructive" },
-    running: { iconName: "loader", tone: "action" },
-  },
-  qualification: {
-    success: { iconName: "check-circle", tone: "success" },
-    warning: { iconName: "exclamation-circle", tone: "warning" },
-    failure: { iconName: "x-circle", tone: "destructive" },
-    running: { iconName: "loader", tone: "action" },
-  },
-  fix: {
-    success: { iconName: "check-circle", tone: "success" },
-    failure: { iconName: "x-circle", tone: "destructive" },
-    unstarted: { iconName: "help-circle", tone: "neutral" },
-    running: { iconName: "loader", tone: "action" },
-  },
-};
 
 // NOTE - would ideally pull in the real types here but generics are not yet supported
 // could also think about breaking this into multiple components, but it's nice to keep things consistent
@@ -56,24 +62,16 @@ const props = defineProps({
   size: { type: String as PropType<IconSizes> },
 });
 
-// const CONFIG: Record<Status, IconNames> = {
-//   success: "check-circle",
-//   failure: "x-circle",
-//   running: "loader",
-//   added: "plus-circle",
-//   modified: "edit",
-//   deleted: "minus-circle",
-// };
-
 const iconName = computed<IconNames>(
   () =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (CONFIG as any)[props.type]?.[props.status || ""]?.iconName ||
+    (CONFIG as any)[props.type]?.[props.status || "_default"]?.iconName ||
     "question-circle",
 );
 const iconTone = computed<Tones>(
   () =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (CONFIG as any)[props.type]?.[props.status || ""]?.tone || "warning",
+    (CONFIG as any)[props.type]?.[props.status || "_default"]?.tone ||
+    "warning",
 );
 </script>

@@ -12,15 +12,15 @@ export type DiagramConfig = {
 export type GridPoint = { x: number; y: number };
 export type Size2D = { width: number; height: number };
 export type Direction = "up" | "down" | "left" | "right";
-
-export type ResizeEventType =
-  | "resize-left"
-  | "resize-right"
-  | "resize-bottom"
-  | "resize-bl"
-  | "resize-br";
-
-export type MouseOverEventType = "group" | ResizeEventType;
+export type SideAndCornerIdentifiers =
+  | "top"
+  | "bottom"
+  | "right"
+  | "left"
+  | "top-right"
+  | "top-left"
+  | "bottom-right"
+  | "bottom-left";
 
 export type DiagramElementTypes = "node" | "socket" | "edge";
 
@@ -263,6 +263,15 @@ export type DiagramDrawEdgeState = {
 };
 
 // Event payloads - emitted by generic diagram //////////////////////////////////
+export type ElementHoverMeta =
+  | { type: "resize"; direction: SideAndCornerIdentifiers }
+  | { type: "socket"; socket: DiagramSocketData };
+
+export type HoverElementEvent = {
+  element: DiagramElementData | null;
+  meta?: ElementHoverMeta;
+};
+
 export type ResizeElementEvent = {
   element: DiagramElementData;
   position: Vector2d;

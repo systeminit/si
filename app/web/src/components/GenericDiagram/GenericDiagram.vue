@@ -57,10 +57,8 @@ overflow hidden */
           :draw-edge-state="drawEdgeState"
           :is-hovered="elementIsHovered(group)"
           :is-selected="elementIsSelected(group)"
-          @hover:start="
-            (target, socket) => onGroupHoverStart(group, target, socket)
-          "
-          @hover:end="(socket) => onElementHoverEnd(socket || group)"
+          @hover:start="(meta) => onElementHoverStart(group, meta)"
+          @hover:end="onElementHoverEnd(group)"
           @resize="onNodeLayoutOrLocationChange(group)"
         />
         <DiagramNode
@@ -72,8 +70,8 @@ overflow hidden */
           :draw-edge-state="drawEdgeState"
           :is-hovered="elementIsHovered(node)"
           :is-selected="elementIsSelected(node)"
-          @hover:start="(socket) => onElementHoverStart(socket || node)"
-          @hover:end="(socket) => onElementHoverEnd(socket || node)"
+          @hover:start="(meta) => onElementHoverStart(node, meta)"
+          @hover:end="(meta) => onElementHoverEnd(node)"
           @resize="onNodeLayoutOrLocationChange(node)"
         />
         <DiagramEdge
@@ -184,8 +182,9 @@ import {
   GroupEvent,
   Size2D,
   ResizeElementEvent,
-  MouseOverEventType,
-  ResizeEventType,
+  HoverElementEvent,
+  SideAndCornerIdentifiers,
+  ElementHoverMeta,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramEdge from "./DiagramEdge.vue";
@@ -245,6 +244,7 @@ const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;
   (e: "update:selection", newSelection: SelectElementEvent): void;
   (e: "move-element", nodeMoveInfo: MoveElementEvent): void;
+  (e: "hover-element", hoverInfo: HoverElementEvent): void;
   (e: "resize-element", nodeResizeInfo: ResizeElementEvent): void;
   (e: "delete-elements", deleteInfo: DeleteElementsEvent): void;
   (e: "insert-element", insertInfo: InsertElementEvent): void;
@@ -475,6 +475,7 @@ const dragThresholdBroken = ref(false);
 const lastMouseDownEvent = ref<MouseEvent>();
 const lastMouseDownContainerPointerPos = ref<Vector2d>();
 const lastMouseDownElementKey = ref<DiagramElementUniqueKey>();
+const lastMouseDownHoverMeta = ref<ElementHoverMeta>();
 const lastMouseDownElement = computed(() =>
   lastMouseDownElementKey.value
     ? allElementsByKey.value[lastMouseDownElementKey.value]
@@ -495,6 +496,8 @@ function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   lastMouseDownEvent.value = e;
   // track the originally clicked element, as the mouse may move off of it while beginning the drag
   lastMouseDownElementKey.value = hoveredElementKey.value;
+  // track the hover meta at the time of mousedown (ex: resize, socket, etc)
+  lastMouseDownHoverMeta.value = hoveredElementMeta.value;
 
   // for drag to pan, we start dragging right away since the user has enabled it by holding the space bar
   // for all other interactions, we watch to see if the user drags past some small threshold to begin the "drag"
@@ -579,9 +582,6 @@ function checkIfDragStarted(_e: MouseEvent) {
   } else if (props.readOnly) {
     // TODO: add controls for each of these modes...
     return;
-  } else if (lastMouseDownElement.value instanceof DiagramSocketData) {
-    // begin drawing edge
-    beginDrawEdge(lastMouseDownElement.value);
   } else if (lastMouseDownElement.value instanceof DiagramEdgeData) {
     // not sure what dragging an edge means... maybe nothing?
     /* eslint-disable-next-line no-console */
@@ -590,8 +590,14 @@ function checkIfDragStarted(_e: MouseEvent) {
     lastMouseDownElement.value instanceof DiagramNodeData ||
     lastMouseDownElement.value instanceof DiagramGroupData
   ) {
-    if (componentHoverAction.value === "resize") {
+    if (lastMouseDownHoverMeta.value?.type === "resize") {
       beginResizeElement();
+    } else if (
+      lastMouseDownElement.value.def.changeStatus !== "deleted" &&
+      lastMouseDownHoverMeta.value?.type === "socket"
+    ) {
+      // begin drawing edge
+      beginDrawEdge(lastMouseDownHoverMeta.value.socket);
     } else {
       // begin moving selected nodes (and eventually other movable things like groups / annotations, etc...)
       beginDragElements();
@@ -605,22 +611,36 @@ const cursor = computed(() => {
   if (dragToPanArmed.value) return "grab";
   if (dragSelectActive.value) return "crosshair";
 
-  if (!props.readOnly && hoveredElement.value instanceof DiagramSocketData) {
+  if (
+    !props.readOnly &&
+    hoveredElementMeta.value?.type === "socket" &&
+    hoveredElement.value?.def.changeStatus !== "deleted"
+  ) {
     return "cell";
   }
   if (drawEdgeActive.value) return "cell";
   if (dragElementsActive.value) return "move";
   if (insertElementActive.value) return "copy"; // not sure about this...
-  if (componentHoverAction.value === "resize" || resizeElementActive.value) {
-    switch (componentResizeMode.value) {
-      case "resize-left":
-      case "resize-right":
+  if (
+    resizeElementActive.value ||
+    hoveredElementMeta.value?.type === "resize"
+  ) {
+    let dir = resizeElementActive.value && resizeElementDirection.value;
+    if (!dir && hoveredElementMeta.value?.type === "resize") {
+      dir = hoveredElementMeta.value?.direction;
+    }
+    switch (dir) {
+      case "left":
+      case "right":
         return "ew-resize";
-      case "resize-bottom":
+      case "bottom":
+      case "top":
         return "ns-resize";
-      case "resize-bl":
+      case "bottom-left":
+      case "top-right":
         return "nesw-resize";
-      case "resize-br":
+      case "bottom-right":
+      case "top-left":
         return "nwse-resize";
       default:
         return "auto";
@@ -633,39 +653,34 @@ const cursor = computed(() => {
 });
 
 // hovering behaviour
-
-const componentHoverAction = ref<"move" | "resize" | undefined>();
-const componentResizeMode = ref<ResizeEventType | undefined>();
 const hoveredElementKey = ref<string>();
 const hoveredElement = computed(() =>
   hoveredElementKey.value
-    ? allElementsByKey.value[hoveredElementKey.value]
+    ? (allElementsByKey.value[hoveredElementKey.value] as
+        | DiagramEdgeData
+        | DiagramGroupData
+        | DiagramNodeData)
     : undefined,
 );
+
+const hoveredElementMeta = ref<ElementHoverMeta>();
+
+function setHoveredByKey(newHoverElementKey?: DiagramElementUniqueKey) {
+  hoveredElementKey.value = newHoverElementKey;
+}
+
 // same event and handler is used for both hovering nodes and sockets
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
 
-function onGroupHoverStart(
-  el: DiagramElementData,
-  target: MouseOverEventType,
-  socket: DiagramElementData,
-) {
-  if (target !== "group" && !resizeElementActive.value) {
-    componentHoverAction.value = "resize";
-    componentResizeMode.value = target;
-  }
-
-  onElementHoverStart(socket || el);
-}
-
-function onElementHoverStart(el: DiagramElementData) {
-  if (!componentHoverAction.value) componentHoverAction.value = "move";
-
+function onElementHoverStart(el: DiagramElementData, meta?: ElementHoverMeta) {
   hoveredElementKey.value = el.uniqueKey;
+  hoveredElementMeta.value = meta;
+  emit("hover-element", { element: el });
 }
 function onElementHoverEnd(_el: DiagramElementData) {
-  componentHoverAction.value = undefined;
   hoveredElementKey.value = undefined;
+  hoveredElementMeta.value = undefined;
+  emit("hover-element", { element: null });
 }
 
 const disableHoverEvents = computed(() => {
@@ -1238,14 +1253,15 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
 }
 
 // RESIZING DIAGRAM ELEMENTS (groups) ///////////////////////////////////////
-const resizeElementActive = ref(false);
+const resizeElement = ref<DiagramGroupData>();
+const resizeElementActive = computed(() => !!resizeElement.value);
+const resizeElementDirection = ref<SideAndCornerIdentifiers>();
 const resizedElementSizes = reactive<Record<DiagramElementUniqueKey, Size2D>>(
   {},
 );
 const resizedElementSizesPreResize = reactive<
   Record<DiagramElementUniqueKey, Size2D>
 >({});
-const lastResizedElement = ref<DiagramGroupData>();
 
 const frameBoundingBoxes = ref<Record<string, IRect>>({});
 
@@ -1313,17 +1329,18 @@ watch([resizedElementSizes, isMounted, movedElementPositions, stageRef], () => {
 });
 
 function beginResizeElement() {
-  if (!hoveredElement.value) return;
+  if (!lastMouseDownElement.value) return;
+  if (lastMouseDownHoverMeta.value?.type !== "resize") return;
 
-  const node = hoveredElement.value.def as DiagramNodeDef;
+  const node = lastMouseDownElement.value.def as DiagramNodeDef;
 
   if (!node.size) return;
-  if (!(hoveredElement.value instanceof DiagramGroupData)) return;
+  if (!(lastMouseDownElement.value instanceof DiagramGroupData)) return;
 
-  resizeElementActive.value = true;
-  lastResizedElement.value = hoveredElement.value;
+  resizeElement.value = lastMouseDownElement.value;
+  resizeElementDirection.value = lastMouseDownHoverMeta.value.direction;
 
-  const resizeTargetKey = hoveredElement.value.uniqueKey;
+  const resizeTargetKey = lastMouseDownElement.value.uniqueKey;
   resizedElementSizesPreResize[resizeTargetKey] =
     resizedElementSizes[resizeTargetKey] || node.size;
 
@@ -1331,27 +1348,24 @@ function beginResizeElement() {
     movedElementPositions[resizeTargetKey] || node.position;
 }
 function endResizeElement() {
-  if (!lastResizedElement.value) return;
-  const newNodeSize = resizedElementSizes[lastResizedElement.value.uniqueKey];
+  if (!resizeElement.value) return;
+  const newNodeSize = resizedElementSizes[resizeElement.value.uniqueKey];
 
   emit("resize-element", {
-    element: lastResizedElement.value,
-    position: lastResizedElement.value.def.position,
+    element: resizeElement.value,
+    position: resizeElement.value.def.position,
     size: newNodeSize,
     isFinal: true,
   });
 
-  resizeElementActive.value = false;
-  lastResizedElement.value = undefined;
+  resizeElement.value = undefined;
 }
 
 function onResizeMove() {
-  if (!lastResizedElement.value) return;
-  const resizeTargetKey = lastResizedElement.value.uniqueKey;
+  if (!resizeElement.value || !resizeElementDirection.value) return;
+  const resizeTargetKey = resizeElement.value.uniqueKey;
 
-  if (!componentResizeMode.value) return;
-
-  const node = lastResizedElement.value.def as DiagramNodeDef;
+  const node = resizeElement.value.def as DiagramNodeDef;
 
   if (!node.size) return;
   if (!containerPointerPos.value) return;
@@ -1383,8 +1397,8 @@ function onResizeMove() {
 
   const rightBound = presentPosition.x + presentSize.width / 2;
 
-  switch (componentResizeMode.value) {
-    case "resize-bottom":
+  switch (resizeElementDirection.value) {
+    case "bottom":
       {
         sizeDelta.x = 0;
         const minDelta = minNodeDimension - presentSize.height;
@@ -1393,7 +1407,7 @@ function onResizeMove() {
         }
       }
       break;
-    case "resize-left":
+    case "left":
       {
         sizeDelta.y = 0;
         sizeDelta.x = -sizeDelta.x;
@@ -1404,7 +1418,7 @@ function onResizeMove() {
         positionDelta.x = -sizeDelta.x;
       }
       break;
-    case "resize-right":
+    case "right":
       {
         sizeDelta.y = 0;
         const minDelta = minNodeDimension - presentSize.width;
@@ -1414,7 +1428,7 @@ function onResizeMove() {
         positionDelta.x = sizeDelta.x;
       }
       break;
-    case "resize-bl":
+    case "bottom-left":
       {
         const minYDelta = minNodeDimension - presentSize.height;
         if (sizeDelta.y < minYDelta) {
@@ -1429,7 +1443,7 @@ function onResizeMove() {
         positionDelta.x = -sizeDelta.x;
       }
       break;
-    case "resize-br":
+    case "bottom-right":
       {
         const minYDelta = minNodeDimension - presentSize.height;
         if (sizeDelta.y < minYDelta) {
@@ -1559,7 +1573,7 @@ function onResizeMove() {
   resizedElementSizes[resizeTargetKey] = newNodeSize;
   movedElementPositions[resizeTargetKey] = newNodePosition;
   emit("resize-element", {
-    element: lastResizedElement.value,
+    element: resizeElement.value,
     position: newNodePosition,
     size: newNodeSize,
     isFinal: false,
@@ -1833,7 +1847,8 @@ useZoomLevelProvider(zoomLevel);
 defineExpose({
   setZoom,
   recenter,
-  setSelection: setSelectionByKey,
+  setSelectionByKey,
+  setHoveredByKey,
   clearSelection,
   beginInsertElement,
   endInsertElement,

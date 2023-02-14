@@ -64,7 +64,9 @@ type RawComponent = {
 
 type FullComponent = RawComponent & {
   parentNodeId?: ComponentNodeId;
+  parentId?: ComponentId;
   childNodeIds?: ComponentNodeId[];
+  childIds?: ComponentId[];
   isGroup: boolean;
   matchesFilter: boolean;
   icon: IconNames;
@@ -135,13 +137,6 @@ const confirmationStatusToIconMap: Record<
   },
 };
 
-const changeStatusToIconMap: Record<ChangeStatus, DiagramStatusIcon> = {
-  added: { icon: "plus-circle", tone: "success" },
-  deleted: { icon: "minus-circle", tone: "error" },
-  modified: { icon: "tilde-circle", tone: "warning" },
-  unmodified: { icon: "minus", tone: "neutral" },
-};
-
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
@@ -179,14 +174,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         schemaVariantsById: {} as Record<SchemaVariantId, DiagramSchemaVariant>,
         rawNodeAddMenu: [] as MenuItem[],
 
-        // TODO: make selection more general and handle components and edges
-        selectedComponentId: null as ComponentId | null,
-        // TODO: can we get rid of this?
-        lastSelectedComponentId: null as ComponentId | null,
-        selectedEdgeId: null as EdgeId | null,
-
         selectedComponentIds: [] as ComponentId[],
-        lastSelectedComponentIds: [] as ComponentId[],
+        selectedEdgeId: null as EdgeId | null,
+        hoveredComponentId: null as ComponentId | null,
+        hoveredEdgeId: null as EdgeId | null,
 
         panTargetComponentId: null as ComponentId | null,
 
@@ -197,7 +188,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         // transforming the diagram-y data back into more generic looking data
         // TODO: ideally we just fetch it like this...
 
+        selectedComponentId: (state) => {
+          return state.selectedComponentIds.length === 1
+            ? state.selectedComponentIds[0]
+            : null;
+        },
         componentsById(): Record<ComponentId, FullComponent> {
+          const nodeIdToComponentId = _.mapValues(
+            _.keyBy(this.rawComponentsById, (c) => c.nodeId),
+            (c) => c.id,
+          );
           return _.mapValues(this.rawComponentsById, (rc) => {
             // these categories should probably have a name and a different displayName (ie "aws" vs "Amazon AWS")
             // and eventually can just assume the icon is `logo-${name}`
@@ -209,6 +209,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 Kubernetes: "logo-k8s",
               }[rc?.schemaCategory || ""] || "logo-si"; // fallback to SI logo
 
+            // TODO: probably get the backend to just return a parent ID and we can remove all of this?
             const socketToFrame = _.find(
               rc?.sockets,
               (s) => s.label === "Frame" && s.direction === "output",
@@ -223,24 +224,38 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 edge.fromNodeId === rc.nodeId &&
                 edge.fromSocketId === socketToFrame?.id,
             );
-            const frameChildIds = _.filter(this.allEdges, (s) => {
-              return (
-                s.toSocketId === socketFromChildren?.id &&
-                s.toNodeId === rc.nodeId
-              );
-            }).map((i) => i.fromNodeId);
+            const frameChildIds = _.uniq(
+              _.filter(this.allEdges, (s) => {
+                return (
+                  s.toSocketId === socketFromChildren?.id &&
+                  s.toNodeId === rc.nodeId
+                );
+              }).map((i) => i.fromNodeId),
+            );
 
             return {
               ...rc,
               parentNodeId: frameEdge?.toNodeId,
               childNodeIds: socketFromChildren ? frameChildIds : undefined,
+              // convert "node" ids back to component ids, so we can use that in a few places
+              parentId: frameEdge?.toNodeId
+                ? nodeIdToComponentId[frameEdge?.toNodeId]
+                : undefined,
+              childIds: socketFromChildren
+                ? _.map(frameChildIds, (nodeId) => nodeIdToComponentId[nodeId])
+                : [],
               icon: typeIcon,
               isGroup: rc.nodeType !== "component",
             } as FullComponent;
           });
         },
-        componentChangeStatusById(): Record<ComponentId, ChangeStatus> {
-          return {};
+        componentsByParentId(): Record<ComponentId, FullComponent[]> {
+          // remapping to component id... PLEASE LETS KILL NODE ID!
+          return _.groupBy(this.allComponents, (c) =>
+            c.parentNodeId
+              ? this.componentsByNodeId[c.parentNodeId].id
+              : "root",
+          );
         },
 
         componentsByNodeId(): Record<ComponentNodeId, FullComponent> {
@@ -249,139 +264,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         allComponents(): FullComponent[] {
           return _.values(this.componentsById);
         },
-        filteredComponentTree() {
-          const qualificationsStore = useQualificationsStore();
-          const fixesStore = useFixesStore();
-
-          return (filter: string | "") => {
-            const searchTerm = filter?.toLowerCase();
-            const treeView: ComponentTreeNode[] = [];
-            const queue: ComponentTreeNode[] = [];
-            const unusedComps: Record<string, FullComponent> = {};
-            const compList = _.compact(
-              _.map(this.allComponents, (c) => {
-                const matchesFilter =
-                  c.displayName.toLowerCase().includes(searchTerm) ||
-                  c.schemaName.toLowerCase().includes(searchTerm);
-
-                let qualificationStatus =
-                  qualificationsStore.qualificationStatusByComponentId[c.id];
-                let confirmationStatus: ConfirmationStatus | undefined =
-                  fixesStore.confirmationStatusByComponentId[c.id];
-                const changeStatus = this.componentChangeStatusById[c.id];
-
-                if (c.isGroup) {
-                  // eslint-disable-next-line @typescript-eslint/no-this-alias
-                  const compStore = this;
-                  qualificationStatus = (function calculateQualificationStatus(
-                    comp: FullComponent,
-                  ): QualificationStatus {
-                    return _.reduce(
-                      comp.childNodeIds,
-                      (collector, childId) => {
-                        const childComp = compStore.componentsByNodeId[childId];
-                        let childQualificationStatus =
-                          qualificationsStore.qualificationStatusByComponentId[
-                            childComp.id
-                          ];
-                        if (childComp.isGroup) {
-                          childQualificationStatus =
-                            calculateQualificationStatus(childComp);
-                        }
-
-                        switch (collector) {
-                          case "failure":
-                            return collector;
-                          case "running":
-                            return childQualificationStatus === "failure"
-                              ? "failure"
-                              : collector;
-                          case "success":
-                          default:
-                            return childQualificationStatus;
-                        }
-                      },
-                      "success" as QualificationStatus,
-                    );
-                  })(c);
-
-                  confirmationStatus = (function calculateConfirmationStatus(
-                    comp: FullComponent,
-                  ): ConfirmationStatus | undefined {
-                    return _.reduce(
-                      comp.childNodeIds,
-                      (
-                        collector: ConfirmationStatus | undefined,
-                        childNodeId,
-                      ) => {
-                        const childComp =
-                          compStore.componentsByNodeId[childNodeId];
-                        let childConfirmation: ConfirmationStatus | undefined =
-                          fixesStore.confirmationStatusByComponentId[
-                            childComp.id
-                          ];
-
-                        if (childComp.isGroup) {
-                          childConfirmation =
-                            calculateConfirmationStatus(childComp);
-                        }
-
-                        if (collector === "failure") return collector;
-                        else if (collector === "running")
-                          return childConfirmation === "failure"
-                            ? "failure"
-                            : collector;
-                        else if (collector === "success")
-                          return childConfirmation ?? "success";
-                        else return childConfirmation;
-                      },
-                      undefined,
-                    );
-                  })(c);
-                }
-
-                return {
-                  ...c,
-                  matchesFilter,
-                  typeIcon: c?.icon || "logo-si",
-                  statusIcons: {
-                    change: changeStatusToIconMap[changeStatus],
-                    qualification:
-                      qualificationStatusToIconMap[
-                        qualificationStatus as QualificationStatus
-                      ],
-                    confirmation: (confirmationStatus
-                      ? confirmationStatusToIconMap[confirmationStatus]
-                      : undefined) ?? {
-                      icon: "minus",
-                      tone: "neutral",
-                    },
-                  },
-                };
-              }),
-            );
-            for (const comp of compList) {
-              if (comp.parentNodeId === undefined) {
-                treeView.push(comp);
-                queue.push(comp);
-              } else {
-                unusedComps[comp.nodeId] = comp;
-              }
-            }
-            while (queue.length > 0) {
-              const item = queue.shift();
-              if (!item) continue;
-              for (const children of item.childNodeIds ?? []) {
-                if (item.children === undefined) {
-                  item.children = [];
-                }
-                const child = unusedComps[children];
-                item.children.push(child);
-                queue.push(child);
-              }
-            }
-            return treeView;
+        deepChildIdsByComponentId(): Record<ComponentId, ComponentId[]> {
+          const getDeepChildIds = (id: ComponentId): string[] => {
+            const component = this.componentsById[id];
+            if (!component.isGroup) return [];
+            return [
+              ...(component.childIds ? component.childIds : []),
+              ..._.flatMap(component.childIds, getDeepChildIds),
+            ];
           };
+
+          return _.mapValues(this.componentsById, (component, id) =>
+            getDeepChildIds(id),
+          );
         },
 
         allEdges: (state) => _.values(state.edgesById),
@@ -401,10 +296,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         },
         selectedComponentCode(): CodeView[] | undefined {
           return this.componentCodeViewsById[this.selectedComponentId || 0];
-        },
-
-        lastSelectedComponent(): FullComponent {
-          return this.componentsById[this.lastSelectedComponentId || 0];
         },
 
         diagramNodes(): DiagramNodeDef[] {
@@ -642,7 +533,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         async CREATE_COMPONENT(
           schemaId: string,
           position: Vector2d,
-          parentId?: string,
+          parentNodeId?: string,
         ) {
           return new ApiRequest<{
             componentId: ComponentId;
@@ -652,7 +543,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             url: "diagram/create_node",
             params: {
               schemaId,
-              parentId,
+              parentId: parentNodeId,
               x: position.x.toString(),
               y: position.y.toString(),
               ...visibilityParams,
@@ -833,6 +724,24 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             onSuccess: (response) => {
               // this.componentDiffsById[componentId] = response.componentDiff;
             },
+            optimistic: () => {
+              const originalStatus =
+                this.rawComponentsById[componentId].changeStatus;
+              this.rawComponentsById[componentId].changeStatus = "deleted";
+              this.rawComponentsById[componentId].deletedInfo = {
+                timestamp: new Date().toISOString(),
+                actor: { kind: "user", label: "You" },
+              };
+
+              // TODO: optimistically delete connected edges?
+              // not super important...
+
+              return () => {
+                this.rawComponentsById[componentId].changeStatus =
+                  originalStatus;
+                delete this.rawComponentsById[componentId].deletedInfo;
+              };
+            },
           });
         },
         async RESTORE_COMPONENT(componentId: ComponentId) {
@@ -866,40 +775,38 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
         setSelectedEdgeId(selection: EdgeId | null) {
           // clear component selection
-          this.selectedComponentId = null;
           this.selectedComponentIds = [];
           this.selectedEdgeId = selection;
         },
-        setSelectedComponentId(selection: ComponentId | ComponentId[] | null) {
+        setSelectedComponentId(
+          selection: ComponentId | ComponentId[] | null,
+          toggleMode = false,
+        ) {
           this.selectedEdgeId = null;
-          if (!selection) {
-            this.selectedComponentId = null;
+          if (!selection || !selection.length) {
             this.selectedComponentIds = [];
-          } else {
-            if (_.isArray(selection)) {
-              const validSelection = selection.filter(
-                (id) => this.componentsById[id] !== undefined,
-              );
-
-              if (validSelection.length === 1) {
-                this.selectedComponentId = validSelection[0];
-                this.lastSelectedComponentId = this.selectedComponentId;
-              } else {
-                this.selectedComponentId = null;
-              }
-
-              this.selectedComponentIds = validSelection;
-            } else {
-              if (this.componentsById[selection]) {
-                this.selectedComponentId = selection;
-                this.lastSelectedComponentId = selection;
-                this.selectedComponentIds = [selection];
-              } else {
-                // TODO: not sure... do we throw an error? Do we select the id anyway?
-                this.selectedComponentId = null;
-              }
-            }
+            return;
           }
+          const validSelectionArray = _.reject(
+            _.isArray(selection) ? selection : [selection],
+            (id) => !this.componentsById[id],
+          );
+          if (toggleMode) {
+            this.selectedComponentIds = _.xor(
+              this.selectedComponentIds,
+              validSelectionArray,
+            );
+          } else {
+            this.selectedComponentIds = validSelectionArray;
+          }
+        },
+        setHoveredComponentId(id: ComponentId | null) {
+          this.hoveredComponentId = id;
+          this.hoveredEdgeId = null;
+        },
+        setHoveredEdgeId(id: ComponentId | null) {
+          this.hoveredComponentId = null;
+          this.hoveredEdgeId = id;
         },
       },
       onActivated() {

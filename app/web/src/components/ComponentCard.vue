@@ -18,8 +18,8 @@
         class="shrink-0"
         :style="{ color: component.color }"
       />
-      <Stack spacing="2xs" class="">
-        <div class="font-bold">
+      <Stack spacing="xs" class="">
+        <div class="capsize font-bold">
           {{ component.displayName }}
         </div>
         <div class="text-xs italic capsize">

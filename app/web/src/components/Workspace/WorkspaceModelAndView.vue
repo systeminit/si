@@ -15,12 +15,7 @@
             <AssetPalette />
           </TabPanel>
           <TabPanel>
-            <DiagramOutline
-              @select="onOutlineSelectComponent"
-              @multiselect="onOutlineMultiSelectComponent"
-              @pan="onOutlinePanToComponent"
-              @click.right.prevent="onRightClickOutlineElement"
-            />
+            <ComponentOutline @right-click-item="onOutlineRightClick" />
           </TabPanel>
         </template>
       </SiTabGroup>
@@ -37,6 +32,7 @@
       :edges="diagramEdges"
       :read-only="isViewMode"
       @insert-element="onDiagramInsertElement"
+      @hover-element="onDiagramHoverElement"
       @move-element="onDiagramMoveElement"
       @resize-element="onDiagramResizeElement"
       @group-elements="onGroupElements"
@@ -83,10 +79,20 @@
 
   <Modal ref="confirmDeleteModalRef" title="Are you sure?">
     <Stack space="sm">
-      <p>You're about to delete some things.</p>
+      <p>You're about to delete:</p>
+
+      <Stack spacing="xs">
+        <ComponentCard
+          v-for="component in deletableSelectedComponents"
+          :key="component.id"
+          :component-id="component.id"
+        />
+      </Stack>
+
       <p>
-        These items will be marked for deletion in this change set. When this
-        change set is merged, they will be removed from your model.
+        Items that exist on HEAD will be marked for deletion, and removed from
+        the model when this change set is merged. Items that were created in
+        this changeset will be deleted immediately.
       </p>
 
       <div class="flex space-x-sm justify-end">
@@ -117,7 +123,11 @@ import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import SiTabGroup from "@/components/SiTabGroup.vue";
 import SiTabHeader from "@/components/SiTabHeader.vue";
-import { useComponentsStore } from "@/store/components.store";
+import {
+  ComponentId,
+  EdgeId,
+  useComponentsStore,
+} from "@/store/components.store";
 import DropdownMenu, {
   MenuItemObjectDef,
 } from "@/ui-lib/menus/DropdownMenu.vue";
@@ -139,11 +149,13 @@ import {
   SelectElementEvent,
   ResizeElementEvent,
   DiagramEdgeData,
+  HoverElementEvent,
 } from "../GenericDiagram/diagram_types";
-import DiagramOutline from "../DiagramOutline.vue";
+import ComponentOutline from "../ComponentOutline/ComponentOutline.vue";
 import GlobalStatusOverlay from "../GlobalStatusOverlay.vue";
 import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
+import ComponentCard from "../ComponentCard.vue";
 
 const currentRoute = useRoute();
 
@@ -212,7 +224,6 @@ const selectedEdge = computed(() => componentsStore.selectedEdge);
 const diagramCustomConfig = {};
 
 const selectedComponent = computed(() => componentsStore.selectedComponent);
-const selectedComponents = computed(() => componentsStore.selectedComponents);
 
 const insertCallbacks: Record<string, () => void> = {};
 
@@ -348,38 +359,33 @@ function onDiagramUpdateSelection(newSelection: SelectElementEvent) {
 
 const confirmDeleteModalRef = ref<InstanceType<typeof Modal>>();
 
+const deletableSelectedComponents = computed(() => {
+  return _.reject(
+    componentsStore.selectedComponents,
+    (c) => c.changeStatus === "deleted",
+  );
+});
+const restorableSelectedComponents = computed(() => {
+  return _.filter(
+    componentsStore.selectedComponents,
+    (c) => c.changeStatus === "deleted",
+  );
+});
+
 function onDiagramDelete(_e: DeleteElementsEvent) {
   // delete event includes what to delete, but its the same as current selection
   triggerDeleteSelection();
 }
 
-function onOutlineSelectComponent(id: string) {
-  componentsStore.setSelectedComponentId(id);
-}
-
-function onOutlineMultiSelectComponent(id: string) {
-  const selectedComponentIds = componentsStore.selectedComponentIds;
-  selectedComponentIds.push(id);
-  componentsStore.setSelectedComponentId(_.uniq(selectedComponentIds));
-}
-
-function onOutlinePanToComponent(id: string) {
-  componentsStore.panTargetComponentId = id;
-}
-
-function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
-  // TODO: make actually do something, probably also want to handle different types
-  contextMenuRef.value?.open(rightClickEventInfo.e, true);
-}
-function onRightClickOutlineElement(e: MouseEvent) {
-  contextMenuRef.value?.open(e, true);
-}
-
 function triggerDeleteSelection() {
   // event is triggered regardless of selection
   // in some cases we may want to ignore it
-  if (selectedEdge.value?.changeStatus === "deleted") return;
-  // TODO: more logic to decide if modal is necessary for other situations
+  if (selectedEdge.value) {
+    if (selectedEdge.value?.changeStatus === "deleted") return;
+  } else {
+    // TODO: more logic to decide if modal is necessary for other situations
+    if (!deletableSelectedComponents.value.length) return;
+  }
   confirmDeleteModalRef.value?.open();
 }
 
@@ -408,22 +414,66 @@ async function triggerRestoreSelection() {
   }
 }
 
+function getDiagramElementKeyForComponentId(componentId?: ComponentId | null) {
+  if (!componentId) return;
+  const component = componentsStore.componentsById[componentId];
+  if (component.isGroup) {
+    return DiagramGroupData.generateUniqueKey(component.nodeId);
+  }
+  return DiagramNodeData.generateUniqueKey(component.nodeId);
+}
+function getDiagramElementKeyForEdgeId(edgeId?: EdgeId | null) {
+  if (!edgeId) return;
+  return DiagramEdgeData.generateUniqueKey(edgeId);
+}
+
+// HOVER
+function onDiagramHoverElement(newHover: HoverElementEvent) {
+  if (
+    newHover.element instanceof DiagramNodeData ||
+    newHover.element instanceof DiagramGroupData
+  ) {
+    componentsStore.setHoveredComponentId(newHover.element.def.componentId);
+  } else if (newHover.element instanceof DiagramEdgeData) {
+    componentsStore.setHoveredEdgeId(newHover.element.def.id);
+  } else {
+    // handles case of hovering nothing and hovering edges
+    componentsStore.setHoveredComponentId(null);
+  }
+}
+
+watch(
+  [
+    () => componentsStore.hoveredComponentId,
+    () => componentsStore.hoveredEdgeId,
+  ],
+  () => {
+    if (componentsStore.hoveredComponentId) {
+      diagramRef.value?.setHoveredByKey(
+        getDiagramElementKeyForComponentId(componentsStore.hoveredComponentId),
+      );
+    } else if (componentsStore.hoveredEdgeId) {
+      diagramRef.value?.setHoveredByKey(
+        getDiagramElementKeyForEdgeId(componentsStore.hoveredEdgeId),
+      );
+    } else {
+      diagramRef.value?.setHoveredByKey(undefined);
+    }
+  },
+);
+
 watch(
   () => [selectedComponentIds.value, selectedEdgeId.value],
   () => {
     if (selectedComponentIds.value.length > 0) {
-      const selectedComponentsKeys = _.map(selectedComponentIds.value, (c) => {
-        const component = componentsStore.componentsById[c];
-
-        return component.isGroup
-          ? DiagramGroupData.generateUniqueKey(component.nodeId)
-          : DiagramNodeData.generateUniqueKey(component.nodeId);
-      });
-
-      diagramRef.value?.setSelection(selectedComponentsKeys);
+      const selectedComponentsKeys = _.map(
+        selectedComponentIds.value,
+        getDiagramElementKeyForComponentId,
+      );
+      diagramRef.value?.setSelectionByKey(_.compact(selectedComponentsKeys));
     } else if (selectedEdgeId.value) {
-      diagramRef.value?.setSelection(
-        DiagramEdgeData.generateUniqueKey(selectedEdgeId.value),
+      diagramRef.value?.setSelectionByKey(
+        getDiagramElementKeyForEdgeId(selectedEdgeId.value),
       );
     } else {
       diagramRef.value?.clearSelection();
@@ -446,6 +496,15 @@ function onGroupElements({ group, elements }: GroupEvent) {
   for (const element of elements) {
     componentsStore.CONNECT_COMPONENT_TO_FRAME(element.def.id, group.def.id);
   }
+}
+
+function onRightClickElement(rightClickEventInfo: RightClickElementEvent) {
+  // TODO: make actually do something, probably also want to handle different types
+  contextMenuRef.value?.open(rightClickEventInfo.e, true);
+}
+
+function onOutlineRightClick(e: MouseEvent) {
+  contextMenuRef.value?.open(e, true);
 }
 
 const rightClickMenuItems = computed(() => {
@@ -482,29 +541,21 @@ const rightClickMenuItems = computed(() => {
     }
   } else if (selectedComponentIds.value.length) {
     // Multiple selected components
-    const restorableComponents = _.filter(
-      selectedComponents.value,
-      (c) => c.changeStatus === "deleted",
-    );
-    const deletableComponents = _.reject(
-      selectedComponents.value,
-      (c) => c.changeStatus === "deleted",
-    );
-    if (deletableComponents.length > 0) {
+    if (deletableSelectedComponents.value.length > 0) {
       items.push({
-        label: `Delete ${deletableComponents.length} ${plur(
+        label: `Delete ${deletableSelectedComponents.value.length} ${plur(
           "component",
-          deletableComponents.length,
+          deletableSelectedComponents.value.length,
         )}`,
         icon: "trash",
-        onSelect: triggerRestoreSelection,
+        onSelect: triggerDeleteSelection,
       });
     }
-    if (restorableComponents.length > 0) {
+    if (restorableSelectedComponents.value.length > 0) {
       items.push({
-        label: `Restore ${restorableComponents.length} ${plur(
+        label: `Restore ${restorableSelectedComponents.value.length} ${plur(
           "component",
-          restorableComponents.length,
+          restorableSelectedComponents.value.length,
         )}`,
         icon: "trash-restore",
         onSelect: triggerRestoreSelection,

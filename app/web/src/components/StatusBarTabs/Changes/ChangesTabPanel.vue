@@ -10,7 +10,7 @@
       <template #icon="{ component }">
         <StatusIndicatorIcon
           type="change"
-          :status="changeStatusByComponentId[component.id]"
+          :status="componentsById[component.id].changeStatus"
         />
       </template>
     </StatusBarTabPanelComponentList>
@@ -117,9 +117,6 @@ const changeSelectedFilter = (newFilter: FilterOption) => {
 const componentsStore = useComponentsStore();
 const changeSetsStore = useChangeSetsStore();
 
-const changeStatusByComponentId = computed(
-  () => componentsStore.componentChangeStatusById,
-);
 // first filter down all components to only those changed
 const changedComponents = computed(() =>
   _.filter(componentsStore.allComponents, (c) => !!c.changeStatus),
@@ -140,6 +137,7 @@ const componentsList = computed(() =>
     status: c.changeStatus,
   })),
 );
+const componentsById = computed(() => componentsStore.componentsById);
 
 const selectedComponentId = computed(() => componentsStore.selectedComponentId);
 const selectedComponent = computed(() =>

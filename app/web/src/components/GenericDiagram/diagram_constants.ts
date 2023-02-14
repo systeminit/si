@@ -13,9 +13,7 @@ export const DRAG_DISTANCE_THRESHOLD = 5;
 export const DRAG_EDGE_TRIGGER_SCROLL_WIDTH = 15;
 
 // Default Width for Node
-export const NODE_WIDTH = 180;
-
-export const RESIZE_HANDLE_SIZE = 40;
+export const NODE_WIDTH = 200;
 
 // spacing between sockets
 export const SOCKET_GAP = 22;
@@ -28,6 +26,7 @@ export const SOCKET_SIZE = 15;
 export const GROUP_HEADER_BOTTOM_MARGIN = 14;
 export const GROUP_TITLE_FONT_SIZE = 14;
 export const GROUP_INTERNAL_PADDING = 20;
+export const GROUP_RESIZE_HANDLE_SIZE = 20;
 
 // corner radius used on nodes (maybe other things later?)
 export const CORNER_RADIUS = 3;

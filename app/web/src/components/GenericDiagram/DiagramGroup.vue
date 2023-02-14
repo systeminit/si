@@ -6,7 +6,7 @@
       x: position.x,
       y: position.y,
     }"
-    @mouseover="onMouseOver('group', $event)"
+    @mouseover="onMouseOver"
     @mouseout="onMouseOut"
   >
     <!-- selection box outline -->
@@ -59,59 +59,52 @@
 
     <!-- resize handles -->
     <!--  left side handle  -->
-    <v-rect
+    <v-line
       :config="{
-        width: GROUP_INTERNAL_PADDING * 2,
-        height: nodeBodyHeight - GROUP_INTERNAL_PADDING * 2,
-        x: -nodeWidth / 2 - GROUP_INTERNAL_PADDING,
-        y: GROUP_INTERNAL_PADDING,
-        hitStrokeWidth: 0,
+        points: [-nodeWidth / 2, 0, -nodeWidth / 2, nodeBodyHeight],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
       }"
-      @mouseover="onMouseOver('resize-left', $event)"
+      @mouseover="onResizeHover('left', $event)"
       @mouseout="onMouseOut"
     />
     <!-- right side handle   -->
-    <v-rect
+    <v-line
       :config="{
-        width: GROUP_INTERNAL_PADDING * 2,
-        height: nodeBodyHeight - GROUP_INTERNAL_PADDING * 2,
-        x: nodeWidth / 2 - GROUP_INTERNAL_PADDING,
-        y: GROUP_INTERNAL_PADDING,
+        points: [nodeWidth / 2, 0, nodeWidth / 2, nodeBodyHeight],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
       }"
-      @mouseover="onMouseOver('resize-right', $event)"
+      @mouseover="onResizeHover('right', $event)"
       @mouseout="onMouseOut"
     />
     <!-- Bottom Handle -->
-    <v-rect
+    <v-line
       :config="{
-        width: nodeWidth - GROUP_INTERNAL_PADDING * 2,
-        height: GROUP_INTERNAL_PADDING * 2,
-        x: -nodeWidth / 2 + GROUP_INTERNAL_PADDING,
-        y: nodeBodyHeight - GROUP_INTERNAL_PADDING,
+        points: [-nodeWidth / 2, nodeBodyHeight, nodeWidth / 2, nodeBodyHeight],
+        hitStrokeWidth: GROUP_RESIZE_HANDLE_SIZE,
       }"
-      @mouseover="onMouseOver('resize-bottom', $event)"
+      @mouseover="onResizeHover('bottom', $event)"
       @mouseout="onMouseOut"
     />
     <!-- Bottom Left Handle -->
-    <v-rect
+    <v-circle
       :config="{
-        width: GROUP_INTERNAL_PADDING * 2,
-        height: GROUP_INTERNAL_PADDING * 2,
-        x: -nodeWidth / 2 - GROUP_INTERNAL_PADDING,
-        y: nodeBodyHeight - GROUP_INTERNAL_PADDING,
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: -nodeWidth / 2,
+        y: nodeBodyHeight,
       }"
-      @mouseover="onMouseOver('resize-bl', $event)"
+      @mouseover="onResizeHover('bottom-left', $event)"
       @mouseout="onMouseOut"
     />
     <!-- Bottom Right Handle -->
-    <v-rect
+    <v-circle
       :config="{
-        width: GROUP_INTERNAL_PADDING * 2,
-        height: GROUP_INTERNAL_PADDING * 2,
-        x: +nodeWidth / 2 - GROUP_INTERNAL_PADDING,
-        y: nodeBodyHeight - GROUP_INTERNAL_PADDING,
+        width: GROUP_RESIZE_HANDLE_SIZE,
+        height: GROUP_RESIZE_HANDLE_SIZE,
+        x: nodeWidth / 2,
+        y: nodeBodyHeight,
       }"
-      @mouseover="onMouseOver('resize-br', $event)"
+      @mouseover="onResizeHover('bottom-right', $event)"
       @mouseout="onMouseOut"
     />
 
@@ -130,8 +123,8 @@
         :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
         :draw-edge-state="drawEdgeState"
         :node-width="nodeWidth"
-        @hover:start="emit('hover:start', 'group', socket)"
-        @hover:end="emit('hover:end', 'group', socket)"
+        @hover:start="onSocketHoverStart(socket)"
+        @hover:end="onSocketHoverEnd(socket)"
       />
     </v-group>
 
@@ -152,8 +145,8 @@
         :connected-edges="connectedEdgesBySocketKey[socket.uniqueKey]"
         :draw-edge-state="drawEdgeState"
         :node-width="nodeWidth"
-        @hover:start="emit('hover:start', 'group', socket)"
-        @hover:end="emit('hover:end', 'group', socket)"
+        @hover:start="onSocketHoverStart(socket)"
+        @hover:end="onSocketHoverEnd(socket)"
       />
     </v-group>
 
@@ -251,7 +244,7 @@ import {
   SELECTION_COLOR,
   GROUP_HEADER_BOTTOM_MARGIN,
   GROUP_TITLE_FONT_SIZE,
-  GROUP_INTERNAL_PADDING,
+  GROUP_RESIZE_HANDLE_SIZE,
 } from "@/components/GenericDiagram/diagram_constants";
 import {
   DiagramDrawEdgeState,
@@ -259,7 +252,9 @@ import {
   DiagramElementUniqueKey,
   DiagramGroupData,
   Size2D,
-  MouseOverEventType,
+  SideAndCornerIdentifiers,
+  DiagramSocketData,
+  ElementHoverMeta,
 } from "./diagram_types";
 
 import DiagramIcon from "./DiagramIcon.vue";
@@ -288,7 +283,11 @@ const props = defineProps({
   isSelected: Boolean,
 });
 
-const emit = defineEmits(["resize", "hover:start", "hover:end"]);
+const emit = defineEmits<{
+  (e: "hover:start", meta?: ElementHoverMeta): void;
+  (e: "hover:end"): void;
+  (e: "resize"): void;
+}>();
 
 const { theme } = useTheme();
 const diagramConfig = useDiagramConfig();
@@ -305,23 +304,19 @@ const halfWidth = computed(() => nodeWidth.value / 2);
 // TODO(Victor): this is wrong. headerWidth should be the smallest value between the actual text width and nodeWidth
 const headerWidth = computed(() => nodeWidth.value * 0.75);
 
-const leftSockets = computed(() =>
+const actualSockets = computed(() =>
   _.filter(
     props.group.sockets,
     (s) =>
-      s.def.nodeSide === "left" &&
-      s.def.label !== "Frame" &&
-      s.parent.def.nodeType !== "configurationFrame",
+      s.def.label !== "Frame" && s.parent.def.nodeType !== "configurationFrame",
   ),
 );
+
+const leftSockets = computed(() =>
+  _.filter(actualSockets.value, (s) => s.def.nodeSide === "left"),
+);
 const rightSockets = computed(() =>
-  _.filter(
-    props.group.sockets,
-    (s) =>
-      s.def.nodeSide === "right" &&
-      s.def.label !== "Frame" &&
-      s.parent.def.nodeType !== "configurationFrame",
-  ),
+  _.filter(actualSockets.value, (s) => s.def.nodeSide === "right"),
 );
 const connectedEdgesBySocketKey = computed(() => {
   const lookup: Record<DiagramElementUniqueKey, DiagramEdgeData[]> = {};
@@ -398,12 +393,23 @@ watch([() => props.group.def.isLoading, overlay], ([isLoading]) => {
   transition.play();
 });
 
-function onMouseOver(
-  target: MouseOverEventType,
+function onMouseOver(evt: KonvaEventObject<MouseEvent>) {
+  evt.cancelBubble = true;
+  emit("hover:start");
+}
+
+function onResizeHover(
+  direction: SideAndCornerIdentifiers,
   evt: KonvaEventObject<MouseEvent>,
 ) {
   evt.cancelBubble = true;
-  emit("hover:start", target);
+  emit("hover:start", { type: "resize", direction });
+}
+function onSocketHoverStart(socket: DiagramSocketData) {
+  emit("hover:start", { type: "socket", socket });
+}
+function onSocketHoverEnd(socket: DiagramSocketData) {
+  emit("hover:end");
 }
 
 function onMouseOut(_e: KonvaEventObject<MouseEvent>) {

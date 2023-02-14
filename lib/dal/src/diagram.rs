@@ -9,7 +9,6 @@ use crate::change_status::{
 };
 use crate::diagram::connection::{Connection, DiagramEdgeView};
 use crate::diagram::node::DiagramComponentView;
-use crate::edge::EdgeKind;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
@@ -166,7 +165,7 @@ impl Diagram {
         let mut edges: Vec<DiagramEdgeView> = Edge::list(ctx)
             .await?
             .into_iter()
-            .filter(|e| *e.kind() == EdgeKind::Configuration)
+            // .filter(|e| *e.kind() == EdgeKind::Configuration)
             .map(|e| {
                 let change_status = match e.visibility().change_set_pk {
                     ChangeSetPk::NONE => ChangeStatus::Unmodified,
@@ -180,7 +179,7 @@ impl Diagram {
         let deleted_edges: Vec<DiagramEdgeView> = EdgeChangeStatus::list_deleted(ctx)
             .await?
             .into_iter()
-            .filter(|e| *e.kind() == EdgeKind::Configuration)
+            // .filter(|e| *e.kind() == EdgeKind::Configuration)
             .map(|e| {
                 DiagramEdgeView::from_with_change_status(
                     Connection::from_edge(&e),
