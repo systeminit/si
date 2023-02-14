@@ -9,6 +9,8 @@
 
     <div v-if="DEV_MODE" class="px-xs pt-xs text-2xs italic opacity-30">
       COMPONENT ID = {{ selectedComponent.id }}
+      <br />
+      NODE ID = {{ selectedComponent.nodeId }}
     </div>
     <ComponentCard :component-id="selectedComponent.id" class="m-xs" />
     <DetailsPanelTimestamps

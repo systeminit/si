@@ -263,6 +263,9 @@ export type DiagramDrawEdgeState = {
 };
 
 // Event payloads - emitted by generic diagram //////////////////////////////////
+export type HoverElementEvent = {
+  element: DiagramElementData | null;
+};
 export type ResizeElementEvent = {
   element: DiagramElementData;
   position: Vector2d;

@@ -5,7 +5,7 @@ import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { ComponentId } from "./components.store";
+import { ComponentId, useComponentsStore } from "./components.store";
 
 export type QualificationStatus = "success" | "failure" | "running" | "warning";
 
@@ -47,6 +47,34 @@ export const useQualificationsStore = () => {
             if (cs.warned > 0) return "warning";
             return "success";
           });
+        },
+        qualificationStatusWithRollupsByComponentId(): Record<
+          ComponentId,
+          QualificationStatus
+        > {
+          const componentsStore = useComponentsStore();
+
+          return _.mapValues(
+            componentsStore.componentsById,
+            (component, id) => {
+              if (!component.isGroup)
+                return this.qualificationStatusByComponentId[id];
+
+              const deepChildIds =
+                componentsStore.deepChildIdsByComponentId[id];
+              const deepChildStatuses = _.map(
+                deepChildIds,
+                (childId) => this.qualificationStatusByComponentId[childId],
+              );
+              if (_.some(deepChildStatuses, (s) => s === "running"))
+                return "running";
+              if (_.some(deepChildStatuses, (s) => s === "failure"))
+                return "failure";
+              if (_.some(deepChildStatuses, (s) => s === "warning"))
+                return "warning";
+              return "success";
+            },
+          );
         },
 
         // stats/totals by component

@@ -225,7 +225,7 @@ const determineOrder = (
 const propertyValuesInOrder = computed(() => {
   const results = determineOrder([], [values.value.rootValueId]);
 
-  const component = useComponentsStore().lastSelectedComponent;
+  const component = useComponentsStore().selectedComponent;
 
   if (component?.nodeType === "aggregationFrame") {
     return _.filter(results, (r) => {

@@ -28,25 +28,21 @@ const props = defineProps<{
 }>();
 
 const componentsStore = useComponentsStore();
-// Note(victor): This component will only be rendered if there's a selected component.
-// To avoid weird data races where the store has already unset the value but we still need to use it, we can default to
-// using lastSelectedComponent instead of selectedComponent.
-// This helps us, for example, to save attributes onBeforeUnmount here or on any children.
-const lastSelectedComponent = computed(
-  () => componentsStore.lastSelectedComponent,
-);
+const componentId = computed(() => componentsStore.selectedComponentId);
 
 const componentAttributesStore = useComponentAttributesStore();
 
 const editorContext = computed(() => componentAttributesStore.editorContext);
 
 const updateProperty = (event: UpdatedProperty) => {
+  if (!componentId.value) return;
+
   const prop = editorContext.value?.schema.props[event.propId];
 
   if (prop?.name === "type") {
     componentAttributesStore.SET_COMPONENT_TYPE({
       value: event.value,
-      componentId: lastSelectedComponent.value.id,
+      componentId: componentId.value,
     });
   } else {
     componentAttributesStore.UPDATE_PROPERTY_VALUE({
@@ -56,28 +52,31 @@ const updateProperty = (event: UpdatedProperty) => {
         value: event.value,
         key: event.key,
         propId: event.propId,
-        componentId: lastSelectedComponent.value.id,
+        componentId: componentId.value,
       },
     });
   }
 };
 
 const addToArray = (event: AddToArray) => {
+  if (!componentId.value) return;
+
   componentAttributesStore.UPDATE_PROPERTY_VALUE({
     insert: {
       parentAttributeValueId: event.valueId,
       propId: event.propId,
-      componentId: lastSelectedComponent.value.id,
+      componentId: componentId.value,
     },
   });
 };
 const addToMap = (event: AddToMap) => {
+  if (!componentId.value) return;
   componentAttributesStore.UPDATE_PROPERTY_VALUE({
     insert: {
       parentAttributeValueId: event.valueId,
       key: event.key,
       propId: event.propId,
-      componentId: lastSelectedComponent.value.id,
+      componentId: componentId.value,
     },
   });
 };

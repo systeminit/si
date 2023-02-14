@@ -13,7 +13,7 @@ export const DRAG_DISTANCE_THRESHOLD = 5;
 export const DRAG_EDGE_TRIGGER_SCROLL_WIDTH = 15;
 
 // Default Width for Node
-export const NODE_WIDTH = 180;
+export const NODE_WIDTH = 200;
 
 export const RESIZE_HANDLE_SIZE = 40;
 

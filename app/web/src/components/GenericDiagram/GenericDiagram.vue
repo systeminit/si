@@ -186,6 +186,7 @@ import {
   ResizeElementEvent,
   MouseOverEventType,
   ResizeEventType,
+  HoverElementEvent,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramEdge from "./DiagramEdge.vue";
@@ -245,6 +246,7 @@ const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;
   (e: "update:selection", newSelection: SelectElementEvent): void;
   (e: "move-element", nodeMoveInfo: MoveElementEvent): void;
+  (e: "hover-element", hoverInfo: HoverElementEvent): void;
   (e: "resize-element", nodeResizeInfo: ResizeElementEvent): void;
   (e: "delete-elements", deleteInfo: DeleteElementsEvent): void;
   (e: "insert-element", insertInfo: InsertElementEvent): void;
@@ -633,7 +635,6 @@ const cursor = computed(() => {
 });
 
 // hovering behaviour
-
 const componentHoverAction = ref<"move" | "resize" | undefined>();
 const componentResizeMode = ref<ResizeEventType | undefined>();
 const hoveredElementKey = ref<string>();
@@ -642,6 +643,11 @@ const hoveredElement = computed(() =>
     ? allElementsByKey.value[hoveredElementKey.value]
     : undefined,
 );
+
+function setHoveredByKey(newHoverElementKey?: DiagramElementUniqueKey) {
+  hoveredElementKey.value = newHoverElementKey;
+}
+
 // same event and handler is used for both hovering nodes and sockets
 // NOTE - we'll receive 2 events when hovering sockets, one for the node and one for the socket
 
@@ -660,12 +666,13 @@ function onGroupHoverStart(
 
 function onElementHoverStart(el: DiagramElementData) {
   if (!componentHoverAction.value) componentHoverAction.value = "move";
-
   hoveredElementKey.value = el.uniqueKey;
+  emit("hover-element", { element: el });
 }
 function onElementHoverEnd(_el: DiagramElementData) {
   componentHoverAction.value = undefined;
   hoveredElementKey.value = undefined;
+  emit("hover-element", { element: null });
 }
 
 const disableHoverEvents = computed(() => {
@@ -1833,7 +1840,8 @@ useZoomLevelProvider(zoomLevel);
 defineExpose({
   setZoom,
   recenter,
-  setSelection: setSelectionByKey,
+  setSelectionByKey,
+  setHoveredByKey,
   clearSelection,
   beginInsertElement,
   endInsertElement,
