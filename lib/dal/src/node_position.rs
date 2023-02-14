@@ -56,7 +56,6 @@ impl_standard_model! {
 impl NodePosition {
     /// Creates a new [`NodePosition`](Self) and sets its "belongs_to_id" to the provided
     /// [`NodeId`](crate::Node).
-    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         node_id: NodeId,

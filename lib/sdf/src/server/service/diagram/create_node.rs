@@ -85,9 +85,7 @@ pub async fn create_node(
         connect_component_sockets_to_frame(&ctx, frame_id, *node.id()).await?;
     }
 
-    // TODO(nick,theo): create a component-specific event once the endpoints are cleaner (i.e. we
-    // can call routes with more precision).
-    WsEvent::change_set_written(&ctx)
+    WsEvent::component_created(&ctx)
         .await?
         .publish(&ctx)
         .await?;

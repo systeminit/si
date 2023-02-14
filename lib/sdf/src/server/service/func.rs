@@ -326,7 +326,7 @@ async fn attribute_prototypes_into_schema_variants_and_components(
     func_id: FuncId,
 ) -> FuncResult<(Vec<SchemaVariantId>, Vec<ComponentId>)> {
     let schema_variants_components =
-        dbg!(AttributePrototype::find_for_func_as_variant_and_component(ctx, func_id).await?);
+        AttributePrototype::find_for_func_as_variant_and_component(ctx, func_id).await?;
 
     let mut schema_variant_ids = vec![];
     let mut component_ids = vec![];
