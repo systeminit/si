@@ -29,10 +29,6 @@ export type WsEventPayloadMap = {
     componentId: string;
   };
 
-  RanConfirmations: {
-    success: boolean;
-  };
-
   // NOT CURRENTLY USED - but leaving here so we remember these events exist
   // SecretCreated: number;
   // ResourceRefreshed: {
@@ -48,6 +44,10 @@ export type WsEventPayloadMap = {
   //   output: string[];
   //   runnerState: WorkflowRunnerState;
   // };
+
+  ConfirmationsUpdated: {
+    success: boolean;
+  };
   FixReturn: {
     id: string;
     batchId: string;

@@ -9,7 +9,7 @@ use crate::{
     job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
+    Component, DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -312,6 +312,26 @@ impl JobConsumer for DependentValuesUpdate {
             .await?
             .publish(&ctx)
             .await?;
+
+        // FIXME(nick,paulo): this is wrong. What if the confirmation attribute values are affected,
+        // but the resource attribute values are NOT? We are shit outta luck. This only looks at the
+        // resource attribute values.
+        let resource_attribute_values: HashSet<AttributeValueId> = HashSet::from_iter(
+            Component::list_all_resource_implicit_internal_provider_attribute_values(&ctx)
+                .await?
+                .iter()
+                .map(|av| *av.id()),
+        );
+        for maybe_resource_attribute_value_id in &self.attribute_values {
+            if resource_attribute_values.contains(maybe_resource_attribute_value_id) {
+                WsEvent::confirmations_updated(&ctx)
+                    .await?
+                    .publish(&ctx)
+                    .await?;
+                break;
+            }
+        }
+
         if !self.single_transaction {
             ctx.commit().await?;
         }
