@@ -35,7 +35,8 @@ use crate::{
     InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
     PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
     StandardModelError, Tenancy, Timestamp, TransactionsError, ValidationPrototypeError,
-    ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError,
+    ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WsEvent,
+    WsEventResult, WsPayload,
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
@@ -1129,5 +1130,21 @@ impl Component {
         ctx.enqueue_job(DependentValuesUpdate::new(ctx, ids)).await;
 
         Ok(Component::get_by_id(ctx, &component_id).await?)
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentCreatedPayload {
+    success: bool,
+}
+
+impl WsEvent {
+    pub async fn component_created(ctx: &DalContext) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ComponentCreated(ComponentCreatedPayload { success: true }),
+        )
+        .await
     }
 }

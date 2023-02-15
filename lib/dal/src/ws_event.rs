@@ -4,6 +4,7 @@ use si_data_pg::PgError;
 use thiserror::Error;
 
 use crate::component::confirmation::ConfirmationsUpdatedPayload;
+use crate::component::ComponentCreatedPayload;
 use crate::{
     component::{code::CodeGeneratedPayload, resource::ResourceRefreshId},
     fix::{batch::FixBatchReturn, FixReturn},
@@ -40,6 +41,7 @@ pub enum WsPayload {
     ChangeSetApplied(ChangeSetPk),
     ChangeSetCanceled(ChangeSetPk),
     ChangeSetWritten(ChangeSetPk),
+    ComponentCreated(ComponentCreatedPayload),
     SchemaCreated(SchemaPk),
     ResourceRefreshed(ResourceRefreshId),
     ConfirmationsUpdated(ConfirmationsUpdatedPayload),

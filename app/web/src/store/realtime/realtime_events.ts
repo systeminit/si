@@ -60,6 +60,9 @@ export type WsEventPayloadMap = {
     id: string;
     status: FixStatus;
   };
+  ComponentCreated: {
+    success: boolean;
+  };
 
   // Old fake status update
   // UpdateStatus: {

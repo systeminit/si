@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use std::num::{ParseFloatError, ParseIntError};
 use strum_macros::{AsRefStr, Display, EnumString};
+use telemetry::prelude::debug;
 use thiserror::Error;
 
 use crate::change_status::{
@@ -15,7 +16,7 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributeValueError,
-    ChangeSetPk, ComponentError, DalContext, Edge, EdgeError, Node, NodeError, NodeKind,
+    ChangeSetPk, ComponentError, DalContext, Edge, EdgeError, Node, NodeError, NodeId, NodeKind,
     NodePosition, NodePositionError, PropError, SchemaError, SocketId, StandardModel,
     StandardModelError,
 };
@@ -83,6 +84,8 @@ pub enum DiagramError {
     Socket(#[from] SocketError),
     #[error("attribute context error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
+    #[error("no node positions found for node ({0}) and kind ({1})")]
+    NoNodePositionsFound(NodeId, NodeKind),
 }
 
 pub type DiagramResult<T> = Result<T, DiagramError>;
@@ -113,9 +116,8 @@ impl Diagram {
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
     /// [`Connections`](crate::Connection).
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
-        // let added = ComponentChangeStatus::list_added(ctx).await?;
         let modified = ComponentChangeStatus::list_modified(ctx).await?;
-        println!("{modified:#?}");
+        debug!("modified component change status: {modified:#?}");
 
         let mut nodes = Node::list(ctx).await?;
         nodes.extend(ComponentChangeStatus::list_deleted_nodes(ctx).await?);
@@ -137,12 +139,9 @@ impl Diagram {
 
             let positions = NodePosition::list_for_node(ctx_with_deleted, *node.id()).await?;
 
-            // FIXME(nick): handle nodes with no position. Perhaps, we should generate one
-            // automatically that is close to the origin, but does not share the same position as
-            // another node.
             let position = match positions.into_iter().next() {
                 Some(pos) => pos,
-                None => continue, // Note: do we want to ignore things with no position?
+                None => return Err(DiagramError::NoNodePositionsFound(*node.id(), *node.kind())),
             };
 
             let is_modified = modified
@@ -165,7 +164,6 @@ impl Diagram {
         let mut edges: Vec<DiagramEdgeView> = Edge::list(ctx)
             .await?
             .into_iter()
-            // .filter(|e| *e.kind() == EdgeKind::Configuration)
             .map(|e| {
                 let change_status = match e.visibility().change_set_pk {
                     ChangeSetPk::NONE => ChangeStatus::Unmodified,
@@ -179,7 +177,6 @@ impl Diagram {
         let deleted_edges: Vec<DiagramEdgeView> = EdgeChangeStatus::list_deleted(ctx)
             .await?
             .into_iter()
-            // .filter(|e| *e.kind() == EdgeKind::Configuration)
             .map(|e| {
                 DiagramEdgeView::from_with_change_status(
                     Connection::from_edge(&e),
