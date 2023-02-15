@@ -170,6 +170,13 @@ export const useQualificationsStore = () => {
               this.FETCH_QUALIFICATIONS_SUMMARY();
             },
           },
+          {
+            // TODO(nick,theo,fletcher,wendy): replace this someday.
+            eventType: "ChangeSetWritten",
+            callback: () => {
+              this.FETCH_QUALIFICATIONS_SUMMARY();
+            },
+          },
         ]);
 
         return () => {
