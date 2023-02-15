@@ -235,11 +235,11 @@ impl MigrationDriver {
             .ok_or(BuiltinsError::FuncNotFoundInMigrationCache("si:identity"))?;
 
         // Input Socket
-        let (group_id_internal_provider, _input_socket) =
+        let (exposed_ports_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
-                "Security Group ID",
+                "Exposed Ports",
                 identity_func_item.func_id,
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
@@ -249,11 +249,11 @@ impl MigrationDriver {
             .await?;
 
         // Input Socket
-        let (exposed_ports_internal_provider, _input_socket) =
+        let (group_id_internal_provider, _input_socket) =
             InternalProvider::new_explicit_with_socket(
                 ctx,
                 *schema_variant.id(),
-                "Exposed Ports",
+                "Security Group ID",
                 identity_func_item.func_id,
                 identity_func_item.func_binding_id,
                 identity_func_item.func_binding_return_value_id,
