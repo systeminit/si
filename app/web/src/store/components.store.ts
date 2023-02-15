@@ -595,9 +595,11 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               ...visibilityParams,
             },
             onSuccess: (response) => {
-              // change our temporary id to the real one
-              this.edgesById[response.connection.id] = this.edgesById[tempId];
-              delete this.edgesById[tempId];
+              // change our temporary id to the real one, only if we haven't re-fetched the diagram yet
+              if (this.edgesById[tempId]) {
+                this.edgesById[response.connection.id] = this.edgesById[tempId];
+                delete this.edgesById[tempId];
+              }
               // TODO: store component details rather than waiting for re-fetch
             },
             optimistic: () => {
@@ -837,6 +839,12 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         const realtimeStore = useRealtimeStore();
 
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
+          {
+            eventType: "ComponentCreated",
+            callback: (_update) => {
+              this.FETCH_DIAGRAM_DATA();
+            },
+          },
           {
             eventType: "ChangeSetWritten",
             callback: (writtenChangeSetId) => {
