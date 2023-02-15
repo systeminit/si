@@ -250,12 +250,30 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           });
         },
         componentsByParentId(): Record<ComponentId, FullComponent[]> {
-          // remapping to component id... PLEASE LETS KILL NODE ID!
           return _.groupBy(this.allComponents, (c) =>
+            // remapping to component id... PLEASE LETS KILL NODE ID!
             c.parentNodeId
               ? this.componentsByNodeId[c.parentNodeId].id
               : "root",
           );
+        },
+        parentIdPathByComponentId(): Record<ComponentId, ComponentId[]> {
+          const parentsLookup: Record<ComponentId, ComponentId[]> = {};
+          // using componentsByParentId to do a tree walk
+          const processList = (
+            components: FullComponent[],
+            parentIds: ComponentId[],
+          ) => {
+            _.each(components, (c) => {
+              parentsLookup[c.id] = parentIds;
+              processList(this.componentsByParentId[c.id], [
+                ...parentIds,
+                c.id,
+              ]);
+            });
+          };
+          processList(this.componentsByParentId.root, []);
+          return parentsLookup;
         },
 
         componentsByNodeId(): Record<ComponentNodeId, FullComponent> {
