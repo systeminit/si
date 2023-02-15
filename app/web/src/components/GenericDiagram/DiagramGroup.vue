@@ -408,7 +408,7 @@ function onResizeHover(
 function onSocketHoverStart(socket: DiagramSocketData) {
   emit("hover:start", { type: "socket", socket });
 }
-function onSocketHoverEnd(socket: DiagramSocketData) {
+function onSocketHoverEnd(_socket: DiagramSocketData) {
   emit("hover:end");
 }
 

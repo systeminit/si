@@ -19,30 +19,32 @@ import {
   AddToArray,
   AddToMap,
 } from "@/api/sdf/dal/property_editor";
-import { useComponentsStore } from "@/store/components.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
+import { useComponentsStore } from "@/store/components.store";
 import PropertyEditor from "./PropertyEditor.vue";
 
 const props = defineProps<{
   disabled?: boolean;
 }>();
 
+// NON-REACTIVE component id. This works because the parent has a :key which rerenders if the selected component changes
 const componentsStore = useComponentsStore();
-const componentId = computed(() => componentsStore.selectedComponentId);
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const componentId = componentsStore.selectedComponentId;
+if (!componentId) {
+  throw new Error("Do not use this component without a selectedComponentId");
+}
 
-const componentAttributesStore = useComponentAttributesStore();
-
+const componentAttributesStore = useComponentAttributesStore(componentId);
 const editorContext = computed(() => componentAttributesStore.editorContext);
 
 const updateProperty = (event: UpdatedProperty) => {
-  if (!componentId.value) return;
-
   const prop = editorContext.value?.schema.props[event.propId];
 
   if (prop?.name === "type") {
     componentAttributesStore.SET_COMPONENT_TYPE({
       value: event.value,
-      componentId: componentId.value,
+      componentId,
     });
   } else {
     componentAttributesStore.UPDATE_PROPERTY_VALUE({
@@ -52,31 +54,28 @@ const updateProperty = (event: UpdatedProperty) => {
         value: event.value,
         key: event.key,
         propId: event.propId,
-        componentId: componentId.value,
+        componentId,
       },
     });
   }
 };
 
 const addToArray = (event: AddToArray) => {
-  if (!componentId.value) return;
-
   componentAttributesStore.UPDATE_PROPERTY_VALUE({
     insert: {
       parentAttributeValueId: event.valueId,
       propId: event.propId,
-      componentId: componentId.value,
+      componentId,
     },
   });
 };
 const addToMap = (event: AddToMap) => {
-  if (!componentId.value) return;
   componentAttributesStore.UPDATE_PROPERTY_VALUE({
     insert: {
       parentAttributeValueId: event.valueId,
       key: event.key,
       propId: event.propId,
-      componentId: componentId.value,
+      componentId,
     },
   });
 };
