@@ -9,14 +9,16 @@
     <template v-else>
       <!-- search bar - dont need to show if no components -->
       <template v-if="rootComponents.length">
-        <div class="">
-          <SiSearch auto-search @search="onSearchUpdated" />
-        </div>
+        <SiSearch auto-search @search="onSearchUpdated" />
       </template>
 
       <!-- filtered / search mode -->
-      <template v-if="filterString">
-        TODO: slighly different UI for filtered list
+      <template v-if="filterModeActive">
+        <ComponentOutlineNode
+          v-for="component in filteredComponents"
+          :key="component.id"
+          :component-id="component.id"
+        />
       </template>
 
       <!-- tree mode -->
@@ -29,9 +31,7 @@
             v-for="component in rootComponents"
             :key="component.id"
             :component-id="component.id"
-          >
-            {{ component.displayName }}
-          </ComponentOutlineNode>
+          />
         </template>
       </div>
     </template>
@@ -40,6 +40,7 @@
 
 <script lang="ts">
 type ComponentOutlineRootCtx = {
+  filterModeActive: ComputedRef<boolean>;
   itemClickHandler: (e: MouseEvent, id: ComponentId) => void;
 };
 
@@ -58,7 +59,7 @@ export function useComponentOutlineContext() {
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
-import { computed, inject, InjectionKey, provide, ref } from "vue";
+import { computed, ComputedRef, inject, InjectionKey, provide, ref } from "vue";
 import _ from "lodash";
 import SiSearch from "@/components/SiSearch.vue";
 
@@ -83,6 +84,21 @@ const rootComponents = computed(() => {
 });
 
 const filterString = ref("");
+const filterStringCleaned = computed(() =>
+  filterString.value.trim().toLowerCase(),
+);
+const filterModeActive = computed(() => !!filterStringCleaned.value);
+
+const filteredComponents = computed(() => {
+  if (!filterModeActive.value) return [];
+  return _.filter(componentsStore.allComponents, (c) => {
+    if (c.displayName.toLowerCase().includes(filterStringCleaned.value))
+      return true;
+    if (c.schemaName.toLowerCase().includes(filterStringCleaned.value))
+      return true;
+    return false;
+  });
+});
 
 function onSearchUpdated(newFilterString: string) {
   filterString.value = newFilterString;
@@ -98,7 +114,6 @@ function itemClickHandler(e: MouseEvent, id: ComponentId) {
     emit("right-click-item", e);
   } else if (e.shiftKey || e.metaKey) {
     e.preventDefault();
-    e.stopPropagation();
     // TODO: probably want shift-click behaviour to be different
     // ie selecting all items in between 2 clicked items... but can do later
     componentsStore.setSelectedComponentId(id, true); // true = toggle mode
@@ -113,6 +128,7 @@ function itemClickHandler(e: MouseEvent, id: ComponentId) {
 // this object gets provided to all child ComponentOutlineNode instances
 // so we dont have to deal with propogating stuff through the tree
 const rootCtx = {
+  filterModeActive,
   itemClickHandler,
 };
 provide(ComponentOutlineCtxInjectionKey, rootCtx);
