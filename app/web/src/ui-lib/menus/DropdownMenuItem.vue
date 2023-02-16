@@ -28,8 +28,10 @@
       <Icon v-if="icon" :name="icon" size="sm" class="shrink-0" />
     </slot>
 
-    <div ref="labelRef" class="capsize max-w-[180px] shrink-0">
-      <slot>{{ label }}</slot>
+    <div ref="labelRef" class="capsize max-w-[220px] shrink-0">
+      <div class="truncate">
+        <slot>{{ label }}</slot>
+      </div>
     </div>
     <div v-if="shortcut" class="pl-md capsize text-xs ml-auto shrink-0">
       {{ shortcut }}

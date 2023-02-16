@@ -9,6 +9,7 @@
     <template v-else>
       <!-- This div holds the actual tabs -->
       <div
+        ref="tabContainerRef"
         :class="
           clsx(
             'w-full h-11 relative flex flex-row shrink-0 bg-white dark:bg-neutral-800 overflow-hidden mt-2',
@@ -29,8 +30,13 @@
             )
           "
         />
-        <template v-for="tab in tabs" :key="tab.props.slug">
+        <template v-for="tab in orderedTabs" :key="tab.props.slug">
           <a
+            :ref="
+              (el) => {
+                tabRefs[tab.props.slug] = el as HTMLElement;
+              }
+            "
             href="#"
             :class="
               clsx(
@@ -68,12 +74,36 @@
             </button>
           </a>
           <div
-            class="border-b border-neutral-300 dark:border-neutral-600 w-2xs"
+            class="border-b border-neutral-300 dark:border-neutral-600 w-2xs shrink-0"
           />
         </template>
         <div
           class="flex-grow border-b border-neutral-300 dark:border-neutral-600 order-last"
         ></div>
+
+        <div
+          v-if="showOverflowDropdown"
+          :class="
+            clsx(
+              'border border-neutral-300 dark:border-neutral-600 h-full px-xs items-center flex absolute right-0 top-0 z-10 cursor-pointer',
+              overflowMenuRef?.isOpen
+                ? 'bg-neutral-200 dark:bg-black'
+                : 'bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900', // TODO(Wendy) - add this mouseover effect to all tabs
+            )
+          "
+          @click="overflowMenuRef?.open"
+        >
+          <Icon name="dots-vertical" />
+        </div>
+        <DropdownMenu ref="overflowMenuRef" force-align-right>
+          <DropdownMenuItem
+            v-for="tab in orderedTabs"
+            :key="tab.props.slug"
+            @select="selectTab(tab.props.slug)"
+          >
+            {{ tab.props.label }}
+          </DropdownMenuItem>
+        </DropdownMenu>
       </div>
 
       <!-- Here we actually render the tab content of the current tab -->
@@ -127,10 +157,19 @@ import {
   onMounted,
   PropType,
   watch,
+  onUpdated,
+  onBeforeUnmount,
 } from "vue";
 import Icon from "../icons/Icon.vue";
+import DropdownMenu from "../menus/DropdownMenu.vue";
+import DropdownMenuItem from "../menus/DropdownMenuItem.vue";
 import { themeClasses } from "../theme_tools";
 import { TabGroupItemDefinition } from "./TabGroupItem.vue";
+
+const showOverflowDropdown = ref(false);
+const overflowMenuRef = ref();
+const tabContainerRef = ref();
+const tabRefs = ref({} as Record<string, HTMLElement | null>);
 
 const props = defineProps({
   startSelectedTabSlug: { type: String },
@@ -149,16 +188,21 @@ const emit = defineEmits<{
 const isNoTabs = computed(() => !_.keys(tabs).length);
 
 const tabs = reactive({} as Record<string, TabGroupItemDefinition>);
-// const sortedTabSlugs = ref<string[]>([]);
+const orderedTabSlugs = ref<string[]>([]);
+const orderedTabs = computed(() =>
+  _.map(orderedTabSlugs.value, (slug) => tabs[slug]),
+);
 const selectedTabSlug = ref<string>();
 
 function registerTab(slug: string, component: TabGroupItemDefinition) {
   tabs[slug] = component;
+  orderedTabSlugs.value = [...orderedTabSlugs.value, slug];
   // refreshSortedTabSlugs();
   refreshSettingsFromTabs();
 }
 function unregisterTab(slug: string) {
   delete tabs[slug];
+  orderedTabSlugs.value = _.without(orderedTabSlugs.value, slug);
   // refreshSortedTabSlugs();
   refreshSettingsFromTabs();
   autoSelectTab();
@@ -170,18 +214,31 @@ function refreshSettingsFromTabs() {
 
 function selectTab(slug?: string) {
   if (selectedTabSlug.value === slug) return;
+
+  // select the tab
   if (slug && tabs[slug]) selectedTabSlug.value = slug;
   else selectedTabSlug.value = undefined;
-}
-
-watch(selectedTabSlug, () => {
   emit("update:selectedTab", selectedTabSlug.value);
-});
+
+  // adjust the tab position if it is offscreen
+  if (selectedTabSlug.value) {
+    const tabEl = tabRefs.value[selectedTabSlug.value];
+    if (tabEl) {
+      const tabElRect = tabEl.getBoundingClientRect();
+      const tabContainerRect = tabContainerRef.value.getBoundingClientRect();
+      if (tabElRect.right > tabContainerRect.right) {
+        orderedTabSlugs.value = _.orderBy(orderedTabSlugs.value, (slug) =>
+          slug === selectedTabSlug.value ? 0 : 1,
+        );
+      }
+    }
+  }
+}
 
 function autoSelectTab() {
   if (isNoTabs.value) {
     // can't select anything if there are no tabs
-    selectedTabSlug.value = undefined;
+    selectTab();
     return;
   } else if (selectedTabSlug.value && tabs[selectedTabSlug.value]) {
     // currently selected tab is all good
@@ -189,14 +246,35 @@ function autoSelectTab() {
   } else if (props.startSelectedTabSlug && tabs[props.startSelectedTabSlug]) {
     // select the starting tab if it exists
     // TODO: probably only want to do this in some cases (like initial load)
-    selectedTabSlug.value = props.startSelectedTabSlug;
+    selectTab(props.startSelectedTabSlug);
   } else {
-    // TODO(Wendy) - more ordering logic for which tab to select
-    selectedTabSlug.value = _.keys(tabs)[0];
+    selectTab(_.keys(tabs)[0]);
   }
 }
 
 onMounted(autoSelectTab);
+
+function fixOverflowDropdown() {
+  const tabListEl = tabContainerRef.value;
+  if (!tabListEl) return;
+  showOverflowDropdown.value = tabListEl.scrollWidth > tabListEl.clientWidth;
+}
+onMounted(fixOverflowDropdown);
+onUpdated(fixOverflowDropdown);
+const debounceForResize = _.debounce(fixOverflowDropdown, 50);
+const resizeObserver = new ResizeObserver(debounceForResize);
+watch(tabContainerRef, () => {
+  if (tabContainerRef.value) {
+    resizeObserver.observe(tabContainerRef.value);
+  } else {
+    resizeObserver.unobserve(tabContainerRef.value);
+  }
+});
+onBeforeUnmount(() => {
+  if (tabContainerRef.value) {
+    resizeObserver.unobserve(tabContainerRef.value);
+  }
+});
 
 // Externally exposed info /////////////////////////////////////////////////////////////////////////////////////////
 
