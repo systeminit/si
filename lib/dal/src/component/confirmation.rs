@@ -33,7 +33,7 @@ pub enum ConfirmationStatus {
 #[serde(rename_all = "camelCase")]
 pub struct ConfirmationView {
     pub attribute_value_id: AttributeValueId,
-    title: String,
+    pub title: String,
     description: Option<String>,
 
     pub schema_id: SchemaId,
@@ -49,7 +49,7 @@ pub struct ConfirmationView {
     pub recommendations: Vec<Recommendation>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Recommendation {
     // TODO(nick,paulo,paul,wendy): yes, these fields are technically already on the confirmation

@@ -55,9 +55,12 @@ pub enum FixCompletionStatus {
     Success,
 }
 
-impl FixCompletionStatus {
-    /// Attempt to convert a [`WorkflowRunnerStatus`](crate::WorkflowRunnerStatus) to [`Self`].
-    pub fn from_workflow_runner_status(status: WorkflowRunnerStatus) -> FixResult<Self> {
+impl TryFrom<WorkflowRunnerStatus> for FixCompletionStatus {
+    type Error = FixError;
+
+    fn try_from(
+        status: WorkflowRunnerStatus,
+    ) -> Result<Self, <FixCompletionStatus as TryFrom<WorkflowRunnerStatus>>::Error> {
         if let WorkflowRunnerStatus::Success = status {
             Ok(Self::Success)
         } else if let WorkflowRunnerStatus::Failure = status {
@@ -266,8 +269,7 @@ impl Fix {
                 self.set_workflow_runner_id(ctx, Some(runner.id())).await?;
 
                 // Set the run as completed. Record the error message if it exists.
-                let completion_status =
-                    FixCompletionStatus::from_workflow_runner_status(runner_state.status())?;
+                let completion_status: FixCompletionStatus = runner_state.status().try_into()?;
                 self.stamp_finished(
                     ctx,
                     completion_status,

@@ -1,7 +1,10 @@
+use dal::component::confirmation::ConfirmationStatus;
 use dal::qualification::QualificationSubCheckStatus;
-use dal::{Component, DalContext};
+use dal::{Component, DalContext, FixBatchId, FixCompletionStatus};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
+use sdf::service::fix::run::FixRunRequest;
+use std::collections::HashMap;
 
 use crate::service_tests::scenario::ScenarioHarness;
 use crate::test_setup;
@@ -196,7 +199,7 @@ async fn model_and_fix_flow_whiskers() {
             ctx,
             docker.component_id,
             &["si", "name"],
-            Some(serde_json::json!["docker.io/systeminit/whiskers:latest"]),
+            Some(serde_json::json!["docker.io/systeminit/whiskers"]),
         )
         .await;
     harness
@@ -381,7 +384,7 @@ async fn model_and_fix_flow_whiskers() {
                 "region": "us-east-2",
                 "ImageId": "ami-0bde60638be9bb870",
                 "KeyName": "toddhoward-key",
-                "UserData": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Docker-io-systeminit-whiskers-latest\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers-latest\\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers-latest\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers:latest\\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers-latest --publish 80:80 docker.io/systeminit/whiskers:latest\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"docker-io-systeminit-whiskers-latest.service\"\n      }\n    ]\n  }\n}",
+                "UserData": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Docker-io-systeminit-whiskers\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers\\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers\\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers --publish 80:80 docker.io/systeminit/whiskers\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"docker-io-systeminit-whiskers.service\"\n      }\n    ]\n  }\n}",
                 "InstanceType": "t3.micro",
                 "awsResourceType": "instance",
             },
@@ -412,12 +415,12 @@ async fn model_and_fix_flow_whiskers() {
     assert_eq!(
         serde_json::json![{
             "si": {
-                "name": "docker.io/systeminit/whiskers:latest",
+                "name": "docker.io/systeminit/whiskers",
                 "type": "component",
                 "protected": false,
             },
             "domain": {
-                "image": "docker.io/systeminit/whiskers:latest",
+                "image": "docker.io/systeminit/whiskers",
                 "ExposedPorts": [
                     "80/tcp",
                 ],
@@ -448,7 +451,7 @@ async fn model_and_fix_flow_whiskers() {
             },
             "code": {
                 "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Docker-io-systeminit-whiskers-latest\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers-latest\\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers-latest\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers:latest\\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers-latest --publish 80:80 docker.io/systeminit/whiskers:latest\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"docker-io-systeminit-whiskers-latest.service\"\n      }\n    ]\n  }\n}",
+                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Docker-io-systeminit-whiskers\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers\\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers\\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers --publish 80:80 docker.io/systeminit/whiskers\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"docker-io-systeminit-whiskers.service\"\n      }\n    ]\n  }\n}",
                     "format": "json",
                 },
             },
@@ -456,9 +459,9 @@ async fn model_and_fix_flow_whiskers() {
                 "systemd": {
                     "units": [
                         {
-                            "name": "docker-io-systeminit-whiskers-latest.service",
+                            "name": "docker-io-systeminit-whiskers.service",
                             "enabled": true,
-                            "contents": "[Unit]\nDescription=Docker-io-systeminit-whiskers-latest\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers-latest\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers-latest\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers:latest\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers-latest --publish 80:80 docker.io/systeminit/whiskers:latest\n\n[Install]\nWantedBy=multi-user.target",
+                            "contents": "[Unit]\nDescription=Docker-io-systeminit-whiskers\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers --publish 80:80 docker.io/systeminit/whiskers\n\n[Install]\nWantedBy=multi-user.target",
                         },
                     ],
                 },
@@ -468,7 +471,7 @@ async fn model_and_fix_flow_whiskers() {
             "qualification": {
                 "si:qualificationButaneIsValidIgnition": {
                     "result": "success",
-                    "message": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Docker-io-systeminit-whiskers-latest\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers-latest\\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers-latest\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers:latest\\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers-latest --publish 80:80 docker.io/systeminit/whiskers:latest\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"docker-io-systeminit-whiskers-latest.service\"\n      }\n    ]\n  }\n}",
+                    "message": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Docker-io-systeminit-whiskers\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers\\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers\\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers --publish 80:80 docker.io/systeminit/whiskers\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"docker-io-systeminit-whiskers.service\"\n      }\n    ]\n  }\n}",
                 },
             },
         }], // expected
@@ -480,5 +483,126 @@ async fn model_and_fix_flow_whiskers() {
         .apply_change_set_and_update_ctx_visibility_to_head(ctx)
         .await;
 
-    // TODO(nick): now, list confirmations and "select" recommendations, and run fixes.
+    // Prepare fixes for key pair, ingress and security group.
+    let confirmations = harness.list_confirmations(ctx).await;
+    let mut requests = Vec::new();
+    assert_eq!(
+        4,                   // expected
+        confirmations.len(), // actual
+    );
+    for confirmation in confirmations {
+        // Ensure that all confirmations are failing.
+        assert_eq!(
+            ConfirmationStatus::Failure, // expected
+            confirmation.status,         // actual
+        );
+
+        if confirmation.title != "EC2 Instance Exists?" {
+            let mut recommendations = confirmation.recommendations.clone();
+            let recommendation = recommendations.pop().expect("no recommendations found");
+            assert!(recommendations.is_empty());
+            requests.push(FixRunRequest {
+                attribute_value_id: recommendation.confirmation_attribute_value_id,
+                component_id: recommendation.component_id,
+                action_name: recommendation.recommended_action,
+            })
+        }
+    }
+    assert_eq!(
+        3,              // expected
+        requests.len(), // actual
+    );
+
+    // Run fixes from the requests.
+    let first_fix_batch_id = harness.run_fixes(ctx, requests).await;
+
+    // Check that they succeeded.
+    let mut fix_batch_history_views = harness.list_fixes(ctx).await;
+    let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
+    assert!(fix_batch_history_views.is_empty());
+    assert_eq!(
+        first_fix_batch_id,        // expected
+        fix_batch_history_view.id, // actual
+    );
+    assert_eq!(
+        FixCompletionStatus::Success, // expected
+        fix_batch_history_view.status
+    );
+
+    // Now, run the fix for EC2 .
+    let confirmations = harness.list_confirmations(ctx).await;
+    let mut requests = Vec::new();
+    assert_eq!(
+        4,                   // expected
+        confirmations.len(), // actual
+    );
+    for confirmation in confirmations {
+        if confirmation.title == "EC2 Instance Exists?" {
+            assert_eq!(
+                ConfirmationStatus::Failure, // expected
+                confirmation.status,         // actual
+            );
+            let mut recommendations = confirmation.recommendations.clone();
+            let recommendation = recommendations.pop().expect("no recommendations found");
+            assert!(recommendations.is_empty());
+            requests.push(FixRunRequest {
+                attribute_value_id: recommendation.confirmation_attribute_value_id,
+                component_id: recommendation.component_id,
+                action_name: recommendation.recommended_action,
+            })
+        } else {
+            // Ensure that previous confirmations succeeded.
+            assert_eq!(
+                ConfirmationStatus::Success, // expected
+                confirmation.status,         // actual
+            );
+        }
+    }
+    assert_eq!(
+        1,              // expected
+        requests.len(), // actual
+    );
+
+    // Run the EC2 fix.
+    let second_fix_batch_id = harness.run_fixes(ctx, requests).await;
+
+    // Check that they succeeded.
+    let fix_batch_history_views = harness.list_fixes(ctx).await;
+    assert_eq!(
+        2,                             // expected
+        fix_batch_history_views.len(), // actual
+    );
+    let mut found_fix_batches: HashMap<FixBatchId, FixCompletionStatus> = HashMap::new();
+    for view in fix_batch_history_views {
+        found_fix_batches.insert(view.id, view.status);
+    }
+    assert_eq!(
+        2,                              // expected
+        found_fix_batches.keys().len(), // actual
+    );
+    assert_eq!(
+        FixCompletionStatus::Success, // expected
+        *found_fix_batches
+            .get(&first_fix_batch_id)
+            .expect("no status for first fix batch id"), // actual
+    );
+    assert_eq!(
+        FixCompletionStatus::Success, // expected
+        *found_fix_batches
+            .get(&second_fix_batch_id)
+            .expect("no status for second fix batch id"), // actual
+    );
+
+    // Check that all confirmations are passing.
+    let confirmations = harness.list_confirmations(ctx).await;
+    assert_eq!(
+        4,                   // expected
+        confirmations.len(), // actual
+    );
+    for confirmation in confirmations {
+        assert_eq!(
+            ConfirmationStatus::Success, // expected
+            confirmation.status,         // actual
+        );
+    }
 }
