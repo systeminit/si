@@ -182,8 +182,8 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
         diagram
             .components()
             .iter()
-            .filter(|n| n.id() == from_docker_hub_credential.node_id.to_string()
-                || n.id() == to_docker_image.node_id.to_string())
+            .filter(|n| n.node_id() == from_docker_hub_credential.node_id
+                || n.node_id() == to_docker_image.node_id)
             .count(),
         2
     );

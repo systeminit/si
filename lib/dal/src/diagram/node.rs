@@ -7,8 +7,8 @@ use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
-    ActorView, ChangeSetPk, Component, ComponentStatus, DalContext, DiagramError,
-    HistoryActorTimestamp, Node, NodePosition, ResourceView, SchemaVariant, StandardModel,
+    ActorView, ChangeSetPk, Component, ComponentId, ComponentStatus, DalContext, DiagramError,
+    HistoryActorTimestamp, Node, NodeId, NodePosition, ResourceView, SchemaVariant, StandardModel,
 };
 
 #[derive(
@@ -135,8 +135,8 @@ impl Size2D {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct DiagramComponentView {
-    id: String,
-    node_id: String,
+    id: ComponentId,
+    node_id: NodeId,
     display_name: Option<String>,
 
     schema_name: String,
@@ -217,8 +217,8 @@ impl DiagramComponentView {
         let resource = ResourceView::new(component.resource(ctx).await?);
 
         Ok(Self {
-            id: component.id().to_string(),
-            node_id: node.id().to_string(),
+            id: *component.id(),
+            node_id: *node.id(),
             display_name: Some(component.name(ctx).await?),
 
             schema_name: schema.name().to_owned(),
@@ -253,8 +253,12 @@ impl DiagramComponentView {
         })
     }
 
-    pub fn id(&self) -> &str {
-        &self.id
+    pub fn id(&self) -> ComponentId {
+        self.id
+    }
+
+    pub fn node_id(&self) -> NodeId {
+        self.node_id
     }
 
     pub fn position(&self) -> &GridPoint {
