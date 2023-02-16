@@ -16,8 +16,7 @@ CREATE UNIQUE INDEX unique_schema_ui_menus
                         category,
                         tenancy_workspace_pk,
                         visibility_change_set_pk,
-                        (visibility_deleted_at IS NULL))
-    WHERE visibility_deleted_at IS NULL;
+                        (visibility_deleted_at IS NULL));
 
 SELECT standard_model_table_constraints_v1('schema_ui_menus');
 SELECT belongs_to_table_create_v1('schema_ui_menu_belongs_to_schema', 'schema_ui_menus', 'schemas');

@@ -174,6 +174,7 @@ impl Node {
         shuffle_edges: bool,
     ) -> NodeResult<Vec<NodeId>> {
         let total_start = std::time::Instant::now();
+        let ctx = &ctx.clone_with_delete_visibility();
 
         // Gather all the edges, nodes, and connected nodes. There are likely many nodes that are
         // connected, so there's data duplication here that can be fixed in the future. In addition,
@@ -260,6 +261,19 @@ impl Node {
         //
         // Runtime complexity: O(n) where "n" is a node
         for node_id in all_nodes {
+            let node = Node::get_by_id(ctx, &node_id)
+                .await?
+                .ok_or(NodeError::NotFound(node_id))?;
+            if node.visibility.deleted_at.is_some() {
+                let comp = node
+                    .component(ctx)
+                    .await?
+                    .ok_or(NodeError::ComponentIsNone)?;
+
+                if !comp.needs_destroy() {
+                    continue;
+                }
+            }
             if !all_connected_nodes.contains(&node_id) {
                 sorted.insert(0, node_id);
             } else if !nodes_with_full_destination_lineage.contains_key(&node_id) {

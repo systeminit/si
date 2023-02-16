@@ -31,7 +31,7 @@ VALUES ('action_prototypes', 'model', 'action_prototype', 'Action Prototype');
 -- Limit values of action_prototypes.kind to a known set of variants. Is this required? No! But such a constraint
 -- might be useful elsewhere
 ALTER TABLE action_prototypes
-    ADD CONSTRAINT valid_kind_check CHECK (kind IN ('create', 'other'));
+    ADD CONSTRAINT valid_kind_check CHECK (kind IN ('create', 'other', 'destroy'));
 
 CREATE OR REPLACE FUNCTION action_prototype_create_v1(
     this_tenancy jsonb,

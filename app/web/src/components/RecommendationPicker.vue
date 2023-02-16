@@ -58,7 +58,7 @@
               size="xs"
               class="text-destructive-500 dark:text-destructive-100"
             />
-            <span class="pl-1">{{ creationRecommendations.length }}</span>
+            <span class="pl-1">{{ genericRecommendations.length }}</span>
           </div>
           <Icon
             v-if="confirmationsInFlight || fixesStore.populatingFixes"
@@ -79,7 +79,7 @@
           leave-to-class="opacity-0"
         >
           <li
-            v-for="recommendation in creationRecommendations"
+            v-for="recommendation in recommendations"
             :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
           >
             <!-- TODO(nick,paulo): disable recommendation sprites that aren't ready using "disable-checkbox" -->
@@ -110,7 +110,7 @@
           leave-to-class="opacity-0"
         >
           <div
-            v-if="creationRecommendations.length === 0"
+            v-if="recommendations.length === 0"
             class="absolute top-0 p-4"
           >
             <img
@@ -144,7 +144,7 @@ import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
 import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 
 const selectAll = (checked: boolean) => {
-  for (const recommendation of creationRecommendations.value) {
+  for (const recommendation of recommendations.value) {
     recommendationSelection[
       `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
     ] = checked;
@@ -152,10 +152,9 @@ const selectAll = (checked: boolean) => {
 };
 
 const allSelected = computed(() => {
-  if (creationRecommendations.value.length === 0) return false;
+  if (recommendations.value.length === 0) return false;
   else if (
-    selectedRecommendations.value.length ===
-    creationRecommendations.value.length
+    selectedRecommendations.value.length === recommendations.value.length
   )
     return true;
   return false;
@@ -176,7 +175,7 @@ const genericRecommendations = computed(() =>
 
 const recommendationSelection: Record<string, boolean> = reactive({});
 const selectedRecommendations = computed(() => {
-  return creationRecommendations.value.filter((recommendation) => {
+  return recommendations.value.filter((recommendation) => {
     return (
       recommendationSelection[
         `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`

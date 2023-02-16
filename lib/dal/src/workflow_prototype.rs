@@ -192,7 +192,8 @@ impl WorkflowPrototype {
         component_id: ComponentId,
     ) -> WorkflowPrototypeResult<WorkflowResolver> {
         let component = if component_id.is_some() {
-            let component = Component::get_by_id(ctx, &component_id)
+            let deleted_ctx = &ctx.clone_with_delete_visibility();
+            let component = Component::get_by_id(deleted_ctx, &component_id)
                 .await?
                 .ok_or(WorkflowPrototypeError::ComponentNotFound(component_id))?;
             let schema = component

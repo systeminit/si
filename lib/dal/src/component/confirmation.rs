@@ -145,6 +145,8 @@ impl Component {
             Node::list_topologically_ish_sorted_configuration_nodes(ctx, false).await?;
         let mut results = Vec::new();
 
+        let ctx = &ctx.clone_with_delete_visibility();
+
         for sorted_node_id in sorted_node_ids {
             let sorted_node = Node::get_by_id(ctx, &sorted_node_id)
                 .await?

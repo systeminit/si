@@ -304,9 +304,17 @@ impl WorkflowRunner {
             if let Some(value) = return_value.value() {
                 let mut result = CommandRunResult::deserialize(value)?;
                 result.logs = logs.iter().map(|l| l.message.clone()).collect();
-                let component = Component::get_by_id(ctx, &component_id)
+                let deleted_ctx = &ctx.clone_with_delete_visibility();
+                let mut component = Component::get_by_id(deleted_ctx, &component_id)
                     .await?
                     .ok_or(WorkflowRunnerError::ComponentNotFound(component_id))?;
+
+                if component.needs_destroy() && result.value.is_none() {
+                    component
+                        .set_needs_destroy(deleted_ctx, false)
+                        .await
+                        .map_err(Box::new)?;
+                }
 
                 if component
                     .set_resource(ctx, result.clone())

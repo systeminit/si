@@ -45,18 +45,6 @@ BEGIN
         FROM edges_v1(this_tenancy, this_visibility)
         WHERE head_object_id = this_component_id
         UNION
-        SELECT id, 'attribute_prototypes' as table_name
-        FROM attribute_prototypes_v1(this_tenancy, this_visibility)
-        WHERE attribute_context_component_id = this_component_id
-        UNION
-        SELECT id, 'attribute_values' as table_name
-        FROM attribute_values_v1(this_tenancy, this_visibility)
-        WHERE attribute_context_component_id = this_component_id
-        UNION
-        SELECT id, 'attribute_prototype_arguments' as table_name
-        FROM attribute_prototype_arguments_v1(this_tenancy, this_visibility)
-        WHERE (head_component_id = this_component_id OR tail_component_id = this_component_id)
-        UNION
         SELECT nbtc.object_id, 'nodes' as table_name
         FROM node_belongs_to_component_v1(this_tenancy, this_visibility) nbtc
         WHERE nbtc.belongs_to_id = this_component_id
@@ -83,6 +71,14 @@ BEGIN
     END LOOP;
 
     SELECT delete_by_id_v1('components', this_tenancy, this_visibility, this_component_id) INTO deleted_timestamp;
+
+    -- Mark the component as needing destruction
+    PERFORM update_by_id_v1('components',
+                                       'needs_destroy',
+                                        this_tenancy,
+                                        this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
+                                        this_component_id,
+                                        true);
 
     -- Ensure we now set the actor of who has deleted the component
     PERFORM update_by_id_v1('components',
@@ -156,26 +152,6 @@ BEGIN
                      WHERE attribute_context_component_id = this_component_id
                        AND (attribute_context_internal_provider_id = internal_provider_id OR
                             attribute_context_external_provider_id = external_provider_id);
-    END LOOP;
-
-    -- Standard component dependencies that don't need extra work
-    FOR target_pk, table_name IN
-        SELECT pk, agg.table_name
-        FROM (SELECT pk, 'attribute_prototypes' as table_name, visibility_deleted_at, visibility_change_set_pk
-              FROM attribute_prototypes_v1(this_tenancy, this_visibility_with_deleted)
-              WHERE attribute_context_component_id = this_component_id
-              UNION
-              SELECT pk, 'attribute_values' as table_name, visibility_deleted_at, visibility_change_set_pk
-              FROM attribute_values_v1(this_tenancy, this_visibility_with_deleted)
-              WHERE attribute_context_component_id = this_component_id
-              UNION
-              SELECT pk, 'attribute_prototype_arguments' as table_name, visibility_deleted_at, visibility_change_set_pk
-              FROM attribute_prototype_arguments_v1(this_tenancy, this_visibility_with_deleted)
-              WHERE (head_component_id = this_component_id OR tail_component_id = this_component_id)) as agg
-        WHERE visibility_deleted_at IS NOT NULL
-          AND visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-    LOOP
-        PERFORM hard_delete_by_pk_v1(table_name, target_pk);
     END LOOP;
 
     -- Belongs to queries are a bit more complicated (and should be gone pretty soon)

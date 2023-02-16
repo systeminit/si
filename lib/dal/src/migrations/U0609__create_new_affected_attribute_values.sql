@@ -20,13 +20,29 @@ BEGIN
 
     <<attribute_value_is_appropriate_check>>
     FOR attribute_value IN
-        SELECT *
+        SELECT av.*
         FROM attribute_values_v1(this_tenancy, this_visibility) AS av
                  INNER JOIN (SELECT object_id AS attribute_value_id
                              FROM attribute_value_belongs_to_attribute_prototype_v1(this_tenancy, this_visibility)
                              WHERE belongs_to_id = this_attribute_prototype_id) AS avbtap
                             ON avbtap.attribute_value_id = av.id
+                 LEFT JOIN (
+                    SELECT DISTINCT ON (id)
+                        id as comp_id,
+                        needs_destroy,
+                        visibility_deleted_at
+                    FROM components
+                    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                    ORDER BY id,
+                        visibility_change_set_pk DESC,
+                        visibility_deleted_at DESC
+                ) as components ON components.comp_id = av.attribute_context_component_id
         WHERE in_attribute_context_v1(this_attribute_context, av)
+          AND CASE
+                  WHEN components.comp_id != ident_nil_v1() THEN
+                          (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                  ELSE true
+            END
         ORDER BY id
     LOOP
         -- Check if the AttributeValue is of the _exact_ AttributeContext that we're looking for.
@@ -52,7 +68,23 @@ BEGIN
                                                          JOIN recursive_attribute_values
                                                               ON av.proxy_for_attribute_value_id =
                                                                  recursive_attribute_values.attribute_value_id
-                                                WHERE in_attribute_context_v1(this_attribute_context, av))
+                                                         LEFT JOIN (
+                                                            SELECT DISTINCT ON (id)
+                                                                id as comp_id,
+                                                                needs_destroy,
+                                                                visibility_deleted_at
+                                                            FROM components
+                                                            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                                                            ORDER BY id,
+                                                                visibility_change_set_pk DESC,
+                                                                visibility_deleted_at DESC
+                                                        ) as components ON components.comp_id = av.attribute_context_component_id
+                                                WHERE in_attribute_context_v1(this_attribute_context, av)
+                                                  AND CASE
+                                                          WHEN components.comp_id != ident_nil_v1() THEN
+                                                                  (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                                                          ELSE true
+                                                    END)
                          SELECT attribute_value_id
                          FROM recursive_attribute_values)
             ORDER BY id
@@ -226,10 +258,26 @@ BEGIN
 
         FOREACH current_attribute_value_id IN ARRAY current_attribute_value_ids
         LOOP
-            SELECT *
+            SELECT av.*
             INTO STRICT source_attribute_value
-            FROM attribute_values_v1(this_tenancy, this_visibility)
-            WHERE id = current_attribute_value_id;
+            FROM attribute_values_v1(this_tenancy, this_visibility) as av
+            LEFT JOIN (
+                SELECT DISTINCT ON (id)
+                    id as comp_id,
+                    needs_destroy,
+                    visibility_deleted_at
+                FROM components
+                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                ORDER BY id,
+                    visibility_change_set_pk DESC,
+                    visibility_deleted_at DESC
+                ) as components ON components.comp_id = av.attribute_context_component_id
+            WHERE id = current_attribute_value_id
+              AND CASE
+                WHEN components.comp_id != ident_nil_v1() THEN
+                (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                ELSE true
+              END;
             RAISE DEBUG 'attribute_value_create_new_affected_values_v1: source_attribute_value: %', source_attribute_value;
 
             -- We should get the ComponentId from the current AttributeValue's context
@@ -304,7 +352,23 @@ BEGIN
                     SELECT DISTINCT ON (attribute_context_internal_provider_id) av.*
                     INTO STRICT tmp_attribute_value
                     FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+                    LEFT JOIN (
+                        SELECT DISTINCT ON (id)
+                            id as comp_id,
+                            needs_destroy,
+                            visibility_deleted_at
+                        FROM components
+                        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                        ORDER BY id,
+                            visibility_change_set_pk DESC,
+                            visibility_deleted_at DESC
+                    ) as components ON components.comp_id = av.attribute_context_component_id
                     WHERE in_attribute_context_v1(tmp_attribute_context, av)
+                      AND CASE
+                        WHEN components.comp_id != ident_nil_v1() THEN
+                        (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                        ELSE true
+                      END
                     ORDER BY attribute_context_internal_provider_id DESC,
                              attribute_context_prop_id DESC,
                              attribute_context_external_provider_id DESC,
@@ -359,6 +423,23 @@ BEGIN
                                         ON ap.id = apa.attribute_prototype_id
                                             AND apa.internal_provider_id = current_internal_provider_id
                                             AND apa.tail_component_id = ident_nil_v1()
+                             LEFT JOIN (
+                                SELECT DISTINCT ON (id)
+                                    id as comp_id,
+                                    needs_destroy,
+                                    visibility_deleted_at
+                                FROM components
+                                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                                ORDER BY id,
+                                    visibility_change_set_pk DESC,
+                                    visibility_deleted_at DESC
+                            ) as components ON components.comp_id = ap.attribute_context_component_id
+                    WHERE
+                        CASE
+                            WHEN components.comp_id != ident_nil_v1() THEN
+                            (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                            ELSE true
+                        END
                 LOOP
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Found AttributePrototype(%)', attribute_prototype;
                     IF NOT in_attribute_context_v1(tmp_attribute_context, attribute_prototype) THEN
@@ -389,7 +470,23 @@ BEGIN
                                     this_tenancy, this_visibility) AS avbtap
                                                 ON avbtap.object_id = av.id
                                                     AND avbtap.belongs_to_id = attribute_prototype.id
+                                     LEFT JOIN (
+                                        SELECT DISTINCT ON (id)
+                                            id as comp_id,
+                                            needs_destroy,
+                                            visibility_deleted_at
+                                        FROM components
+                                        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                                        ORDER BY id,
+                                            visibility_change_set_pk DESC,
+                                            visibility_deleted_at DESC
+                                    ) as components ON components.comp_id = av.attribute_context_component_id
                             WHERE in_attribute_context_v1(desired_attribute_context, av)
+                              AND CASE
+                                      WHEN components.comp_id != ident_nil_v1() THEN
+                                              (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                                      ELSE true
+                                END
                             ORDER BY av.id
                         LOOP
                             RAISE DEBUG 'attribute_value_create_new_affected_values_v1: Checking if AttributeValue(%) is of desired AttributeContext(%)',
@@ -410,14 +507,47 @@ BEGIN
                             -- case, we still want to consider it as existing for the purposes of _this_
                             -- AttributePrototype, and not create a new AttributeValue in the specific AttributeContext.
                             FOR proxy_attribute_value IN
-                                WITH RECURSIVE proxy_attribute_values AS (SELECT *
+                                WITH RECURSIVE proxy_attribute_values AS (SELECT av.*
                                                                           FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+                                                                          LEFT JOIN (
+                                                                                SELECT DISTINCT ON (id)
+                                                                                    id as comp_id,
+                                                                                    needs_destroy,
+                                                                                    visibility_deleted_at
+                                                                                FROM components
+                                                                                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                                                                                ORDER BY id,
+                                                                                    visibility_change_set_pk DESC,
+                                                                                    visibility_deleted_at DESC
+                                                                            ) as components ON components.comp_id = av.attribute_context_component_id
                                                                           WHERE av.proxy_for_attribute_value_id = tmp_attribute_value.id
+                                                                              AND CASE
+                                                                                WHEN components.comp_id != ident_nil_v1() THEN
+                                                                                    (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                                                                                ELSE true
+                                                                              END
                                                                           UNION ALL
                                                                           SELECT av.*
                                                                           FROM attribute_values_v1(this_tenancy, this_visibility) AS av
-                                                                                   JOIN proxy_attribute_values
-                                                                                        ON av.proxy_for_attribute_value_id = proxy_attribute_values.id)
+                                                                           JOIN proxy_attribute_values
+                                                                                ON av.proxy_for_attribute_value_id = proxy_attribute_values.id
+                                                                          LEFT JOIN (
+                                                                            SELECT DISTINCT ON (id)
+                                                                                id as comp_id,
+                                                                                needs_destroy,
+                                                                                visibility_deleted_at
+                                                                            FROM components
+                                                                            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                                                                            ORDER BY id,
+                                                                                visibility_change_set_pk DESC,
+                                                                                visibility_deleted_at DESC
+                                                                        ) as components ON components.comp_id = av.attribute_context_component_id
+                                                                          WHERE
+                                                                            CASE
+                                                                                WHEN components.comp_id != ident_nil_v1() THEN
+                                                                                    (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                                                                                ELSE true
+                                                                            END)
                                 SELECT *
                                 FROM proxy_attribute_values
                             LOOP
@@ -473,7 +603,23 @@ BEGIN
                         SELECT id
                         INTO new_attribute_value_id
                         FROM attribute_values_v1(this_tenancy, this_visibility) as av
-                        WHERE exact_attribute_context_v1(insertion_attribute_context, av);
+                        LEFT JOIN (
+                            SELECT DISTINCT ON (id)
+                                id as comp_id,
+                                needs_destroy,
+                                visibility_deleted_at
+                            FROM components
+                            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                            ORDER BY id,
+                                visibility_change_set_pk DESC,
+                                visibility_deleted_at DESC
+                        ) as components ON components.comp_id = av.attribute_context_component_id
+                        WHERE exact_attribute_context_v1(insertion_attribute_context, av)
+                          AND CASE
+                                  WHEN components.comp_id != ident_nil_v1() THEN
+                                          (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                                  ELSE true
+                            END;
 
                         IF FOUND THEN
                             next_attribute_value_ids := array_cat(next_attribute_value_ids, ARRAY [new_attribute_value_id]);
@@ -510,7 +656,23 @@ BEGIN
                                             AND
                                            apa.tail_component_id =
                                            source_attribute_value.attribute_context_component_id
+                             LEFT JOIN (
+                                SELECT DISTINCT ON (id)
+                                    id as comp_id,
+                                    needs_destroy,
+                                    visibility_deleted_at
+                                FROM components
+                                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                                ORDER BY id,
+                                    visibility_change_set_pk DESC,
+                                    visibility_deleted_at DESC
+                            ) as components ON components.comp_id = ap.attribute_context_component_id
                     WHERE in_attribute_context_v1(tmp_attribute_context, ap)
+                      AND CASE
+                              WHEN components.comp_id != ident_nil_v1() THEN
+                                      (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                              ELSE true
+                        END
                 LOOP
                     -- The AttributeContext that we want to ensure an AttributeValue exists for will be identical to the
                     -- source AttributeValue, except that it will be for an InternalProvider, instead of an ExternalProvider,
@@ -583,7 +745,23 @@ BEGIN
                              INNER JOIN component_belongs_to_schema_variant_v1(this_tenancy,
                                                                                this_visibility) cbtsv
                                         ON cbtsv.object_id = apa.head_component_id
+                             LEFT JOIN (
+                                SELECT DISTINCT ON (id)
+                                    id as comp_id,
+                                    needs_destroy,
+                                    visibility_deleted_at
+                                FROM components
+                                WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                                ORDER BY id,
+                                    visibility_change_set_pk DESC,
+                                    visibility_deleted_at DESC
+                            ) as components ON components.comp_id = ap.attribute_context_component_id
                     WHERE in_attribute_context_v1(tmp_attribute_context, ap)
+                      AND CASE
+                              WHEN components.comp_id != ident_nil_v1() THEN
+                                      (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                              ELSE true
+                        END
                 LOOP
                     RAISE DEBUG 'attribute_value_create_new_affected_values_v1: AttributePrototype(%) uses ExternalProvider(%)', attribute_prototype, source_attribute_value.attribute_context_external_provider_id;
 
@@ -601,7 +779,23 @@ BEGIN
                     SELECT id
                     INTO new_attribute_value_id
                     FROM attribute_values_v1(this_tenancy, this_visibility) as av
-                    WHERE exact_attribute_context_v1(insertion_attribute_context, av);
+                    LEFT JOIN (
+                        SELECT DISTINCT ON (id)
+                            id as comp_id,
+                            needs_destroy,
+                            visibility_deleted_at
+                        FROM components
+                        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+                        ORDER BY id,
+                            visibility_change_set_pk DESC,
+                            visibility_deleted_at DESC
+                    ) as components ON components.comp_id = av.attribute_context_component_id
+                    WHERE exact_attribute_context_v1(insertion_attribute_context, av)
+                      AND CASE
+                              WHEN components.comp_id != ident_nil_v1() THEN
+                                      (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                              ELSE true
+                        END;
 
                     IF FOUND THEN
                         next_attribute_value_ids := array_cat(next_attribute_value_ids, ARRAY [new_attribute_value_id]);

@@ -172,10 +172,10 @@ BEGIN
 
     /* First, try the update - if it works, we're all set. */
     EXECUTE format('UPDATE %1$I SET %2$I = %6$L, updated_at = clock_timestamp() WHERE id = %5$L '
-                   '  AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pk) '
-                   '  AND %1$I.visibility_change_set_pk = %4$L '
-                   '  AND CASE WHEN %7$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE %1$I.visibility_deleted_at = %7$L END '
-                   ' RETURNING updated_at',
+                       '  AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pk) '
+                       '  AND %1$I.visibility_change_set_pk = %4$L::ident '
+                       '  AND CASE WHEN %7$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE %1$I.visibility_deleted_at IS NOT NULL END '
+                       ' RETURNING updated_at',
                    this_table,
                    this_column,
                    this_tenancy,
@@ -199,26 +199,26 @@ BEGIN
             WHERE information_schema.columns.table_name = this_table
               AND information_schema.columns.column_name NOT IN
                   (
-                    this_column,
-                    'visibility_change_set_pk',
-                    'pk',
-                    'created_at',
-                    'updated_at',
-                    'tenancy_workspace_pk'
-                  )
+                   this_column,
+                   'visibility_change_set_pk',
+                   'pk',
+                   'created_at',
+                   'updated_at',
+                   'tenancy_workspace_pk'
+                      )
               AND information_schema.columns.is_generated = 'NEVER'
             INTO copy_change_set_column_names;
             EXECUTE format('INSERT INTO %1$I ( '
-                           '    %2$s, '
-                           '    visibility_change_set_pk, '
-                           '    tenancy_workspace_pk, '
-                           '    %3$s) '
-                           ' SELECT %4$L, %5$L, %8$L, %3$s FROM %1$I WHERE '
-                           ' %1$I.id = %6$L '
-                           ' AND in_tenancy_v1(%7$L, %1$I.tenancy_workspace_pk) '
-                           ' AND %1$I.visibility_change_set_pk = ident_nil_v1() '
-                           ' AND CASE WHEN %9$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE %1$I.visibility_deleted_at = %9$L END '
-                           ' RETURNING updated_at',
+                               '    %2$s, '
+                               '    visibility_change_set_pk, '
+                               '    tenancy_workspace_pk, '
+                               '    %3$s) '
+                               ' SELECT %4$L, %5$L, %8$L, %3$s FROM %1$I WHERE '
+                               ' %1$I.id = %6$L '
+                               ' AND in_tenancy_v1(%7$L, %1$I.tenancy_workspace_pk) '
+                               ' AND %1$I.visibility_change_set_pk = ident_nil_v1() '
+                               ' AND CASE WHEN %9$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE %1$I.visibility_deleted_at IS NOT NULL END '
+                               ' RETURNING updated_at',
                            this_table,
                            this_column,
                            copy_change_set_column_names,
@@ -226,7 +226,7 @@ BEGIN
                            this_visibility_row.visibility_change_set_pk,
                            this_id,
                            this_tenancy,
-			               this_tenancy_record.tenancy_workspace_pk,
+                           this_tenancy_record.tenancy_workspace_pk,
                            this_visibility_row.visibility_deleted_at) INTO updated_at;
         END IF;
 
@@ -339,18 +339,17 @@ CREATE OR REPLACE FUNCTION delete_by_id_v1(this_table_text text,
                                            this_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id ident,
-                                           OUT deleted_at timestamp with time zone)
+                                           OUT updated_at timestamp with time zone)
 AS
 $$
 BEGIN
-    deleted_at = clock_timestamp();
-
-    PERFORM update_by_id_v1(this_table_text,
+    SELECT update_by_id_v1(this_table_text,
                            'visibility_deleted_at',
                            this_tenancy,
                            this_visibility,
                            this_id,
-                           CAST(deleted_at as text));
+                           CAST(clock_timestamp() as text))
+    INTO updated_at;
 END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
@@ -404,8 +403,8 @@ BEGIN
     this_table := this_table_text::regclass;
 
     EXECUTE format(
-        'DELETE FROM %1$I WHERE %1$I.pk = %2$L RETURNING row_to_json(%1$I);', 
-        this_table, 
+        'DELETE FROM %1$I WHERE %1$I.pk = %2$L RETURNING row_to_json(%1$I);',
+        this_table,
         this_pk
     ) INTO object;
 END;
@@ -606,8 +605,7 @@ BEGIN
                            'CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
                            '                                    tenancy_workspace_pk, '
                            '                                    visibility_change_set_pk, '
-                           '                                    (visibility_deleted_at IS NULL)) '
-                           '                    WHERE visibility_deleted_at IS NULL; '
+                           '                                    (visibility_deleted_at IS NULL)); '
                            'ALTER TABLE %1$I '
                            '    ADD CONSTRAINT %1$s_object_id_is_valid '
                            '        CHECK (check_id_in_table_v1(%2$L, object_id)); '
@@ -617,8 +615,7 @@ BEGIN
                            'CREATE UNIQUE INDEX %1$s_single_association ON %1$I (object_id, '
                            '                                        tenancy_workspace_pk, '
                            '                                        visibility_change_set_pk, '
-                           '                                        (visibility_deleted_at IS NULL)) '
-                           '                    WHERE visibility_deleted_at IS NULL; '
+                           '                                        (visibility_deleted_at IS NULL)); '
                            'CREATE INDEX ON %1$I (object_id); '
                            'CREATE INDEX ON %1$I (belongs_to_id); '
                            'CREATE FUNCTION is_visible_v1( '
@@ -701,8 +698,7 @@ BEGIN
     alter_query := format('CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
                           '                                    tenancy_workspace_pk, '
                           '                                    visibility_change_set_pk, '
-                          '                                    (visibility_deleted_at IS NULL)) '
-                          '                    WHERE visibility_deleted_at IS NULL; '
+                          '                                    (visibility_deleted_at IS NULL)); '
                           'CREATE INDEX ON %1$I (id); '
                           'CREATE INDEX ON %1$I (visibility_deleted_at NULLS FIRST); '
                           'CREATE INDEX ON %1$I (visibility_change_set_pk); '
@@ -805,8 +801,7 @@ BEGIN
                            'CREATE UNIQUE INDEX %1$s_visibility_tenancy ON %1$I (id, '
                            '                                    tenancy_workspace_pk, '
                            '                                    visibility_change_set_pk, '
-                           '                                    (visibility_deleted_at IS NULL)) '
-                           '                    WHERE visibility_deleted_at IS NULL; '
+                           '                                    (visibility_deleted_at IS NULL)); '
                            'ALTER TABLE %1$I '
                            '    ADD CONSTRAINT %1$s_left_object_id_is_valid '
                            '        CHECK (check_id_in_table_v1(%2$L, left_object_id)); '
@@ -816,9 +811,8 @@ BEGIN
                            'CREATE UNIQUE INDEX %1$s_no_duplicate_associations ON %1$I (left_object_id, '
                            '                                    right_object_id, '
                            '                                    tenancy_workspace_pk, '
-                           '                                    visibility_change_set_pk, '
-                           '                                    (visibility_deleted_at IS NULL)) '
-                           '                    WHERE visibility_deleted_at IS NULL; '
+                           '                                    visibility_change_set_pk) '
+                           '    WHERE visibility_deleted_at IS NULL; '
                            'CREATE INDEX ON %1$I (left_object_id); '
                            'CREATE INDEX ON %1$I (right_object_id); '
                            'CREATE FUNCTION is_visible_v1( '

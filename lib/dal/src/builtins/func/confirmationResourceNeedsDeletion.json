@@ -1,0 +1,19 @@
+{
+  "kind": "JsAttribute",
+  "arguments": [
+    {
+      "name": "resource",
+      "kind": "Object"
+    },
+    {
+      "name": "deleted_at",
+      "kind": "String"
+    }
+  ],
+  "response_type": "Confirmation",
+  "display_name": "si:confirmationResourceNeedsDeletion",
+  "description": null,
+  "link": null,
+  "code_file": "confirmationResourceNeedsDeletion.js",
+  "code_entrypoint": "exists"
+}

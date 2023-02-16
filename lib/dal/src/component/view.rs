@@ -68,7 +68,8 @@ impl ComponentView {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentViewResult<ComponentView> {
-        let component = Component::get_by_id(ctx, &component_id)
+        let deleted_ctx = &ctx.clone_with_delete_visibility();
+        let component = Component::get_by_id(deleted_ctx, &component_id)
             .await?
             .ok_or(ComponentViewError::NotFound(component_id))?;
         let schema_variant = component

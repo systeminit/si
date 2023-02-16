@@ -14,7 +14,7 @@ function nilId(): string {
 }
 
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
-export type ActionKind = "create" | "other";
+export type ActionKind = "create" | "other" | "destroy";
 
 export type Confirmation = {
   attributeValueId: AttributeValueId;

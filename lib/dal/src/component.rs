@@ -1,6 +1,7 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
@@ -271,6 +272,7 @@ pub struct Component {
     id: ComponentId,
     kind: ComponentKind,
     pub deletion_user_id: Option<UserId>,
+    needs_destroy: bool,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -407,6 +409,7 @@ impl Component {
     }
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
+    standard_model_accessor!(needs_destroy, bool, ComponentResult);
 
     standard_model_belongs_to!(
         lookup_fn: schema,
@@ -598,6 +601,166 @@ impl Component {
         .await?;
 
         Ok(())
+    }
+
+    #[instrument(skip_all)]
+    pub async fn set_deleted_at(
+        &self,
+        ctx: &DalContext,
+        value: Option<DateTime<Utc>>,
+    ) -> ComponentResult<Option<DateTime<Utc>>> {
+        // let json_pointer = "/root/deleted_at";
+        //
+        // let attribute_value = self
+        //     .find_attribute_value_by_json_pointer(ctx, json_pointer)
+        //     .await?
+        //     .ok_or(AttributeValueError::Missing)?;
+        //
+        // let attribute_context = AttributeContext::builder()
+        //     .set_component_id(self.id)
+        //     .set_prop_id(attribute_value.context.prop_id())
+        //     .to_context()?;
+
+        let json_value = match value {
+            Some(v) => Some(serde_json::to_value(v)?),
+            None => None,
+        };
+
+        // let mut json_path_parts = json_pointer.split('/').collect::<Vec<&str>>();
+        // json_path_parts.pop();
+        // let parent_json_pointer = json_path_parts.join("/");
+        // let parent_attribute_value_id = self
+        //     .find_attribute_value_by_json_pointer(ctx, &parent_json_pointer)
+        //     .await?
+        //     .map(|av| *av.id());
+
+        let attribute_value = Self::root_prop_child_attribute_value_for_component(
+            ctx,
+            self.id,
+            RootPropChild::DeletedAt,
+        )
+        .await?;
+        let parent_attribute_value = attribute_value.parent_attribute_value(ctx).await?.ok_or(
+            ComponentError::ParentAttributeValueNotFound(*attribute_value.id()),
+        )?;
+        let attribute_context = AttributeContext::builder()
+            .set_component_id(self.id)
+            .set_prop_id(attribute_value.context.prop_id())
+            .to_context()?;
+        let (_, _) = AttributeValue::update_for_context(
+            ctx,
+            *attribute_value.id(),
+            Some(*parent_attribute_value.id()),
+            attribute_context,
+            json_value,
+            None,
+        )
+        .await?;
+
+        Ok(value)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn find_prop_by_json_pointer(
+        &self,
+        ctx: &DalContext,
+        json_pointer: &str,
+    ) -> ComponentResult<Option<Prop>> {
+        let schema_variant = self
+            .schema_variant(ctx)
+            .await?
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
+
+        let mut hierarchy = json_pointer.split('/');
+        hierarchy.next(); // Ignores empty part
+
+        let mut next = match hierarchy.next() {
+            Some(n) => n,
+            None => return Ok(None),
+        };
+
+        let mut work_queue = schema_variant.props(ctx).await?;
+        while let Some(prop) = work_queue.pop() {
+            if prop.name() == next {
+                next = match hierarchy.next() {
+                    Some(n) => n,
+                    None => return Ok(Some(prop)),
+                };
+                work_queue.clear();
+                work_queue.extend(prop.child_props(ctx).await?);
+            }
+        }
+
+        Ok(None)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn find_attribute_value_by_json_pointer(
+        &self,
+        ctx: &DalContext,
+        json_pointer: &str,
+    ) -> ComponentResult<Option<AttributeValue>> {
+        if let Some(prop) = self.find_prop_by_json_pointer(ctx, json_pointer).await? {
+            let read_context = AttributeReadContext {
+                prop_id: Some(*prop.id()),
+                component_id: Some(self.id),
+                ..AttributeReadContext::default()
+            };
+
+            return Ok(Some(
+                AttributeValue::find_for_context(ctx, read_context)
+                    .await?
+                    .ok_or(AttributeValueError::Missing)?,
+            ));
+        };
+
+        Ok(None)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn find_value_by_json_pointer<T: serde::de::DeserializeOwned + std::fmt::Debug>(
+        &self,
+        ctx: &DalContext,
+        json_pointer: &str,
+    ) -> ComponentResult<Option<T>> {
+        let schema_variant = self
+            .schema_variant(ctx)
+            .await?
+            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
+        let prop = Prop::find_root_for_schema_variant(ctx, *schema_variant.id())
+            .await?
+            .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
+
+        let implicit_provider = InternalProvider::find_for_prop(ctx, *prop.id())
+            .await?
+            .ok_or_else(|| ComponentError::InternalProviderNotFoundForProp(*prop.id()))?;
+
+        let value_context = AttributeReadContext {
+            internal_provider_id: Some(*implicit_provider.id()),
+            component_id: Some(self.id),
+            ..AttributeReadContext::default()
+        };
+
+        let attribute_value = AttributeValue::find_for_context(ctx, value_context)
+            .await?
+            .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                value_context,
+            ))?;
+
+        let properties =
+            FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
+                .await?
+                .ok_or_else(|| {
+                    ComponentError::FuncBindingReturnValueNotFound(
+                        attribute_value.func_binding_return_value_id(),
+                    )
+                })?;
+        let value = serde_json::json!({ "root": properties.value() })
+            .pointer(json_pointer)
+            .map(T::deserialize)
+            .transpose()?;
+
+        Ok(value)
     }
 
     /// Return the name of the [`Component`](Self) for the provided [`ComponentId`](Self).
@@ -984,6 +1147,8 @@ impl Component {
                 return Err(ComponentError::FrameHasAttachedComponents);
             }
         }
+
+        self.set_deleted_at(ctx, Some(Utc::now())).await?;
 
         if self.get_protected(ctx).await? {
             return Err(ComponentError::ComponentProtected(self.id));
