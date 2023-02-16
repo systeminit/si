@@ -33,9 +33,9 @@ fi
 
 test_targets="$(while IFS= read -r line; do
   if [[ $line = "./" ]]; then
-    echo "check"
+    echo "test"
   elif [[ $line != "./" && -f "$line/Makefile" ]]; then
-    echo "check//$line"
+    echo "test//$line"
   fi
 done <<<"$CHANGED_COMPONENTS")"
 echo "::group::make $test_targets"
