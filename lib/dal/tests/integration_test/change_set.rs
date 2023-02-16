@@ -4,7 +4,7 @@ use dal::{
 };
 use dal_test::{
     helpers::{create_change_set, create_group},
-    test, DalContextHeadRef,
+    test, DalContextHeadMutRef, DalContextHeadRef,
 };
 
 #[test]
@@ -54,7 +54,7 @@ async fn apply(ctx: &mut DalContext, bid: BillingAccountPk) {
 }
 
 #[test]
-async fn list_open(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
+async fn list_open(DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_>) {
     let a_change_set = create_change_set(ctx).await;
     let b_change_set = create_change_set(ctx).await;
     let mut c_change_set = create_change_set(ctx).await;

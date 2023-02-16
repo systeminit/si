@@ -22,12 +22,12 @@ pub async fn apply_change_set(
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<ApplyChangeSetRequest>,
 ) -> ChangeSetResult<Json<ApplyChangeSetResponse>> {
-    let ctx = builder.build(request_ctx.build_head()).await?;
+    let mut ctx = builder.build(request_ctx.build_head()).await?;
 
     let mut change_set = ChangeSet::get_by_pk(&ctx, &request.change_set_pk)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    change_set.apply(&ctx).await?;
+    change_set.apply(&mut ctx).await?;
 
     ctx.commit().await?;
 

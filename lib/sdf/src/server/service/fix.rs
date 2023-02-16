@@ -13,9 +13,9 @@ use dal::{
     StandardModelError, TransactionsError, UserError, UserId, WorkflowRunnerError,
 };
 
-mod confirmations;
-mod list;
-mod run;
+pub mod confirmations;
+pub mod list;
+pub mod run;
 
 #[derive(Error, Debug)]
 pub enum FixError {

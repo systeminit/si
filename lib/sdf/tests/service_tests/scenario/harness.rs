@@ -3,11 +3,12 @@
 
 use axum::http::Method;
 use axum::Router;
+use dal::component::confirmation::ConfirmationView;
 use dal::property_editor::values::PropertyEditorValue;
 use dal::socket::SocketEdgeKind;
 use dal::{
-    AttributeValue, AttributeValueId, ComponentId, ComponentView, DalContext, NodeId, Prop,
-    PropKind, Schema, SchemaId, Socket, StandardModel, Visibility,
+    AttributeValue, AttributeValueId, ComponentId, ComponentView, DalContext, FixBatchId, NodeId,
+    Prop, PropKind, Schema, SchemaId, Socket, StandardModel, Visibility,
 };
 use dal_test::helpers::component_view::ComponentViewProperties;
 use sdf::service::change_set::apply_change_set::{ApplyChangeSetRequest, ApplyChangeSetResponse};
@@ -25,6 +26,12 @@ use sdf::service::component::update_property_editor_value::{
 };
 use sdf::service::diagram::create_connection::{CreateConnectionRequest, CreateConnectionResponse};
 use sdf::service::diagram::create_node::{CreateNodeRequest, CreateNodeResponse};
+use sdf::service::fix::confirmations::ConfirmationsRequest;
+use sdf::service::fix::confirmations::ConfirmationsResponse;
+use sdf::service::fix::list::ListFixesResponse;
+use sdf::service::fix::list::{BatchHistoryView, ListFixesRequest};
+use sdf::service::fix::run::FixesRunResponse;
+use sdf::service::fix::run::{FixRunRequest, FixesRunRequest};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
@@ -364,7 +371,7 @@ impl ScenarioHarness {
     }
 
     /// Apply the [`ChangeSet`](dal::ChangeSet) based on the provided [`context`](dal::DalContext).
-    pub async fn apply_change_set_and_update_ctx(&self, ctx: &mut DalContext) {
+    pub async fn apply_change_set_and_update_ctx_visibility_to_head(&self, ctx: &mut DalContext) {
         assert!(!ctx.visibility().is_head());
         let request = ApplyChangeSetRequest {
             change_set_pk: ctx.visibility().change_set_pk,
@@ -374,6 +381,32 @@ impl ScenarioHarness {
             .await;
         ctx.update_visibility(Visibility::new_head(false));
         assert!(ctx.visibility().is_head());
+    }
+
+    pub async fn list_confirmations(&self, ctx: &mut DalContext) -> Vec<ConfirmationView> {
+        let request = ConfirmationsRequest {
+            visibility: *ctx.visibility(),
+        };
+        let response: ConfirmationsResponse =
+            self.query_get("/api/fix/confirmations", &request).await;
+        response
+    }
+
+    pub async fn run_fixes(&self, ctx: &mut DalContext, fixes: Vec<FixRunRequest>) -> FixBatchId {
+        let request = FixesRunRequest {
+            list: fixes,
+            visibility: *ctx.visibility(),
+        };
+        let response: FixesRunResponse = self.query_post("/api/fix/run", &request).await;
+        response.id
+    }
+
+    pub async fn list_fixes(&self, ctx: &mut DalContext) -> Vec<BatchHistoryView> {
+        let request = ListFixesRequest {
+            visibility: *ctx.visibility(),
+        };
+        let response: ListFixesResponse = self.query_get("/api/fix/list", &request).await;
+        response
     }
 
     /// Send a "GET" method query to the backend.
