@@ -54,7 +54,7 @@ pub async fn create_variant_def(
         }
     }
 
-    let menu_name = variant_def.menu_name().map(|mn| format!("{} Clone", mn));
+    let menu_name = variant_def.menu_name().map(|mn| format!("{mn} Clone"));
 
     let variant_def = SchemaVariantDefinition::new(
         &ctx,

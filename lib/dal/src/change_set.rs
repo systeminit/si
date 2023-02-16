@@ -11,6 +11,7 @@ use crate::standard_model::object_option_from_row_option;
 use crate::ws_event::{WsEvent, WsEventError, WsPayload};
 use crate::{
     pk, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy, Timestamp,
+    Visibility,
 };
 use crate::{Component, ComponentError, DalContext, WsEventResult};
 
@@ -96,10 +97,7 @@ impl ChangeSet {
     }
 
     #[instrument(skip(ctx))]
-    pub async fn apply(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
-        // Before performing "apply", run all confirmations.
-        Component::run_all_confirmations(ctx).await?;
-
+    pub async fn apply(&mut self, ctx: &mut DalContext) -> ChangeSetResult<()> {
         let actor = serde_json::to_value(ctx.history_actor())?;
         let row = ctx
             .txns()
@@ -124,6 +122,12 @@ impl ChangeSet {
             .await?
             .publish(ctx)
             .await?;
+
+        // Update the visibility.
+        ctx.update_visibility(Visibility::new_head(false));
+
+        // Before retuning, run all confirmations now that we are on head.
+        Component::run_all_confirmations(ctx).await?;
 
         Ok(())
     }

@@ -22,7 +22,7 @@ async fn get_by_pk(ctx: &DalContext) {
 }
 
 #[test]
-async fn get_by_id(ctx: &DalContext) {
+async fn get_by_id(ctx: &mut DalContext) {
     let schema = create_schema(ctx).await;
     let head_visibility = create_visibility_head();
     let head_ctx = ctx.clone_with_new_visibility(head_visibility);
@@ -228,7 +228,7 @@ async fn unset_belongs_to(ctx: &DalContext) {
 }
 
 #[test]
-async fn belongs_to(ctx: &DalContext) {
+async fn belongs_to(ctx: &mut DalContext) {
     let schema = create_schema(ctx).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 

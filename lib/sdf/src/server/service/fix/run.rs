@@ -28,7 +28,7 @@ pub struct FixesRunRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FixesRunResponse {
-    id: FixBatchId,
+    pub id: FixBatchId,
 }
 
 pub async fn run(

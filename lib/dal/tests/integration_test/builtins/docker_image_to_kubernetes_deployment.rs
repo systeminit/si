@@ -6,7 +6,7 @@ use dal_test::{
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
-async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalContext) {
+async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &mut DalContext) {
     let mut harness = SchemaBuiltinsTestHarness::new();
     let tail_docker_image_payload = harness
         .create_component(ctx, "image", Builtin::DockerImage)
