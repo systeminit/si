@@ -13,9 +13,6 @@ A-docs:
 #
 # System Initiative apps (i.e. webapps/ios apps/android apps)
 #
-A-corp:
-  - app/corp/**/*
-  - .prettierrc.js
 A-web:
   - app/web/**/*
   - .prettierrc.js
