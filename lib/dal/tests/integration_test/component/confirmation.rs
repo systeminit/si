@@ -31,6 +31,82 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
         .await
         .expect("cannot set default schema variant");
 
+    // Create command and workflow funcs for our workflow and action prototypes.
+    let mut command_func = Func::new(
+        ctx,
+        "test:createCommand",
+        FuncBackendKind::JsCommand,
+        FuncBackendResponseType::Command,
+    )
+    .await
+    .expect("could not create func");
+    let code = "async function create() {
+      return { value: \"poop\", status: \"ok\" };
+    }";
+    command_func
+        .set_code_plaintext(ctx, Some(code))
+        .await
+        .expect("set code");
+    command_func
+        .set_handler(ctx, Some("create"))
+        .await
+        .expect("set handler");
+    let mut workflow_func = Func::new(
+        ctx,
+        "test:createWorkflow",
+        FuncBackendKind::JsWorkflow,
+        FuncBackendResponseType::Workflow,
+    )
+    .await
+    .expect("could not create func");
+    let code = "async function create() {
+      return {
+        name: \"test:createWorkflow\",
+        kind: \"conditional\",
+        steps: [
+          {
+            command: \"test:createCommand\",
+          },
+        ],
+      };
+    }";
+    workflow_func
+        .set_code_plaintext(ctx, Some(code))
+        .await
+        .expect("set code");
+    workflow_func
+        .set_handler(ctx, Some("create"))
+        .await
+        .expect("set handler");
+
+    // Create workflow and action protoypes.
+    let workflow_prototype = WorkflowPrototype::new(
+        ctx,
+        *workflow_func.id(),
+        serde_json::Value::Null,
+        WorkflowPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            ..Default::default()
+        },
+        "create",
+    )
+    .await
+    .expect("could not create workflow prototype");
+    ActionPrototype::new(
+        ctx,
+        *workflow_prototype.id(),
+        "create",
+        ActionKind::Other,
+        ActionPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id,
+            ..Default::default()
+        },
+    )
+    .await
+    .expect("unable to create action prototype");
+
     // Setup the confirmation function.
     let mut confirmation_func = Func::new(
         ctx,

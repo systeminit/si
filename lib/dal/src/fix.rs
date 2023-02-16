@@ -298,7 +298,7 @@ impl Fix {
         completion_message: Option<String>,
     ) -> FixResult<()> {
         if self.started_at.is_some() {
-            self.set_finished_at(ctx, Some(format!("{}", Utc::now())))
+            self.set_finished_at(ctx, Some(Utc::now().to_string()))
                 .await?;
             self.set_completion_status(ctx, Some(completion_status))
                 .await?;
