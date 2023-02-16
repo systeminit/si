@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
-import { watch } from "vue";
 
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
@@ -14,7 +13,7 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
-import { useComponentsStore } from "./components.store";
+import { ComponentId, useComponentsStore } from "./components.store";
 import { useStatusStore } from "./status.store";
 
 export interface UpdatePropertyEditorValueArgs {
@@ -39,7 +38,7 @@ export interface SetTypeArgs {
   value?: unknown;
 }
 
-export const useComponentAttributesStore = () => {
+export const useComponentAttributesStore = (componentId: ComponentId) => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
 
@@ -48,7 +47,7 @@ export const useComponentAttributesStore = () => {
   };
 
   return addStoreHooks(
-    defineStore(`cs${changeSetId}/component_attributes`, {
+    defineStore(`cs${changeSetId}/c${componentId}/component_attributes`, {
       state: () => ({
         // TODO: likely want to restructure how this data is sent and stored
         // but we'll just move into a pinia store as the first step...
@@ -113,13 +112,11 @@ export const useComponentAttributesStore = () => {
         },
 
         // getter to be able to quickly grab selected component id
-        selectedComponentId: () => {
-          const componentsStore = useComponentsStore();
-          return componentsStore.selectedComponentId;
-        },
+        selectedComponentId: () => componentId,
         selectedComponent: () => {
+          if (!componentId) return;
           const componentsStore = useComponentsStore();
-          return componentsStore.selectedComponent;
+          return componentsStore.componentsById[componentId];
         },
       },
       actions: {
@@ -184,13 +181,7 @@ export const useComponentAttributesStore = () => {
           });
         },
 
-        reloadPropertyEditorData(skipClearingData = false) {
-          // resetting the values here so we dont have unrelated data in the store at the same time
-          if (!skipClearingData) {
-            this.schema = null;
-            this.values = null;
-            this.validations = null;
-          }
+        reloadPropertyEditorData() {
           this.FETCH_PROPERTY_EDITOR_SCHEMA();
           this.FETCH_PROPERTY_EDITOR_VALUES();
           this.FETCH_PROPERTY_EDITOR_VALIDATIONS();
@@ -203,6 +194,7 @@ export const useComponentAttributesStore = () => {
             | { insert: InsertPropertyEditorValueArgs },
         ) {
           const isInsert = "insert" in updatePayload;
+
           // If the valueid for this update does not exist in the values tree,
           // we shouldn't perform the update!
           if (
@@ -260,29 +252,17 @@ export const useComponentAttributesStore = () => {
         this.reloadPropertyEditorData();
 
         const realtimeStore = useRealtimeStore();
-
-        const stopWatchSelectedComponent = watch(
-          () => this.selectedComponentId,
-          () => {
-            if (!this.selectedComponentId) return;
-            this.reloadPropertyEditorData();
-          },
-        );
-
         realtimeStore.subscribe(this.$id, `changeset/${changeSetId}`, [
           {
             eventType: "ChangeSetWritten",
             callback: (writtenChangeSetId) => {
               if (writtenChangeSetId !== changeSetId) return;
-              // for now we'll re-fetch everything without clearing the data first
-              // but longterm this should be much more targeted and smarter...
-              this.reloadPropertyEditorData(true);
+              this.reloadPropertyEditorData();
             },
           },
         ]);
 
         return () => {
-          stopWatchSelectedComponent();
           realtimeStore.unsubscribe(this.$id);
         };
       },
