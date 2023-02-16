@@ -1,9 +1,11 @@
 <template>
-  <div ref="internalRef" class="absolute inset-0 flex flex-col">
+  <div class="absolute inset-0 flex flex-col">
     <!-- TabGroupItems go in this slot but are not rendered here. -->
     <div class="hidden"><slot /></div>
 
+    <!-- special slot for when no tabs exist - mostly useful for dynamic tab situations -->
     <slot v-if="isNoTabs" name="noTabs">No tabs.</slot>
+
     <template v-else>
       <!-- This div holds the actual tabs -->
       <div
@@ -14,9 +16,19 @@
         "
       >
         <div
-          v-if="noStartMargin === false"
-          class="w-2 border-b border-neutral-300 dark:border-neutral-600"
-        ></div>
+          v-if="firstTabMarginLeft && firstTabMarginLeft !== 'none'"
+          :class="
+            clsx(
+              {
+                '2xs': 'w-2xs',
+                xs: 'w-xs',
+                sm: 'w-sm',
+                md: 'w-md',
+              }[firstTabMarginLeft],
+              'border-b border-neutral-300 dark:border-neutral-600',
+            )
+          "
+        />
         <template v-for="tab in tabs" :key="tab.props.slug">
           <a
             href="#"
@@ -56,8 +68,7 @@
             </button>
           </a>
           <div
-            v-if="noAfterMargin === false"
-            class="border-b border-neutral-300 dark:border-neutral-600 w-2"
+            class="border-b border-neutral-300 dark:border-neutral-600 w-2xs"
           />
         </template>
         <div
@@ -65,8 +76,9 @@
         ></div>
       </div>
 
-      <!-- This template holds the contents of the selected tab -->
+      <!-- Here we actually render the tab content of the current tab -->
       <template v-if="selectedTabSlug && tabs[selectedTabSlug]">
+        <!-- extra slots to make it easy to have non-scrolling content above/below scrolling area -->
         <div v-if="tabs[selectedTabSlug].slots.stickyTop">
           <component :is="tabs[selectedTabSlug].slots.stickyTop" />
         </div>
@@ -113,18 +125,20 @@ import {
   computed,
   provide,
   onMounted,
+  PropType,
+  watch,
 } from "vue";
 import Icon from "../icons/Icon.vue";
 import { themeClasses } from "../theme_tools";
 import { TabGroupItemDefinition } from "./TabGroupItem.vue";
 
-const internalRef = ref();
-
 const props = defineProps({
   startSelectedTabSlug: { type: String },
-  noStartMargin: { type: Boolean, default: false },
-  noAfterMargin: { type: Boolean, default: false },
   closeable: { type: Boolean, default: false },
+  firstTabMarginLeft: {
+    type: String as PropType<"none" | "2xs" | "xs" | "sm" | "md">,
+    default: "xs",
+  },
 });
 
 const emit = defineEmits<{
@@ -155,10 +169,14 @@ function refreshSettingsFromTabs() {
 }
 
 function selectTab(slug?: string) {
+  if (selectedTabSlug.value === slug) return;
   if (slug && tabs[slug]) selectedTabSlug.value = slug;
   else selectedTabSlug.value = undefined;
-  emit("update:selectedTab", selectedTabSlug.value);
 }
+
+watch(selectedTabSlug, () => {
+  emit("update:selectedTab", selectedTabSlug.value);
+});
 
 function autoSelectTab() {
   if (isNoTabs.value) {
@@ -170,6 +188,7 @@ function autoSelectTab() {
     return;
   } else if (props.startSelectedTabSlug && tabs[props.startSelectedTabSlug]) {
     // select the starting tab if it exists
+    // TODO: probably only want to do this in some cases (like initial load)
     selectedTabSlug.value = props.startSelectedTabSlug;
   } else {
     // TODO(Wendy) - more ordering logic for which tab to select

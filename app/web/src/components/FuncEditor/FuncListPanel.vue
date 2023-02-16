@@ -1,10 +1,11 @@
 <template>
   <div>
     <RequestStatusMessage
+      v-if="!funcList.length"
       :request-status="loadFuncsReqStatus"
       loading-message="Loading functions..."
     />
-    <template v-if="loadFuncsReqStatus.isSuccess">
+    <template v-if="funcList.length">
       <div
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >

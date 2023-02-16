@@ -3,14 +3,16 @@
   <SiPanel remember-size-key="changeset-and-asset" side="left" :min-size="250">
     <div class="flex flex-col h-full">
       <ChangeSetPanel v-if="!isViewMode" />
-      <TabGroup start-selected-tab-slug="asset-palette">
-        <TabGroupItem v-if="!isViewMode" label="Asset Palette">
-          <AssetPalette />
-        </TabGroupItem>
-        <TabGroupItem label="Diagram Outline">
-          <ComponentOutline @right-click-item="onOutlineRightClick" />
-        </TabGroupItem>
-      </TabGroup>
+      <div class="grow relative">
+        <TabGroup start-selected-tab-slug="asset-palette">
+          <TabGroupItem v-if="!isViewMode" label="Asset Palette">
+            <AssetPalette />
+          </TabGroupItem>
+          <TabGroupItem label="Diagram Outline">
+            <ComponentOutline @right-click-item="onOutlineRightClick" />
+          </TabGroupItem>
+        </TabGroup>
+      </div>
     </div>
   </SiPanel>
 

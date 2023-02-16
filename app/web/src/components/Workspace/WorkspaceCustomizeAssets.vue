@@ -5,7 +5,7 @@
       <ChangeSetPanel
         class="border-b-2 dark:border-neutral-500 mb-2 flex-shrink-0"
       />
-      <CustomizeTabs :selected-index="2">
+      <CustomizeTabs tab-content-slug="assets">
         <AssetListPanel :asset-id="assetId" />
       </CustomizeTabs>
     </div>
@@ -23,8 +23,8 @@
 </template>
 
 <script lang="ts" setup>
-import { watch } from "vue";
 import _ from "lodash";
+import { watch } from "vue";
 import { useAssetStore } from "@/store/asset.store";
 import ChangeSetPanel from "../ChangeSetPanel.vue";
 import SiPanel from "../SiPanel.vue";

@@ -1,12 +1,12 @@
 <template>
   <div
-    v-if="funcReqStatus.isPending"
+    v-if="loadFuncDetailsReqStatus.isPending && !storeFuncDetails"
     class="w-full flex flex-col items-center gap-4 p-xl"
   >
     <Icon name="loader" size="2xl" />
   </div>
   <div
-    v-else-if="selectedFuncId !== nilId()"
+    v-else-if="selectedFuncId && editingFunc"
     class="absolute h-full w-full flex flex-col overflow-hidden"
   >
     <TabGroup>
@@ -43,106 +43,69 @@
               Give this qualification a Name, Entrypoint and brief description
               below.
             </h1>
-            <SiTextBox
-              id="name"
+            <VormInput
               v-model="editingFunc.name"
-              title="Name"
+              label="Name"
               required
               placeholder="Type the name of this function here..."
               :disabled="!isDevMode && editingFunc.isBuiltin"
               @blur="updateFunc"
             />
-            <SiTextBox
-              id="handler"
+            <VormInput
               v-model="editingFunc.handler"
-              title="Entrypoint"
+              label="Entrypoint"
               required
               placeholder="The name of the function that will be executed..."
               :disabled="!isDevMode && editingFunc.isBuiltin"
               @blur="updateFunc"
             />
-            <SiTextBox
-              id="description"
+            <VormInput
               v-model="editingFunc.description"
+              type="textarea"
               placeholder="Provide a brief description of this function here..."
-              title="Description"
-              text-area
+              label="Description"
               :disabled="!isDevMode && editingFunc.isBuiltin"
               @blur="updateFunc"
             />
           </div>
-
-          <SiCollapsible label="Attributes" default-open>
-            <div class="p-3 flex flex-col gap-2">
-              <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-                Give this qualification a Name, Entrypoint and brief description
-                below.
-              </h1>
-              <VormInput
-                v-model="editingFunc.name"
-                type="text"
-                title="Name"
-                required
-                placeholder="Type the name of this function here..."
-                :disabled="!isDevMode && editingFunc.isBuiltin"
-                @blur="updateFunc"
-              />
-              <VormInput
-                v-model="editingFunc.handler"
-                type="text"
-                title="Entrypoint"
-                required
-                placeholder="The name of the function that will be executed..."
-                :disabled="!isDevMode && editingFunc.isBuiltin"
-                @blur="updateFunc"
-              />
-              <VormInput
-                v-model="editingFunc.description"
-                type="textarea"
-                placeholder="Provide a brief description of this function here..."
-                title="Description"
-                :disabled="!isDevMode && editingFunc.isBuiltin"
-                @blur="updateFunc"
-              />
-            </div>
-          </SiCollapsible>
-          <SiCollapsible
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'qualification'
-            "
-            v-model="editingFunc.associations"
-            :disabled="editingFunc.isBuiltin"
-            @change="updateFunc"
-          />
-          <CodeGenerationDetails
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'codeGeneration'
-            "
-            v-model="editingFunc.associations"
-            :disabled="editingFunc.isBuiltin"
-            @change="updateFunc"
-          />
-          <ConfirmationDetails
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'confirmation'
-            "
-            v-model="editingFunc.associations"
-            :disabled="editingFunc.isBuiltin"
-            @change="updateFunc"
-          />
-          <ValidationDetails
-            v-if="
-              editingFunc.associations &&
-              editingFunc.associations.type === 'validation'
-            "
-            v-model="editingFunc.associations"
-            :disabled="editingFunc.isBuiltin"
-            @change="updateFunc"
-          />
         </SiCollapsible>
+        <SiCollapsible
+          v-if="
+            editingFunc.associations &&
+            editingFunc.associations.type === 'qualification'
+          "
+          v-model="editingFunc.associations"
+          :disabled="editingFunc.isBuiltin"
+          @change="updateFunc"
+        />
+        <CodeGenerationDetails
+          v-if="
+            editingFunc.associations &&
+            editingFunc.associations.type === 'codeGeneration'
+          "
+          v-model="editingFunc.associations"
+          :disabled="editingFunc.isBuiltin"
+          @change="updateFunc"
+        />
+        <ConfirmationDetails
+          v-if="
+            editingFunc.associations &&
+            editingFunc.associations.type === 'confirmation'
+          "
+          v-model="editingFunc.associations"
+          :disabled="editingFunc.isBuiltin"
+          @change="updateFunc"
+        />
+        <ValidationDetails
+          v-if="
+            editingFunc.associations &&
+            editingFunc.associations.type === 'validation'
+          "
+          v-model="editingFunc.associations"
+          :disabled="editingFunc.isBuiltin"
+          @change="updateFunc"
+        />
+
         <SiCollapsible
           v-if="editingFunc.variant === FuncVariant.Attribute"
           label="Arguments"
@@ -185,16 +148,15 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, provide } from "vue";
+import _ from "lodash";
+import { computed, provide, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import SiCollapsible from "@/components/SiCollapsible.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore, nullEditingFunc } from "@/store/func/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import Icon from "@/ui-lib/icons/Icon.vue";
-import { nilId } from "@/utils/nilId";
-import SiTextBox from "@/components/SiTextBox.vue";
 import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
 import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 import FuncArguments from "./FuncArguments.vue";
@@ -203,13 +165,16 @@ import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ConfirmationDetails from "./ConfirmationDetails.vue";
 import ValidationDetails from "./ValidationDetails.vue";
 
-defineProps({
-  funcId: { type: String },
-});
-
 const funcStore = useFuncStore();
-const funcReqStatus = funcStore.getRequestStatus("FETCH_FUNC");
-const { getFuncById, selectedFuncId } = storeToRefs(funcStore);
+
+// NOT REACTIVE - parent has a key so this component rerenders if this changes
+const funcId = funcStore.selectedFuncId;
+
+const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
+  "FETCH_FUNC_DETAILS",
+  funcId,
+);
+const { selectedFuncId } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 const funcArgumentsIdMap = computed(() =>
@@ -223,24 +188,35 @@ const funcArgumentsIdMap = computed(() =>
 
 provide("funcArgumentsIdMap", funcArgumentsIdMap);
 
-const editingFunc = computed(
-  () => getFuncById.value(selectedFuncId.value) ?? nullEditingFunc,
-);
+const storeFuncDetails = computed(() => funcStore.selectedFuncDetails);
+const editingFunc = ref(storeFuncDetails.value);
+
+function resetEditingFunc() {
+  editingFunc.value = _.cloneDeep(storeFuncDetails.value);
+}
+
+// when the func details finish loading, we copy into our local draft
+watch(loadFuncDetailsReqStatus, () => {
+  if (loadFuncDetailsReqStatus.value.isSuccess) {
+    resetEditingFunc();
+  }
+});
 
 const updateFunc = () => {
-  funcStore.updateFuncAssociations(
-    editingFunc.value.id,
-    editingFunc.value.associations,
-  );
+  if (!funcId || !editingFunc.value) return;
+  funcStore.UPDATE_FUNC(editingFunc.value);
 };
 
 const revertFuncReqStatus = funcStore.getRequestStatus("REVERT_FUNC");
 const revertFunc = async () => {
-  funcStore.REVERT_FUNC(editingFunc.value.id);
+  if (!funcId) return;
+  await funcStore.REVERT_FUNC(funcId);
+  resetEditingFunc();
 };
 
 const execFuncReqStatus = funcStore.getRequestStatus("EXEC_FUNC");
 const execFunc = () => {
-  funcStore.EXEC_FUNC(editingFunc.value.id);
+  if (!funcId) return;
+  funcStore.EXEC_FUNC(funcId);
 };
 </script>

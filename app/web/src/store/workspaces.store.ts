@@ -1,13 +1,14 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
 import { watch } from "vue";
+import { useRoute } from "vue-router";
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
 
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { Organization } from "@/api/sdf/dal/organization";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
-import { useRouterStore } from "./router.store";
 import { useAuthStore } from "./auth.store";
+import { useRouterStore } from "./router.store";
 
 type WorkspacePk = string;
 type OrganizationPk = string;
@@ -24,12 +25,16 @@ export const useWorkspacesStore = addStoreHooks(
       selectedWorkspacePk(): WorkspacePk | null {
         return this.selectedWorkspace?.pk || null;
       },
-      selectedWorkspace: (state) => {
-        const routerStore = useRouterStore();
-        const urlSelectedWorkspacePk = routerStore.urlSelectedWorkspacePk;
-        return urlSelectedWorkspacePk
-          ? state.workspacesByPk[urlSelectedWorkspacePk as WorkspacePk] || null
-          : null;
+      urlSelectedWorkspaceId: () => {
+        const route = useRouterStore().currentRoute;
+        return route?.params?.workspacePk as WorkspacePk | undefined;
+      },
+      selectedWorkspace(): Workspace | null {
+        return _.get(
+          this.workspacesByPk,
+          this.urlSelectedWorkspaceId || "",
+          null,
+        );
       },
       // only have one org for now...
       selectedOrganization: (state) => _.values(state.organizationsByPk)[0],

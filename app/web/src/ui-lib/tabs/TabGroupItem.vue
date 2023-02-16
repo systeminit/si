@@ -1,10 +1,17 @@
 <template>
+  <!-- actual rendering is done by the TabGroup parent to put things in the right place -->
   <div v-if="false">
-    <!-- all rendering is done by the TabGroup parent -->
-    <!-- default slot content will not work here -->
+    <!-- NOTE - default slot content will not work here, due to how the slot render fns are called -->
+
+    <!-- tab top content, usually filled using label prop, but slot in case something special is needed-->
     <slot name="label" />
+
+    <!-- fixed (non-scrolling) content that lives above the main content area -->
     <slot name="stickyTop" />
+
+    <!-- default slot contains tab content in scrollable area -->
     <slot />
+    <!-- fixed (non-scrolling) content that lives below the main content area -->
     <slot name="stickyBottom" />
   </div>
 </template>

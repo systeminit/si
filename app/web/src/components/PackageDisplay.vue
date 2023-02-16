@@ -4,19 +4,15 @@
     :request-status="loadPackagesReqStatus"
     show-loader-without-message
   />
-  <div
-    v-else-if="
-      packageStore.selectedPackage && packageStore.selectedPackage.slug === slug
-    "
-    class="p-sm flex flex-col h-full"
-  >
+
+  <div v-else-if="selectedPackage" class="flex flex-col h-full">
     <div
       class="flex flex-row items-center gap-2 flex-none"
-      :style="`color: ${packageStore.selectedPackage.color}`"
+      :style="`color: ${selectedPackage.color}`"
     >
-      <Icon :name="packageStore.selectedPackage.icon" />
+      <Icon :name="selectedPackage.icon" />
       <div class="text-3xl font-bold truncate">
-        {{ packageStore.selectedPackage.displayName }}
+        {{ selectedPackage.displayName }}
       </div>
     </div>
     <div
@@ -24,15 +20,15 @@
     >
       <div>
         <span class="font-bold">Version:</span>
-        {{ packageStore.selectedPackage.version }}
+        {{ selectedPackage.version }}
       </div>
       <div>
         <span class="font-bold">Created At: </span>
-        <Timestamp :date="packageStore.selectedPackage.createdAt" size="long" />
+        <Timestamp :date="selectedPackage.createdAt" size="long" />
       </div>
       <div>
         <span class="font-bold">Created By: </span
-        >{{ packageStore.selectedPackage.createdBy }}
+        >{{ selectedPackage.createdBy }}
       </div>
     </div>
     <div
@@ -46,13 +42,13 @@
 
       <ul class="p-sm overflow-y-auto">
         <li
-          v-for="sv in packageStore.selectedPackage.schemaVariants"
+          v-for="sv in selectedPackage.schemaVariants"
           :key="sv.id"
           class="flex flex-col"
         >
           <div class="flex flex-row items-center">
             <div :style="`color: ${sv.color}`">
-              <Icon :name="packageStore.selectedPackage.icon" />
+              <Icon :name="selectedPackage.icon" />
             </div>
             <div>{{ sv.name }}</div>
           </div>
@@ -61,22 +57,24 @@
       </ul>
     </div>
   </div>
-  <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
-    <template v-if="slug">Package "{{ slug }}" does not exist!</template>
+  <div v-else class="text-neutral-400 dark:text-neutral-300">
+    <ErrorMessage v-if="packageStore.urlSelectedPackageSlug">
+      Package "{{ packageStore.urlSelectedPackageSlug }}" does not exist!
+    </ErrorMessage>
     <template v-else>Select a package to view it.</template>
   </div>
 </template>
 
 <script lang="ts" setup>
+import { computed } from "vue";
 import { usePackageStore } from "@/store/package.store";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import Timestamp from "@/ui-lib/Timestamp.vue";
+import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const packageStore = usePackageStore();
 const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
 
-defineProps<{
-  slug?: string;
-}>();
+const selectedPackage = computed(() => packageStore.selectedPackage);
 </script>

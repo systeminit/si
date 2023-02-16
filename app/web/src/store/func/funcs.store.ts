@@ -1,5 +1,7 @@
 import _ from "lodash";
 import { defineStore } from "pinia";
+import { useRoute } from "vue-router";
+import { watch } from "vue";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 
 import { Visibility } from "@/api/sdf/dal/visibility";
@@ -26,6 +28,8 @@ import {
 } from "./requests/list_input_sources";
 import { execFunc } from "./requests/exec_func";
 import { saveFunc } from "./requests/save_func";
+import { ApiRequest } from "../lib/pinia_api_tools";
+import { useRouterStore } from "../router.store";
 
 export const nullEditingFunc: EditingFunc = {
   id: nilId(),
@@ -37,7 +41,21 @@ export const nullEditingFunc: EditingFunc = {
   isRevertible: false,
 };
 
-type FuncId = string;
+export type FuncId = string;
+
+type FuncSummary = {
+  id: string;
+  handler: string;
+  variant: FuncVariant;
+  name: string;
+  description?: string;
+  isBuiltin: boolean;
+};
+type FuncWithDetails = FuncSummary & {
+  code: string;
+  isRevertible: boolean;
+  associations?: FuncAssociations;
+};
 
 export const useFuncStore = () => {
   const componentsStore = useComponentsStore();
@@ -49,23 +67,28 @@ export const useFuncStore = () => {
 
   const store = defineStore(`cs${selectedChangeSetId}/funcs`, {
     state: () => ({
-      funcList: [] as ListedFuncView[],
-      openFuncsById: {} as Record<FuncId, EditingFunc>,
-      openFuncsList: [] as ListedFuncView[],
-      selectedFuncId: nilId() as FuncId,
+      funcsById: {} as Record<FuncId, FuncSummary>,
+      funcDetailsById: {} as Record<FuncId, FuncWithDetails>,
       inputSources: { sockets: [], props: [] } as ListInputSourcesResponse,
       saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
     }),
     getters: {
-      getFuncById:
-        (state) =>
-        (funcId: FuncId): EditingFunc | undefined =>
-          state.openFuncsById[funcId],
-      selectedFuncIndex: (state) =>
-        state.openFuncsList.findIndex((f) => f.id === state.selectedFuncId),
-      getFuncByIndex: (state) => (index: number) => state.openFuncsList[index],
-      getIndexForFunc: (state) => (funcId: FuncId) =>
-        state.openFuncsList.findIndex((f) => f.id === funcId),
+      urlSelectedFuncId: () => {
+        const route = useRouterStore().currentRoute;
+        return route?.params?.funcId as FuncId | undefined;
+      },
+      selectedFuncId(): FuncId | undefined {
+        return this.selectedFuncSummary?.id;
+      },
+      selectedFuncSummary(): FuncSummary | undefined {
+        return this.funcsById[this.urlSelectedFuncId || ""];
+      },
+      selectedFuncDetails(): FuncWithDetails | undefined {
+        return this.funcDetailsById[this.urlSelectedFuncId || ""];
+      },
+
+      funcList: (state) => _.values(state.funcsById),
+
       // Filter props by schema variant
       propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: string) =>
         state.inputSources.props
@@ -78,7 +101,7 @@ export const useFuncStore = () => {
             label: `${prop.path}${prop.name}`,
             value: prop.propId,
           })),
-      selectedFunc: (state) => state.openFuncsById[state.selectedFuncId],
+      // selectedFunc: (state) => state.openFuncsById[state.selectedFuncId || ""],
       schemaVariantOptions() {
         return componentsStore.schemaVariants.map((sv) => ({
           label: sv.schemaName,
@@ -115,58 +138,57 @@ export const useFuncStore = () => {
       },
     },
     actions: {
-      async SELECT_FUNC(funcId: FuncId) {
-        if (funcId === nilId()) {
-          return;
-        }
-        this.selectedFuncId = funcId;
-        this.ADD_FUNC_TO_OPEN_LIST(funcId);
-
-        await this.FETCH_FUNC(funcId);
-        return this.openFuncsById[funcId];
-      },
-      ADD_FUNC_TO_OPEN_LIST(funcId: FuncId) {
-        const func = this.openFuncsById[funcId];
-        if (func && this.getIndexForFunc(funcId) === -1) {
-          this.openFuncsList.push(func as ListedFuncView);
-        }
-      },
-      REMOVE_FUNC_FROM_OPEN_LIST(funcId: string) {
-        this.openFuncsList = this.openFuncsList.filter((f) => f.id !== funcId);
-      },
-      CLOSE_FUNC(funcId: string) {
-        this.REMOVE_FUNC_FROM_OPEN_LIST(funcId);
-      },
-      SELECT_FUNC_BY_INDEX(index: number) {
-        if (index < 0) {
-          index = 0;
-        } else if (index > this.openFuncsList.length) {
-          index--;
-        }
-
-        if (this.openFuncsList.length) {
-          this.SELECT_FUNC(this.getFuncByIndex(index).id);
-        }
-      },
       async FETCH_FUNC_LIST() {
-        return listFuncs(visibility, (response) => {
-          this.funcList = response.funcs;
+        return new ApiRequest<{ funcs: FuncSummary[] }, Visibility>({
+          url: "func/list_funcs",
+          params: {
+            ...visibility,
+          },
+          onSuccess: (response) => {
+            this.funcsById = _.keyBy(response.funcs, (f) => f.id);
+          },
         });
       },
+      async FETCH_FUNC_DETAILS(funcId: FuncId) {
+        return new ApiRequest<FuncWithDetails>({
+          url: "func/get_func",
+          params: {
+            id: funcId,
+            ...visibility,
+          },
+          keyRequestStatusBy: funcId,
+          onSuccess: (response) => {
+            this.funcDetailsById[response.id] = response;
+          },
+        });
+      },
+      async UPDATE_FUNC(func: FuncWithDetails) {
+        return new ApiRequest<FuncWithDetails>({
+          method: "post",
+          url:
+            import.meta.env.DEV && func.isBuiltin
+              ? "dev/save_func"
+              : "func/save_func",
+          params: {
+            ...func,
+            ...visibility,
+          },
+          keyRequestStatusBy: func.id,
+          onSuccess: (response) => {
+            this.funcDetailsById[response.id] = response;
+          },
+        });
+      },
+
       async FETCH_INPUT_SOURCE_LIST() {
         return listInputSources(visibility, (response) => {
           this.inputSources = response;
         });
       },
-      async FETCH_FUNC(funcId: FuncId) {
-        return getFunc({ ...visibility, id: funcId }, (response) => {
-          this.openFuncsById[response.id] = response;
-        });
-      },
 
       async REVERT_FUNC(funcId: string) {
         return revertFunc({ ...visibility, id: funcId }, (response) => {
-          this.FETCH_FUNC(funcId);
+          this.FETCH_FUNC_DETAILS(funcId);
         });
       },
       async EXEC_FUNC(funcId: string) {
@@ -186,7 +208,7 @@ export const useFuncStore = () => {
       },
 
       async removeFuncAttrPrototype(funcId: FuncId, prototypeId: string) {
-        const func = this.openFuncsById[funcId];
+        const func = this.funcDetailsById[funcId];
         if (func?.associations?.type !== "attribute") {
           return;
         }
@@ -194,14 +216,14 @@ export const useFuncStore = () => {
         func.associations.prototypes = func.associations.prototypes.filter(
           (proto) => proto.id !== prototypeId,
         );
-        this.openFuncsById[funcId] = { ...func };
+        this.funcDetailsById[funcId] = { ...func };
         await this.SAVE_UPDATED_FUNC(funcId);
       },
       async updateFuncAttrPrototype(
         funcId: FuncId,
         prototype: AttributePrototypeView,
       ) {
-        const func = this.openFuncsById[funcId];
+        const func = this.funcDetailsById[funcId];
         if (func?.associations?.type !== "attribute") {
           return;
         }
@@ -217,7 +239,7 @@ export const useFuncStore = () => {
         this.SAVE_UPDATED_FUNC(funcId);
       },
       async updateFuncAttrArgs(funcId: FuncId, args: FuncArgument[]) {
-        const func = this.openFuncsById[funcId];
+        const func = this.funcDetailsById[funcId];
         if (func?.associations?.type !== "attribute") {
           return;
         }
@@ -228,11 +250,11 @@ export const useFuncStore = () => {
         funcId: FuncId,
         associations: FuncAssociations | undefined,
       ) {
-        this.openFuncsById[funcId].associations = associations;
+        this.funcDetailsById[funcId].associations = associations;
         await this.SAVE_UPDATED_FUNC(funcId);
       },
       updateFuncCode(funcId: FuncId, code: string) {
-        this.openFuncsById[funcId].code = code;
+        this.funcDetailsById[funcId].code = code;
         this.enqueueFuncSave(funcId);
       },
       enqueueFuncSave(funcId: FuncId) {
@@ -252,14 +274,14 @@ export const useFuncStore = () => {
         return saveFunc(
           {
             ...visibility,
-            ...this.openFuncsById[funcId],
+            ...this.funcDetailsById[funcId],
           },
           (response) => {
             const { associations, isRevertible } = response;
             if (associations) {
-              this.openFuncsById[funcId].associations = associations;
+              this.funcDetailsById[funcId].associations = associations;
             }
-            this.openFuncsById[funcId].isRevertible = isRevertible;
+            this.funcDetailsById[funcId].isRevertible = isRevertible;
           },
         );
       },
@@ -267,6 +289,16 @@ export const useFuncStore = () => {
     onActivated() {
       this.FETCH_FUNC_LIST();
       this.FETCH_INPUT_SOURCE_LIST();
+
+      // could do this from components, but may as well do here...
+      const stopWatchSelectedFunc = watch(
+        [() => this.selectedFuncSummary],
+        () => {
+          if (this.selectedFuncSummary) {
+            this.FETCH_FUNC_DETAILS(this.selectedFuncSummary?.id);
+          }
+        },
+      );
 
       const realtimeStore = useRealtimeStore();
       realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [
@@ -279,6 +311,7 @@ export const useFuncStore = () => {
         },
       ]);
       return () => {
+        stopWatchSelectedFunc();
         realtimeStore.unsubscribe(this.$id);
       };
     },

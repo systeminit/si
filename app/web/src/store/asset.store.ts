@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
-import omit from "lodash/omit";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
 import { Visibility } from "@/api/sdf/dal/visibility";
@@ -9,6 +8,7 @@ import { useChangeSetsStore } from "./change_sets.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 
 export type AssetId = string;
+export type AssetSlug = string;
 
 export interface ListVariantDefsResponse {
   variantDefs: ListedVariantDef[];
@@ -48,7 +48,9 @@ export const useAssetStore = () => {
   const changeSetsStore = useChangeSetsStore();
   const changeSetId = changeSetsStore.selectedChangeSetId;
   const visibility = {
-    visibility_change_set_pk: changeSetId ?? nilId(),
+    // changeSetId should not be empty if we are actually using this store
+    // so we can give it a bad value and let it throw an error
+    visibility_change_set_pk: changeSetId || "XXX",
   };
   return addStoreHooks(
     defineStore(`cs${changeSetId || "NONE"}/asset`, {
@@ -135,7 +137,7 @@ export const useAssetStore = () => {
             url: "/variant_def/create_variant_def",
             params: {
               ...visibility,
-              ...omit(asset, [
+              ..._.omit(asset, [
                 "id",
                 "variantExists",
                 "createdAt",
@@ -167,7 +169,7 @@ export const useAssetStore = () => {
             url: "/variant_def/save_variant_def",
             params: {
               ...visibility,
-              ...omit(asset, ["variantExists", "createdAt", "updatedAt"]),
+              ..._.omit(asset, ["variantExists", "createdAt", "updatedAt"]),
             },
           });
         },
