@@ -37,7 +37,6 @@ LOCAL_PG := false
 .DEFAULT_GOAL := help
 
 COMPONENTS = \
-	app/corp \
 	app/web \
 	bin/cyclone \
 	bin/lang-js \

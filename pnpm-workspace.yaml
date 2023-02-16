@@ -2,7 +2,6 @@ packages:
   # frontend
   # TODO will split out ui-lib and other utils
   - 'app/*'
-  - '!app/corp' # TODO - update nuxt so we can turn back on
 
   # backend
   - 'bin/*'
