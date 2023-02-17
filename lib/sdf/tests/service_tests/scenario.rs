@@ -1,644 +1,440 @@
-//! This module contains all scenario tests. A scenario test is an `sdf` test that leverages
-//! multiple endpoints to test an end-to-end user scenario.
+//! This module contains "scenario" tests and the tools needed to write them. Scenario tests are
+//! "sdf" tests intended to cover end-to-end scenarios.
 
-use dal::qualification::QualificationSubCheckStatus;
-use dal::{Component, DalContext, FixCompletionStatus};
-use dal_test::test;
-use pretty_assertions_sorted::assert_eq;
-use sdf::service::fix::run::FixRunRequest;
+// Scenario tests below...
+mod model_and_fix_flow_aws_key_pair;
+mod model_and_fix_flow_whiskers;
 
-use crate::service_tests::scenario::harness::ScenarioHarness;
-use crate::test_setup;
+use axum::http::Method;
+use axum::Router;
+use dal::component::confirmation::ConfirmationView;
+use dal::property_editor::values::PropertyEditorValue;
+use dal::socket::SocketEdgeKind;
+use dal::{
+    AttributeValue, AttributeValueId, ComponentId, ComponentView, DalContext, FixBatchId, NodeId,
+    Prop, PropKind, Schema, SchemaId, Socket, StandardModel, Visibility,
+};
+use dal_test::helpers::component_view::ComponentViewProperties;
+use sdf::service::change_set::apply_change_set::{ApplyChangeSetRequest, ApplyChangeSetResponse};
+use sdf::service::change_set::create_change_set::{
+    CreateChangeSetRequest, CreateChangeSetResponse,
+};
+use sdf::service::component::get_property_editor_values::{
+    GetPropertyEditorValuesRequest, GetPropertyEditorValuesResponse,
+};
+use sdf::service::component::insert_property_editor_value::{
+    InsertPropertyEditorValueRequest, InsertPropertyEditorValueResponse,
+};
+use sdf::service::component::update_property_editor_value::{
+    UpdatePropertyEditorValueRequest, UpdatePropertyEditorValueResponse,
+};
+use sdf::service::diagram::create_connection::{CreateConnectionRequest, CreateConnectionResponse};
+use sdf::service::diagram::create_node::{CreateNodeRequest, CreateNodeResponse};
+use sdf::service::fix::confirmations::ConfirmationsRequest;
+use sdf::service::fix::confirmations::ConfirmationsResponse;
+use sdf::service::fix::list::ListFixesResponse;
+use sdf::service::fix::list::{BatchHistoryView, ListFixesRequest};
+use sdf::service::fix::run::FixesRunResponse;
+use sdf::service::fix::run::{FixRunRequest, FixesRunRequest};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+use serde_json::Value;
+use std::collections::{HashMap, VecDeque};
 
-mod harness;
+use crate::service_tests::api_request_auth_json_body;
+use crate::service_tests::api_request_auth_query;
 
-/// This test runs through the entire model flow and fix flow lifecycle with a non-trivial set
-/// of [`Components`](dal::Component).
-///
-/// It is recommended to run this test with the following environment variable:
-/// ```shell
-/// SI_TEST_BUILTIN_SCHEMAS=aws region,aws ami,aws keypair,aws ec2,aws securitygroup,aws ingress,docker image,coreos butane
-/// ```
-#[test]
-#[ignore]
-async fn model_and_fix_flow() {
-    test_setup!(
-        _sdf_ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        _txn,
-        _nats_conn,
-        _nats,
-        veritech,
-        encr_key,
-        app,
-        _nba,
-        auth_token,
-        ctx,
-        _job_processor,
-        _council_subject_prefix,
-    );
-    // Just borrow it the whole time because old habits die hard.
-    let ctx: &mut DalContext = &mut ctx;
-
-    // Setup the harness to start.
-    let mut harness = ScenarioHarness::new(
-        ctx,
-        app,
-        auth_token,
-        &[
-            "Region",
-            "Key Pair",
-            "EC2 Instance",
-            "Security Group",
-            "Ingress",
-            "AMI",
-            "Docker Image",
-            "Butane",
-        ],
-    )
-    .await;
-
-    // Enter a new change set. We will not go through the routes for this.
-    harness
-        .create_change_set_and_update_ctx(ctx, "bruce springsteen")
-        .await;
-
-    // Create all AWS components.
-    let region = harness.create_node(ctx, "Region", None).await;
-    let ami = harness.create_node(ctx, "AMI", Some(region.node_id)).await;
-    let key_pair = harness
-        .create_node(ctx, "Key Pair", Some(region.node_id))
-        .await;
-    let ec2 = harness
-        .create_node(ctx, "EC2 Instance", Some(region.node_id))
-        .await;
-    let security_group = harness
-        .create_node(ctx, "Security Group", Some(region.node_id))
-        .await;
-    let ingress = harness
-        .create_node(ctx, "Ingress", Some(region.node_id))
-        .await;
-
-    // Create all other components.
-    let docker = harness.create_node(ctx, "Docker Image", None).await;
-    let butane = harness.create_node(ctx, "Butane", None).await;
-
-    // Connect Docker and Butane to the relevant AWS components.
-    harness
-        .create_connection(ctx, docker.node_id, butane.node_id, "Container Image")
-        .await;
-    harness
-        .create_connection(ctx, docker.node_id, ingress.node_id, "Exposed Ports")
-        .await;
-    harness
-        .create_connection(ctx, butane.node_id, ec2.node_id, "User Data")
-        .await;
-
-    // Connect AMI, Key Pair and Security Group to the relevant AWS components.
-    harness
-        .create_connection(ctx, ami.node_id, ec2.node_id, "Image ID")
-        .await;
-    harness
-        .create_connection(ctx, key_pair.node_id, ec2.node_id, "Key Name")
-        .await;
-    harness
-        .create_connection(
-            ctx,
-            security_group.node_id,
-            ingress.node_id,
-            "Security Group ID",
-        )
-        .await;
-    harness
-        .create_connection(
-            ctx,
-            security_group.node_id,
-            ec2.node_id,
-            "Security Group ID",
-        )
-        .await;
-
-    // Update AMI, Key Pair and Security Group to start.
-    harness
-        .update_value(
-            ctx,
-            ami.component_id,
-            &["si", "name"],
-            Some(serde_json::json!["Fedora CoreOS"]),
-        )
-        .await;
-    harness
-        .update_value(
-            ctx,
-            ami.component_id,
-            &["domain", "ImageId"],
-            Some(serde_json::json!["ami-0bde60638be9bb870"]),
-        )
-        .await;
-    harness
-        .update_value(
-            ctx,
-            key_pair.component_id,
-            &["si", "name"],
-            Some(serde_json::json!["toddhoward-key"]),
-        )
-        .await;
-    harness
-        .update_value(
-            ctx,
-            key_pair.component_id,
-            &["domain", "KeyType"],
-            Some(serde_json::json!["rsa"]),
-        )
-        .await;
-    harness
-        .update_value(
-            ctx,
-            security_group.component_id,
-            &["si", "name"],
-            Some(serde_json::json!["toddhoward-sg"]),
-        )
-        .await;
-    harness
-        .update_value(
-            ctx,
-            security_group.component_id,
-            &["domain", "Description"],
-            Some(serde_json::json!["poop canoe"]),
-        )
-        .await;
-
-    // Now, look at Ingress and EC2 Instance.
-    harness
-        .update_value(
-            ctx,
-            ingress.component_id,
-            &["si", "name"],
-            Some(serde_json::json!["toddhoward-ingress"]),
-        )
-        .await;
-    harness
-        .update_value(
-            ctx,
-            ec2.component_id,
-            &["si", "name"],
-            Some(serde_json::json!["toddhoward-server"]),
-        )
-        .await;
-    harness
-        .update_value(
-            ctx,
-            ec2.component_id,
-            &["domain", "InstanceType"],
-            Some(serde_json::json!["t3.micro"]),
-        )
-        .await;
-
-    // Update Docker Image and Butane.
-    harness
-        .update_value(
-            ctx,
-            docker.component_id,
-            &["si", "name"],
-            Some(serde_json::json!["docker.io/systeminit/whiskers:latest"]),
-        )
-        .await;
-    harness
-        .insert_value(ctx, docker.component_id, &["domain", "ExposedPorts"], None)
-        .await;
-    harness
-        .update_value(
-            ctx,
-            docker.component_id,
-            &["domain", "ExposedPorts", "0"],
-            Some(serde_json::json!["80/tcp"]),
-        )
-        .await;
-    harness
-        .update_value(
-            ctx,
-            butane.component_id,
-            &["si", "name"],
-            Some(serde_json::json!["Butane"]),
-        )
-        .await;
-
-    // Finally, update Region.
-    harness
-        .update_value(
-            ctx,
-            region.component_id,
-            &["domain", "region"],
-            Some(serde_json::json!["us-east-2"]),
-        )
-        .await;
-
-    // Check AMI, Key Pair and Security Group.
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "Fedora CoreOS",
-                "type": "component",
-                "protected": false,
-            },
-            "code": {
-                "si:generateAwsAmiJSON": {
-                    "code": "{\n\t\"ImageIds\": [\n\t\t\"ami-0bde60638be9bb870\"\n\t]\n}",
-                    "format": "json",
-                },
-            },
-            "domain": {
-                "region": "us-east-2",
-                "ImageId": "ami-0bde60638be9bb870",
-            },
-            "qualification": {
-                "si:qualificationAmiExists": {
-                    "result": "success",
-                    "message": "Image exists",
-                },
-            },
-        }], // expected
-        ami.view(ctx).await.to_value(), // actual
-    );
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "toddhoward-key",
-                "type": "component",
-                "protected": false,
-            },
-            "code": {
-                "si:generateAwsKeyPairJSON": {
-                    "code": "{\n\t\"KeyName\": \"toddhoward-key\",\n\t\"KeyType\": \"rsa\",\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"key-pair\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"toddhoward-key\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
-                    "format": "json",
-                },
-            },
-            "domain": {
-                "tags": {
-                    "Name": "toddhoward-key",
-                },
-                "region": "us-east-2",
-                "KeyName": "toddhoward-key",
-                "KeyType": "rsa",
-                "awsResourceType": "key-pair",
-            },
-            "qualification": {
-                "si:qualificationKeyPairCanCreate": {
-                    "result": "success",
-                    "message": "component qualified",
-                },
-            },
-        }], // expected
-        key_pair.view(ctx).await.drop_confirmation().to_value(), // actual
-    );
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "toddhoward-sg",
-                "type": "component",
-                "protected": false,
-            },
-            "code": {
-                "si:generateAwsSecurityGroupJSON": {
-                    "code": "{\n\t\"Description\": \"poop canoe\",\n\t\"GroupName\": \"toddhoward-sg\",\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"security-group\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"toddhoward-sg\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
-                    "format": "json",
-                },
-            },
-            "domain": {
-                "tags": {
-                    "Name": "toddhoward-sg",
-                },
-                "region": "us-east-2",
-                "GroupName": "toddhoward-sg",
-                "Description": "poop canoe",
-                "awsResourceType": "security-group",
-            },
-            "qualification": {
-                "si:qualificationSecurityGroupCanCreate": {
-                    "result": "success",
-                    "message": "component qualified",
-                },
-            },
-        }], // expected
-        security_group
-            .view(ctx)
-            .await
-            .drop_confirmation()
-            .to_value(), // actual
-    );
-
-    // Check Ingress, EC2 Instance and Region.
-    assert_eq!(
-        serde_json::json![{
-          "si": {
-                "name": "toddhoward-ingress",
-                "type": "component",
-                "protected": false,
-            },
-            "code": {
-                "si:generateAwsIngressJSON": {
-                    "code": "{\n\t\"IpPermissions\": [\n\t\t{\n\t\t\t\"FromPort\": 80,\n\t\t\t\"ToPort\": 80,\n\t\t\t\"IpProtocol\": \"tcp\",\n\t\t\t\"IpRanges\": [\n\t\t\t\t{\n\t\t\t\t\t\"CidrIp\": \"0.0.0.0/0\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t],\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"security-group-rule\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"toddhoward-ingress\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
-                    "format": "json",
-                },
-            },
-            "domain": {
-                "tags": {
-                    "Name": "toddhoward-ingress",
-                },
-                "region": "us-east-2",
-                "IpPermissions": [
-                    {
-                        "CidrIp": "0.0.0.0/0",
-                        "ToPort": "80",
-                        "FromPort": "80",
-                        "IpProtocol": "tcp",
-                    },
-                ],
-                "awsResourceType": "security-group-rule",
-            },
-            "qualification": {
-                "si:qualificationIngressCanCreate": {
-                    "result": "success",
-                    "message": "component qualified",
-                },
-            },
-        }], // expected
-        ingress.view(ctx).await.drop_confirmation().to_value(), // actual
-    );
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "toddhoward-server",
-                "type": "component",
-                "protected": false,
-            },
-            "code": {
-                "si:generateAwsEc2JSON": {
-                    "code": "{\n\t\"ImageId\": \"ami-0bde60638be9bb870\",\n\t\"InstanceType\": \"t3.micro\",\n\t\"KeyName\": \"toddhoward-key\",\n\t\"UserData\": \"\",\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"toddhoward-server\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
-                    "format": "json",
-                },
-            },
-            "domain": {
-                "tags": {
-                    "Name": "toddhoward-server",
-                },
-                "region": "us-east-2",
-                "ImageId": "ami-0bde60638be9bb870",
-                "KeyName": "toddhoward-key",
-                "UserData": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Docker-io-systeminit-whiskers-latest\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers-latest\\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers-latest\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers:latest\\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers-latest --publish 80:80 docker.io/systeminit/whiskers:latest\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"docker-io-systeminit-whiskers-latest.service\"\n      }\n    ]\n  }\n}",
-                "InstanceType": "t3.micro",
-                "awsResourceType": "instance",
-            },
-            "qualification": {
-                "si:qualificationEc2CanRun": {
-                    "result": "warning",
-                    "message": "Key Pair must exist. It will be created by the fix flow after merging this change-set",
-                },
-            },
-        }], // expected
-        ec2.view(ctx).await.drop_confirmation().to_value(), // actual
-    );
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "us-east-2",
-                "type": "configurationFrame",
-                "protected": false,
-            },
-            "domain": {
-                "region": "us-east-2",
-            },
-        }], // expected
-        region.view(ctx).await.to_value(), // actual
-    );
-
-    // Finally, check Docker Image and Butane.
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "docker.io/systeminit/whiskers:latest",
-                "type": "component",
-                "protected": false,
-            },
-            "domain": {
-                "image": "docker.io/systeminit/whiskers:latest",
-                "ExposedPorts": [
-                    "80/tcp",
-                ],
-            },
-        }], // expected
-        docker.view(ctx).await.drop_qualification().to_value(), // actual
-    );
-
-    // Evaluate Docker Image qualification(s) separately as they may contain a timestamp. Technically,
-    // we should be doing this via an sdf route. However, this test focuses on the model and fix
-    // flow and we only want to know that the qualification(s) passed.
-    for qualification in Component::list_qualifications(ctx, docker.component_id)
-        .await
-        .expect("could not list qualifications")
-    {
-        assert_eq!(
-            QualificationSubCheckStatus::Success,
-            qualification.result.expect("no result found").status
-        );
-    }
-
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "Butane",
-                "type": "component",
-                "protected": false,
-            },
-            "code": {
-                "si:generateButaneIgnition": {
-                    "code": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Docker-io-systeminit-whiskers-latest\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers-latest\\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers-latest\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers:latest\\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers-latest --publish 80:80 docker.io/systeminit/whiskers:latest\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"docker-io-systeminit-whiskers-latest.service\"\n      }\n    ]\n  }\n}",
-                    "format": "json",
-                },
-            },
-            "domain": {
-                "systemd": {
-                    "units": [
-                        {
-                            "name": "docker-io-systeminit-whiskers-latest.service",
-                            "enabled": true,
-                            "contents": "[Unit]\nDescription=Docker-io-systeminit-whiskers-latest\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers-latest\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers-latest\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers:latest\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers-latest --publish 80:80 docker.io/systeminit/whiskers:latest\n\n[Install]\nWantedBy=multi-user.target",
-                        },
-                    ],
-                },
-                "variant": "fcos",
-                "version": "1.4.0",
-            },
-            "qualification": {
-                "si:qualificationButaneIsValidIgnition": {
-                    "result": "success",
-                    "message": "{\n  \"ignition\": {\n    \"version\": \"3.3.0\"\n  },\n  \"systemd\": {\n    \"units\": [\n      {\n        \"contents\": \"[Unit]\\nDescription=Docker-io-systeminit-whiskers-latest\\nAfter=network-online.target\\nWants=network-online.target\\n\\n[Service]\\nTimeoutStartSec=0\\nExecStartPre=-/bin/podman kill docker-io-systeminit-whiskers-latest\\nExecStartPre=-/bin/podman rm docker-io-systeminit-whiskers-latest\\nExecStartPre=/bin/podman pull docker.io/systeminit/whiskers:latest\\nExecStart=/bin/podman run --name docker-io-systeminit-whiskers-latest --publish 80:80 docker.io/systeminit/whiskers:latest\\n\\n[Install]\\nWantedBy=multi-user.target\",\n        \"enabled\": true,\n        \"name\": \"docker-io-systeminit-whiskers-latest.service\"\n      }\n    ]\n  }\n}",
-                },
-            },
-        }], // expected
-        butane.view(ctx).await.to_value(), // actual
-    );
-
-    // Apply the change set and get rolling!
-    harness
-        .apply_change_set_and_update_ctx_visibility_to_head(ctx)
-        .await;
-
-    // TODO(nick): now, list confirmations and "select" recommendations, and run fixes.
+/// This _private_ struct is a wrapper around metadata related to a [`Component`](dal::Component)
+/// for use in scenario tests.
+struct ComponentBag {
+    pub component_id: ComponentId,
+    pub node_id: NodeId,
 }
 
-/// This test runs through the entire model flow and fix flow lifecycle for solely an AWS Key Pair.
-///
-/// It is recommended to run this test with the following environment variable:
-/// ```shell
-/// SI_TEST_BUILTIN_SCHEMAS=aws region,aws keypair
-/// ```
-#[test]
-#[ignore]
-async fn model_and_fix_flow_aws_key_pair() {
-    test_setup!(
-        _sdf_ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        _txn,
-        _nats_conn,
-        _nats,
-        veritech,
-        encr_key,
-        app,
-        _nba,
-        auth_token,
-        ctx,
-        _job_processor,
-        _council_subject_prefix,
-    );
-    // Just borrow it the whole time because old habits die hard.
-    let ctx: &mut DalContext = &mut ctx;
+impl From<CreateNodeResponse> for ComponentBag {
+    fn from(response: CreateNodeResponse) -> Self {
+        Self {
+            component_id: response.component_id,
+            node_id: response.node_id,
+        }
+    }
+}
 
-    // Setup the harness to start.
-    let mut harness = ScenarioHarness::new(ctx, app, auth_token, &["Region", "Key Pair"]).await;
+impl ComponentBag {
+    /// Generate a [`ComponentView`](dal::ComponentView) and return the
+    /// [`properties`](dal_test::helpers::component_view::ComponentViewProperties).
+    pub async fn view(&self, ctx: &DalContext) -> ComponentViewProperties {
+        let component_view = ComponentView::new(ctx, self.component_id)
+            .await
+            .expect("could not create component view");
+        ComponentViewProperties::try_from(component_view)
+            .expect("cannot create component view properties from component view")
+    }
+}
 
-    // Enter a new change set. We will not go through the routes for this.
-    harness.create_change_set_and_update_ctx(ctx, "swans").await;
+/// A type alias for a collection of values in the [`PropertyEditor`](dal::property_editor).
+type PropertyValues = GetPropertyEditorValuesResponse;
 
-    // Create all AWS components.
-    let region = harness.create_node(ctx, "Region", None).await;
-    let key_pair = harness
-        .create_node(ctx, "Key Pair", Some(region.node_id))
-        .await;
+/// This _private_ harness provides helpers and caches for writing scenario tests.
+struct ScenarioHarness {
+    app: Router,
+    auth_token: String,
+    builtins: HashMap<&'static str, SchemaId>,
+}
 
-    // Update property editor values.
-    harness
-        .update_value(
-            ctx,
-            key_pair.component_id,
-            &["si", "name"],
-            Some(serde_json::json!["toddhoward-key"]),
+impl ScenarioHarness {
+    /// Create a new [`harness`](Self) by caching relevant metadata, including a list of builtin
+    /// [`Schemas`](dal::Schema) by name.
+    pub async fn new(
+        ctx: &DalContext,
+        app: Router,
+        auth_token: String,
+        builtin_schema_names: &[&'static str],
+    ) -> Self {
+        let mut builtins: HashMap<&'static str, SchemaId> = HashMap::new();
+        for builtin_schema_name in builtin_schema_names {
+            let schema = Schema::find_by_attr(ctx, "name", &builtin_schema_name.to_string())
+                .await
+                .expect("could not find schema by name")
+                .pop()
+                .expect("schema not found");
+            builtins.insert(builtin_schema_name, *schema.id());
+        }
+        Self {
+            app,
+            auth_token,
+            builtins,
+        }
+    }
+
+    /// Find the "value" in the property editor for a given [`ComponentId`](dal::Component) and
+    /// path. The path corresponds to the child (in order of lineage) from the
+    /// [`RootProp`](dal::RootProp).
+    ///
+    /// For example: if you want the "value" at "/root/domain/poop/canoe", you would pass in
+    /// \["domain", "poop", "canoe"\] as the path. From that, we would find the target
+    /// [`Prop`](dal::Prop), "canoe".
+    ///
+    /// This also works with elements within maps and arrays. To access a map element, provide
+    /// the key as the path item (e.g. for map "/root/domain/map" and element
+    /// "/root/domain/map/foo", provide \["domain", "map", "foo"\]). To access an array element,
+    /// provide the index as the path item (e.g. for array "/root/domain/array" and element
+    /// "/root/domain/array/bar", provide \["domain", "array", "bar"\]).
+    async fn find_value(
+        &self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+        path: &[&str],
+    ) -> (AttributeValueId, PropertyEditorValue) {
+        // Prepare the queue and pop the first item from it. This will be our identifier to track
+        // the current value that we are looking for.
+        let mut queue = path
+            .iter()
+            .map(|p| p.to_string())
+            .collect::<VecDeque<String>>();
+        let mut identifier = queue.pop_front().expect("provided empty path");
+
+        // Collect the property editor values that we need to traverse.
+        let property_values = self.get_values(ctx, component_id).await;
+
+        // Start with the root's child values.
+        let value_ids = property_values
+            .child_values
+            .get(&property_values.root_value_id)
+            .expect("could not get child props for root")
+            .clone();
+
+        // Initialize our trackers. We use this to help find our target value at every "level".
+        let mut parent_value_id = property_values.root_value_id;
+        let mut target_value = None;
+        let mut parent_kind = PropKind::Object;
+        let mut array_element_attribute_value_id = AttributeValueId::NONE;
+
+        // Alright, here's what's going down: we need to pretend like we are a user in the UI. Well,
+        // we have to perform the equivalent to a user "descending" into fields in the property
+        // editor. We do this by crawling the schema to find the name of the prop at each level
+        // (via the provided queue) or the index/key of a map/array element.
+        let mut work_queue = VecDeque::from(value_ids);
+        'outer: while let Some(value_id) = work_queue.pop_front() {
+            let value = property_values
+                .values
+                .get(&value_id)
+                .expect("could not get value by id");
+
+            // Find the value out of the current sibling group based on the parent's prop kind.
+            // For arrays, we will use the index map. For maps, we will use the key. For everything
+            // else, we will use the prop name.
+            let found_value = match parent_kind {
+                PropKind::Array => value.attribute_value_id() == array_element_attribute_value_id,
+                PropKind::Map => {
+                    let found_key = value.key.as_ref().expect("key not found for child of map");
+                    found_key == &identifier
+                }
+                _ => {
+                    let prop = Prop::get_by_id(ctx, &value.prop_id())
+                        .await
+                        .expect("could not perform get by id")
+                        .expect("prop not found");
+                    prop.name() == identifier
+                }
+            };
+
+            if found_value {
+                // If the queue is empty, we are done. If not, set self as the parent and continue.
+                if queue.is_empty() {
+                    target_value = Some(value.clone());
+                    break 'outer;
+                }
+
+                // Pop the queue and descend to the next set of child values.
+                identifier = queue.pop_front().expect("provided empty queue");
+
+                // Get the prop for the value. If we were not an element of a map or array, we
+                // probably did this once already, but we avoid during upon _every_ iteration
+                // since all map and array elements will share the same prop id.
+                let prop = Prop::get_by_id(ctx, &value.prop_id())
+                    .await
+                    .expect("could not perform get by id")
+                    .expect("prop not found");
+
+                // Before we do anything else, if we are an array, let's prepare the target id in
+                // advance using the newly popped identifier.
+                if *prop.kind() == PropKind::Array {
+                    let array_attribute_value = AttributeValue::get_by_id(ctx, &value_id.into())
+                        .await
+                        .expect("could not perform get by id")
+                        .expect("attribute value not found");
+                    let index_map = array_attribute_value.index_map.expect("no index map found");
+                    let index: usize = identifier
+                        .parse()
+                        .expect("could not convert identifier into index");
+                    array_element_attribute_value_id = index_map.order()[index];
+                }
+
+                // Now, ensure we cache the parent information.
+                parent_value_id = value_id;
+                parent_kind = *prop.kind();
+
+                // Wipe the current set of child values and extend with the new set.
+                #[allow(clippy::eq_op)]
+                work_queue.retain(|&v| v != v);
+                work_queue.extend(
+                    property_values
+                        .child_values
+                        .get(&value_id)
+                        .expect("could not get child values"),
+                );
+            }
+        }
+
+        (
+            parent_value_id.into(),
+            target_value.expect("value not found"),
         )
-        .await;
-    harness
-        .update_value(
+    }
+
+    // Update a "value" for a given path and [`Component`](dal::Component).
+    pub async fn update_value(
+        &self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+        path: &[&str],
+        value: Option<Value>,
+    ) {
+        let (parent_attribute_value_id, property_value) =
+            self.find_value(ctx, component_id, path).await;
+        let request = UpdatePropertyEditorValueRequest {
+            attribute_value_id: property_value.attribute_value_id(),
+            parent_attribute_value_id: Some(parent_attribute_value_id),
+            prop_id: property_value.prop_id(),
+            component_id,
+            value,
+            key: property_value.key.clone(),
+            visibility: *ctx.visibility(),
+        };
+        let response: UpdatePropertyEditorValueResponse = self
+            .query_post("/api/component/update_property_editor_value", &request)
+            .await;
+        assert!(response.success)
+    }
+
+    /// Insert a "value" into a map or an array corresponding to a given path and
+    /// [`Component`](dal::Component).
+    pub async fn insert_value(
+        &self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+        path: &[&str],
+        value: Option<Value>,
+    ) {
+        let (_, property_value) = self.find_value(ctx, component_id, path).await;
+        let request = InsertPropertyEditorValueRequest {
+            parent_attribute_value_id: property_value.attribute_value_id(),
+            prop_id: property_value.prop_id(),
+            component_id,
+            value,
+            key: property_value.key.clone(),
+            visibility: *ctx.visibility(),
+        };
+        let response: InsertPropertyEditorValueResponse = self
+            .query_post("/api/component/insert_property_editor_value", &request)
+            .await;
+        assert!(response.success)
+    }
+
+    /// Get the latest [`PropertyValues`] for a given [`Component`](dal::Component).
+    async fn get_values(&self, ctx: &DalContext, component_id: ComponentId) -> PropertyValues {
+        let request = GetPropertyEditorValuesRequest {
+            component_id,
+            visibility: *ctx.visibility(),
+        };
+        let response: GetPropertyEditorValuesResponse = self
+            .query_get("/api/component/get_property_editor_values", &request)
+            .await;
+        response
+    }
+
+    /// Create a "connection" between two [`Nodes`](dal::Node) via a matching
+    /// [`Socket`](dal::Socket).
+    pub async fn create_connection(
+        &self,
+        ctx: &DalContext,
+        source_node_id: NodeId,
+        destination_node_id: NodeId,
+        shared_socket_name: &str,
+    ) {
+        let source_socket = Socket::find_by_name_for_edge_kind_and_node(
             ctx,
-            key_pair.component_id,
-            &["domain", "KeyType"],
-            Some(serde_json::json!["rsa"]),
+            shared_socket_name,
+            SocketEdgeKind::ConfigurationOutput,
+            source_node_id,
         )
-        .await;
-    harness
-        .update_value(
+        .await
+        .expect("could not perform query")
+        .expect("could not find socket");
+        let destination_socket = Socket::find_by_name_for_edge_kind_and_node(
             ctx,
-            region.component_id,
-            &["domain", "region"],
-            Some(serde_json::json!["us-east-2"]),
+            shared_socket_name,
+            SocketEdgeKind::ConfigurationInput,
+            destination_node_id,
         )
-        .await;
+        .await
+        .expect("could not perform query")
+        .expect("could not find socket");
 
-    // Ensure everything looks as expected.
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "toddhoward-key",
-                "type": "component",
-                "protected": false,
-            },
-            "code": {
-                "si:generateAwsKeyPairJSON": {
-                    "code": "{\n\t\"KeyName\": \"toddhoward-key\",\n\t\"KeyType\": \"rsa\",\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"key-pair\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"toddhoward-key\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
-                    "format": "json",
-                },
-            },
-            "domain": {
-                "tags": {
-                    "Name": "toddhoward-key",
-                },
-                "region": "us-east-2",
-                "KeyName": "toddhoward-key",
-                "KeyType": "rsa",
-                "awsResourceType": "key-pair",
-            },
-            "qualification": {
-                "si:qualificationKeyPairCanCreate": {
-                    "result": "success",
-                    "message": "component qualified",
-                },
-            },
-        }], // expected
-        key_pair.view(ctx).await.drop_confirmation().to_value(), // actual
-    );
-    assert_eq!(
-        serde_json::json![{
-            "si": {
-                "name": "us-east-2",
-                "type": "configurationFrame",
-                "protected": false,
-            },
-            "domain": {
-                "region": "us-east-2",
-            },
-        }], // expected
-        region.view(ctx).await.to_value(), // actual
-    );
+        let request = CreateConnectionRequest {
+            from_node_id: source_node_id,
+            from_socket_id: *source_socket.id(),
+            to_node_id: destination_node_id,
+            to_socket_id: *destination_socket.id(),
+            visibility: *ctx.visibility(),
+        };
+        let _response: CreateConnectionResponse = self
+            .query_post("/api/diagram/create_connection", &request)
+            .await;
+    }
 
-    // Apply the change set and get rolling!
-    harness
-        .apply_change_set_and_update_ctx_visibility_to_head(ctx)
-        .await;
+    /// Create a [`Component`](dal::Component) and [`Node`](dal::Node) for a given
+    /// [`Schema`](dal::Schema). Optionally "place" the [`Node`](dal::Node) into a "frame".
+    pub async fn create_node(
+        &mut self,
+        ctx: &DalContext,
+        schema_name: &str,
+        frame_node_id: Option<NodeId>,
+    ) -> ComponentBag {
+        let schema_id = *self
+            .builtins
+            .get(schema_name)
+            .expect("could not find schema by name");
+        let request = CreateNodeRequest {
+            schema_id,
+            parent_id: frame_node_id,
+            x: "0".to_string(),
+            y: "0".to_string(),
+            visibility: *ctx.visibility(),
+        };
+        let create_node_response: CreateNodeResponse =
+            self.query_post("/api/diagram/create_node", &request).await;
+        create_node_response.into()
+    }
 
-    // Check the confirmations and ensure they look as we expect.
-    let mut confirmations = harness.list_confirmations(ctx).await;
-    let mut confirmation = confirmations.pop().expect("no confirmations found");
-    assert!(confirmations.is_empty());
-    let recommendation = confirmation
-        .recommendations
-        .pop()
-        .expect("no recommendations found");
-    assert!(confirmation.recommendations.is_empty());
+    /// Create the [`ChangeSet`](dal::ChangeSet) based on the provided [`context`](dal::DalContext).
+    pub async fn create_change_set_and_update_ctx(
+        &self,
+        ctx: &mut DalContext,
+        change_set_name: impl Into<String>,
+    ) {
+        let request = CreateChangeSetRequest {
+            change_set_name: change_set_name.into(),
+        };
+        let response: CreateChangeSetResponse = self
+            .query_post("/api/change_set/create_change_set", &request)
+            .await;
+        ctx.update_visibility(Visibility::new(response.change_set.pk, None));
+        assert!(!ctx.visibility().is_head());
+    }
 
-    // Run the fix for the confirmation.
-    let fix_batch_id = harness
-        .run_fixes(
-            ctx,
-            vec![FixRunRequest {
-                attribute_value_id: recommendation.confirmation_attribute_value_id,
-                component_id: recommendation.component_id,
-                action_name: recommendation.recommended_action,
-            }],
+    /// Apply the [`ChangeSet`](dal::ChangeSet) based on the provided [`context`](dal::DalContext).
+    pub async fn apply_change_set_and_update_ctx_visibility_to_head(&self, ctx: &mut DalContext) {
+        assert!(!ctx.visibility().is_head());
+        let request = ApplyChangeSetRequest {
+            change_set_pk: ctx.visibility().change_set_pk,
+        };
+        let _response: ApplyChangeSetResponse = self
+            .query_post("/api/change_set/apply_change_set", &request)
+            .await;
+        ctx.update_visibility(Visibility::new_head(false));
+        assert!(ctx.visibility().is_head());
+    }
+
+    pub async fn list_confirmations(&self, ctx: &mut DalContext) -> Vec<ConfirmationView> {
+        let request = ConfirmationsRequest {
+            visibility: *ctx.visibility(),
+        };
+        let response: ConfirmationsResponse =
+            self.query_get("/api/fix/confirmations", &request).await;
+        response
+    }
+
+    pub async fn run_fixes(&self, ctx: &mut DalContext, fixes: Vec<FixRunRequest>) -> FixBatchId {
+        let request = FixesRunRequest {
+            list: fixes,
+            visibility: *ctx.visibility(),
+        };
+        let response: FixesRunResponse = self.query_post("/api/fix/run", &request).await;
+        response.id
+    }
+
+    pub async fn list_fixes(&self, ctx: &mut DalContext) -> Vec<BatchHistoryView> {
+        let request = ListFixesRequest {
+            visibility: *ctx.visibility(),
+        };
+        let response: ListFixesResponse = self.query_get("/api/fix/list", &request).await;
+        response
+    }
+
+    /// Send a "GET" method query to the backend.
+    async fn query_get<Req: Serialize, Res: DeserializeOwned>(
+        &self,
+        uri: impl AsRef<str>,
+        request: &Req,
+    ) -> Res {
+        api_request_auth_query(self.app.clone(), uri, &self.auth_token, request).await
+    }
+
+    /// Send a "POST" method query to the backend.
+    async fn query_post<Req: Serialize, Res: DeserializeOwned>(
+        &self,
+        uri: impl AsRef<str>,
+        request: &Req,
+    ) -> Res {
+        api_request_auth_json_body(
+            self.app.clone(),
+            Method::POST,
+            uri,
+            &self.auth_token,
+            request,
         )
-        .await;
-
-    // Check that the fix succeeded.
-    let mut fix_batch_history_views = harness.list_fixes(ctx).await;
-    let fix_batch_history_view = fix_batch_history_views.pop().expect("no fix batches found");
-    assert!(fix_batch_history_views.is_empty());
-    assert_eq!(
-        fix_batch_id,              // expected
-        fix_batch_history_view.id, // actual
-    );
-    assert_eq!(
-        FixCompletionStatus::Success, // expected
-        fix_batch_history_view.status
-    );
+        .await
+    }
 }
