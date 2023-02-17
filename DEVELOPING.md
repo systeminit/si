@@ -504,9 +504,13 @@ SI_TEST_BUILTIN_SCHEMAS=none cargo test -p dal --test integration <your-test>
 ```
 
 You can also choose individual builtins to migrate with a comma-separated list.
+Feel free to use camel casing for readability, but the individual `Schema` names provided will be converted to all
+lowercase letters.
+To find which builtin `Schemas` are available for selection, please see the
+[file where provided names are evaluated](lib/dal/src/builtins/schema.rs).
 
 ```shell
-SI_TEST_BUILTIN_SCHEMAS=Schema One,Schema Two cargo test -p dal --test integration <your-test>
+SI_TEST_BUILTIN_SCHEMAS=schemaOne,schemaTwo cargo test -p dal --test integration <your-test>
 ```
 
 > Note: you may not want to wrap your list in `"` characters, depending on your development environment as they may

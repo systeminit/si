@@ -10,7 +10,7 @@ use crate::test_setup;
 ///
 /// It is recommended to run this test with the following environment variable:
 /// ```shell
-/// SI_TEST_BUILTIN_SCHEMAS=aws region,aws keypair
+/// SI_TEST_BUILTIN_SCHEMAS=awsRegion,awsKeyPair
 /// ```
 #[test]
 #[ignore]

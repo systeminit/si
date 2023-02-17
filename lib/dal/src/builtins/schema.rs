@@ -73,81 +73,68 @@ pub async fn migrate(
     let driver = MigrationDriver::new(ctx).await?;
 
     // Perform migrations.
-    if migrate_all || specific_builtin_schemas.contains("docker image") {
+    if migrate_all || specific_builtin_schemas.contains("dockerimage") {
         driver
             .migrate_docker_image(ctx, "Docker", NODE_COLOR_DOCKER)
             .await?;
     }
-    if migrate_all || specific_builtin_schemas.contains("docker hub credential") {
+    if migrate_all || specific_builtin_schemas.contains("dockerhubcredential") {
         driver
             .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
             .await?;
     }
-    if migrate_all || specific_builtin_schemas.contains("kubernetes deployment") {
+    if migrate_all || specific_builtin_schemas.contains("kubernetesdeployment") {
         driver
             .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
             .await?;
     }
-    if migrate_all || specific_builtin_schemas.contains("kubernetes namespace") {
+    if migrate_all || specific_builtin_schemas.contains("kubernetesnamespace") {
         driver
             .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
             .await?;
     }
-    if migrate_all || specific_builtin_schemas.contains("coreos butane") {
+    if migrate_all || specific_builtin_schemas.contains("coreosbutane") {
         driver
             .migrate_coreos_butane(ctx, "CoreOS", NODE_COLOR_COREOS)
             .await?;
     }
-    if migrate_all || specific_builtin_schemas.contains("aws ami") {
+    if migrate_all || specific_builtin_schemas.contains("awsami") {
         driver.migrate_aws_ami(ctx, "AWS", NODE_COLOR_AWS).await?;
     }
-    if migrate_all
-        || specific_builtin_schemas.contains("aws ec2")
-        || specific_builtin_schemas.contains("aws ec2 instance")
-    {
+    if migrate_all || specific_builtin_schemas.contains("awsec2") {
         driver
             .migrate_aws_ec2_instance(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
     }
-    if migrate_all || specific_builtin_schemas.contains("aws region") {
+    if migrate_all || specific_builtin_schemas.contains("awsregion") {
         driver
             .migrate_aws_region(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
     }
-    if migrate_all || specific_builtin_schemas.contains("aws eip") {
+    if migrate_all || specific_builtin_schemas.contains("awseip") {
         driver.migrate_aws_eip(ctx, "AWS", NODE_COLOR_AWS).await?;
     }
-    if migrate_all
-        || specific_builtin_schemas.contains("aws key pair")
-        || specific_builtin_schemas.contains("aws keypair")
-    {
+    if migrate_all || specific_builtin_schemas.contains("awskeypair") {
         driver
             .migrate_aws_keypair(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
     }
-    if migrate_all || specific_builtin_schemas.contains("aws ingress") {
+    if migrate_all || specific_builtin_schemas.contains("awsingress") {
         driver
             .migrate_aws_ingress(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
     }
-    if migrate_all || specific_builtin_schemas.contains("aws egress") {
+    if migrate_all || specific_builtin_schemas.contains("awsegress") {
         driver
             .migrate_aws_egress(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
     }
-    if migrate_all
-        || specific_builtin_schemas.contains("aws security group")
-        || specific_builtin_schemas.contains("aws securitygroup")
-    {
+    if migrate_all || specific_builtin_schemas.contains("awssecuritygroup") {
         driver
             .migrate_aws_security_group(ctx, "AWS", NODE_COLOR_AWS)
             .await?;
     }
-    if migrate_all
-        || specific_builtin_schemas.contains("systeminit generic frame")
-        || specific_builtin_schemas.contains("si generic frame")
-        || specific_builtin_schemas.contains("generic frame")
-    {
+    if migrate_all || specific_builtin_schemas.contains("genericframe") {
         driver
             .migrate_systeminit_generic_frame(ctx, "Frames", NODE_COLOR_FRAMES)
             .await?;

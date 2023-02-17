@@ -14,7 +14,7 @@ use crate::test_setup;
 ///
 /// It is recommended to run this test with the following environment variable:
 /// ```shell
-/// SI_TEST_BUILTIN_SCHEMAS=aws region,aws ami,aws keypair,aws ec2,aws securitygroup,aws ingress,docker image,coreos butane
+/// SI_TEST_BUILTIN_SCHEMAS=awsRegion,awsAmi,awsKeyPair,awsEC2,awsSecurityGroup,awsIngress,dockerImage,coreosButane
 /// ```
 #[test]
 #[ignore]
