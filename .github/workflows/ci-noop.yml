@@ -1,0 +1,17 @@
+---
+name: ci
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '!bin/si-discord-bot/**'
+      - "!**.md"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Pull Request Checks
