@@ -10,3 +10,7 @@ lint:
 check:
 	$(call header,$@)
 	@echo "Skipping '$@' for now"
+
+test:
+	$(call header,$@)
+	@echo "Skipping '$@' for now"

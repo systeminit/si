@@ -6,7 +6,6 @@ on:
       - main
     paths-ignore:
       - 'app/corp/**'
-      - 'bin/si-discord-bot/**'
       - "**.md"
 
 concurrency:
