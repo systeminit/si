@@ -79,15 +79,20 @@
 
   <Modal ref="confirmDeleteModalRef" title="Are you sure?">
     <Stack space="sm">
-      <p>You're about to delete:</p>
-
-      <Stack spacing="xs">
-        <ComponentCard
-          v-for="component in deletableSelectedComponents"
-          :key="component.id"
-          :component-id="component.id"
-        />
-      </Stack>
+      <template v-if="selectedEdge">
+        <p>You're about to delete the following edge:</p>
+        <EdgeCard :edge-id="selectedEdge.id" />
+      </template>
+      <template v-else>
+        <p>You're about to delete the following component(s):</p>
+        <Stack spacing="xs">
+          <ComponentCard
+            v-for="component in deletableSelectedComponents"
+            :key="component.id"
+            :component-id="component.id"
+          />
+        </Stack>
+      </template>
 
       <p>
         Items that exist on HEAD will be marked for deletion, and removed from
@@ -156,6 +161,7 @@ import GlobalStatusOverlay from "../GlobalStatusOverlay.vue";
 import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import ComponentCard from "../ComponentCard.vue";
+import EdgeCard from "../EdgeCard.vue";
 
 const currentRoute = useRoute();
 

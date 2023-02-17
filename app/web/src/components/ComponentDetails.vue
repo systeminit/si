@@ -13,42 +13,23 @@
       NODE ID = {{ selectedComponent.nodeId }}
     </div>
     <ComponentCard :component-id="selectedComponent.id" class="m-xs" />
+    <template v-if="currentStatus && currentStatus.isUpdating">
+      <!-- currently updating -->
+      <div class="flex flex-row items-center gap-xs pl-xs">
+        <Icon name="loader" size="lg" class="text-action-500 shrink-0" />
+        <div class="grow truncate py-xs">
+          {{ currentStatus.statusMessage }}
+        </div>
+        <!-- <span class="text-sm">Details</span> -->
+      </div>
+    </template>
     <DetailsPanelTimestamps
+      v-else
       :change-status="selectedComponent.changeStatus"
       :created="selectedComponent.createdInfo"
       :modified="selectedComponent.updatedInfo"
       :deleted="selectedComponent.deletedInfo"
     />
-
-    <div
-      v-if="currentStatus"
-      class="border-b dark:border-neutral-600 border-t p-sm"
-    >
-      <template v-if="currentStatus.isUpdating">
-        <!-- currently updating -->
-        <div class="flex flex-row items-center gap-xs">
-          <Icon name="loader" size="lg" class="text-action-500 shrink-0" />
-          <div class="grow truncate py-xs">
-            {{ currentStatus.statusMessage }}
-          </div>
-          <!-- <span class="text-sm">Details</span> -->
-        </div>
-      </template>
-      <template v-else>
-        <!-- not currently updating -->
-        <div class="font-bold capsize">
-          {{ currentStatus.statusMessage }}
-        </div>
-        <div class="text-xs italic text-neutral-400 capsize mt-xs">
-          Updated at
-          <Timestamp :date="new Date(currentStatus.lastUpdateAt)" size="long" />
-          <template v-if="currentStatus.lastUpdateBy">
-            by
-            {{ currentStatus.lastUpdateBy.label }}
-          </template>
-        </div>
-      </template>
-    </div>
 
     <template v-if="selectedComponent.changeStatus === 'deleted'">
       <Stack class="p-sm">
@@ -149,7 +130,6 @@ import SiTabHeader from "@/components/SiTabHeader.vue";
 import AttributeViewer from "@/components/AttributeViewer.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import HealthIcon from "@/components/HealthIcon.vue";
-import Timestamp from "@/ui-lib/Timestamp.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";

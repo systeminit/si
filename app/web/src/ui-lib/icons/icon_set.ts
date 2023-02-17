@@ -66,6 +66,7 @@ import Filter from "~icons/heroicons/funnel-20-solid";
 import Menu from "~icons/heroicons-solid/menu-alt-1";
 import Plug from "~icons/ph/plugs-fill";
 import Boxes from "~icons/bi/boxes";
+import TreeParents from "~icons/fluent-mdl2/breadcrumb";
 
 import EmptyIcon from "@/assets/images/custom-icons/empty-icon.svg?raw";
 
@@ -81,8 +82,10 @@ import Globe from "~icons/octicon/globe-24";
 import AwsLogo from "~icons/cib/amazon-aws";
 import CoreOsLogo from "~icons/ri/coreos-fill";
 import SiLogo from "@/assets/images/si-logo-wts.svg?raw";
-import DockerLogo from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
-import KubernetesLogo from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
+// import DockerCircleLogo from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
+import DockerLogo from "~icons/mdi/docker";
+// import KubernetesCircleLogo from "~icons/carbon/logo-kubernetes";
+import KubernetesLogo from "~icons/carbon/kubernetes";
 
 // carbon
 import Hashtag from "~icons/carbon/hashtag";
@@ -149,6 +152,7 @@ export const ICONS = Object.freeze({
   tools: Tools,
   trash: Trash,
   "trash-restore": TrashRestore,
+  "tree-parents": TreeParents,
   x: X,
   "x-circle": XCircle,
   "x-square": XSquare,
