@@ -1,6 +1,6 @@
 # System Initiative
 
-This is a monolithic repository containing the source for System Initiative (SI)
+This is a monolithic repository containing the source for System Initiative (SI).
 
 ## Developing and Running the SI Stack
 
