@@ -4,7 +4,7 @@
     <div
       :class="
         clsx(
-          'relative border-b border-l-[4px] cursor-pointer group',
+          'relative border-b border-l-[2px] cursor-pointer group',
           themeClasses('border-neutral-200', 'border-neutral-600'),
           isHover && 'outline-blue-300 outline z-10 -outline-offset-1',
           isSelected && themeClasses('bg-action-100', 'bg-action-900'),
@@ -25,7 +25,7 @@
         v-if="filterModeActive && parentBreadcrumbsText"
         :class="
           clsx(
-            'text-[9px] capsize p-2xs',
+            'text-[10px] capsize pl-xs flex items-center',
             themeClasses(
               'bg-neutral-100 text-neutral-600',
               'bg-neutral-700 text-neutral-300',
@@ -33,6 +33,7 @@
           )
         "
       >
+        <Icon name="tree-parents" size="xs" class="mr-2xs" />
         {{ parentBreadcrumbsText }}
       </div>
       <div class="flex items-center p-xs">
@@ -45,14 +46,13 @@
               enableGroupToggle && 'group-hover:scale-0 transition-all',
             )
           "
-          :style="{ color: component.color }"
         />
 
         <div class="flex flex-col gap-[6px] select-none">
-          <div class="capsize text-[11px] font-bold">
+          <div class="capsize text-[13px] font-bold">
             {{ component.displayName }}
           </div>
-          <div class="capsize text-[10px] italic">
+          <div class="capsize text-[11px] italic">
             {{ component.schemaName }}
           </div>
         </div>

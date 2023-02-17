@@ -12,12 +12,7 @@
     }"
   >
     <div class="flex gap-xs items-center">
-      <Icon
-        :name="component.icon"
-        size="lg"
-        class="shrink-0"
-        :style="{ color: component.color }"
-      />
+      <Icon :name="component.icon" size="lg" class="shrink-0" />
       <Stack spacing="xs" class="">
         <div class="capsize font-bold">
           {{ component.displayName }}

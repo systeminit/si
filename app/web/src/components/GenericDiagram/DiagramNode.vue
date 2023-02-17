@@ -24,21 +24,6 @@
       }"
     />
 
-    <!-- node background same color as grid bg, so that it still looks faded but is not see-through -->
-    <!-- <v-rect
-      v-if="isDeleted"
-      :config="{
-        width: nodeWidth,
-        height: nodeHeight,
-        x: -halfWidth,
-        y: 0,
-        cornerRadius: CORNER_RADIUS,
-        fill:
-          theme === 'dark' ? CORE_COLORS.neutral[900] : CORE_COLORS.neutral[50],
-        listening: false,
-      }"
-    /> -->
-
     <v-group
       :config="{
         ...(node.def.changeStatus === 'deleted' && { opacity: 0.5 }),
@@ -64,19 +49,6 @@
           shadowEnabled: false,
         }"
       />
-
-      <!-- header background -->
-      <!-- <v-rect
-        :config="{
-          cornerRadius: [CORNER_RADIUS, CORNER_RADIUS, 0, 0],
-          fill: colors.headerBg,
-          x: -halfWidth,
-          y: 0,
-          width: nodeWidth,
-          height: headerTextHeight,
-          listening: false,
-        }"
-      /> -->
 
       <!-- package/type icon -->
       <DiagramIcon
@@ -421,12 +393,8 @@ const colors = computed(() => {
   const bodyText = theme.value === "dark" ? "#FFF" : "#000";
   return {
     border: primaryColor.toRgbString(),
-    icon: primaryColor.toRgbString(),
-    // headerBg: primaryColor.toRgbString(),
-    // headerText,
-    headerBg: bodyBg.toRgbString(),
+    icon: bodyText,
     headerText: bodyText,
-
     bodyBg: bodyBg.toRgbString(),
     bodyText,
   };
