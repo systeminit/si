@@ -10,6 +10,7 @@ use crate::change_status::{
 };
 use crate::diagram::connection::{Connection, DiagramEdgeView};
 use crate::diagram::node::DiagramComponentView;
+use crate::edge::EdgeKind;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
@@ -62,6 +63,8 @@ pub enum DiagramError {
     AttributePrototypeNotFound,
     #[error("attribute value not found")]
     AttributeValueNotFound,
+    #[error("deletion timestamp not found")]
+    DeletionTimeStamp,
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("prop error: {0}")]
@@ -160,35 +163,37 @@ impl Diagram {
             .await?;
             component_views.push(view);
         }
-
-        let mut edges: Vec<DiagramEdgeView> = Edge::list(ctx)
-            .await?
-            .into_iter()
-            .map(|e| {
-                let change_status = match e.visibility().change_set_pk {
+        let mut diagram_edges = Vec::new();
+        let edges = Edge::list(ctx).await?;
+        for edge in edges {
+            if *edge.kind() == EdgeKind::Configuration {
+                let change_status = match edge.visibility().change_set_pk {
                     ChangeSetPk::NONE => ChangeStatus::Unmodified,
                     _ => ChangeStatus::Added,
                 };
+                let conn = Connection::from_edge(&edge);
+                let mut diagram_edge_view =
+                    DiagramEdgeView::from_with_change_status(conn, change_status);
+                diagram_edge_view.set_actor_details(ctx, &edge).await?;
+                diagram_edges.push(diagram_edge_view);
+            }
+        }
 
-                DiagramEdgeView::from_with_change_status(Connection::from_edge(&e), change_status)
-            })
-            .collect();
-
-        let deleted_edges: Vec<DiagramEdgeView> = EdgeChangeStatus::list_deleted(ctx)
-            .await?
-            .into_iter()
-            .map(|e| {
-                DiagramEdgeView::from_with_change_status(
-                    Connection::from_edge(&e),
-                    ChangeStatus::Deleted,
-                )
-            })
-            .collect();
-
-        edges.extend(deleted_edges);
+        let deleted_edges: Vec<Edge> = EdgeChangeStatus::list_deleted(ctx).await?;
+        for deleted_edge in deleted_edges {
+            if *deleted_edge.kind() == EdgeKind::Configuration {
+                let conn = Connection::from_edge(&deleted_edge);
+                let mut diagram_edge_view =
+                    DiagramEdgeView::from_with_change_status(conn, ChangeStatus::Deleted);
+                diagram_edge_view
+                    .set_actor_details(ctx_with_deleted, &deleted_edge)
+                    .await?;
+                diagram_edges.push(diagram_edge_view);
+            }
+        }
 
         Ok(Self {
-            edges,
+            edges: diagram_edges,
             components: component_views,
         })
     }

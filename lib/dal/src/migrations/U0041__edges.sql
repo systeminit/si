@@ -6,6 +6,7 @@ CREATE TABLE edges
     visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    creation_user_id            ident,
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     kind                        text                     NOT NULL,
     head_node_id                ident                   NOT NULL,
@@ -15,7 +16,8 @@ CREATE TABLE edges
     tail_node_id                ident                   NOT NULL,
     tail_object_kind            text                     NOT NULL,
     tail_object_id              ident                   NOT NULL,
-    tail_socket_id              ident                   NOT NULL
+    tail_socket_id              ident                   NOT NULL,
+    deletion_user_id            ident
 );
 SELECT standard_model_table_constraints_v1('edges');
 
@@ -34,6 +36,7 @@ CREATE OR REPLACE FUNCTION edge_create_v1(
     this_tail_object_kind text,
     this_tail_object_id ident,
     this_tail_socket_id ident,
+    this_user_id ident,
     OUT object json) AS
 $$
 DECLARE
@@ -47,13 +50,13 @@ BEGIN
     INSERT INTO edges (tenancy_workspace_pk,
                        visibility_change_set_pk, visibility_deleted_at, kind,
                        head_node_id, head_object_kind, head_object_id, head_socket_id,
-                       tail_node_id, tail_object_kind, tail_object_id, tail_socket_id)
+                       tail_node_id, tail_object_kind, tail_object_id, tail_socket_id, creation_user_id)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at, this_kind,
             this_head_node_id, this_head_object_kind, this_head_object_id,
             this_head_socket_id, this_tail_node_id, this_tail_object_kind,
-            this_tail_object_id, this_tail_socket_id)
+            this_tail_object_id, this_tail_socket_id, this_user_id)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

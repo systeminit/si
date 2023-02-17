@@ -6,8 +6,10 @@ CREATE TABLE components
     visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    creation_user_id            ident,
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    kind                        text                     NOT NULL
+    kind                        text                     NOT NULL,
+    deletion_user_id            ident
 );
 SELECT standard_model_table_constraints_v1('components');
 SELECT belongs_to_table_create_v1('component_belongs_to_schema', 'components', 'schemas');
@@ -53,9 +55,10 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO components (tenancy_workspace_pk,
-                            visibility_change_set_pk, visibility_deleted_at, kind)
+                            visibility_change_set_pk, visibility_deleted_at, kind, creation_user_id)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
-            this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at, this_kind)
+            this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at, this_kind,
+            this_user_id)
     RETURNING * INTO this_new_row;
 
     -- Create a parallel record to store creation and update status, meaning that this table's id refers to components.id

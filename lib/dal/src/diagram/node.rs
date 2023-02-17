@@ -7,8 +7,9 @@ use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
-    ActorView, ChangeSetPk, Component, ComponentId, ComponentStatus, DalContext, DiagramError,
-    HistoryActorTimestamp, Node, NodeId, NodePosition, ResourceView, SchemaVariant, StandardModel,
+    history_event, ActorView, ChangeSetPk, Component, ComponentId, ComponentStatus, DalContext,
+    DiagramError, HistoryActorTimestamp, Node, NodeId, NodePosition, ResourceView, SchemaVariant,
+    StandardModel,
 };
 
 #[derive(
@@ -156,9 +157,7 @@ pub struct DiagramComponentView {
     created_info: HistoryEventMetadata,
     updated_info: HistoryEventMetadata,
 
-    // TODO: get the right history event so we can show the actor
-    // deleted_info: Option<HistoryEventMetadata>,
-    deleted_at: Option<DateTime<Utc>>,
+    deleted_info: Option<HistoryEventMetadata>,
 }
 
 impl DiagramComponentView {
@@ -213,6 +212,21 @@ impl DiagramComponentView {
             HistoryEventMetadata::from_history_actor_timestamp(ctx, component_status.update())
                 .await?;
 
+        let mut deleted_info: Option<HistoryEventMetadata> = None;
+        {
+            if let Some(deleted_at) = ctx.visibility().deleted_at {
+                if let Some(deletion_user_id) = component.deletion_user_id {
+                    let history_actor = history_event::HistoryActor::User(deletion_user_id);
+                    let actor = ActorView::from_history_actor(ctx, history_actor).await?;
+
+                    deleted_info = Some(HistoryEventMetadata {
+                        actor,
+                        timestamp: deleted_at,
+                    });
+                }
+            }
+        }
+
         // TODO(theo): probably dont want to fetch this here and load totally separately, but we inherited from existing endpoints
         let resource = ResourceView::new(component.resource(ctx).await?);
 
@@ -249,7 +263,7 @@ impl DiagramComponentView {
 
             created_info,
             updated_info,
-            deleted_at: component.visibility().deleted_at, // TODO: get deleted info instead
+            deleted_info,
         })
     }
 
@@ -275,8 +289,8 @@ impl DiagramComponentView {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryEventMetadata {
-    actor: ActorView,
-    timestamp: DateTime<Utc>,
+    pub(crate) actor: ActorView,
+    pub(crate) timestamp: DateTime<Utc>,
 }
 
 impl HistoryEventMetadata {
