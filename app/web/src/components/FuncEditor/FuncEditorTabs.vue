@@ -1,8 +1,10 @@
 <template>
   <div>
-    <template v-if="loadFuncsReqStatus.isPending && !funcStore.funcList.length">
-      loading...
-    </template>
+    <RequestStatusMessage
+      v-if="!loadFuncsReqStatus.isPending && !funcStore.funcList.length"
+      :request-status="loadFuncsReqStatus"
+      :loading-message="`Loading function ${funcId}`"
+    />
     <template v-else-if="loadFuncsReqStatus.isSuccess">
       <TabGroup
         ref="tabGroupRef"

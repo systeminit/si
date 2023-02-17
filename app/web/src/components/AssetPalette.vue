@@ -9,12 +9,22 @@
     <template v-else-if="schemasReqStatus.isSuccess">
       <!-- <SiSearch /> -->
 
-      <p
-        class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-500"
+      <div
+        ref="instructionsRef"
+        class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-500 flex flex-row items-center gap-2"
       >
-        Drag the assets that you wish to include in your application into the
-        canvas to the right.
-      </p>
+        <a
+          href="#"
+          class="hover:text-neutral-600 dark:hover:text-neutral-400"
+          @click="hideInstructions"
+        >
+          <Icon name="x-circle" />
+        </a>
+        <div>
+          Drag the assets that you wish to include in your application into the
+          canvas to the right.
+        </div>
+      </div>
 
       <ul class="overflow-y-auto">
         <SiCollapsible
@@ -68,6 +78,14 @@ import SiCollapsible from "@/components/SiCollapsible.vue";
 import { useComponentsStore, MenuSchema } from "@/store/components.store";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
+
+const instructionsRef = ref();
+
+const hideInstructions = () => {
+  if (instructionsRef.value) {
+    instructionsRef.value.classList.add("hidden");
+  }
+};
 
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used

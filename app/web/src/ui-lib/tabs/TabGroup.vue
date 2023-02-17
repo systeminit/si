@@ -46,8 +46,8 @@
                 tab.props.slug === selectedTabSlug
                   ? 'border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold'
                   : themeClasses(
-                      'hover:text-neutral-400 font-medium',
-                      'hover:text-neutral-300 font-medium',
+                      'hover:text-neutral-400 font-medium hover:bg-neutral-100',
+                      'hover:text-neutral-300 font-medium hover:bg-neutral-900',
                     ),
               )
             "
@@ -88,7 +88,7 @@
               'border border-neutral-300 dark:border-neutral-600 h-full px-xs items-center flex absolute right-0 top-0 z-10 cursor-pointer',
               overflowMenuRef?.isOpen
                 ? 'bg-neutral-200 dark:bg-black'
-                : 'bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900', // TODO(Wendy) - add this mouseover effect to all tabs
+                : 'bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900',
             )
           "
           @click="overflowMenuRef?.open"
@@ -109,14 +109,14 @@
       <!-- Here we actually render the tab content of the current tab -->
       <template v-if="selectedTabSlug && tabs[selectedTabSlug]">
         <!-- extra slots to make it easy to have non-scrolling content above/below scrolling area -->
-        <div v-if="tabs[selectedTabSlug].slots.stickyTop">
-          <component :is="tabs[selectedTabSlug].slots.stickyTop" />
+        <div v-if="tabs[selectedTabSlug].slots.top">
+          <component :is="tabs[selectedTabSlug].slots.top" />
         </div>
-        <div class="overflow-auto flex-grow">
+        <div class="overflow-auto flex-grow relative">
           <component :is="tabs[selectedTabSlug].slots.default" />
         </div>
-        <div v-if="tabs[selectedTabSlug].slots.stickyBottom">
-          <component :is="tabs[selectedTabSlug].slots.stickyBottom" />
+        <div v-if="tabs[selectedTabSlug].slots.bottom">
+          <component :is="tabs[selectedTabSlug].slots.bottom" />
         </div>
       </template>
     </template>

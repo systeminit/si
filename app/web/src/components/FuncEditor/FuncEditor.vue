@@ -1,6 +1,10 @@
 <template>
   <div>
-    <template v-if="loadFuncDetailsReq.isPending"> loading... </template>
+    <RequestStatusMessage
+      v-if="loadFuncDetailsReq.isPending"
+      :request-status="loadFuncDetailsReq"
+      :loading-message="`Loading function ${funcId}`"
+    />
     <template v-else-if="loadFuncDetailsReq.isSuccess && editingFunc">
       <CodeEditor
         v-model="editingFunc"
@@ -17,6 +21,7 @@ import { PropType, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import CodeEditor from "@/components/CodeEditor.vue";
+import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 
 const props = defineProps({
   funcId: { type: String as PropType<FuncId>, required: true },

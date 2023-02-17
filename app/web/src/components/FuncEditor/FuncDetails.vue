@@ -11,31 +11,34 @@
   >
     <TabGroup>
       <TabGroupItem label="Properties" slug="properties">
-        <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
-          <VButton2
-            class="--tone-success"
-            :disabled="!isDevMode && editingFunc.isBuiltin"
-            icon="save"
-            size="md"
-            loading-text="Executing"
-            label="Execute"
-            :request-status="execFuncReqStatus"
-            @click="execFunc"
-          />
+        <template #top>
+          <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
+            <VButton2
+              class="--tone-success"
+              :disabled="!isDevMode && editingFunc.isBuiltin"
+              icon="save"
+              size="md"
+              loading-text="Executing"
+              label="Execute"
+              :request-status="execFuncReqStatus"
+              @click="execFunc"
+            />
 
-          <VButton2
-            class="--tone-neutral"
-            :disabled="
-              (!isDevMode && editingFunc.isBuiltin) || !editingFunc.isRevertible
-            "
-            icon="x"
-            size="md"
-            loading-text="Reverting"
-            label="Revert"
-            :request-status="revertFuncReqStatus"
-            @click="revertFunc"
-          />
-        </div>
+            <VButton2
+              class="--tone-neutral"
+              :disabled="
+                (!isDevMode && editingFunc.isBuiltin) ||
+                !editingFunc.isRevertible
+              "
+              icon="x"
+              size="md"
+              loading-text="Reverting"
+              label="Revert"
+              :request-status="revertFuncReqStatus"
+              @click="revertFunc"
+            />
+          </div>
+        </template>
 
         <SiCollapsible label="Attributes" default-open>
           <div class="p-3 flex flex-col gap-2">
@@ -122,6 +125,7 @@
           />
         </SiCollapsible>
       </TabGroupItem>
+
       <TabGroupItem
         v-if="editingFunc.variant === FuncVariant.Attribute"
         label="Bindings"

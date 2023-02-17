@@ -7,12 +7,12 @@
     <slot name="label" />
 
     <!-- fixed (non-scrolling) content that lives above the main content area -->
-    <slot name="stickyTop" />
+    <slot name="top" />
 
     <!-- default slot contains tab content in scrollable area -->
     <slot />
     <!-- fixed (non-scrolling) content that lives below the main content area -->
-    <slot name="stickyBottom" />
+    <slot name="bottom" />
   </div>
 </template>
 
@@ -26,8 +26,8 @@ export type TabGroupItemDefinition = {
   slots: {
     default?: Slot;
     label?: Slot;
-    stickyTop?: Slot;
-    stickyBottom?: Slot;
+    top?: Slot;
+    bottom?: Slot;
   };
 };
 

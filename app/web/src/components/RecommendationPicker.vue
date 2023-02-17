@@ -1,7 +1,7 @@
 <template>
   <TabGroup start-selected-tab-slug="apply">
     <TabGroupItem label="Apply" slug="apply">
-      <template #stickyTop>
+      <template #top>
         <SiSearch auto-search placeholder="search recommendations" />
         <div
           class="w-full flex-none text-neutral-400 dark:text-neutral-300 text-sm p-2 border-b dark:border-neutral-600"

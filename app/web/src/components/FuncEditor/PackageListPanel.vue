@@ -1,10 +1,10 @@
 <template>
-  <div>
+  <ScrollArea>
     <RequestStatusMessage
       :request-status="loadPackagesReqStatus"
       loading-message="Loading packages..."
     />
-    <template v-if="loadPackagesReqStatus.isSuccess">
+    <template v-if="loadPackagesReqStatus.isSuccess" #top>
       <div
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
@@ -17,6 +17,8 @@
       >
         Select a package to view or edit it.
       </div>
+    </template>
+    <template v-if="loadPackagesReqStatus.isSuccess">
       <SiCollapsible label="Installed Packages" default-open>
         <ul class="overflow-y-auto">
           <li
@@ -44,7 +46,7 @@
         </ul>
       </SiCollapsible>
     </template>
-  </div>
+  </ScrollArea>
 </template>
 
 <script lang="ts" setup>
@@ -53,6 +55,7 @@ import SiSearch from "@/components/SiSearch.vue";
 import { usePackageStore } from "@/store/package.store";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
+import ScrollArea from "@/ui-lib/ScrollArea.vue";
 import SiCollapsible from "../SiCollapsible.vue";
 
 const packageStore = usePackageStore();
