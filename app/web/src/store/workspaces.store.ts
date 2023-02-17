@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
 import { watch } from "vue";
-import { useRoute } from "vue-router";
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
 
 import { Workspace } from "@/api/sdf/dal/workspace";

@@ -1,6 +1,5 @@
 import _ from "lodash";
 import { defineStore } from "pinia";
-import { useRoute } from "vue-router";
 import { watch } from "vue";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 
@@ -12,38 +11,19 @@ import { useChangeSetsStore } from "../change_sets.store";
 import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
 
-import { AttributePrototypeView, EditingFunc, FuncAssociations } from "./types";
-import { ListedFuncView, listFuncs } from "./requests/list_funcs";
-import { getFunc } from "./requests/get_func";
-import { revertFunc } from "./requests/revert_func";
 import {
-  createBuiltinFunc,
-  CreateBuiltinFuncRequest,
-  createFunc,
-  CreateFuncRequest,
-} from "./requests/create_func";
-import {
-  listInputSources,
-  ListInputSourcesResponse,
-} from "./requests/list_input_sources";
-import { execFunc } from "./requests/exec_func";
-import { saveFunc } from "./requests/save_func";
+  AttributePrototypeView,
+  FuncAssociations,
+  InputSourceSocket,
+  InputSourceProp,
+  CreateFuncAttributeOptions,
+} from "./types";
 import { ApiRequest } from "../lib/pinia_api_tools";
 import { useRouterStore } from "../router.store";
 
-export const nullEditingFunc: EditingFunc = {
-  id: nilId(),
-  handler: "",
-  variant: FuncVariant.Attribute,
-  name: "",
-  code: "",
-  isBuiltin: false,
-  isRevertible: false,
-};
-
 export type FuncId = string;
 
-type FuncSummary = {
+export type FuncSummary = {
   id: string;
   handler: string;
   variant: FuncVariant;
@@ -51,7 +31,7 @@ type FuncSummary = {
   description?: string;
   isBuiltin: boolean;
 };
-type FuncWithDetails = FuncSummary & {
+export type FuncWithDetails = FuncSummary & {
   code: string;
   isRevertible: boolean;
   associations?: FuncAssociations;
@@ -69,7 +49,8 @@ export const useFuncStore = () => {
     state: () => ({
       funcsById: {} as Record<FuncId, FuncSummary>,
       funcDetailsById: {} as Record<FuncId, FuncWithDetails>,
-      inputSources: { sockets: [], props: [] } as ListInputSourcesResponse,
+      inputSourceSockets: [] as InputSourceSocket[],
+      inputSourceProps: [] as InputSourceProp[],
       saveQueue: {} as Record<FuncId, (...args: unknown[]) => unknown>,
     }),
     getters: {
@@ -91,7 +72,7 @@ export const useFuncStore = () => {
 
       // Filter props by schema variant
       propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: string) =>
-        state.inputSources.props
+        state.inputSourceProps
           .filter(
             (prop) =>
               schemaVariantId === nilId() ||
@@ -116,10 +97,10 @@ export const useFuncStore = () => {
       },
       providerIdToSourceName() {
         const idMap: { [key: string]: string } = {};
-        for (const socket of this.inputSources.sockets ?? []) {
+        for (const socket of this.inputSourceSockets ?? []) {
           idMap[socket.internalProviderId] = `Socket: ${socket.name}`;
         }
-        for (const prop of this.inputSources.props ?? []) {
+        for (const prop of this.inputSourceProps ?? []) {
           if (prop.internalProviderId) {
             idMap[
               prop.internalProviderId
@@ -131,7 +112,7 @@ export const useFuncStore = () => {
       },
       propIdToSourceName() {
         const idMap: { [key: string]: string } = {};
-        for (const prop of this.inputSources.props ?? []) {
+        for (const prop of this.inputSourceProps ?? []) {
           idMap[prop.propId] = `${prop.path}${prop.name}`;
         }
         return idMap;
@@ -180,30 +161,60 @@ export const useFuncStore = () => {
         });
       },
 
-      async FETCH_INPUT_SOURCE_LIST() {
-        return listInputSources(visibility, (response) => {
-          this.inputSources = response;
+      async REVERT_FUNC(funcId: FuncId) {
+        return new ApiRequest<{ success: true }>({
+          method: "post",
+          url: "func/revert_func",
+          params: { id: funcId, ...visibility },
+          onSuccess: () => {
+            this.FETCH_FUNC_DETAILS(funcId);
+          },
+        });
+      },
+      async EXEC_FUNC(funcId: FuncId) {
+        return new ApiRequest<{ success: true }>({
+          method: "post",
+          url: "func/exec_func",
+          params: { id: funcId },
         });
       },
 
-      async REVERT_FUNC(funcId: string) {
-        return revertFunc({ ...visibility, id: funcId }, (response) => {
-          this.FETCH_FUNC_DETAILS(funcId);
+      async CREATE_FUNC(createFuncRequest: {
+        variant: FuncVariant;
+        options?: CreateFuncAttributeOptions;
+      }) {
+        return new ApiRequest<FuncSummary>({
+          method: "post",
+          url: "func/create_func",
+          params: { createFuncRequest, ...visibility },
         });
       },
-      async EXEC_FUNC(funcId: string) {
-        return execFunc({ ...visibility, id: funcId });
-      },
-      async CREATE_FUNC(createFuncRequest: CreateFuncRequest) {
-        return createFunc({
-          ...visibility,
-          ...createFuncRequest,
+
+      async CREATE_BUILTIN_FUNC(createFuncRequest: {
+        name: string;
+        variant: FuncVariant;
+      }) {
+        return new ApiRequest<FuncSummary>({
+          method: "post",
+          url: "dev/create_func",
+          params: {
+            createFuncRequest,
+            ...visibility, // seems odd the backend is asking for this?
+          },
         });
       },
-      async CREATE_BUILTIN_FUNC(createFuncRequest: CreateBuiltinFuncRequest) {
-        return createBuiltinFunc({
-          ...visibility, // seems odd the backend is asking for this?
-          ...createFuncRequest,
+
+      async FETCH_INPUT_SOURCE_LIST() {
+        return new ApiRequest<{
+          sockets: InputSourceSocket[];
+          props: InputSourceProp[];
+        }>({
+          url: "func/list_input_sources",
+          params: { ...visibility },
+          onSuccess: (response) => {
+            this.inputSourceSockets = response.sockets;
+            this.inputSourceProps = response.props;
+          },
         });
       },
 
@@ -217,7 +228,7 @@ export const useFuncStore = () => {
           (proto) => proto.id !== prototypeId,
         );
         this.funcDetailsById[funcId] = { ...func };
-        await this.SAVE_UPDATED_FUNC(funcId);
+        await this.saveUpdatedFunc(funcId);
       },
       async updateFuncAttrPrototype(
         funcId: FuncId,
@@ -236,7 +247,7 @@ export const useFuncStore = () => {
           );
           func.associations.prototypes[currentPrototypeIdx] = prototype;
         }
-        this.SAVE_UPDATED_FUNC(funcId);
+        this.saveUpdatedFunc(funcId);
       },
       async updateFuncAttrArgs(funcId: FuncId, args: FuncArgument[]) {
         const func = this.funcDetailsById[funcId];
@@ -244,14 +255,14 @@ export const useFuncStore = () => {
           return;
         }
         func.associations.arguments = args;
-        await this.SAVE_UPDATED_FUNC(funcId);
+        await this.saveUpdatedFunc(funcId);
       },
       async updateFuncAssociations(
         funcId: FuncId,
         associations: FuncAssociations | undefined,
       ) {
         this.funcDetailsById[funcId].associations = associations;
-        await this.SAVE_UPDATED_FUNC(funcId);
+        await this.saveUpdatedFunc(funcId);
       },
       updateFuncCode(funcId: FuncId, code: string) {
         this.funcDetailsById[funcId].code = code;
@@ -263,27 +274,15 @@ export const useFuncStore = () => {
         // however this should work for now, and lets the store handle this logic
         if (!this.saveQueue[funcId]) {
           this.saveQueue[funcId] = _.debounce(() => {
-            this.SAVE_UPDATED_FUNC(funcId);
+            this.saveUpdatedFunc(funcId);
           }, 2000);
         }
         // call debounced function which will trigger sending the save to the backend
         this.saveQueue[funcId]();
       },
-      async SAVE_UPDATED_FUNC(funcId: FuncId) {
+      async saveUpdatedFunc(funcId: FuncId) {
         // saves the latest func state from the store, rather than passing in the new state
-        return saveFunc(
-          {
-            ...visibility,
-            ...this.funcDetailsById[funcId],
-          },
-          (response) => {
-            const { associations, isRevertible } = response;
-            if (associations) {
-              this.funcDetailsById[funcId].associations = associations;
-            }
-            this.funcDetailsById[funcId].isRevertible = isRevertible;
-          },
-        );
+        return this.UPDATE_FUNC(this.funcDetailsById[funcId]);
       },
     },
     onActivated() {

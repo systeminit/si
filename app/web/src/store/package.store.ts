@@ -1,6 +1,5 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
-import { useRoute } from "vue-router";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { IconNames, ICONS } from "@/ui-lib/icons/icon_set";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";

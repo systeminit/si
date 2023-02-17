@@ -137,7 +137,7 @@ import SiSearch from "@/components/SiSearch.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
-import { useFixesStore } from "@/store/fixes/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 import { themeClasses } from "@/ui-lib/theme_tools";
 import RecommendationSprite from "@/components/RecommendationSprite.vue";
 import TabGroup from "@/ui-lib/tabs/TabGroup.vue";

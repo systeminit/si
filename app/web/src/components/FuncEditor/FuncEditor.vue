@@ -42,7 +42,7 @@ const loadFuncDetailsReq = funcStore.getRequestStatus(
 
 watch(
   selectedFuncDetails,
-  async (selectedFunc) => {
+  () => {
     if (editingFunc.value !== selectedFuncDetails.value?.code) {
       editingFunc.value = selectedFuncDetails.value?.code ?? "";
     }
@@ -51,6 +51,6 @@ watch(
 );
 
 const updateFuncCode = (code: string) => {
-  // funcStore.updateFuncCode(selectedFunc.value.id, code);
+  funcStore.updateFuncCode(props.funcId, code);
 };
 </script>

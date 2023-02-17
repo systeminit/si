@@ -139,7 +139,7 @@ import clsx from "clsx";
 import { themeClasses } from "@/ui-lib/theme_tools";
 import SiSearch from "@/components/SiSearch.vue";
 import SiCollapsible from "@/components/SiCollapsible.vue";
-import { useFixesStore } from "@/store/fixes/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 import Timestamp from "@/ui-lib/Timestamp.vue";
 import HealthIcon from "@/components/HealthIcon.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";

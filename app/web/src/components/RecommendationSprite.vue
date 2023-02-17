@@ -99,7 +99,7 @@ import clsx from "clsx";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { IconNames } from "@/ui-lib/icons/icon_set";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
-import { Recommendation } from "@/store/fixes/fixes.store";
+import { Recommendation } from "@/store/fixes.store";
 import { themeClasses } from "@/ui-lib/theme_tools";
 import SiCollapsible from "./SiCollapsible.vue";
 

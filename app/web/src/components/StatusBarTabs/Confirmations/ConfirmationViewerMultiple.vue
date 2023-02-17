@@ -15,7 +15,7 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import { useComponentsStore } from "@/store/components.store";
-import { useFixesStore } from "@/store/fixes/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 import ConfirmationViewerSingle from "./ConfirmationViewerSingle.vue";
 
 const componentsStore = useComponentsStore();
