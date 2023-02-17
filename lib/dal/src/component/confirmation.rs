@@ -1,5 +1,5 @@
-use serde::Deserialize;
-use serde::Serialize;
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use telemetry::prelude::*;
 
@@ -19,7 +19,7 @@ use crate::{
 };
 use crate::{Component, ComponentId};
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum ConfirmationStatus {
     Running,
@@ -175,7 +175,20 @@ impl Component {
             .to_string();
 
         // Refresh running fixes.
-        let running_fixes = Fix::find_by_attr_null(ctx, "finished_at").await?;
+        // FIXME(paulo,fletcher,nick,paul): hardcoding 3 minutes timeout to avoid permanently running fixes
+        let fixes = Fix::find_by_attr_null(ctx, "finished_at").await?;
+        let mut running_fixes = Vec::new();
+        for mut fix in fixes {
+            if Utc::now().signed_duration_since(fix.timestamp().created_at)
+                > chrono::Duration::minutes(3)
+            {
+                fix.set_finished_at(ctx, Some(Utc::now().to_string()))
+                    .await
+                    .map_err(Box::new)?;
+            } else {
+                running_fixes.push(fix);
+            }
+        }
 
         let (all_confirmations_attribute_value, cache) =
             Self::prepare_confirmations(ctx, component_id).await?;

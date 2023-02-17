@@ -115,7 +115,7 @@ pub use diagram::{
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use fix::batch::{FixBatch, FixBatchId};
 pub use fix::resolver::{FixResolver, FixResolverError, FixResolverId};
-pub use fix::{Fix, FixCompletionStatus, FixId};
+pub use fix::{Fix, FixCompletionStatus, FixError, FixId};
 pub use func::argument::FuncArgument;
 pub use func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 pub use func::description::FuncDescription;

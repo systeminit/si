@@ -9,7 +9,7 @@ use crate::{
     job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    Component, DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
+    Component, DalContext, FixResolver, StandardModel, StatusUpdater, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -313,22 +313,42 @@ impl JobConsumer for DependentValuesUpdate {
             .publish(&ctx)
             .await?;
 
-        // FIXME(nick,paulo): this is wrong. What if the confirmation attribute values are affected,
-        // but the resource attribute values are NOT? We are shit outta luck. This only looks at the
-        // resource attribute values.
-        let resource_attribute_values: HashSet<AttributeValueId> = HashSet::from_iter(
-            Component::list_all_resource_implicit_internal_provider_attribute_values(&ctx)
+        // Warning: colossal hack to implement reactivity for the fix flow, since it's been inlined in the
+        // root prop tree we can't send the wsevent or clear the fix resolver, so this hack is needed, albeit
+        // horrifying
+
+        let attribute_value_ids: HashSet<AttributeValueId> = HashSet::from_iter(
+            Component::list_confirmations(&ctx)
                 .await?
-                .iter()
-                .map(|av| *av.id()),
+                .into_iter()
+                .map(|cv| cv.attribute_value_id),
         );
-        for maybe_resource_attribute_value_id in &self.attribute_values {
-            if resource_attribute_values.contains(maybe_resource_attribute_value_id) {
+        'outer: for (key, values) in dependency_graph.iter() {
+            if attribute_value_ids.contains(key) {
                 WsEvent::confirmations_updated(&ctx)
                     .await?
                     .publish(&ctx)
                     .await?;
                 break;
+            }
+
+            for id in values {
+                if attribute_value_ids.contains(id) {
+                    WsEvent::confirmations_updated(&ctx)
+                        .await?
+                        .publish(&ctx)
+                        .await?;
+                    break 'outer;
+                }
+            }
+        }
+
+        for attribute_value_id in attribute_value_ids {
+            let resolver =
+                FixResolver::find_for_confirmation_attribute_value(&ctx, attribute_value_id)
+                    .await?;
+            if let Some(mut resolver) = resolver {
+                resolver.set_success(&ctx, None::<bool>).await?;
             }
         }
 

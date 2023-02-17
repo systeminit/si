@@ -31,9 +31,9 @@ use crate::{
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributePrototypeId, AttributeReadContext, CodeLanguage,
     ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderError,
-    ExternalProviderId, Func, FuncBackendKind, FuncError, HistoryActor, HistoryEventError,
-    InternalProvider, InternalProviderId, Node, NodeError, OrganizationError, Prop, PropError,
-    PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
+    ExternalProviderId, FixError, Func, FuncBackendKind, FuncError, HistoryActor,
+    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, OrganizationError,
+    Prop, PropError, PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
     StandardModelError, Tenancy, Timestamp, TransactionsError, UserId, ValidationPrototypeError,
     ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WsEvent,
     WsEventResult, WsPayload,
@@ -73,6 +73,8 @@ pub enum ComponentError {
     Edge(#[from] EdgeError),
     #[error("fix resolver error: {0}")]
     FixResolver(#[from] FixResolverError),
+    #[error("fix error: {0}")]
+    Fix(#[from] Box<FixError>),
     #[error("unable to delete frame due to attached components")]
     FrameHasAttachedComponents,
     #[error("component marked as protected: {0}")]
