@@ -174,6 +174,9 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
                     "format": "json",
                 },
             },
+            "confirmation": {
+                "si:confirmationResourceExists": {},
+            }
         }], // expected
         to_aws_ec2_instance
             .component_view_properties(ctx)
@@ -204,6 +207,9 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
                     "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"to\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
                     "format": "json",
                 },
+            },
+            "confirmation": {
+                "si:confirmationResourceExists": {},
             },
         }], // expected
         to_aws_ec2_instance
@@ -236,6 +242,9 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
                     "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"to\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
                     "format": "json",
                 },
+            },
+            "confirmation": {
+                "si:confirmationResourceExists": {},
             },
         }], // expected
         to_aws_ec2_instance
