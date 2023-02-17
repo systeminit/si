@@ -305,8 +305,15 @@ impl Prop {
         Ok(objects_from_rows(rows)?)
     }
 
-    // Should JsonPointers be a type of their own?
+    /// Assembles the "json_pointer" representing the full "path" to a [`Prop`] based on its
+    /// lineage.
+    ///
+    /// For examples, if a [`Prop`] named "poop" had a parent named "domain" and a grandparent named
+    /// "root", then the "json_pointer" would be "/root/domain/poop".
     pub async fn json_pointer(&self, ctx: &DalContext) -> PropResult<String> {
+        // NOTE(nick,zack): if this ends up getting used frequently to manage paths corresponding
+        // to attribute (and/or property editor) values, then we should consider strongly typing
+        // "json_pointer".
         Ok([
             "/".to_string(),
             Prop::all_ancestor_props(ctx, *self.id())

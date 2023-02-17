@@ -24,7 +24,7 @@ use crate::{
     AttributeValueError, AttributeValueId, BuiltinsError, DalContext, ExternalProvider,
     ExternalProviderError, Func, FuncError, HistoryEventError, InternalProvider, Prop, PropError,
     PropId, PropKind, Schema, SchemaId, SocketArity, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility, WsEventError,
+    Timestamp, ValidationPrototypeError, Visibility, WsEventError,
 };
 use crate::{AttributeReadContext, AttributeValue, RootPropChild};
 use crate::{FuncBackendResponseType, FuncId};
@@ -94,6 +94,8 @@ pub enum SchemaVariantError {
     InvalidSchemaVariant,
     #[error("parent prop not found for prop id: {0}")]
     ParentPropNotFound(PropId),
+    #[error("validation prototype error: {0}")]
+    ValidationPrototype(#[from] ValidationPrototypeError),
 
     // Errors related to definitions.
     #[error("prop not found in cache for name ({0}) and parent prop id ({1})")]
@@ -190,7 +192,7 @@ impl SchemaVariant {
             )
             .await?;
         let object: SchemaVariant = standard_model::finish_create_from_row(ctx, row).await?;
-        let root_prop = RootProp::new(ctx, *object.id()).await?;
+        let root_prop = RootProp::new(ctx, schema_id, *object.id()).await?;
 
         object.set_schema(ctx, &schema_id).await?;
 

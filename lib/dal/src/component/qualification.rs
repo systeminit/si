@@ -140,12 +140,13 @@ impl Component {
         // Use the validation prop tree once available.
         let mut validation_errors = Vec::<(String, ValidationError)>::new();
         for status in ValidationResolver::find_status(ctx, component_id).await? {
-            let full_name = AttributeValue::find_prop_for_value(ctx, status.attribute_value_id)
-                .await?
-                .json_pointer(ctx)
-                .await?;
+            let prop_name_json_pointer =
+                AttributeValue::find_prop_for_value(ctx, status.attribute_value_id)
+                    .await?
+                    .json_pointer(ctx)
+                    .await?;
             for error in status.errors {
-                validation_errors.push((full_name.clone(), error));
+                validation_errors.push((prop_name_json_pointer.clone(), error));
             }
         }
 
