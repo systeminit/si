@@ -36,6 +36,7 @@ CREATE TYPE change_set_update_type_v1 as
 
 CREATE OR REPLACE FUNCTION change_set_apply_v1(this_change_set_pk ident,
                                                this_actor jsonb,
+                                               this_tenancy jsonb,
                                                OUT timestamp_updated_at timestamp with time zone) AS
 $$
 DECLARE
@@ -83,24 +84,26 @@ BEGIN
                            '  SET visibility_deleted_at = clock_timestamp(), updated_at = clock_timestamp() ' ||
                            'WHERE visibility_change_set_pk = ident_nil_v1() ' ||
                            '  AND visibility_deleted_at IS NULL ' ||
+                           '  AND in_tenancy_v1(%3$L, tenancy_workspace_pk) ' ||
                            '  AND id IN ( ' ||
                            '      SELECT id ' ||
                            '      FROM %1$I ' ||
                            '      WHERE visibility_change_set_pk = %2$L ' ||
                            '        AND visibility_deleted_at IS NOT NULL ' ||
-                           '  )', this_table_name, this_change_set_pk);
+                           '  )', this_table_name, this_change_set_pk, this_tenancy);
 
             query := format('INSERT INTO %1$I (%2$s) ' ||
                             'SELECT %2$s FROM %1$I WHERE %1$I.visibility_change_set_pk = %3$L ' ||
                             '                            AND %1$I.visibility_deleted_at IS NULL ' ||
+                            '                            AND in_tenancy_v1(%5$L, tenancy_workspace_pk) ' ||
                             'ON CONFLICT (id, ' ||
-                            '              tenancy_workspace_pk, ' ||
-                            '              visibility_change_set_pk, ' ||
-                            '              (visibility_deleted_at IS NULL)) ' ||
-                            '    WHERE visibility_deleted_at IS NULL ' ||
+                            '             tenancy_workspace_pk, ' ||
+                            '             visibility_change_set_pk, ' ||
+                            '             (visibility_deleted_at IS NULL)) ' ||
+                            'WHERE visibility_deleted_at IS NULL ' ||
                             'DO UPDATE SET updated_at = clock_timestamp(), %4$s ' ||
                             'RETURNING pk, id, tenancy_workspace_pk',
-                            this_table_name, insert_column_names, this_change_set_pk, update_set_names);
+                            this_table_name, insert_column_names, this_change_set_pk, update_set_names, this_tenancy);
 
             FOR updated_model IN EXECUTE query
                 LOOP

@@ -103,8 +103,8 @@ impl ChangeSet {
             .txns()
             .pg()
             .query_one(
-                "SELECT timestamp_updated_at FROM change_set_apply_v1($1, $2)",
-                &[&self.pk, &actor],
+                "SELECT timestamp_updated_at FROM change_set_apply_v1($1, $2, $3)",
+                &[&self.pk, &actor, &self.tenancy],
             )
             .await?;
         let updated_at: DateTime<Utc> = row.try_get("timestamp_updated_at")?;
