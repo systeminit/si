@@ -55,10 +55,12 @@ COMPONENTS = \
 	lib/dal \
 	lib/dal-test \
 	lib/deadpool-cyclone \
+	lib/object-tree \
 	lib/sdf \
 	lib/si-data-faktory \
 	lib/si-data-nats \
 	lib/si-data-pg \
+	lib/si-pkg \
 	lib/si-settings \
 	lib/si-std \
 	lib/si-test-macros \
@@ -238,6 +240,8 @@ test//lib/dal-test//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
 test//lib/deadpool-cyclone//TESTDEPS: build//bin/cyclone
 test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech-server
 
+test//lib/object-tree//RTESTDEPS: test//lib/si-pkg test//lib/dal
+
 test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
 test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga test//bin/council
 
@@ -246,6 +250,8 @@ test//lib/si-data-faktory//RTESTDEPS: test//lib/sdf test//bin/pinga
 test//lib/si-data-nats//RTESTDEPS: test//lib/veritech-client test//lib/veritech-server test//lib/dal test//lib/sdf
 
 test//lib/si-data-pg//RTESTDEPS: test//lib/dal test//lib/sdf
+
+test//lib/si-pkg//RTESTDEPS: test//lib/dal
 
 test//lib/si-settings//RTESTDEPS: test//lib/veritech-server//TEST test//lib/cyclone-server//TEST test//lib/sdf//TEST
 

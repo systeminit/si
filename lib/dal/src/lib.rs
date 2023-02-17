@@ -43,6 +43,7 @@ pub mod node;
 pub mod node_menu;
 pub mod node_position;
 pub mod organization;
+pub mod pkg;
 pub mod prop;
 pub mod prop_tree;
 pub mod property_editor;

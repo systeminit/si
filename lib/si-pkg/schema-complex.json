@@ -1,0 +1,540 @@
+{
+  "domain": {
+    "name": "domain",
+    "kind": "object",
+    "entries": [
+      {
+        "name": "apiVersion",
+        "kind": "string"
+      },
+      {
+        "name": "kind",
+        "kind": "string"
+      },
+      {
+        "name": "metadata",
+        "kind": "object",
+        "entries": [
+          {
+            "name": "name",
+            "kind": "string"
+          },
+          {
+            "name": "generateName",
+            "kind": "string"
+          },
+          {
+            "name": "namespace",
+            "kind": "string"
+          },
+          {
+            "name": "labels",
+            "kind": "map",
+            "typeProp": {
+              "name": "labelString",
+              "kind": "string"
+            }
+          },
+          {
+            "name": "annotations",
+            "kind": "map",
+            "typeProp": {
+              "name": "labelString",
+              "kind": "string"
+            }
+          }
+        ]
+      },
+      {
+        "name": "spec",
+        "kind": "object",
+        "entries": [
+          {
+            "name": "selector",
+            "kind": "object",
+            "entries": [
+              {
+                "name": "matchExpressions",
+                "kind": "array",
+                "typeProp": {
+                  "name": "matchExpressionString",
+                  "kind": "string"
+                }
+              },
+              {
+                "name": "matchLabels",
+                "kind": "map",
+                "typeProp": {
+                  "name": "matchLabelString",
+                  "kind": "string"
+                }
+              }
+            ]
+          },
+          {
+            "name": "template",
+            "kind": "object",
+            "entries": [
+              {
+                "name": "metadata",
+                "kind": "object",
+                "entries": [
+                  {
+                    "name": "name",
+                    "kind": "string"
+                  },
+                  {
+                    "name": "generateName",
+                    "kind": "string"
+                  },
+                  {
+                    "name": "namespace",
+                    "kind": "string"
+                  },
+                  {
+                    "name": "labels",
+                    "kind": "map",
+                    "typeProp": {
+                      "name": "labelString",
+                      "kind": "string"
+                    }
+                  },
+                  {
+                    "name": "annotations",
+                    "kind": "map",
+                    "typeProp": {
+                      "name": "annotationString",
+                      "kind": "string"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "spec",
+                "kind": "object",
+                "entries": [
+                  {
+                    "name": "containers",
+                    "kind": "array",
+                    "typeProp": {
+                      "name": "containerObject",
+                      "kind": "object",
+                      "entries": [
+                        {
+                          "name": "name",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "image",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "imagePullPolicy",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "command",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "commandString",
+                            "kind": "string"
+                          }
+                        },
+                        {
+                          "name": "args",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "argString",
+                            "kind": "string"
+                          }
+                        },
+                        {
+                          "name": "workingDir",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "ports",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "portObject",
+                            "kind": "object",
+                            "entries": [
+                              {
+                                "name": "containerPort",
+                                "kind": "number"
+                              },
+                              {
+                                "name": "hostIP",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "hostPort",
+                                "kind": "number"
+                              },
+                              {
+                                "name": "name",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "protocol",
+                                "kind": "string"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": "env",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "envObject",
+                            "kind": "object",
+                            "entries": [
+                              {
+                                "name": "name",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "value",
+                                "kind": "string"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": "volumeMounts",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "volumeMountObject",
+                            "kind": "object",
+                            "entries": [
+                              {
+                                "name": "mountPath",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "name",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "mountPropagation",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "readOnly",
+                                "kind": "boolean"
+                              },
+                              {
+                                "name": "subPath",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "subPathExpr",
+                                "kind": "string"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": "volumeDevices",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "volumeDeviceObject",
+                            "kind": "object",
+                            "entries": [
+                              {
+                                "name": "devicePath",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "name",
+                                "kind": "string"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": "stdin",
+                          "kind": "boolean"
+                        },
+                        {
+                          "name": "stdinOnce",
+                          "kind": "boolean"
+                        },
+                        {
+                          "name": "tty",
+                          "kind": "boolean"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "initContainers",
+                    "kind": "array",
+                    "typeProp": {
+                      "name": "containerObject",
+                      "kind": "object",
+                      "entries": [
+                        {
+                          "name": "name",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "image",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "imagePullPolicy",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "command",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "commandString",
+                            "kind": "string"
+                          }
+                        },
+                        {
+                          "name": "args",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "argString",
+                            "kind": "string"
+                          }
+                        },
+                        {
+                          "name": "workingDir",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "ports",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "portObject",
+                            "kind": "object",
+                            "entries": [
+                              {
+                                "name": "containerPort",
+                                "kind": "number"
+                              },
+                              {
+                                "name": "hostIP",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "hostPort",
+                                "kind": "number"
+                              },
+                              {
+                                "name": "name",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "protocol",
+                                "kind": "string"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": "env",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "envObject",
+                            "kind": "object",
+                            "entries": [
+                              {
+                                "name": "name",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "value",
+                                "kind": "string"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": "volumeMounts",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "volumeMountObject",
+                            "kind": "object",
+                            "entries": [
+                              {
+                                "name": "mountPath",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "name",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "mountPropagation",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "readOnly",
+                                "kind": "boolean"
+                              },
+                              {
+                                "name": "subPath",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "subPathExpr",
+                                "kind": "string"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": "volumeDevices",
+                          "kind": "array",
+                          "typeProp": {
+                            "name": "volumeDeviceObject",
+                            "kind": "object",
+                            "entries": [
+                              {
+                                "name": "devicePath",
+                                "kind": "string"
+                              },
+                              {
+                                "name": "name",
+                                "kind": "string"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": "stdin",
+                          "kind": "boolean"
+                        },
+                        {
+                          "name": "stdinOnce",
+                          "kind": "boolean"
+                        },
+                        {
+                          "name": "tty",
+                          "kind": "boolean"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "replicas",
+            "kind": "number"
+          },
+          {
+            "name": "minReadySeconds",
+            "kind": "number"
+          },
+          {
+            "name": "strategy",
+            "kind": "object",
+            "entries": [
+              {
+                "name": "type",
+                "kind": "string"
+              },
+              {
+                "name": "rollingUpdate",
+                "kind": "object",
+                "entries": [
+                  {
+                    "name": "maxSurge",
+                    "kind": "string"
+                  },
+                  {
+                    "name": "maxUnavailable",
+                    "kind": "string"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "revisionHistoryLimit",
+            "kind": "number"
+          },
+          {
+            "name": "progressDeadlineSeconds",
+            "kind": "number"
+          },
+          {
+            "name": "paused",
+            "kind": "boolean"
+          }
+        ]
+      },
+      {
+        "name": "status",
+        "kind": "object",
+        "entries": [
+          {
+            "name": "replicas",
+            "kind": "number"
+          },
+          {
+            "name": "availableReplicas",
+            "kind": "number"
+          },
+          {
+            "name": "readyReplicas",
+            "kind": "number"
+          },
+          {
+            "name": "unavailableReplicas",
+            "kind": "number"
+          },
+          {
+            "name": "updatedReplicas",
+            "kind": "number"
+          },
+          {
+            "name": "collisionCount",
+            "kind": "number"
+          },
+          {
+            "name": "conditions",
+            "kind": "object",
+            "entries": [
+              {
+                "name": "status",
+                "kind": "string"
+              },
+              {
+                "name": "type",
+                "kind": "string"
+              },
+              {
+                "name": "lastTransitionTime",
+                "kind": "string"
+              },
+              {
+                "name": "lastUpdateTime",
+                "kind": "string"
+              },
+              {
+                "name": "message",
+                "kind": "string"
+              },
+              {
+                "name": "reason",
+                "kind": "string"
+              }
+            ]
+          },
+          {
+            "name": "observationGeneration",
+            "kind": "number"
+          }
+        ]
+      }
+    ]
+  }
+}
