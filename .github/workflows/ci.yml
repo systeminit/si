@@ -5,6 +5,8 @@ on:
     branches:
       - main
     paths-ignore:
+      # anything here must be put in ci-noop.yml so we get a passing CI check for bors
+      - 'bin/si-discord-bot/**'
       - 'app/corp/**'
       - "**.md"
 

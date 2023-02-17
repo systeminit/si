@@ -1,0 +1,20 @@
+---
+name: ci-noop
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'bin/si-discord-bot/**'
+      - 'app/corp/**'
+      - "**.md"
+      - '!bin/si-discord-bot/**'
+      - '!app/corp/**'
+      - "!**.md"
+jobs:
+  ci-noop:
+    name: Pull Request Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'No-op'
+        run: echo MOO
