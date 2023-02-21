@@ -109,10 +109,7 @@
           leave-from-class="opacity-100 "
           leave-to-class="opacity-0"
         >
-          <div
-            v-if="recommendations.length === 0"
-            class="absolute top-0 p-4"
-          >
+          <div v-if="recommendations.length === 0" class="absolute top-0 p-4">
             <img
               v-if="recommendations.length > 0"
               src="../assets/images/WhiskersTriumphV1.png"

@@ -31,12 +31,12 @@ use crate::{
     AttributePrototype, AttributePrototypeArgument, AttributePrototypeArgumentError,
     AttributePrototypeError, AttributePrototypeId, AttributeReadContext, CodeLanguage,
     ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderError,
-    ExternalProviderId, FixError, Func, FuncBackendKind, FuncError, HistoryActor,
-    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, OrganizationError,
-    Prop, PropError, PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, UserId, ValidationPrototypeError,
-    ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WsEvent,
-    WsEventResult, WsPayload,
+    ExternalProviderId, FixError, Func, FuncBackendKind, FuncBindingReturnValue, FuncError,
+    HistoryActor, HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError,
+    OrganizationError, Prop, PropError, PropId, RootPropChild, Schema, SchemaError, SchemaId,
+    Socket, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, UserId,
+    ValidationPrototypeError, ValidationResolverError, Visibility, WorkflowRunnerError,
+    WorkspaceError, WsEvent, WsEventResult, WsPayload,
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
