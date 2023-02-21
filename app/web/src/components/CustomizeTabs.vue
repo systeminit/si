@@ -18,12 +18,13 @@
 </template>
 
 <script lang="ts" setup>
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { PropType } from "vue";
 import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
 import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 
 const router = useRouter();
+const route = useRoute();
 
 defineProps({
   tabContentSlug: {
@@ -33,9 +34,7 @@ defineProps({
 });
 
 function onTabChange(tabSlug?: string) {
-  if (!tabSlug) {
-    router.push({ name: `workspace-lab` });
-  } else {
+  if (tabSlug && route.name !== `workspace-lab-${tabSlug}`) {
     router.push({ name: `workspace-lab-${tabSlug}` });
   }
 }

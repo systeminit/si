@@ -57,7 +57,7 @@
       </ul>
     </div>
   </div>
-  <div v-else class="text-neutral-400 dark:text-neutral-300">
+  <div v-else class="text-neutral-400 dark:text-neutral-300 text-center">
     <ErrorMessage v-if="packageStore.urlSelectedPackageSlug">
       Package "{{ packageStore.urlSelectedPackageSlug }}" does not exist!
     </ErrorMessage>

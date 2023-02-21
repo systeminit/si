@@ -1,10 +1,13 @@
 <template>
   <div>
-    <RequestStatusMessage
-      v-if="loadFuncDetailsReq.isPending"
-      :request-status="loadFuncDetailsReq"
-      :loading-message="`Loading function ${funcId}`"
-    />
+    <div
+      v-if="loadFuncDetailsReq.isPending && !editingFunc"
+      class="w-full flex flex-col items-center gap-4 p-xl"
+    >
+      <LoadingMessage
+        >Loading function "{{ selectedFuncSummary?.name }}"</LoadingMessage
+      >
+    </div>
     <template v-else-if="loadFuncDetailsReq.isSuccess && editingFunc">
       <CodeEditor
         v-model="editingFunc"
@@ -13,6 +16,11 @@
         @change="updateFuncCode"
       />
     </template>
+    <ErrorMessage
+      v-else-if="loadFuncDetailsReq.isError"
+      :request-status="loadFuncDetailsReq"
+    />
+    <LoadingMessage v-else no-message />
   </div>
 </template>
 
@@ -21,7 +29,8 @@ import { PropType, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import CodeEditor from "@/components/CodeEditor.vue";
-import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
+import LoadingMessage from "@/ui-lib/LoadingMessage.vue";
+import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const props = defineProps({
   funcId: { type: String as PropType<FuncId>, required: true },

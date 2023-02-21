@@ -1,45 +1,36 @@
 <template>
-  <div>
-    <RequestStatusMessage
-      v-if="!loadFuncsReqStatus.isPending && !funcStore.funcList.length"
-      :request-status="loadFuncsReqStatus"
-      :loading-message="`Loading function ${funcId}`"
-    />
-    <template v-else-if="loadFuncsReqStatus.isSuccess">
-      <TabGroup
-        ref="tabGroupRef"
-        closeable
-        first-tab-margin-left="none"
-        @close-tab="closeFunc"
-        @update:selected-tab="onTabChange"
-      >
-        <template #noTabs>
-          <div class="p-2 text-center text-neutral-400 dark:text-neutral-300">
-            <RequestStatusMessage
-              v-if="loadFuncsReqStatus.isPending"
-              :request-status="loadFuncsReqStatus"
-              show-loader-without-message
-            />
-            <template v-else-if="loadFuncsReqStatus.isSuccess">
-              <template v-if="funcId"
-                >Function "{{ funcId }}" does not exist!</template
-              >
-              <template v-else>Select a function to edit it.</template>
-            </template>
-          </div>
+  <TabGroup
+    ref="tabGroupRef"
+    closeable
+    first-tab-margin-left="none"
+    @close-tab="closeFunc"
+    @update:selected-tab="onTabChange"
+  >
+    <template #noTabs>
+      <div class="p-2 text-center text-neutral-400 dark:text-neutral-300">
+        <RequestStatusMessage
+          v-if="loadFuncsReqStatus.isPending"
+          :request-status="loadFuncsReqStatus"
+          show-loader-without-message
+        />
+        <template v-else-if="loadFuncsReqStatus.isSuccess">
+          <template v-if="funcId"
+            >Function "{{ funcId }}" does not exist!</template
+          >
+          <template v-else>Select a function to edit it.</template>
         </template>
-
-        <TabGroupItem
-          v-for="func in openFuncsList"
-          :key="func.id"
-          :label="func.name"
-          :slug="func.id"
-        >
-          <FuncEditor :func-id="func.id" />
-        </TabGroupItem>
-      </TabGroup>
+      </div>
     </template>
-  </div>
+
+    <TabGroupItem
+      v-for="func in openFuncsList"
+      :key="func.id"
+      :label="func.name"
+      :slug="func.id"
+    >
+      <FuncEditor :func-id="func.id" />
+    </TabGroupItem>
+  </TabGroup>
 </template>
 
 <script lang="ts" setup>

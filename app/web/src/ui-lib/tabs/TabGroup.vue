@@ -83,12 +83,11 @@
 
         <div
           v-if="showOverflowDropdown"
+          ref="overflowDropdownButtonRef"
           :class="
             clsx(
               'border border-neutral-300 dark:border-neutral-600 h-full px-xs items-center flex absolute right-0 top-0 z-10 cursor-pointer',
-              overflowMenuRef?.isOpen
-                ? 'bg-neutral-200 dark:bg-black'
-                : 'bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900',
+              'bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900',
             )
           "
           @click="overflowMenuRef?.open"
@@ -166,8 +165,10 @@ import DropdownMenuItem from "../menus/DropdownMenuItem.vue";
 import { themeClasses } from "../theme_tools";
 import { TabGroupItemDefinition } from "./TabGroupItem.vue";
 
+const unmounting = ref(false);
 const showOverflowDropdown = ref(false);
 const overflowMenuRef = ref();
+const overflowDropdownButtonRef = ref();
 const tabContainerRef = ref();
 const tabRefs = ref({} as Record<string, HTMLElement | null>);
 
@@ -201,6 +202,7 @@ function registerTab(slug: string, component: TabGroupItemDefinition) {
   refreshSettingsFromTabs();
 }
 function unregisterTab(slug: string) {
+  if (unmounting.value) return;
   delete tabs[slug];
   orderedTabSlugs.value = _.without(orderedTabSlugs.value, slug);
   // refreshSortedTabSlugs();
@@ -213,7 +215,7 @@ function refreshSettingsFromTabs() {
 }
 
 function selectTab(slug?: string) {
-  if (selectedTabSlug.value === slug) return;
+  if (selectedTabSlug.value === slug || unmounting.value) return;
 
   // select the tab
   if (slug && tabs[slug]) selectedTabSlug.value = slug;
@@ -226,7 +228,12 @@ function selectTab(slug?: string) {
     if (tabEl) {
       const tabElRect = tabEl.getBoundingClientRect();
       const tabContainerRect = tabContainerRef.value.getBoundingClientRect();
-      if (tabElRect.right > tabContainerRect.right) {
+      // Need to account for the overflow dropdown button!
+      const overflowButtonWidth = overflowDropdownButtonRef.value
+        ? overflowDropdownButtonRef.value.getBoundingClientRect().width
+        : 0;
+      const limit = tabContainerRect.right - overflowButtonWidth;
+      if (tabElRect.right > limit) {
         orderedTabSlugs.value = _.orderBy(orderedTabSlugs.value, (slug) =>
           slug === selectedTabSlug.value ? 0 : 1,
         );
@@ -267,14 +274,39 @@ watch(tabContainerRef, () => {
   if (tabContainerRef.value) {
     resizeObserver.observe(tabContainerRef.value);
   } else {
-    resizeObserver.unobserve(tabContainerRef.value);
+    resizeObserver.disconnect();
   }
 });
 onBeforeUnmount(() => {
-  if (tabContainerRef.value) {
-    resizeObserver.unobserve(tabContainerRef.value);
-  }
+  unmounting.value = true;
+  resizeObserver.disconnect();
 });
+
+// These style classes have to be handled here to avoid a rerendering bug with Codemirror
+watch(
+  () => overflowMenuRef.value?.isOpen,
+  () => {
+    if (!overflowMenuRef.value || !overflowDropdownButtonRef.value) return;
+
+    const classes =
+      "bg-white dark:bg-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900".split(
+        " ",
+      );
+    if (overflowMenuRef.value.isOpen) {
+      overflowDropdownButtonRef.value.classList.add(
+        "bg-neutral-200",
+        "dark:bg-black",
+      );
+      overflowDropdownButtonRef.value.classList.remove(...classes);
+    } else {
+      overflowDropdownButtonRef.value.classList.add(...classes);
+      overflowDropdownButtonRef.value.classList.remove(
+        "bg-neutral-200",
+        "dark:bg-black",
+      );
+    }
+  },
+);
 
 // Externally exposed info /////////////////////////////////////////////////////////////////////////////////////////
 

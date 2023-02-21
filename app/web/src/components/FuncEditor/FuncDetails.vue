@@ -1,6 +1,9 @@
 <template>
   <div
-    v-if="loadFuncDetailsReqStatus.isPending && !storeFuncDetails"
+    v-if="
+      (loadFuncDetailsReqStatus.isPending && !storeFuncDetails) ||
+      !loadFuncDetailsReqStatus.isRequested
+    "
     class="w-full flex flex-col items-center gap-4 p-xl"
   >
     <Icon name="loader" size="2xl" />
@@ -172,7 +175,7 @@ import ValidationDetails from "./ValidationDetails.vue";
 const funcStore = useFuncStore();
 
 // NOT REACTIVE - parent has a key so this component rerenders if this changes
-const funcId = funcStore.selectedFuncId;
+const funcId = funcStore.urlSelectedFuncId;
 
 const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
   "FETCH_FUNC_DETAILS",

@@ -161,8 +161,11 @@ export const useRealtimeStore = defineStore("realtime", () => {
     eventData: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     eventMetadata: RealtimeEventMetadata,
   ) {
-    /* eslint-disable-next-line no-console */
-    console.log("WS message", eventKind, eventData);
+    // Set your env variable LOG_WS to true if you want to see these console logs!
+    if (import.meta.env.LOG_WS) {
+      /* eslint-disable-next-line no-console */
+      console.log("WS message", eventKind, eventData);
+    }
 
     _.each(subscriptions, (sub) => {
       // TODO: also filter by topic once we receive this info from the backend
