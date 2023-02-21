@@ -1,32 +1,40 @@
 <template>
   <div>
     <RequestStatusMessage
+      v-if="!funcList.length"
       :request-status="loadFuncsReqStatus"
       loading-message="Loading functions..."
     />
-    <template v-if="loadFuncsReqStatus.isSuccess">
-      <div
-        class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
-      >
-        <NewFuncDropdown
-          label="Function"
-          :fn-types="CREATE_OPTIONS"
-          @selected-func-variant="createNewFunc"
-        />
+    <ScrollArea v-if="funcList.length">
+      <template #top>
+        <div
+          class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
+        >
+          <NewFuncDropdown
+            label="Function"
+            :fn-types="CREATE_OPTIONS"
+            @selected-func-variant="createNewFunc"
+          />
 
-        <NewFuncDropdown
-          v-if="isDevMode"
-          label="Builtin"
-          :fn-types="BUILTIN_CREATE_OPTIONS"
-          @selected-func-variant="openCreateBuiltinModal"
+          <NewFuncDropdown
+            v-if="isDevMode"
+            label="Builtin"
+            :fn-types="BUILTIN_CREATE_OPTIONS"
+            @selected-func-variant="openCreateBuiltinModal"
+          />
+        </div>
+        <SiSearch
+          auto-search
+          placeholder="search functions"
+          @search="onSearch"
         />
-      </div>
-      <SiSearch auto-search placeholder="search functions" @search="onSearch" />
-      <div
-        class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
-      >
-        Select a function to view or edit it.
-      </div>
+        <div
+          class="w-full text-neutral-400 dark:text-neutral-300 text-sm text-center p-2 border-b dark:border-neutral-600"
+        >
+          Select a function to view or edit it.
+        </div>
+      </template>
+
       <ul class="overflow-y-auto min-h-[200px]">
         <SiCollapsible
           v-for="(fnTypeInfo, variant) in CUSTOMIZABLE_FUNC_TYPES"
@@ -53,7 +61,7 @@
           </template>
         </SiCollapsible>
       </ul>
-    </template>
+    </ScrollArea>
 
     <Modal
       ref="createBuiltinModalRef"
@@ -100,6 +108,7 @@ import Stack from "@/ui-lib/layout/Stack.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 import FuncSkeleton from "@/components/FuncSkeleton.vue";
+import ScrollArea from "@/ui-lib/ScrollArea.vue";
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();

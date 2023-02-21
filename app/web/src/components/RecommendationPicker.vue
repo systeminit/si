@@ -1,10 +1,7 @@
 <template>
-  <SiTabGroup :selected-index="0">
-    <template #tabs>
-      <SiTabHeader :key="0" class="text-uppercase">Apply</SiTabHeader>
-    </template>
-    <template #panels>
-      <TabPanel :key="0" class="h-full overflow-hidden flex flex-col">
+  <TabGroup start-selected-tab-slug="apply">
+    <TabGroupItem label="Apply" slug="apply">
+      <template #top>
         <SiSearch auto-search placeholder="search recommendations" />
         <div
           class="w-full flex-none text-neutral-400 dark:text-neutral-300 text-sm p-2 border-b dark:border-neutral-600"
@@ -70,82 +67,81 @@
             class="text-action-500 dark:text-action-100"
           />
         </div>
-        <div class="relative w-full h-full overflow-y-auto">
-          <TransitionGroup
-            tag="ul"
-            enter-active-class="duration-500 ease-out"
-            enter-from-class="opacity-0"
-            enter-to-class="opacity-100"
-            leave-active-class="duration-300 ease-in"
-            leave-from-class="opacity-100 "
-            leave-to-class="opacity-0"
+      </template>
+      <div class="relative w-full h-full overflow-y-auto">
+        <TransitionGroup
+          tag="ul"
+          enter-active-class="duration-500 ease-out"
+          enter-from-class="opacity-0"
+          enter-to-class="opacity-100"
+          leave-active-class="duration-300 ease-in"
+          leave-from-class="opacity-100 "
+          leave-to-class="opacity-0"
+        >
+          <li
+            v-for="recommendation in creationRecommendations"
+            :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
           >
-            <li
-              v-for="recommendation in creationRecommendations"
-              :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
-            >
-              <!-- TODO(nick,paulo): disable recommendation sprites that aren't ready using "disable-checkbox" -->
-              <RecommendationSprite
-                :recommendation="recommendation"
-                :selected="
+            <!-- TODO(nick,paulo): disable recommendation sprites that aren't ready using "disable-checkbox" -->
+            <RecommendationSprite
+              :recommendation="recommendation"
+              :selected="
+                recommendationSelection[
+                  `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
+                ]
+              "
+              @toggle="
+                (c) => {
                   recommendationSelection[
                     `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
-                  ]
-                "
-                @toggle="
-                  (c) => {
-                    recommendationSelection[
-                      `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
-                    ] = c;
-                  }
-                "
-              />
-            </li>
-          </TransitionGroup>
+                  ] = c;
+                }
+              "
+            />
+          </li>
+        </TransitionGroup>
 
-          <Transition
-            enter-active-class="delay-300 duration-200 ease-out"
-            enter-from-class="opacity-0"
-            enter-to-class="opacity-100"
-            leave-active-class="duration-200 ease-in"
-            leave-from-class="opacity-100 "
-            leave-to-class="opacity-0"
+        <Transition
+          enter-active-class="delay-300 duration-200 ease-out"
+          enter-from-class="opacity-0"
+          enter-to-class="opacity-100"
+          leave-active-class="duration-200 ease-in"
+          leave-from-class="opacity-100 "
+          leave-to-class="opacity-0"
+        >
+          <div
+            v-if="creationRecommendations.length === 0"
+            class="absolute top-0 p-4"
           >
-            <div
-              v-if="creationRecommendations.length === 0"
-              class="absolute top-0 p-4"
-            >
-              <img
-                v-if="recommendations.length > 0"
-                src="../assets/images/WhiskersTriumphV1.png"
-                alt="Whiskers the cat, relaxing"
-              />
-              <img
-                v-else
-                src="../assets/images/WhiskersPensiveV1.png"
-                alt="Whiskers the cat, looking at you"
-              />
-            </div>
-          </Transition>
-        </div>
-      </TabPanel>
-    </template>
-  </SiTabGroup>
+            <img
+              v-if="recommendations.length > 0"
+              src="../assets/images/WhiskersTriumphV1.png"
+              alt="Whiskers the cat, relaxing"
+            />
+            <img
+              v-else
+              src="../assets/images/WhiskersPensiveV1.png"
+              alt="Whiskers the cat, looking at you"
+            />
+          </div>
+        </Transition>
+      </div>
+    </TabGroupItem>
+  </TabGroup>
 </template>
 
 <script lang="ts" setup>
-import { TabPanel } from "@headlessui/vue";
 import { reactive, ref, computed, onBeforeUnmount, onBeforeMount } from "vue";
 import clsx from "clsx";
-import SiTabGroup from "@/components/SiTabGroup.vue";
-import SiTabHeader from "@/components/SiTabHeader.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
-import { useFixesStore } from "@/store/fixes/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 import { themeClasses } from "@/ui-lib/theme_tools";
 import RecommendationSprite from "@/components/RecommendationSprite.vue";
+import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
+import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
 
 const selectAll = (checked: boolean) => {
   for (const recommendation of creationRecommendations.value) {

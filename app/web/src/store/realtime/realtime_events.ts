@@ -2,7 +2,7 @@
 // used in the subscribe fn to limit valid event names and set callback payload type
 
 import { ComponentId } from "../components.store";
-import { FixStatus } from "../fixes/fixes.store";
+import { FixStatus } from "../fixes.store";
 import {
   AttributeValueId,
   AttributeValueKind,

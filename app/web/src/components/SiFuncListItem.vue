@@ -26,13 +26,12 @@
 import { PropType } from "vue";
 import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
-import { Func } from "@/api/sdf/dal/func";
-import { useFuncStore } from "@/store/func/funcs.store";
+import { useFuncStore, FuncSummary } from "@/store/func/funcs.store";
 import SiChip from "./SiChip.vue";
 
 defineProps({
   color: { type: String },
-  func: { type: Object as PropType<Func>, required: true },
+  func: { type: Object as PropType<FuncSummary>, required: true },
 });
 
 const route = useRoute();

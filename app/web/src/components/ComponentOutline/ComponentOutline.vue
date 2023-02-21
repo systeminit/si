@@ -1,39 +1,45 @@
 <template>
-  <div class="flex flex-col">
-    <template v-if="fetchComponentsReq.isPending && !rootComponents.length"
-      >Loading...</template
-    >
+  <div class="flex flex-col absolute inset-0">
+    <RequestStatusMessage
+      v-if="fetchComponentsReq.isPending && !rootComponents.length"
+      :request-status="fetchComponentsReq"
+      loading-message="Loading..."
+    />
     <template v-else-if="fetchComponentsReq.isError">
       <ErrorMessage :request-status="fetchComponentsReq" />
     </template>
     <template v-else>
-      <!-- search bar - dont need to show if no components -->
-      <template v-if="rootComponents.length">
-        <SiSearch auto-search @search="onSearchUpdated" />
-      </template>
-
-      <!-- filtered / search mode -->
-      <template v-if="filterModeActive">
-        <ComponentOutlineNode
-          v-for="component in filteredComponents"
-          :key="component.id"
-          :component-id="component.id"
-        />
-      </template>
-
-      <!-- tree mode -->
-      <div v-else class="">
-        <template v-if="!rootComponents.length">
-          <div class="p-2 text-neutral-500">Your model is currently empty</div>
+      <ScrollArea>
+        <template v-if="rootComponents.length" #top>
+          <!-- search bar - dont need to show if no components -->
+          <SiSearch auto-search @search="onSearchUpdated" />
         </template>
-        <template v-else>
+
+        <!-- filtered / search mode -->
+        <template v-if="filterModeActive">
           <ComponentOutlineNode
-            v-for="component in rootComponents"
+            v-for="component in filteredComponents"
             :key="component.id"
             :component-id="component.id"
           />
         </template>
-      </div>
+
+        <!-- tree mode -->
+        <div v-else class="">
+          <template v-if="!rootComponents.length">
+            <div class="p-2 text-neutral-500">
+              Your model is currently empty
+            </div>
+          </template>
+          <template v-else>
+            <ComponentOutlineNode
+              v-for="component in rootComponents"
+              :key="component.id"
+              :component-id="component.id"
+            />
+          </template>
+        </div>
+      </ScrollArea>
     </template>
   </div>
 </template>
@@ -65,6 +71,8 @@ import SiSearch from "@/components/SiSearch.vue";
 
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
+import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
+import ScrollArea from "@/ui-lib/ScrollArea.vue";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue";
 
 const emit = defineEmits<{

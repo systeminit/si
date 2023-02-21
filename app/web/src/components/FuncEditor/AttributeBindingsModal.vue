@@ -56,13 +56,13 @@
 </template>
 
 <script lang="ts" setup>
-import { inject, watch, computed, toRef, ref, Ref } from "vue";
+import { inject, watch, computed, toRef, ref, Ref, PropType } from "vue";
 import { storeToRefs } from "pinia";
 import Modal from "@/ui-lib/modals/Modal.vue";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { AttributePrototypeView } from "@/store/func/types";
 import { FuncArgument } from "@/api/sdf/dal/func";
-import { useFuncStore } from "@/store/func/funcs.store";
+import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
 
 function nilId(): string {
@@ -73,17 +73,18 @@ const componentsStore = useComponentsStore();
 const { allComponents } = storeToRefs(componentsStore);
 
 const funcStore = useFuncStore();
-const { schemaVariantOptions, inputSources, propsAsOptionsForSchemaVariant } =
-  storeToRefs(funcStore);
+const {
+  schemaVariantOptions,
+  inputSourceSockets,
+  inputSourceProps,
+  propsAsOptionsForSchemaVariant,
+} = storeToRefs(funcStore);
 
-const props = withDefaults(
-  defineProps<{
-    open: boolean;
-    funcId: string;
-    prototype?: AttributePrototypeView;
-  }>(),
-  { open: false, edit: false },
-);
+const props = defineProps({
+  open: { type: Boolean, default: false },
+  funcId: { type: String as PropType<FuncId>, required: true },
+  prototype: { type: Object as PropType<AttributePrototypeView> },
+});
 
 const bindingsModalRef = ref<InstanceType<typeof Modal>>();
 
@@ -164,8 +165,8 @@ const outputLocationOptions = computed<Option[]>(() =>
 
 const inputSourceOptions = computed<Option[]>(() => {
   const selectedVariantId = selectedVariant.value.value;
-  const sockets =
-    inputSources?.value.sockets
+  const socketOptions =
+    inputSourceSockets.value
       .filter(
         (socket) =>
           (selectedVariantId === nilId() ||
@@ -179,8 +180,8 @@ const inputSourceOptions = computed<Option[]>(() => {
         value: socket.internalProviderId ?? nilId(),
       })) ?? [];
 
-  const props =
-    inputSources?.value.props
+  const propOptions =
+    inputSourceProps.value
       .filter(
         (prop) =>
           (selectedVariantId === nilId() ||
@@ -193,7 +194,7 @@ const inputSourceOptions = computed<Option[]>(() => {
         value: prop.internalProviderId ?? nilId(),
       })) ?? [];
 
-  return sockets.concat(props);
+  return socketOptions.concat(propOptions);
 });
 
 watch(

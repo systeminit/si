@@ -74,6 +74,7 @@ export type MenuItemObjectDef = InstanceType<typeof DropdownMenuItem>["$props"];
 const props = defineProps({
   anchorTo: { type: Object }, // TODO: figure out right type to say "template ref / dom element"
   forceAbove: Boolean,
+  forceAlignRight: Boolean,
   items: {
     type: Array as PropType<MenuItemObjectDef[]>,
   },
@@ -231,7 +232,10 @@ function readjustMenuPosition() {
   // try positioning the menu aligned left with the anchor, and if goes off screen align right with end of screen
   hAlign.value = "left";
   posX.value = anchorRect.x;
-  if (posX.value + menuRect.width > window.innerWidth) {
+  if (props.forceAlignRight) {
+    hAlign.value = "right";
+    posX.value = window.innerWidth - anchorRect.right;
+  } else if (posX.value + menuRect.width > window.innerWidth) {
     hAlign.value = "right";
     posX.value = 4; // if overflowing off the screen, we right align with a small buffer
   }

@@ -1,11 +1,11 @@
 <template>
-  <div>
+  <ScrollArea>
     <RequestStatusMessage
       v-if="loadAssetsReqStatus.isPending"
       :request-status="loadAssetsReqStatus"
       loading-message="Loading assets..."
     />
-    <template v-else-if="loadAssetsReqStatus.isSuccess">
+    <template v-if="loadAssetsReqStatus.isSuccess" #top>
       <div
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
@@ -24,11 +24,13 @@
       >
         Select an asset to view or edit it.
       </div>
+    </template>
+    <template v-if="loadAssetsReqStatus.isSuccess">
       <ul class="overflow-y-auto min-h-[200px]">
         <AssetListItem v-for="a in assetStore.assetList" :key="a.id" :a="a" />
       </ul>
     </template>
-  </div>
+  </ScrollArea>
 </template>
 
 <script lang="ts" setup>
@@ -38,6 +40,7 @@ import SiSearch from "@/components/SiSearch.vue";
 import { useAssetStore } from "@/store/asset.store";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
+import ScrollArea from "@/ui-lib/ScrollArea.vue";
 import AssetListItem from "./AssetListItem.vue";
 
 const assetStore = useAssetStore();

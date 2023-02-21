@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import clsx from "clsx";
-import { useFixesStore } from "@/store/fixes/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { ComponentId, useComponentsStore } from "@/store/components.store";
 

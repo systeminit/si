@@ -1,39 +1,65 @@
 <template>
-  <CodeEditor
-    v-model="editingFunc"
-    typescript
-    :disabled="!isDevMode && isBuiltin"
-    @change="updateFuncCode"
-  />
+  <div>
+    <div
+      v-if="loadFuncDetailsReq.isPending && !editingFunc"
+      class="w-full flex flex-col items-center gap-4 p-xl"
+    >
+      <LoadingMessage
+        >Loading function "{{ selectedFuncSummary?.name }}"</LoadingMessage
+      >
+    </div>
+    <template v-else-if="loadFuncDetailsReq.isSuccess && editingFunc">
+      <CodeEditor
+        v-model="editingFunc"
+        typescript
+        :disabled="!isDevMode && isBuiltin"
+        @change="updateFuncCode"
+      />
+    </template>
+    <ErrorMessage
+      v-else-if="loadFuncDetailsReq.isError"
+      :request-status="loadFuncDetailsReq"
+    />
+    <LoadingMessage v-else no-message />
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue";
+import { PropType, ref, watch } from "vue";
 import { storeToRefs } from "pinia";
-import { useFuncStore } from "@/store/func/funcs.store";
+import { FuncId, useFuncStore } from "@/store/func/funcs.store";
 import CodeEditor from "@/components/CodeEditor.vue";
+import LoadingMessage from "@/ui-lib/LoadingMessage.vue";
+import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
+
+const props = defineProps({
+  funcId: { type: String as PropType<FuncId>, required: true },
+});
 
 const funcStore = useFuncStore();
-const { selectedFunc } = storeToRefs(funcStore);
+const { selectedFuncSummary, selectedFuncDetails } = storeToRefs(funcStore);
 
 const isDevMode = import.meta.env.DEV;
 
-const editingFunc = ref<string>(selectedFunc.value?.code ?? "");
-const isBuiltin = ref<boolean>(selectedFunc.value?.isBuiltin ?? false);
+const editingFunc = ref<string>(selectedFuncDetails.value?.code ?? "");
+const isBuiltin = ref<boolean>(selectedFuncSummary.value?.isBuiltin ?? false);
+
+const loadFuncDetailsReq = funcStore.getRequestStatus(
+  "FETCH_FUNC_DETAILS",
+  props.funcId,
+);
 
 watch(
-  () => selectedFunc.value,
-  async (selectedFunc) => {
-    if (editingFunc.value !== selectedFunc.code) {
-      editingFunc.value = selectedFunc.code ?? "";
+  selectedFuncDetails,
+  () => {
+    if (editingFunc.value !== selectedFuncDetails.value?.code) {
+      editingFunc.value = selectedFuncDetails.value?.code ?? "";
     }
-
-    isBuiltin.value = selectedFunc.isBuiltin;
   },
   { immediate: true },
 );
 
 const updateFuncCode = (code: string) => {
-  funcStore.updateFuncCode(selectedFunc.value.id, code);
+  funcStore.updateFuncCode(props.funcId, code);
 };
 </script>

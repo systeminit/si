@@ -2,34 +2,36 @@
   <RouterLink
     class="flex flex-row items-center gap-2.5 py-4 pr-4 pl-8 text-xs relative border border-transparent dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
     :class="
-      selectedPackageId === p.id
+      isSelected
         ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
         : ''
     "
     :to="{
       name: 'workspace-lab-packages',
-      params: { ...route.params, packageSlug: p.slug },
+      params: { ...route.params, packageSlug: packageInfo.slug },
     }"
   >
-    <Icon :name="p.icon || 'cat'" />
+    <Icon :name="packageInfo.icon || 'cat'" />
     <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
-      {{ p.displayName }}
+      {{ packageInfo.displayName }}
     </div>
   </RouterLink>
 </template>
 
 <script setup lang="ts">
-import { PropType } from "vue";
+import { computed, PropType } from "vue";
 import { useRoute } from "vue-router";
-import { storeToRefs } from "pinia";
 import Icon from "@/ui-lib/icons/Icon.vue";
-import { Package, usePackageStore } from "@/store/package.store";
+import { PackageId, usePackageStore } from "@/store/package.store";
 
-defineProps({
-  p: { type: Object as PropType<Package>, required: true },
+const props = defineProps({
+  packageId: { type: String as PropType<PackageId>, required: true },
 });
 
 const route = useRoute();
 const packageStore = usePackageStore();
-const { selectedPackageId } = storeToRefs(packageStore);
+const packageInfo = computed(() => packageStore.packagesById[props.packageId]);
+const isSelected = computed(
+  () => packageInfo.value.slug === packageStore.urlSelectedPackageSlug,
+);
 </script>

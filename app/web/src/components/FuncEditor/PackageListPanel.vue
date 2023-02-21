@@ -1,10 +1,10 @@
 <template>
-  <div>
+  <ScrollArea>
     <RequestStatusMessage
       :request-status="loadPackagesReqStatus"
       loading-message="Loading packages..."
     />
-    <template v-if="loadPackagesReqStatus.isSuccess">
+    <template v-if="loadPackagesReqStatus.isSuccess" #top>
       <div
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
@@ -17,6 +17,8 @@
       >
         Select a package to view or edit it.
       </div>
+    </template>
+    <template v-if="loadPackagesReqStatus.isSuccess">
       <SiCollapsible label="Installed Packages" default-open>
         <ul class="overflow-y-auto">
           <li
@@ -25,8 +27,8 @@
           >
             No packages installed.
           </li>
-          <li v-for="(p, index) in packageStore.installedPackages" :key="index">
-            <SiPackageListItem :p="p" />
+          <li v-for="p in packageStore.installedPackages" :key="p.id">
+            <SiPackageListItem :package-id="p.id" />
           </li>
         </ul>
       </SiCollapsible>
@@ -38,37 +40,24 @@
           >
             All available packages are already installed.
           </li>
-          <li
-            v-for="(p, index) in packageStore.notInstalledPackages"
-            :key="index"
-          >
-            <SiPackageListItem :p="p" />
+          <li v-for="p in packageStore.notInstalledPackages" :key="p.id">
+            <SiPackageListItem :package-id="p.id" />
           </li>
         </ul>
       </SiCollapsible>
     </template>
-  </div>
+  </ScrollArea>
 </template>
 
 <script lang="ts" setup>
-import { onMounted } from "vue";
 import SiPackageListItem from "@/components/SiPackageListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { usePackageStore } from "@/store/package.store";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
+import ScrollArea from "@/ui-lib/ScrollArea.vue";
 import SiCollapsible from "../SiCollapsible.vue";
 
 const packageStore = usePackageStore();
 const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
-
-const props = defineProps({
-  slug: { type: String },
-});
-
-onMounted(() => {
-  if (!props.slug) {
-    packageStore.setSelectedPackageId(null);
-  }
-});
 </script>

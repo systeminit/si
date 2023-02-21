@@ -5,8 +5,10 @@ import { IconNames, ICONS } from "@/ui-lib/icons/icon_set";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
 import { useChangeSetsStore } from "./change_sets.store";
+import { useRouterStore } from "./router.store";
 
 export type PackageId = string;
+export type PackageSlug = string;
 
 export interface SchemaVariant {
   id: string;
@@ -21,7 +23,7 @@ export interface SchemaVariant {
 export type Package = {
   id: PackageId; // TODO FUTURE - should probably have a namespace system for packages
   displayName: string;
-  slug: string; // TODO FUTURE - should probably have a namespace system for packages
+  slug: PackageSlug; // TODO FUTURE - should probably have a namespace system for packages
   description?: string; // TODO - think about how this will be used, maybe two fields, one short one long? markdown?
   version: string; // TODO FUTURE - how do users select versions?
   schemaVariants: Array<SchemaVariant>;
@@ -47,12 +49,17 @@ export const usePackageStore = () => {
     defineStore(`cs${changeSetId || "NONE"}/package`, {
       state: () => ({
         packagesById: {} as Record<PackageId, Package>,
-        selectedPackageId: null as PackageId | null,
       }),
       getters: {
+        urlSelectedPackageSlug: () => {
+          const route = useRouterStore().currentRoute;
+          return route?.params?.packageSlug as PackageSlug | undefined;
+        },
         packages: (state) => _.values(state.packagesById),
+        packagesBySlug: (state) =>
+          _.keyBy(_.values(state.packagesById), (p) => p.slug),
         selectedPackage(): Package {
-          return this.packagesById[this.selectedPackageId || 0];
+          return this.packagesBySlug[this.urlSelectedPackageSlug || ""];
         },
         installedPackages: (state) =>
           _.filter(state.packagesById, (p) => p.installed),
@@ -60,26 +67,6 @@ export const usePackageStore = () => {
           _.filter(state.packagesById, (p) => !p.installed),
       },
       actions: {
-        setSelectedPackageId(selection: PackageId | null) {
-          if (!selection) {
-            this.selectedPackageId = null;
-          } else {
-            if (this.packagesById[selection]) {
-              this.selectedPackageId = selection;
-            }
-          }
-        },
-        setSelectedPackageBySlug(selection: string | null) {
-          if (!selection) {
-            this.selectedPackageId = null;
-          } else {
-            const pkg = _.find(this.packages, (p) => p.slug === selection);
-            if (pkg) {
-              this.selectedPackageId = pkg.id;
-            }
-          }
-        },
-
         // MOCK DATA GENERATION
         generateMockColor() {
           return `#${_.sample([

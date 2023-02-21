@@ -117,7 +117,7 @@ import { ComponentId, useComponentsStore } from "@/store/components.store";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { themeClasses } from "@/ui-lib/theme_tools";
 import { useQualificationsStore } from "@/store/qualifications.store";
-import { useFixesStore } from "@/store/fixes/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue"; // eslint-disable-line import/no-self-import
 import StatusIndicatorIcon from "../StatusIndicatorIcon.vue";
 import { useComponentOutlineContext } from "./ComponentOutline.vue";

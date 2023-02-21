@@ -1,7 +1,5 @@
+import { PropKind } from "@/api/sdf/dal/prop";
 import { FuncArgument } from "@/api/sdf/dal/func";
-import { GetFuncResponse } from "./requests/get_func";
-
-export type EditingFunc = GetFuncResponse;
 
 export interface CodeGenerationAssociations {
   type: "codeGeneration";
@@ -58,3 +56,28 @@ export type FuncAssociations =
   | ConfirmationAssociations
   | QualificationAssocations
   | ValidationAssociations;
+
+export interface InputSourceSocket {
+  schemaVariantId: string;
+  internalProviderId: string;
+  name: string;
+}
+
+export interface InputSourceProp {
+  propId: string;
+  kind: PropKind;
+  schemaVariantId: string;
+  internalProviderId?: string;
+  path: string;
+  name: string;
+}
+
+export interface CreateFuncAttributeOptions {
+  type: "attributeOptions";
+  valueId: string;
+  parentValueId?: string;
+  componentId: string;
+  schemaVariantId: string;
+  schemaId: string;
+  currentFuncId: string;
+}

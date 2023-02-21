@@ -121,7 +121,7 @@
 <script lang="ts" setup>
 import { ref, computed } from "vue";
 // import Timestamp from "@/ui-lib/Timestamp.vue";
-import { useFixesStore } from "@/store/fixes/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 import CodeViewer from "@/components/CodeViewer.vue";
 import HealthIcon from "@/components/HealthIcon.vue";
 

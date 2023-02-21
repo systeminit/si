@@ -42,7 +42,7 @@ import { computed } from "vue";
 import StatusBarTab from "@/components/StatusBar/StatusBarTab.vue";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import StatusBarTabPill from "@/components/StatusBar/StatusBarTabPill.vue";
-import { useFixesStore } from "@/store/fixes/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 
 defineProps<{ selected: boolean }>();
 

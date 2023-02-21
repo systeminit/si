@@ -10,7 +10,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useFixesStore } from "@/store/fixes/fixes.store";
+import { useFixesStore } from "@/store/fixes.store";
 import ProgressBarOverlay from "@/components/ProgressBarOverlay.vue";
 
 const fixesStore = useFixesStore();
