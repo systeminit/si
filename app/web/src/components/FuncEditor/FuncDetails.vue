@@ -1,13 +1,17 @@
 <template>
   <div
-    v-if="
+    v-if="!funcId"
+    class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
+  >
+    Select a function to view its properties.
+  </div>
+  <LoadingMessage
+    v-else-if="
       (loadFuncDetailsReqStatus.isPending && !storeFuncDetails) ||
       !loadFuncDetailsReqStatus.isRequested
     "
-    class="w-full flex flex-col items-center gap-4 p-xl"
-  >
-    <Icon name="loader" size="2xl" />
-  </div>
+    no-message
+  />
   <div
     v-else-if="selectedFuncId && editingFunc"
     class="absolute h-full w-full flex flex-col overflow-hidden"
@@ -149,8 +153,7 @@
     v-else
     class="px-2 py-sm text-center text-neutral-400 dark:text-neutral-300"
   >
-    <template v-if="funcId">Function "{{ funcId }}" does not exist!</template>
-    <template v-else>Select a function to view its properties.</template>
+    Function "{{ funcId }}" does not exist!
   </div>
 </template>
 
@@ -163,9 +166,9 @@ import VormInput from "@/ui-lib/forms/VormInput.vue";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import { FuncVariant, FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
-import Icon from "@/ui-lib/icons/Icon.vue";
 import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
 import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
+import LoadingMessage from "@/ui-lib/LoadingMessage.vue";
 import FuncArguments from "./FuncArguments.vue";
 import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
