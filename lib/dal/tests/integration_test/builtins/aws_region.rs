@@ -175,6 +175,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             },
             "confirmation": {
                 "si:confirmationResourceExists": {},
+                "si:si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_payload
@@ -394,6 +395,7 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
              },
               "confirmation": {
                  "si:confirmationResourceExists": {},
+                 "si:confirmationResourceNeedsDeletion": {},
              },
         }], // expected
         ec2_payload
