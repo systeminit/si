@@ -140,13 +140,27 @@ impl Component {
         // Use the validation prop tree once available.
         let mut validation_errors = Vec::<(String, ValidationError)>::new();
         for status in ValidationResolver::find_status(ctx, component_id).await? {
-            let prop_name_json_pointer =
-                AttributeValue::find_prop_for_value(ctx, status.attribute_value_id)
-                    .await?
-                    .json_pointer(ctx)
-                    .await?;
-            for error in status.errors {
-                validation_errors.push((prop_name_json_pointer.clone(), error));
+            // FIXME(nick): there's a race condition or bug where the attribute value where
+            // "get_by_id" will fail with a given attribute value id from the the "FIND_STATUS"
+            // query. This seems to only happen when the "get_summary" route is called from "sdf",
+            // but it could happen more frequently. The good news is that this is intermittent
+            // and the route is always called again and returns 200 OK. For now, let's log
+            // where and when this happens.
+            match AttributeValue::get_by_id(ctx, &status.attribute_value_id).await? {
+                Some(_) => {
+                    let prop_name_json_pointer =
+                        AttributeValue::find_prop_for_value(ctx, status.attribute_value_id)
+                            .await?
+                            .json_pointer(ctx)
+                            .await?;
+                    for error in status.errors {
+                        validation_errors.push((prop_name_json_pointer.clone(), error));
+                    }
+                }
+                None => warn!(
+                    "skipping, could not find attribute value for status: {:?}",
+                    status
+                ),
             }
         }
 
