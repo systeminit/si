@@ -9,7 +9,8 @@ use crate::{
     job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    Component, DalContext, FixResolver, StandardModel, StatusUpdater, Visibility, WsEvent,
+    Component, ComponentId, DalContext, FixResolver, StandardModel, StatusUpdater, Visibility,
+    WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -313,43 +314,13 @@ impl JobConsumer for DependentValuesUpdate {
             .publish(&ctx)
             .await?;
 
-        // Warning: colossal hack to implement reactivity for the fix flow, since it's been inlined in the
-        // root prop tree we can't send the wsevent or clear the fix resolver, so this hack is needed, albeit
-        // horrifying
-
-        let attribute_value_ids: HashSet<AttributeValueId> = HashSet::from_iter(
-            Component::list_confirmations(&ctx)
-                .await?
-                .into_iter()
-                .map(|cv| cv.attribute_value_id),
-        );
-        'outer: for (key, values) in dependency_graph.iter() {
-            if attribute_value_ids.contains(key) {
-                WsEvent::confirmations_updated(&ctx)
-                    .await?
-                    .publish(&ctx)
-                    .await?;
-                break;
-            }
-
-            for id in values {
-                if attribute_value_ids.contains(id) {
-                    WsEvent::confirmations_updated(&ctx)
-                        .await?
-                        .publish(&ctx)
-                        .await?;
-                    break 'outer;
-                }
-            }
-        }
-
-        for attribute_value_id in attribute_value_ids {
-            let resolver =
-                FixResolver::find_for_confirmation_attribute_value(&ctx, attribute_value_id)
-                    .await?;
-            if let Some(mut resolver) = resolver {
-                resolver.set_success(&ctx, None::<bool>).await?;
-            }
+        // Send events based on what kind of attribute values we are working with. This should be
+        // infallible.
+        if let Err(err) = send_events_based_on_attribute_value_kind(&ctx, &dependency_graph).await {
+            error!(
+                "found error when sending events based on the dependency graph: {:?}",
+                err
+            );
         }
 
         if !self.single_transaction {
@@ -366,6 +337,80 @@ impl JobConsumer for DependentValuesUpdate {
 
         Ok(())
     }
+}
+
+/// Send [`WsEvents`](crate::WsEvent) based on the "kind" of every
+/// [`AttributeValue`](crate::AttributeValue) in the dependency graph.
+///
+/// _Note:_ this is a colossal hack and we should find a better way to do this.
+async fn send_events_based_on_attribute_value_kind(
+    ctx: &DalContext,
+    dependency_graph: &HashMap<AttributeValueId, Vec<AttributeValueId>>,
+) -> AttributeValueResult<()> {
+    // Gather the attribute values we want by kind.
+    let code_generation_attribute_values: HashSet<AttributeValueId> =
+        Component::all_code_generation_attribute_values(ctx)
+            .await
+            .map_err(|e| AttributeValueError::Component(e.to_string()))?;
+    let confirmation_attribute_values: HashSet<AttributeValueId> = HashSet::from_iter(
+        Component::list_confirmations(ctx)
+            .await?
+            .into_iter()
+            .map(|cv| cv.attribute_value_id),
+    );
+
+    // Flatten the dependency graph for easy traversal.
+    let mut flat_dependencies = Vec::new();
+    for (key, values) in dependency_graph.iter() {
+        flat_dependencies.push(*key);
+        flat_dependencies.extend(values);
+    }
+
+    // Send events according to every value in the dependency graph.
+    let mut seen_code_generation_components: HashSet<ComponentId> = HashSet::new();
+    let mut need_to_check_confirmations = true;
+    for flat_dependency in flat_dependencies {
+        if code_generation_attribute_values.contains(&flat_dependency) {
+            let attribute_value = AttributeValue::get_by_id(ctx, &flat_dependency)
+                .await?
+                .ok_or(AttributeValueError::NotFound(
+                    flat_dependency,
+                    *ctx.visibility(),
+                ))?;
+            let component_id = attribute_value.context.component_id();
+            if component_id != ComponentId::NONE
+                && !seen_code_generation_components.contains(&component_id)
+            {
+                WsEvent::code_generated(ctx, component_id)
+                    .await?
+                    .publish(ctx)
+                    .await?;
+                seen_code_generation_components.insert(component_id);
+            }
+        }
+
+        if need_to_check_confirmations && confirmation_attribute_values.contains(&flat_dependency) {
+            WsEvent::confirmations_updated(ctx)
+                .await?
+                .publish(ctx)
+                .await?;
+            need_to_check_confirmations = false;
+        }
+    }
+
+    // Ensure the fix resolvers are "zero'd", as needed.
+    for confirmation_attribute_value_id in confirmation_attribute_values {
+        let resolver = FixResolver::find_for_confirmation_attribute_value(
+            ctx,
+            confirmation_attribute_value_id,
+        )
+        .await?;
+        if let Some(mut resolver) = resolver {
+            resolver.set_success(ctx, None::<bool>).await?;
+        }
+    }
+
+    Ok(())
 }
 
 /// Wrapper around `AttributeValue.update_from_prototype_function(&ctx)` to get it to
