@@ -2,7 +2,10 @@
   "compilerOptions": {
     "composite": true,
     "module": "ESNext",
-    "lib": ["ESNext"],
+    "lib": [
+      "ESNext"
+    ],
+    "target": "ESNext",
     "moduleResolution": "Node",
     "allowSyntheticDefaultImports": true
   }

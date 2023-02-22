@@ -9,7 +9,7 @@
     "build": "vite-ssg build",
     "build2": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext .ts,.js,.vue",
+    "lint": "eslint src --ext .ts,.js,.cjs,.vue",
     "lint:fix": "pnpm run lint --fix"
   },
   "dependencies": {

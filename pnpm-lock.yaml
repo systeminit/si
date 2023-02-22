@@ -49,8 +49,8 @@ importers:
       '@codemirror/lint': ^6.1.0
       '@codemirror/state': ^6.1.4
       '@codemirror/view': ^6.7.1
-      '@headlessui/tailwindcss': ^0.1.1
-      '@headlessui/vue': ^1.6.7
+      '@headlessui/tailwindcss': ^0.1.2
+      '@headlessui/vue': ^1.7.10
       '@iconify/json': ^2.1.142
       '@lezer/highlight': ^1.1.3
       '@si/eslint-config': workspace:*
@@ -65,12 +65,8 @@ importers:
       '@types/node': ^17.0.29
       '@types/tinycolor2': ^1.4.3
       '@types/validator': ^13.7.2
-      '@typescript-eslint/eslint-plugin': ^5.53.0
-      '@typescript-eslint/parser': ^5.53.0
       '@typescript/vfs': ^1.3.5
       '@vitejs/plugin-vue': ^4.0.0
-      '@vue/eslint-config-prettier': ^7.0.0
-      '@vue/eslint-config-typescript': ^11.0.0
       '@vueuse/head': ^1.0.26
       async: ^3.2.4
       autoprefixer: ^10.4.8
@@ -81,15 +77,6 @@ importers:
       codemirror: ^6.0.1
       cypress: ^9.6.0
       date-fns: ^2.29.2
-      eslint: ^8.23.0
-      eslint-config-airbnb-base: ^15.0.0
-      eslint-config-airbnb-typescript: ^17.0.0
-      eslint-config-prettier: ^8.5.0
-      eslint-import-resolver-typescript: ^3.5.0
-      eslint-plugin-import: ^2.26.0
-      eslint-plugin-no-autofix: ^1.2.3
-      eslint-plugin-prettier: ^4.2.1
-      eslint-plugin-vue: ^9.8.0
       faker: ^6.6.6
       floating-vue: ^2.0.0-beta.16
       fontfaceobserver: ^2.3.0
@@ -107,7 +94,6 @@ importers:
       postcss-comment: ^2.0.0
       postcss-each: ^1.1.0
       postcss-nested: ^5.0.6
-      prettier: ~2.7.1
       reconnecting-websocket: ^4.4.0
       tailwindcss: ^3.1.8
       tailwindcss-capsize: ^3.0.2
@@ -131,8 +117,8 @@ importers:
       '@codemirror/lint': 6.1.0
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.7.1
-      '@headlessui/tailwindcss': 0.1.1_tailwindcss@3.2.2
-      '@headlessui/vue': 1.7.4_vue@3.2.45
+      '@headlessui/tailwindcss': 0.1.2_tailwindcss@3.2.2
+      '@headlessui/vue': 1.7.10_vue@3.2.45
       '@lezer/highlight': 1.1.3
       '@tailwindcss/forms': 0.5.3_tailwindcss@3.2.2
       '@types/async': 3.2.16
@@ -177,32 +163,18 @@ importers:
       '@types/node': 17.0.45
       '@types/tinycolor2': 1.4.3
       '@types/validator': 13.7.10
-      '@typescript-eslint/eslint-plugin': 5.53.0_duqwtv7lbkmjlm5la5b2fbhxaq
-      '@typescript-eslint/parser': 5.53.0_qaufaj7tqs2aha52ol5f74v4z4
       '@vitejs/plugin-vue': 4.0.0_vite@4.1.4+vue@3.2.45
-      '@vue/eslint-config-prettier': 7.0.0_mbd4zptqpjbepwpyh2zbtslqey
-      '@vue/eslint-config-typescript': 11.0.2_hmtfgem7yfn54n2bdovzndidwy
       autoprefixer: 10.4.13_postcss@8.4.18
       cypress: 9.7.0
-      eslint: 8.27.0
-      eslint-config-airbnb-base: 15.0.0_dcpv4nbdr5ks2h5677xdltrk6e
-      eslint-config-airbnb-typescript: 17.0.0_wmfwc7gyywiery5wln4yo2ncyy
-      eslint-config-prettier: 8.5.0_eslint@8.27.0
-      eslint-import-resolver-typescript: 3.5.2_dcpv4nbdr5ks2h5677xdltrk6e
-      eslint-plugin-import: 2.26.0_4bu7jtvpb7oy36m2eqm7shw5yu
-      eslint-plugin-no-autofix: 1.2.3_eslint@8.27.0
-      eslint-plugin-prettier: 4.2.1_v7o5sx5x3wbs57ifz6wc4f76we
-      eslint-plugin-vue: 9.8.0_eslint@8.27.0
       faker: 6.6.6
       postcss: 8.4.18
       postcss-comment: 2.0.0
       postcss-each: 1.1.0_postcss@8.4.18
       postcss-nested: 5.0.6_postcss@8.4.18
-      prettier: 2.7.1
       tailwindcss-capsize: 3.0.2_tailwindcss@3.2.2
       unplugin-icons: 0.14.14
       vite: 4.1.4_uakuilq6iygkg5ll5cv37w4i7m
-      vite-plugin-checker: 0.5.6_l2oxzhepr3fnotp4tkvhtw74zq
+      vite-plugin-checker: 0.5.6_la7cacher7u56z3ygztrykejii
       vite-svg-loader: 3.6.0
       vue-tsc: 1.1.7_typescript@4.9.5
 
@@ -458,7 +430,38 @@ importers:
       cyclone-core: link:../cyclone-core
 
   lib/eslint-config:
-    specifiers: {}
+    specifiers:
+      '@typescript-eslint/eslint-plugin': ^5.53.0
+      '@typescript-eslint/parser': ^5.53.0
+      '@vue/eslint-config-prettier': ^7.0.0
+      '@vue/eslint-config-typescript': ^11.0.0
+      eslint: ^8.23.0
+      eslint-config-airbnb-base: ^15.0.0
+      eslint-config-airbnb-typescript: ^17.0.0
+      eslint-config-prettier: ^8.5.0
+      eslint-import-resolver-typescript: ^3.5.0
+      eslint-plugin-import: ^2.26.0
+      eslint-plugin-no-autofix: ^1.2.3
+      eslint-plugin-prettier: ^4.2.1
+      eslint-plugin-vue: ^9.8.0
+      prettier: ~2.8.4
+      typescript: ^4.9.5
+    devDependencies:
+      '@typescript-eslint/eslint-plugin': 5.53.0_duqwtv7lbkmjlm5la5b2fbhxaq
+      '@typescript-eslint/parser': 5.53.0_qaufaj7tqs2aha52ol5f74v4z4
+      '@vue/eslint-config-prettier': 7.0.0_bygbznuyb5j5rx3atuel5n6euq
+      '@vue/eslint-config-typescript': 11.0.2_hmtfgem7yfn54n2bdovzndidwy
+      eslint: 8.27.0
+      eslint-config-airbnb-base: 15.0.0_dcpv4nbdr5ks2h5677xdltrk6e
+      eslint-config-airbnb-typescript: 17.0.0_wmfwc7gyywiery5wln4yo2ncyy
+      eslint-config-prettier: 8.5.0_eslint@8.27.0
+      eslint-import-resolver-typescript: 3.5.2_dcpv4nbdr5ks2h5677xdltrk6e
+      eslint-plugin-import: 2.26.0_4bu7jtvpb7oy36m2eqm7shw5yu
+      eslint-plugin-no-autofix: 1.2.3_eslint@8.27.0
+      eslint-plugin-prettier: 4.2.1_lhbyusm6n7xjky5mvxzblmuv5e
+      eslint-plugin-vue: 9.8.0_eslint@8.27.0
+      prettier: 2.8.4
+      typescript: 4.9.5
 
   lib/nats-subscriber:
     specifiers:
@@ -1277,8 +1280,8 @@ packages:
       '@floating-ui/core': 0.3.1
     dev: false
 
-  /@headlessui/tailwindcss/0.1.1_tailwindcss@3.2.2:
-    resolution: {integrity: sha512-MJbc/MG1iVDow0IQYdsZNVY2xiTa2fDpXLF01xIAyNH6M+Ks0c6X0k3x6PqAvwvKWKEFhS0MlMzrDUVTU6cXDA==}
+  /@headlessui/tailwindcss/0.1.2_tailwindcss@3.2.2:
+    resolution: {integrity: sha512-AQNESz+f1grCxifrocOE6hDMDFqhqY0g3xrSGOS0ocGkmVkssaBzXaAPAPNSs/nHmr4ZUhfl5THQpYrvaouWlQ==}
     engines: {node: '>=10'}
     peerDependencies:
       tailwindcss: ^3.0
@@ -1286,8 +1289,8 @@ packages:
       tailwindcss: 3.2.2_postcss@8.4.18
     dev: false
 
-  /@headlessui/vue/1.7.4_vue@3.2.45:
-    resolution: {integrity: sha512-QHRlKCK/zRpjSjhth7c2CZvx5eMDFflXauqRdRJgp1CwScx6PwCpWiwDsjQcYM4z8Yik2ZvyX8W4PFT2Wsqqyw==}
+  /@headlessui/vue/1.7.10_vue@3.2.45:
+    resolution: {integrity: sha512-qAov7JULOBBes5CU+MiGpwMKoXxLHXS703WEZkOPxYjPD2p7f286ozlFxw7JjA2MmVgbnis2Wvgg/4hT7nRFIg==}
     engines: {node: '>=10'}
     peerDependencies:
       vue: ^3.2.0
@@ -2592,7 +2595,7 @@ packages:
     resolution: {integrity: sha512-JD5fcdIuFxU4fQyXUu3w2KpAJHzTVdN+p4iOX2lMWSHMOoQdMAcpFLZzm9Z/2nmsoZ1a96QEhZ26e50xLBsgOQ==}
     dev: false
 
-  /@vue/eslint-config-prettier/7.0.0_mbd4zptqpjbepwpyh2zbtslqey:
+  /@vue/eslint-config-prettier/7.0.0_bygbznuyb5j5rx3atuel5n6euq:
     resolution: {integrity: sha512-/CTc6ML3Wta1tCe1gUeO0EYnVXfo3nJXsIhZ8WJr3sov+cGASr6yuiibJTL6lmIBm7GobopToOuB3B6AWyV0Iw==}
     peerDependencies:
       eslint: '>= 7.28.0'
@@ -2600,8 +2603,8 @@ packages:
     dependencies:
       eslint: 8.27.0
       eslint-config-prettier: 8.5.0_eslint@8.27.0
-      eslint-plugin-prettier: 4.2.1_v7o5sx5x3wbs57ifz6wc4f76we
-      prettier: 2.7.1
+      eslint-plugin-prettier: 4.2.1_lhbyusm6n7xjky5mvxzblmuv5e
+      prettier: 2.8.4
     dev: true
 
   /@vue/eslint-config-typescript/11.0.2_hmtfgem7yfn54n2bdovzndidwy:
@@ -4186,6 +4189,23 @@ packages:
       eslint: 8.27.0
       eslint-rule-composer: 0.3.0
       find-up: 5.0.0
+    dev: true
+
+  /eslint-plugin-prettier/4.2.1_lhbyusm6n7xjky5mvxzblmuv5e:
+    resolution: {integrity: sha512-f/0rXLXUt0oFYs8ra4w49wYZBG5GKZpAYsJSm6rnYL5uVDjd+zowwMwVZHnAjf4edNrKpCDYfXDgmRE/Ak7QyQ==}
+    engines: {node: '>=12.0.0'}
+    peerDependencies:
+      eslint: '>=7.28.0'
+      eslint-config-prettier: '*'
+      prettier: '>=2.0.0'
+    peerDependenciesMeta:
+      eslint-config-prettier:
+        optional: true
+    dependencies:
+      eslint: 8.27.0
+      eslint-config-prettier: 8.5.0_eslint@8.27.0
+      prettier: 2.8.4
+      prettier-linter-helpers: 1.0.0
     dev: true
 
   /eslint-plugin-prettier/4.2.1_v7o5sx5x3wbs57ifz6wc4f76we:
@@ -6891,7 +6911,6 @@ packages:
     resolution: {integrity: sha512-vIS4Rlc2FNh0BySk3Wkd6xmwxB0FpOndW5fisM5H8hsZSxU2VWVB5CWIkIjWvrHjIhxk2g3bfMKM87zNTrZddw==}
     engines: {node: '>=10.13.0'}
     hasBin: true
-    dev: false
 
   /pretty-bytes/5.6.0:
     resolution: {integrity: sha512-FFw039TmrBqFK8ma/7OL3sDz/VytdtJr044/QUJtH0wK9lb9jLq9tJyIxUwtQJHwar2BqtiA4iCWSwo9JLkzFg==}
@@ -8017,59 +8036,6 @@ packages:
       assert-plus: 1.0.0
       core-util-is: 1.0.2
       extsprintf: 1.3.0
-    dev: true
-
-  /vite-plugin-checker/0.5.6_l2oxzhepr3fnotp4tkvhtw74zq:
-    resolution: {integrity: sha512-ftRyON0gORUHDxcDt2BErmsikKSkfvl1i2DoP6Jt2zDO9InfvM6tqO1RkXhSjkaXEhKPea6YOnhFaZxW3BzudQ==}
-    engines: {node: '>=14.16'}
-    peerDependencies:
-      eslint: '>=7'
-      meow: ^9.0.0
-      optionator: ^0.9.1
-      stylelint: '>=13'
-      typescript: '*'
-      vite: '>=2.0.0'
-      vls: '*'
-      vti: '*'
-      vue-tsc: '*'
-    peerDependenciesMeta:
-      eslint:
-        optional: true
-      meow:
-        optional: true
-      optionator:
-        optional: true
-      stylelint:
-        optional: true
-      typescript:
-        optional: true
-      vls:
-        optional: true
-      vti:
-        optional: true
-      vue-tsc:
-        optional: true
-    dependencies:
-      '@babel/code-frame': 7.18.6
-      ansi-escapes: 4.3.2
-      chalk: 4.1.2
-      chokidar: 3.5.3
-      commander: 8.3.0
-      eslint: 8.27.0
-      fast-glob: 3.2.12
-      fs-extra: 11.1.0
-      lodash.debounce: 4.0.8
-      lodash.pick: 4.4.0
-      npm-run-path: 4.0.1
-      strip-ansi: 6.0.1
-      tiny-invariant: 1.3.1
-      typescript: 4.9.5
-      vite: 4.1.4_uakuilq6iygkg5ll5cv37w4i7m
-      vscode-languageclient: 7.0.0
-      vscode-languageserver: 7.0.0
-      vscode-languageserver-textdocument: 1.0.7
-      vscode-uri: 3.0.6
-      vue-tsc: 1.1.7_typescript@4.9.5
     dev: true
 
   /vite-plugin-checker/0.5.6_la7cacher7u56z3ygztrykejii:

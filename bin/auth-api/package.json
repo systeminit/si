@@ -6,6 +6,7 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "node --watch --no-warnings --experimental-specifier-resolution=node --loader ts-node/esm ./src/main.ts",
+    "dev:backend": "pnpm run dev",
     "lint": "eslint src --ext .ts,.cjs",
     "lint:fix": "pnpm run lint --fix"
   },

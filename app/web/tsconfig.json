@@ -10,6 +10,11 @@
     "types": [
       "unplugin-icons/types/raw"
     ],
+    //     // some weird PNPM related issues around linking types
+    //     // that pop up in form-validation.ts without disabling declarations
+    //     // see 
+    //     "declaration": false,
+    //     "declarationMap": false,
   },
   "include": [
     "src/**/*.ts",
@@ -18,30 +23,3 @@
     "src/**/*.vue"
   ]
 }
-
-
-// {
-//   "extends": "@si/tsconfig/tsconfig.browser.json",
-//   "compilerOptions": {
-//     "baseUrl": ".",
-//     "paths": {
-//       "@/*": [
-//         "src/*"
-//       ]
-//     },
-//     "types": [
-//       "unplugin-icons/types/raw"
-//     ],
-//     // some weird PNPM related issues around linking types
-//     // that pop up in form-validation.ts without disabling declarations
-//     // see 
-//     "declaration": false,
-//     "declarationMap": false,
-//   },
-//   "include": [
-//     "src/**/*.ts",
-//     "src/**/*.d.ts",
-//     "src/**/*.tsx",
-//     "src/**/*.vue"
-//   ]
-// }
