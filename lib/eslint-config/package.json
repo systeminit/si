@@ -1,0 +1,15 @@
+{
+  "name": "@si/eslint-config",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "preinstall": "npx only-allow pnpm"
+  },
+  "exports": {
+    "./base": "./.eslintrc.base.js",
+    "./vue": "./.eslintrc.vue.js"
+  },
+  "devDependencies": {
+    
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@si/tsconfig",
+  "private": true,
+  "version": "0.0.0",
+  "exports": {
+    "./tsconfig.browser.json": "./tsconfig.browser.json",
+    "./tsconfig.node.json": "./tsconfig.node.json"
+  }
+}

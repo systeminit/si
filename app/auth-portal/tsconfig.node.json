@@ -2,9 +2,6 @@
   "extends": "@si/tsconfig/tsconfig.node.json",
   "include": [
     "vite.config.ts",
-    ".eslintrc.js",
-    "package.json",
-    "./*.js",
-    "build-src/*"
+    ".eslintrc.cjs"
   ]
 }

@@ -7,6 +7,7 @@ export const useSystemStatusStore = defineStore("system-status", {
     apiGitBranch: null as string | null, // not supported on backend yet...
     apiGitSha: null as string | null, // TODO: currently set up to only work in dev mode, but probably always want this available
 
+    /* eslint-disable @typescript-eslint/ban-ts-comment */
     // TODO: ideally these would be injected into import.meta?
     // @ts-ignore
     webGitBranch: __VITE_GIT_BRANCH__,

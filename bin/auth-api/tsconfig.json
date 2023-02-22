@@ -1,0 +1,17 @@
+{
+  "extends": "@si/tsconfig/tsconfig.node.json",
+  "ts-node": {
+    "transpileOnly": true,
+    "transpiler": "ts-node/transpilers/swc",
+    "files": true,
+    "compilerOptions": {
+      "module": "esnext",
+      "isolatedModules": false
+    }
+  },
+  "include": [
+    "src/*",
+    ".eslintrc.cjs",
+  ]
+  
+}
