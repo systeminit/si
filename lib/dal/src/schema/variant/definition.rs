@@ -215,7 +215,7 @@ impl SchemaVariantDefinition {
                 Err(e) => {
                     return Err(
                         SchemaVariantDefinitionError::CouldNotCheckForDefaultVariant(e.to_string()),
-                    )
+                    );
                 }
             },
         )

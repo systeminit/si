@@ -4,10 +4,13 @@
 use telemetry::prelude::*;
 
 use crate::edit_field::widget::WidgetKind;
+use crate::func::backend::validation::FuncBackendValidationArgs;
+use crate::validation::Validation;
 use crate::{
     schema::variant::{leaves::LeafKind, SchemaVariantResult},
-    AttributeContext, AttributeValue, AttributeValueError, DalContext, Prop, PropId, PropKind,
-    SchemaVariant, SchemaVariantId, StandardModel,
+    AttributeContext, AttributeValue, AttributeValueError, DalContext, Func, FuncError, Prop,
+    PropId, PropKind, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, ValidationPrototype,
+    ValidationPrototypeContext,
 };
 
 pub mod component_type;
@@ -38,6 +41,32 @@ impl RootPropChild {
             Self::Code => "code",
             Self::Qualification => "qualification",
             Self::Confirmation => "confirmation",
+        }
+    }
+}
+
+/// This enum contains the subtree names for every direct child [`Prop`](crate::Prop) of "/root/si".
+/// These [`Props`](crate::Prop) are available for _every_ [`SchemaVariant`](crate::SchemaVariant).
+#[derive(Debug)]
+pub enum SiPropChild {
+    /// Corresponds to the "/root/si/name" [`Prop`](crate::Prop).
+    Name,
+    /// Corresponds to the "/root/si/protected" [`Prop`](crate::Prop).
+    Protected,
+    /// Corresponds to the "/root/si/type" [`Prop`](crate::Prop).
+    Type,
+    /// Corresponds to the "/root/si/Color" [`Prop`](crate::Prop).
+    Color,
+}
+
+impl SiPropChild {
+    /// Return the _case-sensitive_ name for the corresponding [`Prop`](crate::Prop).
+    pub fn prop_name(&self) -> &'static str {
+        match self {
+            Self::Name => "name",
+            Self::Protected => "protected",
+            Self::Type => "type",
+            Self::Color => "color",
         }
     }
 }
@@ -73,6 +102,7 @@ impl RootProp {
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
+        schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Self> {
         let root_prop = Prop::new(ctx, "root", PropKind::Object, None).await?;
@@ -85,7 +115,7 @@ impl RootProp {
         // before the domain prop tree creation. Once index maps for objects are added, this
         // can be moved back to its original location with the other prop tree creation methods.
         let (si_specific_prop_id, si_child_name_prop_id) =
-            Self::setup_si(ctx, root_prop_id).await?;
+            Self::setup_si(ctx, root_prop_id, schema_id, schema_variant_id).await?;
 
         let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object, None).await?;
         domain_specific_prop
@@ -199,9 +229,38 @@ impl RootProp {
         Ok((*leaf_prop.id(), *leaf_item_prop.id()))
     }
 
+    async fn create_validation(
+        ctx: &DalContext,
+        prop_id: PropId,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+        validation: Validation,
+    ) -> SchemaVariantResult<()> {
+        let validation_func_name = "si:validation";
+        let validation_func: Func = Func::find_by_attr(ctx, "name", &validation_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| FuncError::NotFoundByName(validation_func_name.to_string()))?;
+        let mut builder = ValidationPrototypeContext::builder();
+        builder
+            .set_prop_id(prop_id)
+            .set_schema_id(schema_id)
+            .set_schema_variant_id(schema_variant_id);
+        ValidationPrototype::new(
+            ctx,
+            *validation_func.id(),
+            serde_json::to_value(FuncBackendValidationArgs::new(validation))?,
+            builder.to_context(ctx).await?,
+        )
+        .await?;
+        Ok(())
+    }
+
     async fn setup_si(
         ctx: &DalContext,
         root_prop_id: PropId,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<(PropId, PropId)> {
         let si_prop = Prop::new(ctx, "si", PropKind::Object, None).await?;
         si_prop.set_parent_prop(ctx, root_prop_id).await?;
@@ -241,6 +300,18 @@ impl RootProp {
         )
         .await?;
         type_prop.set_parent_prop(ctx, si_prop_id).await?;
+
+        // Override the schema variant color for nodes on the diagram.
+        let color_prop = Prop::new(ctx, "color", PropKind::String, None).await?;
+        color_prop.set_parent_prop(ctx, si_prop_id).await?;
+        Self::create_validation(
+            ctx,
+            *color_prop.id(),
+            schema_id,
+            schema_variant_id,
+            Validation::StringIsHexColor { value: None },
+        )
+        .await?;
 
         Ok((si_prop_id, *si_name_prop.id()))
     }

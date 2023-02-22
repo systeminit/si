@@ -17,8 +17,8 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributeValueError,
-    ChangeSetPk, ComponentError, DalContext, Edge, EdgeError, Node, NodeError, NodeId, NodeKind,
-    NodePosition, NodePositionError, PropError, SchemaError, SocketId, StandardModel,
+    ChangeSetPk, ComponentError, ComponentId, DalContext, Edge, EdgeError, Node, NodeError, NodeId,
+    NodeKind, NodePosition, NodePositionError, PropError, SchemaError, SocketId, StandardModel,
     StandardModelError,
 };
 
@@ -35,6 +35,8 @@ pub enum DiagramError {
     ChangeStatus(#[from] ChangeStatusError),
     #[error("component not found")]
     ComponentNotFound,
+    #[error("component status not found for component: {0}")]
+    ComponentStatusNotFound(ComponentId),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
     #[error("external provider error: {0}")]

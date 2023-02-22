@@ -14,10 +14,9 @@ use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::code_view::CodeViewError;
 use crate::func::binding::FuncBindingError;
-use crate::func::binding_return_value::{
-    FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
-};
+use crate::func::binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId};
 use crate::job::definition::DependentValuesUpdate;
+use crate::schema::variant::root_prop::SiPropChild;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::socket::{SocketEdgeKind, SocketError};
@@ -204,15 +203,19 @@ pub enum ComponentError {
     /// [`AttributeValue`](crate::AttributeValue) and [`Component`](crate::Component). In other
     /// words, the value contained in the [`AttributeValue`](crate::AttributeValue) was "none".
     #[error("component type is none for component ({0}) and attribute value ({1})")]
-    ComponentTypeIsNone(AttributeValueId, ComponentId),
-    #[error("component protection is none for component ({0})")]
-    ComponentProtectionIsNone(ComponentId),
+    ComponentTypeIsNone(ComponentId, AttributeValueId),
+    /// No "protected" boolean was found for the appropriate
+    /// [`AttributeValue`](crate::AttributeValue) and [`Component`](crate::Component). In other
+    /// words, the value contained in the [`AttributeValue`](crate::AttributeValue) was "none".
+    #[error("component protection is none for component ({0}) and attribute value ({1}")]
+    ComponentProtectionIsNone(ComponentId, AttributeValueId),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
 const FIND_FOR_NODE: &str = include_str!("queries/component/find_for_node.sql");
-const FIND_ATTRIBUTE_VALUE: &str = include_str!("queries/component/find_attribute_value.sql");
+const FIND_SI_CHILD_PROP_ATTRIBUTE_VALUE: &str =
+    include_str!("queries/component/find_si_child_attribute_value.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str = include_str!("queries/component/list_for_schema_variant.sql");
 const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
     include_str!("queries/component/list_sockets_for_socket_edge_kind.sql");
@@ -256,6 +259,12 @@ impl Default for ComponentKind {
     }
 }
 
+/// A [`Component`] is an instantiation of a [`SchemaVariant`](crate::SchemaVariant).
+///
+/// ## Updating "Fields" on a [`Component`]
+///
+/// To learn more about updating a "field" on a [`Component`], please see the
+/// [`AttributeValue module`](crate::attribute::value).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Component {
     pk: ComponentPk,
@@ -469,28 +478,32 @@ impl Component {
     }
 
     /// Find the [`AttributeValue`](crate::AttributeValue) whose
-    /// [`context`](crate::AttributeContext) corresponds to the [`PropId`](crate::Prop)
-    /// corresponding to "/root/si/type" and whose [`ComponentId`](Self) matches the provided
-    /// [`ComponentId`](Self).
+    /// [`context`](crate::AttributeContext) corresponds to the following:
+    ///
+    /// - The [`PropId`](crate::Prop) corresponding to the child [`Prop`](crate::Prop) of "/root/si"
+    ///   whose name matches the provided
+    ///   [`SiPropChild`](crate::schema::variant::root_prop::SiPropChild)
+    /// - The [`ComponentId`](Self) matching the provided [`ComponentId`](Self).
     ///
     /// _Note:_ if the type has never been updated, this will find the _default_
     /// [`AttributeValue`](crate::AttributeValue) where the [`ComponentId`](Self) is unset.
     #[instrument(skip_all)]
-    pub async fn find_attribute_value(
+    pub async fn find_si_child_attribute_value(
         ctx: &DalContext,
         component_id: ComponentId,
-        attribute_value_name: String,
+        si_prop_child: SiPropChild,
     ) -> ComponentResult<AttributeValue> {
+        let si_child_prop_name = si_prop_child.prop_name();
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                FIND_ATTRIBUTE_VALUE,
+                FIND_SI_CHILD_PROP_ATTRIBUTE_VALUE,
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &component_id,
-                    &attribute_value_name,
+                    &si_child_prop_name,
                 ],
             )
             .await?;
@@ -535,27 +548,22 @@ impl Component {
         Ok(results)
     }
 
-    // Note: Won't work for arrays and maps
-    // NOTE(nick): please do not use this for anything other than setting "/root/si/name" in its
-    // current state.
+    /// Sets the "/root/si/name" for [`self`](Self).
     #[instrument(skip_all)]
     pub async fn set_name<T: Serialize + std::fmt::Debug + std::clone::Clone>(
         &self,
         ctx: &DalContext,
         value: Option<T>,
-    ) -> ComponentResult<Option<T>> {
-        let json_pointer = "/root/si/name";
+    ) -> ComponentResult<()> {
+        let attribute_value =
+            Self::find_si_child_attribute_value(ctx, self.id, SiPropChild::Name).await?;
 
-        let attribute_value = self
-            .find_attribute_value_by_json_pointer(ctx, json_pointer)
-            .await?
-            .ok_or(AttributeValueError::Missing)?;
-
+        // Before we set the name, ensure that another function is not setting the name (e.g.
+        // something different than "unset" or "setString").
         let attribute_prototype = attribute_value
             .attribute_prototype(ctx)
             .await?
             .ok_or_else(|| ComponentError::MissingAttributePrototype(*attribute_value.id()))?;
-
         let prototype_func = Func::get_by_id(ctx, &attribute_prototype.func_id())
             .await?
             .ok_or_else(|| {
@@ -563,7 +571,7 @@ impl Component {
             })?;
         let name = prototype_func.name();
         if name != "si:unset" && name != "si:setString" {
-            return Ok(None);
+            return Ok(());
         }
 
         let attribute_context = AttributeContext::builder()
@@ -576,128 +584,20 @@ impl Component {
             None => None,
         };
 
-        let mut json_path_parts = json_pointer.split('/').collect::<Vec<&str>>();
-        json_path_parts.pop();
-        let parent_json_pointer = json_path_parts.join("/");
-        let parent_attribute_value_id = self
-            .find_attribute_value_by_json_pointer(ctx, &parent_json_pointer)
-            .await?
-            .map(|av| *av.id());
-
+        let parent_attribute_value = attribute_value.parent_attribute_value(ctx).await?.ok_or(
+            ComponentError::ParentAttributeValueNotFound(*attribute_value.id()),
+        )?;
         let (_, _) = AttributeValue::update_for_context(
             ctx,
             *attribute_value.id(),
-            parent_attribute_value_id,
+            Some(*parent_attribute_value.id()),
             attribute_context,
             json_value,
             None,
         )
         .await?;
 
-        Ok(value)
-    }
-
-    #[instrument(skip_all)]
-    pub async fn find_prop_by_json_pointer(
-        &self,
-        ctx: &DalContext,
-        json_pointer: &str,
-    ) -> ComponentResult<Option<Prop>> {
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-
-        let mut hierarchy = json_pointer.split('/');
-        hierarchy.next(); // Ignores empty part
-
-        let mut next = match hierarchy.next() {
-            Some(n) => n,
-            None => return Ok(None),
-        };
-
-        let mut work_queue = schema_variant.props(ctx).await?;
-        while let Some(prop) = work_queue.pop() {
-            if prop.name() == next {
-                next = match hierarchy.next() {
-                    Some(n) => n,
-                    None => return Ok(Some(prop)),
-                };
-                work_queue.clear();
-                work_queue.extend(prop.child_props(ctx).await?);
-            }
-        }
-
-        Ok(None)
-    }
-
-    #[instrument(skip_all)]
-    pub async fn find_attribute_value_by_json_pointer(
-        &self,
-        ctx: &DalContext,
-        json_pointer: &str,
-    ) -> ComponentResult<Option<AttributeValue>> {
-        if let Some(prop) = self.find_prop_by_json_pointer(ctx, json_pointer).await? {
-            let read_context = AttributeReadContext {
-                prop_id: Some(*prop.id()),
-                component_id: Some(self.id),
-                ..AttributeReadContext::default()
-            };
-
-            return Ok(Some(
-                AttributeValue::find_for_context(ctx, read_context)
-                    .await?
-                    .ok_or(AttributeValueError::Missing)?,
-            ));
-        };
-
-        Ok(None)
-    }
-
-    #[instrument(skip_all)]
-    pub async fn find_value_by_json_pointer<T: serde::de::DeserializeOwned + std::fmt::Debug>(
-        &self,
-        ctx: &DalContext,
-        json_pointer: &str,
-    ) -> ComponentResult<Option<T>> {
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::NoSchemaVariant(self.id))?;
-        let prop = Prop::find_root_for_schema_variant(ctx, *schema_variant.id())
-            .await?
-            .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
-
-        let implicit_provider = InternalProvider::find_for_prop(ctx, *prop.id())
-            .await?
-            .ok_or_else(|| ComponentError::InternalProviderNotFoundForProp(*prop.id()))?;
-
-        let value_context = AttributeReadContext {
-            internal_provider_id: Some(*implicit_provider.id()),
-            component_id: Some(self.id),
-            ..AttributeReadContext::default()
-        };
-
-        let attribute_value = AttributeValue::find_for_context(ctx, value_context)
-            .await?
-            .ok_or(ComponentError::AttributeValueNotFoundForContext(
-                value_context,
-            ))?;
-
-        let properties =
-            FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
-                .await?
-                .ok_or_else(|| {
-                    ComponentError::FuncBindingReturnValueNotFound(
-                        attribute_value.func_binding_return_value_id(),
-                    )
-                })?;
-        let value = serde_json::json!({ "root": properties.value() })
-            .pointer(json_pointer)
-            .map(T::deserialize)
-            .transpose()?;
-
-        Ok(value)
+        Ok(())
     }
 
     /// Return the name of the [`Component`](Self) for the provided [`ComponentId`](Self).
@@ -707,12 +607,13 @@ impl Component {
             .pg_txn()
             .query_one(FIND_NAME, &[ctx.tenancy(), ctx.visibility(), &component_id])
             .await?;
-        let component_name: serde_json::Value = row.try_get("component_name")?;
+        let component_name: Value = row.try_get("component_name")?;
         let component_name: Option<String> = serde_json::from_value(component_name)?;
         let component_name = component_name.ok_or(ComponentError::NameIsUnset(component_id))?;
         Ok(component_name)
     }
 
+    /// Calls [`Self::find_name()`] and provides the "id" off [`self`](Self).
     pub async fn name(&self, ctx: &DalContext) -> ComponentResult<String> {
         Self::find_name(ctx, self.id).await
     }
@@ -796,7 +697,7 @@ impl Component {
         let row = ctx
             .pg_txn()
             .query_one(
-                "select belongs_to_id as schema_variant_id from 
+                "select belongs_to_id as schema_variant_id from
                     component_belongs_to_schema_variant_v1($1, $2)
                     where object_id = $3
                 ",
@@ -816,7 +717,7 @@ impl Component {
         let row = ctx
             .pg_txn()
             .query_one(
-                "select belongs_to_id as schema_id from 
+                "select belongs_to_id as schema_id from
                     component_belongs_to_schema_v1($1, $2)
                     where object_id = $3
                 ",
@@ -832,9 +733,9 @@ impl Component {
     /// Mutate this with [`Self::set_type()`].
     pub async fn get_type(&self, ctx: &DalContext) -> ComponentResult<ComponentType> {
         let type_attribute_value =
-            Self::find_attribute_value(ctx, self.id, "type".to_string()).await?;
+            Self::find_si_child_attribute_value(ctx, self.id, SiPropChild::Type).await?;
         let raw_value = type_attribute_value.get_value(ctx).await?.ok_or_else(|| {
-            ComponentError::ComponentTypeIsNone(*type_attribute_value.id(), self.id)
+            ComponentError::ComponentTypeIsNone(self.id, *type_attribute_value.id())
         })?;
         let component_type: ComponentType = serde_json::from_value(raw_value)?;
         Ok(component_type)
@@ -843,11 +744,10 @@ impl Component {
     /// Gets the protected attribute value of [`self`](Self).
     pub async fn get_protected(&self, ctx: &DalContext) -> ComponentResult<bool> {
         let protected_attribute_value =
-            Self::find_attribute_value(ctx, self.id, "protected".to_string()).await?;
-        let raw_value = protected_attribute_value
-            .get_value(ctx)
-            .await?
-            .ok_or(ComponentError::ComponentProtectionIsNone(self.id))?;
+            Self::find_si_child_attribute_value(ctx, self.id, SiPropChild::Protected).await?;
+        let raw_value = protected_attribute_value.get_value(ctx).await?.ok_or(
+            ComponentError::ComponentProtectionIsNone(self.id, *protected_attribute_value.id()),
+        )?;
         let protected: bool = serde_json::from_value(raw_value)?;
         Ok(protected)
     }
@@ -860,7 +760,7 @@ impl Component {
         component_type: ComponentType,
     ) -> ComponentResult<()> {
         let type_attribute_value =
-            Self::find_attribute_value(ctx, self.id, "type".to_string()).await?;
+            Self::find_si_child_attribute_value(ctx, self.id, SiPropChild::Type).await?;
 
         // If we are setting the type for the first time, we will need to mutate the context to
         // be component-specific. This is because the attribute value will have an unset component
@@ -1138,6 +1038,25 @@ impl Component {
         ctx.enqueue_job(DependentValuesUpdate::new(ctx, ids)).await;
 
         Ok(Component::get_by_id(ctx, &component_id).await?)
+    }
+
+    /// Finds the "color" that the [`Component`] should be in the [`Diagram`](crate::Diagram).
+    pub async fn get_color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {
+        let color_attribute_value =
+            Component::find_si_child_attribute_value(ctx, self.id, SiPropChild::Color).await?;
+        let color = match color_attribute_value.get_value(ctx).await? {
+            Some(frame_color) => serde_json::from_value(frame_color)?,
+            None => {
+                let schema_variant = self
+                    .schema_variant(ctx)
+                    .await?
+                    .ok_or(ComponentError::NoSchemaVariant(self.id))?;
+                schema_variant
+                    .color()
+                    .map(|color_int| format!("#{color_int:x}"))
+            }
+        };
+        Ok(color)
     }
 }
 

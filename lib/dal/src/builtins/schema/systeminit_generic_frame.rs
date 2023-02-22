@@ -1,8 +1,7 @@
 use crate::builtins::schema::MigrationDriver;
 use crate::component::ComponentKind;
 use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
-use crate::validation::Validation;
-use crate::{BuiltinsResult, ComponentType, DalContext, PropKind, StandardModel};
+use crate::{BuiltinsResult, ComponentType, DalContext};
 
 impl MigrationDriver {
     pub async fn migrate_systeminit_generic_frame(
@@ -11,7 +10,7 @@ impl MigrationDriver {
         ui_menu_category: &str,
         node_color: &str,
     ) -> BuiltinsResult<()> {
-        let (schema, mut schema_variant, root_prop, _, _, _) = match self
+        let (_schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 SchemaVariantDefinitionMetadataJson::new(
@@ -31,34 +30,14 @@ impl MigrationDriver {
             None => return Ok(()),
         };
 
-        // Prop and validation creation
-        let color_prop = self
-            .create_prop(
-                ctx,
-                "Color",
-                PropKind::String,
-                None,
-                Some(root_prop.si_prop_id),
-                None,
-            )
+        let mut type_prop = self
+            .find_child_prop_by_name(ctx, root_prop.si_prop_id, "type")
             .await?;
-
-        self.create_validation(
-            ctx,
-            Validation::StringIsHexColor { value: None },
-            *color_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
+        type_prop.set_hidden(ctx, true).await?;
 
         schema_variant
             .finalize(ctx, Some(ComponentType::ConfigurationFrame))
             .await?;
-
-        // TODO - PAUL/VICTOR:
-        // As this is an actual frame and has no alternative functionality
-        // we want to disable the ability that a user can change the node type
 
         Ok(())
     }

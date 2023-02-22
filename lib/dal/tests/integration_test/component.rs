@@ -1,4 +1,5 @@
 use dal::edge::EdgeKind;
+use dal::schema::variant::root_prop::SiPropChild;
 use dal::socket::{SocketEdgeKind, SocketKind};
 use dal::{
     func::backend::js_command::CommandRunResult, generate_name, AttributePrototypeArgument,
@@ -144,7 +145,7 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext) {
 
     // Now, test our query. Ensure we have the right context too.
     let found_attribute_value =
-        Component::find_attribute_value(ctx, *component.id(), "type".to_string())
+        Component::find_si_child_attribute_value(ctx, *component.id(), SiPropChild::Type)
             .await
             .expect("could not find type attribute value");
     assert_eq!(
@@ -183,7 +184,7 @@ async fn find_type_attribute_value_and_set_type(ctx: &mut DalContext) {
     // Check that the type was updated. Ensure that we have the right attribute value too (specific
     // to the component now that's been updated).
     let updated_attribute_value =
-        Component::find_attribute_value(ctx, *component.id(), "type".to_string())
+        Component::find_si_child_attribute_value(ctx, *component.id(), SiPropChild::Type)
             .await
             .expect("could not find type attribute value");
     assert_eq!(

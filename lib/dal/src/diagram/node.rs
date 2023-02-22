@@ -7,9 +7,9 @@ use crate::diagram::DiagramResult;
 use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
-    history_event, ActorView, ChangeSetPk, Component, ComponentId, ComponentStatus, DalContext,
-    DiagramError, HistoryActorTimestamp, Node, NodeId, NodePosition, ResourceView, SchemaVariant,
-    StandardModel,
+    history_event, ActorView, ChangeSetPk, Component, ComponentId, ComponentStatus, ComponentType,
+    DalContext, DiagramError, HistoryActorTimestamp, Node, NodeId, NodePosition, ResourceView,
+    SchemaVariant, StandardModel,
 };
 
 #[derive(
@@ -150,7 +150,7 @@ pub struct DiagramComponentView {
     position: GridPoint,
     size: Option<Size2D>,
     color: Option<String>,
-    node_type: String,
+    node_type: ComponentType,
     change_status: ChangeStatus,
     resource: ResourceView,
 
@@ -200,10 +200,9 @@ impl DiagramComponentView {
             ChangeStatus::Unmodified
         };
 
-        // TODO: not really the right error...?
         let component_status = ComponentStatus::get_by_id(ctx, component.id())
             .await?
-            .ok_or(DiagramError::ComponentNotFound)?;
+            .ok_or(DiagramError::ComponentStatusNotFound(*component.id()))?;
 
         let created_info =
             HistoryEventMetadata::from_history_actor_timestamp(ctx, component_status.creation())
@@ -234,7 +233,6 @@ impl DiagramComponentView {
             id: *component.id(),
             node_id: *node.id(),
             display_name: Some(component.name(ctx).await?),
-
             schema_name: schema.name().to_owned(),
             schema_variant_name: schema_variant.name().to_owned(),
             schema_id: schema.id().to_string(),
@@ -246,21 +244,10 @@ impl DiagramComponentView {
                 y: y.round() as isize,
             },
             size,
-            color: component
-                .find_value_by_json_pointer::<String>(ctx, "/root/si/Color")
-                .await?
-                .or_else(|| {
-                    schema_variant
-                        .color()
-                        .map(|color_int| format!("#{color_int:x}"))
-                }),
-            node_type: component
-                .find_value_by_json_pointer::<String>(ctx, "/root/si/type")
-                .await?
-                .unwrap_or_else(|| "component".to_string()),
+            color: component.get_color(ctx).await?,
+            node_type: component.get_type(ctx).await?,
             change_status,
             resource,
-
             created_info,
             updated_info,
             deleted_info,

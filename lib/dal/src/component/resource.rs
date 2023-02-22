@@ -12,24 +12,23 @@ use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::ws_event::WsEvent;
 use crate::{
     func::backend::js_command::CommandRunResult, ActionPrototype, AttributeReadContext, Component,
-    ComponentError, ComponentId, DalContext, InternalProvider, StandardModel, WorkflowRunner,
+    ComponentError, ComponentId, DalContext, SchemaVariant, StandardModel, WorkflowRunner,
     WsPayload,
 };
 use crate::{RootPropChild, WsEventResult};
 
 impl Component {
     pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<CommandRunResult> {
-        let prop = self
-            .find_prop_by_json_pointer(ctx, "/root/resource")
-            .await?
-            .ok_or_else(|| ComponentError::PropNotFound("/root/resource".to_owned()))?;
-
-        let implicit_provider = InternalProvider::find_for_prop(ctx, *prop.id())
-            .await?
-            .ok_or_else(|| ComponentError::InternalProviderNotFoundForProp(*prop.id()))?;
+        let schema_variant_id = Self::schema_variant_id(ctx, self.id).await?;
+        let implicit_internal_provider = SchemaVariant::find_root_child_implicit_internal_provider(
+            ctx,
+            schema_variant_id,
+            RootPropChild::Resource,
+        )
+        .await?;
 
         let value_context = AttributeReadContext {
-            internal_provider_id: Some(*implicit_provider.id()),
+            internal_provider_id: Some(*implicit_internal_provider.id()),
             component_id: Some(self.id),
             ..AttributeReadContext::default()
         };
