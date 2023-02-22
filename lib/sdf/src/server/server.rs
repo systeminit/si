@@ -78,6 +78,7 @@ impl Server<(), ()> {
         encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
         council_subject_prefix: String,
+        pkgs_path: &Path,
     ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
@@ -91,6 +92,7 @@ impl Server<(), ()> {
                     jwt_secret_key,
                     config.signup_secret().clone(),
                     council_subject_prefix,
+                    Some(pkgs_path),
                 )?;
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
@@ -124,6 +126,7 @@ impl Server<(), ()> {
         encryption_key: EncryptionKey,
         jwt_secret_key: JwtSecretKey,
         council_subject_prefix: String,
+        pkgs_path: &Path,
     ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
@@ -137,6 +140,7 @@ impl Server<(), ()> {
                     jwt_secret_key,
                     config.signup_secret().clone(),
                     council_subject_prefix,
+                    Some(pkgs_path),
                 )?;
 
                 info!("binding to Unix domain socket; path={}", path.display());
@@ -239,6 +243,7 @@ impl Server<(), ()> {
             veritech,
             Arc::new(encryption_key),
             council_subject_prefix,
+            None,
         );
         ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
     }
@@ -301,6 +306,7 @@ pub fn build_service(
     jwt_secret_key: JwtSecretKey,
     signup_secret: SensitiveString,
     council_subject_prefix: String,
+    pkgs_path: Option<&Path>,
 ) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
     let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
@@ -317,6 +323,7 @@ pub fn build_service(
         council_subject_prefix,
         shutdown_tx,
         shutdown_broadcast_tx.clone(),
+        pkgs_path,
     )
     // TODO(fnichol): customize http tracing further, using:
     // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html

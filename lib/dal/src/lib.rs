@@ -333,6 +333,7 @@ pub async fn migrate_builtins(
         veritech,
         Arc::new(*encryption_key),
         council_subject_prefix,
+        None, // XXX: inject packages path here
     );
     let dal_context = services_context.into_builder();
     let mut ctx = dal_context.build_default().await?;

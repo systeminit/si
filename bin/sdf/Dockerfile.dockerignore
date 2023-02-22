@@ -41,6 +41,7 @@
 !lib/si-test-macros
 !lib/telemetry-application-rs
 !lib/telemetry-rs
+!pkgs/
 
 # Ignore non-portable context in component sub-directories
 **/.envrc

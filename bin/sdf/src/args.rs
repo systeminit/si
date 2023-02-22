@@ -78,6 +78,9 @@ pub(crate) struct Args {
     /// Will error if set when `generate_cyclone_secret_key_path` is not set
     #[arg(long, requires = "generate_cyclone_secret_key_path")]
     pub(crate) generate_cyclone_public_key_path: Option<PathBuf>,
+
+    /// Location on disk of available packages
+    pub(crate) pkgs_path: Option<String>,
 }
 
 impl TryFrom<Args> for Config {
@@ -111,6 +114,9 @@ impl TryFrom<Args> for Config {
             }
             if let Some(cyclone_encyption_key_path) = args.cyclone_encryption_key_path {
                 config_map.set("cyclone_encryption_key_path", cyclone_encyption_key_path);
+            }
+            if let Some(pkgs_path) = args.pkgs_path {
+                config_map.set("pkgs_path", pkgs_path);
             }
         })?
         .try_into()

@@ -1,5 +1,7 @@
 #![recursion_limit = "256"]
 
+use std::path::PathBuf;
+
 use color_eyre::Result;
 use sdf::{
     Config, IncomingStream, JobProcessorClientCloser, JobProcessorConnector, MigrationMode, Server,
@@ -105,6 +107,8 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     let council_subject_prefix = "council".to_owned();
 
+    let pkgs_path: PathBuf = config.pkgs_path().try_into()?;
+
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
         Server::migrate_database(
             &pg_pool,
@@ -146,6 +150,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 encryption_key,
                 jwt_secret_key,
                 council_subject_prefix.clone(),
+                &pkgs_path,
             )?;
 
             Server::start_resource_refresh_scheduler(
@@ -172,6 +177,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 encryption_key,
                 jwt_secret_key,
                 council_subject_prefix.clone(),
+                &pkgs_path,
             )
             .await?;
 

@@ -53,6 +53,7 @@ pub struct Config {
     jwt_secret_key_path: CanonicalFile,
     cyclone_encryption_key_path: CanonicalFile,
     signup_secret: SensitiveString,
+    pkgs_path: CanonicalFile,
 }
 
 impl StandardConfig for Config {
@@ -107,6 +108,12 @@ impl Config {
     pub fn signup_secret(&self) -> &SensitiveString {
         &self.signup_secret
     }
+
+    /// Gets a reference to the config's signup secret.
+    #[must_use]
+    pub fn pkgs_path(&self) -> &Path {
+        self.pkgs_path.as_path()
+    }
 }
 
 impl ConfigBuilder {
@@ -128,12 +135,14 @@ pub struct ConfigFile {
     jwt_secret_key_path: String,
     cyclone_encryption_key_path: String,
     signup_secret: SensitiveString,
+    pkgs_path: String,
 }
 
 impl Default for ConfigFile {
     fn default() -> Self {
         let mut jwt_secret_key_path = "/run/sdf/jwt_secret_key.bin".to_string();
         let mut cyclone_encryption_key_path = "/run/sdf/cyclone_encryption.key".to_string();
+        let mut pkgs_path = "/run/sdf/pkgs/".to_string();
 
         // TODO(fnichol): okay, this goes away/changes when we determine where the key would be by
         // default, etc.
@@ -143,16 +152,23 @@ impl Default for ConfigFile {
                 .join("src/dev.jwt_secret_key.bin")
                 .to_string_lossy()
                 .to_string();
+
             // In development we just take the keys cyclone is using (it needs both public and secret)
             // The dal integration tests will also need it
             cyclone_encryption_key_path = Path::new(&dir)
                 .join("../../lib/cyclone-server/src/dev.encryption.key")
                 .to_string_lossy()
                 .to_string();
+
+            pkgs_path = Path::new(&dir)
+                .join("../../pkgs/")
+                .to_string_lossy()
+                .to_string();
             telemetry::tracing::warn!(
                 jwt_secret_key_path = jwt_secret_key_path.as_str(),
                 cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
-                "detected cargo run, setting *default* key paths from sources"
+                pkgs_path = pkgs_path.as_str(),
+                "detected cargo run, setting *default* key paths and packages path from sources"
             );
         }
 
@@ -164,6 +180,7 @@ impl Default for ConfigFile {
             jwt_secret_key_path,
             cyclone_encryption_key_path,
             signup_secret: DEFAULT_SIGNUP_SECRET.into(),
+            pkgs_path,
         }
     }
 }
@@ -184,6 +201,7 @@ impl TryFrom<ConfigFile> for Config {
         config.jwt_secret_key_path(value.jwt_secret_key_path.try_into()?);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.signup_secret(value.signup_secret);
+        config.pkgs_path(value.pkgs_path.try_into()?);
         config.build().map_err(Into::into)
     }
 }

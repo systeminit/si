@@ -9,7 +9,7 @@ use hyper::StatusCode;
 use si_data_nats::{NatsClient, NatsError};
 use si_data_pg::{PgError, PgPool};
 use si_std::SensitiveString;
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 use telemetry::TelemetryClient;
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
@@ -65,6 +65,7 @@ pub fn routes(
     council_subject_prefix: String,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
+    pkgs_path: Option<&Path>,
 ) -> Router {
     let shared_state = Arc::new(State::new(shutdown_tx));
     let encryption_key = Arc::new(encryption_key);
@@ -76,6 +77,7 @@ pub fn routes(
         veritech.clone(),
         encryption_key.clone(),
         council_subject_prefix,
+        pkgs_path.map(|path| path.to_path_buf()),
     );
 
     let mut router: Router = Router::new();
@@ -91,6 +93,7 @@ pub fn routes(
         )
         .nest("/api/fix", crate::server::service::fix::routes())
         .nest("/api/func", crate::server::service::func::routes())
+        .nest("/api/pkg", crate::server::service::pkg::routes())
         .nest("/api/provider", crate::server::service::provider::routes())
         .nest(
             "/api/qualification",
