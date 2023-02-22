@@ -198,6 +198,7 @@ async fn start_job_executor(
         veritech.clone(),
         Arc::new(encryption_key),
         "council".to_owned(),
+        None,
     );
     let ctx_builder = DalContext::builder(services_context);
 

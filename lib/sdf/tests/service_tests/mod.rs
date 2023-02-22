@@ -224,6 +224,7 @@ macro_rules! test_setup {
             $jwt_secret_key.clone(),
             "myunusedsignupsecret".into(),
             $council_subject_prefix.to_owned(),
+            None,
         )
         .expect("cannot build new server");
         let $app: ::axum::Router = $app.into();
@@ -236,6 +237,7 @@ macro_rules! test_setup {
                 $veritech.clone(),
                 std::sync::Arc::new($encr_key.clone()),
                 $council_subject_prefix.to_owned(),
+                None,
             );
             let builder = services_context.into_builder();
             let mut ctx = builder
@@ -258,6 +260,7 @@ macro_rules! test_setup {
             $veritech.clone(),
             std::sync::Arc::new($encr_key.clone()),
             $council_subject_prefix.to_owned(),
+            None,
         );
         let builder = services_context.into_builder();
 

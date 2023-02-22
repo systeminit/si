@@ -244,6 +244,7 @@ impl WorkflowTree {
                 ctx.veritech().clone(),
                 Arc::new(*ctx.encryption_key()),
                 ctx.council_subject_prefix().to_owned(),
+                None,
             );
             let ctx_builder = services_context.clone().into_builder();
             let request_context = RequestContext {

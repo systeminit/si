@@ -233,6 +233,7 @@ impl TestContext {
             veritech,
             self.encryption_key.clone(),
             format!("{nats_subject_prefix}.council"),
+            None,
         )
     }
 

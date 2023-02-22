@@ -49,6 +49,7 @@ async fn ctx() -> Result<(DalContext, mpsc::Receiver<()>)> {
         veritech,
         encryption_key,
         council_subject_prefix,
+        None,
     );
 
     Ok((

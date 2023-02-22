@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use si_data_nats::{NatsClient, NatsError, NatsTxn};
@@ -35,6 +35,8 @@ pub struct ServicesContext {
     encryption_key: Arc<EncryptionKey>,
     /// The prefix for channels names when communicating with Council
     council_subject_prefix: String,
+    /// The path where available packages can be found
+    pkgs_path: Option<PathBuf>,
 }
 
 impl ServicesContext {
@@ -46,6 +48,7 @@ impl ServicesContext {
         veritech: VeritechClient,
         encryption_key: Arc<EncryptionKey>,
         council_subject_prefix: String,
+        pkgs_path: Option<PathBuf>,
     ) -> Self {
         Self {
             pg_pool,
@@ -54,6 +57,7 @@ impl ServicesContext {
             veritech,
             encryption_key,
             council_subject_prefix,
+            pkgs_path,
         }
     }
 
@@ -545,6 +549,11 @@ impl DalContextBuilder {
     /// Builds and returns a new [`Connections`].
     pub async fn connections(&self) -> PgPoolResult<Connections> {
         self.services_context.connections().await
+    }
+
+    /// Returns the location on disk where packages are stored (if one was provided)
+    pub async fn pkgs_path(&self) -> Option<&PathBuf> {
+        self.services_context.pkgs_path.as_ref()
     }
 }
 

@@ -3,6 +3,7 @@ pub mod component;
 pub mod diagram;
 pub mod fix;
 pub mod func;
+pub mod pkg;
 pub mod provider;
 pub mod qualification;
 pub mod schema;

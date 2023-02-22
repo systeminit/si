@@ -28,6 +28,7 @@ async fn create_account() {
         jwt_secret_key.clone(),
         "my-signup-secret".into(),
         council_subject_prefix.to_owned(),
+        None,
     )
     .expect("cannot build new server");
     let app: Router = app;
@@ -77,6 +78,7 @@ async fn create_account_invalid_signup_secret() {
         jwt_secret_key.clone(),
         "nope-nope-nope".into(),
         council_subject_prefix.to_owned(),
+        None,
     )
     .expect("cannot build new server");
     let app: Router = app;

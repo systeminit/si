@@ -60,6 +60,7 @@ RUN set -eux; \
 WORKDIR /run/$BIN
 COPY --from=builder /usr/src/target/release/$BIN /usr/local/bin/
 COPY --from=builder /usr/src/target/release/$BIN.dbg /usr/local/bin/.debug/
+COPY --from=builder /usr/src/pkgs ./pkgs
 
 EXPOSE 5156/tcp
 ENTRYPOINT [ \

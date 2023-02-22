@@ -139,7 +139,7 @@ fn canonicalize_path(os_str: impl AsRef<OsStr>) -> Result<PathBuf, CanonicalFile
     let path_buf = path.canonicalize().map_err(|err| {
         CanonicalFileError::Canonicalize(err, os_str.as_ref().to_string_lossy().to_string())
     })?;
-    if !path_buf.is_file() {
+    if !path_buf.is_file() && !path_buf.is_dir() {
         return Err(CanonicalFileError::FileNotFound(
             path_buf.to_string_lossy().to_string(),
         ));

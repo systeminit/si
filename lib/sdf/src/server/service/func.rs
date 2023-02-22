@@ -1,6 +1,7 @@
+use crate::server::impl_default_error_into_response;
+use crate::service::func::get_func::GetFuncResponse;
 use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
+    response::Response,
     routing::{get, post},
     Json, Router,
 };
@@ -23,8 +24,6 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
-use crate::service::func::get_func::GetFuncResponse;
 
 pub mod create_func;
 pub mod exec_func;
@@ -139,17 +138,7 @@ pub enum FuncError {
 
 pub type FuncResult<T> = Result<T, FuncError>;
 
-impl IntoResponse for FuncError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
-
-        let body = Json(
-            serde_json::json!({ "error": { "message": error_message, "code": 42, "statusCode": status.as_u16() } }),
-        );
-
-        (status, body).into_response()
-    }
-}
+impl_default_error_into_response!(FuncError);
 
 // Variants don't map 1:1 onto FuncBackendKind, since some JsAttribute functions
 // are a special case (Qualification, CodeGeneration etc)
