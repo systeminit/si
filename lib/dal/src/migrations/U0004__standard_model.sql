@@ -152,13 +152,13 @@ $$ LANGUAGE PLPGSQL STABLE;
 
 
 CREATE OR REPLACE FUNCTION update_by_id_v1(
-    this_table         text,
-    this_column        text,
-    this_tenancy       jsonb,
-    this_visibility    jsonb,
-    this_id            ident,
-    this_value         text,
-    OUT updated_at     timestamp with time zone)
+    this_table text,
+    this_column text,
+    this_tenancy jsonb,
+    this_visibility jsonb,
+    this_id ident,
+    this_value text,
+    OUT updated_at timestamp with time zone)
 AS
 $$
 DECLARE
@@ -174,7 +174,7 @@ BEGIN
     EXECUTE format('UPDATE %1$I SET %2$I = %6$L, updated_at = clock_timestamp() WHERE id = %5$L '
                        '  AND in_tenancy_v1(%3$L, %1$I.tenancy_workspace_pk) '
                        '  AND %1$I.visibility_change_set_pk = %4$L::ident '
-                       '  AND CASE WHEN %7$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE %1$I.visibility_deleted_at IS NOT NULL END '
+                       '  AND CASE WHEN %7$L IS NULL THEN %1$I.visibility_deleted_at IS NULL ELSE TRUE END '
                        ' RETURNING updated_at',
                    this_table,
                    this_column,
