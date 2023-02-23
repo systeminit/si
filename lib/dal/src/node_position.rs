@@ -107,7 +107,10 @@ impl NodePosition {
     ) -> NodePositionResult<Self> {
         for mut position in Self::list_for_node(ctx, node_id).await? {
             // Modify and return the position if found.
-            if position.diagram_kind == diagram_kind {
+            // We need to make sure we're finding a position entry for this exact change_set, otherwise we should create it
+            if position.diagram_kind == diagram_kind
+                && position.visibility.change_set_pk == ctx.visibility().change_set_pk
+            {
                 position.set_x(ctx, x.as_ref()).await?;
                 position.set_y(ctx, y.as_ref()).await?;
                 position
