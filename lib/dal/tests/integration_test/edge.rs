@@ -388,7 +388,7 @@ async fn create_multiple_connections_and_delete(ctx: &DalContext) {
     );
 
     // delete the nginx connection
-    let _result = Connection::delete_for_edge(ctx, connect_from_nginx.id).await;
+    Connection::delete_for_edge(ctx, connect_from_nginx.id).await.expect("Deletion should work");
 
     assert_eq!(
         serde_json::json![{
