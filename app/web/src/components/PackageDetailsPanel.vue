@@ -14,12 +14,14 @@
       <VButton2
         :disabled="disableInstallButton"
         :loading="disableInstallButton"
-        :label="selectedPackage.installed ? 'Remove' : 'Add'"
-        :loading-text="selectedPackage.installed ? 'Removing...' : 'Adding...'"
+        :label="selectedPackage.installed ? 'Remove' : 'Install'"
+        :loading-text="
+          selectedPackage.installed ? 'Removing...' : 'Installing...'
+        "
         tone="action"
         icon="plus"
         size="md"
-        @click="toggleInstalled"
+        @click="installPackage"
       />
     </div>
     <div class="p-sm flex flex-col">
@@ -42,12 +44,9 @@ const disableInstallButton = ref(false);
 
 const selectedPackage = computed(() => packageStore.selectedPackage);
 
-const toggleInstalled = () => {
+const installPackage = async () => {
   disableInstallButton.value = true;
-  setTimeout(() => {
-    packageStore.selectedPackage.installed =
-      !packageStore.selectedPackage.installed;
-    disableInstallButton.value = false;
-  }, 2000);
+  await packageStore.INSTALL_PACKAGE(selectedPackage.value);
+  disableInstallButton.value = false;
 };
 </script>

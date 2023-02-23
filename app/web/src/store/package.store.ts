@@ -85,7 +85,7 @@ export const usePackageStore = () => {
             "00AAFF",
           ])}`;
         },
-        generateMockPackage(id: string, name?: string) {
+        generateMockPackage(id: string, name?: string, installed?: boolean) {
           return {
             id,
             displayName:
@@ -102,7 +102,7 @@ export const usePackageStore = () => {
             icon: (_.sample(_.keys(ICONS)) || "logo-si") as IconNames,
             color: this.generateMockColor(),
             slug: `test${id}`,
-            installed: false,
+            installed: installed ?? false,
             createdAt: new Date(
               new Date().getTime() - Math.random() * 10000000000,
             ),
@@ -134,15 +134,27 @@ export const usePackageStore = () => {
           return mockSchemaVariants;
         },
 
+        async INSTALL_PACKAGE(pkg: Package) {
+          return new ApiRequest({
+            method: "post",
+            url: "/pkg/install_pkg",
+            params: { name: pkg.displayName, ...visibility },
+            onSuccess: (response) => {
+              this.packagesById[pkg.id].installed = true;
+            },
+          });
+        },
+
         async LOAD_PACKAGES() {
           return new ApiRequest({
-            url: "/pkg/list_pkgs", // TODO - replace with real API request
+            url: "/pkg/list_pkgs",
             params: { ...visibility },
             onSuccess: (response) => {
               for (const [idx, pkg] of response.pkgs.entries()) {
                 this.packagesById[idx + 1] = this.generateMockPackage(
                   idx + 1,
                   pkg.name,
+                  pkg.installed,
                 );
               }
             },

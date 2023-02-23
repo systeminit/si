@@ -34,6 +34,7 @@ pub mod func;
 pub mod group;
 pub mod history_event;
 pub mod index_map;
+pub mod installed_pkg;
 pub mod job;
 pub mod job_failure;
 pub mod jwt_key;

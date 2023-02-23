@@ -1,13 +1,21 @@
-use crate::server::{
-    extract::{AccessBuilder, HandlerContext},
-    impl_default_error_into_response,
+use crate::server::impl_default_error_into_response;
+use axum::{
+    response::Response,
+    routing::{get, post},
+    Json, Router,
 };
-use axum::{extract::Query, response::Response, routing::get, Json, Router};
-use dal::{StandardModelError, TenancyError, TransactionsError, Visibility};
+use dal::{
+    installed_pkg::InstalledPkgError, DalContextBuilder, StandardModelError, TenancyError,
+    TransactionsError, WsEventError,
+};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use si_settings::{safe_canonically_join, CanonicalFileError};
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tokio::fs::read_dir;
+
+pub mod install_pkg;
+pub mod list_pkgs;
 
 #[derive(Error, Debug)]
 pub enum PkgError {
@@ -25,11 +33,22 @@ pub enum PkgError {
     IoError(#[from] std::io::Error),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("could not publish websocket event: {0}")]
+    WsEvent(#[from] WsEventError),
     #[error("No packages path provided")]
     NoPackagesPath,
+    #[error("Could not canononicalize path: {0}")]
+    Canononicalize(#[from] CanonicalFileError),
+    #[error("Package could not be found: {0}")]
+    PackageNotFound(String),
+    #[error("Package with that name already installed: {0}")]
+    PackageAlreadyInstalled(String),
+    // add error for matching hash
+    #[error(transparent)]
+    InstalledPkg(#[from] InstalledPkgError),
 }
 
-type PkgResult<T> = Result<T, PkgError>;
+pub type PkgResult<T> = Result<T, PkgError>;
 
 impl_default_error_into_response!(PkgError);
 
@@ -37,25 +56,20 @@ impl_default_error_into_response!(PkgError);
 #[serde(rename_all = "camelCase")]
 pub struct PkgView {
     name: String,
-    // other metadata to come next
+    installed: bool,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct PkgListRequest {
-    #[serde(flatten)]
-    pub visibility: Visibility,
+pub async fn get_pkgs_path(builder: &DalContextBuilder) -> PkgResult<&PathBuf> {
+    match builder.pkgs_path().await {
+        None => Err(PkgError::NoPackagesPath),
+        Some(path) => Ok(path),
+    }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct PkgListResponse {
-    pub pkgs: Vec<PkgView>,
-}
-
-pub async fn list_pkg_dir_entries(pkgs_path: &PathBuf) -> PkgResult<Vec<String>> {
+pub async fn list_pkg_dir_entries(pkgs_path: &Path) -> PkgResult<Vec<String>> {
     let mut result = vec![];
     let mut entries = read_dir(pkgs_path).await?;
+
     while let Some(entry) = entries.next_entry().await? {
         result.push(entry.file_name().to_string_lossy().to_string())
     }
@@ -63,27 +77,18 @@ pub async fn list_pkg_dir_entries(pkgs_path: &PathBuf) -> PkgResult<Vec<String>>
     Ok(result)
 }
 
-pub async fn list_pkgs(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(_request_ctx): AccessBuilder,
-    Query(_request): Query<PkgListRequest>,
-) -> PkgResult<Json<PkgListResponse>> {
-    let pkgs_path = match builder.pkgs_path().await {
-        None => return Err(PkgError::NoPackagesPath),
-        Some(path) => path,
-    };
+pub async fn pkg_lookup(pkgs_path: &Path, name: &str) -> PkgResult<Option<String>> {
+    let real_pkg_path = safe_canonically_join(pkgs_path, name)?;
+    let file_name = real_pkg_path
+        .file_name()
+        .map(|file_name| file_name.to_string_lossy().to_string());
 
-    let pkgs = list_pkg_dir_entries(pkgs_path)
-        .await?
-        .iter()
-        .map(|name| PkgView {
-            name: name.to_owned(),
-        })
-        .collect();
-
-    Ok(Json(PkgListResponse { pkgs }))
+    Ok((real_pkg_path.is_file() && file_name.is_some())
+        .then_some(file_name.expect("logically impossible to fail")))
 }
 
 pub fn routes() -> Router {
-    Router::new().route("/list_pkgs", get(list_pkgs))
+    Router::new()
+        .route("/list_pkgs", get(list_pkgs::list_pkgs))
+        .route("/install_pkg", post(install_pkg::install_pkg))
 }
