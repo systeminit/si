@@ -176,6 +176,7 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
             },
             "confirmation": {
                 "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             }
         }], // expected
         to_aws_ec2_instance
@@ -210,6 +211,7 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
             },
             "confirmation": {
                 "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         to_aws_ec2_instance
@@ -245,6 +247,7 @@ async fn create_delete_and_restore_edges(ctx: &DalContext) {
             },
             "confirmation": {
                 "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         to_aws_ec2_instance
