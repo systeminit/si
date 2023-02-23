@@ -15,6 +15,11 @@ pub enum CanonicalFileError {
     Canonicalize(#[source] io::Error, String),
     #[error("file not found: {0}")]
     FileNotFound(String),
+    #[error("no file_name after canonicalized join: {0}")]
+    NoFileNameAfterJoin(String),
+    // needed only for the test
+    #[error(transparent)]
+    VarError(#[from] std::env::VarError),
 }
 
 #[derive(
@@ -146,4 +151,58 @@ fn canonicalize_path(os_str: impl AsRef<OsStr>) -> Result<PathBuf, CanonicalFile
     }
 
     Ok(path_buf)
+}
+
+/// Join a path to a directory safely, in a way that prevents accessing files above the `dir_path`
+/// with specially crafted filenames. Assumes `dir_path` is trusted and `file_name` is untrusted
+/// input. Does not confirm existence of path, but will fail if the path cannot be canonicalized
+/// because the directory does not exist.
+pub fn safe_canonically_join(
+    dir_path: &Path,
+    file_name: impl AsRef<OsStr>,
+) -> Result<PathBuf, CanonicalFileError> {
+    let full_path = dir_path.join(file_name.as_ref());
+    let canonicalized = full_path.canonicalize().map_err(|err| {
+        CanonicalFileError::Canonicalize(err, full_path.as_os_str().to_string_lossy().to_string())
+    })?;
+
+    match canonicalized.file_name() {
+        None => {
+            return Err(CanonicalFileError::NoFileNameAfterJoin(
+                full_path.as_os_str().to_string_lossy().to_string(),
+            ))
+        }
+        Some(file_name) => Ok(dir_path.join(file_name)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_safe_canonically_join() -> Result<(), CanonicalFileError> {
+        let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
+
+        let test_data = vec![
+            (
+                (&manifest_dir, "../../Cargo.toml"),
+                format!("{}/Cargo.toml", &manifest_dir),
+            ),
+            (
+                (&manifest_dir, "../../../../../../../../../etc/passwd"),
+                format!("{}/passwd", &manifest_dir),
+            ),
+        ];
+
+        for ((dir_path, file_name), expectation) in test_data {
+            let joined = safe_canonically_join(Path::new(dir_path), file_name)
+                .map(|pathbuf| pathbuf.as_os_str().to_string_lossy().to_string())?;
+
+            assert_eq!(expectation, joined);
+        }
+
+        Ok(())
+    }
 }

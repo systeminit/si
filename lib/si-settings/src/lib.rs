@@ -6,7 +6,7 @@ use thiserror::Error;
 
 mod canonical_file;
 
-pub use canonical_file::{CanonicalFile, CanonicalFileError};
+pub use canonical_file::{safe_canonically_join, CanonicalFile, CanonicalFileError};
 
 #[derive(Error, Debug)]
 pub enum SettingsError {
