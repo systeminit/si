@@ -264,11 +264,16 @@ function install-awscli-linux-amd64 {
 function check-dependencies {
     # Ensure we can get the absolute path of the required files.
     REALPATH=realpath
-    if [ ! "$(command -v realpath)" ]; then
+    if [ "$SI_OS" = "darwin" ]; then
         REALPATH=grealpath
         if [ ! "$(command -v grealpath)" ]; then
-            die "realpath or grealpath must be installed and in PATH (from GNU coreutils)"
+            brew install coreutils
         fi
+        if [ ! "$(command -v grealpath)" ]; then
+            die "grealpath (GNU realpath) must be installed and in PATH"
+        fi
+    elif [ ! "$(command -v realpath)" ]; then
+        die "realpath must be installed and in PATH"
     fi
 
     # Get the binaries and commands from their respective files.

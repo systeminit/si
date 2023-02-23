@@ -16,6 +16,7 @@ on:
       - lib/cyclone-server/**
       - lib/si-data-nats/**
       - lib/si-settings/**
+      - lib/nats-subscriber/**
       - lib/object-tree/**
       - lib/si-pkg/**
       - lib/telemetry-application-rs/**

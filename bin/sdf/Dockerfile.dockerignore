@@ -27,6 +27,7 @@
 !lib/dal
 !lib/dal-test
 !lib/deadpool-cyclone
+!lib/nats-subscriber
 !lib/object-tree
 !lib/sdf
 !lib/veritech-client

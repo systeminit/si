@@ -336,6 +336,7 @@ importers:
   lib/dal:
     specifiers:
       council: workspace:*
+      nats-subscriber: workspace:*
       object-tree: workspace:*
       si-data-nats: workspace:*
       si-data-pg: workspace:*
@@ -344,6 +345,7 @@ importers:
       veritech-client: workspace:*
     dependencies:
       council: link:../council
+      nats-subscriber: link:../nats-subscriber
       object-tree: link:../object-tree
       si-data-nats: link:../si-data-nats
       si-data-pg: link:../si-data-pg
@@ -380,6 +382,14 @@ importers:
     dependencies:
       cyclone-client: link:../cyclone-client
       cyclone-core: link:../cyclone-core
+
+  lib/nats-subscriber:
+    specifiers:
+      si-data-nats: workspace:*
+      telemetry: workspace:*
+    dependencies:
+      si-data-nats: link:../si-data-nats
+      telemetry: link:../telemetry-rs
 
   lib/object-tree:
     specifiers: {}

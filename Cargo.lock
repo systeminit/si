@@ -857,6 +857,7 @@ dependencies = [
  "itertools",
  "jwt-simple",
  "lazy_static",
+ "nats-subscriber",
  "object-tree",
  "once_cell",
  "paste",
@@ -2144,6 +2145,21 @@ dependencies = [
  "url",
  "webpki",
  "winapi",
+]
+
+[[package]]
+name = "nats-subscriber"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "futures-lite",
+ "pin-project-lite",
+ "serde",
+ "serde_json",
+ "si-data-nats",
+ "telemetry",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
