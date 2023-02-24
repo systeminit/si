@@ -52,18 +52,6 @@ BEGIN
         SELECT nbtc.id, 'node_belongs_to_component' as table_name
         FROM node_belongs_to_component_v1(this_tenancy, this_visibility) nbtc
         WHERE nbtc.belongs_to_id = this_component_id
-        UNION
-        SELECT npbtn.object_id, 'node_positions' as table_name
-        FROM node_belongs_to_component_v1(this_tenancy, this_visibility) nbtc
-                 INNER JOIN node_position_belongs_to_node_v1(this_tenancy, this_visibility) npbtn
-                            ON nbtc.object_id = npbtn.belongs_to_id
-        WHERE nbtc.belongs_to_id = this_component_id
-        UNION
-        SELECT npbtn.id, 'node_position_belongs_to_node' as table_name
-        FROM node_belongs_to_component_v1(this_tenancy, this_visibility) nbtc
-                 INNER JOIN node_position_belongs_to_node_v1(this_tenancy, this_visibility) npbtn
-                            ON nbtc.object_id = npbtn.belongs_to_id
-        WHERE nbtc.belongs_to_id = this_component_id
     LOOP
         -- In the future, we'll possibly want to deal differently with edges that don't exist on HEAD vs the ones that do
         -- we don't make that distinction right now
@@ -74,19 +62,19 @@ BEGIN
 
     -- Mark the component as needing destruction
     PERFORM update_by_id_v1('components',
-                                       'needs_destroy',
-                                        this_tenancy,
-                                        this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
-                                        this_component_id,
-                                        true);
+                            'needs_destroy',
+                            this_tenancy,
+                            this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
+                            this_component_id,
+                            true);
 
     -- Ensure we now set the actor of who has deleted the component
     PERFORM update_by_id_v1('components',
-            'deletion_user_id',
-            this_tenancy,
-            this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
-            this_component_id,
-            this_user_id);
+                            'deletion_user_id',
+                            this_tenancy,
+                            this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
+                            this_component_id,
+                            this_user_id);
 END;
 $$ LANGUAGE PLPGSQL STABLE;
 
@@ -167,31 +155,6 @@ BEGIN
                  INNER JOIN nodes_v1(this_tenancy, this_visibility_with_deleted) n ON n.id = nbtc.object_id
             AND n.visibility_deleted_at IS NOT NULL
             AND n.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-        WHERE nbtc.belongs_to_id = this_component_id
-          AND nbtc.visibility_deleted_at IS NOT NULL
-          AND nbtc.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-        UNION
-        SELECT npbtn.pk, 'node_position_belongs_to_node' as table_name
-        FROM node_belongs_to_component_v1(this_tenancy, this_visibility_with_deleted) nbtc
-                 INNER JOIN node_position_belongs_to_node_v1(this_tenancy, this_visibility_with_deleted) npbtn
-                            ON nbtc.object_id = npbtn.belongs_to_id
-                                AND npbtn.visibility_deleted_at IS NOT NULL
-                                AND npbtn.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-        WHERE nbtc.belongs_to_id = this_component_id
-          AND nbtc.visibility_deleted_at IS NOT NULL
-          AND nbtc.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-        UNION
-        SELECT np.pk, 'node_positions' as table_name
-        FROM node_belongs_to_component_v1(this_tenancy, this_visibility_with_deleted) nbtc
-                 INNER JOIN node_position_belongs_to_node_v1(this_tenancy, this_visibility_with_deleted) npbtn
-                            ON nbtc.object_id = npbtn.belongs_to_id
-                                AND npbtn.visibility_deleted_at IS NOT NULL
-                                AND npbtn.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-                 INNER JOIN node_positions_v1(this_tenancy, this_visibility_with_deleted) np
-                            ON npbtn.object_id = np.id
-                                AND np.visibility_deleted_at IS NOT NULL
-                                AND np.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-
         WHERE nbtc.belongs_to_id = this_component_id
           AND nbtc.visibility_deleted_at IS NOT NULL
           AND nbtc.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident

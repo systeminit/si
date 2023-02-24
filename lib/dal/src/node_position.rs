@@ -105,25 +105,40 @@ impl NodePosition {
         width: Option<impl AsRef<str>>,
         height: Option<impl AsRef<str>>,
     ) -> NodePositionResult<Self> {
-        for mut position in Self::list_for_node(ctx, node_id).await? {
+        let ctx_without_deleted = &ctx.clone_with_new_visibility(Visibility::new_change_set(
+            ctx.visibility().change_set_pk,
+            false,
+        ));
+
+        for mut position in Self::list_for_node(ctx_without_deleted, node_id).await? {
             // Modify and return the position if found.
             // We need to make sure we're finding a position entry for this exact change_set, otherwise we should create it
             if position.diagram_kind == diagram_kind
-                && position.visibility.change_set_pk == ctx.visibility().change_set_pk
+                && position.visibility.change_set_pk
+                    == ctx_without_deleted.visibility().change_set_pk
             {
-                position.set_x(ctx, x.as_ref()).await?;
-                position.set_y(ctx, y.as_ref()).await?;
+                position.set_x(ctx_without_deleted, x.as_ref()).await?;
+                position.set_y(ctx_without_deleted, y.as_ref()).await?;
                 position
-                    .set_width(ctx, width.as_ref().map(|val| val.as_ref()))
+                    .set_width(ctx_without_deleted, width.as_ref().map(|val| val.as_ref()))
                     .await?;
                 position
-                    .set_height(ctx, height.as_ref().map(|val| val.as_ref()))
+                    .set_height(ctx_without_deleted, height.as_ref().map(|val| val.as_ref()))
                     .await?;
                 return Ok(position);
             }
         }
 
-        let obj = Self::new(ctx, node_id, diagram_kind, x, y, width, height).await?;
+        let obj = Self::new(
+            ctx_without_deleted,
+            node_id,
+            diagram_kind,
+            x,
+            y,
+            width,
+            height,
+        )
+        .await?;
         Ok(obj)
     }
 

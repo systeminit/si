@@ -112,6 +112,10 @@ impl ComponentChangeStatus {
     pub async fn list_modified(
         ctx: &DalContext,
     ) -> ChangeStatusResult<Vec<ComponentChangeStatusGroup>> {
+        if ctx.visibility().is_head() {
+            return Ok(vec![]);
+        }
+
         let rows = ctx
             .txns()
             .pg()

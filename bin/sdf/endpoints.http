@@ -86,6 +86,20 @@ Content-Type: application/json
   "workspaceId": "01GSX865GBBHGPCCF6NBV6NF24"
 }
 
+### Set Node Position
+POST http://localhost:8080/api/diagram/set_node_position
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "nodeId": "01GSZRE8BGRZXYDPV4EMX0CHF5",
+  "x": "-163",
+  "y": "-74",
+  "diagramKind": "configuration",
+  "visibility_change_set_pk": "01GSZRM5WKM0NJG3ZGHBY3975M",
+  "workspaceId": "01GSZRBSJ3GRYSE2V0TRAE3CVV"
+}
+
 ### Restore Edge
 POST http://localhost:8080/api/diagram/restore_connection
 Authorization: Bearer {{auth_token}}
