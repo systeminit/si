@@ -622,7 +622,9 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
         .await
         .expect("could not retrieve component by id")
         .expect("component missing");
-    comp.delete_and_propagate(ctx).await.expect("Deletion of nginx component should work");
+    comp.delete_and_propagate(ctx)
+        .await
+        .expect("Deletion of nginx component should work");
 
     assert_eq!(
         serde_json::json![{
