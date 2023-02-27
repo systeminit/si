@@ -52,7 +52,11 @@ fn insert_prop_into(root: &mut PropTreeNode, node: &PropTreeNode) {
 }
 
 impl PropTree {
-    pub async fn new(ctx: &DalContext, include_hidden: bool) -> PropTreeResult<Self> {
+    pub async fn new(
+        ctx: &DalContext,
+        include_hidden: bool,
+        schema_variant_id_filter: Option<SchemaVariantId>,
+    ) -> PropTreeResult<Self> {
         let mut root_props = vec![];
 
         let rows = ctx
@@ -71,6 +75,13 @@ impl PropTree {
             }
             let parent_id: PropId = row.try_get("parent_id")?;
             let schema_variant_id: SchemaVariantId = row.try_get("schema_variant_id")?;
+
+            if let Some(schema_variant_id_filter) = schema_variant_id_filter {
+                if schema_variant_id_filter != schema_variant_id {
+                    continue;
+                }
+            }
+
             let internal_provider_id: Option<InternalProviderId> =
                 row.try_get("internal_provider_id")?;
             let path: String = row.try_get("path")?;

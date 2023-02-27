@@ -388,6 +388,10 @@ impl SchemaVariant {
     standard_model_accessor!(color, OptionBigInt<i64>, SchemaVariantResult);
     standard_model_accessor!(finalized_once, bool, SchemaVariantResult);
 
+    pub fn color_as_string(&self) -> Option<String> {
+        self.color.map(|color| format!("{:06x}", color))
+    }
+
     standard_model_belongs_to!(
         lookup_fn: schema,
         set_fn: set_schema,

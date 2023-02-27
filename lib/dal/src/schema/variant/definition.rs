@@ -9,7 +9,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
-use crate::SchemaError;
 use crate::{
     component::ComponentKind, edit_field::widget::WidgetKind, impl_standard_model, pk,
     standard_model, standard_model_accessor, DalContext, ExternalProvider, Func, HistoryEventError,
@@ -17,6 +16,7 @@ use crate::{
     SchemaVariantId, SocketArity, StandardModel, StandardModelError, Tenancy, Timestamp,
     Visibility,
 };
+use crate::{SchemaError, SchemaId};
 
 #[derive(Error, Debug)]
 pub enum SchemaVariantDefinitionError {
@@ -36,6 +36,8 @@ pub enum SchemaVariantDefinitionError {
     InvalidHexColor(String),
     #[error("Could not check for default variant: {0}")]
     CouldNotCheckForDefaultVariant(String),
+    #[error("Could not get ui menu for schema: {0}")]
+    CouldNotGetUiMenu(SchemaId),
 }
 
 pub type SchemaVariantDefinitionResult<T> = Result<T, SchemaVariantDefinitionError>;
@@ -307,6 +309,37 @@ impl SchemaVariantDefinitionMetadataJson {
     pub fn color_as_i64(&self) -> SchemaVariantDefinitionResult<i64> {
         hex_color_to_i64(&self.color)
     }
+
+    pub async fn from_schema_and_variant(
+        ctx: &DalContext,
+        schema: &Schema,
+        variant: &SchemaVariant,
+    ) -> SchemaVariantDefinitionResult<Self> {
+        let (menu_name, category) = match schema.ui_menus(ctx).await {
+            Ok(ui_menus) => match ui_menus.get(0) {
+                Some(ui_menu) => (
+                    Some(ui_menu.name().to_string()),
+                    ui_menu.category().to_string(),
+                ),
+                None => (None, "".to_string()),
+            },
+            Err(_) => {
+                return Err(SchemaVariantDefinitionError::CouldNotGetUiMenu(
+                    *schema.id(),
+                ))
+            }
+        };
+
+        Ok(SchemaVariantDefinitionMetadataJson {
+            name: schema.name().to_string(),
+            menu_name,
+            category,
+            color: variant.color_as_string().unwrap_or("baddad".to_string()),
+            component_kind: *schema.component_kind(),
+            link: variant.link().map(|l| l.to_string()),
+            description: None,
+        })
+    }
 }
 
 /// The definition for a [`SchemaVariant`](crate::SchemaVariant)'s [`Prop`](crate::Prop) tree (and
@@ -316,20 +349,21 @@ impl SchemaVariantDefinitionMetadataJson {
 pub struct SchemaVariantDefinitionJson {
     /// The immediate child [`Props`](crate::Prop) underneath "/root/domain".
     #[serde(default)]
-    props: Vec<PropDefinition>,
+    pub props: Vec<PropDefinition>,
     /// The input [`Sockets`](crate::Socket) and corresponding
     /// explicit [`InternalProviders`](crate::InternalProvider) created for the
     /// [`variant`](crate::SchemaVariant).
     #[serde(default)]
-    input_sockets: Vec<SocketDefinition>,
+    pub input_sockets: Vec<SocketDefinition>,
     /// The output [`Sockets`](crate::Socket) and corresponding
     /// [`ExternalProviders`](crate::ExternalProvider) created for the
     /// [`variant`](crate::SchemaVariant).
     #[serde(default)]
-    output_sockets: Vec<SocketDefinition>,
+    pub output_sockets: Vec<SocketDefinition>,
     /// A map of documentation links to reference. To reference links (values) specify the key via
     /// the "doc_link_ref" field for a [`PropDefinition`].
-    doc_links: Option<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc_links: Option<HashMap<String, String>>,
 }
 
 impl TryFrom<SchemaVariantDefinition> for SchemaVariantDefinitionJson {
@@ -363,25 +397,28 @@ pub struct PropWidgetDefinition {
 #[serde(rename_all = "camelCase")]
 pub struct PropDefinition {
     /// The name of the [`Prop`](crate::Prop) to be created.
-    name: String,
+    pub name: String,
     /// The [`kind`](crate::PropKind) of the [`Prop`](crate::Prop) to be created.
-    kind: PropKind,
+    pub kind: PropKind,
     /// An optional reference to a documentation link in the "doc_links" field for the
     /// [`SchemaVariantDefinitionJson`] for the [`Prop`](crate::Prop) to be created.
-    doc_link_ref: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc_link_ref: Option<String>,
     /// An optional documentation link for the [`Prop`](crate::Prop) to be created.
-    doc_link: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc_link: Option<String>,
     /// If our [`kind`](crate::PropKind) is [`Object`](crate::PropKind::Object), specify the
     /// child definition(s).
     #[serde(default)]
-    children: Vec<PropDefinition>,
+    pub children: Vec<PropDefinition>,
     /// If our [`kind`](crate::PropKind) is [`Array`](crate::PropKind::Array), specify the entry
     /// definition.
-    entry: Option<Box<PropDefinition>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry: Option<Box<PropDefinition>>,
     /// The [`WidgetDefinition`](crate::schema::variant::definition::PropWidgetDefinition) of the
     /// [`Prop`](crate::Prop) to be created.
-    #[serde(default)]
-    widget: Option<PropWidgetDefinition>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub widget: Option<PropWidgetDefinition>,
 }
 
 /// The definition for a [`Socket`](crate::Socket) in a [`SchemaVariant`](crate::SchemaVariant).
@@ -390,10 +427,11 @@ pub struct PropDefinition {
 #[serde(rename_all = "camelCase")]
 pub struct SocketDefinition {
     /// The name of the [`Socket`](crate::Socket) to be created.
-    name: String,
+    pub name: String,
     /// The [`arity`](https://en.wikipedia.org/wiki/Arity) of the [`Socket`](crate::Socket).
     /// Defaults to [`SocketArity::Many`](crate::SocketArity::Many) if nothing is provided.
-    arity: Option<SocketArity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arity: Option<SocketArity>,
 }
 
 // Not sure if this fits here still
