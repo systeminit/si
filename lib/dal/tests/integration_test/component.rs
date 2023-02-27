@@ -618,10 +618,13 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
     ctx.update_visibility(Visibility::new(change_set_2.pk, None));
 
     // delete the nginx container
-    let comp = Component::get_by_id(ctx, &nginx_container.component_id)
+    let mut comp = Component::get_by_id(ctx, &nginx_container.component_id)
         .await
-        .expect("could not find component by id");
-    let _result = comp.unwrap().delete_and_propagate(ctx).await;
+        .expect("could not retrieve component by id")
+        .expect("component missing");
+    comp.delete_and_propagate(ctx)
+        .await
+        .expect("Deletion of nginx component should work");
 
     assert_eq!(
         serde_json::json![{
@@ -651,7 +654,9 @@ async fn create_delete_and_restore_components(ctx: &mut DalContext) {
             .to_value() // actual
     );
 
-    let _result = Component::restore_and_propagate(ctx, nginx_container.component_id).await;
+    Component::restore_and_propagate(ctx, nginx_container.component_id)
+        .await
+        .expect("Restoring nginx component should work");
 
     // check that the value of the butane instance
     assert_eq!(

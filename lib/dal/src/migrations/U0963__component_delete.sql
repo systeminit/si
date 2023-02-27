@@ -45,36 +45,12 @@ BEGIN
         FROM edges_v1(this_tenancy, this_visibility)
         WHERE head_object_id = this_component_id
         UNION
-        SELECT id, 'attribute_prototypes' as table_name
-        FROM attribute_prototypes_v1(this_tenancy, this_visibility)
-        WHERE attribute_context_component_id = this_component_id
-        UNION
-        SELECT id, 'attribute_values' as table_name
-        FROM attribute_values_v1(this_tenancy, this_visibility)
-        WHERE attribute_context_component_id = this_component_id
-        UNION
-        SELECT id, 'attribute_prototype_arguments' as table_name
-        FROM attribute_prototype_arguments_v1(this_tenancy, this_visibility)
-        WHERE (head_component_id = this_component_id OR tail_component_id = this_component_id)
-        UNION
         SELECT nbtc.object_id, 'nodes' as table_name
         FROM node_belongs_to_component_v1(this_tenancy, this_visibility) nbtc
         WHERE nbtc.belongs_to_id = this_component_id
         UNION
         SELECT nbtc.id, 'node_belongs_to_component' as table_name
         FROM node_belongs_to_component_v1(this_tenancy, this_visibility) nbtc
-        WHERE nbtc.belongs_to_id = this_component_id
-        UNION
-        SELECT npbtn.object_id, 'node_positions' as table_name
-        FROM node_belongs_to_component_v1(this_tenancy, this_visibility) nbtc
-                 INNER JOIN node_position_belongs_to_node_v1(this_tenancy, this_visibility) npbtn
-                            ON nbtc.object_id = npbtn.belongs_to_id
-        WHERE nbtc.belongs_to_id = this_component_id
-        UNION
-        SELECT npbtn.id, 'node_position_belongs_to_node' as table_name
-        FROM node_belongs_to_component_v1(this_tenancy, this_visibility) nbtc
-                 INNER JOIN node_position_belongs_to_node_v1(this_tenancy, this_visibility) npbtn
-                            ON nbtc.object_id = npbtn.belongs_to_id
         WHERE nbtc.belongs_to_id = this_component_id
     LOOP
         -- In the future, we'll possibly want to deal differently with edges that don't exist on HEAD vs the ones that do
@@ -84,13 +60,21 @@ BEGIN
 
     SELECT delete_by_id_v1('components', this_tenancy, this_visibility, this_component_id) INTO deleted_timestamp;
 
+    -- Mark the component as needing destruction
+    PERFORM update_by_id_v1('components',
+                            'needs_destroy',
+                            this_tenancy,
+                            this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
+                            this_component_id,
+                            true);
+
     -- Ensure we now set the actor of who has deleted the component
     PERFORM update_by_id_v1('components',
-            'deletion_user_id',
-            this_tenancy,
-            this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
-            this_component_id,
-            this_user_id);
+                            'deletion_user_id',
+                            this_tenancy,
+                            this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
+                            this_component_id,
+                            this_user_id);
 END;
 $$ LANGUAGE PLPGSQL STABLE;
 
@@ -158,26 +142,6 @@ BEGIN
                             attribute_context_external_provider_id = external_provider_id);
     END LOOP;
 
-    -- Standard component dependencies that don't need extra work
-    FOR target_pk, table_name IN
-        SELECT pk, agg.table_name
-        FROM (SELECT pk, 'attribute_prototypes' as table_name, visibility_deleted_at, visibility_change_set_pk
-              FROM attribute_prototypes_v1(this_tenancy, this_visibility_with_deleted)
-              WHERE attribute_context_component_id = this_component_id
-              UNION
-              SELECT pk, 'attribute_values' as table_name, visibility_deleted_at, visibility_change_set_pk
-              FROM attribute_values_v1(this_tenancy, this_visibility_with_deleted)
-              WHERE attribute_context_component_id = this_component_id
-              UNION
-              SELECT pk, 'attribute_prototype_arguments' as table_name, visibility_deleted_at, visibility_change_set_pk
-              FROM attribute_prototype_arguments_v1(this_tenancy, this_visibility_with_deleted)
-              WHERE (head_component_id = this_component_id OR tail_component_id = this_component_id)) as agg
-        WHERE visibility_deleted_at IS NOT NULL
-          AND visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-    LOOP
-        PERFORM hard_delete_by_pk_v1(table_name, target_pk);
-    END LOOP;
-
     -- Belongs to queries are a bit more complicated (and should be gone pretty soon)
     FOR target_pk, table_name IN
         SELECT nbtc.pk, 'node_belongs_to_component' as table_name
@@ -191,31 +155,6 @@ BEGIN
                  INNER JOIN nodes_v1(this_tenancy, this_visibility_with_deleted) n ON n.id = nbtc.object_id
             AND n.visibility_deleted_at IS NOT NULL
             AND n.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-        WHERE nbtc.belongs_to_id = this_component_id
-          AND nbtc.visibility_deleted_at IS NOT NULL
-          AND nbtc.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-        UNION
-        SELECT npbtn.pk, 'node_position_belongs_to_node' as table_name
-        FROM node_belongs_to_component_v1(this_tenancy, this_visibility_with_deleted) nbtc
-                 INNER JOIN node_position_belongs_to_node_v1(this_tenancy, this_visibility_with_deleted) npbtn
-                            ON nbtc.object_id = npbtn.belongs_to_id
-                                AND npbtn.visibility_deleted_at IS NOT NULL
-                                AND npbtn.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-        WHERE nbtc.belongs_to_id = this_component_id
-          AND nbtc.visibility_deleted_at IS NOT NULL
-          AND nbtc.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-        UNION
-        SELECT np.pk, 'node_positions' as table_name
-        FROM node_belongs_to_component_v1(this_tenancy, this_visibility_with_deleted) nbtc
-                 INNER JOIN node_position_belongs_to_node_v1(this_tenancy, this_visibility_with_deleted) npbtn
-                            ON nbtc.object_id = npbtn.belongs_to_id
-                                AND npbtn.visibility_deleted_at IS NOT NULL
-                                AND npbtn.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-                 INNER JOIN node_positions_v1(this_tenancy, this_visibility_with_deleted) np
-                            ON npbtn.object_id = np.id
-                                AND np.visibility_deleted_at IS NOT NULL
-                                AND np.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident
-
         WHERE nbtc.belongs_to_id = this_component_id
           AND nbtc.visibility_deleted_at IS NOT NULL
           AND nbtc.visibility_change_set_pk = (this_visibility ->> 'visibility_change_set_pk')::ident

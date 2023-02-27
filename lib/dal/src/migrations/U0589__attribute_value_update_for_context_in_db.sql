@@ -219,6 +219,17 @@ BEGIN
                  visibility_change_set_pk DESC,
                  visibility_deleted_at DESC
     ) AS avbtav ON avbtav.child_attribute_value_id = av.id
+    LEFT JOIN (
+        SELECT DISTINCT ON (id)
+            id as comp_id,
+            needs_destroy,
+            visibility_deleted_at
+        FROM components
+        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+        ORDER BY id,
+            visibility_change_set_pk DESC,
+            visibility_deleted_at DESC
+    ) as components ON components.comp_id = av.attribute_context_component_id
     WHERE in_attribute_context_v1(this_attribute_context, av)
           AND CASE
                   WHEN this_parent_attribute_value_id IS NULL THEN avbtav.parent_attribute_value_id IS NULL
@@ -228,9 +239,14 @@ BEGIN
                   WHEN this_key IS NULL THEN av.key IS NULL
                   ELSE av.key = this_key
               END
+          AND CASE
+                WHEN components.comp_id != ident_nil_v1() THEN
+                    (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                ELSE true
+              END
     ORDER BY attribute_context_prop_id,
              visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST,
+             av.visibility_deleted_at DESC NULLS FIRST,
              attribute_context_internal_provider_id DESC,
              attribute_context_external_provider_id DESC,
              attribute_context_component_id DESC;
@@ -289,6 +305,17 @@ AS $$
     LEFT JOIN attribute_values_v1(this_tenancy, this_visibility) AS parent_av
         ON avbtav.belongs_to_id = parent_av.id
             AND in_attribute_context_v1(this_attribute_context, av)
+    LEFT JOIN (
+        SELECT DISTINCT ON (id)
+            id as comp_id,
+            needs_destroy,
+            visibility_deleted_at
+        FROM components
+        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+        ORDER BY id,
+            visibility_change_set_pk DESC,
+            visibility_deleted_at DESC
+    ) as components ON components.comp_id = ap.attribute_context_component_id
     WHERE
         exact_attribute_context_v1(this_attribute_context, ap)
         AND CASE
@@ -299,6 +326,11 @@ AS $$
                 WHEN this_key IS NULL THEN ap.key IS NULL
                 ELSE ap.key = this_key
             END
+        AND CASE
+            WHEN components.comp_id != ident_nil_v1() THEN
+                (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+            ELSE true
+        END
     ORDER BY
         ap.attribute_context_prop_id DESC,
         COALESCE(ap.key, ''),
@@ -568,11 +600,27 @@ AS $$
     FROM attribute_values_v1(this_tenancy, this_visibility) AS av
     LEFT JOIN attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
         ON avbtav.object_id = av.id
+    LEFT JOIN (
+        SELECT DISTINCT ON (id)
+            id as comp_id,
+            needs_destroy,
+            visibility_deleted_at
+        FROM components
+        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+        ORDER BY id,
+            visibility_change_set_pk DESC,
+            visibility_deleted_at DESC
+    ) as components ON components.comp_id = av.attribute_context_component_id
     WHERE in_attribute_context_v1(this_attribute_context, av)
         AND CASE
                 WHEN this_key IS NULL THEN key IS NULL
                 ELSE key = this_key
             END
+        AND CASE
+                WHEN components.comp_id != ident_nil_v1() THEN
+                    (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+                ELSE true
+        END
     ORDER BY COALESCE(belongs_to_id, ident_nil_v1()),
             attribute_context_prop_id DESC,
             attribute_context_internal_provider_id DESC,
@@ -748,7 +796,23 @@ AS $$
     INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
         ON avbtav.object_id = av.id
             AND avbtav.belongs_to_id = this_original_attribute_value_id
+    LEFT JOIN (
+        SELECT DISTINCT ON (id)
+            id as comp_id,
+            needs_destroy,
+            visibility_deleted_at
+        FROM components
+        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility || jsonb_build_object('visibility_deleted_at', NULL), components)
+        ORDER BY id,
+            visibility_change_set_pk DESC,
+            visibility_deleted_at DESC
+    ) as components ON components.comp_id = av.attribute_context_component_id
     WHERE in_attribute_context_v1(this_read_attribute_context, av)
+        AND CASE
+            WHEN components.comp_id != ident_nil_v1() THEN
+                (components.visibility_deleted_at IS NOT NULL AND components.needs_destroy) OR components.visibility_deleted_at IS NULL
+            ELSE true
+        END
     ORDER BY attribute_context_prop_id,
                 COALESCE(key, ''),
                 attribute_context_internal_provider_id DESC,

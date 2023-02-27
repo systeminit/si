@@ -21,11 +21,17 @@ FROM (SELECT attribute_prototype_id,
             FROM attribute_prototype_arguments_v1($1, $2) AS apa
                      INNER JOIN func_arguments_v1($1, $2) AS fa
                                 ON apa.func_argument_id = fa.id
+                      LEFT JOIN components_v1($1, $2 || jsonb_build_object('visibility_deleted_at', NULL)) AS comp
+                          ON comp.id = apa.tail_component_id
             WHERE apa.attribute_prototype_id = $3
               AND CASE
+                      -- This is the case when a link exists from an external provider of 1 component to the
+                      -- explicit internal provider of another component
                       WHEN apa.external_provider_id != ident_nil_v1()
                           THEN
-                          apa.head_component_id = $4
+                          apa.head_component_id = $4 AND comp.id IS NOT NULL
+                      -- This is the case to support frames - connecting a component to a frame
+                      -- the explicit internal provider pulls data from it's parent frame's explicit internal provider
                       WHEN apa.internal_provider_id != ident_nil_v1() AND apa.head_component_id != ident_nil_v1()
                           THEN
                           apa.head_component_id = $4

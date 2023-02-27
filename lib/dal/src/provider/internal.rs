@@ -472,14 +472,17 @@ impl InternalProvider {
             //
             // The Root Prop won't have a parent Prop.
             if provider_prop.parent_prop(ctx).await?.is_none() {
-                let component =
-                    Component::get_by_id(ctx, &target_attribute_value.context.component_id())
-                        .await?
-                        .ok_or_else(|| {
-                            InternalProviderError::ComponentNotFound(
-                                target_attribute_value.context.component_id(),
-                            )
-                        })?;
+                let ctx_deletion = &ctx.clone_with_delete_visibility();
+                let component = Component::get_by_id(
+                    ctx_deletion,
+                    &target_attribute_value.context.component_id(),
+                )
+                .await?
+                .ok_or_else(|| {
+                    InternalProviderError::ComponentNotFound(
+                        target_attribute_value.context.component_id(),
+                    )
+                })?;
                 component
                     .check_validations(ctx)
                     .await

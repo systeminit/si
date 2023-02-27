@@ -64,13 +64,41 @@ Content-Type: application/json
 
 {
   "visibility_change_set_pk": "01GPGYWTG6B7RSP1X9YNH52799",
-  "edgeId": "01GPH1C0K2T7WSVSAHJDC4KC5A",
+  "edgeId": "01GPH1C0K2T7WSVSAHJDC4KC5A"
 }
 
 ### Get Diagram
 
 GET http://localhost:8080/api/diagram/get_diagram?visibility_change_set_pk=01GQ35YNM21H71VVDTRN8YJJP2
 authorization: Bearer {{auth_token}}
+
+### Set Node Position
+POST http://localhost:8080/api/diagram/set_node_position
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "nodeId": "01GSXD5AC84SX40ZF4WB1GPD8Y",
+  "x": "-163",
+  "y": "-74",
+  "diagramKind": "configuration",
+  "visibility_change_set_pk": "01GSXD4S30A3EVW19G1VFZXT3G",
+  "workspaceId": "01GSX865GBBHGPCCF6NBV6NF24"
+}
+
+### Set Node Position
+POST http://localhost:8080/api/diagram/set_node_position
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "nodeId": "01GSZRE8BGRZXYDPV4EMX0CHF5",
+  "x": "-163",
+  "y": "-74",
+  "diagramKind": "configuration",
+  "visibility_change_set_pk": "01GSZRM5WKM0NJG3ZGHBY3975M",
+  "workspaceId": "01GSZRBSJ3GRYSE2V0TRAE3CVV"
+}
 
 ### Restore Edge
 POST http://localhost:8080/api/diagram/restore_connection
@@ -79,7 +107,7 @@ Content-Type: application/json
 
 {
   "visibility_change_set_pk": "01GQ37T27VP4WEN5TBN7VE3YXH",
-  "edgeId": "01GQ37D814ZRGF52RAVMVHNZ5S",
+  "edgeId": "01GQ37D814ZRGF52RAVMVHNZ5S"
 }
 
 ### Delete Component

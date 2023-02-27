@@ -30,6 +30,8 @@ pub enum RootPropChild {
     Qualification,
     /// Corresponds to the "/root/confirmation" subtree.
     Confirmation,
+    /// Corresponds to the "/root/deleted_at" subtree.
+    DeletedAt,
 }
 
 impl RootPropChild {
@@ -41,6 +43,7 @@ impl RootPropChild {
             Self::Code => "code",
             Self::Qualification => "qualification",
             Self::Confirmation => "confirmation",
+            Self::DeletedAt => "deleted_at",
         }
     }
 }
@@ -95,6 +98,8 @@ pub struct RootProp {
     /// Contains the tree of [`Props`](crate::Prop) corresponding to confirmation
     /// [`Funcs`](crate::Func).
     pub confirmation_prop_id: PropId,
+    /// The deleted_at prop on [`self`](Self).
+    pub deleted_at_prop_id: PropId,
 }
 
 impl RootProp {
@@ -126,6 +131,7 @@ impl RootProp {
         let code_specific_prop_id = Self::setup_code(ctx, root_prop_id).await?;
         let qualification_specific_prop_id = Self::setup_qualification(ctx, root_prop_id).await?;
         let confirmation_specific_prop_id = Self::setup_confirmation(ctx, root_prop_id).await?;
+        let deleted_at_prop_id = Self::setup_deleted_at(ctx, root_prop_id).await?;
 
         // Now that the structure is set up, we can populate default
         // AttributePrototypes & AttributeValues to be updated appropriately below.
@@ -207,6 +213,7 @@ impl RootProp {
             code_prop_id: code_specific_prop_id,
             qualification_prop_id: qualification_specific_prop_id,
             confirmation_prop_id: confirmation_specific_prop_id,
+            deleted_at_prop_id,
         })
     }
 
@@ -394,6 +401,18 @@ impl RootProp {
             .await?;
 
         Ok(qualification_map_prop_id)
+    }
+
+    async fn setup_deleted_at(
+        ctx: &DalContext,
+        root_prop_id: PropId,
+    ) -> SchemaVariantResult<PropId> {
+        // This is a new prop that we will use to determine if we want to run a delete workflow
+        let mut deleted_at = Prop::new(ctx, "deleted_at", PropKind::String, None).await?;
+        deleted_at.set_parent_prop(ctx, root_prop_id).await?;
+        deleted_at.set_hidden(ctx, true).await?;
+
+        Ok(*deleted_at.id())
     }
 
     async fn setup_confirmation(

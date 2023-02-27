@@ -509,7 +509,7 @@ pub async fn delete_by_id<ID: Send + Sync + ToSql + std::fmt::Display>(
         .txns()
         .pg()
         .query_one(
-            "SELECT deleted_at FROM delete_by_id_v1($1, $2, $3, $4)",
+            "SELECT delete_by_id_v1($1, $2, $3, $4) AS deleted_at",
             &[&table, ctx.tenancy(), ctx.visibility(), &id],
         )
         .await?;

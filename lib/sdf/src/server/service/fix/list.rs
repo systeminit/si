@@ -53,7 +53,8 @@ pub async fn list(
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListFixesRequest>,
 ) -> FixResult<Json<ListFixesResponse>> {
-    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
+    ctx = ctx.clone_with_delete_visibility();
 
     let mut batch_views = Vec::new();
     for batch in FixBatch::list_finished(&ctx).await? {

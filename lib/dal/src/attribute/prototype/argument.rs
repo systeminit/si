@@ -16,9 +16,6 @@ use crate::{
 
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
     include_str!("../../queries/attribute_prototype_argument/list_for_attribute_prototype.sql");
-const LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE_AND_HEAD_COMPONENT_ID: &str = include_str!(
-    "../../queries/attribute_prototype_argument/list_by_name_for_attribute_prototype_and_head_component_id.sql"
-);
 const LIST_FOR_FUNC_ARGUMENT_ID: &str =
     include_str!("../../queries/attribute_prototype_argument/list_for_func_argument.sql");
 const FIND_FOR_PROVIDERS_AND_COMPONENTS: &str = include_str!(
@@ -403,45 +400,6 @@ impl AttributePrototypeArgument {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
-    }
-
-    /// List all [`AttributePrototypeArguments`](Self) by name for a given
-    /// [`AttributePrototype`](crate::AttributePrototype). This function should be used instead of
-    /// [`Self::list_for_attribute_prototype()`] if the caller needs to group arguments that share
-    /// the same "name"
-    #[tracing::instrument(skip(ctx))]
-    pub async fn list_by_name_for_attribute_prototype_and_head_component_id(
-        ctx: &DalContext,
-        attribute_prototype_id: AttributePrototypeId,
-        head_component_id: ComponentId,
-    ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentGroup>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE_AND_HEAD_COMPONENT_ID,
-                &[
-                    ctx.tenancy(),
-                    ctx.visibility(),
-                    &attribute_prototype_id,
-                    &head_component_id,
-                ],
-            )
-            .await?;
-
-        let mut result = Vec::new();
-        for row in rows.into_iter() {
-            let name: String = row.try_get("name")?;
-
-            let arguments_json: Vec<serde_json::Value> = row.try_get("arguments")?;
-            let mut arguments = Vec::new();
-            for argument_json in arguments_json {
-                arguments.push(serde_json::from_value(argument_json)?);
-            }
-
-            result.push(AttributePrototypeArgumentGroup { name, arguments });
-        }
-        Ok(result)
     }
 
     /// List all [`AttributePrototypeArguments`](Self) for a given [`FuncArgument`](crate::func::argument::FuncArgument).

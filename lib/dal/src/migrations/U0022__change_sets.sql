@@ -80,6 +80,9 @@ BEGIN
             -- rows to conflict in head when we try to insert into head in the
             -- next query below (i.e. we're looking to trigger the ON CONFLICT
             -- behavior).
+            --
+            -- This will likely not do the correct thing if we have a deleted
+            -- and a not-deleted version of a record in a changeset
             EXECUTE format('UPDATE %1$I ' ||
                            '  SET visibility_deleted_at = clock_timestamp(), updated_at = clock_timestamp() ' ||
                            'WHERE visibility_change_set_pk = ident_nil_v1() ' ||
@@ -94,13 +97,11 @@ BEGIN
 
             query := format('INSERT INTO %1$I (%2$s) ' ||
                             'SELECT %2$s FROM %1$I WHERE %1$I.visibility_change_set_pk = %3$L ' ||
-                            '                            AND %1$I.visibility_deleted_at IS NULL ' ||
                             '                            AND in_tenancy_v1(%5$L, tenancy_workspace_pk) ' ||
                             'ON CONFLICT (id, ' ||
-                            '             tenancy_workspace_pk, ' ||
-                            '             visibility_change_set_pk, ' ||
-                            '             (visibility_deleted_at IS NULL)) ' ||
-                            'WHERE visibility_deleted_at IS NULL ' ||
+                            '              tenancy_workspace_pk, ' ||
+                            '              visibility_change_set_pk, ' ||
+                            '              (visibility_deleted_at IS NULL)) ' ||
                             'DO UPDATE SET updated_at = clock_timestamp(), %4$s ' ||
                             'RETURNING pk, id, tenancy_workspace_pk',
                             this_table_name, insert_column_names, this_change_set_pk, update_set_names, this_tenancy);

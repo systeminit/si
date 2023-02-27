@@ -1,6 +1,7 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](crate::SchemaVariant) and a _model_ of a "real world resource".
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data_nats::NatsError;
@@ -271,6 +272,7 @@ pub struct Component {
     id: ComponentId,
     kind: ComponentKind,
     pub deletion_user_id: Option<UserId>,
+    needs_destroy: bool,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -407,6 +409,7 @@ impl Component {
     }
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
+    standard_model_accessor!(needs_destroy, bool, ComponentResult);
 
     standard_model_belongs_to!(
         lookup_fn: schema,
@@ -598,6 +601,43 @@ impl Component {
         .await?;
 
         Ok(())
+    }
+
+    #[instrument(skip_all)]
+    pub async fn set_deleted_at(
+        &self,
+        ctx: &DalContext,
+        value: Option<DateTime<Utc>>,
+    ) -> ComponentResult<Option<DateTime<Utc>>> {
+        let json_value = match value {
+            Some(v) => Some(serde_json::to_value(v)?),
+            None => None,
+        };
+
+        let attribute_value = Self::root_prop_child_attribute_value_for_component(
+            ctx,
+            self.id,
+            RootPropChild::DeletedAt,
+        )
+        .await?;
+        let parent_attribute_value = attribute_value.parent_attribute_value(ctx).await?.ok_or(
+            ComponentError::ParentAttributeValueNotFound(*attribute_value.id()),
+        )?;
+        let attribute_context = AttributeContext::builder()
+            .set_component_id(self.id)
+            .set_prop_id(attribute_value.context.prop_id())
+            .to_context()?;
+        let (_, _) = AttributeValue::update_for_context(
+            ctx,
+            *attribute_value.id(),
+            Some(*parent_attribute_value.id()),
+            attribute_context,
+            json_value,
+            None,
+        )
+        .await?;
+
+        Ok(value)
     }
 
     /// Return the name of the [`Component`](Self) for the provided [`ComponentId`](Self).
@@ -984,6 +1024,8 @@ impl Component {
                 return Err(ComponentError::FrameHasAttachedComponents);
             }
         }
+
+        self.set_deleted_at(ctx, Some(Utc::now())).await?;
 
         if self.get_protected(ctx).await? {
             return Err(ComponentError::ComponentProtected(self.id));

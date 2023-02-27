@@ -237,6 +237,13 @@ impl DalContext {
         self.visibility = visibility;
     }
 
+    pub fn update_with_deleted_visibility(&mut self) {
+        self.update_visibility(Visibility::new_change_set(
+            self.visibility().change_set_pk,
+            true,
+        ));
+    }
+
     /// Clones a new context from this one with a new [`Visibility`].
     pub fn clone_with_new_visibility(&self, visibility: Visibility) -> Self {
         let mut new = self.clone();

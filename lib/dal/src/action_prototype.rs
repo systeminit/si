@@ -60,6 +60,8 @@ pub enum ActionKind {
     Create,
     // Internal only action or action with multiple effects
     Other,
+    // Destroy a resource
+    Destroy,
 }
 
 // Hrm - is this a universal resolver context? -- Adam

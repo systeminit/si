@@ -136,8 +136,9 @@ impl JobConsumer for FixesJob {
         }
         let fix_item = &self.fixes[0];
 
+        let deleted_ctx = &ctx.clone_with_delete_visibility();
         // Get the workflow for the action we need to run.
-        let component = Component::get_by_id(ctx, &fix_item.component_id)
+        let component = Component::get_by_id(deleted_ctx, &fix_item.component_id)
             .await?
             .ok_or(JobConsumerError::ComponentNotFound(fix_item.component_id))?;
         let schema_variant =

@@ -175,6 +175,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             },
             "confirmation": {
                 "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_payload
@@ -249,6 +250,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             },
             "confirmation": {
                 "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_payload
@@ -303,6 +305,7 @@ async fn aws_region_to_aws_ec2_intelligence(ctx: &DalContext) {
             },
             "confirmation": {
                 "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_payload
@@ -375,26 +378,27 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
     );
     assert_eq!(
         serde_json::json![{
-             "si": {
-                 "name": "server",
-                 "type": "component",
-                 "protected": false,
-             },
-             "domain": {
-                 "awsResourceType": "instance",
-                 "tags": {
-                     "Name": "server",
-                 },
-             },
-             "code": {
-                 "si:generateAwsEc2JSON": {
-                     "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"server\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
-                     "format": "json",
-                 },
-             },
-              "confirmation": {
-                 "si:confirmationResourceExists": {},
-             },
+            "si": {
+            "name": "server",
+                "type": "component",
+                "protected": false,
+            },
+            "domain": {
+                "awsResourceType": "instance",
+                "tags": {
+                    "Name": "server",
+                },
+            },
+            "code": {
+                "si:generateAwsEc2JSON": {
+                    "code": "{\n\t\"TagSpecifications\": [\n\t\t{\n\t\t\t\"ResourceType\": \"instance\",\n\t\t\t\"Tags\": [\n\t\t\t\t{\n\t\t\t\t\t\"Key\": \"Name\",\n\t\t\t\t\t\"Value\": \"server\"\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}",
+                    "format": "json",
+                },
+            },
+            "confirmation": {
+                "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
+            },
         }], // expected
         ec2_payload
             .component_view_properties(ctx)
@@ -466,8 +470,9 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                     "format": "json",
                 },
             },
-             "confirmation": {
+            "confirmation": {
                 "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_payload
@@ -520,8 +525,9 @@ async fn aws_region_to_aws_ec2_intelligence_switch_component_type(ctx: &DalConte
                     "format": "json",
                 },
             },
-             "confirmation": {
+            "confirmation": {
                 "si:confirmationResourceExists": {},
+                "si:confirmationResourceNeedsDeletion": {},
             },
         }], // expected
         ec2_payload

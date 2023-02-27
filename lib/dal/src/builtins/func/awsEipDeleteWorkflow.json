@@ -1,0 +1,6 @@
+{
+  "kind": "JsWorkflow",
+  "response_type": "Workflow",
+  "code_file": "awsEipDeleteWorkflow.js",
+  "code_entrypoint": "deleteResource"
+}

@@ -44,6 +44,8 @@ pub enum LeafInputLocation {
     Domain,
     /// The input location corresponding to "/root/resource".
     Resource,
+    /// The input location corresponding to "/root/deleted_at"
+    DeletedAt,
 }
 
 // We only want to allow converting an input location into a root prop child and root the other
@@ -55,6 +57,7 @@ impl Into<RootPropChild> for LeafInputLocation {
             LeafInputLocation::Code => RootPropChild::Code,
             LeafInputLocation::Domain => RootPropChild::Domain,
             LeafInputLocation::Resource => RootPropChild::Resource,
+            LeafInputLocation::DeletedAt => RootPropChild::DeletedAt,
         }
     }
 }

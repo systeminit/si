@@ -546,19 +546,20 @@ impl StatusUpdater {
                 // does this value correspond to a code generation function?
             } else if attribute_value.context.prop_id().is_some() {
                 value_kind = AttributeValueKind::Attribute(attribute_value.context.prop_id());
-
-                let component = Component::get_by_id(ctx, &attribute_value.context.component_id())
-                    .await
-                    .map_err(StatusUpdaterError::metadata)?
-                    .ok_or_else(|| {
-                        StatusUpdaterError::GenericError(format!(
-                            "Unable to find component {}",
-                            attribute_value.context.component_id()
-                        ))
-                    })?;
+                let ctx_deleted = &ctx.clone_with_delete_visibility();
+                let component =
+                    Component::get_by_id(ctx_deleted, &attribute_value.context.component_id())
+                        .await
+                        .map_err(StatusUpdaterError::metadata)?
+                        .ok_or_else(|| {
+                            StatusUpdaterError::GenericError(format!(
+                                "Unable to find component {}",
+                                attribute_value.context.component_id()
+                            ))
+                        })?;
 
                 let schema_variant = component
-                    .schema_variant(ctx)
+                    .schema_variant(ctx_deleted)
                     .await
                     .map_err(StatusUpdaterError::metadata)?
                     .ok_or_else(|| {

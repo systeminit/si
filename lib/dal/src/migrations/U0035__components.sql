@@ -9,7 +9,8 @@ CREATE TABLE components
     creation_user_id            ident,
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     kind                        text                     NOT NULL,
-    deletion_user_id            ident
+    deletion_user_id            ident,
+    needs_destroy               bool                     NOT NULL DEFAULT false
 );
 SELECT standard_model_table_constraints_v1('components');
 SELECT belongs_to_table_create_v1('component_belongs_to_schema', 'components', 'schemas');
