@@ -68,8 +68,7 @@ Content-Type: application/json
 }
 
 ### Get Diagram
-
-GET http://localhost:8080/api/diagram/get_diagram?visibility_change_set_pk=01GQ35YNM21H71VVDTRN8YJJP2
+GET http://localhost:8080/api/diagram/get_diagram?visibility_change_set_pk=01GTA52E490P9T26GHTRKC4EVZ
 authorization: Bearer {{auth_token}}
 
 ### Set Node Position

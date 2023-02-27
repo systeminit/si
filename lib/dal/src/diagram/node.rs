@@ -56,14 +56,14 @@ pub enum NodeSide {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SocketView {
-    id: String,
-    label: String,
+    pub id: String,
+    pub label: String,
     #[serde(rename = "type")]
-    ty: String,
-    direction: SocketDirection,
-    max_connections: Option<usize>,
-    is_required: Option<bool>,
-    node_side: NodeSide,
+    pub ty: String,
+    pub direction: SocketDirection,
+    pub max_connections: Option<usize>,
+    pub is_required: Option<bool>,
+    pub node_side: NodeSide,
 }
 
 impl SocketView {
@@ -140,6 +140,9 @@ pub struct DiagramComponentView {
     node_id: NodeId,
     display_name: Option<String>,
 
+    parent_node_id: Option<NodeId>,
+    child_node_ids: Vec<NodeId>,
+
     schema_name: String,
     schema_id: String,
     schema_variant_id: String,
@@ -161,10 +164,13 @@ pub struct DiagramComponentView {
 }
 
 impl DiagramComponentView {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext,
         component: &Component,
         node: &Node,
+        parent_node_id: Option<NodeId>,
+        child_node_ids: Vec<NodeId>,
         position: &NodePosition,
         is_modified: bool,
         schema_variant: &SchemaVariant,
@@ -232,6 +238,8 @@ impl DiagramComponentView {
         Ok(Self {
             id: *component.id(),
             node_id: *node.id(),
+            parent_node_id,
+            child_node_ids,
             display_name: Some(component.name(ctx).await?),
             schema_name: schema.name().to_owned(),
             schema_variant_name: schema_variant.name().to_owned(),
