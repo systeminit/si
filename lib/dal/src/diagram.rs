@@ -9,7 +9,7 @@ use crate::change_status::{
     ChangeStatus, ChangeStatusError, ComponentChangeStatus, EdgeChangeStatus,
 };
 use crate::diagram::connection::{Connection, DiagramEdgeView};
-use crate::diagram::node::DiagramComponentView;
+use crate::diagram::node::{DiagramComponentView, SocketDirection, SocketView};
 use crate::edge::EdgeKind;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
@@ -121,14 +121,44 @@ impl Diagram {
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
     /// [`Connections`](crate::Connection).
     pub async fn assemble(ctx: &DalContext) -> DiagramResult<Self> {
+        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
+
         let modified = ComponentChangeStatus::list_modified(ctx).await?;
         debug!("modified component change status: {modified:#?}");
+
+        let mut diagram_edges = Vec::new();
+        let edges = Edge::list(ctx).await?;
+        for edge in &edges {
+            if *edge.kind() == EdgeKind::Configuration {
+                let change_status = match edge.visibility().change_set_pk {
+                    ChangeSetPk::NONE => ChangeStatus::Unmodified,
+                    _ => ChangeStatus::Added,
+                };
+                let conn = Connection::from_edge(edge);
+                let mut diagram_edge_view =
+                    DiagramEdgeView::from_with_change_status(conn, change_status);
+                diagram_edge_view.set_actor_details(ctx, edge).await?;
+                diagram_edges.push(diagram_edge_view);
+            }
+        }
+
+        let deleted_edges: Vec<Edge> = EdgeChangeStatus::list_deleted(ctx).await?;
+        for deleted_edge in deleted_edges {
+            if *deleted_edge.kind() == EdgeKind::Configuration {
+                let conn = Connection::from_edge(&deleted_edge);
+                let mut diagram_edge_view =
+                    DiagramEdgeView::from_with_change_status(conn, ChangeStatus::Deleted);
+                diagram_edge_view
+                    .set_actor_details(ctx_with_deleted, &deleted_edge)
+                    .await?;
+                diagram_edges.push(diagram_edge_view);
+            }
+        }
 
         let mut nodes = Node::list(ctx).await?;
         nodes.extend(ComponentChangeStatus::list_deleted_nodes(ctx).await?);
 
         let mut component_views = Vec::with_capacity(nodes.len());
-        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
         for node in &nodes {
             let component = node
                 .component(ctx_with_deleted)
@@ -154,44 +184,53 @@ impl Diagram {
                 .iter()
                 .any(|s| s.component_id == *component.id());
 
+            // Get Parent Id
+            let sockets = SocketView::list(ctx, &schema_variant).await?;
+            let maybe_socket_to_parent = sockets.iter().find(|socket| {
+                socket.label == "Frame" && socket.direction == SocketDirection::Output
+            });
+
+            let mut parent_node_id = None;
+
+            if let Some(socket_to_parent) = maybe_socket_to_parent {
+                for edge in &edges {
+                    if edge.tail_node_id() == *node.id()
+                        && edge.tail_socket_id().to_string() == socket_to_parent.id
+                    {
+                        parent_node_id = Some(edge.head_node_id());
+                        break;
+                    }
+                }
+            };
+
+            // Get Child Ids
+            let maybe_socket_from_children = sockets.iter().find(|socket| {
+                socket.label == "Frame" && socket.direction == SocketDirection::Input
+            });
+
+            let mut child_node_ids = vec![];
+            if let Some(socket_from_children) = maybe_socket_from_children {
+                for edge in &edges {
+                    if edge.head_node_id() == *node.id()
+                        && edge.head_socket_id().to_string() == socket_from_children.id
+                    {
+                        child_node_ids.push(edge.tail_node_id());
+                    }
+                }
+            };
+
             let view = DiagramComponentView::new(
                 ctx_with_deleted,
                 &component,
                 node,
+                parent_node_id,
+                child_node_ids,
                 &position,
                 is_modified,
                 &schema_variant,
             )
             .await?;
             component_views.push(view);
-        }
-        let mut diagram_edges = Vec::new();
-        let edges = Edge::list(ctx).await?;
-        for edge in edges {
-            if *edge.kind() == EdgeKind::Configuration {
-                let change_status = match edge.visibility().change_set_pk {
-                    ChangeSetPk::NONE => ChangeStatus::Unmodified,
-                    _ => ChangeStatus::Added,
-                };
-                let conn = Connection::from_edge(&edge);
-                let mut diagram_edge_view =
-                    DiagramEdgeView::from_with_change_status(conn, change_status);
-                diagram_edge_view.set_actor_details(ctx, &edge).await?;
-                diagram_edges.push(diagram_edge_view);
-            }
-        }
-
-        let deleted_edges: Vec<Edge> = EdgeChangeStatus::list_deleted(ctx).await?;
-        for deleted_edge in deleted_edges {
-            if *deleted_edge.kind() == EdgeKind::Configuration {
-                let conn = Connection::from_edge(&deleted_edge);
-                let mut diagram_edge_view =
-                    DiagramEdgeView::from_with_change_status(conn, ChangeStatus::Deleted);
-                diagram_edge_view
-                    .set_actor_details(ctx_with_deleted, &deleted_edge)
-                    .await?;
-                diagram_edges.push(diagram_edge_view);
-            }
         }
 
         Ok(Self {

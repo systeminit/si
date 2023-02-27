@@ -46,6 +46,8 @@ type RawComponent = {
   id: ComponentId;
   nodeId: ComponentNodeId;
   displayName: string;
+  parentNodeId?: ComponentNodeId;
+  childNodeIds: ComponentNodeId[];
   schemaName: string;
   schemaId: string;
   schemaVariantId: string;
@@ -209,41 +211,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 Kubernetes: "logo-k8s",
               }[rc?.schemaCategory || ""] || "logo-si"; // fallback to SI logo
 
-            // TODO: probably get the backend to just return a parent ID and we can remove all of this?
-            const socketToFrame = _.find(
-              rc?.sockets,
-              (s) => s.label === "Frame" && s.direction === "output",
-            );
-            const socketFromChildren = _.find(
-              rc?.sockets,
-              (s) => s.label === "Frame" && s.direction === "input",
-            );
-            const frameEdge = _.find(
-              this.allEdges,
-              (edge) =>
-                edge.fromNodeId === rc.nodeId &&
-                edge.fromSocketId === socketToFrame?.id,
-            );
-            const frameChildIds = _.uniq(
-              _.filter(this.allEdges, (s) => {
-                return (
-                  s.toSocketId === socketFromChildren?.id &&
-                  s.toNodeId === rc.nodeId
-                );
-              }).map((i) => i.fromNodeId),
-            );
-
             return {
               ...rc,
-              parentNodeId: frameEdge?.toNodeId,
-              childNodeIds: socketFromChildren ? frameChildIds : undefined,
               // convert "node" ids back to component ids, so we can use that in a few places
-              parentId: frameEdge?.toNodeId
-                ? nodeIdToComponentId[frameEdge?.toNodeId]
+              parentId: rc.parentNodeId
+                ? nodeIdToComponentId[rc.parentNodeId]
                 : undefined,
-              childIds: socketFromChildren
-                ? _.map(frameChildIds, (nodeId) => nodeIdToComponentId[nodeId])
-                : [],
+              childIds: _.map(
+                rc.childNodeIds,
+                (nodeId) => nodeIdToComponentId[nodeId],
+              ),
               icon: typeIcon,
               isGroup: rc.nodeType !== "component",
             } as FullComponent;
