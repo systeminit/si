@@ -175,7 +175,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 council_subject_prefix.clone(),
                 second_shutdown_broadcast_rx,
             )
-            .await;
+            .await?;
 
             server.run().await?;
         }
@@ -216,7 +216,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 council_subject_prefix.clone(),
                 second_shutdown_broadcast_rx,
             )
-            .await;
+            .await?;
 
             server.run().await?;
         }

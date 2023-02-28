@@ -11,9 +11,7 @@ use futures::{Stream, StreamExt};
 use futures_lite::future::FutureExt;
 use pin_project_lite::pin_project;
 use serde::de::DeserializeOwned;
-
 use si_data_nats::{NatsClient, NatsError};
-
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -51,14 +49,23 @@ pin_project! {
 }
 
 impl<T> Subscription<T> {
+    /// Create a new [`subscription`](Self) for a given request shape `T`. If a queue name is
+    /// provided, we will use [`NatsClient::queue_subscribe`] instead of
+    /// [`NatsClient::subscribe`].
     pub async fn new(
         nats: &NatsClient,
         subject: impl Into<String>,
+        queue_name: Option<impl Into<String>>,
     ) -> SubscriberResult<Subscription<T>> {
-        let inner = nats
-            .subscribe(subject)
-            .await
-            .map_err(SubscriberError::NatsSubscribe)?;
+        let inner = if let Some(queue_name) = queue_name {
+            nats.queue_subscribe(subject, queue_name)
+                .await
+                .map_err(SubscriberError::NatsSubscribe)?
+        } else {
+            nats.subscribe(subject)
+                .await
+                .map_err(SubscriberError::NatsSubscribe)?
+        };
 
         Ok(Subscription {
             inner,

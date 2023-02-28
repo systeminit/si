@@ -3,7 +3,7 @@ use std::{io, net::SocketAddr, path::Path, path::PathBuf, sync::Arc};
 use crate::server::config::{CycloneKeyPair, JwtSecretKey};
 use axum::routing::IntoMakeService;
 use axum::Router;
-use dal::status_receiver::StatusReceiver;
+use dal::status_receiver::{StatusReceiver, StatusReceiverError};
 use dal::{
     cyclone_key_pair::CycloneKeyPairError,
     job::processor::JobQueueProcessor,
@@ -38,6 +38,8 @@ pub enum ServerError {
     Model(#[from] dal::ModelError),
     #[error(transparent)]
     Nats(#[from] NatsError),
+    #[error(transparent)]
+    StatusReceiver(#[from] StatusReceiverError),
     #[error(transparent)]
     Pg(#[from] PgError),
     #[error(transparent)]
@@ -257,7 +259,7 @@ impl Server<(), ()> {
         encryption_key: EncryptionKey,
         council_subject_prefix: String,
         shutdown_broadcast_rx: broadcast::Receiver<()>,
-    ) {
+    ) -> Result<()> {
         let services_context = ServicesContext::new(
             pg,
             nats,
@@ -267,7 +269,10 @@ impl Server<(), ()> {
             council_subject_prefix,
             None,
         );
-        StatusReceiver::new(services_context).start(shutdown_broadcast_rx);
+        StatusReceiver::new(services_context)
+            .await?
+            .start(shutdown_broadcast_rx);
+        Ok(())
     }
 
     #[instrument(name = "sdf.init.create_pg_pool", skip_all)]
