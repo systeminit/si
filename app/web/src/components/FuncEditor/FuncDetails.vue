@@ -50,8 +50,7 @@
         <SiCollapsible label="Attributes" default-open>
           <div class="p-3 flex flex-col gap-2">
             <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
-              Give this qualification a Name, Entrypoint and brief description
-              below.
+              Give this function a Name, Entrypoint and brief description below.
             </h1>
             <VormInput
               v-model="editingFunc.name"
@@ -79,7 +78,7 @@
             />
           </div>
         </SiCollapsible>
-        <SiCollapsible
+        <QualificationDetails
           v-if="
             editingFunc.associations &&
             editingFunc.associations.type === 'qualification'
@@ -174,6 +173,7 @@ import AttributeBindings from "./AttributeBindings.vue";
 import CodeGenerationDetails from "./CodeGenerationDetails.vue";
 import ConfirmationDetails from "./ConfirmationDetails.vue";
 import ValidationDetails from "./ValidationDetails.vue";
+import QualificationDetails from "./QualificationDetails.vue";
 
 const funcStore = useFuncStore();
 
