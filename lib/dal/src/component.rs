@@ -1036,12 +1036,19 @@ impl Component {
             _ => None,
         };
 
+        let has_resource = self.resource(ctx).await?.value.is_some();
         let rows = ctx
             .txns()
             .pg()
             .query(
-                "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3, $4)",
-                &[ctx.tenancy(), ctx.visibility(), self.id(), &actor_user_id],
+                "SELECT * FROM component_delete_and_propagate_v1($1, $2, $3, $4, $5)",
+                &[
+                    ctx.tenancy(),
+                    ctx.visibility(),
+                    self.id(),
+                    &actor_user_id,
+                    &has_resource,
+                ],
             )
             .await?;
         let mut attr_values: Vec<AttributeValue> = standard_model::objects_from_rows(rows)?;

@@ -334,7 +334,9 @@ impl SchemaVariantDefinitionMetadataJson {
             name: schema.name().to_string(),
             menu_name,
             category,
-            color: variant.color_as_string().unwrap_or("baddad".to_string()),
+            color: variant
+                .color_as_string()
+                .unwrap_or_else(|| "baddad".to_string()),
             component_kind: *schema.component_kind(),
             link: variant.link().map(|l| l.to_string()),
             description: None,
