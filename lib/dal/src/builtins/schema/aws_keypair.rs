@@ -35,11 +35,12 @@ impl MigrationDriver {
         ui_menu_category: &str,
         node_color: &str,
     ) -> BuiltinsResult<()> {
+        let name = "Key Pair";
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 SchemaVariantDefinitionMetadataJson::new(
-                    "Key Pair",
+                    name,
                     None,
                     ui_menu_category,
                     node_color,
@@ -433,72 +434,12 @@ impl MigrationDriver {
             .await?;
 
         // Add delete confirmations.
-        let delete_confirmation_func_name = "si:confirmationResourceNeedsDeletion";
-        let delete_confirmation_func =
-            Func::find_by_attr(ctx, "name", &delete_confirmation_func_name)
-                .await?
-                .pop()
-                .ok_or_else(|| {
-                    SchemaError::FuncNotFound(delete_confirmation_func_name.to_owned())
-                })?;
-        let delete_confirmation_func_argument_name = "resource";
-        let delete_confirmation_func_argument = FuncArgument::find_by_name_for_func(
+        self.add_deletion_confirmation_and_workflow(
             ctx,
-            delete_confirmation_func_argument_name,
-            *delete_confirmation_func.id(),
-        )
-        .await?
-        .ok_or_else(|| {
-            BuiltinsError::BuiltinMissingFuncArgument(
-                delete_confirmation_func_name.to_string(),
-                delete_confirmation_func_argument_name.to_string(),
-            )
-        })?;
-        let deleted_at_confirmation_func_argument_name = "deleted_at";
-        let deleted_at_confirmation_func_argument = FuncArgument::find_by_name_for_func(
-            ctx,
-            deleted_at_confirmation_func_argument_name,
-            *delete_confirmation_func.id(),
-        )
-        .await?
-        .ok_or_else(|| {
-            BuiltinsError::BuiltinMissingFuncArgument(
-                delete_confirmation_func_name.to_string(),
-                deleted_at_confirmation_func_argument_name.to_string(),
-            )
-        })?;
-        SchemaVariant::add_leaf(
-            ctx,
-            *delete_confirmation_func.id(),
-            *schema_variant.id(),
-            None,
-            LeafKind::Confirmation,
-            vec![
-                LeafInput {
-                    location: LeafInputLocation::DeletedAt,
-                    func_argument_id: *deleted_at_confirmation_func_argument.id(),
-                },
-                LeafInput {
-                    location: LeafInputLocation::Resource,
-                    func_argument_id: *delete_confirmation_func_argument.id(),
-                },
-            ],
-        )
-        .await
-        .expect("could not add leaf");
-        FuncDescription::new(
-            ctx,
-            *delete_confirmation_func.id(),
-            *schema_variant.id(),
-            FuncDescriptionContents::Confirmation {
-                name: "Key Pair Needs Deletion?".to_string(),
-                success_description: Some("Key Pair doesn't need deletion!".to_string()),
-                failure_description: Some(
-                    "This Key Pair needs deletion. Please run the fix above to delete it!"
-                        .to_string(),
-                ),
-                provider: Some("AWS".to_string()),
-            },
+            name,
+            &schema_variant,
+            Some("AWS"),
+            "si:awsKeyPairDeleteWorkflow",
         )
         .await?;
 
@@ -551,41 +492,6 @@ impl MigrationDriver {
             *workflow_prototype.id(),
             name,
             ActionKind::Other,
-            context,
-        )
-        .await?;
-
-        let delete_workflow_func_name = "si:awsKeyPairDeleteWorkflow";
-        let delete_workflow_func = Func::find_by_attr(ctx, "name", &delete_workflow_func_name)
-            .await?
-            .pop()
-            .ok_or_else(|| SchemaError::FuncNotFound(delete_workflow_func_name.to_owned()))?;
-        let title = "Delete Key Pair?";
-        let context = WorkflowPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        let delete_workflow_prototype = WorkflowPrototype::new(
-            ctx,
-            *delete_workflow_func.id(),
-            serde_json::Value::Null,
-            context,
-            title,
-        )
-        .await?;
-
-        let name = "delete";
-        let context = ActionPrototypeContext {
-            schema_id: *schema.id(),
-            schema_variant_id: *schema_variant.id(),
-            ..Default::default()
-        };
-        ActionPrototype::new(
-            ctx,
-            *delete_workflow_prototype.id(),
-            name,
-            ActionKind::Destroy,
             context,
         )
         .await?;

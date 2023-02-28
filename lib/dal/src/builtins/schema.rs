@@ -2,6 +2,7 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
+use crate::action_prototype::ActionKind;
 use crate::attribute::context::AttributeContextBuilder;
 use crate::edit_field::widget::WidgetKind;
 use crate::func::argument::{FuncArgument, FuncArgumentId};
@@ -16,10 +17,12 @@ use crate::{
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
-    AttributeReadContext, AttributeValue, BuiltinSchemaOption, BuiltinsError, BuiltinsResult,
-    DalContext, ExternalProvider, Func, FuncError, FuncId, InternalProvider, Prop, PropError,
-    PropId, PropKind, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
-    ValidationPrototype, ValidationPrototypeContext,
+    ActionPrototype, ActionPrototypeContext, AttributeReadContext, AttributeValue,
+    BuiltinSchemaOption, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
+    FuncDescription, FuncDescriptionContents, FuncError, FuncId, InternalProvider, LeafInput,
+    LeafInputLocation, LeafKind, Prop, PropError, PropId, PropKind, Schema, SchemaError, SchemaId,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, StandardModel, ValidationPrototype,
+    ValidationPrototypeContext, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 mod aws_ami;
@@ -502,5 +505,127 @@ impl MigrationDriver {
                 BuiltinsError::BuiltinMissingFuncArgument(func_name, func_argument_name.to_string())
             })?;
         Ok((func_id, *func_argument.id()))
+    }
+
+    pub async fn add_deletion_confirmation_and_workflow(
+        &self,
+        ctx: &DalContext,
+        name: &str,
+        schema_variant: &SchemaVariant,
+        provider: Option<&str>,
+        delete_workflow_func_name: &str,
+    ) -> BuiltinsResult<()> {
+        // Confirmation
+        let delete_confirmation_func_name = "si:confirmationResourceNeedsDeletion";
+        let delete_confirmation_func =
+            Func::find_by_attr(ctx, "name", &delete_confirmation_func_name)
+                .await?
+                .pop()
+                .ok_or_else(|| {
+                    SchemaError::FuncNotFound(delete_confirmation_func_name.to_owned())
+                })?;
+        let delete_confirmation_func_argument_name = "resource";
+        let delete_confirmation_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            delete_confirmation_func_argument_name,
+            *delete_confirmation_func.id(),
+        )
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                delete_confirmation_func_name.to_string(),
+                delete_confirmation_func_argument_name.to_string(),
+            )
+        })?;
+        let deleted_at_confirmation_func_argument_name = "deleted_at";
+        let deleted_at_confirmation_func_argument = FuncArgument::find_by_name_for_func(
+            ctx,
+            deleted_at_confirmation_func_argument_name,
+            *delete_confirmation_func.id(),
+        )
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::BuiltinMissingFuncArgument(
+                delete_confirmation_func_name.to_string(),
+                deleted_at_confirmation_func_argument_name.to_string(),
+            )
+        })?;
+        SchemaVariant::add_leaf(
+            ctx,
+            *delete_confirmation_func.id(),
+            *schema_variant.id(),
+            None,
+            LeafKind::Confirmation,
+            vec![
+                LeafInput {
+                    location: LeafInputLocation::DeletedAt,
+                    func_argument_id: *deleted_at_confirmation_func_argument.id(),
+                },
+                LeafInput {
+                    location: LeafInputLocation::Resource,
+                    func_argument_id: *delete_confirmation_func_argument.id(),
+                },
+            ],
+        )
+        .await
+        .expect("could not add leaf");
+
+        FuncDescription::new(
+            ctx,
+            *delete_confirmation_func.id(),
+            *schema_variant.id(),
+            FuncDescriptionContents::Confirmation {
+                name: format!("{name} Needs Deletion?"),
+                success_description: Some(format!("{name} doesn't need deletion!")),
+                failure_description: Some(
+                    format!("This {name} needs deletion. Please run the fix above to delete it!")
+                        .to_string(),
+                ),
+                provider: provider.map(String::from),
+            },
+        )
+        .await?;
+
+        // Workflow
+        let schema = schema_variant
+            .schema(ctx)
+            .await?
+            .ok_or_else(|| SchemaVariantError::MissingSchema(*schema_variant.id()))?;
+
+        let delete_workflow_func = Func::find_by_attr(ctx, "name", &delete_workflow_func_name)
+            .await?
+            .pop()
+            .ok_or_else(|| SchemaError::FuncNotFound(delete_workflow_func_name.to_owned()))?;
+        let title = format!("Delete {name}");
+        let context = WorkflowPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            ..Default::default()
+        };
+        let delete_workflow_prototype = WorkflowPrototype::new(
+            ctx,
+            *delete_workflow_func.id(),
+            serde_json::Value::Null,
+            context,
+            title,
+        )
+        .await?;
+
+        let name = "delete";
+        let context = ActionPrototypeContext {
+            schema_id: *schema.id(),
+            schema_variant_id: *schema_variant.id(),
+            ..Default::default()
+        };
+        ActionPrototype::new(
+            ctx,
+            *delete_workflow_prototype.id(),
+            name,
+            ActionKind::Destroy,
+            context,
+        )
+        .await?;
+
+        Ok(())
     }
 }
