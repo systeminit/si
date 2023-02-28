@@ -246,8 +246,14 @@ Let's say you want to learn about what a `Component` is.
 You can generate and open the Rust documentation locally via the following command:
 
 ```bash
-cargo doc --open -p dal
+cargo doc --no-deps --document-private-items --open
 ```
+
+> If you have `nix` installed, you can open SI documentation without needing to install Rust or other dependencies.
+>
+> ```shell
+> nix develop --command cargo doc --no-deps --document-private-items --open
+> ```
 
 Moreover, there are resources in [docs](./docs), [designs](./designs), our Miro boards, and our Figma projects that
 may prove useful as well.

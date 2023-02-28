@@ -9,7 +9,7 @@ Where do you look?
 You can generate and open the docs in your browser to find out!
 
 ```bash
-cargo doc --open -p dal
+cargo doc --no-deps --document-private-items --open
 ```
 
 Our Rust crates contain module and documentation comments that can be generated into static webpages by `rustdoc`.
@@ -20,35 +20,6 @@ When in doubt, see if `cargo doc` has what you are looking for.
 As previously mentioned, for our Rust crates, we leverage `rustdoc` for seamless integration with `cargo doc`
 , [IntelliJ Rust](https://www.jetbrains.com/rust/),
 [rust-analyzer](https://rust-analyzer.github.io/), and more.
-
-## Reading Rust Documentation
-
-Build the docs for all of our crates and open the docs in your browser at [dal](./lib/dal) by executing
-the following make target:
-
-```bash
-make docs-open
-```
-
-You can also execute the following:
-
-```bash
-cargo doc --open -p dal
-```
-
-If you would like to live-recompile docs while making changes on your development branch, you can execute the following
-make target:
-
-```bash
-make docs-watch
-```
-
-> Please note: [cargo-watch](https://github.com/watchexec/cargo-watch) needs to be installed before using the above make
-> target.
->
-> ```bash
-> cargo install --locked cargo-watch
-> ```
 
 ## Writing Rust Documentation
 

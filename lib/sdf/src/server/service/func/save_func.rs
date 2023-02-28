@@ -121,8 +121,8 @@ async fn save_attr_func_proto_arguments(
     Ok(())
 }
 
-/// Determines what we should do with the [`AttributePrototype`](crate::AttributePrototype) and
-/// [`AttributeValues`](crate:AttributeValue) that are currently associated with a function but
+/// Determines what we should do with the [`AttributePrototype`](dal::AttributePrototype) and
+/// [`AttributeValues`](dal::AttributeValue) that are currently associated with a function but
 /// that are having their association removed.
 ///
 /// `RemovedPrototypeOp::Reset` takes the currenty value and resets the prototype to set it to that

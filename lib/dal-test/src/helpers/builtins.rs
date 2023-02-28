@@ -53,8 +53,8 @@ struct BuiltinMetadata {
     prop_map: PropMap,
 }
 
-/// A hash map of [`PropId`s](PropId) where the key is the JSON pointer to the [`Prop`] on the
-/// [`SchemaVariant`].
+/// A hash map of [`PropId`s](PropId) where the key is the JSON pointer to the [`Prop`](dal::Prop)
+/// on the [`SchemaVariant`](dal::SchemaVariant).
 type PropMap = HashMap<&'static str, PropId>;
 
 /// This harness provides methods to create [`Component`s](Component) from builtin schemas. All

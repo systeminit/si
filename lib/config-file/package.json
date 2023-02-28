@@ -12,7 +12,7 @@
     "fix:lint": "cargo fix --edition-idioms --allow-dirty --allow-staged",
     "fix": "pnpm fix:format && pnpm fix:lint",
     "check:lint": "cargo clippy --no-deps --all-targets -- -D warnings",
-    "check:doc": "env RUSTDOCFLAGS=\"-Dwarnings\" cargo doc --no-deps",
+    "check:doc": "env RUSTDOCFLAGS=\"-Dwarnings\" cargo doc --no-deps --document-private-items",
     "check:format": "cargo fmt -- --check",
     "check": "pnpm check:format && pnpm check:lint && pnpm check:doc",
     "prepush": "pnpm check && pnpm test"
