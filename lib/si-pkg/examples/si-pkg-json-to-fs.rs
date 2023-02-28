@@ -1,7 +1,6 @@
 use std::{env::args, fs};
 
-use object_tree::{ObjectTree, TreeFileSystemWriter};
-use si_pkg::schema::Schema;
+use si_pkg::{spec::Package, SiPkg, SiPkgError, SiPkgProp};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -9,16 +8,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input = args.nth(1).expect("usage: program <JSON_FILE> <DEST_DIR>");
     let dst = args.next().expect("usage: program <JSON_FILE> <DEST_DIR>");
 
-    let schema: Schema = {
+    let spec: Package = {
         let buf = fs::read_to_string(&input)?;
         serde_json::from_str(&buf)?
     };
-    let tree = ObjectTree::create_from_root(schema.domain.into()).expect("failed to hash tree");
+    let pkg = SiPkg::load_from_spec(spec)?;
 
-    println!("--- Writing object tree to: {dst}");
+    println!("--- Writing pkg to: {dst}");
     fs::create_dir_all(&dst)?;
-    TreeFileSystemWriter::physical(&dst).write(&tree).await?;
+    pkg.write_to_dir(dst).await?;
+
+    let schema = pkg.schema_by_name("kuberneteslike")?;
+    dbg!(&schema);
+
+    for variant in schema.variants()? {
+        variant.visit_prop_tree(process_prop, None, &()).await?;
+    }
 
     println!("--- Done.");
     Ok(())
+}
+
+async fn process_prop(
+    prop: SiPkgProp<'_>,
+    _parent_id: Option<()>,
+    _context: &(),
+) -> Result<Option<()>, SiPkgError> {
+    dbg!(prop);
+    Ok(None)
 }

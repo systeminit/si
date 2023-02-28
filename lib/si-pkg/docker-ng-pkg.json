@@ -1,0 +1,59 @@
+{
+  "name": "docker-ng",
+  "version": "0.1.0",
+  "description": "The next generation Docker models",
+  "createdAt": "2023-03-01T16:08:16Z",
+  "createdBy": "fletcher@systeminit.com",
+  "schemas": [
+    {
+      "name": "Docker Image NG",
+      "category": "Docker NG",
+      "categoryName": "Image",
+      "variants": [
+        {
+          "name": "v0",
+          "color": "4695E7",
+          "domain": {
+            "name": "domain",
+            "kind": "object",
+            "entries": [
+              {
+                "name": "image",
+                "kind": "string"
+              },
+              {
+                "name": "ExposedPorts",
+                "kind": "array",
+                "typeProp": {
+                  "name": "ExposedPortString",
+                  "kind": "string"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Docker Hub Credential NG",
+      "category": "Docker NG",
+      "categoryName": "Credential",
+      "variants": [
+        {
+          "name": "v0",
+          "color": "4695E7",
+          "domain": {
+            "name": "domain",
+            "kind": "object",
+            "entries": [
+              {
+                "name": "secret",
+                "kind": "number"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -79,7 +79,7 @@ mod hash;
 
 pub use fs::{FsError, TreeFileSystemReader, TreeFileSystemWriter};
 pub use graph::{
-    read_key_value_line, write_key_value_line, GraphError, HashedNode, NameStr, NodeKind,
-    NodeWithChildren, ObjectKindStr, ObjectTree, ReadBytes, WriteBytes,
+    read_key_value_line, write_key_value_line, GraphError, HashedNode, NameStr, NodeChild,
+    NodeKind, NodeWithChildren, ObjectTree, ReadBytes, WriteBytes,
 };
 pub use hash::{Hash, HashParseError};
