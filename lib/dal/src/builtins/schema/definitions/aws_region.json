@@ -1,0 +1,16 @@
+{
+  "props": [
+    {
+      "name": "region",
+      "kind": "string",
+      "docLink": "https://docs.aws.amazon.com/general/latest/gr/rande.html#region-names-codes",
+      "children": []
+    }
+  ],
+  "inputSockets": [],
+  "outputSockets": [
+    {
+      "name": "Region"
+    }
+  ]
+}

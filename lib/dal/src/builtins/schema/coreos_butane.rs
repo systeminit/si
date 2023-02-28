@@ -14,8 +14,8 @@ use crate::{
 };
 
 // Definitions
-const BUTANE_DEFINITION: &str = include_str!("definitions/coreos_butane.json");
-const BUTANE_DEFINITION_METADATA: &str = include_str!("definitions/coreos_butane.metadata.json");
+const BUTANE_DEFINITION: &str = include_str!("definitions/core_os_butane.json");
+const BUTANE_DEFINITION_METADATA: &str = include_str!("definitions/core_os_butane.metadata.json");
 
 impl MigrationDriver {
     /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).

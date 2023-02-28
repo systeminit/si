@@ -1,0 +1,32 @@
+{
+  "props": [
+    {
+      "name": "ExposedPorts",
+      "kind": "array",
+      "children": [],
+      "entry": {
+        "name": "ExposedPort",
+        "kind": "string",
+        "children": []
+      }
+    },
+    {
+      "name": "image",
+      "kind": "string",
+      "children": []
+    }
+  ],
+  "inputSockets": [
+    {
+      "name": "Docker Hub Credential"
+    }
+  ],
+  "outputSockets": [
+    {
+      "name": "Container Image"
+    },
+    {
+      "name": "Exposed Ports"
+    }
+  ]
+}

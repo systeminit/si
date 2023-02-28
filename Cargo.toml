@@ -8,6 +8,7 @@ members = [
     "bin/council",
     "bin/sdf",
     "bin/veritech",
+    "bin/gen-var-defs",
     "lib/bytes-lines-codec",
     "lib/config-file",
     "lib/cyclone-client",
