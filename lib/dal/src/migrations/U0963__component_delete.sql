@@ -2,7 +2,8 @@ CREATE OR REPLACE FUNCTION component_delete_and_propagate_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_component_id ident,
-    this_user_id ident
+    this_user_id ident,
+    this_has_resource boolean
 )
     RETURNS TABLE
             (
@@ -66,7 +67,7 @@ BEGIN
                             this_tenancy,
                             this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
                             this_component_id,
-                            true);
+                            this_has_resource);
 
     -- Ensure we now set the actor of who has deleted the component
     PERFORM update_by_id_v1('components',
