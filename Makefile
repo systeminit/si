@@ -55,6 +55,7 @@ COMPONENTS = \
 	lib/dal \
 	lib/dal-test \
 	lib/deadpool-cyclone \
+	lib/nats-subscriber \
 	lib/object-tree \
 	lib/sdf \
 	lib/si-data-faktory \
@@ -239,6 +240,9 @@ test//lib/dal-test//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
 
 test//lib/deadpool-cyclone//TESTDEPS: build//bin/cyclone
 test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech-server
+
+test//lib/nats-subscriber//TESTDEPS: build//lib/si-data-nats build//lib/telemetry-rs
+test//lib/nats-subscriber//RTESTDEPS: build//lib/dal
 
 test//lib/object-tree//RTESTDEPS: test//lib/si-pkg test//lib/dal
 

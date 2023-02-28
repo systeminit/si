@@ -145,7 +145,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 telemetry,
                 pg_pool.clone(),
                 nats.clone(),
-                job_processor,
+                job_processor.clone(),
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
@@ -153,16 +153,29 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 &pkgs_path,
             )?;
 
+            let second_shutdown_broadcast_rx = shutdown_broadcast_rx.resubscribe();
+
             Server::start_resource_refresh_scheduler(
-                pg_pool,
-                nats,
+                pg_pool.clone(),
+                nats.clone(),
                 resource_job_processor,
-                veritech,
+                veritech.clone(),
                 encryption_key,
                 council_subject_prefix.clone(),
                 shutdown_broadcast_rx,
             )
             .await;
+
+            Server::start_status_updater(
+                pg_pool,
+                nats,
+                job_processor,
+                veritech,
+                encryption_key,
+                council_subject_prefix.clone(),
+                second_shutdown_broadcast_rx,
+            )
+            .await?;
 
             server.run().await?;
         }
@@ -172,7 +185,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 telemetry,
                 pg_pool.clone(),
                 nats.clone(),
-                job_processor,
+                job_processor.clone(),
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
@@ -181,16 +194,29 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             )
             .await?;
 
+            let second_shutdown_broadcast_rx = shutdown_broadcast_rx.resubscribe();
+
             Server::start_resource_refresh_scheduler(
-                pg_pool,
-                nats,
+                pg_pool.clone(),
+                nats.clone(),
                 resource_job_processor,
-                veritech,
+                veritech.clone(),
                 encryption_key,
                 council_subject_prefix.clone(),
                 shutdown_broadcast_rx,
             )
             .await;
+
+            Server::start_status_updater(
+                pg_pool,
+                nats,
+                job_processor,
+                veritech,
+                encryption_key,
+                council_subject_prefix.clone(),
+                second_shutdown_broadcast_rx,
+            )
+            .await?;
 
             server.run().await?;
         }

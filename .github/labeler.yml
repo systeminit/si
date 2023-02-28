@@ -102,6 +102,12 @@ A-deadpool-cyclone:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
+A-nats-subscriber:
+  - lib/nats-subscriber/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
 A-object-tree:
   - lib/object-tree/**/*
   - .cargo/**/*

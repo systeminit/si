@@ -5,11 +5,13 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use tokio::{sync::Mutex, task::JoinSet};
 
+use crate::status_receiver::client::StatusReceiverClient;
+use crate::status_receiver::StatusReceiverRequest;
 use crate::{
     job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
     job::producer::{JobMeta, JobProducer, JobProducerResult},
     AccessBuilder, AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
-    Component, DalContext, FixResolver, StandardModel, StatusUpdater, Visibility, WsEvent,
+    DalContext, StandardModel, StatusUpdater, Visibility, WsEvent,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -313,43 +315,15 @@ impl JobConsumer for DependentValuesUpdate {
             .publish(&ctx)
             .await?;
 
-        // Warning: colossal hack to implement reactivity for the fix flow, since it's been inlined in the
-        // root prop tree we can't send the wsevent or clear the fix resolver, so this hack is needed, albeit
-        // horrifying
-
-        let attribute_value_ids: HashSet<AttributeValueId> = HashSet::from_iter(
-            Component::list_confirmations(&ctx)
-                .await?
-                .into_iter()
-                .map(|cv| cv.attribute_value_id),
-        );
-        'outer: for (key, values) in dependency_graph.iter() {
-            if attribute_value_ids.contains(key) {
-                WsEvent::confirmations_updated(&ctx)
-                    .await?
-                    .publish(&ctx)
-                    .await?;
-                break;
-            }
-
-            for id in values {
-                if attribute_value_ids.contains(id) {
-                    WsEvent::confirmations_updated(&ctx)
-                        .await?
-                        .publish(&ctx)
-                        .await?;
-                    break 'outer;
-                }
-            }
-        }
-
-        for attribute_value_id in attribute_value_ids {
-            let resolver =
-                FixResolver::find_for_confirmation_attribute_value(&ctx, attribute_value_id)
-                    .await?;
-            if let Some(mut resolver) = resolver {
-                resolver.set_success(&ctx, None::<bool>).await?;
-            }
+        let client = StatusReceiverClient::new(ctx.nats_conn().clone()).await;
+        if let Err(e) = client
+            .publish(&StatusReceiverRequest {
+                visibility: *ctx.visibility(),
+                dependent_graph: dependency_graph.clone(),
+            })
+            .await
+        {
+            error!("could not publish status receiver request: {:?}", e);
         }
 
         if !self.single_transaction {

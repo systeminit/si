@@ -17,6 +17,7 @@ on:
       - lib/si-data-faktory/**
       - lib/si-data-nats/**
       - lib/si-data-pg/**
+      - lib/nats-subscriber/**
       - lib/object-tree/**
       - lib/si-pkg/**
       - lib/si-settings/**

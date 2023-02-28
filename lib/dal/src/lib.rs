@@ -60,6 +60,7 @@ pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
 pub mod status;
+pub mod status_receiver;
 pub mod tenancy;
 pub mod timestamp;
 pub mod user;
@@ -129,6 +130,7 @@ pub use func::{
 pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use index_map::IndexMap;
+pub use job::definition::DependentValuesUpdate;
 pub use job::processor::{
     faktory_processor::FaktoryProcessor, nats_processor::NatsProcessor,
     sync_processor::SyncProcessor, JobQueueProcessor,
