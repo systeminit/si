@@ -743,20 +743,27 @@ fn read_node_entry_lines<R: BufRead>(reader: &mut R) -> Result<Vec<NodeEntry>, G
 
     for line in reader.lines() {
         let line = line.map_err(GraphError::IoRead)?;
-        let mut parts: Vec<_> = line.rsplitn(3, ' ').collect();
+        let mut parts: Vec<_> = line.splitn(3, ' ').collect();
 
-        let kind = match parts.pop() {
-            Some(s) => NodeKind::from_str(s).map_err(GraphError::parse)?,
-            None => return Err(GraphError::parse_custom("missing kind field in entry line")),
+        let name = match parts.pop() {
+            Some(s) => s.to_string(),
+            None => return Err(GraphError::parse_custom("missing name field in entry line")),
         };
         let hash = match parts.pop() {
             Some(s) => Hash::from_str(s).map_err(GraphError::parse)?,
             None => return Err(GraphError::parse_custom("missing hash field in entry line")),
         };
-        let name = match parts.pop() {
-            Some(s) => s.to_string(),
-            None => return Err(GraphError::parse_custom("missing name field in entry line")),
+        let kind = match parts.pop() {
+            Some(s) => NodeKind::from_str(s).map_err(GraphError::parse)?,
+            None => return Err(GraphError::parse_custom("missing kind field in entry line")),
         };
+
+        if !parts.is_empty() {
+            return Err(GraphError::parse_custom(format!(
+                "entry line has more than 3 fields: {}",
+                line
+            )));
+        }
 
         entries.push(NodeEntry { kind, hash, name });
     }
