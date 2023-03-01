@@ -182,6 +182,9 @@ impl JobConsumer for DependentValuesUpdate {
             return Ok(());
         }
 
+        // Cache the original dependency graph to send the status receiver.
+        let original_dependency_graph = dependency_graph.clone();
+
         council
             .register_dependency_graph(
                 dependency_graph
@@ -319,7 +322,8 @@ impl JobConsumer for DependentValuesUpdate {
         if let Err(e) = client
             .publish(&StatusReceiverRequest {
                 visibility: *ctx.visibility(),
-                dependent_graph: dependency_graph.clone(),
+                tenancy: *ctx.tenancy(),
+                dependent_graph: original_dependency_graph,
             })
             .await
         {

@@ -811,12 +811,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           {
             eventType: "CodeGenerated",
             callback: (codeGeneratedEvent) => {
-              // probably ideally just push the new code over the websocket
-              // but for now we'll re-fetch if the component is currently selected
-              // topic subscription would also help to know if we're talking about the component in the correct changeset
-              if (this.selectedComponentId === codeGeneratedEvent.componentId) {
-                this.FETCH_COMPONENT_CODE(this.selectedComponentId);
-              }
+              this.FETCH_COMPONENT_CODE(codeGeneratedEvent.componentId);
             },
           },
         ]);

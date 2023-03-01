@@ -161,8 +161,8 @@ export const useRealtimeStore = defineStore("realtime", () => {
     eventData: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     eventMetadata: RealtimeEventMetadata,
   ) {
-    // Set your env variable LOG_WS to true if you want to see these console logs!
-    if (import.meta.env.LOG_WS) {
+    // Set the "VITE_LOG_WS" environment variable to true if you want to see logs for received WsEvents.
+    if (import.meta.env.VITE_LOG_WS) {
       /* eslint-disable-next-line no-console */
       console.log("WS message", eventKind, eventData);
     }

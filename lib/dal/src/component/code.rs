@@ -1,14 +1,14 @@
 use serde::Deserialize;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
 use crate::attribute::value::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::component::ComponentResult;
 use crate::{
-    AttributeReadContext, CodeLanguage, CodeView, ComponentError, ComponentId, DalContext,
-    StandardModel, WsEvent, WsPayload,
+    AttributeReadContext, AttributeValueId, CodeLanguage, CodeView, ComponentError, ComponentId,
+    DalContext, StandardModel, WsEvent, WsPayload,
 };
 use crate::{Component, SchemaVariant};
 use crate::{RootPropChild, WsEventResult};
@@ -20,6 +20,8 @@ struct CodeGenerationEntry {
 }
 
 impl Component {
+    /// List all [`CodeViews`](crate::CodeView) for based on the "code generation"
+    /// [`leaves`](crate::schema::variant::leaves) for a given [`ComponentId`](Self).
     #[instrument(skip_all)]
     pub async fn list_code_generated(
         ctx: &DalContext,
@@ -78,8 +80,8 @@ impl Component {
                     CodeLanguage::try_from(format.to_owned())?
                 };
 
-                // TODO(nick): determine how we handle empty code generation or generation in
-                // progress. Maybe we never need to? Just re-run?
+                // NOTE(nick): we may need to determine how we handle empty code generation or
+                // generation in progress. Maybe we never need to? Just re-run?
                 let code = if code.is_empty() {
                     None
                 } else {
@@ -90,6 +92,46 @@ impl Component {
             }
         }
         Ok(code_views)
+    }
+
+    // TODO(nick): big query potential.
+    /// Returns a [`HashSet`](std::collections::HashSet) of all the
+    /// [`AttributeValueIds`](crate::AttributeValue) corresponding to "code generation"
+    /// [`leaves`](crate::schema::variant::leaves) in the workspace.
+    pub async fn all_code_generation_attribute_values(
+        ctx: &DalContext,
+    ) -> ComponentResult<HashSet<AttributeValueId>> {
+        let mut values = HashSet::new();
+        for component in Component::list(ctx).await? {
+            values.extend(
+                Self::all_code_generation_attribute_values_for_component(ctx, *component.id())
+                    .await?,
+            );
+        }
+        Ok(values)
+    }
+
+    // TODO(nick): big query potential.
+    /// Returns a [`HashSet`](std::collections::HashSet) of all the
+    /// [`AttributeValueIds`](crate::AttributeValue) corresponding to "code generation"
+    /// [`leaves`](crate::schema::variant::leaves) for a given [`ComponentId`](Self).
+    async fn all_code_generation_attribute_values_for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<HashSet<AttributeValueId>> {
+        let code_map_attribute_value = Self::root_prop_child_attribute_value_for_component(
+            ctx,
+            component_id,
+            RootPropChild::Code,
+        )
+        .await?;
+        Ok(HashSet::from_iter(
+            code_map_attribute_value
+                .child_attribute_values(ctx)
+                .await?
+                .iter()
+                .map(|av| *av.id()),
+        ))
     }
 }
 
