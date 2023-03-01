@@ -1,6 +1,6 @@
 # Pinga
 
-Job Queue Executor integrated with both [Nats](https://nats.io/) and [Faktory](https://contribsys.com/faktory/)
+Job Queue Executor integrated with both [Nats](https://nats.io/) (by default) and [Faktory](https://contribsys.com/faktory/) (opt-in)
 
 ![pinga](./docs/pinga.png)
 
@@ -11,12 +11,6 @@ Job Queue Executor integrated with both [Nats](https://nats.io/) and [Faktory](h
 ![pingando](./docs/pinga.gif)
 
 ## Execution
-
-Run faktory locally in dev mode with (this doesn't persist the queues):
-
-```
-docker run --rm -it -p 127.0.0.1:7419:7419 -p 127.0.0.1:7420:7420 contribsys/faktory:latest
-```
 
 Run pinga:
 
@@ -29,3 +23,14 @@ You can also use the following command in the global workspace:
 ```
 make pinga-run
 ```
+
+## Faktory
+
+If you decide to swap the transport layer from NATS to Faktory, you will have to have faktory running in the background
+
+Run faktory locally in dev mode with (this doesn't persist the queues):
+
+```
+docker run --rm -it -p 127.0.0.1:7419:7419 -p 127.0.0.1:7420:7420 contribsys/faktory:latest
+```
+

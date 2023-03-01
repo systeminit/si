@@ -50,7 +50,7 @@ impl Subscriber {
             "subscribing for resolver function requests"
         );
         let inner = nats
-            .subscribe(subject)
+            .queue_subscribe(subject, "resolver")
             .await
             .map_err(SubscriberError::NatsSubscribe)?;
 
@@ -70,7 +70,7 @@ impl Subscriber {
             "subscribing for validation requests"
         );
         let inner = nats
-            .subscribe(subject)
+            .queue_subscribe(subject, "validation")
             .await
             .map_err(SubscriberError::NatsSubscribe)?;
 
@@ -90,7 +90,7 @@ impl Subscriber {
             "subscribing for workflow resolve requests"
         );
         let inner = nats
-            .subscribe(subject)
+            .queue_subscribe(subject, "workflow")
             .await
             .map_err(SubscriberError::NatsSubscribe)?;
 
@@ -110,7 +110,7 @@ impl Subscriber {
             "subscribing for command resolve requests"
         );
         let inner = nats
-            .subscribe(subject)
+            .queue_subscribe(subject, "command")
             .await
             .map_err(SubscriberError::NatsSubscribe)?;
 

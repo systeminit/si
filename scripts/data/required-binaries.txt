@@ -7,3 +7,4 @@ npm
 pnpm
 protoc
 skopeo
+aws

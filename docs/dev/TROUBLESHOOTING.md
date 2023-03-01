@@ -18,7 +18,7 @@ Where:
 - `clean` removes all Cargo (Rust) build artifacts, and each TypeScript-based
   component will remove its `node_modules/` and associated build artifacts
 - `prepare` brings down the supporting services running in a Docker Compose
-  deployment (i.e. the PostgreSQL database, NATS, and Faktory services), and
+  deployment (i.e. the PostgreSQL database and NATS), and
   then re-deploys them from scratch
 - `build` builds all components, including apps, binaries, and
   libraries/packages
