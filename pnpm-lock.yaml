@@ -197,6 +197,24 @@ importers:
       lang-js: link:../lang-js
       telemetry-application: link:../../lib/telemetry-application-rs
 
+  bin/gen-var-defs:
+    specifiers:
+      dal: workspace:*
+      si-data-faktory: workspace:*
+      si-data-nats: workspace:*
+      si-data-pg: workspace:*
+      si-settings: workspace:*
+      telemetry-application: workspace:*
+      veritech-client: workspace:*
+    dependencies:
+      dal: link:../../lib/dal
+      si-data-faktory: link:../../lib/si-data-faktory
+      si-data-nats: link:../../lib/si-data-nats
+      si-data-pg: link:../../lib/si-data-pg
+      si-settings: link:../../lib/si-settings
+      telemetry-application: link:../../lib/telemetry-application-rs
+      veritech-client: link:../../lib/veritech-client
+
   bin/lang-js:
     specifiers:
       '@types/debug': ^4.1.7
