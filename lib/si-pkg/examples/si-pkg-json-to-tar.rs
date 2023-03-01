@@ -1,7 +1,6 @@
 use std::{env::args, fs};
 
-use object_tree::{ObjectTree, TreeFileSystemWriter};
-use si_pkg::schema::Schema;
+use si_pkg::{spec::Package, SiPkg};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -9,17 +8,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input = args.nth(1).expect("usage: program <JSON_FILE> <TARBALL>");
     let tar_file = args.next().expect("usage: program <JSON_FILE> <TARBALL>");
 
-    let schema: Schema = {
+    let spec: Package = {
         let buf = fs::read_to_string(&input)?;
         serde_json::from_str(&buf)?
     };
-    let tree = ObjectTree::create_from_root(schema.domain.into()).expect("failed to hash tree");
+    let pkg = SiPkg::load_from_spec(spec)?;
 
-    println!("--- Writing object tree to: {tar_file}");
-    TreeFileSystemWriter::tar(&tar_file)
-        .await?
-        .write(&tree)
-        .await?;
+    println!("--- Writing pkg to: {tar_file}");
+    pkg.write_to_file(tar_file).await?;
 
     println!("--- Done.");
     Ok(())

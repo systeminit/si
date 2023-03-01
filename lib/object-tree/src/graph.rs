@@ -17,7 +17,6 @@ use crate::Hash;
 
 const KEY_VERSION_STR: &str = "version";
 const KEY_NODE_KIND_STR: &str = "node_kind";
-const KEY_OBJECT_KIND_STR: &str = "object_kind";
 
 const VAL_VERSION_STR: &str = "1";
 
@@ -138,17 +137,6 @@ pub trait NameStr {
     fn name(&self) -> &str;
 }
 
-/// Trait for types that return a String representation of its kind or type.
-// TODO(fnichol): I *think* this goes away--each inner `T` needs to know how to deserialize itself
-// from bytes so shoult typically have a `kind`/`type` key/value line. The wrapping reader for the
-// inner `T` can't give `T` the value of `object_kind()`--it can only call `T::read_bytes()` so
-// what use is this then in the end? I think nothing, but since it was a hard trait to thread
-// though, let's wait one more seconds before pulling it.
-pub trait ObjectKindStr {
-    /// Returns an object kind as a `&str`.
-    fn object_kind(&self) -> &str;
-}
-
 /// Whether a `Node` (or a node-related type) is a leaf or a tree.
 ///
 /// A *leaf* is a node which contains no children and a *tree* is a node which contains children.
@@ -204,40 +192,42 @@ struct Node<T> {
     inner: T,
 }
 
-/// An un-hashed tree node which includes its children.
-pub struct NodeWithChildren<T, N>
-where
-    N: Into<NodeWithChildren<T, N>>,
-{
-    kind: NodeKind,
-    inner: T,
-    children: Vec<N>,
+/// FIXME(fnichol): document
+pub trait NodeChild {
+    /// The type of `Node` which the children can resolve into.
+    type NodeType;
+
+    /// FIXME(fnichol): document
+    fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType>;
 }
 
-impl<T, N> NodeWithChildren<T, N>
-where
-    N: Into<NodeWithChildren<T, N>>,
-{
+/// An un-hashed tree node which includes its children.
+pub struct NodeWithChildren<T> {
+    kind: NodeKind,
+    inner: T,
+    children: Vec<Box<dyn NodeChild<NodeType = T>>>,
+}
+
+impl<T> NodeWithChildren<T> {
     /// Creates a new instance given a kind, an inner type `T` and its children.
-    pub fn new(kind: NodeKind, inner: T, children: Vec<N>) -> Self {
+    pub fn new(kind: NodeKind, inner: T, children: Vec<Box<dyn NodeChild<NodeType = T>>>) -> Self {
         Self {
             kind,
             inner,
             children,
         }
     }
-}
 
-impl<T, N> From<NodeWithChildren<T, N>> for (Node<T>, Vec<NodeWithChildren<T, N>>)
-where
-    N: Into<NodeWithChildren<T, N>>,
-{
-    fn from(value: NodeWithChildren<T, N>) -> Self {
+    fn into_parts(self) -> (Node<T>, Vec<Box<NodeWithChildren<T>>>) {
         let node = Node {
-            kind: value.kind,
-            inner: value.inner,
+            kind: self.kind,
+            inner: self.inner,
         };
-        let children = value.children.into_iter().map(Into::into).collect();
+        let children = self
+            .children
+            .into_iter()
+            .map(|child| Box::new(child.as_node_with_children()))
+            .collect();
 
         (node, children)
     }
@@ -265,10 +255,10 @@ impl<'a, T> NodeWithEntriesRef<'a, T> {
 
 impl<'a, T> WriteBytes for NodeWithEntriesRef<'a, T>
 where
-    T: WriteBytes + ObjectKindStr,
+    T: WriteBytes,
 {
     fn write_bytes<W: Write>(&self, writer: &mut W) -> Result<(), GraphError> {
-        write_header_bytes(writer, self.kind, self.inner.object_kind())?;
+        write_header_bytes(writer, self.kind)?;
 
         write_separator_bytes(writer)?;
 
@@ -315,13 +305,6 @@ where
         let kind_str = read_key_value_line(reader, KEY_NODE_KIND_STR)?;
         let kind = NodeKind::from_str(&kind_str).map_err(GraphError::parse)?;
 
-        let object_kind_str = read_key_value_line(reader, KEY_OBJECT_KIND_STR)?;
-        // TODO(fnichol): right now we're only round-tripping PropNodes, but soon others--this is a
-        // pedantic check of this field in the meantime but will serve as the de-serializing hint
-        if object_kind_str != "prop" {
-            return Err(GraphError::parse_custom("expected object kind to be prop"));
-        }
-
         read_empty_line(reader)?;
 
         let node = T::read_bytes(reader)?;
@@ -359,10 +342,7 @@ impl<T> HashingTree<T> {
     ///
     /// Return `Err` if multiple root nodes are found (which is invalid for a tree) or if no root
     /// nodes are found once the tree is fully processed (which is also invalid for a tree).
-    fn create_from_root<N>(node: NodeWithChildren<T, N>) -> Result<HashingTree<T>, GraphError>
-    where
-        N: Into<NodeWithChildren<T, N>>,
-    {
+    fn create_from_root(node: NodeWithChildren<T>) -> Result<HashingTree<T>, GraphError> {
         let mut graph = Graph::new();
         let mut root_idx: Option<NodeIndex> = None;
         let hashes = HashMap::new();
@@ -370,7 +350,7 @@ impl<T> HashingTree<T> {
         let mut stack: Vec<(_, Option<NodeIndex>)> = vec![(node, None)];
 
         while let Some((node_with_children, parent_idx)) = stack.pop() {
-            let (node, children) = node_with_children.into();
+            let (node, children) = node_with_children.into_parts();
 
             let node_idx = graph.add_node(node);
 
@@ -387,7 +367,7 @@ impl<T> HashingTree<T> {
             };
 
             for child_node_with_children in children.into_iter().rev() {
-                stack.push((child_node_with_children, Some(node_idx)));
+                stack.push((*child_node_with_children, Some(node_idx)));
             }
         }
 
@@ -412,7 +392,7 @@ impl<T> HashingTree<T> {
     /// - An I/O error occurs when serializing node representations to bytes
     fn hash_tree(mut self) -> Result<ObjectTree<T>, GraphError>
     where
-        T: Clone + NameStr + WriteBytes + ObjectKindStr,
+        T: Clone + NameStr + WriteBytes,
     {
         self.compute_hashes()?;
         self.create_hashed_tree()
@@ -420,7 +400,7 @@ impl<T> HashingTree<T> {
 
     fn compute_hashes(&mut self) -> Result<(), GraphError>
     where
-        T: NameStr + WriteBytes + ObjectKindStr,
+        T: NameStr + WriteBytes,
     {
         let mut dfspo = DfsPostOrder::new(&self.graph, self.root_idx);
 
@@ -534,10 +514,9 @@ pub struct ObjectTree<T> {
 
 impl<T> ObjectTree<T> {
     /// Creates an `ObjectTree` from an un-hashed root node of type `T` with its children.
-    pub fn create_from_root<N>(node: NodeWithChildren<T, N>) -> Result<Self, GraphError>
+    pub fn create_from_root(node: NodeWithChildren<T>) -> Result<Self, GraphError>
     where
-        T: Clone + NameStr + WriteBytes + ObjectKindStr,
-        N: Into<NodeWithChildren<T, N>>,
+        T: Clone + NameStr + WriteBytes,
     {
         HashingTree::create_from_root(node)?.hash_tree()
     }
@@ -657,7 +636,7 @@ impl<T> HashedNodeWithEntries<T> {
 
 impl<T> WriteBytes for HashedNodeWithEntries<T>
 where
-    T: WriteBytes + ObjectKindStr,
+    T: WriteBytes,
 {
     fn write_bytes<W: Write>(&self, writer: &mut W) -> Result<(), GraphError> {
         self.as_node_with_entries_ref().write_bytes(writer)
@@ -666,7 +645,7 @@ where
 
 impl<T> VerifyHash for HashedNodeWithEntries<T>
 where
-    T: WriteBytes + ObjectKindStr,
+    T: WriteBytes,
 {
     fn hash(&self) -> &Hash {
         &self.hash
@@ -764,20 +743,27 @@ fn read_node_entry_lines<R: BufRead>(reader: &mut R) -> Result<Vec<NodeEntry>, G
 
     for line in reader.lines() {
         let line = line.map_err(GraphError::IoRead)?;
-        let mut parts: Vec<_> = line.rsplitn(3, ' ').collect();
+        let mut parts: Vec<_> = line.splitn(3, ' ').collect();
 
-        let kind = match parts.pop() {
-            Some(s) => NodeKind::from_str(s).map_err(GraphError::parse)?,
-            None => return Err(GraphError::parse_custom("missing kind field in entry line")),
+        let name = match parts.pop() {
+            Some(s) => s.to_string(),
+            None => return Err(GraphError::parse_custom("missing name field in entry line")),
         };
         let hash = match parts.pop() {
             Some(s) => Hash::from_str(s).map_err(GraphError::parse)?,
             None => return Err(GraphError::parse_custom("missing hash field in entry line")),
         };
-        let name = match parts.pop() {
-            Some(s) => s.to_string(),
-            None => return Err(GraphError::parse_custom("missing name field in entry line")),
+        let kind = match parts.pop() {
+            Some(s) => NodeKind::from_str(s).map_err(GraphError::parse)?,
+            None => return Err(GraphError::parse_custom("missing kind field in entry line")),
         };
+
+        if !parts.is_empty() {
+            return Err(GraphError::parse_custom(format!(
+                "entry line has more than 3 fields: {}",
+                line
+            )));
+        }
 
         entries.push(NodeEntry { kind, hash, name });
     }
@@ -790,14 +776,9 @@ fn read_node_entry_lines<R: BufRead>(reader: &mut R) -> Result<Vec<NodeEntry>, G
 /// # Errors
 ///
 /// Returns `Err` if an I/O error occurs while writing to the writer
-fn write_header_bytes<W: Write>(
-    writer: &mut W,
-    kind: NodeKind,
-    object_kind: &str,
-) -> Result<(), GraphError> {
+fn write_header_bytes<W: Write>(writer: &mut W, kind: NodeKind) -> Result<(), GraphError> {
     write_key_value_line(writer, KEY_VERSION_STR, VAL_VERSION_STR)?;
     write_key_value_line(writer, KEY_NODE_KIND_STR, kind.as_ref())?;
-    write_key_value_line(writer, KEY_OBJECT_KIND_STR, object_kind)?;
     Ok(())
 }
 
@@ -822,3 +803,45 @@ pub fn write_key_value_line<W: Write>(
 fn write_separator_bytes<W: Write>(writer: &mut W) -> Result<(), GraphError> {
     write!(writer, "{NL}").map_err(GraphError::IoWrite)
 }
+
+// mod ahhhh {
+//     use super::NodeKind;
+//
+//     #[derive(Debug)]
+//     struct Node<T> {
+//         kind: NodeKind,
+//         inner: T,
+//     }
+//
+//     trait Child {
+//         type NodeType;
+//
+//         fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType>;
+//     }
+//
+//     struct NodeWithChildren<T> {
+//         node: Node<T>,
+//         children: Vec<Box<dyn Child<NodeType = T>>>,
+//     }
+//
+//     impl<T> NodeWithChildren<T> {
+//         fn new(node: Node<T>, children: Vec<Box<dyn Child<NodeType = T>>>) -> Self {
+//             Self { node, children }
+//         }
+//
+//         fn into_parts(self) -> (Node<T>, Vec<Box<NodeWithChildren<T>>>) {
+//             let node = self.node;
+//             let children = self
+//                 .children
+//                 .into_iter()
+//                 .map(|child| Box::new(child.as_node_with_children()))
+//                 .collect();
+//
+//             (node, children)
+//         }
+//     }
+//
+//     // TODO(fnichol): ok, that takes us back to the above impl, huh. So maybe we need to try the
+//     // trait object version where the children are `Vec<Box<dyn Into<NodeWithChildren<_, ...>>>` or
+//     // something like that?
+// }

@@ -3519,11 +3519,14 @@ dependencies = [
 name = "si-pkg"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "object-tree",
  "petgraph",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
+ "url",
 ]
 
 [[package]]
@@ -4376,6 +4379,7 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]

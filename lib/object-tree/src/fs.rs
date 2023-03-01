@@ -13,8 +13,8 @@ use vfs_tar::TarFS;
 
 use crate::{
     graph::{
-        GraphError, HashedNodeWithEntries, NameStr, NodeEntry, NodeWithEntries, ObjectKindStr,
-        ObjectTree, ReadBytes, WriteBytes,
+        GraphError, HashedNodeWithEntries, NameStr, NodeEntry, NodeWithEntries, ObjectTree,
+        ReadBytes, WriteBytes,
     },
     hash::{Hash, HashParseError},
 };
@@ -253,7 +253,7 @@ impl TreeFileSystemWriter {
     /// - A node fails to properly serialize to a file
     pub async fn write<T>(self, tree: &ObjectTree<T>) -> Result<(), FsError>
     where
-        T: Clone + NameStr + ObjectKindStr + WriteBytes + Send + Sync + 'static,
+        T: Clone + NameStr + WriteBytes + Send + Sync + 'static,
     {
         match self {
             Self::Physical { vfs_path } => {
@@ -276,7 +276,7 @@ impl<'a> PhysicalFileSystemWriter<'a> {
 
     async fn write<T>(&self, tree: &ObjectTree<T>) -> Result<(), FsError>
     where
-        T: Clone + NameStr + ObjectKindStr + WriteBytes + Send + Sync + 'static,
+        T: Clone + NameStr + WriteBytes + Send + Sync + 'static,
     {
         let (graph, root_idx) = tree.as_petgraph();
 
@@ -324,7 +324,7 @@ impl<'a> PhysicalFileSystemWriter<'a> {
 
     async fn write_node<T>(&self, node: HashedNodeWithEntries<T>) -> Result<(), FsError>
     where
-        T: WriteBytes + ObjectKindStr + Send + Sync + 'static,
+        T: WriteBytes + Send + Sync + 'static,
     {
         let dst_path = self.object_path(node.hash())?;
         let buf = node.to_bytes().map_err(FsError::GraphWrite)?;
@@ -370,7 +370,7 @@ impl<'a> TarFileSystemWriter<'a> {
 
     async fn write<T>(&self, tree: &ObjectTree<T>) -> Result<(), FsError>
     where
-        T: Clone + NameStr + ObjectKindStr + WriteBytes + Send + Sync + 'static,
+        T: Clone + NameStr + WriteBytes + Send + Sync + 'static,
     {
         // Write the tree to a physical fs in a tmpdir to get the on-disk structure
         let tmpdir = asyncify(move || tempfile::TempDir::new().map_err(FsError::TempDir)).await?;

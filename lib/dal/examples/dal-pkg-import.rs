@@ -1,7 +1,7 @@
 use std::{env, path::Path, sync::Arc};
 
 use dal::{
-    pkg::import_schema, DalContext, JobQueueProcessor, NatsProcessor, ServicesContext, Tenancy,
+    pkg::import_pkg, DalContext, JobQueueProcessor, NatsProcessor, ServicesContext, Tenancy,
     Workspace,
 };
 use si_data_nats::{NatsClient, NatsConfig};
@@ -14,15 +14,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut args = env::args();
-    let src_dir = args.nth(1).expect("usage: program <SRC_DIR> <NAME>");
-    let name = args.next().expect("usage: program <SRC_DIR> <NAME>");
+    let tar_file = args.nth(1).expect("usage: program <PKG_FILE>");
 
     let (mut ctx, _shutdown_rx) = ctx().await?;
     let workspace = Workspace::builtin(&ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
-    println!("--- Importing schema '{name} from pkg prop tree in: {src_dir}");
-    import_schema(&mut ctx, &name, Path::new(&src_dir)).await?;
+    println!("--- Importing pkg: {tar_file}");
+    import_pkg(&ctx, Path::new(&tar_file)).await?;
 
     println!("--- Committing database transaction");
     ctx.commit().await?;
