@@ -31,14 +31,14 @@ pub enum PkgError {
 
 pub type PkgResult<T> = Result<T, PkgError>;
 
-pub async fn import_pkg(ctx: &DalContext, tar_path: &Path) -> PkgResult<()> {
+pub async fn import_pkg(ctx: &DalContext, tar_path: &Path) -> PkgResult<SiPkg> {
     let pkg = SiPkg::load_from_file(tar_path).await?;
 
     for schema_spec in pkg.schemas()? {
         create_schema(ctx, schema_spec).await?;
     }
 
-    Ok(())
+    Ok(pkg)
 }
 
 async fn create_schema(ctx: &DalContext, schema_spec: SiPkgSchema<'_>) -> PkgResult<()> {

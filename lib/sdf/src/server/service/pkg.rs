@@ -5,10 +5,11 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    installed_pkg::InstalledPkgError, DalContextBuilder, StandardModelError, TenancyError,
-    TransactionsError, WsEventError,
+    installed_pkg::InstalledPkgError, pkg::PkgError as DalPkgError, DalContextBuilder,
+    StandardModelError, TenancyError, TransactionsError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
+use si_pkg::SiPkgError;
 use si_settings::{safe_canonically_join, CanonicalFileError};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -46,6 +47,10 @@ pub enum PkgError {
     // add error for matching hash
     #[error(transparent)]
     InstalledPkg(#[from] InstalledPkgError),
+    #[error(transparent)]
+    SiPkg(#[from] SiPkgError),
+    #[error(transparent)]
+    DalPkg(#[from] DalPkgError),
 }
 
 pub type PkgResult<T> = Result<T, PkgError>;
@@ -77,14 +82,13 @@ pub async fn list_pkg_dir_entries(pkgs_path: &Path) -> PkgResult<Vec<String>> {
     Ok(result)
 }
 
-pub async fn pkg_lookup(pkgs_path: &Path, name: &str) -> PkgResult<Option<String>> {
+pub async fn pkg_lookup(pkgs_path: &Path, name: &str) -> PkgResult<Option<PathBuf>> {
     let real_pkg_path = safe_canonically_join(pkgs_path, name)?;
     let file_name = real_pkg_path
         .file_name()
         .map(|file_name| file_name.to_string_lossy().to_string());
 
-    Ok((real_pkg_path.is_file() && file_name.is_some())
-        .then_some(file_name.expect("logically impossible to fail")))
+    Ok((real_pkg_path.is_file() && file_name.is_some()).then_some(real_pkg_path))
 }
 
 pub fn routes() -> Router {

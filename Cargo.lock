@@ -3224,6 +3224,7 @@ dependencies = [
  "si-data-faktory",
  "si-data-nats",
  "si-data-pg",
+ "si-pkg",
  "si-settings",
  "si-std",
  "sodiumoxide",
