@@ -4,50 +4,82 @@ on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      # anything here must be put in ci-noop.yml so we get a passing CI check for bors
-      - 'bin/si-discord-bot/**'
-      - 'app/corp/**'
-      - "**.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  ci:
-    timeout-minutes: 40
-    name: Pull Request Checks
-    runs-on: self-hosted
+  check-run-tests:
+    runs-on: ubuntu-latest
+    outputs:
+      run_tests: ${{ steps.save_output.outputs.run_tests }}
     steps:
       - name: Git Checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: Changed Files
+        id: changed-files
+        uses: tj-actions/changed-files@v35.5.5
+        with:
+          files_ignore: |
+            bin/si-discord-bot/**
+            app/corp/**
+            **.md
+      - name: Output
+        id: save_output
+        env:
+          RUN_TESTS: ${{steps.changed-files.outputs.any_changed == 'true'}}
+        run: |
+          echo $RUN_TESTS
+          echo "run_tests=$RUN_TESTS" >> $GITHUB_OUTPUT
+  ci:
+    timeout-minutes: 40
+    needs: check-run-tests
+    name: Pull Request Checks
+    runs-on: self-hosted
+    steps:
+      # Still need at least a step
+      - name: 'Skip CI run but pass'
+        if: needs.check-run-tests.outputs.run_tests == 'false'
+        run: echo YOLO
+
+      - name: Git Checkout
+        if: needs.check-run-tests.outputs.run_tests == 'true'
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Setup pnpm
+        if: needs.check-run-tests.outputs.run_tests == 'true'
         uses: pnpm/action-setup@v2
         with:
           version: 7
       - name: Install Node.js
+        if: needs.check-run-tests.outputs.run_tests == 'true'
         uses: actions/setup-node@v3
         with:
           node-version: 16
           cache: 'pnpm'
       - name: Install node dependencies
+        if: needs.check-run-tests.outputs.run_tests == 'true'
         run: pnpm install
       - name: Install Rust
+        if: needs.check-run-tests.outputs.run_tests == 'true'
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
       - name: Login Docker
+        if: needs.check-run-tests.outputs.run_tests == 'true'
         id: login
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9 # pin@v1.10.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
       - name: ci
+        if: needs.check-run-tests.outputs.run_tests == 'true'
         id: ci
         run: |
           : make ci
