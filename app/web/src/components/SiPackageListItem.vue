@@ -8,12 +8,12 @@
     "
     :to="{
       name: 'workspace-lab-packages',
-      params: { ...route.params, packageSlug: packageInfo.slug },
+      params: { ...route.params, packageSlug: packageInfo.name },
     }"
   >
-    <Icon :name="packageInfo.icon || 'cat'" />
+    <Icon name="component" />
     <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
-      {{ packageInfo.displayName }}
+      {{ packageInfo.name }}
     </div>
   </RouterLink>
 </template>
@@ -30,8 +30,10 @@ const props = defineProps({
 
 const route = useRoute();
 const packageStore = usePackageStore();
-const packageInfo = computed(() => packageStore.packagesById[props.packageId]);
+const packageInfo = computed(
+  () => packageStore.packageListByName[props.packageId],
+);
 const isSelected = computed(
-  () => packageInfo.value.slug === packageStore.urlSelectedPackageSlug,
+  () => packageInfo.value.name === packageStore.urlSelectedPackageSlug,
 );
 </script>

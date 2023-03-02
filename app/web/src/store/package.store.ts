@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
+import { parseISO } from "date-fns";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
-import { IconNames, ICONS } from "@/ui-lib/icons/icon_set";
 import { DiagramInputSocket, DiagramOutputSocket } from "@/api/sdf/dal/diagram";
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
 import { Visibility } from "@/api/sdf/dal/visibility";
@@ -22,22 +22,33 @@ export interface SchemaVariant {
   outputSockets: DiagramOutputSocket[];
 }
 
-export type Package = {
-  id: PackageId; // TODO FUTURE - should probably have a namespace system for packages
-  displayName: string;
-  slug: PackageSlug; // TODO FUTURE - should probably have a namespace system for packages
-  description?: string; // TODO - think about how this will be used, maybe two fields, one short one long? markdown?
-  version: string; // TODO FUTURE - how do users select versions?
-  schemaVariants: Array<SchemaVariant>;
-  icon: IconNames;
-  color: string;
-  installed: boolean;
+export interface Package {
+  name: string;
+  version: string;
+  description: string;
   createdAt: Date;
   createdBy: string;
-  changelog: string;
+  schemas: string[];
+  installed: boolean;
+  hash: string;
+}
 
-  // TODO FUTURE - what other info would be useful here?
-};
+export interface PkgGetResponse {
+  name: string;
+  version: string;
+  description: string;
+  createdAt: string;
+  createdBy: string;
+  schemas: string[];
+  installed: boolean;
+  hash: string;
+}
+
+export interface PackageListItem {
+  name: string;
+  installed: boolean;
+  hash: string;
+}
 
 export type Asset = {
   id: number;
@@ -53,109 +64,66 @@ export const usePackageStore = () => {
   return addStoreHooks(
     defineStore(`cs${changeSetId || "NONE"}/package`, {
       state: () => ({
-        packagesById: {} as Record<PackageId, Package>,
+        packagesByName: {} as Record<PackageId, Package>,
+        packageListByName: {} as Record<PackageId, PackageListItem>,
       }),
       getters: {
         urlSelectedPackageSlug: () => {
           const route = useRouterStore().currentRoute;
           return route?.params?.packageSlug as PackageSlug | undefined;
         },
-        packages: (state) => _.values(state.packagesById),
+        packageList: (state) => _.values(state.packageListByName),
         packagesBySlug: (state) =>
-          _.keyBy(_.values(state.packagesById), (p) => p.slug),
-        selectedPackage(): Package {
-          return this.packagesBySlug[this.urlSelectedPackageSlug || ""];
+          _.keyBy(_.values(state.packageListByName), (p) => p.name),
+        selectedPackageListItem(): PackageListItem {
+          return this.packagesBySlug[this.urlSelectedPackageSlug ?? ""];
+        },
+        selectedPackage(): Package | undefined {
+          return this.packagesByName[this.selectedPackageListItem?.name ?? ""];
         },
         installedPackages: (state) =>
-          _.filter(state.packagesById, (p) => p.installed),
+          _.filter(state.packageListByName, (p) => p.installed),
         notInstalledPackages: (state) =>
-          _.filter(state.packagesById, (p) => !p.installed),
+          _.filter(state.packageListByName, (p) => !p.installed),
       },
       actions: {
-        // MOCK DATA GENERATION
-        generateMockColor() {
-          return `#${_.sample([
-            "FF0000",
-            "FFFF00",
-            "FF00FF",
-            "00FFFF",
-            "FFAA00",
-            "AAFF00",
-            "00FFAA",
-            "00AAFF",
-          ])}`;
-        },
-        generateMockPackage(id: string, name?: string, installed?: boolean) {
-          return {
-            id,
-            displayName:
-              name ??
-              `test package ${Math.floor(Math.random() * 10000)}${
-                Math.floor(Math.random() * 20) === 0
-                  ? " omg has such a long name the name is so long you can't even believe how long it is!"
-                  : ""
-              }`,
-            version: `${Math.floor(Math.random() * 9)}.${Math.floor(
-              Math.random() * 9,
-            )}`,
-            schemaVariants: this.generateMockSchemaVariants(),
-            icon: (_.sample(_.keys(ICONS)) || "logo-si") as IconNames,
-            color: this.generateMockColor(),
-            slug: `test${id}`,
-            installed: installed ?? false,
-            createdAt: new Date(
-              new Date().getTime() - Math.random() * 10000000000,
-            ),
-            createdBy: "Fake McMock",
-            changelog:
-              _.sample([
-                "changelog goes here",
-                "testing changelog",
-                "yeah this is fake",
-              ]) || "changelog would go here",
-          };
-        },
-        generateMockSchemaVariants() {
-          const mockSchemaVariants = [] as SchemaVariant[];
-          const amount = 2 + Math.floor(Math.random() * 30);
-
-          for (let i = 0; i < amount; i++) {
-            mockSchemaVariants.push({
-              id: `${i}`,
-              name: `test schema variant ${Math.floor(Math.random() * 10000)}`,
-              schemaName: "whatever schema name",
-              schemaId: `${i}`,
-              color: this.generateMockColor(),
-              inputSockets: [],
-              outputSockets: [],
-            });
-          }
-
-          return mockSchemaVariants;
+        async GET_PACKAGE(pkg: PackageListItem) {
+          return new ApiRequest<PkgGetResponse>({
+            method: "get",
+            url: "/pkg/get_pkg",
+            params: { name: pkg.name, ...visibility },
+            onSuccess: (response) => {
+              this.packagesByName[pkg.name] = {
+                ...response,
+                createdAt: parseISO(response.createdAt),
+              };
+            },
+          });
         },
 
-        async INSTALL_PACKAGE(pkg: Package) {
+        async INSTALL_PACKAGE(pkg: PackageListItem) {
           return new ApiRequest({
             method: "post",
             url: "/pkg/install_pkg",
-            params: { name: pkg.displayName, ...visibility },
-            onSuccess: (response) => {
-              this.packagesById[pkg.id].installed = true;
+            params: { name: pkg.name, ...visibility },
+            onSuccess: (_response) => {
+              this.packagesByName[pkg.name].installed = true;
+              this.packageListByName[pkg.name].installed = true;
             },
           });
         },
 
         async LOAD_PACKAGES() {
-          return new ApiRequest({
+          return new ApiRequest<{ pkgs: PackageListItem[] }>({
             url: "/pkg/list_pkgs",
             params: { ...visibility },
             onSuccess: (response) => {
-              for (const [idx, pkg] of response.pkgs.entries()) {
-                this.packagesById[idx + 1] = this.generateMockPackage(
-                  idx + 1,
-                  pkg.name,
-                  pkg.installed,
-                );
+              for (const pkg of response.pkgs) {
+                this.packageListByName[pkg.name] = {
+                  name: pkg.name,
+                  installed: pkg.installed,
+                  hash: pkg.hash,
+                };
               }
             },
           });

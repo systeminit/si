@@ -1,7 +1,9 @@
-use super::{get_pkgs_path, pkg_lookup, PkgError, PkgResult};
+use super::{pkg_open, PkgError, PkgResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
-use dal::{installed_pkg::InstalledPkg, pkg::import_pkg, StandardModel, Visibility, WsEvent};
+use dal::{
+    installed_pkg::InstalledPkg, pkg::import_pkg_from_pkg, StandardModel, Visibility, WsEvent,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -25,25 +27,19 @@ pub async fn install_pkg(
 ) -> PkgResult<Json<InstallPkgResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let real_pkg_path = pkg_lookup(get_pkgs_path(&builder).await?, &request.name).await?;
+    let pkg = pkg_open(&builder, &request.name).await?;
 
-    let (real_pkg_file_name, real_pkg_path) = match real_pkg_path {
-        None => return Err(PkgError::PackageNotFound(request.name)),
-        Some(real_pkg_path) => match real_pkg_path.file_name() {
-            None => unreachable!(),
-            Some(file_name) => (file_name.to_string_lossy().to_string(), real_pkg_path),
-        },
-    };
+    let root_hash = pkg.hash()?.to_string();
 
-    if !InstalledPkg::find_by_attr(&ctx, "name", &real_pkg_file_name)
+    if !InstalledPkg::find_by_attr(&ctx, "root_hash", &root_hash)
         .await?
         .is_empty()
     {
-        return Err(PkgError::PackageAlreadyInstalled(real_pkg_file_name));
+        return Err(PkgError::PackageAlreadyInstalled(request.name));
     }
 
-    let pkg = import_pkg(&ctx, &real_pkg_path).await?;
-    InstalledPkg::new(&ctx, &request.name, Some(pkg.hash()?.to_string()), None).await?;
+    import_pkg_from_pkg(&ctx, &pkg).await?;
+    InstalledPkg::new(&ctx, &request.name, pkg.hash()?.to_string()).await?;
 
     WsEvent::change_set_written(&ctx)
         .await?

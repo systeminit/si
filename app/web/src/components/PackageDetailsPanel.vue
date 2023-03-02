@@ -1,7 +1,7 @@
 <template>
   <RequestStatusMessage
-    v-if="loadPackagesReqStatus.isPending"
-    :request-status="loadPackagesReqStatus"
+    v-if="getPackageReqStatus.isPending"
+    :request-status="getPackageReqStatus"
     show-loader-without-message
   />
   <div v-else-if="selectedPackage" class="flex flex-col">
@@ -9,7 +9,7 @@
       class="p-sm border-b dark:border-neutral-600 flex flex-row items-center justify-between"
     >
       <div class="font-bold truncate leading-relaxed">
-        {{ selectedPackage.displayName }}
+        {{ selectedPackage.name }}
       </div>
       <VButton2
         :disabled="disableInstallButton"
@@ -24,10 +24,6 @@
         @click="installPackage"
       />
     </div>
-    <div class="p-sm flex flex-col">
-      <div class="pb-xs font-bold text-xl">Changelog:</div>
-      <div>{{ selectedPackage.changelog }}</div>
-    </div>
   </div>
 </template>
 
@@ -39,14 +35,17 @@ import { usePackageStore } from "@/store/package.store";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 
 const packageStore = usePackageStore();
-const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
+const getPackageReqStatus = packageStore.getRequestStatus("GET_PACKAGE");
 const disableInstallButton = ref(false);
 
 const selectedPackage = computed(() => packageStore.selectedPackage);
+const selectedPackageListItem = computed(
+  () => packageStore.selectedPackageListItem,
+);
 
 const installPackage = async () => {
   disableInstallButton.value = true;
-  await packageStore.INSTALL_PACKAGE(selectedPackage.value);
+  await packageStore.INSTALL_PACKAGE(selectedPackageListItem.value);
   disableInstallButton.value = false;
 };
 </script>

@@ -27,8 +27,8 @@
           >
             No packages installed.
           </li>
-          <li v-for="p in packageStore.installedPackages" :key="p.id">
-            <SiPackageListItem :package-id="p.id" />
+          <li v-for="p in packageStore.installedPackages" :key="p.name">
+            <SiPackageListItem :package-id="p.name" />
           </li>
         </ul>
       </SiCollapsible>
@@ -40,8 +40,8 @@
           >
             All available packages are already installed.
           </li>
-          <li v-for="p in packageStore.notInstalledPackages" :key="p.id">
-            <SiPackageListItem :package-id="p.id" />
+          <li v-for="p in packageStore.notInstalledPackages" :key="p.name">
+            <SiPackageListItem :package-id="p.name" />
           </li>
         </ul>
       </SiCollapsible>

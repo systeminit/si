@@ -1,18 +1,15 @@
 <template>
   <RequestStatusMessage
-    v-if="loadPackagesReqStatus.isPending"
-    :request-status="loadPackagesReqStatus"
+    v-if="getPackageReqStatus.isPending"
+    :request-status="getPackageReqStatus"
     show-loader-without-message
   />
 
   <div v-else-if="selectedPackage" class="flex flex-col h-full">
-    <div
-      class="flex flex-row items-center gap-2 flex-none"
-      :style="`color: ${selectedPackage.color}`"
-    >
-      <Icon :name="selectedPackage.icon" />
+    <div class="flex flex-row items-center gap-2 flex-none">
+      <Icon name="component" />
       <div class="text-3xl font-bold truncate">
-        {{ selectedPackage.displayName }}
+        {{ selectedPackage.name }}
       </div>
     </div>
     <div
@@ -42,15 +39,12 @@
 
       <ul class="p-sm overflow-y-auto">
         <li
-          v-for="sv in selectedPackage.schemaVariants"
-          :key="sv.id"
+          v-for="sv in selectedPackage.schemas"
+          :key="sv"
           class="flex flex-col"
         >
           <div class="flex flex-row items-center">
-            <div :style="`color: ${sv.color}`">
-              <Icon :name="selectedPackage.icon" />
-            </div>
-            <div>{{ sv.name }}</div>
+            <div>{{ sv }}</div>
           </div>
           <div class="pl-lg pb-sm">other info goes here</div>
         </li>
@@ -66,7 +60,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { usePackageStore } from "@/store/package.store";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
@@ -74,7 +68,19 @@ import Timestamp from "@/ui-lib/Timestamp.vue";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const packageStore = usePackageStore();
-const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
+const getPackageReqStatus = packageStore.getRequestStatus("GET_PACKAGE");
 
 const selectedPackage = computed(() => packageStore.selectedPackage);
+const selectedPackageListItem = computed(
+  () => packageStore.selectedPackageListItem,
+);
+
+watch(
+  () => packageStore.urlSelectedPackageSlug,
+  (selectedPackageName) => {
+    if (selectedPackageName) {
+      packageStore.GET_PACKAGE(selectedPackageListItem.value);
+    }
+  },
+);
 </script>
