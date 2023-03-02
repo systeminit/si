@@ -94,6 +94,8 @@ importers:
       postcss-comment: ^2.0.0
       postcss-each: ^1.1.0
       postcss-nested: ^5.0.6
+      posthog-js: ^1.50.2
+      prettier: ~2.7.1
       reconnecting-websocket: ^4.4.0
       tailwindcss: ^3.1.8
       tailwindcss-capsize: ^3.0.2
@@ -143,6 +145,7 @@ importers:
       lodash: 4.17.21
       pinia: 2.0.23_2hxmazfbcwwtly5fgw7ckvmlau
       plur: 5.1.0
+      posthog-js: 1.50.2
       reconnecting-websocket: 4.4.0
       tailwindcss: 3.2.2_postcss@8.4.18
       tinycolor2: 1.4.2
@@ -4505,6 +4508,10 @@ packages:
       pend: 1.2.0
     dev: true
 
+  /fflate/0.4.8:
+    resolution: {integrity: sha512-FJqqoDBR00Mdj9ppamLa/Y7vxm+PRmNWA67N846RvsoYVMKB4q3y/de5PA7gUmRMYK/8CMz2GDZQmCRN1wBcWA==}
+    dev: false
+
   /figures/3.2.0:
     resolution: {integrity: sha512-yaduQFRKLXYOGgEn6AZau90j3ggSOyiqXU0F9JZfeXYhNa+Jk4X+s45A2zg5jns87GAFa34BBm2kXw4XpNcbdg==}
     engines: {node: '>=8'}
@@ -6857,6 +6864,7 @@ packages:
       picocolors: 1.0.0
       source-map-js: 1.0.2
 
+<<<<<<< HEAD
   /postcss/8.4.21:
     resolution: {integrity: sha512-tP7u/Sn/dVxK2NnruI4H9BG+x+Wxz6oeZ1cJ8P6G/PZY0IKk4k/63TDsQf2kQq3+qoJeLm2kIBUNlZe3zgb4Zg==}
     engines: {node: ^10 || ^12 || >=14}
@@ -6864,6 +6872,14 @@ packages:
       nanoid: 3.3.4
       picocolors: 1.0.0
       source-map-js: 1.0.2
+=======
+  /posthog-js/1.50.2:
+    resolution: {integrity: sha512-9iQU9tdsPa6q2+wgdeKK2jxJhPN5VeV3L3bdUEietF24z5UlCtVOkXRhNWiPp2+KfRW5S8ismUl+BUOcz5aD9A==}
+    dependencies:
+      fflate: 0.4.8
+      rrweb-snapshot: 1.1.14
+    dev: false
+>>>>>>> a9061459 (feat(web) - posthog, plus Discord bot stuff)
 
   /prebuild-install/6.1.4:
     resolution: {integrity: sha512-Z4vpywnK1lBg+zdPCVCsKq0xO66eEV9rWo2zrROGGiRS4JtueBOdlB1FnY8lcy7JsUud/Q3ijUxyWN26Ika0vQ==}
@@ -7125,6 +7141,10 @@ packages:
     hasBin: true
     optionalDependencies:
       fsevents: 2.3.2
+
+  /rrweb-snapshot/1.1.14:
+    resolution: {integrity: sha512-eP5pirNjP5+GewQfcOQY4uBiDnpqxNRc65yKPW0eSoU1XamDfc4M8oqpXGMyUyvLyxFDB0q0+DChuxxiU2FXBQ==}
+    dev: false
 
   /run-parallel/1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}

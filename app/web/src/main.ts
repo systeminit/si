@@ -10,11 +10,14 @@ import App from "@/App.vue";
 import router from "./router";
 import store from "./store";
 
+import posthogPlugin from "./plugins/posthog";
+
 const app = createApp(App);
 
 app.use(createHead());
 app.use(router);
 app.use(store);
+app.use(posthogPlugin);
 
 // we attach to the #app-layout div (in AppLayout.vue) to stay within an overflow hidden div and not mess with page scrollbars
 app.use(FloatingVue, { container: "#app-layout" });
