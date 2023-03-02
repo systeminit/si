@@ -1,5 +1,6 @@
 use core::fmt;
 use std::{
+    convert::Infallible,
     future::Future,
     path::{Path, PathBuf},
     sync::Arc,
@@ -16,7 +17,7 @@ use url::Url;
 
 use crate::{
     node::{CategoryNode, PkgNode, PropNode},
-    spec::Package,
+    spec::{PkgSpec, SpecError},
 };
 
 #[derive(Debug, Error)]
@@ -35,6 +36,8 @@ pub enum SiPkgError {
     NodeWithHashNotFound(Hash),
     #[error("node not found with name={0}")]
     NodeWithNameNotFound(String),
+    #[error(transparent)]
+    Spec(#[from] SpecError),
     #[error("unexpected pkg node type; expected={0}, actual={1}")]
     UnexpectedPkgNodeType(&'static str, &'static str),
     #[error("error while visiting prop: {0}")]
@@ -44,6 +47,12 @@ pub enum SiPkgError {
 impl SiPkgError {
     pub fn visit_prop(source: impl std::error::Error + Send + Sync + 'static) -> Self {
         Self::VisitProp(Box::new(source))
+    }
+}
+
+impl From<Infallible> for SiPkgError {
+    fn from(_value: Infallible) -> Self {
+        unreachable!("infallible will not error")
     }
 }
 
@@ -69,7 +78,12 @@ impl SiPkg {
         })
     }
 
-    pub fn load_from_spec(spec: Package) -> Result<Self, SiPkgError> {
+    pub fn load_from_spec<I>(spec: I) -> Result<Self, SiPkgError>
+    where
+        I: TryInto<PkgSpec>,
+        I::Error: Into<SiPkgError>,
+    {
+        let spec = spec.try_into().map_err(Into::into)?;
         let tree = ObjectTree::create_from_root(spec.as_node_with_children())?;
 
         Ok(Self {

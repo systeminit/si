@@ -1,6 +1,6 @@
 use std::{env::args, fs};
 
-use si_pkg::{spec::Package, SiPkg, SiPkgError, SiPkgProp};
+use si_pkg::{PkgSpec, SiPkg, SiPkgError, SiPkgProp};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -8,7 +8,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input = args.nth(1).expect("usage: program <JSON_FILE> <DEST_DIR>");
     let dst = args.next().expect("usage: program <JSON_FILE> <DEST_DIR>");
 
-    let spec: Package = {
+    let spec: PkgSpec = {
         let buf = fs::read_to_string(&input)?;
         serde_json::from_str(&buf)?
     };

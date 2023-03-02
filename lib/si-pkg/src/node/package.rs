@@ -6,7 +6,7 @@ use object_tree::{
     NodeWithChildren, ReadBytes, WriteBytes,
 };
 
-use crate::spec::Package;
+use crate::PkgSpec;
 
 use super::{category::PackageCategory, PkgNode};
 
@@ -67,7 +67,7 @@ impl ReadBytes for PackageNode {
     }
 }
 
-impl NodeChild for Package {
+impl NodeChild for PkgSpec {
     type NodeType = PkgNode;
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {

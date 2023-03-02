@@ -1,6 +1,9 @@
-use std::path::Path;
+use std::path::PathBuf;
 
-use si_pkg::{SiPkg, SiPkgError, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant};
+use si_pkg::{
+    PkgSpec, PropSpec, PropSpecKind, SchemaSpec, SchemaVariantSpec, SiPkg, SiPkgError, SiPkgProp,
+    SiPkgSchema, SiPkgSchemaVariant, SpecError,
+};
 use thiserror::Error;
 
 use crate::{
@@ -10,7 +13,7 @@ use crate::{
         SchemaUiMenu,
     },
     DalContext, Prop, PropError, PropId, PropKind, Schema, SchemaError, SchemaVariant,
-    SchemaVariantError, StandardModel, StandardModelError,
+    SchemaVariantError, SchemaVariantId, StandardModel, StandardModelError,
 };
 
 #[derive(Debug, Error)]
@@ -26,6 +29,8 @@ pub enum PkgError {
     #[error(transparent)]
     SchemaVariantDefinition(#[from] SchemaVariantDefinitionError),
     #[error(transparent)]
+    PkgSpec(#[from] SpecError),
+    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
 }
 
@@ -39,12 +44,77 @@ pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg) -> PkgResult<()>
     Ok(())
 }
 
-pub async fn import_pkg(ctx: &DalContext, tar_path: &Path) -> PkgResult<SiPkg> {
-    let pkg = SiPkg::load_from_file(tar_path).await?;
+pub async fn import_pkg(ctx: &DalContext, pkg_file_path: impl Into<PathBuf>) -> PkgResult<SiPkg> {
+    let pkg = SiPkg::load_from_file(pkg_file_path).await?;
 
     import_pkg_from_pkg(ctx, &pkg).await?;
 
     Ok(pkg)
+}
+
+// TODO(fnichol): another first-pass function with arguments. At the moment we're passing a list of
+// `SchemaVariantId`s in an effort to export specific schema/variant combos but this will change in
+// the future to be more encompassing. And yes, to many function args, way too many--and they're
+// all `String`s
+pub async fn export_pkg(
+    _ctx: &DalContext,
+    pkg_file_path: impl Into<PathBuf>,
+    name: impl Into<String>,
+    version: impl Into<String>,
+    description: Option<impl Into<String>>,
+    created_by: impl Into<String>,
+    _variant_ids: Vec<SchemaVariantId>,
+) -> PkgResult<()> {
+    let mut spec_builder = PkgSpec::builder();
+    spec_builder
+        .name(name)
+        .version(version)
+        .created_by(created_by);
+    if let Some(description) = description {
+        spec_builder.description(description);
+    }
+
+    // // TODO(fnichol): this is merely an example to see if a chained builder pattern works and
+    // // compile--and it does!
+    // //
+    spec_builder
+        .schema(
+            SchemaSpec::builder()
+                .name("Laika")
+                .category("Space Dogs")
+                .variant(
+                    SchemaVariantSpec::builder()
+                        .name("v0")
+                        .color("4695E7")
+                        .prop(
+                            PropSpec::builder()
+                                .name("age")
+                                .kind(PropSpecKind::Number)
+                                .build()?,
+                        )
+                        .prop(
+                            PropSpec::builder()
+                                .name("praises")
+                                .kind(PropSpecKind::Array)
+                                .type_prop(
+                                    PropSpec::builder()
+                                        .name("praiseString")
+                                        .kind(PropSpecKind::String)
+                                        .build()?,
+                                )
+                                .build()?,
+                        )
+                        .build()?,
+                )
+                .build()?,
+        )
+        .build()?;
+
+    let spec = spec_builder.build()?;
+    let pkg = SiPkg::load_from_spec(spec)?;
+    pkg.write_to_file(pkg_file_path).await?;
+
+    Ok(())
 }
 
 async fn create_schema(ctx: &DalContext, schema_spec: SiPkgSchema<'_>) -> PkgResult<()> {

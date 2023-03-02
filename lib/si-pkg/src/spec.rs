@@ -1,42 +1,168 @@
 use chrono::{DateTime, Utc};
+use derive_builder::{Builder, UninitializedFieldError};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use url::Url;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Package {
+#[builder(build_fn(error = "SpecError"))]
+pub struct PkgSpec {
+    #[builder(setter(into))]
     pub name: String,
+    #[builder(setter(into))]
     pub version: String,
 
+    #[builder(setter(into), default)]
     pub description: String,
+    #[builder(try_setter, setter(into), default = "Utc::now()")]
     pub created_at: DateTime<Utc>,
+    #[builder(setter(into))]
     pub created_by: String,
 
-    pub schemas: Vec<Schema>,
+    #[builder(setter(each(name = "schema", into)), default)]
+    pub schemas: Vec<SchemaSpec>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+impl PkgSpec {
+    pub fn builder() -> PkgSpecBuilder {
+        PkgSpecBuilder::default()
+    }
+}
+
+impl PkgSpecBuilder {
+    #[allow(unused_mut)]
+    pub fn try_schema<I>(&mut self, item: I) -> Result<&mut Self, I::Error>
+    where
+        I: TryInto<SchemaSpec>,
+    {
+        let converted: SchemaSpec = item.try_into()?;
+        Ok(self.schema(converted))
+    }
+}
+
+impl TryFrom<PkgSpecBuilder> for PkgSpec {
+    type Error = SpecError;
+
+    fn try_from(value: PkgSpecBuilder) -> Result<Self, Self::Error> {
+        value.build()
+    }
+}
+
+#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Schema {
+#[builder(build_fn(error = "SpecError"))]
+pub struct SchemaSpec {
+    #[builder(setter(into))]
     pub name: String,
+    #[builder(setter(into))]
     pub category: String,
 
-    pub variants: Vec<SchemaVariant>,
+    #[builder(setter(each(name = "variant", into)), default)]
+    pub variants: Vec<SchemaVariantSpec>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+impl SchemaSpec {
+    #[must_use]
+    pub fn builder() -> SchemaSpecBuilder {
+        SchemaSpecBuilder::default()
+    }
+
+    #[allow(unused_mut)]
+    pub fn try_variant<I>(&mut self, item: I) -> Result<&mut Self, I::Error>
+    where
+        I: TryInto<SchemaVariantSpec>,
+    {
+        let converted: SchemaVariantSpec = item.try_into()?;
+        self.variants.extend(Some(converted));
+        Ok(self)
+    }
+}
+
+impl TryFrom<SchemaSpecBuilder> for SchemaSpec {
+    type Error = SpecError;
+
+    fn try_from(value: SchemaSpecBuilder) -> Result<Self, Self::Error> {
+        value.build()
+    }
+}
+
+#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SchemaVariant {
+#[builder(build_fn(error = "SpecError"))]
+pub struct SchemaVariantSpec {
+    #[builder(setter(into))]
     pub name: String,
+    #[builder(setter(into, strip_option), default)]
     pub link: Option<Url>,
+    #[builder(setter(into, strip_option), default)]
     pub color: Option<String>,
 
-    pub domain: Prop,
+    #[builder(private, default = "Self::default_domain()")]
+    pub domain: PropSpec,
+}
+
+impl SchemaVariantSpec {
+    pub fn builder() -> SchemaVariantSpecBuilder {
+        SchemaVariantSpecBuilder::default()
+    }
+}
+
+impl SchemaVariantSpecBuilder {
+    fn default_domain() -> PropSpec {
+        PropSpec::Object {
+            name: "domain".to_string(),
+            entries: vec![],
+        }
+    }
+
+    #[allow(unused_mut)]
+    pub fn try_link<V>(&mut self, value: V) -> Result<&mut Self, V::Error>
+    where
+        V: TryInto<Url>,
+    {
+        let converted: Url = value.try_into()?;
+        Ok(self.link(converted))
+    }
+
+    #[allow(unused_mut)]
+    pub fn prop(&mut self, item: impl Into<PropSpec>) -> &mut Self {
+        let converted: PropSpec = item.into();
+        match self.domain.get_or_insert_with(Self::default_domain) {
+            PropSpec::Object { entries, .. } => entries.push(converted),
+            invalid => unreachable!(
+                "domain prop is an object but was found to be: {:?}",
+                invalid
+            ),
+        };
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn try_prop<I>(&mut self, item: I) -> Result<&mut Self, I::Error>
+    where
+        I: TryInto<PropSpec>,
+    {
+        let converted: PropSpec = item.try_into()?;
+        Ok(self.prop(converted))
+    }
+
+    #[allow(unused_mut)]
+    pub fn props(&mut self, value: Vec<PropSpec>) -> &mut Self {
+        match self.domain.get_or_insert_with(Self::default_domain) {
+            PropSpec::Object { entries, .. } => *entries = value,
+            invalid => unreachable!(
+                "domain prop is an object but was found to be: {:?}",
+                invalid
+            ),
+        };
+        self
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-pub enum Prop {
+pub enum PropSpec {
     #[serde(rename_all = "camelCase")]
     String { name: String },
     #[serde(rename_all = "camelCase")]
@@ -44,9 +170,151 @@ pub enum Prop {
     #[serde(rename_all = "camelCase")]
     Boolean { name: String },
     #[serde(rename_all = "camelCase")]
-    Map { name: String, type_prop: Box<Prop> },
+    Map {
+        name: String,
+        type_prop: Box<PropSpec>,
+    },
     #[serde(rename_all = "camelCase")]
-    Array { name: String, type_prop: Box<Prop> },
+    Array {
+        name: String,
+        type_prop: Box<PropSpec>,
+    },
     #[serde(rename_all = "camelCase")]
-    Object { name: String, entries: Vec<Prop> },
+    Object {
+        name: String,
+        entries: Vec<PropSpec>,
+    },
+}
+
+impl PropSpec {
+    pub fn builder() -> PropSpecBuilder {
+        PropSpecBuilder::default()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum PropSpecKind {
+    String,
+    Number,
+    Boolean,
+    Map,
+    Array,
+    Object,
+}
+
+#[derive(Clone, Default)]
+pub struct PropSpecBuilder {
+    kind: Option<PropSpecKind>,
+    name: Option<String>,
+    type_prop: Option<PropSpec>,
+    entries: Vec<PropSpec>,
+}
+
+impl PropSpecBuilder {
+    #[allow(unused_mut)]
+    pub fn kind(&mut self, value: PropSpecKind) -> &mut Self {
+        self.kind = Some(value);
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn name(&mut self, value: impl Into<String>) -> &mut Self {
+        self.name = Some(value.into());
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn type_prop(&mut self, value: impl Into<PropSpec>) -> &mut Self {
+        self.type_prop = Some(value.into());
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn entry(&mut self, value: impl Into<PropSpec>) -> &mut Self {
+        self.entries.push(value.into());
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn entries(&mut self, value: Vec<impl Into<PropSpec>>) -> &mut Self {
+        self.entries = value.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Builds a new `Prop`.
+    ///
+    /// # Errors
+    ///
+    /// If a required field has not been initialized.
+    pub fn build(&self) -> Result<PropSpec, SpecError> {
+        let name = match self.name {
+            Some(ref name) => name.clone(),
+            None => {
+                return Err(UninitializedFieldError::from("name").into());
+            }
+        };
+
+        Ok(match self.kind {
+            Some(kind) => match kind {
+                PropSpecKind::String => PropSpec::String { name },
+                PropSpecKind::Number => PropSpec::Number { name },
+                PropSpecKind::Boolean => PropSpec::Boolean { name },
+                PropSpecKind::Map => PropSpec::Map {
+                    name,
+                    type_prop: match self.type_prop {
+                        Some(ref value) => Box::new(value.clone()),
+                        None => {
+                            return Err(UninitializedFieldError::from("type_prop").into());
+                        }
+                    },
+                },
+                PropSpecKind::Array => PropSpec::Array {
+                    name,
+                    type_prop: match self.type_prop {
+                        Some(ref value) => Box::new(value.clone()),
+                        None => {
+                            return Err(UninitializedFieldError::from("type_prop").into());
+                        }
+                    },
+                },
+                PropSpecKind::Object => PropSpec::Object {
+                    name,
+                    entries: self.entries.clone(),
+                },
+            },
+            None => {
+                return Err(UninitializedFieldError::from("kind").into());
+            }
+        })
+    }
+}
+
+impl TryFrom<PropSpecBuilder> for PropSpec {
+    type Error = SpecError;
+
+    fn try_from(value: PropSpecBuilder) -> Result<Self, Self::Error> {
+        value.build()
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum SpecError {
+    /// Uninitialized field
+    #[error("{0} must be initialized")]
+    UninitializedField(&'static str),
+    /// Custom validation error
+    #[error("{0}")]
+    ValidationError(String),
+}
+
+impl From<UninitializedFieldError> for SpecError {
+    fn from(value: UninitializedFieldError) -> Self {
+        Self::UninitializedField(value.field_name())
+    }
+}
+
+impl From<String> for SpecError {
+    fn from(value: String) -> Self {
+        Self::ValidationError(value)
+    }
 }

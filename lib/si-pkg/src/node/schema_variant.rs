@@ -6,7 +6,7 @@ use object_tree::{
 };
 use url::Url;
 
-use crate::spec::SchemaVariant;
+use crate::SchemaVariantSpec;
 
 use super::PkgNode;
 
@@ -64,7 +64,7 @@ impl ReadBytes for SchemaVariantNode {
     }
 }
 
-impl NodeChild for SchemaVariant {
+impl NodeChild for SchemaVariantSpec {
     type NodeType = PkgNode;
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {

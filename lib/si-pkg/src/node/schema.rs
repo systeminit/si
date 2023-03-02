@@ -5,7 +5,7 @@ use object_tree::{
     NodeWithChildren, ReadBytes, WriteBytes,
 };
 
-use crate::spec::Schema;
+use crate::SchemaSpec;
 
 use super::PkgNode;
 
@@ -45,7 +45,7 @@ impl ReadBytes for SchemaNode {
     }
 }
 
-impl NodeChild for Schema {
+impl NodeChild for SchemaSpec {
     type NodeType = PkgNode;
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {

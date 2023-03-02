@@ -5,7 +5,7 @@ use object_tree::{
     NodeWithChildren, ReadBytes, WriteBytes,
 };
 
-use crate::spec::Prop;
+use crate::PropSpec;
 
 use super::PkgNode;
 
@@ -89,7 +89,7 @@ impl ReadBytes for PropNode {
     }
 }
 
-impl NodeChild for Prop {
+impl NodeChild for PropSpec {
     type NodeType = PkgNode;
 
     fn as_node_with_children(&self) -> NodeWithChildren<Self::NodeType> {
