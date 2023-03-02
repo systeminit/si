@@ -17,8 +17,9 @@ use thiserror::Error;
 use tokio::sync::broadcast;
 
 use crate::{
-    AttributeValueId, Component, DalContextBuilder, FixResolver, ServicesContext,
-    StandardModelError, TransactionsError, Visibility, WsEvent,
+    AttributeValue, AttributeValueError, AttributeValueId, Component, ComponentId,
+    DalContextBuilder, FixResolver, ServicesContext, StandardModel, StandardModelError, Tenancy,
+    TransactionsError, Visibility, WsEvent,
 };
 
 pub mod client;
@@ -55,6 +56,7 @@ pub type StatusReceiverResult<T> = Result<T, StatusReceiverError>;
 #[serde(rename_all = "camelCase")]
 pub struct StatusReceiverRequest {
     pub visibility: Visibility,
+    pub tenancy: Tenancy,
     pub dependent_graph: HashMap<AttributeValueId, Vec<AttributeValueId>>,
 }
 
@@ -90,6 +92,7 @@ impl StatusReceiver {
 
     /// A _synchronous_ function that starts the [`receiver`](Self) in a new asynchronous task.
     pub fn start(self, shutdown_broadcast_rx: broadcast::Receiver<()>) {
+        info!("starting status receiver for dependent values update jobs");
         tokio::spawn(Self::start_task(
             self.services_context,
             self.requests,
@@ -177,11 +180,15 @@ impl StatusReceiver {
         ctx_builder: DalContextBuilder,
         request: Request<StatusReceiverRequest>,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        debug!("processing request from dependent values update job");
         let mut ctx = ctx_builder.build_default().await?;
 
-        // Ensure we have the correct visibility before we do anything else.
+        // Ensure we have the correct visibility and tenancy before we do anything else.
         ctx.update_visibility(request.payload.visibility);
+        ctx.update_tenancy(request.payload.tenancy);
 
+        let code_generation_attribute_values: HashSet<AttributeValueId> =
+            Component::all_code_generation_attribute_values(&ctx).await?;
         let confirmation_attribute_values: HashSet<AttributeValueId> = HashSet::from_iter(
             Component::list_confirmations(&ctx)
                 .await?
@@ -189,17 +196,49 @@ impl StatusReceiver {
                 .map(|cv| cv.attribute_value_id),
         );
 
+        // Flatten the dependency graph into a single vec.
         let mut flattened_dependent_graph: Vec<&AttributeValueId> =
             request.payload.dependent_graph.keys().collect();
         flattened_dependent_graph.extend(request.payload.dependent_graph.values().flatten());
 
+        // Send events according to every value in the dependency graph.
+        let mut seen_code_generation_components: HashSet<ComponentId> = HashSet::new();
+        let mut need_to_check_confirmations = true;
         for dependent_value in flattened_dependent_graph {
-            if confirmation_attribute_values.contains(dependent_value) {
+            if code_generation_attribute_values.contains(dependent_value) {
+                let attribute_value = AttributeValue::get_by_id(&ctx, dependent_value)
+                    .await?
+                    .ok_or(AttributeValueError::NotFound(
+                        *dependent_value,
+                        *ctx.visibility(),
+                    ))?;
+                let component_id = attribute_value.context.component_id();
+                if component_id != ComponentId::NONE
+                    && !seen_code_generation_components.contains(&component_id)
+                {
+                    trace!("publishing code generated for component ({component_id}), tenancy ({:?}) and visibility ({:?})", *ctx.tenancy(), *ctx.visibility());
+                    WsEvent::code_generated(&ctx, component_id)
+                        .await?
+                        .publish_immediately(&ctx)
+                        .await?;
+                    seen_code_generation_components.insert(component_id);
+                }
+            }
+
+            // Only publish the confirmations event once.
+            if need_to_check_confirmations
+                && confirmation_attribute_values.contains(dependent_value)
+            {
+                trace!(
+                    "publishing confirmations updated for tenancy ({:?}) and visibility ({:?})",
+                    *ctx.tenancy(),
+                    *ctx.visibility()
+                );
                 WsEvent::confirmations_updated(&ctx)
                     .await?
-                    .publish(&ctx)
+                    .publish_immediately(&ctx)
                     .await?;
-                break;
+                need_to_check_confirmations = false;
             }
         }
 

@@ -264,6 +264,7 @@ impl SchemaVariant {
         };
 
         // Find props that we need to set defaults on for _all_ schema variants.
+        // FIXME(nick): use the enum and create an appropriate query.
         let mut maybe_type_prop_id = None;
         let mut maybe_protected_prop_id = None;
         for root_si_child_prop in Self::list_root_si_child_props(ctx, self.id).await? {
