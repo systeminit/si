@@ -15,6 +15,7 @@
 # All workspace member directories from `Cargo.toml`
 !bin/council
 !bin/cyclone
+!bin/gen-var-defs
 !bin/sdf
 !bin/pinga
 !bin/veritech

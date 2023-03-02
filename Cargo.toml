@@ -3,12 +3,12 @@ debug = true
 
 [workspace]
 members = [
-    "bin/cyclone",
-    "bin/pinga",
     "bin/council",
+    "bin/cyclone",
+    "bin/gen-var-defs",
+    "bin/pinga",
     "bin/sdf",
     "bin/veritech",
-    "bin/gen-var-defs",
     "lib/bytes-lines-codec",
     "lib/config-file",
     "lib/cyclone-client",
