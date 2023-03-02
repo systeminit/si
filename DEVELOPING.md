@@ -43,6 +43,31 @@ If unsure where to start, you can look at a [PR from the past](https://github.co
 If you are no longer using the environment, and you are the sole maintainer of the environment, you must remove it from
 the bootstrapper and the table above.
 
+### Nix Flake
+
+If you prefer to avoid mutating your local environment, we have a `nix` [flake](./flake.nix) available.
+
+To get started, ensure you have `nix` and `docker` installed.
+For the former, you can use [Zero to Nix's installation guide](https://zero-to-nix.com/start/install) if you are unsure
+where to start.
+
+Enter a `nix` environment with the following command:
+
+```shell
+nix develop
+```
+
+To run a "one-off" command, the following command is available:
+
+```shell
+# template
+nix develop --command <command>
+
+# examples
+nix develop --command make prepare down
+nix develop --command make build//bin/veritech
+```
+
 ### Notes on aarch64 (arm64)
 
 Few SI dependencies rely on using an `x86_64 (amd64)` host.
@@ -352,6 +377,11 @@ additional make targets you can expect:
 
 ### Components
 
+"Components" correspond to binaries, libraries, releasable bits and services required to run the SI stack.
+
+There are some components found under `component/` that are thin wrappers around external dependencies.
+They exist for building `docker` images and/or for supporting tooling that is ancillary to the project.
+
 #### Rust-Based Components
 
 Generally speaking, most of our Rust crates are members of a single [Cargo
@@ -374,199 +404,72 @@ front ends, GUI, or other desktop applications.
 
 [npm]: https://docs.npmjs.com/cli
 
-#### Component Components
+## Preparing Changes and Running Tests
 
-There are some perhaps confusingly-named components which can be found under
-`component/`. These are typically components which build Docker container
-images or other supporting tooling that is ancillary to the project.
+Please see [the relevant document](./docs/dev/PREPARING_CHANGES_AND_RUNNING_TESTS.md) for more information.
 
-## Preparing Your Changes and Running Tests
+## Using `pnpm` for Your Development Workflow
 
-### Running Checks
+If `Makefiles` and direct `cargo` and `npm` commands aren't your thing, you can use [`pnpm`](https://pnpm.io) for your
+development workflow.
 
-You can check a component with:
-
-```bash
-make check//bin/veritech
-```
-
-Where `bin/veritech` is the path to the component you want to check.
-
-### Running All Checks
-
-You can run all the checks with:
-
-```bash
-make check
-```
-
-> #### Using Optional Fix Targets
->
-> You can (optionally) use the `fix` make targets before running checks.
-> Be careful, as the Rust-related fix actions may perform more aggressive fixes than what the check target checks for.
->
-> ```bash
-> make fix
-> ```
-
-### Running Tests
-
-You can run tests for components with:
-
-```bash
-make prepare
-```
-
-Followed by:
-
-```bash
-make test//bin/veritech
-```
-
-Where `bin/veritech` is the path to the component you want to test. If you want the environment to be
-cleaned and started automatically (blowing away the data in the database) run this instead:
-
-```bash
-make FORCE=true test//lib/sdf
-```
-
-### Running the CI tests locally
-
-To ensure your code will pass CI, you can run the exact same code that the CI servers themselves will run.
-
-```bash
-CI=true make down ci
-```
-
-This will evaluate the delta between your current branch and `main`, and run only the tests and checks
-that are relevant to your changes.
-
-_However_, you should rarely need to run the above commands.
-It is usually best to run individual tests or module(s) of tests (likely from
-the [`dal integration tests directory`](./lib/dal/tests/integration_test/))
-that cover code you have edited.
-
-### Running Integration Tests Manually
-
-You can also run individual [dal](./lib/dal) integration tests before bringing
-up the entire SI stack, as needed. This can be done in the root of the
-repository with two terminal panes.
-
-In one pane, prepare the test environment:
-
-```bash
-make prepare
-```
-
-In the other pane, run your test(s):
-
-```bash
-# Running one test with backtrace enabled
-RUST_BACKTRACE=1 cargo test <your-individual-test-name>
-
-# Running all tests within "integration_test" with backtrace set to "full"
-RUST_BACKTRACE=full cargo test integration_test
-
-# Running all tests
-make test
-```
-
-If you would like to log output during tests with timestamps, use `tracing::info` and add the following environment
-variable.
-
-```bash
-SI_TEST_LOG=info
-```
-
-#### Want To See The Live Log Stream?
-
-If you'd like to see a live log stream during test execution, use the `SI_TEST_LOG` variable in conjunction with
-the `--nocapture` flag for `cargo test`.
+First, ensure we have `pnpm` [installed](https://pnpm.io/installation).
+You will likely want shell tab completion, which can be installed via the following command:
 
 ```shell
-SI_TEST_LOG=info cargo test -p dal --test integration <your-test> -- --nocapture
+pnpm install-completion
 ```
 
-You can combine this with the `DEBUG` environment variable for `lang-js` for even more information.
+You will then need to install JS dependencies for the whole project.
 
 ```shell
-DEBUG=* SI_TEST_LOG=info cargo test -p dal --test integration <your-test> -- --nocapture
+# full option
+pnpm install
+
+# shorthand option
+pnpm i
 ```
 
-#### Migrations Running Too Slow? Try Disabling or Choosing Builtin Schema Migrations!
+### Running the Stack with `pnpm`
 
-If your integration test does not rely on builtin `Schema(s)` and `SchemaVariant(s)` (e.g. "Docker Image" and
-"AWS EC2"), you can disable migrating them by passing in `"none"` or `"false"` (or some variant of them) to the
-appropriate environment variable.
+We'll need to ensure our core services are running first when running the entire stack.
 
 ```shell
-SI_TEST_BUILTIN_SCHEMAS=none cargo test -p dal --test integration <your-test>
+# This command triggers "make prepare" with awareness to architecture and OS (e.g. will ensure we run PostgreSQL locally
+# on Apple Silicon machines)
+pnpm run docker:deps
 ```
 
-You can also choose individual builtins to migrate with a comma-separated list.
+You can run tasks similarly to how you would with `npm`.
 
 ```shell
-SI_TEST_BUILTIN_SCHEMAS=Schema One,Schema Two cargo test -p dal --test integration <your-test>
+# full option (works with tab complete)
+pnpm run <taskname>
+
+# shorthand option (does not work with tab complete)
+pnpm <taskname>
 ```
 
-> Note: you may not want to wrap your list in `"` characters, depending on your development environment as they may
-> be unintentionally included in the list item(s).
+Here are some example tasks that are useful:
 
-If you want migrations to run as they would by default, remove the environment variable or set it to `"all"` or `"true"`
-(or some variant of them).
+- `pnpm run dev:backend`
+  - runs `cargo build` at the repository root and then boots all backend services in a single terminal pane
+- individual service tasks:
+  - each script still runs the build at the root level, but boots only that service 
+  - caching with `cargo` means each build after the first is instant
+  - `pnpm run dev:sdf` (corresponds to [sdf](./bin/sdf))
+  - `pnpm run dev:veritech` (corresponds to [veritech](./bin/veritech))
+  - `pnpm run dev:pinga` (corresponds to [pinga](./bin/pinga))
+  - `pnpm run dev:council` (corresponds to [council](./bin/council))
+- `pnpm run dev:frontend`
+  - boots frontend for development; uses vite with auto-reload and HMR enabled
+
+### Adding New Crates with `pnpm`
+
+Ensure that `pnpm` will work with our new changes by running the following command:
 
 ```shell
-SI_TEST_BUILTIN_SCHEMAS=all cargo test -p dal --test integration <your-test>
+node ./scripts/generate-rust-package-json.js
 ```
 
-### Debugging Integration Tests with Database Contents
-
-Integration tests in the `lib/dal` crate typically perform their work without
-committing and persisting to the database (that is, the transaction in each
-test is rolled back when the transaction is dropped). However, if you would
-like to view the state of the database after the test finishes running, you can
-modify your test accordingly:
-
-```rust
-// Note, you'll want to own your `DalContext` so that you can consume it
-// when commiting. Let's call it `octx` for "owned `ctx`".
-#[test]
-async fn your_dal_integration_test(octx: DalContext) {
-    // Save the owned context for later.
-    let ctx = &octx;
-
-    // Perform your test work, mutate the `ctx`, etc.
-
-    // Construct a new ctx, resuing the connected `Connections` with identical
-    // tenancies, visibility, and history actor
-    let ctx = commit_and_continue(octx).await;
-
-    // More test code, if applicable.
-}
-```
-
-With these changes, you will be able to commit transactions and see them in the
-database.
-
-
------
-
-
-**WIP notes on pnpm-based dev workflow**
-
-### setup / installation
-- install [pnpm](https://pnpm.io/installation)
-  - you'll probably want shell tab completion (`pnpm install-completion`)<br/>
-- install js deps for the whole project (`pnpm install` or `pnpm i`)
-- `pnpm run docker:deps` - triggers `make prepare` and is aware of apple silicon postgres shenanigans
-### running dev stack
-
-> NOTE - `pnpm taskname` or `pnpm run taskname` both work, but tab autocomplete only works with `pnpm run X`
-
-- `pnpm run dev:backend` - runs cargo build (at root) and then boots all 3 backend services in a single terminal
-- or alternatively can run individual components. Each script still runs the build at the root level but then boots only that component. Cargo caching means each build after the first is instant.
-  - `pnpm run dev:sdf`
-  - `pnpm run dev:veritech`
-  - `pnpm run dev:pinga`
-  - `pnpm run dev:council`
-- `pnpm run dev:frontend` - boots frontend for dev - uses vite, autoreload and HMR enabled...
+This generates new `package.json` and lockfiles for our new and affected crates alike.
