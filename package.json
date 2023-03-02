@@ -14,7 +14,7 @@
     "dev:frontend": "pnpm run --filter=web dev",
     "dev:backend": "turbo dev:backend",
     "dev:pinga": "turbo dev:backend --filter=pinga",
-    "dev:council": "turbo dev:backend --filter=council",
+    "dev:council": "turbo dev:backend --filter=council-cli",
     "dev:sdf": "turbo dev:backend --filter=sdf-cli",
     "dev:veritech": "turbo dev:backend --filter=veritech-cli",
     "rc:clippy": "cargo clippy --no-deps --all-targets -- -D warnings",
