@@ -66,7 +66,7 @@ pub async fn connect_component_to_frame(
 
     WsEvent::change_set_written(&ctx)
         .await?
-        .publish(&ctx)
+        .publish_on_commit(&ctx)
         .await?;
 
     ctx.commit().await?;

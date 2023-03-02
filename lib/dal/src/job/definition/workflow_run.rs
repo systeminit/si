@@ -131,7 +131,7 @@ impl JobConsumer for WorkflowRun {
             logs,
         )
         .await?
-        .publish(ctx)
+        .publish_on_commit(ctx)
         .await?;
         Ok(())
     }

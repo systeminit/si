@@ -424,6 +424,12 @@ pub enum StatusUpdaterError {
     /// Generic error in status updater
     #[error("status update error: {0}")]
     GenericError(String),
+    /// When a JSON serialize/deserialize error is returned
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    /// When a [NATS](https://nats.io) error is encountered
+    #[error("nats error: {0}")]
+    NatsError(#[from] si_data_nats::Error),
 }
 
 impl StatusUpdaterError {
@@ -448,10 +454,12 @@ impl StatusUpdater {
     pub async fn initialize(ctx: &DalContext) -> Result<Self, StatusUpdaterError> {
         let model = StatusUpdate::new(ctx).await?;
 
-        WsEvent::status_update(ctx, model.pk, StatusMessageState::StatusStarted, vec![])
-            .await?
-            .publish_immediately(ctx)
-            .await?;
+        Self::publish_immediately(
+            ctx,
+            WsEvent::status_update(ctx, model.pk, StatusMessageState::StatusStarted, vec![])
+                .await?,
+        )
+        .await?;
 
         Ok(Self { model })
     }
@@ -634,14 +642,16 @@ impl StatusUpdater {
         let elapsed_time = now.elapsed();
         info!("StatusUpdater.values_queued took {:?}", elapsed_time);
 
-        WsEvent::status_update(
+        Self::publish_immediately(
             ctx,
-            self.model.pk,
-            StatusMessageState::Queued,
-            queued_values.into_iter().collect(),
+            WsEvent::status_update(
+                ctx,
+                self.model.pk,
+                StatusMessageState::Queued,
+                queued_values.into_iter().collect(),
+            )
+            .await?,
         )
-        .await?
-        .publish_immediately(ctx)
         .await?;
 
         Ok(())
@@ -663,14 +673,16 @@ impl StatusUpdater {
             .set_running_dependent_value_ids(ctx, value_ids)
             .await?;
 
-        WsEvent::status_update(
+        Self::publish_immediately(
             ctx,
-            self.model.pk,
-            StatusMessageState::Running,
-            running_values,
+            WsEvent::status_update(
+                ctx,
+                self.model.pk,
+                StatusMessageState::Running,
+                running_values,
+            )
+            .await?,
         )
-        .await?
-        .publish_immediately(ctx)
         .await?;
 
         Ok(())
@@ -705,14 +717,16 @@ impl StatusUpdater {
             ComponentStatus::record_update_by_id(ctx, component_id).await?;
         }
 
-        WsEvent::status_update(
+        Self::publish_immediately(
             ctx,
-            self.model.pk,
-            StatusMessageState::Completed,
-            completed_values,
+            WsEvent::status_update(
+                ctx,
+                self.model.pk,
+                StatusMessageState::Completed,
+                completed_values,
+            )
+            .await?,
         )
-        .await?
-        .publish_immediately(ctx)
         .await?;
 
         Ok(())
@@ -761,16 +775,48 @@ impl StatusUpdater {
             ));
         }
 
-        WsEvent::status_update(
+        Self::publish_immediately(
             ctx,
-            self.model.pk,
-            StatusMessageState::StatusFinished,
-            vec![],
+            WsEvent::status_update(
+                ctx,
+                self.model.pk,
+                StatusMessageState::StatusFinished,
+                vec![],
+            )
+            .await?,
         )
-        .await?
-        .publish_immediately(ctx)
         .await?;
 
+        Ok(())
+    }
+
+    /// Publish a [`WsEvent`](crate::WsEvent) immediately.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if the [`event`](crate::WsEvent) could not be published or the payload
+    /// could not be serialized.
+    ///
+    /// # Notes
+    ///
+    /// This should only be done unless the caller is _certain_ that the [`event`](crate::WsEvent)
+    /// should be published immediately. If unsure, use
+    /// [`WsEvent::publish`](crate::WsEvent::publish_on_commit).
+    ///
+    /// This method requires an owned [`WsEvent`](crate::WsEvent), despite it not needing to,
+    /// because [`events`](crate::WsEvent) should likely not be reused.
+    async fn publish_immediately(
+        ctx: &DalContext,
+        ws_event: WsEvent,
+    ) -> Result<(), StatusUpdaterError> {
+        // TODO(nick,fletcher): this method should be deleted once status updater is fully moved
+        // to the status receiver because the status receiver should have its own ability to
+        // "immediately publish" events.
+        for billing_account_pk in ws_event.billing_account_pks() {
+            let subject = format!("si.billing_account_pk.{billing_account_pk}.event");
+            let msg_bytes = serde_json::to_vec(&ws_event)?;
+            ctx.nats_conn().publish(subject, msg_bytes).await?;
+        }
         Ok(())
     }
 }

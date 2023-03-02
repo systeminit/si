@@ -266,7 +266,7 @@ impl JobConsumer for DependentValuesUpdate {
 
             WsEvent::change_set_written(&ctx)
                 .await?
-                .publish(&ctx)
+                .publish_on_commit(&ctx)
                 .await?;
             ctx = self.commit_and_continue(ctx).await?;
 
@@ -315,7 +315,7 @@ impl JobConsumer for DependentValuesUpdate {
 
         WsEvent::change_set_written(&ctx)
             .await?
-            .publish(&ctx)
+            .publish_on_commit(&ctx)
             .await?;
 
         let client = StatusReceiverClient::new(ctx.nats_conn().clone()).await;
@@ -374,7 +374,7 @@ async fn update_value(
 
     WsEvent::change_set_written(&ctx)
         .await?
-        .publish(&ctx)
+        .publish_on_commit(&ctx)
         .await?;
     if !single_transaction {
         ctx.commit().await?;

@@ -26,7 +26,7 @@ pub async fn restore_connection(
 
     WsEvent::change_set_written(&ctx)
         .await?
-        .publish(&ctx)
+        .publish_on_commit(&ctx)
         .await?;
 
     ctx.commit().await?;

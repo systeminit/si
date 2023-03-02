@@ -52,7 +52,7 @@ pub async fn create_secret(
 
     WsEvent::change_set_written(&ctx)
         .await?
-        .publish(&ctx)
+        .publish_on_commit(&ctx)
         .await?;
 
     ctx.commit().await?;

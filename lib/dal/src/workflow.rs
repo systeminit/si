@@ -274,7 +274,7 @@ impl WorkflowTree {
 
                         WsEvent::command_output(&ctx, run_id, text)
                             .await?
-                            .publish(&ctx)
+                            .publish_on_commit(&ctx)
                             .await?;
                         conns = ctx.commit_into_conns().await?;
                     }

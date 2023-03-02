@@ -271,7 +271,10 @@ impl WorkflowPrototype {
             .set_func_binding_id(ctx, *func_binding.id())
             .await?;
 
-        WsEvent::change_set_written(ctx).await?.publish(ctx).await?;
+        WsEvent::change_set_written(ctx)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
 
         Ok(resolver)
     }
