@@ -9,12 +9,13 @@ use dal::{
     StandardModelError, TenancyError, TransactionsError, WsEventError,
 };
 use serde::{Deserialize, Serialize};
-use si_pkg::SiPkgError;
+use si_pkg::{SiPkg, SiPkgError};
 use si_settings::{safe_canonically_join, CanonicalFileError};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tokio::fs::read_dir;
 
+pub mod get_pkg;
 pub mod install_pkg;
 pub mod list_pkgs;
 
@@ -62,6 +63,7 @@ impl_default_error_into_response!(PkgError);
 pub struct PkgView {
     name: String,
     installed: bool,
+    hash: Option<String>,
 }
 
 pub async fn get_pkgs_path(builder: &DalContextBuilder) -> PkgResult<&PathBuf> {
@@ -82,17 +84,30 @@ pub async fn list_pkg_dir_entries(pkgs_path: &Path) -> PkgResult<Vec<String>> {
     Ok(result)
 }
 
-pub async fn pkg_lookup(pkgs_path: &Path, name: &str) -> PkgResult<Option<PathBuf>> {
+pub async fn pkg_lookup(pkgs_path: &Path, name: &str) -> PkgResult<Option<(PathBuf, String)>> {
     let real_pkg_path = safe_canonically_join(pkgs_path, name)?;
     let file_name = real_pkg_path
         .file_name()
         .map(|file_name| file_name.to_string_lossy().to_string());
 
-    Ok((real_pkg_path.is_file() && file_name.is_some()).then_some(real_pkg_path))
+    Ok((real_pkg_path.is_file() && file_name.is_some())
+        .then_some((real_pkg_path, file_name.expect("cannot be none"))))
+}
+
+pub async fn pkg_open(builder: &DalContextBuilder, name: &str) -> PkgResult<SiPkg> {
+    let pkg_tuple = pkg_lookup(get_pkgs_path(builder).await?, name).await?;
+
+    let real_pkg_path = match pkg_tuple {
+        None => return Err(PkgError::PackageNotFound(name.to_string())),
+        Some((real_pkg_path, _)) => real_pkg_path,
+    };
+
+    Ok(SiPkg::load_from_file(&real_pkg_path).await?)
 }
 
 pub fn routes() -> Router {
     Router::new()
         .route("/list_pkgs", get(list_pkgs::list_pkgs))
         .route("/install_pkg", post(install_pkg::install_pkg))
+        .route("/get_pkg", get(get_pkg::get_pkg))
 }

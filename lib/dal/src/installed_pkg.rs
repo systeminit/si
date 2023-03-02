@@ -38,8 +38,7 @@ pub struct InstalledPkg {
     pk: InstalledPkgPk,
     id: InstalledPkgId,
     name: String,
-    root_hash: Option<String>,    // this will become non-optional
-    pkg_contents: Option<String>, // same
+    root_hash: String,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -62,22 +61,16 @@ impl InstalledPkg {
     pub async fn new(
         ctx: &DalContext,
         name: impl AsRef<str>,
-        root_hash: Option<String>,
-        pkg_contents: Option<String>,
+        root_hash: impl AsRef<str>,
     ) -> InstalledPkgResult<Self> {
         let name = name.as_ref();
+        let root_hash = root_hash.as_ref();
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM installed_pkg_create_v1($1, $2, $3, $4, $5)",
-                &[
-                    ctx.tenancy(),
-                    ctx.visibility(),
-                    &name,
-                    &root_hash,
-                    &pkg_contents,
-                ],
+                "SELECT object FROM installed_pkg_create_v1($1, $2, $3, $4)",
+                &[ctx.tenancy(), ctx.visibility(), &name, &root_hash],
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
@@ -85,6 +78,5 @@ impl InstalledPkg {
     }
 
     standard_model_accessor!(name, String, InstalledPkgResult);
-    standard_model_accessor!(root_hash, Option<String>, InstalledPkgResult);
-    standard_model_accessor!(pkg_contents, Option<String>, InstalledPkgResult);
+    standard_model_accessor!(root_hash, String, InstalledPkgResult);
 }
