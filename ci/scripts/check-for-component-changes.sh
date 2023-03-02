@@ -139,11 +139,13 @@ echo "Pinga:    ${PINGA_CHANGES}"
 echo "Council:    ${COUNCIL_CHANGES}"
 echo "::endgroup::"
 
-echo "name=component--nats::${NATS_CHANGES}" >> $GITHUB_OUTPUT
-echo "name=component--otelcol::${OTELCOL_CHANGES}" >> $GITHUB_OUTPUT
-echo "name=component--postgres::${POSTGRES_CHANGES}" >> $GITHUB_OUTPUT
-echo "name=bin--sdf::${SDF_CHANGES}" >> $GITHUB_OUTPUT
-echo "name=bin--veritech::${VERITECH_CHANGES}" >> $GITHUB_OUTPUT
-echo "name=app--web::${WEB_CHANGES}" >> $GITHUB_OUTPUT
-echo "name=bin--pinga::${PINGA_CHANGES}" >> $GITHUB_OUTPUT
-echo "name=bin--council::${COUNCIL_CHANGES}" >> $GITHUB_OUTPUT
+{
+  echo "component--nats=${NATS_CHANGES}"
+  echo "component--otelcol=${OTELCOL_CHANGES}"
+  echo "component--postgres=${POSTGRES_CHANGES}"
+  echo "bin--sdf=${SDF_CHANGES}"
+  echo "bin--veritech=${VERITECH_CHANGES}"
+  echo "app--web=${WEB_CHANGES}"
+  echo "bin--pinga=${PINGA_CHANGES}"
+  echo "bin--council=${COUNCIL_CHANGES}"
+} >>"$GITHUB_OUTPUT"
