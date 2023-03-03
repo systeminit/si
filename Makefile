@@ -39,6 +39,7 @@ LOCAL_PG := false
 COMPONENTS = \
 	app/web \
 	bin/cyclone \
+	bin/gen-var-defs \
 	bin/lang-js \
 	bin/pinga \
 	bin/council \
