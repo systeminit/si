@@ -87,7 +87,7 @@ pub async fn create_node(
 
     WsEvent::component_created(&ctx)
         .await?
-        .publish(&ctx)
+        .publish_on_commit(&ctx)
         .await?;
 
     ctx.commit().await?;

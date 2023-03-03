@@ -91,7 +91,7 @@ impl ChangeSet {
         let object: Self = serde_json::from_value(json)?;
         WsEvent::change_set_created(ctx, object.pk)
             .await?
-            .publish(ctx)
+            .publish_on_commit(ctx)
             .await?;
         Ok(object)
     }
@@ -120,7 +120,7 @@ impl ChangeSet {
 
         WsEvent::change_set_applied(ctx, self.pk)
             .await?
-            .publish(ctx)
+            .publish_on_commit(ctx)
             .await?;
 
         // Update the visibility.

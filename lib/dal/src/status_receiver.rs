@@ -17,7 +17,7 @@ use thiserror::Error;
 use tokio::sync::broadcast;
 
 use crate::{
-    AttributeValue, AttributeValueError, AttributeValueId, Component, ComponentId,
+    AttributeValue, AttributeValueError, AttributeValueId, Component, ComponentId, DalContext,
     DalContextBuilder, FixResolver, ServicesContext, StandardModel, StandardModelError, Tenancy,
     TransactionsError, Visibility, WsEvent,
 };
@@ -217,10 +217,11 @@ impl StatusReceiver {
                     && !seen_code_generation_components.contains(&component_id)
                 {
                     trace!("publishing code generated for component ({component_id}), tenancy ({:?}) and visibility ({:?})", *ctx.tenancy(), *ctx.visibility());
-                    WsEvent::code_generated(&ctx, component_id)
-                        .await?
-                        .publish_immediately(&ctx)
-                        .await?;
+                    Self::publish_immediately(
+                        &ctx,
+                        WsEvent::code_generated(&ctx, component_id).await?,
+                    )
+                    .await?;
                     seen_code_generation_components.insert(component_id);
                 }
             }
@@ -234,9 +235,7 @@ impl StatusReceiver {
                     *ctx.tenancy(),
                     *ctx.visibility()
                 );
-                WsEvent::confirmations_updated(&ctx)
-                    .await?
-                    .publish_immediately(&ctx)
+                Self::publish_immediately(&ctx, WsEvent::confirmations_updated(&ctx).await?)
                     .await?;
                 need_to_check_confirmations = false;
             }
@@ -253,6 +252,30 @@ impl StatusReceiver {
             }
         }
 
+        Ok(())
+    }
+
+    /// Publish a [`WsEvent`](crate::WsEvent) immediately.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if the [`event`](crate::WsEvent) could not be published or the payload
+    /// could not be serialized.
+    ///
+    /// # Notes
+    ///
+    /// This should only be done unless the caller is _certain_ that the [`event`](crate::WsEvent)
+    /// should be published immediately. If unsure, use
+    /// [`WsEvent::publish`](crate::WsEvent::publish_on_commit).
+    ///
+    /// This method requires an owned [`WsEvent`](crate::WsEvent), despite it not needing to,
+    //  because [`events`](crate::WsEvent) should likely not be reused.
+    async fn publish_immediately(ctx: &DalContext, ws_event: WsEvent) -> StatusReceiverResult<()> {
+        for billing_account_pk in ws_event.billing_account_pks() {
+            let subject = format!("si.billing_account_pk.{billing_account_pk}.event");
+            let msg_bytes = serde_json::to_vec(&ws_event)?;
+            ctx.nats_conn().publish(subject, msg_bytes).await?;
+        }
         Ok(())
     }
 }

@@ -54,7 +54,7 @@ pub async fn save_builtin_func(
 
     WsEvent::change_set_written(&ctx)
         .await?
-        .publish(&ctx)
+        .publish_on_commit(&ctx)
         .await?;
 
     ctx.commit().await?;

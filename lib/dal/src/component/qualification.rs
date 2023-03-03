@@ -123,7 +123,7 @@ impl Component {
 
         WsEvent::checked_qualifications(ctx, component_id)
             .await?
-            .publish(ctx)
+            .publish_on_commit(ctx)
             .await?;
 
         Ok(results)

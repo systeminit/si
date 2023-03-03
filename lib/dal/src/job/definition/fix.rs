@@ -214,7 +214,7 @@ impl JobConsumer for FixesJob {
             logs,
         )
         .await?
-        .publish(ctx)
+        .publish_on_commit(ctx)
         .await?;
 
         if self.fixes.len() == 1 {
@@ -266,7 +266,7 @@ async fn finish_batch(ctx: &DalContext, id: FixBatchId) -> JobConsumerResult<()>
     let batch_completion_status = batch.stamp_finished(ctx).await?;
     WsEvent::fix_batch_return(ctx, *batch.id(), batch_completion_status)
         .await?
-        .publish(ctx)
+        .publish_on_commit(ctx)
         .await?;
 
     Component::run_all_confirmations(ctx).await?;

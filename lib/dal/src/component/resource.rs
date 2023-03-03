@@ -143,7 +143,7 @@ impl Component {
         if !resources.is_empty() {
             WsEvent::resource_refreshed(ctx, self.id)
                 .await?
-                .publish(ctx)
+                .publish_on_commit(ctx)
                 .await?;
         }
         Ok(())
