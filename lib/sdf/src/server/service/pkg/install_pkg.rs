@@ -1,9 +1,7 @@
-use super::{pkg_open, PkgError, PkgResult};
+use super::{pkg_open, PkgResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
-use dal::{
-    installed_pkg::InstalledPkg, pkg::import_pkg_from_pkg, StandardModel, Visibility, WsEvent,
-};
+use dal::{pkg::import_pkg_from_pkg, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -28,18 +26,7 @@ pub async fn install_pkg(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let pkg = pkg_open(&builder, &request.name).await?;
-
-    let root_hash = pkg.hash()?.to_string();
-
-    if !InstalledPkg::find_by_attr(&ctx, "root_hash", &root_hash)
-        .await?
-        .is_empty()
-    {
-        return Err(PkgError::PackageAlreadyInstalled(request.name));
-    }
-
-    import_pkg_from_pkg(&ctx, &pkg).await?;
-    InstalledPkg::new(&ctx, &request.name, pkg.hash()?.to_string()).await?;
+    import_pkg_from_pkg(&ctx, &pkg, &request.name).await?;
 
     WsEvent::change_set_written(&ctx)
         .await?

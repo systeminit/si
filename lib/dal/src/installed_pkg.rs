@@ -9,6 +9,9 @@ use crate::{
     HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
+pub mod asset;
+pub use asset::*;
+
 #[derive(Error, Debug)]
 pub enum InstalledPkgError {
     #[error("error serializing/deserializing json: {0}")]
@@ -23,6 +26,14 @@ pub enum InstalledPkgError {
     StandardModelError(#[from] StandardModelError),
     #[error("error decoding code_base64: {0}")]
     Decode(#[from] base64::DecodeError),
+    #[error("error decoding ulid: {0}")]
+    UlidDecode(#[from] ulid::DecodeError),
+    #[error("Installed package asset {0} was expected to be {1} but was {2}")]
+    InstalledPkgKindMismatch(
+        InstalledPkgAssetId,
+        InstalledPkgAssetKind,
+        InstalledPkgAssetKind,
+    ),
 }
 
 pub type InstalledPkgResult<T> = Result<T, InstalledPkgError>;
