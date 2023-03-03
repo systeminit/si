@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4.23", features = ["serde"] }
+derive_builder = "0.12.0"
 object-tree = { path = "../../lib/object-tree" }
 petgraph = { version = "0.6.2", features = ["serde-1"] }
 serde = { version = "1.0.152", features = ["derive"] }

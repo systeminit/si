@@ -6,7 +6,7 @@ use object_tree::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::spec::Schema;
+use crate::SchemaSpec;
 
 use super::PkgNode;
 
@@ -17,7 +17,7 @@ const KEY_KIND_STR: &str = "kind";
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PackageCategory {
-    Schemas(Vec<Schema>),
+    Schemas(Vec<SchemaSpec>),
 }
 
 #[derive(Clone, Debug, Serialize)]

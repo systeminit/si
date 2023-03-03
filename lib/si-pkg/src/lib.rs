@@ -1,8 +1,12 @@
 pub(crate) mod node;
 mod pkg;
-pub mod spec;
+mod spec;
 
 pub use pkg::{SiPkg, SiPkgError, SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant};
+pub use spec::{
+    PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec,
+    SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder, SpecError,
+};
 
 #[cfg(test)]
 mod tests {
@@ -10,7 +14,7 @@ mod tests {
 
     use petgraph::dot::Dot;
 
-    use crate::spec::Package;
+    use crate::spec::PkgSpec;
 
     use super::*;
 
@@ -28,7 +32,7 @@ mod tests {
 
     #[test]
     fn create_pkg() {
-        let spec: Package = serde_json::from_str(PACKAGE_JSON).unwrap();
+        let spec: PkgSpec = serde_json::from_str(PACKAGE_JSON).unwrap();
         dbg!(&spec);
 
         let pkg = SiPkg::load_from_spec(spec).expect("failed to load spec");
@@ -42,7 +46,7 @@ mod tests {
 
     #[tokio::test]
     async fn pkg_fs_round_trip() {
-        let spec: Package = serde_json::from_str(PACKAGE_JSON).unwrap();
+        let spec: PkgSpec = serde_json::from_str(PACKAGE_JSON).unwrap();
         let pkg = SiPkg::load_from_spec(spec).expect("failed to load spec");
 
         pkg.write_to_dir(base_path())
