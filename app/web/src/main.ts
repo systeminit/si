@@ -10,7 +10,7 @@ import App from "@/App.vue";
 import router from "./router";
 import store from "./store";
 
-import { PosthogPlugin } from "./plugins/posthog";
+import { PosthogPlugin } from "./utils/posthog";
 
 const app = createApp(App);
 
