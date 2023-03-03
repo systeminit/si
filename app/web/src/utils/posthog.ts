@@ -1,4 +1,3 @@
-// ./plugins/posthog.js
 import posthog from "posthog-js";
 
 if (import.meta.env.VITE_POSTHOG_PUBLIC_KEY) {
