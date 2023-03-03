@@ -10,8 +10,7 @@
     }
   },
   "include": [
-    "src/*",
+    "src/**/*.ts",
     ".eslintrc.cjs",
   ]
-  
 }
