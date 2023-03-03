@@ -96,16 +96,15 @@
     <Wipe ref="wipeRef">
       <template #duringWipe>
         <VButton2
-          icon="git-merge"
+          icon="loader"
           size="md"
-          loading-text="Merging"
-          label="Merge"
-          loading
+          label="Merging"
+          class="!bg-action-600"
         />
       </template>
       <template #afterWipe>
         <div
-          v-if="changeSetMergeStatus.isPending"
+          v-if="changeSetMergeStatus.isPending || wipeRef?.state === 'running'"
           class="gap-2 items-center flex flex-row p-xl min-w-0 w-full justify-center"
         >
           <Icon name="loader" size="2xl" />

@@ -88,7 +88,9 @@ const open = async (openAt: HTMLElement | Position) => {
   }
 
   // run the wipe!
-  state.value = "running";
+  setTimeout(() => {
+    state.value = "running";
+  }, 20);
   openDonePromise = defer();
   return openDonePromise.promise;
 };
@@ -104,7 +106,7 @@ const close = () => {
   return closeDonePromise.promise;
 };
 
-defineExpose({ open, close });
+defineExpose({ open, close, state });
 </script>
 
 <style scoped>
