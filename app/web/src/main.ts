@@ -7,6 +7,7 @@ import "@/assets/style/main.css";
 import "@/assets/style/tailwind.css";
 
 import App from "@/App.vue";
+import "./utils/posthog";
 import router from "./router";
 import store from "./store";
 

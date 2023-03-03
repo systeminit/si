@@ -2,10 +2,15 @@ import { MessageEmbed } from "discord.js";
 import { CHANNELS } from "./channels";
 import { rulesMessage } from "./embeds/rules";
 import { welcomeMessage } from "./embeds/welcome_message";
+// import { changeoverMessage } from "./embeds/changeover";
 
 export async function syncEmbeds() {
   await sendEmbed("welcome", welcomeMessage());
   await sendEmbed("rules", rulesMessage());
+  
+  // This announcement was used when we enabled the requirement to agree to the rules to join the Discord.
+  // await sendEmbed("general", changeoverMessage());
+  // await sendEmbed("announcements", changeoverMessage());
 }
 
 export async function sendEmbed(

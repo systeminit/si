@@ -67,7 +67,9 @@ importers:
       '@types/validator': ^13.7.2
       '@typescript/vfs': ^1.3.5
       '@vitejs/plugin-vue': ^4.0.0
-      '@vueuse/head': ^1.0.26
+      '@vue/eslint-config-prettier': ^7.0.0
+      '@vue/eslint-config-typescript': ^11.0.0
+      '@vueuse/head': ^1.1.15
       async: ^3.2.4
       autoprefixer: ^10.4.8
       axios: ^0.27.2
@@ -94,6 +96,8 @@ importers:
       postcss-comment: ^2.0.0
       postcss-each: ^1.1.0
       postcss-nested: ^5.0.6
+      posthog-js: ^1.50.2
+      prettier: ~2.7.1
       reconnecting-websocket: ^4.4.0
       tailwindcss: ^3.1.8
       tailwindcss-capsize: ^3.0.2
@@ -123,7 +127,11 @@ importers:
       '@tailwindcss/forms': 0.5.3_tailwindcss@3.2.2
       '@types/async': 3.2.16
       '@typescript/vfs': 1.4.0
+<<<<<<< HEAD
       '@vueuse/head': 1.0.26_vue@3.2.45
+=======
+      '@vueuse/head': 1.1.15_vue@3.2.45
+>>>>>>> 21ccb3de (fix(web) - fixes to the Wipe component)
       async: 3.2.4
       axios: 0.27.2
       clsx: 1.2.1
@@ -143,6 +151,7 @@ importers:
       lodash: 4.17.21
       pinia: 2.0.23_2hxmazfbcwwtly5fgw7ckvmlau
       plur: 5.1.0
+      posthog-js: 1.50.2
       reconnecting-websocket: 4.4.0
       tailwindcss: 3.2.2_postcss@8.4.18
       tinycolor2: 1.4.2
@@ -2384,12 +2393,14 @@ packages:
       - supports-color
     dev: false
 
-  /@unhead/dom/1.0.13:
-    resolution: {integrity: sha512-ErfhK3Nwk3kpxnPEOrkruKAdS3/TrNlKs0nYtKgFJ1ywJYg+uNwRFDe82v4JdUMhnfmbgL/qcO3PTx3Dv09IEQ==}
+  /@unhead/dom/1.1.15:
+    resolution: {integrity: sha512-b1S8avVokif15pankINlFrKrxW2pEJ4R4vt/IEDLhjsAq4oDeLpbFUQNvFeEQafaXBdryCTWICJX8MQrzs9INA==}
     dependencies:
-      '@unhead/schema': 1.0.13
+      '@unhead/schema': 1.1.15
+      '@unhead/shared': 1.1.15
     dev: false
 
+<<<<<<< HEAD
   /@unhead/dom/1.0.22:
     resolution: {integrity: sha512-oqTHB6OgiH91grELZLQxxw17la86dUBiGz40fItaiE6ywIImCSGjid10IjH5VVifHSmLaQ08qq+s5HH0s/hZ4w==}
     dependencies:
@@ -2398,11 +2409,16 @@ packages:
 
   /@unhead/schema/1.0.13:
     resolution: {integrity: sha512-K8SiAEkM8G7GaF1QvsKlthLmRqGB8R9SvZXMCucZqb2VQ6bU4IFSs/4q6dKxmV0fXb5AHdKUL9+rX/4rQ6FsZg==}
+=======
+  /@unhead/schema/1.1.15:
+    resolution: {integrity: sha512-331yP1JrJfvaa2TvfiVGLlgwl9bVgFVJ0pMy1hPBM/0+J09d6SKy4khZb2j0WtgVofY6FnThmKWDNCngCzRZhg==}
+>>>>>>> 21ccb3de (fix(web) - fixes to the Wipe component)
     dependencies:
-      '@zhead/schema': 1.0.7
       hookable: 5.4.2
+      zhead: 2.0.4
     dev: false
 
+<<<<<<< HEAD
   /@unhead/schema/1.0.22:
     resolution: {integrity: sha512-Pg+F4UmYhI3Vz1Jio3bjCxEjuhvqlYrybwphsK2XacIDHYGQmcvBtMiB/5Y8Diuy1lGfHFloWaNjMuvAdh5gNA==}
     dependencies:
@@ -2429,6 +2445,30 @@ packages:
       '@unhead/shared': 1.0.22
       hookable: 5.4.2
       unhead: 1.0.22
+=======
+  /@unhead/shared/1.1.15:
+    resolution: {integrity: sha512-s41AbZFeTAV982pP5+MUno3UlKcSxziMjs+D6TAKP+OdNhyN/W557TUVKbBY/4EWWYl5c0wJhjeuVduJBQpSSQ==}
+    dependencies:
+      '@unhead/schema': 1.1.15
+    dev: false
+
+  /@unhead/ssr/1.1.15:
+    resolution: {integrity: sha512-ZDj3lJuMOTrhDrNFQLETC1xQN2z53GzXV4kRQ6Baeqb9uDR+3q1yeHV+eL7DEqR8aPCHt26gs5c8OYJsfE1HFQ==}
+    dependencies:
+      '@unhead/schema': 1.1.15
+      '@unhead/shared': 1.1.15
+    dev: false
+
+  /@unhead/vue/1.1.15_vue@3.2.45:
+    resolution: {integrity: sha512-EX8zsb3dNhC72tpz6BExK3oIpy2t6f2QbpYsr6gthgtLMJqe8SPjgJlKGcVEegZhPw4bmMzMk72Dak3qomb98A==}
+    peerDependencies:
+      vue: '>=2.7 || >=3'
+    dependencies:
+      '@unhead/schema': 1.1.15
+      '@unhead/shared': 1.1.15
+      hookable: 5.4.2
+      unhead: 1.1.15
+>>>>>>> 21ccb3de (fix(web) - fixes to the Wipe component)
       vue: 3.2.45
 
   /@vitejs/plugin-vue/4.0.0_vite@4.1.4+vue@3.2.45:
@@ -2697,6 +2737,7 @@ packages:
   /@vue/shared/3.2.45:
     resolution: {integrity: sha512-Ewzq5Yhimg7pSztDV+RH1UDKBzmtqieXQlpTVm2AwraoRL/Rks96mvd8Vgi7Lj+h+TH8dv7mXD3FRZR3TUvbSg==}
 
+<<<<<<< HEAD
   /@vue/shared/3.2.47:
     resolution: {integrity: sha512-BHGyyGN3Q97EZx0taMQ+OLNuZcW3d37ZEVmEAyeoA9ERdGvm9Irc/0Fua8SNyOtV1w6BS4q25wbMzJujO9HIfQ==}
     dev: true
@@ -2710,11 +2751,18 @@ packages:
       '@unhead/schema': 1.0.22
       '@unhead/ssr': 1.0.22
       '@unhead/vue': 1.0.22_vue@3.2.45
+=======
+  /@vueuse/head/1.1.15_vue@3.2.45:
+    resolution: {integrity: sha512-LJqvb7dpSqnsdn6YWUxv97vWCnn/s6IfBrE4ih5kRlh8XQXr/HjXJ8IyIxxp0X7QDr3FhOsjRDpJSiQbDYbBdQ==}
+    peerDependencies:
+      vue: '>=2.7 || >=3'
+    dependencies:
+      '@unhead/dom': 1.1.15
+      '@unhead/schema': 1.1.15
+      '@unhead/ssr': 1.1.15
+      '@unhead/vue': 1.1.15_vue@3.2.45
+>>>>>>> 21ccb3de (fix(web) - fixes to the Wipe component)
       vue: 3.2.45
-
-  /@zhead/schema/1.0.7:
-    resolution: {integrity: sha512-jN2ipkz39YrHd8uulgw/Y7x8iOxvR/cTkin/E9zRQVP5JBIrrJMiGyFFj6JBW4Q029xJ5dKtpwy/3RZWpz+dkQ==}
-    dev: false
 
   /abab/2.0.6:
     resolution: {integrity: sha512-j2afSsaIENvHZN2B8GOpF566vZ5WVk5opAiMTvWgaQT8DkbOqsTfvNAvHoRGU2zzP8cPoqys+xHTRDWW8L+/BA==}
@@ -4505,6 +4553,10 @@ packages:
       pend: 1.2.0
     dev: true
 
+  /fflate/0.4.8:
+    resolution: {integrity: sha512-FJqqoDBR00Mdj9ppamLa/Y7vxm+PRmNWA67N846RvsoYVMKB4q3y/de5PA7gUmRMYK/8CMz2GDZQmCRN1wBcWA==}
+    dev: false
+
   /figures/3.2.0:
     resolution: {integrity: sha512-yaduQFRKLXYOGgEn6AZau90j3ggSOyiqXU0F9JZfeXYhNa+Jk4X+s45A2zg5jns87GAFa34BBm2kXw4XpNcbdg==}
     engines: {node: '>=8'}
@@ -6058,7 +6110,7 @@ packages:
       image-size: 0.5.5
       make-dir: 2.1.0
       mime: 1.6.0
-      needle: 3.1.0
+      needle: 3.2.0
       source-map: 0.6.1
     transitivePeerDependencies:
       - supports-color
@@ -6336,8 +6388,8 @@ packages:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
     dev: true
 
-  /needle/3.1.0:
-    resolution: {integrity: sha512-gCE9weDhjVGCRqS8dwDR/D3GTAeyXLXuqp7I8EzH6DllZGXSUyxuqqLh+YX9rMAWaaTFyVAg6rHGL25dqvczKw==}
+  /needle/3.2.0:
+    resolution: {integrity: sha512-oUvzXnyLiVyVGoianLijF9O/RecZUf7TkBfimjGrLM4eQhXyeJwM6GeAWccwfQ9aa4gMCZKqhAOuLaMIcQxajQ==}
     engines: {node: '>= 4.4.x'}
     hasBin: true
     requiresBuild: true
@@ -6857,6 +6909,7 @@ packages:
       picocolors: 1.0.0
       source-map-js: 1.0.2
 
+<<<<<<< HEAD
   /postcss/8.4.21:
     resolution: {integrity: sha512-tP7u/Sn/dVxK2NnruI4H9BG+x+Wxz6oeZ1cJ8P6G/PZY0IKk4k/63TDsQf2kQq3+qoJeLm2kIBUNlZe3zgb4Zg==}
     engines: {node: ^10 || ^12 || >=14}
@@ -6864,6 +6917,14 @@ packages:
       nanoid: 3.3.4
       picocolors: 1.0.0
       source-map-js: 1.0.2
+=======
+  /posthog-js/1.50.2:
+    resolution: {integrity: sha512-9iQU9tdsPa6q2+wgdeKK2jxJhPN5VeV3L3bdUEietF24z5UlCtVOkXRhNWiPp2+KfRW5S8ismUl+BUOcz5aD9A==}
+    dependencies:
+      fflate: 0.4.8
+      rrweb-snapshot: 1.1.14
+    dev: false
+>>>>>>> a9061459 (feat(web) - posthog, plus Discord bot stuff)
 
   /prebuild-install/6.1.4:
     resolution: {integrity: sha512-Z4vpywnK1lBg+zdPCVCsKq0xO66eEV9rWo2zrROGGiRS4JtueBOdlB1FnY8lcy7JsUud/Q3ijUxyWN26Ika0vQ==}
@@ -7125,6 +7186,10 @@ packages:
     hasBin: true
     optionalDependencies:
       fsevents: 2.3.2
+
+  /rrweb-snapshot/1.1.14:
+    resolution: {integrity: sha512-eP5pirNjP5+GewQfcOQY4uBiDnpqxNRc65yKPW0eSoU1XamDfc4M8oqpXGMyUyvLyxFDB0q0+DChuxxiU2FXBQ==}
+    dev: false
 
   /run-parallel/1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
@@ -7913,6 +7978,7 @@ packages:
       which-boxed-primitive: 1.0.2
     dev: true
 
+<<<<<<< HEAD
   /unhead/1.0.22:
     resolution: {integrity: sha512-CIA8aEFHfoW3uABL+inYqDz5h50xgK3mwQQzPL4WtJRG9fEFciM2mjLtW7djvrnUlcGyf/tgVTOcAkhHb+320Q==}
     dependencies:
@@ -7920,6 +7986,16 @@ packages:
       '@unhead/schema': 1.0.22
       '@unhead/shared': 1.0.22
       hookable: 5.4.2
+=======
+  /unhead/1.1.15:
+    resolution: {integrity: sha512-rpOTD35CDz9KFvBKt42KRKZRsYIDY7Sjh5XhBL2SH6XUHdRdqTDIVjHtrxIwRQkfnMdUAZUSy6KYaiAMQFUOiw==}
+    dependencies:
+      '@unhead/dom': 1.1.15
+      '@unhead/schema': 1.1.15
+      '@unhead/shared': 1.1.15
+      hookable: 5.4.2
+    dev: false
+>>>>>>> 21ccb3de (fix(web) - fixes to the Wipe component)
 
   /universalify/0.2.0:
     resolution: {integrity: sha512-CJ1QgKmNg3CwvAv/kOFmtnEN05f0D/cn9QntgNOQlQF9dgvVTHj3t+8JPdjqawCHk7V/KA+fbUqzZ9XWhcqPUg==}
@@ -8607,3 +8683,7 @@ packages:
 
   /zhead/2.0.4:
     resolution: {integrity: sha512-V4R94t3ifk9AURym6OskbKcnowzgp5Z88tkoL/NF67vyryNxC62u6mx5F1Ux4oh4+YN7FFmKYEyWy6m5kfPH6g==}
+<<<<<<< HEAD
+=======
+    dev: false
+>>>>>>> 21ccb3de (fix(web) - fixes to the Wipe component)

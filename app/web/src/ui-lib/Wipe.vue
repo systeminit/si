@@ -88,7 +88,11 @@ const open = async (openAt: HTMLElement | Position) => {
   }
 
   // run the wipe!
-  state.value = "running";
+  // Wendy - there's a setTimeout here to prevent a bug where the origin doesn't set correctly
+  // If you can figure out a better solution to this issue, feel free to change this!
+  setTimeout(() => {
+    state.value = "running";
+  }, 20);
   openDonePromise = defer();
   return openDonePromise.promise;
 };
@@ -104,7 +108,7 @@ const close = () => {
   return closeDonePromise.promise;
 };
 
-defineExpose({ open, close });
+defineExpose({ open, close, state });
 </script>
 
 <style scoped>
