@@ -7,17 +7,15 @@ import "@/assets/style/main.css";
 import "@/assets/style/tailwind.css";
 
 import App from "@/App.vue";
+import "./utils/posthog";
 import router from "./router";
 import store from "./store";
-
-import { PosthogPlugin } from "./utils/posthog";
 
 const app = createApp(App);
 
 app.use(createHead());
 app.use(router);
 app.use(store);
-app.use(PosthogPlugin);
 
 // we attach to the #app-layout div (in AppLayout.vue) to stay within an overflow hidden div and not mess with page scrollbars
 app.use(FloatingVue, { container: "#app-layout" });

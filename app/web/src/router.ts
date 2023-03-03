@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import _ from "lodash";
+import { nextTick } from "vue";
+import { posthog } from "posthog-js";
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
 
@@ -186,6 +188,14 @@ router.beforeEach((to, _from) => {
 router.beforeResolve((to) => {
   const routerStore = useRouterStore();
   routerStore.currentRoute = to;
+});
+
+router.afterEach((to) => {
+  nextTick(() => {
+    posthog.capture("$pageview", {
+      $current_url: to.fullPath,
+    });
+  });
 });
 
 export default router;
