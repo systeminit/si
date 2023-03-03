@@ -100,6 +100,10 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     let (resource_alive_marker, mut resource_job_processor_shutdown_rx) = mpsc::channel(1);
     let (_resource_job_client, resource_job_processor) =
         JobProcessor::connect(&config, resource_alive_marker).await?;
+    let (status_receiver_alive_marker, mut status_receiver_job_processor_shutdown_rx) =
+        mpsc::channel(1);
+    let (_, status_receiver_job_processor) =
+        JobProcessor::connect(&config, status_receiver_alive_marker).await?;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
@@ -140,20 +144,19 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
 
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
-            let (server, shutdown_broadcast_rx) = Server::http(
+            let (server, initial_shutdown_broadcast_rx) = Server::http(
                 config,
                 telemetry,
                 pg_pool.clone(),
                 nats.clone(),
-                job_processor.clone(),
+                job_processor,
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
                 council_subject_prefix.clone(),
                 &pkgs_path,
             )?;
-
-            let second_shutdown_broadcast_rx = shutdown_broadcast_rx.resubscribe();
+            let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
             Server::start_resource_refresh_scheduler(
                 pg_pool.clone(),
@@ -162,14 +165,14 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 veritech.clone(),
                 encryption_key,
                 council_subject_prefix.clone(),
-                shutdown_broadcast_rx,
+                initial_shutdown_broadcast_rx,
             )
             .await;
 
             Server::start_status_updater(
                 pg_pool,
                 nats,
-                job_processor,
+                status_receiver_job_processor,
                 veritech,
                 encryption_key,
                 council_subject_prefix.clone(),
@@ -180,12 +183,12 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
             server.run().await?;
         }
         IncomingStream::UnixDomainSocket(_) => {
-            let (server, shutdown_broadcast_rx) = Server::uds(
+            let (server, initial_shutdown_broadcast_rx) = Server::uds(
                 config,
                 telemetry,
                 pg_pool.clone(),
                 nats.clone(),
-                job_processor.clone(),
+                job_processor,
                 veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
@@ -193,8 +196,7 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 &pkgs_path,
             )
             .await?;
-
-            let second_shutdown_broadcast_rx = shutdown_broadcast_rx.resubscribe();
+            let second_shutdown_broadcast_rx = initial_shutdown_broadcast_rx.resubscribe();
 
             Server::start_resource_refresh_scheduler(
                 pg_pool.clone(),
@@ -203,14 +205,14 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
                 veritech.clone(),
                 encryption_key,
                 council_subject_prefix.clone(),
-                shutdown_broadcast_rx,
+                initial_shutdown_broadcast_rx,
             )
             .await;
 
             Server::start_status_updater(
                 pg_pool,
                 nats,
-                job_processor,
+                status_receiver_job_processor,
                 veritech,
                 encryption_key,
                 council_subject_prefix.clone(),
@@ -227,6 +229,8 @@ async fn run(args: args::Args, mut telemetry: ApplicationTelemetryClient) -> Res
     let _ = job_processor_shutdown_rx.recv().await;
     info!("Waiting for resource job processors to finish pushing jobs");
     let _ = resource_job_processor_shutdown_rx.recv().await;
+    info!("Waiting for status receiver job processors to finish pushing jobs");
+    let _ = status_receiver_job_processor_shutdown_rx.recv().await;
 
     info!("Shutting down the job processor client");
     if let Err(err) = (&job_client as &dyn JobProcessorClientCloser).close().await {
