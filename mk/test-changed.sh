@@ -57,11 +57,13 @@ if [ -z "${SKIP_CHECK:-}" ]; then
     check_targets="$check_targets $(all_rust_check_targets)"
   fi
 
-  echo "::group::make $check_targets"
-  set -x
-  make CI=true "CI_FROM_REF=$BEFORE_SHA" "CI_TO_REF=$AFTER_SHA" $check_targets
-  set +x
-  echo "::endgroup::"
+  if [[ -n "$check_targets" ]]; then
+    echo "::group::make $check_targets"
+    set -x
+    make CI=true "CI_FROM_REF=$BEFORE_SHA" "CI_TO_REF=$AFTER_SHA" $check_targets
+    set +x
+    echo "::endgroup::"
+  fi
 fi
 
 test_targets="$(while IFS= read -r line; do
@@ -75,8 +77,10 @@ if changed_files_contains_global_rust_config_for_test; then
   test_targets="$test_targets $(all_rust_test_targets)"
 fi
 
-echo "::group::make $test_targets"
-set -x
-make CI=true "CI_FROM_REF=$BEFORE_SHA" "CI_TO_REF=$AFTER_SHA" $test_targets
-set +x
-echo "::endgroup::"
+if [[ -n "$test_targets" ]]; then
+  echo "::group::make $test_targets"
+  set -x
+  make CI=true "CI_FROM_REF=$BEFORE_SHA" "CI_TO_REF=$AFTER_SHA" $test_targets
+  set +x
+  echo "::endgroup::"
+fi
