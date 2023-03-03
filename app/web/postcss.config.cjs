@@ -4,7 +4,7 @@ const nestingPlugin = require("tailwindcss/nesting");
 const loopPlugin = require("postcss-each");
 const postcssCommentParser = require("postcss-comment");
 
-const tailwindConfig = require("./tailwind.config.js");
+const tailwindConfig = require("./tailwind.config.cjs");
 
 module.exports = {
   parser: postcssCommentParser,

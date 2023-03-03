@@ -6,7 +6,7 @@ import checkerPlugin from "vite-plugin-checker";
 import svgLoaderPlugin from "vite-svg-loader";
 import IconsPlugin from "unplugin-icons/vite";
 import packageJson from "./package.json";
-import postcss from "./postcss.config.js";
+import postcss from "./postcss.config.cjs";
 import ViteGitRevisionPlugin from "./build-src/vite_git_revision_plugin";
 
 const lessVars = readFileSync("./src/assets/style/less_vars.less", "utf-8");

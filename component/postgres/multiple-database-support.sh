@@ -17,9 +17,11 @@ main() {
     die "Missing required environment variable: POSTGRES_PASSWORD"
   fi
 
+
   echo "--- Creating multiple databases; triggered by POSTGRES_MULTIPLE_DBS"
+  dbs=($(echo "$POSTGRES_MULTIPLE_DBS" | tr ',' '\n'))
   local db
-  for db in "${POSTGRES_MULTIPLE_DBS[@]}"; do
+  for db in "${dbs[@]}"; do
     create_db "$db" || die "failed to create database '$db'"
   done
 }

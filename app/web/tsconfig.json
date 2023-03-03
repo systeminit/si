@@ -1,22 +1,7 @@
 {
+  "extends": "@si/tsconfig/tsconfig.browser.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "useDefineForClassFields": true,
-    "module": "ESNext",
-    "moduleResolution": "Node",
-    "strict": true,
-    "jsx": "preserve",
-    "sourceMap": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "esModuleInterop": true,
-    "lib": [
-      "ESNext",
-      "DOM",
-      "dom.iterable"
-    ],
-    "skipLibCheck": true,
-    "baseUrl": "./",
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "src/*"
@@ -25,20 +10,16 @@
     "types": [
       "unplugin-icons/types/raw"
     ],
-    "pretty": true,
-    "noEmit": true,
-    "forceConsistentCasingInFileNames": true,
-    "allowJs": true, // this fixes volar for me
+    //     // some weird PNPM related issues around linking types
+    //     // that pop up in form-validation.ts without disabling declarations
+    //     // see 
+    //     "declaration": false,
+    //     "declarationMap": false,
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.tsx",
     "src/**/*.vue"
-  ],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ],
+  ]
 }

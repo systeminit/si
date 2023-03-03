@@ -1,0 +1,20 @@
+{
+  "extends": "@si/tsconfig/tsconfig.browser.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    },
+    // "types": [
+    //   "unplugin-icons/types/raw"
+    // ],
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue"
+  ]
+}
