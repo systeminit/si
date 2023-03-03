@@ -11,6 +11,8 @@
 
 # All components required to build
 !app/web
+!lib/tsconfig
+!lib/eslint-config
 
 # Ignore non-portable context in component sub-directories
 **/.envrc
