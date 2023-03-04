@@ -202,7 +202,7 @@ pub enum PropSpecKind {
     Object,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct PropSpecBuilder {
     kind: Option<PropSpecKind>,
     name: Option<String>,
@@ -215,6 +215,10 @@ impl PropSpecBuilder {
     pub fn kind(&mut self, value: PropSpecKind) -> &mut Self {
         self.kind = Some(value);
         self
+    }
+
+    pub fn get_kind(&self) -> Option<PropSpecKind> {
+        self.kind
     }
 
     #[allow(unused_mut)]

@@ -1,8 +1,8 @@
 use std::{env, path::Path, sync::Arc};
 
 use dal::{
-    pkg::export_pkg, DalContext, JobQueueProcessor, NatsProcessor, ServicesContext, Tenancy,
-    Workspace,
+    pkg::export_pkg, DalContext, JobQueueProcessor, NatsProcessor, Schema, ServicesContext,
+    Tenancy, Workspace,
 };
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
@@ -11,7 +11,8 @@ use veritech_client::{Client as VeritechClient, EncryptionKey};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 
-const USAGE: &str = "usage: program <PKG_FILE> <NAME> <VERSION> <CREATED_BY>";
+const USAGE: &str =
+    "usage: program <PKG_FILE> <NAME> <VERSION> <CREATED_BY> <SCHEMA_NAME,SCHEMA_NAME[,...]>";
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -20,12 +21,19 @@ async fn main() -> Result<()> {
     let name = args.next().expect(USAGE);
     let version = args.next().expect(USAGE);
     let created_by = args.next().expect(USAGE);
+    let schema_names = args.next().expect(USAGE);
+    let schema_names = schema_names.split(',');
 
-    let description = format!("{name} created by {created_by}");
+    let description = format!("{name} package, created by {created_by}.");
 
     let (mut ctx, _shutdown_rx) = ctx().await?;
     let workspace = Workspace::builtin(&ctx).await?;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
+
+    let mut variant_ids = Vec::new();
+    for schema_name in schema_names {
+        variant_ids.push(Schema::default_schema_variant_id_for_name(&ctx, schema_name).await?);
+    }
 
     println!("--- Exporting pkg: {tar_file}");
     export_pkg(
@@ -35,7 +43,7 @@ async fn main() -> Result<()> {
         version,
         Some(description),
         created_by,
-        vec![],
+        variant_ids,
     )
     .await?;
 
