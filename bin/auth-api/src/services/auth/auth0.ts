@@ -1,26 +1,25 @@
-import Url from "url";
 import Axios from "axios";
 import { nanoid } from "nanoid";
-import { ApiError } from "../lib/api-error";
 
-const AUTH_CALLBACK_URL = `${process.env.AUTH_API_URL}/auth/auth-callback`;
+import { ApiError } from "../../lib/api-error";
+import { tryCatch } from "../../lib/try-catch";
+import { getQueryString } from "../../lib/querystring";
+
+const LOGIN_CALLBACK_URL = `${process.env.AUTH_API_URL}/auth/login-callback`;
+const LOGOUT_CALLBACK_URL = `${process.env.AUTH_API_URL}/auth/logout-callback`;
 
 const auth0Api = Axios.create({
   baseURL: `https://${process.env.AUTH0_DOMAIN}`,
 });
 
-function getQueryString(obj: Record<string, any>) {
-  return new Url.URLSearchParams(obj).toString();
-}
-
-function getAuth0LoginUrl() {
+export function getAuth0LoginUrl() {
   // lots of ways to generate this, but... nanoid is pretty good and already url-safe
   const randomState = nanoid(16);
 
   const loginParams = getQueryString({
     response_type: "code", // or 'token'
     client_id: process.env.AUTH0_CLIENT_ID,
-    redirect_uri: AUTH_CALLBACK_URL,
+    redirect_uri: LOGIN_CALLBACK_URL,
     state: randomState,
     scope: "openid profile email",
     // `connection=CONNECTION` // not quite sure
@@ -37,17 +36,16 @@ function getAuth0LoginUrl() {
   };
 }
 
-function getAuth0LogoutUrl() {
+export function getAuth0LogoutUrl() {
   const logoutParams = getQueryString({
     client_id: process.env.AUTH0_CLIENT_ID,
-    returnTo: `${process.env.AUTH_API_URL}/logout-callback`,
+    returnTo: LOGOUT_CALLBACK_URL,
   });
   return `https://${process.env.AUTH0_DOMAIN}/v2/logout?${logoutParams}`;
 }
 
-async function completeAuth0TokenExchange(code: string) {
-  let token: string;
-  try {
+export async function completeAuth0TokenExchange(code: string) {
+  const token = await tryCatch(async () => {
     const tokenReq = await auth0Api.post(
       "/oauth/token",
       getQueryString({
@@ -55,33 +53,33 @@ async function completeAuth0TokenExchange(code: string) {
         client_id: process.env.AUTH0_CLIENT_ID,
         client_secret: process.env.AUTH0_CLIENT_SECRET,
         code,
-        redirect_uri: AUTH_CALLBACK_URL,
+        redirect_uri: LOGIN_CALLBACK_URL,
       }),
       {
         headers: { "content-type": "application/x-www-form-urlencoded" },
       },
     );
     console.log(tokenReq.data);
-    token = tokenReq.data.access_token;
-  } catch (err) {
+    return tokenReq.data.access_token;
+  }, (err) => {
     // if err is an http error from auth0, it will usually look something like:
     // err.response.data.error -- ex: 'invalid_grant'
     // err.response.data.error_description -- ex: 'Invalid authorization code'
 
     // if the error doesn't look like a normal auth0 response just throw it
-    if (!err.response.data.error_description) throw err;
+    if (!err?.response.data.error_description) throw err;
 
     throw new ApiError(
       "Conflict",
       "AUTH0_EXCHANGE_FAILURE",
       err.response.data.error_description,
     );
-  }
+  });
 
   // token is an "opaque token" so does not contain any info and cannot be decoded
 
   // but we can fetch profile data from auth0
-  try {
+  const profile = await tryCatch(async () => {
     const profileReq = await Axios.get(
       `https://${process.env.AUTH0_DOMAIN}/userinfo`,
       {
@@ -90,19 +88,15 @@ async function completeAuth0TokenExchange(code: string) {
         },
       },
     );
-    return { token, profile: profileReq.data };
-  } catch (err) {
-    if (!err.response.data.error_description) throw err;
+    return profileReq.data;
+  }, (err) => {
+    if (!err?.response.data.error_description) throw err;
     throw new ApiError(
       "Conflict",
       "AUTH0_PROFILE_FAILURE",
       err.response.data.error_description,
     );
-  }
-}
+  });
 
-export default {
-  getAuth0LoginUrl,
-  getAuth0LogoutUrl,
-  completeAuth0TokenExchange,
-};
+  return { profile, token };
+}

@@ -1,9 +1,8 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
-import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
+import { addStoreHooks, ApiRequest } from "@si/vue-lib";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ComponentId } from "@/store/components.store";
-import { ApiRequest } from "@/store/lib/pinia_api_tools";
 import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useAuthStore } from "./auth.store";

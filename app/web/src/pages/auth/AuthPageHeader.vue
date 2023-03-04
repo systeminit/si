@@ -5,13 +5,10 @@
       :src="siLogoWts"
       alt="System Initiative"
     />
-    <Stack spacing="md">
-      <h2 class="text-4xl font-extrabold capsize">{{ title }}</h2>
+    <Stack spacing="sm">
+      <h2 class="text-3xl font-extrabold capsize mt-2xs">{{ title }}</h2>
       <RichText class="capsize">
-        {{ altActionText }}
-        <router-link :to="{ name: altActionRouteName }">{{
-          altActionLinkText
-        }}</router-link>
+        <slot />
       </RichText>
     </Stack>
   </div>
@@ -24,8 +21,5 @@ import siLogoWts from "@/assets/images/si-logo-wts.svg?url";
 
 const props = defineProps({
   title: { type: String, required: true },
-  altActionText: { type: String, required: true },
-  altActionLinkText: { type: String, required: true },
-  altActionRouteName: { type: String, required: true },
 });
 </script>

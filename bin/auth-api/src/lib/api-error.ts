@@ -72,48 +72,48 @@ type GenericObject = Record<string, unknown>;
 
 export class ApiError extends Error {
   // name + message props exist from base Error class
-  public type: string;
+  public kind: string; // avoiding the name "type"...
 
   // http status error code name, also used as code unless specific code is set
-  public generalType: HttpErrorCodeNames;
-  public specificType?: string; // optional arbitrary code to expose
+  public generalKind: HttpErrorCodeNames;
+  public specificKind?: string; // optional arbitrary code to expose
   public httpStatusCode: number; // http status code
 
   public details?: GenericObject; // arbitrary details to expose when serializing error
 
   // overload the constructor to help make autocomplete clearer
-  constructor(generalErrorType: HttpErrorCodeNames, errorMessage: string);
+  constructor(generalErrorKind: HttpErrorCodeNames, errorMessage: string);
   constructor(
-    generalErrorType: HttpErrorCodeNames,
-    specificErrorType: string,
+    generalErrorKind: HttpErrorCodeNames,
+    specificErrorKind: string,
     errorMessage?: string,
     errorDetails?: GenericObject,
   );
   constructor(
-    generalErrorType: HttpErrorCodeNames,
-    specificErrorTypeOrMessage: string,
+    generalErrorKind: HttpErrorCodeNames,
+    specificErrorKindOrMessage: string,
     errorMessage?: string,
     errorDetails?: GenericObject,
   ) {
-    // do some argument shuffling to make the specific error type optional
-    let specificErrorType: string | undefined;
+    // do some argument shuffling to make the specific error Kind optional
+    let specificErrorKind: string | undefined;
     if (!errorMessage) {
-      errorMessage = specificErrorTypeOrMessage;
-      specificErrorType = undefined;
+      errorMessage = specificErrorKindOrMessage;
+      specificErrorKind = undefined;
     } else {
-      specificErrorType = specificErrorTypeOrMessage;
+      specificErrorKind = specificErrorKindOrMessage;
     }
     // convert our error code name into an http code
-    const httpStatusCode = ErrorCodes[generalErrorType] || 500;
+    const httpStatusCode = ErrorCodes[generalErrorKind] || 500;
 
     super(errorMessage);
 
     // generic errors expect these to be filled
-    this.name = specificErrorType || generalErrorType;
-    this.type = specificErrorType || generalErrorType;
+    this.name = specificErrorKind || generalErrorKind;
+    this.kind = specificErrorKind || generalErrorKind;
 
-    this.generalType = generalErrorType;
-    this.specificType = specificErrorType;
+    this.generalKind = generalErrorKind;
+    this.specificKind = specificErrorKind;
     this.httpStatusCode = httpStatusCode;
     this.message = errorMessage;
     this.details = errorDetails;
@@ -146,14 +146,14 @@ export async function errorHandlingMiddleware(ctx, next) {
       ctx.status = err.httpStatusCode;
       // this is the format exposed to clients
       // we can alter it here and vary with api version request if necessary
-      ctx.body = _.pick(err, "type", "message", "details");
+      ctx.body = _.pick(err, "kind", "message", "details");
 
       // otherwise, it was unexpected, so we want to respond with a 500
     } else {
       ctx.status = 500;
       // hide all details from users
       ctx.body = {
-        type: "InternalServerError",
+        kind: "InternalServerError",
         message:
           "An unexpected error occurred - please try again or contact customer service at support@systeminit.com",
       };

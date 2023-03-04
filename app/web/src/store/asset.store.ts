@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import _ from "lodash";
-import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
-import { ApiRequest } from "@/store/lib/pinia_api_tools";
+import { ApiRequest, addStoreHooks } from "@si/vue-lib";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { nilId } from "@/utils/nilId";
 import { useChangeSetsStore } from "./change_sets.store";

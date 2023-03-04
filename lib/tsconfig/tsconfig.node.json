@@ -6,6 +6,7 @@
       "ESNext"
     ],
     "target": "ESNext",
+    "strict": true,
     "moduleResolution": "Node",
     "allowSyntheticDefaultImports": true
   }

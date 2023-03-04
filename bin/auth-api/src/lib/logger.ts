@@ -79,8 +79,9 @@ export function log(
     }
 
     // if the error looks like an http request, we add it so it gets captured
-    if (error.response)
+    if (error.response) {
       meta.error.httpResponse = JSON.stringify(error.response.data);
+    }
   }
 
   // TODO: check meta for data that is too deep or circular. It should be kept simple!
@@ -107,10 +108,10 @@ export function log(
 
   // only unexpected errors get passed through to sentry
   if (
-    error &&
-    error instanceof Error &&
-    !(error as ApiError).expectedError &&
-    !swallowUnexpectedErrors
+    error
+    && error instanceof Error
+    && !(error as ApiError).expectedError
+    && !swallowUnexpectedErrors
   ) {
     console.log(chalk.red("------ CAUGHT EXCEPTION ------"));
     console.log(prettyError.render(error));

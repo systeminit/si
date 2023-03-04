@@ -12,5 +12,5 @@
   "include": [
     "src/**/*.ts",
     ".eslintrc.cjs",
-  ]
+  ],
 }

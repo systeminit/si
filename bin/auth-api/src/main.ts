@@ -2,18 +2,27 @@
 import "./init-env";
 
 import Koa from "koa";
-import { koaBody } from "koa-body";
-import chalk from "chalk";
+import bodyParser from 'koa-bodyparser';
+import chalk from 'chalk';
+import cors from '@koa/cors';
 
 import { router } from "./routes";
 import { ApiError, errorHandlingMiddleware } from "./lib/api-error";
 import { httpRequestLoggingMiddleware } from "./lib/request-logger";
+import { loadAuthMiddleware } from "./services/auth";
 
 const app = new Koa();
 
+// include this one early since it can fire off and be done when handling OPTIONS requests
+app.use(cors({
+  credentials: true,
+}));
+
 app.use(httpRequestLoggingMiddleware);
 app.use(errorHandlingMiddleware);
-app.use(koaBody());
+
+app.use(bodyParser());
+app.use(loadAuthMiddleware);
 
 // routes - must be last after all middlewares
 app.use(router.routes());

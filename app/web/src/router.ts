@@ -119,9 +119,10 @@ const routes: RouteRecordRaw[] = [
   },
   // Auth
   {
-    path: "/authenticate/*",
-    name: "authenticate",
-    redirect: { name: "login" },
+    path: "/auth-connect",
+    name: "auth-connect",
+    meta: { public: true },
+    component: () => import("@/pages/auth/AuthConnectPage.vue"),
   },
   {
     path: "/login",
@@ -148,14 +149,7 @@ const routes: RouteRecordRaw[] = [
 
   // 404
   {
-    path: "/404",
-    name: "notFound",
-    meta: { public: true },
-    component: () => import("@/pages/NotFound.vue"),
-  },
-  {
     path: "/:catchAll(.*)",
-    // redirect: "/404", // makes it harder to see what the failing url was
     meta: { public: true },
     component: () => import("@/pages/NotFound.vue"),
   },

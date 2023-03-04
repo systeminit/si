@@ -42,9 +42,9 @@ import { ref, computed, onBeforeUnmount, watch, PropType } from "vue";
 import { RouterLink } from "vue-router";
 import _ from "lodash";
 
+import { ApiRequestStatus } from "@si/vue-lib";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { IconNames } from "@/ui-lib/icons/icon_set";
-import { ApiRequestStatus } from "@/store/lib/pinia_api_tools";
 import { Tones } from "./helpers/tones";
 import { useTheme } from "./theme_tools";
 

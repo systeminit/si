@@ -11,7 +11,7 @@
 
 <script lang="ts" setup>
 import { PropType } from "vue";
-import { ApiRequestStatus } from "@/store/lib/pinia_api_tools";
+import { ApiRequestStatus } from "@si/vue-lib";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import LoadingMessage from "@/ui-lib/LoadingMessage.vue";
 

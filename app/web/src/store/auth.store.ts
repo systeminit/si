@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
 import jwtDecode from "jwt-decode";
 import { useRouter } from "vue-router";
-import { ApiRequest } from "@/store/lib/pinia_api_tools";
+import { ApiRequest } from "@si/vue-lib";
 
 import { User } from "@/api/sdf/dal/user";
 import { Workspace } from "@/api/sdf/dal/workspace";
@@ -68,6 +68,15 @@ export const useAuthStore = defineStore("auth", {
           console.log("RESTORE AUTH FAILED!", e);
           // trigger logout?
         },
+      });
+    },
+
+    async AUTH_CONNECT(payload: { code: string }) {
+      return new ApiRequest<LoginResponse>({
+        method: "post",
+        url: "/session/login",
+        params: payload,
+        onSuccess: (response) => {},
       });
     },
 

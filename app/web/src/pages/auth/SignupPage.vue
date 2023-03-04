@@ -1,12 +1,10 @@
 <template>
   <AppLayout page-mode="modal" class="font-medium">
     <Stack spacing="lg" class="max-w-md">
-      <AuthPageHeader
-        title="Sign Up"
-        alt-action-text="Already have an account?"
-        alt-action-link-text="Log in!"
-        alt-action-route-name="login"
-      />
+      <AuthPageHeader title="Sign Up">
+        Already have an account?
+        <RouterLink :to="{ name: 'login' }">Log in!</RouterLink>
+      </AuthPageHeader>
 
       <form @submit.prevent="trySignup">
         <Card rounded>

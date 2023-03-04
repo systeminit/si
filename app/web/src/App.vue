@@ -1,13 +1,15 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <RealtimeConnectionStatus />
-  <router-view :key="selectedWorkspace?.pk" />
-  <Teleport to="body">
-    <canvas
-      id="confetti"
-      class="fixed w-full h-full top-0 left-0 pointer-events-none z-100"
-    ></canvas>
-  </Teleport>
+  <div class="font-sans">
+    <RealtimeConnectionStatus />
+    <router-view :key="selectedWorkspace?.pk" />
+    <Teleport to="body">
+      <canvas
+        id="confetti"
+        class="fixed w-full h-full top-0 left-0 pointer-events-none z-100"
+      ></canvas>
+    </Teleport>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -47,7 +49,7 @@ useHead(
 // check for auth token in local storage and initialize auth in store if found
 // this token will be automatically injected into API requests
 const authStore = useAuthStore();
-authStore.initFromStorage();
+authStore.initFromStorage().then();
 
 const workspacesStore = useWorkspacesStore();
 const selectedWorkspace = computed(() => workspacesStore.selectedWorkspace);

@@ -1,9 +1,8 @@
-import * as url from "url";
 import glob from "glob";
 import Router from "@koa/router";
+import { getThisDirname } from "../lib/this-file-path";
 
-const __filename = url.fileURLToPath(import.meta.url);
-const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
+const __dirname = getThisDirname(import.meta.url);
 
 // we initialize and export the router immediately
 // but we'll add routes to it here and in each routes file
@@ -21,6 +20,6 @@ router.get("/boom", async (ctx) => {
 const routeFilePaths = glob.sync(`${__dirname}/**/*.routes.ts`);
 routeFilePaths.forEach((routeFilePath) => {
   const load = import(routeFilePath.replace(__dirname, "./"));
-  // technically loading async, but should not be a problem
-  load.then((file) => file.initRoutes(router));
+  // technically loading is async, but is not actually a problem
+  load.then((file) => file.initRoutes(router)); // eslint-disable-line @typescript-eslint/no-floating-promises
 });

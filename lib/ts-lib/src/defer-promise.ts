@@ -1,6 +1,6 @@
 // useful when you need to export a promise before ready to start whatever will initialize it
 // should be used sparingly
-export default function defer<T = unknown>() {
+export function createDeferredPromise<T = unknown>() {
   // set to noop, but they will be replaced immediately
   let resolve: (value?: T) => void = () => {};
   let reject: (reason?: unknown) => void = () => {};
@@ -12,4 +12,4 @@ export default function defer<T = unknown>() {
   return { promise, resolve, reject };
 }
 
-export type DeferredPromise<T> = ReturnType<typeof defer<T>>;
+export type DeferredPromise<T = void> = ReturnType<typeof createDeferredPromise<T>>;

@@ -8,8 +8,8 @@ instructions to generate JWT signing key
 
 import JWT from "jsonwebtoken";
 
-const JWT_PRIVATE_KEY = process.env.JWT_PRIVATE_KEY;
-export const JWT_PUBLIC_KEY = process.env.JWT_PRIVATE_KEY;
+const JWT_PRIVATE_KEY = process.env.JWT_PRIVATE_KEY!;
+export const JWT_PUBLIC_KEY = process.env.JWT_PRIVATE_KEY!;
 
 export function createJWT(payload: Record<string, any>) {
   return JWT.sign(payload, JWT_PRIVATE_KEY, { algorithm: "RS256" });
