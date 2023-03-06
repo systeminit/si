@@ -26,7 +26,7 @@
 import _ from "lodash";
 import { computed } from "vue";
 import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
-import PackageListPanel from "@/components/FuncEditor/PackageListPanel.vue";
+import PackageListPanel from "@/components/PackageListPanel.vue";
 import PackageDisplay from "@/components/PackageDisplay.vue";
 import PackageDetailsPanel from "@/components/PackageDetailsPanel.vue";
 import { usePackageStore } from "@/store/package.store";
