@@ -175,7 +175,7 @@ async fn set_schema_spec_category_data(
     }
 
     schema_spec_builder.category(schema_ui_menu.category());
-    // TODO(fnichol): schema_spec_builder.category_name(schema_ui_menu.name());
+    schema_spec_builder.category_name(schema_ui_menu.name());
 
     Ok(())
 }

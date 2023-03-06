@@ -118,8 +118,14 @@ async fn create_schema(
     let mut schema = match existing_schema {
         None => {
             let schema = Schema::new(ctx, schema_spec.name(), &ComponentKind::Standard).await?;
-            let ui_menu =
-                SchemaUiMenu::new(ctx, schema_spec.name(), schema_spec.category()).await?;
+            let ui_menu = SchemaUiMenu::new(
+                ctx,
+                schema_spec
+                    .category_name()
+                    .unwrap_or_else(|| schema_spec.name()),
+                schema_spec.category(),
+            )
+            .await?;
             ui_menu.set_schema(ctx, schema.id()).await?;
 
             schema
