@@ -1599,70 +1599,80 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION attribute_value_remove_value_and_children_v1(this_tenancy                   jsonb,
-                                                                        this_visibility                jsonb,
-                                                                        this_parent_attribute_value_id ident) RETURNS void
+CREATE OR REPLACE FUNCTION attribute_value_remove_value_and_children_v1(
+    this_tenancy                   jsonb,
+    this_visibility                jsonb,
+    this_parent_attribute_value_id ident
+) RETURNS void
 AS
 $$
 DECLARE
-    child_value_id         ident;
+    tmp_attribute_value_id ident;
     attribute_prototype_id ident;
     attribute_value_count  bigint;
 BEGIN
-    FOR child_value_id IN
-        SELECT av.id
-        FROM attribute_values_v1(this_tenancy, this_visibility) AS av
-        INNER JOIN (
-            SELECT DISTINCT ON (object_id) object_id AS child_value_id
-            FROM attribute_value_belongs_to_attribute_value
-            WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_value_belongs_to_attribute_value)
-                  AND belongs_to_id = this_parent_attribute_value_id
-            ORDER BY object_id,
-                     visibility_change_set_pk DESC,
-                     visibility_deleted_at DESC
-        ) AS avbtav ON avbtav.child_value_id = av.id
-        ORDER BY id
+    FOR tmp_attribute_value_id, attribute_prototype_id IN 
+        -- Build a list of (AttributeValueId, AttributePrototypeId), starting with the initial
+        -- AttributeValueId passed in to the function, and gathering all AttributeValueId (and
+        -- their AttributePrototypeId) that are children of any generation of that starting
+        -- AttributeValueId.
+        WITH RECURSIVE av_ap(av_id, ap_id) AS (
+            -- Get the (AttributeValueId, AttributePrototypeId) for the initial AttributeValueId
+            SELECT
+                av.id AS av_id,
+                ap.id AS ap_id
+            FROM attribute_values_v1(this_tenancy, this_visibility) AS av
+            LEFT JOIN attribute_value_belongs_to_attribute_prototype_v1(this_tenancy, this_visibility) AS avbtap
+                ON av.id = avbtap.object_id
+            LEFT JOIN attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
+                ON avbtap.belongs_to_id = ap.id
+            WHERE av.id = this_parent_attribute_value_id
+            UNION
+            -- For every AttributeValueId that we've already gotten, get the
+            -- (AttributeValueId, AttributePrototypeId) of its children.
+            SELECT
+                av.id AS av_id,
+                ap.id AS ap_id
+            FROM av_ap
+            INNER JOIN attribute_value_belongs_to_attribute_value_v1(this_tenancy, this_visibility) AS avbtav
+                ON av_ap.av_id = avbtav.belongs_to_id
+            INNER JOIN attribute_values_v1(this_tenancy, this_visibility) AS av
+                ON avbtav.object_id = av.id
+            LEFT JOIN attribute_value_belongs_to_attribute_prototype_v1(this_tenancy, this_visibility) AS avbtap
+                ON av.id = avbtap.object_id
+            LEFT JOIN attribute_prototypes_v1(this_tenancy, this_visibility) AS ap
+                ON avbtap.belongs_to_id = ap.id
+        )
+        -- Remove things "depth first" (newest to oldest)
+        SELECT * FROM av_ap ORDER BY av_ap.av_id DESC
     LOOP
-        PERFORM attribute_value_remove_value_and_children_v1(this_tenancy,
-                                                             this_visibility,
-                                                             child_value_id);
+        IF attribute_prototype_id IS NULL THEN
+            RAISE 'Unable to find AttributePrototype of parent AttributeValue(%) with Tenancy(%) and Visibility(%)',
+                tmp_attribute_value_id,
+                this_tenancy,
+                this_visibility;
+        END IF;
+
+        PERFORM attribute_value_remove_proxies_v1(
+            this_tenancy,
+            this_visibility,
+            tmp_attribute_value_id
+        );
+
+        PERFORM unset_belongs_to_v1(
+            'attribute_value_belongs_to_attribute_prototype',
+            this_tenancy,
+            this_visibility,
+            tmp_attribute_value_id
+        );
+
+        PERFORM delete_by_id_v1(
+            'attribute_values',
+            this_tenancy,
+            this_visibility,
+            tmp_attribute_value_id
+        );
     END LOOP;
-
-    PERFORM attribute_value_remove_proxies_v1(this_tenancy,
-                                              this_visibility,
-                                              this_parent_attribute_value_id);
-
-    SELECT DISTINCT ON (id) attribute_prototypes.id
-    INTO attribute_prototype_id
-    FROM attribute_prototypes
-    INNER JOIN (
-        SELECT DISTINCT ON (object_id) belongs_to_id AS prototype_id
-        FROM attribute_value_belongs_to_attribute_prototype
-        WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_value_belongs_to_attribute_prototype)
-              AND object_id = this_parent_attribute_value_id
-        ORDER BY object_id,
-                 visibility_change_set_pk DESC,
-                 visibility_deleted_at DESC NULLS FIRST
-    ) AS avbtap ON avbtap.prototype_id = attribute_prototypes.id
-    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_prototypes)
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC;
-    IF attribute_prototype_id IS NULL THEN
-        RAISE 'Unable to find AttributePrototype of parent AttributeValue(%) with Tenancy(%) and Visibility(%)', this_parent_attribute_value_id,
-                                                                                                                 this_tenancy,
-                                                                                                                 this_visibility;
-    END IF;
-
-    PERFORM unset_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
-                                this_tenancy,
-                                this_visibility,
-                                this_parent_attribute_value_id);
-
-    PERFORM delete_by_id_v1('attribute_values',
-                            this_tenancy,
-                            this_visibility,
-                            this_parent_attribute_value_id);
 END;
 $$ LANGUAGE PLPGSQL;
 
