@@ -54,8 +54,7 @@
         </li>
       </ul>
       <VButton2
-        :disabled="exportPkgReqStatus.isPending"
-        :loading="exportPkgReqStatus.isPending"
+        :request-status="exportPkgReqStatus"
         loading-text="Exporting..."
         label="Export"
         tone="action"
