@@ -61,6 +61,12 @@ pub enum PkgError {
     PackageAlreadyOnDisk(String),
     #[error("Invalid pacakge file name: {0}")]
     InvalidPackageFileName(String),
+    #[error("No schema variants added to package export")]
+    PackageExportEmpty,
+    #[error("Package name required")]
+    PackageNameEmpty,
+    #[error("Package version required")]
+    PackageVersionEmpty,
 }
 
 pub type PkgResult<T> = Result<T, PkgError>;

@@ -53,6 +53,7 @@
           </div>
         </li>
       </ul>
+      <ErrorMessage v-if="exportPkgReqStatus.isError" :request-status="exportPkgReqStatus" />
       <VButton2
         :request-status="exportPkgReqStatus"
         loading-text="Exporting..."
@@ -75,6 +76,7 @@ import VButton2 from "@/ui-lib/VButton2.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import { useModal } from "@/ui-lib/modals/modal_utils";
 import Stack from "@/ui-lib/layout/Stack.vue";
+import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const packageStore = usePackageStore();
 const componentStore = useComponentsStore();
@@ -126,11 +128,14 @@ const schemaVariantOptions = computed(() =>
 );
 
 const exportPkg = async () => {
-  await packageStore.EXPORT_PACKAGE({
+  const result = await packageStore.EXPORT_PACKAGE({
     ...packageExportReq.value,
     schemaVariants: schemaVariantsForExport.value,
   });
-  close();
-  packageStore.LOAD_PACKAGES();
+  if (result.result.success) {
+    close();
+    await packageStore.LOAD_PACKAGES();
+  }
+
 };
 </script>

@@ -1,4 +1,4 @@
-use super::{get_new_pkg_path, PkgResult};
+use super::{get_new_pkg_path, PkgResult, PkgError};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{SchemaVariantId, Visibility, WsEvent};
@@ -28,6 +28,18 @@ pub async fn export_pkg(
     Json(request): Json<ExportPkgRequest>,
 ) -> PkgResult<Json<ExportPkgResponse>> {
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
+    if (request.name.trim().is_empty()) {
+       return Err(PkgError::PackageNameEmpty);
+    }
+
+    if (request.version.trim().is_empty()) {
+        return Err(PkgError::PackageVersionEmpty);
+    }
+
+    if request.schema_variants.is_empty() {
+        return Err(PkgError::PackageExportEmpty);
+    }
 
     let new_pkg_path = get_new_pkg_path(&builder, &request.name, &request.version).await?;
 
