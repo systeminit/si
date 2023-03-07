@@ -186,7 +186,7 @@ export const useFuncStore = () => {
         return new ApiRequest<FuncSummary>({
           method: "post",
           url: "func/create_func",
-          params: { createFuncRequest, ...visibility },
+          params: { ...createFuncRequest, ...visibility },
         });
       },
 
@@ -198,7 +198,7 @@ export const useFuncStore = () => {
           method: "post",
           url: "dev/create_func",
           params: {
-            createFuncRequest,
+            ...createFuncRequest,
             ...visibility, // seems odd the backend is asking for this?
           },
         });

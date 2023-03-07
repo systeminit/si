@@ -12,7 +12,7 @@
       <CodeEditor
         v-model="editingFunc"
         typescript
-        :disabled="!isDevMode && isBuiltin"
+        :disabled="isBuiltin"
         @change="updateFuncCode"
       />
     </template>

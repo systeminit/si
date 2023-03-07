@@ -15,14 +15,11 @@
             :fn-types="CREATE_OPTIONS"
             @selected-func-variant="createNewFunc"
           />
-
-          <NewFuncDropdown
-            v-if="isDevMode"
-            label="Builtin"
-            :fn-types="BUILTIN_CREATE_OPTIONS"
-            @selected-func-variant="openCreateBuiltinModal"
-          />
         </div>
+        <ErrorMessage
+          v-if="createFuncReqStatus.isError"
+          :request-status="createFuncReqStatus"
+        />
         <SiSearch
           auto-search
           placeholder="search functions"
@@ -62,31 +59,6 @@
         </SiCollapsible>
       </ul>
     </ScrollArea>
-
-    <Modal
-      ref="createBuiltinModalRef"
-      size="sm"
-      title="Create Builtin Function"
-    >
-      <Stack>
-        <VormInput
-          v-model="newBuiltinFuncName"
-          label="New function name"
-          placeholder="ex: myCoolFunc"
-          :regex="VALID_FUNC_NAME_REGEX"
-          regex-message="Letters and numbers only"
-          required
-        />
-        <VButton2
-          :disabled="validationState.isError"
-          :request-status="createBuiltinFuncReqStatus"
-          icon="plus-circle"
-          label="Create"
-          tone="success"
-          @click="tryCreateBuiltinFunc"
-        />
-      </Stack>
-    </Modal>
   </div>
 </template>
 
@@ -103,12 +75,10 @@ import Modal from "@/ui-lib/modals/Modal.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
-import VormInput from "@/ui-lib/forms/VormInput.vue";
-import Stack from "@/ui-lib/layout/Stack.vue";
-import VButton2 from "@/ui-lib/VButton2.vue";
 import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 import FuncSkeleton from "@/components/FuncSkeleton.vue";
 import ScrollArea from "@/ui-lib/ScrollArea.vue";
+import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 
 const routeToFunc = useRouteToFunc();
 const funcStore = useFuncStore();
@@ -141,19 +111,13 @@ const funcsByVariant = computed(() =>
 );
 
 // creating new regular function ////////////
-// TODO: show spinner and error message!
-// const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
+const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
 async function createNewFunc(variant: FuncVariant) {
   const createReq = await funcStore.CREATE_FUNC({ variant });
   if (createReq.result.success) {
     routeToFunc(createReq.result.data.id);
   }
 }
-
-// creating new builtin function ////////
-
-const createBuiltinModalRef = ref<InstanceType<typeof Modal>>();
-
 const newBuiltinFuncName = ref("");
 const newBuiltinFuncVariant = ref<FuncVariant>();
 
@@ -164,10 +128,6 @@ const openCreateBuiltinModal = (variant: FuncVariant) => {
 };
 
 const VALID_FUNC_NAME_REGEX = /^[a-z0-9]+$/i;
-
-const createBuiltinFuncReqStatus = funcStore.getRequestStatus(
-  "CREATE_BUILTIN_FUNC",
-);
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 async function tryCreateBuiltinFunc() {
