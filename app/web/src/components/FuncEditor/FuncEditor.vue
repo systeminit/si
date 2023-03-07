@@ -9,12 +9,7 @@
       >
     </div>
     <template v-else-if="loadFuncDetailsReq.isSuccess && editingFunc">
-      <CodeEditor
-        v-model="editingFunc"
-        typescript
-        :disabled="!isDevMode && isBuiltin"
-        @change="updateFuncCode"
-      />
+      <CodeEditor v-model="editingFunc" typescript @change="updateFuncCode" />
     </template>
     <ErrorMessage
       v-else-if="loadFuncDetailsReq.isError"
@@ -39,10 +34,7 @@ const props = defineProps({
 const funcStore = useFuncStore();
 const { selectedFuncSummary, selectedFuncDetails } = storeToRefs(funcStore);
 
-const isDevMode = import.meta.env.DEV;
-
 const editingFunc = ref<string>(selectedFuncDetails.value?.code ?? "");
-const isBuiltin = ref<boolean>(selectedFuncSummary.value?.isBuiltin ?? false);
 
 const loadFuncDetailsReq = funcStore.getRequestStatus(
   "FETCH_FUNC_DETAILS",
@@ -52,8 +44,18 @@ const loadFuncDetailsReq = funcStore.getRequestStatus(
 watch(
   selectedFuncDetails,
   () => {
-    if (editingFunc.value !== selectedFuncDetails.value?.code) {
-      editingFunc.value = selectedFuncDetails.value?.code ?? "";
+    if (!selectedFuncDetails.value) {
+      return;
+    }
+
+    // We have to ensure the changed func is the one we're looking at here, otherwise
+    // we will copy the code from each the currently edited func into every func we've edited in
+    // the past!
+    if (
+      selectedFuncDetails.value.id === props.funcId &&
+      editingFunc.value !== selectedFuncDetails.value.code
+    ) {
+      editingFunc.value = selectedFuncDetails.value.code;
     }
   },
   { immediate: true },

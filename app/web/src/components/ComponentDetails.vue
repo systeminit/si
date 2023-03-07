@@ -82,7 +82,7 @@
           </TabGroupItem>
           <TabGroupItem label="Resource" slug="resource">
             <CodeViewer
-	      v-if="selectedComponent.resource.data !== null"
+              v-if="selectedComponent.resource.data !== null"
               :code="
                 selectedComponent.resource.data
                   ? JSON.stringify(selectedComponent.resource.data, null, 2)
@@ -103,7 +103,12 @@
                 />
               </template>
             </CodeViewer>
-	    <div v-else class="w-full text-center text-lg mt-5 dark:text-neutral-50 text-neutral-900">This component does not have a resource associated with it yet</div>
+            <div
+              v-else
+              class="w-full text-center text-lg mt-5 dark:text-neutral-50 text-neutral-900"
+            >
+              This component does not have a resource associated with it yet
+            </div>
           </TabGroupItem>
         </TabGroup>
       </div>

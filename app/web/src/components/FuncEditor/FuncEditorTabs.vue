@@ -70,17 +70,19 @@ const onTabChange = (tabSlug: string | undefined) => {
 // this is responsible for watching the selected func (which is based on the URL)
 // and adding it to the open list when it changes - and then selecting that tab
 watch(
-  [() => funcStore.selectedFuncSummary],
-  () => {
-    const funcId = funcStore.selectedFuncSummary?.id;
-    if (!funcId) return;
-    if (!openFuncIds.value.includes(funcId)) {
-      openFuncIds.value.push(funcId);
+  () => funcStore.selectedFuncId,
+  (newFuncId) => {
+    if (typeof newFuncId === "undefined") {
+      return;
     }
-    // have to wait for the new tab to be rendered before we can select it
+
+    if (!openFuncIds.value.includes(newFuncId)) {
+      openFuncIds.value.push(newFuncId);
+    }
+
     // TODO: maybe we can make TabGroup deal with this instead?
     nextTick(() => {
-      tabGroupRef.value?.selectTab(funcId);
+      tabGroupRef.value?.selectTab(newFuncId);
     });
   },
   { immediate: true },

@@ -146,10 +146,7 @@ export const useFuncStore = () => {
       async UPDATE_FUNC(func: FuncWithDetails) {
         return new ApiRequest<FuncWithDetails>({
           method: "post",
-          url:
-            import.meta.env.DEV && func.isBuiltin
-              ? "dev/save_func"
-              : "func/save_func",
+          url: "func/save_func",
           params: {
             ...func,
             ...visibility,
@@ -186,21 +183,7 @@ export const useFuncStore = () => {
         return new ApiRequest<FuncSummary>({
           method: "post",
           url: "func/create_func",
-          params: { createFuncRequest, ...visibility },
-        });
-      },
-
-      async CREATE_BUILTIN_FUNC(createFuncRequest: {
-        name: string;
-        variant: FuncVariant;
-      }) {
-        return new ApiRequest<FuncSummary>({
-          method: "post",
-          url: "dev/create_func",
-          params: {
-            createFuncRequest,
-            ...visibility, // seems odd the backend is asking for this?
-          },
+          params: { ...createFuncRequest, ...visibility },
         });
       },
 
@@ -270,7 +253,7 @@ export const useFuncStore = () => {
       },
       enqueueFuncSave(funcId: FuncId) {
         // Lots of ways to handle this... we may want to handle this debouncing in the component itself
-        // so the component has it's own "draft" state that it passes back to the store when it's ready to save
+        // so the component has its own "draft" state that it passes back to the store when it's ready to save
         // however this should work for now, and lets the store handle this logic
         if (!this.saveQueue[funcId]) {
           this.saveQueue[funcId] = _.debounce(() => {
@@ -290,14 +273,18 @@ export const useFuncStore = () => {
       this.FETCH_INPUT_SOURCE_LIST();
 
       // could do this from components, but may as well do here...
-      const stopWatchSelectedFunc = watch(
-        [() => this.selectedFuncSummary],
-        () => {
-          if (this.selectedFuncSummary) {
-            this.FETCH_FUNC_DETAILS(this.selectedFuncSummary?.id);
+      const stopWatchSelectedFunc = watch([() => this.selectedFuncId], () => {
+        if (this.selectedFuncId) {
+          // only fetch if we don't have this one already in our state,
+          // otherwise we can overwrite functions with their previous value
+          // before the save queue is drained.
+          if (
+            typeof this.funcDetailsById[this.selectedFuncId] === "undefined"
+          ) {
+            this.FETCH_FUNC_DETAILS(this.selectedFuncId);
           }
-        },
-      );
+        }
+      });
 
       const realtimeStore = useRealtimeStore();
       realtimeStore.subscribe(this.$id, `changeset/${selectedChangeSetId}`, [

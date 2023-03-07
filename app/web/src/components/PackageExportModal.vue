@@ -53,7 +53,10 @@
           </div>
         </li>
       </ul>
-      <ErrorMessage v-if="exportPkgReqStatus.isError" :request-status="exportPkgReqStatus" />
+      <ErrorMessage
+        v-if="exportPkgReqStatus.isError"
+        :request-status="exportPkgReqStatus"
+      />
       <VButton2
         :request-status="exportPkgReqStatus"
         loading-text="Exporting..."
@@ -136,6 +139,5 @@ const exportPkg = async () => {
     close();
     await packageStore.LOAD_PACKAGES();
   }
-
 };
 </script>
