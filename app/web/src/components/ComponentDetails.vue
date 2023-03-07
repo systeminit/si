@@ -103,7 +103,7 @@
                 />
               </template>
             </CodeViewer>
-	    <span v-else class="text-center text-lg mt-5 dark:text-neutral-50 text-neutral-900">This component does not have a resource associated with it yet</span>
+	    <div v-else class="w-full text-center text-lg mt-5 dark:text-neutral-50 text-neutral-900">This component does not have a resource associated with it yet</div>
           </TabGroupItem>
         </TabGroup>
       </div>
