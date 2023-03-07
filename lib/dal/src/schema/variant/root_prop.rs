@@ -309,8 +309,9 @@ impl RootProp {
         type_prop.set_parent_prop(ctx, si_prop_id).await?;
 
         // Override the schema variant color for nodes on the diagram.
-        let color_prop = Prop::new(ctx, "color", PropKind::String, None).await?;
+        let mut color_prop = Prop::new(ctx, "color", PropKind::String, None).await?;
         color_prop.set_parent_prop(ctx, si_prop_id).await?;
+        color_prop.set_widget_kind(ctx, WidgetKind::Color).await?;
         Self::create_validation(
             ctx,
             *color_prop.id(),

@@ -25,7 +25,10 @@
         :data-test="id"
         class="appearance-none block w-full py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
         :class="textBoxClasses"
+        required
+        :disabled="disabled"
         @input="valueChanged"
+        @blur="setDirty"
       />
       <input
         v-else

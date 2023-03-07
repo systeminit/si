@@ -58,6 +58,10 @@ export interface PropertyEditorPropWidgetKindSecretSelect {
   options: LabelList<string | number>;
 }
 
+export interface PropertyEditorPropWidgetKindColor {
+  kind: "color";
+}
+
 export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindText
   | PropertyEditorPropWidgetKindTextArea
@@ -68,7 +72,8 @@ export type PropertyEditorPropWidgetKind =
   | PropertyEditorPropWidgetKindArray
   | PropertyEditorPropWidgetKindComboBox
   | PropertyEditorPropWidgetKindSelect
-  | PropertyEditorPropWidgetKindSecretSelect;
+  | PropertyEditorPropWidgetKindSecretSelect
+  | PropertyEditorPropWidgetKindColor;
 
 export interface PropertyEditorProp {
   id: string;
