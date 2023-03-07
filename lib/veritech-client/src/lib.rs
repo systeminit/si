@@ -34,6 +34,10 @@ pub enum ClientError {
     NoResult,
     #[error("result error")]
     Result(#[from] SubscriptionError),
+    #[error("root connection closed")]
+    RootConnectionClosed,
+    #[error("unable to publish message: {0:?}")]
+    PublishingFailed(si_data_nats::Message),
 }
 
 pub type ClientResult<T> = Result<T, ClientError>;
@@ -214,18 +218,24 @@ impl Client {
             messaging.destination = &subject.as_str(),
             "publishing message"
         );
+
+        // Root reply mailbox will receive a reply if nobody is listening to the channel `subject`
+        let mut root_subscription = self.nats.subscribe(reply_mailbox_root.clone()).await?;
+
         self.nats
-            .publish_with_reply_or_headers(subject, Some(reply_mailbox_root.as_str()), None, msg)
+            .publish_with_reply_or_headers(subject, Some(reply_mailbox_root), None, msg)
             .await?;
 
-        // Wait for one message on the result reply mailbox
-        let result = result_subscription
-            .try_next()
-            .await?
-            .ok_or(ClientError::NoResult)?;
-        result_subscription.unsubscribe().await?;
-
-        Ok(result)
+        tokio::select! {
+            // Wait for one message on the result reply mailbox
+            result = result_subscription.try_next() => {
+                result_subscription.unsubscribe().await?;
+                result?.ok_or(ClientError::NoResult)
+            }
+            reply = root_subscription.next() => {
+                Err(ClientError::PublishingFailed(reply.ok_or(ClientError::RootConnectionClosed)??))
+            }
+        }
     }
 
     /// Gets a reference to the client's subject prefix.

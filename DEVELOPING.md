@@ -136,7 +136,6 @@ Potentially conflicting services include, but are not limited to, the following:
 * PostgreSQL DB
 * OpenTelemetry
 * NATS
-* Faktory
 * Watchtower
 
 In the case of a port conflict, a good strategy is to temporarily disable the host service until SI is no longer being

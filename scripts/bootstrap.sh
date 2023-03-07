@@ -75,6 +75,8 @@ function darwin-bootstrap {
     brew upgrade
     brew cleanup
     brew install "${pkgs[@]}"
+
+    install-pnpm-posix
 }
 
 function arch-bootstrap {
@@ -89,8 +91,10 @@ function arch-bootstrap {
     )
 
     sudo pacman -Syu --noconfirm "${pkgs[@]}"
+
     install-kubeval-linux-amd64
     install-butane-linux-amd64
+    install-pnpm-posix
 }
 
 function fedora-bootstrap {
@@ -110,6 +114,8 @@ function fedora-bootstrap {
     sudo dnf upgrade -y --refresh
     sudo dnf autoremove -y
     sudo dnf install -y "${pkgs[@]}"
+
+    install-pnpm-posix
 }
 
 function pop-bootstrap {
@@ -136,6 +142,8 @@ function pop-bootstrap {
     brew upgrade
     brew cleanup
     brew install gcc kubeval butane skopeo awscli
+
+    install-pnpm-posix
 
     if [ "${SI_WSL2}" == "false" ] && [ ! $(command -v docker) ]; then
         sudo apt update
@@ -168,6 +176,7 @@ function ubuntu-bootstrap {
         protobuf-compiler
         skopeo
         wget
+	unzip
     )
 
     . /etc/os-release
@@ -181,9 +190,11 @@ function ubuntu-bootstrap {
     sudo apt upgrade -y
     sudo apt autoremove -y
     sudo apt install -y "${pkgs[@]}"
+
     install-kubeval-linux-amd64
     install-butane-linux-amd64
     install-awscli-linux-amd64
+    install-pnpm-posix
 
     if [ "${SI_WSL2}" == "false" ]; then
         echo "\
@@ -255,13 +266,27 @@ function install-butane-linux-amd64 {
 
 function install-awscli-linux-amd64 {
     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-    unzip awscliv2.zip
-    sudo ./aws/install
+    unzip -qo awscliv2.zip
+    sudo ./aws/install --update
     rm -rf ./aws ./awscliv2.zip
-    ln -s /usr/local/bin/aws /usr/bin/aws
+    ln -sf /usr/local/bin/aws /usr/bin/aws
+}
+
+function install-pnpm-posix {
+    echo "Install pnpm"
+    curl -fsSL https://get.pnpm.io/install.sh | sh -
+    if [[ -f ~/.volta/bin/pnpm ]]; then
+      echo "We have detected volta's pnpm, which does not work correctly.";
+      echo "Please remove with \`rm ~/.volta/bin/pnpm\`";
+      echo "";
+      exit 1;
+    fi
 }
 
 function check-dependencies {
+    echo "Check Dependencies"
+    exec $SHELL
+
     # Ensure we can get the absolute path of the required files.
     REALPATH=realpath
     if [ "$SI_OS" = "darwin" ]; then
