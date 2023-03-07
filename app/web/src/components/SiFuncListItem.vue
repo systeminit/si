@@ -15,7 +15,7 @@
       {{ func.name }}
     </div>
     <SiChip
-      :text="func.isBuiltin ? 'read-only' : 'custom'"
+      :text="func.isBuiltin ? 'builtin' : 'custom'"
       :variant="func.isBuiltin ? 'warning' : 'neutral'"
       class="right-4"
     />

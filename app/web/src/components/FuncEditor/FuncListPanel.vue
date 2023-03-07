@@ -71,11 +71,9 @@ import SiFuncListItem from "@/components/SiFuncListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { CUSTOMIZABLE_FUNC_TYPES, FuncVariant } from "@/api/sdf/dal/func";
 import NewFuncDropdown from "@/components/NewFuncDropdown.vue";
-import Modal from "@/ui-lib/modals/Modal.vue";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
-import { useValidatedInputGroup } from "@/ui-lib/forms/helpers/form-validation";
 import FuncSkeleton from "@/components/FuncSkeleton.vue";
 import ScrollArea from "@/ui-lib/ScrollArea.vue";
 import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
@@ -85,8 +83,6 @@ const funcStore = useFuncStore();
 const loadFuncsReqStatus = funcStore.getRequestStatus("FETCH_FUNC_LIST");
 const { funcList } = storeToRefs(funcStore);
 
-const isDevMode = import.meta.env.DEV;
-
 const searchString = ref("");
 
 const onSearch = (search: string) => {
@@ -94,10 +90,6 @@ const onSearch = (search: string) => {
 };
 
 const CREATE_OPTIONS = _.mapValues(CUSTOMIZABLE_FUNC_TYPES, "singularLabel");
-const BUILTIN_CREATE_OPTIONS = _.mapValues(
-  _.pickBy(CUSTOMIZABLE_FUNC_TYPES, { enableBuiltIn: true }),
-  "singularLabel",
-);
 
 const filteredList = computed(() => {
   if (!searchString.value) return funcList.value;
@@ -110,39 +102,11 @@ const funcsByVariant = computed(() =>
   _.groupBy(filteredList.value, (f) => f.variant),
 );
 
-// creating new regular function ////////////
 const createFuncReqStatus = funcStore.getRequestStatus("CREATE_FUNC");
 async function createNewFunc(variant: FuncVariant) {
   const createReq = await funcStore.CREATE_FUNC({ variant });
   if (createReq.result.success) {
     routeToFunc(createReq.result.data.id);
-  }
-}
-const newBuiltinFuncName = ref("");
-const newBuiltinFuncVariant = ref<FuncVariant>();
-
-const openCreateBuiltinModal = (variant: FuncVariant) => {
-  newBuiltinFuncName.value = "";
-  newBuiltinFuncVariant.value = variant;
-  createBuiltinModalRef.value?.open();
-};
-
-const VALID_FUNC_NAME_REGEX = /^[a-z0-9]+$/i;
-
-const { validationState, validationMethods } = useValidatedInputGroup();
-async function tryCreateBuiltinFunc() {
-  if (import.meta.env.DEV) {
-    if (validationMethods.hasError()) return;
-    const funcReq = await funcStore.CREATE_BUILTIN_FUNC({
-      name: `si:${newBuiltinFuncName.value}`,
-      variant: FuncVariant.Attribute,
-    });
-    if (funcReq.result.success) {
-      createBuiltinModalRef.value?.close();
-      routeToFunc(funcReq.result.data.id);
-    }
-  } else {
-    throw new Error("Cannot create builtin funcs outside of dev mode");
   }
 }
 </script>
