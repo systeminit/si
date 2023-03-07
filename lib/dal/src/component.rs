@@ -40,7 +40,7 @@ use crate::{
 };
 use crate::{AttributeValueId, QualificationError};
 use crate::{Edge, FixResolverError, NodeKind};
-pub use view::{ComponentView, ComponentViewError};
+pub use view::{ComponentView, ComponentViewError, ComponentViewProperties};
 
 pub mod code;
 pub mod confirmation;

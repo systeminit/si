@@ -2,10 +2,9 @@ use dal::change_status::ChangeStatus;
 use dal::edge::EdgeKind;
 use dal::{
     socket::{SocketArity, SocketEdgeKind, SocketKind},
-    Component, ComponentView, Connection, DalContext, Diagram, DiagramEdgeView, DiagramKind,
-    NodePosition, Schema, SchemaVariant, StandardModel,
+    Component, ComponentView, ComponentViewProperties, Connection, DalContext, Diagram,
+    DiagramEdgeView, DiagramKind, NodePosition, Schema, SchemaVariant, StandardModel,
 };
-use dal_test::helpers::component_view::ComponentViewProperties;
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
     test,

@@ -5,12 +5,10 @@
 use dal::{
     attribute::context::AttributeContextBuilder, node::NodeId, AttributeContext,
     AttributeReadContext, AttributeValue, AttributeValueId, Component, ComponentId, ComponentView,
-    DalContext, Prop, PropId, SchemaId, SchemaVariantId, StandardModel,
+    ComponentViewProperties, DalContext, Prop, PropId, SchemaId, SchemaVariantId, StandardModel,
 };
 use serde_json::Value;
 use std::collections::HashMap;
-
-use crate::helpers::component_view::ComponentViewProperties;
 
 #[derive(Debug)]
 /// Payload used for bundling a [`Component`](dal::Component) with all metadata needed for a test.

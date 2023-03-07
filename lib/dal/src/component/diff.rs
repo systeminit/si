@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::component::ComponentResult;
 use crate::{
-    CodeLanguage, CodeView, Component, ComponentError, ComponentId, ComponentView, DalContext,
-    StandardModel,
+    CodeLanguage, CodeView, Component, ComponentError, ComponentId, ComponentView,
+    ComponentViewProperties, DalContext, StandardModel,
 };
 
 const NEWLINE: &str = "\n";
@@ -43,9 +43,11 @@ impl ComponentDiff {
             return Err(ComponentError::InvalidContextForDiff);
         }
 
-        // TODO(nick): perhaps, we can serialize the value into other kinds of structure in the future.
         let curr_component_view = ComponentView::new(ctx, component_id).await?;
-        let curr_json = serde_json::to_string_pretty(&curr_component_view.properties)?;
+        let mut curr_component_view = ComponentViewProperties::try_from(curr_component_view)?;
+        curr_component_view.drop_private();
+
+        let curr_json = serde_json::to_string_pretty(&curr_component_view)?;
 
         // Find the "diffs" given the head dal context only if the component exists on head.
         let diffs: Vec<CodeView> = if Component::get_by_id(&head_ctx, &component_id)
@@ -53,7 +55,10 @@ impl ComponentDiff {
             .is_some()
         {
             let prev_component_view = ComponentView::new(&head_ctx, component_id).await?;
-            let prev_json = serde_json::to_string_pretty(&prev_component_view.properties)?;
+            let mut prev_component_view = ComponentViewProperties::try_from(prev_component_view)?;
+            prev_component_view.drop_private();
+
+            let prev_json = serde_json::to_string_pretty(&prev_component_view)?;
 
             let mut lines = Vec::new();
             for diff_object in diff::lines(&prev_json, &curr_json) {
