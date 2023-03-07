@@ -66,7 +66,7 @@
             </template>
           </StatusBarTab>
         </Tab> -->
-        <Tab
+        <!-- <Tab
           v-slot="{ selected }"
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
@@ -82,7 +82,7 @@
               </StatusBarTabPill>
             </template>
           </StatusBarTab>
-        </Tab>
+        </Tab> -->
         <Tab
           v-slot="{ selected }"
           :aria-hidden="!isViewMode"
