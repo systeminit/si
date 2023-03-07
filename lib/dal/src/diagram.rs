@@ -174,7 +174,22 @@ impl Diagram {
 
             let positions = NodePosition::list_for_node(ctx_with_deleted, *node.id()).await?;
 
-            let position = match positions.into_iter().next() {
+            let mut maybe_position = None;
+
+            for this_position in positions {
+                maybe_position = Some(this_position.clone());
+                // NOTE(victor): This is setup to get you either the head position, or the specific changeset position, with priority on the latter
+                // but it's brittle since if the way we create positions changes it will just give you the last position on the list there's no specific one
+                // The real fix for this would be to fix the query to return the most valid entry for visibility OR make node_position a single value per node
+                // This second option feels more adequate, but we need to check with product if multiple node position contexts are coming back.
+                if maybe_position.is_some() {
+                    if this_position.visibility().change_set_pk == ctx.visibility().change_set_pk {
+                        break;
+                    }
+                }
+            }
+
+            let position = match maybe_position {
                 Some(pos) => pos,
                 None => return Err(DiagramError::NoNodePositionsFound(*node.id(), *node.kind())),
             };
