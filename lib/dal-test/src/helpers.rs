@@ -14,7 +14,6 @@ use names::{Generator, Name};
 
 pub mod builtins;
 pub mod component_payload;
-pub mod component_view;
 
 /// Commits the transactions in the given [`DalContext`] and returns a new context which reuses the
 /// underlying [`dal::Connections`] and with identical state.

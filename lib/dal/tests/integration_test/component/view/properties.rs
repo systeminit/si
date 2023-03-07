@@ -3,19 +3,14 @@ use dal::schema::variant::leaves::LeafKind;
 use dal::{
     attribute::context::AttributeContextBuilder,
     schema::variant::leaves::{LeafInput, LeafInputLocation},
+    AttributeReadContext, AttributeValue, Component, ComponentView, ComponentViewProperties,
+    DalContext, Func, FuncBackendKind, FuncBackendResponseType, PropKind, SchemaVariant,
+    StandardModel,
 };
 
-use dal::{
-    AttributeReadContext, AttributeValue, Component, ComponentView, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, PropKind, SchemaVariant, StandardModel,
-};
-
-use dal_test::helpers::component_view::ComponentViewProperties;
-
-use dal_test::test_harness::create_prop_and_set_parent;
 use dal_test::{
     test,
-    test_harness::{create_schema, create_schema_variant_with_root},
+    test_harness::{create_prop_and_set_parent, create_schema, create_schema_variant_with_root},
 };
 use pretty_assertions_sorted::assert_eq;
 

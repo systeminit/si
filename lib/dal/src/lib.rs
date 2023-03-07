@@ -104,7 +104,7 @@ pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{
     resource::ResourceView, status::ComponentStatus, status::HistoryActorTimestamp, Component,
-    ComponentError, ComponentId, ComponentView,
+    ComponentError, ComponentId, ComponentView, ComponentViewProperties,
 };
 pub use context::{
     AccessBuilder, Connections, DalContext, DalContextBuilder, RequestContext, ServicesContext,

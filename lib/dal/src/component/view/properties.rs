@@ -1,16 +1,14 @@
-use dal::ComponentView;
-use serde::Deserialize;
-use serde::Serialize;
-use thiserror::Error;
+use crate::{ComponentError, ComponentView};
+use serde::{Deserialize, Serialize};
 
-/// This struct provides the ability to drop fields from a [`ComponentView`](dal::ComponentView)
+/// This struct provides the ability to drop fields from a [`ComponentView`](crate::ComponentView)
 /// properties tree and then re-render the view using [`Self::to_value()`].
 ///
 /// - It is not recommended to use [`self`] "as-is" in assertions.
 /// - It is recommended to use [`Self::to_value()`] in assertions.
 ///
 /// The fields on this struct are **intentionally private**.
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 pub struct ComponentViewProperties {
     si: serde_json::Value,
     domain: serde_json::Value,
@@ -24,13 +22,16 @@ pub struct ComponentViewProperties {
     confirmation: Option<serde_json::Value>,
 }
 
-#[derive(Error, Debug)]
-pub enum ComponentViewPropertiesError {
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-}
-
 impl ComponentViewProperties {
+    pub fn drop_private(&mut self) -> &mut Self {
+        *self = Self {
+            si: self.si.take(),
+            domain: self.domain.take(),
+            ..Default::default()
+        };
+        self
+    }
+
     pub fn drop_code(&mut self) -> &mut Self {
         self.code = None;
         self
@@ -52,7 +53,7 @@ impl ComponentViewProperties {
 }
 
 impl TryFrom<ComponentView> for ComponentViewProperties {
-    type Error = ComponentViewPropertiesError;
+    type Error = ComponentError;
 
     fn try_from(value: ComponentView) -> Result<Self, Self::Error> {
         Ok(serde_json::from_value(value.properties)?)

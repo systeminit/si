@@ -10,6 +10,10 @@ use crate::{
     PropError, PropId, SchemaVariantId, SecretError, SecretId, StandardModel, StandardModelError,
 };
 
+pub mod properties;
+
+pub use properties::ComponentViewProperties;
+
 type ComponentViewResult<T> = Result<T, ComponentViewError>;
 
 #[derive(Error, Debug)]

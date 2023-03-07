@@ -11,11 +11,11 @@ use axum::Router;
 use dal::component::confirmation::ConfirmationView;
 use dal::property_editor::values::PropertyEditorValue;
 use dal::socket::SocketEdgeKind;
+use dal::ComponentViewProperties;
 use dal::{
     AttributeValue, AttributeValueId, ComponentId, ComponentView, DalContext, FixBatchId, NodeId,
     Prop, PropKind, Schema, SchemaId, Socket, StandardModel, Visibility,
 };
-use dal_test::helpers::component_view::ComponentViewProperties;
 use sdf::service::change_set::apply_change_set::{ApplyChangeSetRequest, ApplyChangeSetResponse};
 use sdf::service::change_set::create_change_set::{
     CreateChangeSetRequest, CreateChangeSetResponse,
