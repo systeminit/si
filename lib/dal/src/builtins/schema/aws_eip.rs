@@ -78,7 +78,7 @@ impl MigrationDriver {
             .await?;
 
         // Prop: /root/domain/awsResourceType
-        let aws_resource_type_prop = self
+        let mut aws_resource_type_prop = self
             .create_prop(
                 ctx,
                 "awsResourceType",
@@ -88,6 +88,7 @@ impl MigrationDriver {
                 None,
             )
             .await?;
+        aws_resource_type_prop.set_hidden(ctx, true).await?;
 
         // Prop: /root/domain/region
         let region_prop = self

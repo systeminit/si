@@ -198,7 +198,7 @@ impl MigrationDriver {
             )
             .await?;
 
-        let aws_resource_type_prop = self
+        let mut aws_resource_type_prop = self
             .create_prop(
                 ctx,
                 "awsResourceType",
@@ -208,6 +208,7 @@ impl MigrationDriver {
                 None,
             )
             .await?;
+        aws_resource_type_prop.set_hidden(ctx, true).await?;
 
         let tags_map_prop = self
             .create_prop(
