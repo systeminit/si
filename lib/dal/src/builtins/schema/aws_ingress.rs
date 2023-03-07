@@ -32,11 +32,12 @@ impl MigrationDriver {
         ui_menu_category: &str,
         node_color: &str,
     ) -> BuiltinsResult<()> {
+        let name = "Ingress";
         let (schema, mut schema_variant, root_prop, _, _, _) = match self
             .create_schema_and_variant(
                 ctx,
                 SchemaVariantDefinitionMetadataJson::new(
-                    "Ingress",
+                    name,
                     None,
                     ui_menu_category,
                     node_color,
@@ -619,6 +620,15 @@ impl MigrationDriver {
             name,
             ActionKind::Other,
             context,
+        )
+        .await?;
+
+        self.add_deletion_confirmation_and_workflow(
+            ctx,
+            name,
+            &schema_variant,
+            Some("AWS"),
+            "si:awsIngressDeleteWorkflow",
         )
         .await?;
 
