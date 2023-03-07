@@ -8,8 +8,13 @@
       <div
         class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
       >
-        <!-- TODO - currently this button doesn't do anything -->
-        <VButton2 label="Package" tone="action" icon="plus" size="sm" />
+        <VButton2
+          label="Package"
+          tone="action"
+          icon="plus"
+          size="sm"
+          @click="openModal"
+        />
       </div>
       <SiSearch auto-search placeholder="search packages" />
       <div
@@ -45,19 +50,28 @@
           </li>
         </ul>
       </SiCollapsible>
+      <PackageExportModal ref="exportModalRef" />
     </template>
   </ScrollArea>
 </template>
 
 <script lang="ts" setup>
+import { ref } from "vue";
 import SiPackageListItem from "@/components/SiPackageListItem.vue";
 import SiSearch from "@/components/SiSearch.vue";
 import { usePackageStore } from "@/store/package.store";
 import VButton2 from "@/ui-lib/VButton2.vue";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import ScrollArea from "@/ui-lib/ScrollArea.vue";
-import SiCollapsible from "../SiCollapsible.vue";
+import Modal from "@/ui-lib/modals/Modal.vue";
+import SiCollapsible from "./SiCollapsible.vue";
+import PackageExportModal from "./PackageExportModal.vue";
 
 const packageStore = usePackageStore();
 const loadPackagesReqStatus = packageStore.getRequestStatus("LOAD_PACKAGES");
+const exportModalRef = ref<InstanceType<typeof Modal>>();
+
+const openModal = () => {
+  exportModalRef.value?.open();
+};
 </script>

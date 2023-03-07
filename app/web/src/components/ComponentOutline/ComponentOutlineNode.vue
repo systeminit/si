@@ -85,14 +85,14 @@
               :status="confirmationStatus"
               size="xs"
             />
-          </div>
 
-          <!-- change status -->
-          <StatusIndicatorIcon
-            type="change"
-            :status="component.changeStatus"
-            size="sm"
-          />
+            <!-- change status -->
+            <StatusIndicatorIcon
+              type="change"
+              :status="component.changeStatus"
+              size="xs"
+            />
+          </div>
         </div>
       </div>
     </div>

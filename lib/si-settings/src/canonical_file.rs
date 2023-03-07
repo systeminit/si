@@ -194,6 +194,7 @@ mod tests {
                 (&manifest_dir, "../../../../../../../../../etc/passwd"),
                 format!("{}/passwd", &manifest_dir),
             ),
+            ((&manifest_dir, "../"), format!("{}/lib", &manifest_dir)),
         ];
 
         for ((dir_path, file_name), expectation) in test_data {

@@ -44,6 +44,13 @@ export interface PkgGetResponse {
   hash: string;
 }
 
+export interface PkgExportRequest {
+  name: string;
+  version: string;
+  description?: string;
+  schemaVariants: string[];
+}
+
 export interface PackageListItem {
   name: string;
   installed: boolean;
@@ -126,6 +133,14 @@ export const usePackageStore = () => {
                 };
               }
             },
+          });
+        },
+
+        async EXPORT_PACKAGE(exportRequest: PkgExportRequest) {
+          return new ApiRequest({
+            method: "post",
+            url: "/pkg/export_pkg",
+            params: { ...exportRequest, ...visibility },
           });
         },
       },
