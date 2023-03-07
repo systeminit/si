@@ -7,5 +7,6 @@ while :; do
   if [ "$?" = "0" ]; then
     break
   fi
+  sleep 1
 done
 echo "ready"
