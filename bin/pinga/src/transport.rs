@@ -1,11 +1,12 @@
 use async_trait::async_trait;
 use faktory_async::{BeatState, FailConfig};
 use futures::StreamExt;
-use si_data_nats::NatsClient;
+use si_data_faktory::FaktoryConfig;
+use si_data_nats::{NatsClient, NatsConfig};
 use telemetry_application::prelude::*;
 use tokio::sync::{mpsc, watch};
 
-use crate::{config, JobError};
+use crate::JobError;
 use dal::{job::consumer::JobInfo, FaktoryProcessor, JobQueueProcessor, NatsProcessor};
 
 pub enum ExecutionState {
@@ -17,8 +18,9 @@ pub enum ExecutionState {
 #[async_trait]
 pub trait Consumer: Sized {
     type Client: Sized;
+    type ClientConfig;
 
-    async fn connect(config: &config::Config) -> Result<Self::Client, JobError>;
+    async fn connect(config: &Self::ClientConfig) -> Result<Self::Client, JobError>;
     fn new_processor(
         client: Self::Client,
         alive_marker: mpsc::Sender<()>,
@@ -33,10 +35,11 @@ pub trait Consumer: Sized {
 #[async_trait]
 impl Consumer for faktory_async::Client {
     type Client = Self;
+    type ClientConfig = FaktoryConfig;
 
-    async fn connect(config: &config::Config) -> Result<Self::Client, JobError> {
+    async fn connect(config: &Self::ClientConfig) -> Result<Self::Client, JobError> {
         let config = faktory_async::Config::from_uri(
-            &config.faktory().url,
+            &config.url,
             Some("pinga".to_string()),
             Some(uuid::Uuid::new_v4().to_string()),
         );
@@ -131,9 +134,10 @@ impl Consumer for faktory_async::Client {
 #[async_trait]
 impl Consumer for si_data_nats::Subscription {
     type Client = NatsClient;
+    type ClientConfig = NatsConfig;
 
-    async fn connect(config: &config::Config) -> Result<Self::Client, JobError> {
-        Ok(NatsClient::new(config.nats()).await?)
+    async fn connect(config: &Self::ClientConfig) -> Result<Self::Client, JobError> {
+        Ok(NatsClient::new(config).await?)
     }
     fn new_processor(
         client: Self::Client,

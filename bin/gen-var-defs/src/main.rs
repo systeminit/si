@@ -167,7 +167,7 @@ async fn main() -> Result<()> {
         Box::new(job_processor),
         veritech.clone(),
         Arc::new(encryption_key),
-        "council".to_owned(),
+        "council",
         None,
     );
 

@@ -32,9 +32,10 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
-    #[builder(default = "FaktoryConfig::default()")]
-    faktory: FaktoryConfig,
-
+    // TODO(fnichol): remove when faktory goes away
+    //
+    // #[builder(default = "FaktoryConfig::default()")]
+    // faktory: FaktoryConfig,
     cyclone_encryption_key_path: CanonicalFile,
 }
 
@@ -55,11 +56,13 @@ impl Config {
         &self.nats
     }
 
-    /// Gets a reference to the config's faktory.
-    #[must_use]
-    pub fn faktory(&self) -> &FaktoryConfig {
-        &self.faktory
-    }
+    // TODO(fnichol): remove when faktory goes away
+    //
+    // /// Gets a reference to the config's faktory.
+    // #[must_use]
+    // pub fn faktory(&self) -> &FaktoryConfig {
+    //     &self.faktory
+    // }
 
     /// Gets a reference to the config's cyclone public key path.
     #[must_use]
@@ -115,7 +118,9 @@ impl TryFrom<ConfigFile> for Config {
         let mut config = Config::builder();
         config.pg_pool(value.pg);
         config.nats(value.nats);
-        config.faktory(value.faktory);
+        // TODO(fnichol): remove when faktory goes away
+        //
+        // config.faktory(value.faktory);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.build().map_err(Into::into)
     }

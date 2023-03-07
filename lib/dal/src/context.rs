@@ -47,7 +47,7 @@ impl ServicesContext {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: VeritechClient,
         encryption_key: Arc<EncryptionKey>,
-        council_subject_prefix: String,
+        council_subject_prefix: impl Into<String>,
         pkgs_path: Option<PathBuf>,
     ) -> Self {
         Self {
@@ -56,7 +56,7 @@ impl ServicesContext {
             job_processor,
             veritech,
             encryption_key,
-            council_subject_prefix,
+            council_subject_prefix: council_subject_prefix.into(),
             pkgs_path,
         }
     }

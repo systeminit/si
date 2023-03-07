@@ -36,7 +36,7 @@ async fn ctx() -> Result<(DalContext, mpsc::Receiver<()>)> {
     let pg_pool = create_pg_pool().await?;
     let nats_conn = connect_to_nats().await?;
     let veritech = create_veritech_client(nats_conn.clone());
-    let council_subject_prefix = "council".to_owned();
+    let council_subject_prefix = "council";
 
     let (alive_marker, job_processor_shutdown_rx) = mpsc::channel(1);
     let job_processor = connect_processor(nats_conn.clone(), alive_marker).await?;

@@ -8,7 +8,7 @@ use dal::{
     ServicesContext, TransactionsError,
 };
 use futures::{future::FutureExt, Future};
-use si_data_nats::NatsClient;
+use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolError};
 use telemetry_application::{
     prelude::*, ApplicationTelemetryClient, TelemetryClient, TelemetryConfig,
@@ -30,6 +30,8 @@ type Transport = si_data_nats::Subscription;
 // type Transport = faktory_async::Client;
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
+
+const COUNCIL_SUBJECT_PREFIX: &str = "council";
 
 fn main() {
     std::thread::Builder::new()
@@ -132,19 +134,19 @@ async fn run(
     let config = config::Config::try_from(args)?;
 
     let encryption_key =
-        veritech_client::EncryptionKey::load(config.cyclone_encryption_key_path()).await?;
+        Arc::new(veritech_client::EncryptionKey::load(config.cyclone_encryption_key_path()).await?);
 
-    let nats = NatsClient::new(config.nats()).await?;
+    let nats_conn = NatsClient::new(config.nats()).await?;
 
     let pg_pool = PgPool::new(config.pg_pool()).await?;
 
-    let veritech = veritech_client::Client::new(nats.clone());
+    let veritech = veritech_client::Client::new(nats_conn.clone());
 
     let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
 
     info!("Creating transport connection");
 
-    let client = Transport::connect(&config).await?;
+    let client = Transport::connect(config.nats()).await?;
 
     info!("Spawned transport connection.");
 
@@ -153,15 +155,19 @@ async fn run(
     const NUM_TASKS: usize = 10;
     let mut handles = Vec::with_capacity(NUM_TASKS);
     for _ in 0..NUM_TASKS {
-        handles.push(tokio::task::spawn(start_job_executor(
-            Transport::subscribe(&client).await?,
+        let job_executor = JobExecutor::create(
             pg_pool.clone(),
-            nats.clone(),
+            nats_conn.clone(),
             veritech.clone(),
             job_processor.clone(),
-            encryption_key,
-            shutdown_request_rx.clone(),
-        )));
+            encryption_key.clone(),
+            config.nats(),
+        )
+        .await?;
+
+        handles.push(tokio::task::spawn(
+            job_executor.start(shutdown_request_rx.clone()),
+        ));
     }
     drop(job_processor);
 
@@ -181,37 +187,55 @@ async fn run(
     Ok(())
 }
 
-/// Start the job executor
-async fn start_job_executor(
-    mut subscription: Transport,
-    pg: PgPool,
-    nats: NatsClient,
-    veritech: veritech_client::Client,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    encryption_key: veritech_client::EncryptionKey,
-    mut shutdown_request_rx: watch::Receiver<()>,
-) {
-    let services_context = ServicesContext::new(
-        pg.clone(),
-        nats.clone(),
-        job_processor,
-        veritech.clone(),
-        Arc::new(encryption_key),
-        "council".to_owned(),
-        None,
-    );
-    let ctx_builder = DalContext::builder(services_context);
+struct JobExecutor {
+    ctx_builder: DalContextBuilder,
+    subscription: Transport,
+}
 
-    loop {
-        tokio::time::sleep(Duration::from_millis(10)).await;
+impl JobExecutor {
+    async fn create(
+        pg_pool: PgPool,
+        nats_conn: NatsClient,
+        veritech: veritech_client::Client,
+        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+        encryption_key: Arc<veritech_client::EncryptionKey>,
+        nats_config: &NatsConfig,
+    ) -> Result<Self> {
+        let subscription = {
+            let client = Transport::connect(nats_config).await?;
+            Transport::subscribe(&client).await?
+        };
 
-        match subscription.fetch_next(&mut shutdown_request_rx).await {
-            ExecutionState::Stop => break,
-            ExecutionState::Idle => {}
-            ExecutionState::Process(job) => {
-                let jid = job.id.to_owned();
-                let result = execute_job_fallible(job, ctx_builder.clone()).await;
-                subscription.post_process(jid, result).await;
+        let services_context = ServicesContext::new(
+            pg_pool,
+            nats_conn,
+            job_processor,
+            veritech.clone(),
+            encryption_key,
+            COUNCIL_SUBJECT_PREFIX,
+            None,
+        );
+        let ctx_builder = DalContext::builder(services_context);
+
+        Ok(Self {
+            ctx_builder,
+            subscription,
+        })
+    }
+
+    /// Start the job executor
+    async fn start(mut self, mut shutdown_request_rx: watch::Receiver<()>) {
+        loop {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+
+            match self.subscription.fetch_next(&mut shutdown_request_rx).await {
+                ExecutionState::Stop => break,
+                ExecutionState::Idle => {}
+                ExecutionState::Process(job) => {
+                    let jid = job.id.to_owned();
+                    let result = execute_job_fallible(job, self.ctx_builder.clone()).await;
+                    self.subscription.post_process(jid, result).await;
+                }
             }
         }
     }
