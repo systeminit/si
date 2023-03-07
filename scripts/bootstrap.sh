@@ -276,9 +276,9 @@ function install-pnpm-posix {
     echo "Install pnpm"
     curl -fsSL https://get.pnpm.io/install.sh | sh -
     if [[ -f ~/.volta/bin/pnpm ]]; then
+      echo "";
       echo "We have detected volta's pnpm, which does not work correctly.";
       echo "Please remove with \`rm ~/.volta/bin/pnpm\`";
-      echo "";
       exit 1;
     fi
 }
