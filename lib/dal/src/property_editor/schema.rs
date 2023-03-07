@@ -133,6 +133,7 @@ pub enum PropertyEditorPropWidgetKind {
     SecretSelect { options: LabelList<SecretId> },
     Select { options: Option<Value> },
     ComboBox { options: Option<Value> },
+    Color,
     Text,
     TextArea,
 }
@@ -151,6 +152,7 @@ impl PropertyEditorPropWidgetKind {
             WidgetKind::Select => Self::Select {
                 options: widget_options,
             },
+            WidgetKind::Color => Self::Color,
             WidgetKind::SecretSelect => Self::SecretSelect {
                 options: LabelList::new(
                     Secret::list(ctx)

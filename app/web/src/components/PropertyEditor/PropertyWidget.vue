@@ -118,6 +118,20 @@
       :class="INPUT_CLASSES"
       @updated-property="updatedProperty($event)"
     />
+    <WidgetColorBox
+      v-else-if="schemaProp.widgetKind.kind === 'color'"
+      :name="schemaProp.name"
+      :path="path"
+      :collapsed-paths="collapsedPaths"
+      :value="propValue.value"
+      :prop-id="propValue.propId"
+      :value-id="propValue.id"
+      :doc-link="schemaProp.docLink"
+      :validation="validation"
+      :disabled="disabled"
+      :class="INPUT_CLASSES"
+      @updated-property="updatedProperty($event)"
+    />
 
     <!-- restricting to text props for now -->
 
@@ -164,6 +178,7 @@ import WidgetSelectBox from "./WidgetSelectBox.vue";
 import WidgetArray from "./WidgetArray.vue";
 import WidgetMap from "./WidgetMap.vue";
 import WidgetComboBox from "./WidgetComboBox.vue";
+import WidgetColorBox from "./WidgetColorBox.vue";
 
 const INPUT_CLASSES = tw`pl-lg pr-sm pt-sm`;
 
