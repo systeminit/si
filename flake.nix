@@ -18,7 +18,7 @@
         # Provides a `rustToolchain` attribute for Nixpkgs that we can use to 
         # create a Rust environment
         (self: super: {
-          rustToolchain = super.rust-bin.stable.latest.default;
+          rustToolchain = super.rust-bin.fromRustupToolchainFile ./rust-toolchain;
         })
       ];
 
@@ -46,6 +46,8 @@
             docker-compose
             gcc
             git
+            pgcli
+            postgresql_14
             kubeval
             libtool
             gnumake
