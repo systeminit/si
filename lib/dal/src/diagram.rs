@@ -182,10 +182,10 @@ impl Diagram {
                 // but it's brittle since if the way we create positions changes it will just give you the last position on the list there's no specific one
                 // The real fix for this would be to fix the query to return the most valid entry for visibility OR make node_position a single value per node
                 // This second option feels more adequate, but we need to check with product if multiple node position contexts are coming back.
-                if maybe_position.is_some() {
-                    if this_position.visibility().change_set_pk == ctx.visibility().change_set_pk {
-                        break;
-                    }
+                if maybe_position.is_some()
+                    && this_position.visibility().change_set_pk == ctx.visibility().change_set_pk
+                {
+                    break;
                 }
             }
 

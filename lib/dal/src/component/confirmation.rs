@@ -182,7 +182,7 @@ impl Component {
         let mut running_fixes = Vec::new();
         for mut fix in fixes {
             if Utc::now().signed_duration_since(fix.timestamp().created_at)
-                > chrono::Duration::minutes(1)
+                > chrono::Duration::minutes(3)
             {
                 fix.set_finished_at(ctx, Some(Utc::now().to_string()))
                     .await
