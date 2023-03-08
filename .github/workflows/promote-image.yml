@@ -19,7 +19,7 @@ jobs:
     name: Promote ${{ inputs.component_name }}
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2.3.4
+      - uses: actions/checkout@v3
       - id: notify-slack
         uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
         env:
@@ -29,7 +29,7 @@ jobs:
           status: executing
           color: "#ffb74d"
       - id: login
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9 # pin@v1.10.0
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
