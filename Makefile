@@ -57,6 +57,7 @@ COMPONENTS = \
 	lib/deadpool-cyclone \
 	lib/nats-subscriber \
 	lib/object-tree \
+	lib/pinga-server \
 	lib/sdf \
 	lib/si-data-nats \
 	lib/si-data-pg \
@@ -219,6 +220,8 @@ test//bin/cyclone//RTESTDEPS: test//lib/veritech-server
 
 test//bin/lang-js//RTESTDEPS: test//lib/cyclone-server
 
+test//bin/pinga//RTESTDEPS: test//lib/pinga-server
+
 test//lib/bytes-lines-codec//RTESTDEPS: test//lib/cyclone-server
 
 test//lib/config-file//RTESTDEPS: test//lib/si-settings//TEST
@@ -244,6 +247,8 @@ test//lib/nats-subscriber//TESTDEPS: build//lib/si-data-nats build//lib/telemetr
 test//lib/nats-subscriber//RTESTDEPS: build//lib/dal
 
 test//lib/object-tree//RTESTDEPS: test//lib/si-pkg test//lib/dal
+
+test//lib/pinga-server//RTESTDEPS: test//bin/pinga
 
 test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
 test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga test//bin/council

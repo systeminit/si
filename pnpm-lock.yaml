@@ -300,19 +300,11 @@ importers:
 
   bin/pinga:
     specifiers:
-      dal: workspace:*
-      si-data-nats: workspace:*
-      si-data-pg: workspace:*
-      si-settings: workspace:*
+      pinga-server: workspace:*
       telemetry-application: workspace:*
-      veritech-client: workspace:*
     dependencies:
-      dal: link:../../lib/dal
-      si-data-nats: link:../../lib/si-data-nats
-      si-data-pg: link:../../lib/si-data-pg
-      si-settings: link:../../lib/si-settings
+      pinga-server: link:../../lib/pinga-server
       telemetry-application: link:../../lib/telemetry-application-rs
-      veritech-client: link:../../lib/veritech-client
 
   bin/sdf:
     specifiers:
@@ -473,6 +465,24 @@ importers:
 
   lib/object-tree:
     specifiers: {}
+
+  lib/pinga-server:
+    specifiers:
+      dal: workspace:*
+      nats-subscriber: workspace:*
+      si-data-nats: workspace:*
+      si-data-pg: workspace:*
+      si-settings: workspace:*
+      telemetry: workspace:*
+      veritech-client: workspace:*
+    dependencies:
+      dal: link:../dal
+      nats-subscriber: link:../nats-subscriber
+      si-data-nats: link:../si-data-nats
+      si-data-pg: link:../si-data-pg
+      si-settings: link:../si-settings
+      telemetry: link:../telemetry-rs
+      veritech-client: link:../veritech-client
 
   lib/sdf:
     specifiers:

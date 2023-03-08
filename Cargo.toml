@@ -21,6 +21,7 @@ members = [
     "lib/deadpool-cyclone",
     "lib/nats-subscriber",
     "lib/object-tree",
+    "lib/pinga-server",
     "lib/sdf",
     "lib/si-data-nats",
     "lib/si-data-pg",

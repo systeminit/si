@@ -54,7 +54,8 @@ WEB_PATHS=".github/workflows/promote-web.yml
   app/web/**"
 PINGA_PATHS="${SDF_PATHS}
   .github/workflows/promote-pinga.yml
-  bin/pinga/**"
+  bin/pinga/**
+  lib/pinga-server/**"
 COUNCIL_PATHS="${SDF_PATHS}
   .github/workflows/promote-council.yml
   bin/council/**"

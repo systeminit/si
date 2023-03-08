@@ -5,11 +5,13 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_settings::{CanonicalFile, CanonicalFileError};
-use telemetry_application::prelude::*;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 pub use dal::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
+
+const CONCURRENCY_DEFAULT: usize = 10;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -31,7 +33,13 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
+    #[builder(setter(into, strip_option), default)]
+    subject_prefix: Option<String>,
+
     cyclone_encryption_key_path: CanonicalFile,
+
+    #[builder(default = "CONCURRENCY_DEFAULT")]
+    concurrency: usize,
 }
 
 impl StandardConfig for Config {
@@ -51,10 +59,20 @@ impl Config {
         &self.nats
     }
 
+    /// Gets a reference to the config's subject prefix.
+    pub fn subject_prefix(&self) -> Option<&str> {
+        self.subject_prefix.as_deref()
+    }
+
     /// Gets a reference to the config's cyclone public key path.
     #[must_use]
     pub fn cyclone_encryption_key_path(&self) -> &Path {
         self.cyclone_encryption_key_path.as_path()
+    }
+
+    /// Gets the config's concurrency limit.
+    pub fn concurrency(&self) -> usize {
+        self.concurrency
     }
 }
 
@@ -63,6 +81,7 @@ pub struct ConfigFile {
     pg: PgPoolConfig,
     nats: NatsConfig,
     cyclone_encryption_key_path: String,
+    concurrency_limit: u32,
 }
 
 impl Default for ConfigFile {
@@ -88,6 +107,7 @@ impl Default for ConfigFile {
             pg: Default::default(),
             nats: Default::default(),
             cyclone_encryption_key_path,
+            concurrency_limit: 10,
         }
     }
 }

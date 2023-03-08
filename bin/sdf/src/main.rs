@@ -23,7 +23,7 @@ fn main() -> Result<()> {
     let thread_handler = thread_builder.spawn(|| {
         tokio::runtime::Builder::new_multi_thread()
             .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
-            .thread_name("bin/sdf-tokio::runtime".to_owned())
+            .thread_name("bin/sdf-tokio::runtime")
             .enable_all()
             .build()?
             .block_on(async_main())

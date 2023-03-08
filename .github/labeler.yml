@@ -47,6 +47,7 @@ A-veritech:
   - rustfmt.toml
 A-pinga:
   - bin/pinga/**/*
+  - lib/pinga-server/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain

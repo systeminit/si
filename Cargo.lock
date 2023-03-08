@@ -2649,18 +2649,27 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 name = "pinga"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "clap",
  "color-eyre",
+ "pinga-server",
+ "telemetry-application",
+ "tokio",
+]
+
+[[package]]
+name = "pinga-server"
+version = "0.1.0"
+dependencies = [
  "dal",
  "derive_builder 0.11.2",
  "futures",
+ "nats-subscriber",
  "serde",
- "serde_json",
  "si-data-nats",
  "si-data-pg",
  "si-settings",
- "telemetry-application",
+ "stream-cancel",
+ "telemetry",
  "thiserror",
  "tokio",
  "uuid",
@@ -3658,6 +3667,17 @@ checksum = "67cf02bbac7a337dc36e4f5a693db6c21e7863f45070f7064577eb4367a3212b"
 dependencies = [
  "base64ct",
  "der 0.6.1",
+]
+
+[[package]]
+name = "stream-cancel"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b0a9eb2715209fb8cc0d942fcdff45674bfc9f0090a0d897e85a22955ad159b"
+dependencies = [
+ "futures-core",
+ "pin-project",
+ "tokio",
 ]
 
 [[package]]

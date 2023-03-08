@@ -1,0 +1,22 @@
+[package]
+name = "pinga-server"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.64"
+publish = false
+
+[dependencies]
+dal = { path = "../../lib/dal" }
+derive_builder = { version = "0.11.2" }
+futures = "0.3"
+nats-subscriber = { path = "../../lib/nats-subscriber" }
+serde = { version = "1.0", features = ["derive"] }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-settings = { path = "../../lib/si-settings" }
+stream-cancel = "0.8.1"
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = { version = "1.0" }
+tokio = { version = "1.12.0", features = ["full"] }
+uuid = { version = "1.1.2", features = ["serde", "v4"] }
+veritech-client = { path = "../../lib/veritech-client" }
