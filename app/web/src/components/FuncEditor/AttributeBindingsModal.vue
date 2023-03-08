@@ -78,6 +78,7 @@ const {
   inputSourceSockets,
   inputSourceProps,
   propsAsOptionsForSchemaVariant,
+  propForId,
 } = storeToRefs(funcStore);
 
 const props = defineProps({
@@ -252,10 +253,12 @@ watch(
 watch(
   () => props.open,
   () => {
+    const schemaVariantId = propForId.value?.(
+      prototype.value?.propId,
+    )?.schemaVariantId;
     selectedVariant.value =
-      schemaVariantOptions?.value.find(
-        (sv) => sv.value === prototype.value?.schemaVariantId,
-      ) ?? noneVariant;
+      schemaVariantOptions?.value.find((sv) => sv.value === schemaVariantId) ??
+      noneVariant;
     selectedComponent.value =
       filteredComponentOptions.value.find(
         (c) => c.value === prototype.value?.id,
