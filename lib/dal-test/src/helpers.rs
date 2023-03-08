@@ -6,7 +6,7 @@ use dal::{
         binding_return_value::FuncBindingReturnValueId,
     },
     BillingAccount, BillingAccountPk, BillingAccountSignup, ChangeSet, Component, DalContext,
-    DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor, JwtSecretKey, Node, Prop,
+    DalContextBuilder, Func, FuncBinding, FuncId, HistoryActor, JwtSecretKey, Node, Prop,
     PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
     Tenancy, User, Visibility,
 };
@@ -55,13 +55,6 @@ pub async fn billing_account_signup(
         .await
         .wrap_err("cannot log in newly created user")?;
     Ok((nba, auth_token))
-}
-
-pub async fn create_group(ctx: &DalContext, bid: BillingAccountPk) -> Group {
-    let name = generate_fake_name();
-    Group::new(ctx, &name, bid)
-        .await
-        .expect("cannot create group")
 }
 
 pub async fn create_user(ctx: &DalContext, bid: BillingAccountPk) -> User {

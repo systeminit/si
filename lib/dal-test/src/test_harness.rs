@@ -12,7 +12,7 @@ use dal::{
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     BillingAccount, BillingAccountPk, ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind,
-    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, KeyPair, Node,
+    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, KeyPair, Node,
     Organization, OrganizationPk, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariantId,
     Secret, SecretKind, SecretObjectType, StandardModel, User, Visibility, Workspace,
 };
@@ -297,13 +297,6 @@ pub async fn create_user(ctx: &DalContext, bid: BillingAccountPk) -> User {
     )
     .await
     .expect("cannot create user")
-}
-
-pub async fn create_group(ctx: &DalContext, bid: BillingAccountPk) -> Group {
-    let name = generate_fake_name();
-    Group::new(ctx, &name, bid)
-        .await
-        .expect("cannot create group")
 }
 
 pub async fn billing_account_signup(

@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use crate::{
     pk, schema::variant::SchemaVariantError, standard_model, standard_model_accessor_ro,
-    Capability, CapabilityError, DalContext, Group, GroupError, HistoryActor, HistoryEvent,
+    DalContext, HistoryActor, HistoryEvent,
     HistoryEventError, KeyPair, KeyPairError, NodeError, Organization, OrganizationError,
     SchemaError, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, User,
     UserError, Workspace, WorkspaceError,
@@ -35,10 +35,6 @@ pub enum BillingAccountError {
     KeyPair(#[from] KeyPairError),
     #[error("user error: {0}")]
     User(#[from] UserError),
-    #[error("group error: {0}")]
-    Group(#[from] GroupError),
-    #[error("capability error: {0}")]
-    Capability(#[from] CapabilityError),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
     #[error("organization error: {0}")]
@@ -133,30 +129,12 @@ impl BillingAccount {
         let user_history_actor = HistoryActor::User(*user.id());
         ctx.update_history_actor(user_history_actor);
 
-        // TODO: remove the bobo user before we ship!
-        let user_bobo = User::new(
-            &*ctx,
-            &user_name,
-            &format!("bobo-{}", user_email.as_ref()),
-            &user_password,
-            *billing_account.pk(),
-        )
-        .await?;
-
-        let admin_group = Group::new(&*ctx, "administrators", *billing_account.pk()).await?;
-        admin_group.add_user(&*ctx, user.id()).await?;
-        admin_group.add_user(&*ctx, user_bobo.id()).await?;
-
-        let any_cap = Capability::new(&*ctx, "any", "any").await?;
-        any_cap.set_group(&*ctx, admin_group.id()).await?;
-
         ctx.import_builtins().await?;
 
         Ok(BillingAccountSignup {
             billing_account,
             key_pair,
             user,
-            admin_group,
             organization,
             workspace,
         })
@@ -219,7 +197,6 @@ pub struct BillingAccountSignup {
     pub billing_account: BillingAccount,
     pub key_pair: KeyPair,
     pub user: User,
-    pub admin_group: Group,
     pub organization: Organization,
     pub workspace: Workspace,
 }

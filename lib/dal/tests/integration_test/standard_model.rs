@@ -1,11 +1,11 @@
 use dal::{
     component::ComponentKind, standard_model, BillingAccountPk, ChangeSet, ChangeSetPk, DalContext,
-    Func, FuncBackendKind, Group, GroupId, Schema, SchemaVariant, StandardModel, User, UserId,
+    Func, FuncBackendKind, Schema, SchemaVariant, StandardModel, User, UserId,
 };
 use dal_test::{
     test,
     test_harness::{
-        create_func, create_group, create_schema, create_schema_variant, create_user,
+        create_func, create_schema, create_schema_variant, create_user,
         create_visibility_head,
     },
 };
@@ -467,36 +467,7 @@ async fn many_to_many(ctx: &DalContext, bid: BillingAccountPk) {
         2
     );
 
-    let user_one_groups: Vec<Group> = standard_model::many_to_many(
-        ctx,
-        "group_many_to_many_users",
-        "groups",
-        "users",
-        left_object_id,
-        Some(user_one.id()),
-    )
-    .await
-    .expect("cannot get list of groups for user");
-    assert_eq!(user_one_groups, vec![group_one.clone()]);
 
-    let user_two_groups: Vec<Group> = standard_model::many_to_many(
-        ctx,
-        "group_many_to_many_users",
-        "groups",
-        "users",
-        left_object_id,
-        Some(user_two.id()),
-    )
-    .await
-    .expect("cannot get list of groups for user");
-    assert_eq!(user_two_groups.len(), 2);
-    assert_eq!(
-        user_two_groups
-            .into_iter()
-            .filter(|g| g == &group_one || g == &group_two)
-            .count(),
-        2
-    );
 
     standard_model::disassociate_many_to_many(
         ctx,

@@ -19,7 +19,6 @@ pub mod actor_view;
 pub mod attribute;
 pub mod billing_account;
 pub mod builtins;
-pub mod capability;
 pub mod change_set;
 pub mod change_status;
 pub mod code_view;
@@ -31,7 +30,6 @@ pub mod edge;
 pub mod edit_field;
 pub mod fix;
 pub mod func;
-pub mod group;
 pub mod history_event;
 pub mod index_map;
 pub mod installed_pkg;
@@ -99,7 +97,6 @@ pub use billing_account::{
     BillingAccountSignup,
 };
 pub use builtins::{BuiltinsError, BuiltinsResult};
-pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{
@@ -127,7 +124,6 @@ pub use func::{
     binding::{FuncBinding, FuncBindingError, FuncBindingId},
     Func, FuncError, FuncId, FuncResult,
 };
-pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use index_map::IndexMap;
 pub use job::definition::DependentValuesUpdate;

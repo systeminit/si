@@ -23,3 +23,5 @@ app/web/cypress/videos/
 .*.swp
 .*.swo
 .vim
+
+.env.local
