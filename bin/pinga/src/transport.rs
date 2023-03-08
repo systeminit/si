@@ -1,12 +1,11 @@
 use async_trait::async_trait;
-use faktory_async::{BeatState, FailConfig};
+use dal::{job::consumer::JobInfo, JobQueueProcessor, NatsProcessor};
 use futures::StreamExt;
 use si_data_nats::NatsClient;
 use telemetry_application::prelude::*;
 use tokio::sync::{mpsc, watch};
 
 use crate::{config, JobError};
-use dal::{job::consumer::JobInfo, FaktoryProcessor, JobQueueProcessor, NatsProcessor};
 
 pub enum ExecutionState {
     Process(JobInfo),
@@ -28,104 +27,6 @@ pub trait Consumer: Sized {
     async fn fetch_next(&mut self, shutdown_request_rx: &mut watch::Receiver<()>)
         -> ExecutionState;
     async fn post_process(&self, jid: String, result: Result<(), JobError>);
-}
-
-#[async_trait]
-impl Consumer for faktory_async::Client {
-    type Client = Self;
-
-    async fn connect(config: &config::Config) -> Result<Self::Client, JobError> {
-        let config = faktory_async::Config::from_uri(
-            &config.faktory().url,
-            Some("pinga".to_string()),
-            Some(uuid::Uuid::new_v4().to_string()),
-        );
-        Ok(faktory_async::Client::new(config, 256))
-    }
-    fn new_processor(
-        client: Self::Client,
-        alive_marker: mpsc::Sender<()>,
-    ) -> Box<dyn JobQueueProcessor + Send + Sync> {
-        Box::new(FaktoryProcessor::new(client, alive_marker))
-            as Box<dyn JobQueueProcessor + Send + Sync>
-    }
-    async fn end(client: Self::Client) -> Result<(), JobError> {
-        Ok(client.close().await?)
-    }
-    async fn subscribe(client: &Self::Client) -> Result<Self, JobError> {
-        Ok(client.clone())
-    }
-    async fn fetch_next(
-        &mut self,
-        shutdown_request_rx: &mut watch::Receiver<()>,
-    ) -> ExecutionState {
-        match self.last_beat().await {
-            Ok(BeatState::Ok) => {
-                tokio::select! {
-                    job = self.fetch(vec!["default".into()]) => match job {
-                        Ok(Some(job)) => match JobInfo::try_from(job) {
-                            Ok(job) => ExecutionState::Process(job),
-                            Err(err) => {
-                                error!("Unable to deserialize faktory's job: {err}");
-                                ExecutionState::Idle
-                            }
-                        },
-                        Ok(None) => ExecutionState::Idle,
-                        Err(err) => {
-                            error!("Unable to fetch from faktory: {err}");
-                            ExecutionState::Idle
-                        }
-                    },
-                    _ = shutdown_request_rx.changed() => {
-                        info!("Worker task received shutdown notification: stopping");
-                        ExecutionState::Stop
-                    }
-                }
-            }
-            Ok(BeatState::Quiet) => {
-                // Getting a "quiet" state from the faktory server means that
-                // someone has gone to the faktory UI and requested that this
-                // particular worker finish what it's doing, and gracefully
-                // shut down.
-                info!("Gracefully shutting down from Faktory request.");
-                ExecutionState::Stop
-            }
-            Ok(BeatState::Terminate) => {
-                warn!("Faktory asked us to terminate");
-                ExecutionState::Stop
-            }
-            Err(err) => {
-                error!("Internal error in faktory-async, bailing out: {err}");
-                ExecutionState::Stop
-            }
-        }
-    }
-    async fn post_process(&self, jid: String, result: Result<(), JobError>) {
-        match result {
-            Ok(()) => match self.ack(jid).await {
-                Ok(()) => {}
-                Err(err) => {
-                    error!("Ack failed: {err}");
-                }
-            },
-            Err(err) => {
-                error!("Job execution failed: {err}");
-                // TODO: pass backtrace here
-                match self
-                    .fail(FailConfig::new(
-                        jid,
-                        format!("{err:?}"),
-                        err.to_string(),
-                        None,
-                    ))
-                    .await
-                {
-                    Ok(()) => {}
-                    Err(err) => error!("Fail failed: {err}"),
-                }
-            }
-        }
-    }
 }
 
 #[async_trait]

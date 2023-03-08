@@ -22,7 +22,6 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   lib/dal-test/**
   lib/sdf/**
   lib/council/**
-  lib/si-data-faktory/**
   lib/si-data-nats/**
   lib/si-data-pg/**
   lib/si-settings/**
@@ -55,7 +54,8 @@ WEB_PATHS=".github/workflows/promote-web.yml
   app/web/**"
 PINGA_PATHS="${SDF_PATHS}
   .github/workflows/promote-pinga.yml
-  bin/pinga/**"
+  bin/pinga/**
+  lib/pinga-server/**"
 COUNCIL_PATHS="${SDF_PATHS}
   .github/workflows/promote-council.yml
   bin/council/**"

@@ -30,11 +30,11 @@
 !lib/deadpool-cyclone
 !lib/nats-subscriber
 !lib/object-tree
+!lib/pinga-server
 !lib/sdf
 !lib/veritech-client
 !lib/veritech-core
 !lib/veritech-server
-!lib/si-data-faktory
 !lib/si-data-nats
 !lib/si-data-pg
 !lib/si-pkg

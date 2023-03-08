@@ -19,13 +19,8 @@
     "dev:backend": "CARGO_MANIFEST_DIR=${PWD} ../../target/debug/pinga"
   },
   "dependencies": {
-    "telemetry-application": "workspace:*",
-    "si-data-faktory": "workspace:*",
-    "si-data-nats": "workspace:*",
-    "si-data-pg": "workspace:*",
-    "veritech-client": "workspace:*",
-    "dal": "workspace:*",
-    "si-settings": "workspace:*"
+    "pinga-server": "workspace:*",
+    "telemetry-application": "workspace:*"
   },
   "devDependencies": {}
 }

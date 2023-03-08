@@ -170,7 +170,7 @@ make prepare SI_SKIP_PULL=true
 >
 > This will run a local instance of Postgres that will be performant for your hardware.
 
-This will ensure that our database is running, our NATS server is running, and faktory is running.
+This will ensure that our database is running, and our NATS server is running.
 
 Now, wait for the `postgres` database container to be running and ready to receive incoming client connection requests.
 If it is not ready, `sdf` database migration will fail.

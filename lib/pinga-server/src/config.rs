@@ -2,15 +2,16 @@ use std::path::Path;
 
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_data_faktory::FaktoryConfig;
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_settings::{CanonicalFile, CanonicalFileError};
-use telemetry_application::prelude::*;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 pub use dal::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
+
+const CONCURRENCY_DEFAULT: usize = 10;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -32,10 +33,13 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
-    #[builder(default = "FaktoryConfig::default()")]
-    faktory: FaktoryConfig,
+    #[builder(setter(into, strip_option), default)]
+    subject_prefix: Option<String>,
 
     cyclone_encryption_key_path: CanonicalFile,
+
+    #[builder(default = "CONCURRENCY_DEFAULT")]
+    concurrency: usize,
 }
 
 impl StandardConfig for Config {
@@ -55,10 +59,9 @@ impl Config {
         &self.nats
     }
 
-    /// Gets a reference to the config's faktory.
-    #[must_use]
-    pub fn faktory(&self) -> &FaktoryConfig {
-        &self.faktory
+    /// Gets a reference to the config's subject prefix.
+    pub fn subject_prefix(&self) -> Option<&str> {
+        self.subject_prefix.as_deref()
     }
 
     /// Gets a reference to the config's cyclone public key path.
@@ -66,14 +69,19 @@ impl Config {
     pub fn cyclone_encryption_key_path(&self) -> &Path {
         self.cyclone_encryption_key_path.as_path()
     }
+
+    /// Gets the config's concurrency limit.
+    pub fn concurrency(&self) -> usize {
+        self.concurrency
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
     pg: PgPoolConfig,
     nats: NatsConfig,
-    faktory: FaktoryConfig,
     cyclone_encryption_key_path: String,
+    concurrency_limit: u32,
 }
 
 impl Default for ConfigFile {
@@ -98,8 +106,8 @@ impl Default for ConfigFile {
         Self {
             pg: Default::default(),
             nats: Default::default(),
-            faktory: Default::default(),
             cyclone_encryption_key_path,
+            concurrency_limit: 10,
         }
     }
 }
@@ -115,7 +123,6 @@ impl TryFrom<ConfigFile> for Config {
         let mut config = Config::builder();
         config.pg_pool(value.pg);
         config.nats(value.nats);
-        config.faktory(value.faktory);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.build().map_err(Into::into)
     }

@@ -19,7 +19,7 @@ WORKDIR /usr/src
 COPY . .
 
 RUN set -eux; \
-    cargo build --release --bin $BIN;
+    cargo build --release --locked --bin $BIN;
 
 RUN set -eux; \
     find . -maxdepth 1 ! -path './target' -and ! -path '.' -exec rm -rf {} \;;
@@ -35,7 +35,8 @@ WORKDIR /usr/src
 COPY . .
 
 RUN set -eux; \
-    cargo build --release --bin $BIN;
+    cargo build --release --locked --bin $BIN;
+
 # Create a 2-part executable which occupies less space in RAM but still links
 # to debugging information for in-production debugging
 # hadolint ignore=DL3003

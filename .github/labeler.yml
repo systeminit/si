@@ -47,6 +47,7 @@ A-veritech:
   - rustfmt.toml
 A-pinga:
   - bin/pinga/**/*
+  - lib/pinga-server/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
@@ -107,12 +108,6 @@ A-nats-subscriber:
   - rustfmt.toml
 A-object-tree:
   - lib/object-tree/**/*
-  - .cargo/**/*
-  - Cargo.lock
-  - rust-toolchain
-  - rustfmt.toml
-A-si-data-faktory:
-  - lib/si-data-faktory/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain

@@ -38,6 +38,12 @@ pub struct Request<T> {
     pub payload: T,
 }
 
+impl<T> Request<T> {
+    pub fn into_parts(self) -> T {
+        self.payload
+    }
+}
+
 pin_project! {
     /// A subscription corresponding to a [NATS](https://nats.io) subject.
     #[derive(Debug)]

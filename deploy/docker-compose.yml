@@ -27,13 +27,11 @@ services:
     environment:
       - "SI_SDF__PG__HOSTNAME=postgres"
       - "SI_SDF__NATS__URL=nats"
-      # - "SI_SDF__FAKTORY__URL=faktory:7419"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
     extra_hosts:
       - "postgres:${GATEWAY:-I like my butt}"
       - "nats:${GATEWAY:-I like my butt}"
       - "otelcol:${GATEWAY:-I like my butt}"
-      # - "faktory:${GATEWAY:-I like my butt}"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
       - "com.centurylinklabs.watchtower.lifecycle.pre-update='/reset-database.sh'"
@@ -41,7 +39,6 @@ services:
       - "/opt/deploy/scripts/reset-database.sh:/reset-database.sh:ro"
     depends_on:
       - pg
-      # - faktory
       - otel
       - nats
     restart: "unless-stopped"
@@ -74,18 +71,15 @@ services:
     environment:
       - "SI_PINGA__PG__HOSTNAME=postgres"
       - "SI_PINGA__NATS__URL=nats"
-      # - "SI_PINGA__FAKTORY__URL=faktory:7419"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
     extra_hosts:
       - "postgres:${GATEWAY:-I like my butt}"
       - "nats:${GATEWAY:-I like my butt}"
       - "otelcol:${GATEWAY:-I like my butt}"
-      # - "faktory:${GATEWAY:-I like my butt}"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
       - pg
-      # - faktory
       - otel
       - nats
     restart: "unless-stopped"
@@ -119,12 +113,6 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "5432:5432"
-
-  # faktory:
-  #   image: "index.docker.io/contribsys/faktory:latest"
-  #   ports:
-  #     - "7419:7419"
-  #     - "7420:7420"
 
   nats:
     image: "index.docker.io/systeminit/nats:stable"

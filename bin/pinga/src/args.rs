@@ -1,9 +1,5 @@
-use std::path::PathBuf;
-
-use clap::{builder::PossibleValuesParser, ArgAction, Parser};
-
-use crate::config::{Config, ConfigError, ConfigFile, StandardConfigFile};
-use dal::MigrationMode;
+use clap::{ArgAction, Parser};
+use pinga_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
 
 const NAME: &str = "pinga";
 
@@ -14,7 +10,7 @@ pub(crate) fn parse() -> Args {
 
 /// The System Initiative API service.
 ///
-/// Pinga queue executor system that handles whatever job comes from Nats or Faktory.
+/// Pinga queue executor system that handles whatever job comes from Nats.
 /// It means "drip" in portuguese and also is a name for Cachaça
 #[derive(Parser, Debug)]
 #[command(name = NAME, max_term_width = 100)]
@@ -49,10 +45,6 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) nats_url: Option<String>,
 
-    /// Database migration mode on startup
-    #[arg(long, value_parser = PossibleValuesParser::new(MigrationMode::variants()))]
-    pub(crate) migration_mode: Option<MigrationMode>,
-
     /// Disable OpenTelemetry on startup
     #[arg(long)]
     pub(crate) disable_opentelemetry: bool,
@@ -61,17 +53,9 @@ pub(crate) struct Args {
     #[arg(long)]
     pub(crate) cyclone_encryption_key_path: Option<String>,
 
-    /// Generates cyclone secret key file (does not run server)
-    ///
-    /// Will error if set when `generate_cyclone_public_key_path` is not set
-    #[arg(long, requires = "generate_cyclone_public_key_path")]
-    pub(crate) generate_cyclone_secret_key_path: Option<PathBuf>,
-
-    /// Generates cyclone public key file (does not run server)
-    ///
-    /// Will error if set when `generate_cyclone_secret_key_path` is not set
-    #[arg(long, requires = "generate_cyclone_secret_key_path")]
-    pub(crate) generate_cyclone_public_key_path: Option<PathBuf>,
+    /// The number of concurrent jobs that can be processed [default: 10]
+    #[arg(long)]
+    pub(crate) concurrency: Option<u32>,
 }
 
 impl TryFrom<Args> for Config {
@@ -94,14 +78,14 @@ impl TryFrom<Args> for Config {
             if let Some(user) = args.pg_user {
                 config_map.set("pg.user", user);
             }
-            if let Some(migration_mode) = args.migration_mode {
-                config_map.set("migration_mode", migration_mode.to_string());
-            }
             if let Some(url) = args.nats_url {
                 config_map.set("nats.url", url);
             }
             if let Some(cyclone_encyption_key_path) = args.cyclone_encryption_key_path {
                 config_map.set("cyclone_encryption_key_path", cyclone_encyption_key_path);
+            }
+            if let Some(concurrency) = args.concurrency {
+                config_map.set("concurrency_limit", i64::from(concurrency));
             }
         })?
         .try_into()

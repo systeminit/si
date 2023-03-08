@@ -19,11 +19,11 @@
   },
   "dependencies": {
     "dal": "workspace:*",
-    "si-data-faktory": "workspace:*",
     "si-data-nats": "workspace:*",
     "si-data-pg": "workspace:*",
     "si-settings": "workspace:*",
     "si-std": "workspace:*",
+    "si-pkg": "workspace:*",
     "telemetry": "workspace:*",
     "veritech-client": "workspace:*"
   },
