@@ -68,7 +68,12 @@ export const useFuncStore = () => {
         return this.funcDetailsById[this.urlSelectedFuncId || ""];
       },
 
+      funcById: (state) => (funcId: string) => state.funcDetailsById[funcId],
+
       funcList: (state) => _.values(state.funcsById),
+
+      propForId: (state) => (propId: string) =>
+        state.inputSourceProps.find((prop) => prop.propId === propId),
 
       // Filter props by schema variant
       propsAsOptionsForSchemaVariant: (state) => (schemaVariantId: string) =>

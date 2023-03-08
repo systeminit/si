@@ -94,6 +94,7 @@ const {
   providerIdToSourceName,
   schemaVariantOptions,
   componentOptions,
+  propForId,
 } = storeToRefs(funcStore);
 
 function nilId(): string {
@@ -103,7 +104,6 @@ function nilId(): string {
 const editingPrototype = ref<AttributePrototypeView | undefined>(undefined);
 const makeEmptyPrototype = (): AttributePrototypeView => ({
   id: nilId(),
-  schemaVariantId: nilId(),
   componentId: nilId(),
   propId: nilId(),
   prototypeArguments: associations.value.arguments.map(({ id }) => ({
@@ -154,10 +154,10 @@ const associations = toRef(props, "associations", {
 
 const prototypeView = computed(() => {
   return associations.value.prototypes.map((proto) => {
+    const schemaVariantId = propForId.value?.(proto.propId)?.schemaVariantId;
     const schemaVariant =
-      schemaVariantOptions.value.find(
-        (sv) => sv.value === proto.schemaVariantId,
-      )?.label ?? "none";
+      schemaVariantOptions.value.find((sv) => sv.value === schemaVariantId)
+        ?.label ?? "none";
 
     const component =
       componentOptions.value.find((c) => c.value === proto.componentId)

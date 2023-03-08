@@ -38,7 +38,6 @@ export interface AttributePrototypeArgumentView {
 
 export interface AttributePrototypeView {
   id: string;
-  schemaVariantId: string;
   componentId?: string;
   propId: string;
   prototypeArguments: AttributePrototypeArgumentView[];
