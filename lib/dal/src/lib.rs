@@ -170,7 +170,7 @@ pub use status::{
 };
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
-pub use user::{User, UserClaim, UserError, UserId, UserPk, UserResult};
+pub use user::{User, UserClaim, UserError, UserPk, UserResult};
 pub use validation::prototype::{
     context::ValidationPrototypeContext, ValidationPrototype, ValidationPrototypeError,
     ValidationPrototypeId,

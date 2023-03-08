@@ -30,7 +30,6 @@ import { BillingAccount } from "../../src/api/sdf/dal/billing_account";
 import { Organization } from "../../src/api/sdf/dal/organization";
 import { Workspace } from "../../src/api/sdf/dal/workspace";
 import { User } from "../../src/api/sdf/dal/user";
-import { Group } from "../../src/api/sdf/dal/group";
 import { PublicKey } from "../../src/api/sdf/dal/key_pair";
 import Bottle from "bottlejs";
 import { user$ } from "../../src/observable/user";
@@ -126,6 +125,5 @@ export interface TestCtx {
   organization: Organization;
   workspace: Workspace;
   user: User;
-  admin_group: Group;
   key_pair: PublicKey;
 }

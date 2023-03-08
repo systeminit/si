@@ -28,7 +28,7 @@ where
 
         Ok(Self(context::AccessBuilder::new(
             tenancy,
-            dal::HistoryActor::from(claim.user_id),
+            dal::HistoryActor::from(claim.user_pk),
         )))
     }
 }
@@ -268,7 +268,7 @@ where
             .map_err(|_| unauthorized_error())?;
         ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
 
-        User::authorize(&ctx, &claim.user_id)
+        User::authorize(&ctx, &claim.user_pk)
             .await
             .map_err(|_| unauthorized_error())?;
 
@@ -302,7 +302,7 @@ where
             .map_err(|_| unauthorized_error())?;
         ctx.update_tenancy(dal::Tenancy::new(claim.workspace_pk));
 
-        User::authorize(&ctx, &claim.user_id)
+        User::authorize(&ctx, &claim.user_pk)
             .await
             .map_err(|_| unauthorized_error())?;
 
@@ -321,7 +321,7 @@ where
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Authorization(claim) = Authorization::from_request(req).await?;
-        Ok(Self(dal::HistoryActor::from(claim.user_id)))
+        Ok(Self(dal::HistoryActor::from(claim.user_pk)))
     }
 }
 

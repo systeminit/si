@@ -34,7 +34,7 @@ use crate::{
     ExternalProviderId, FixError, Func, FuncBackendKind, FuncError, HistoryActor,
     HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, OrganizationError,
     Prop, PropError, PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, UserId, ValidationPrototypeError,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, ValidationPrototypeError,
     ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WsEvent,
     WsEventResult, WsPayload,
 };
@@ -271,7 +271,7 @@ pub struct Component {
     pk: ComponentPk,
     id: ComponentId,
     kind: ComponentKind,
-    pub deletion_user_id: Option<UserId>,
+    pub deletion_user_pk: Option<UserPk>,
     needs_destroy: bool,
     #[serde(flatten)]
     tenancy: Tenancy,
@@ -317,8 +317,8 @@ impl Component {
             .schema(ctx)
             .await?
             .ok_or(SchemaVariantError::MissingSchema(schema_variant_id))?;
-        let actor_user_id = match ctx.history_actor() {
-            HistoryActor::User(user_id) => Some(*user_id),
+        let actor_user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
             _ => None,
         };
 
@@ -330,7 +330,7 @@ impl Component {
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
-                    &actor_user_id,
+                    &actor_user_pk,
                     &schema.component_kind().as_ref(),
                 ],
             )
@@ -1031,8 +1031,8 @@ impl Component {
             return Err(ComponentError::ComponentProtected(self.id));
         }
 
-        let actor_user_id = match ctx.history_actor() {
-            HistoryActor::User(user_id) => Some(*user_id),
+        let actor_user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
             _ => None,
         };
 
@@ -1046,7 +1046,7 @@ impl Component {
                     ctx.tenancy(),
                     ctx.visibility(),
                     self.id(),
-                    &actor_user_id,
+                    &actor_user_pk,
                     &has_resource,
                 ],
             )

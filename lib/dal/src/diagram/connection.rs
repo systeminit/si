@@ -114,8 +114,8 @@ impl DiagramEdgeView {
 
 impl DiagramEdgeView {
     pub async fn set_actor_details(&mut self, ctx: &DalContext, edge: &Edge) -> DiagramResult<()> {
-        if let Some(user_id) = edge.creation_user_id {
-            let history_actor = HistoryActor::User(user_id);
+        if let Some(user_pk) = edge.creation_user_pk {
+            let history_actor = HistoryActor::User(user_pk);
             let actor = ActorView::from_history_actor(ctx, history_actor).await?;
             self.created_info = Some(HistoryEventMetadata {
                 actor,
@@ -123,8 +123,8 @@ impl DiagramEdgeView {
             })
         }
 
-        if let Some(user_id) = edge.deletion_user_id {
-            let history_actor = HistoryActor::User(user_id);
+        if let Some(user_pk) = edge.deletion_user_pk {
+            let history_actor = HistoryActor::User(user_pk);
             let actor = ActorView::from_history_actor(ctx, history_actor).await?;
             self.deleted_info = Some(HistoryEventMetadata {
                 actor,

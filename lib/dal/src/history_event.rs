@@ -7,7 +7,7 @@ use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use telemetry::prelude::*;
 
-use crate::{pk, DalContext, Timestamp, UserId};
+use crate::{pk, DalContext, Timestamp, UserPk};
 
 #[derive(Error, Debug)]
 pub enum HistoryEventError {
@@ -23,13 +23,13 @@ pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, StrumDisplay, Clone, Copy)]
 pub enum HistoryActor {
-    User(UserId),
+    User(UserPk),
     SystemInit,
 }
 
-impl From<UserId> for HistoryActor {
-    fn from(id: UserId) -> Self {
-        HistoryActor::User(id)
+impl From<UserPk> for HistoryActor {
+    fn from(pk: UserPk) -> Self {
+        HistoryActor::User(pk)
     }
 }
 

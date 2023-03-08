@@ -6,11 +6,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    pk, schema::variant::SchemaVariantError, standard_model, standard_model_accessor_ro,
-    DalContext, HistoryActor, HistoryEvent,
-    HistoryEventError, KeyPair, KeyPairError, NodeError, Organization, OrganizationError,
-    SchemaError, StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, User,
-    UserError, Workspace, WorkspaceError,
+    pk, schema::variant::SchemaVariantError, standard_model_accessor_ro, DalContext, HistoryActor,
+    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, NodeError, Organization,
+    OrganizationError, SchemaError, Tenancy, Timestamp, TransactionsError, User, UserError,
+    Workspace, WorkspaceError,
 };
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("queries/billing_account/get_by_name.sql");
@@ -29,8 +28,6 @@ pub enum BillingAccountError {
     Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
     #[error("key pair error: {0}")]
     KeyPair(#[from] KeyPairError),
     #[error("user error: {0}")]
@@ -118,15 +115,8 @@ impl BillingAccount {
 
         let key_pair = KeyPair::new(&*ctx, "default", *billing_account.pk()).await?;
 
-        let user = User::new(
-            &*ctx,
-            &user_name,
-            &user_email,
-            &user_password,
-            *billing_account.pk(),
-        )
-        .await?;
-        let user_history_actor = HistoryActor::User(*user.id());
+        let user = User::new(&*ctx, &user_name, &user_email, &user_password).await?;
+        let user_history_actor = HistoryActor::User(user.pk());
         ctx.update_history_actor(user_history_actor);
 
         ctx.import_builtins().await?;
@@ -149,8 +139,8 @@ impl BillingAccount {
             .pg()
             .query_one(BILLING_ACCOUNT_GET_BY_PK, &[&pk])
             .await?;
-        let result = standard_model::object_from_row(row)?;
-        Ok(result)
+        let json: serde_json::Value = row.try_get("object")?;
+        Ok(serde_json::from_value(json)?)
     }
 
     pub async fn find_by_name(
@@ -163,7 +153,14 @@ impl BillingAccount {
             .pg()
             .query_opt(BILLING_ACCOUNT_GET_BY_NAME, &[&name])
             .await?;
-        let result = standard_model::option_object_from_row(maybe_row)?;
+
+        let result = match maybe_row {
+            Some(row) => {
+                let json: serde_json::Value = row.try_get("object")?;
+                Some(serde_json::from_value(json)?)
+            }
+            None => None,
+        };
         Ok(result)
     }
 

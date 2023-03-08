@@ -1,31 +1,22 @@
-use dal::{
-    BillingAccountPk, BillingAccountSignup, DalContext, JwtSecretKey, StandardModel, Tenancy, User,
-    WorkspacePk,
-};
+use dal::{BillingAccountSignup, DalContext, JwtSecretKey, User, WorkspacePk};
 use dal_test::test;
 
 #[test]
-async fn new(ctx: &DalContext, bid: BillingAccountPk) {
+async fn new(ctx: &DalContext) {
     let _user = User::new(
         ctx,
         "funky",
         "bobotclown@systeminit.com",
         "snakesOnAPlan123",
-        bid,
     )
     .await
     .expect("cannot create user");
 }
 
 #[test]
-async fn login(
-    ctx: &DalContext,
-    bid: BillingAccountPk,
-    jwt_secret_key: &JwtSecretKey,
-    wid: WorkspacePk,
-) {
+async fn login(ctx: &DalContext, jwt_secret_key: &JwtSecretKey, wid: WorkspacePk) {
     let password = "snakesOnAPlane123";
-    let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password, bid)
+    let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password)
         .await
         .expect("cannot create user");
 
@@ -36,9 +27,9 @@ async fn login(
 }
 
 #[test]
-async fn find_by_email(ctx: &mut DalContext, bid: BillingAccountPk) {
+async fn find_by_email(ctx: &mut DalContext) {
     let password = "snakesOnAPlane123";
-    let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password, bid)
+    let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password)
         .await
         .expect("cannot create user");
 
@@ -50,39 +41,31 @@ async fn find_by_email(ctx: &mut DalContext, bid: BillingAccountPk) {
         email_user,
         "user by email does not match created user"
     );
-
-    ctx.update_tenancy(Tenancy::new(WorkspacePk::generate()));
-
-    let fail_user = User::find_by_email(ctx, "bobotclown@systeminit.com")
-        .await
-        .expect("cannot find user by email");
-    assert!(
-        fail_user.is_none(),
-        "user should not return if the tenancy is wrong"
-    );
 }
 
 #[test]
 async fn authorize(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let worked = User::authorize(ctx, nba.user.id())
+    let worked = User::authorize(ctx, &nba.user.pk())
         .await
         .expect("admin group user should be authorized");
     assert!(worked, "authorized admin group user returns true");
 
+    // TODO(theo,paulo): re-enable that when capabilities are back
+    /*
     let password = "snakesOnAPlane123";
     let user_no_group = User::new(
         ctx,
         "funky",
         "bobotclown@systeminit.com",
         &password,
-        *nba.billing_account.pk(),
     )
     .await
     .expect("cannot create user");
 
-    let f = User::authorize(ctx, user_no_group.id()).await;
+    let f = User::authorize(ctx, &user_no_group.pk()).await;
     assert!(
         f.is_err(),
         "user that is not in the admin group should fail"
     );
+    */
 }

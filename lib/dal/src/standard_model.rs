@@ -1,8 +1,7 @@
-use crate::Tenancy;
+use crate::{Tenancy, UserError};
 use chrono::{DateTime, Utc};
 use postgres_types::ToSql;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
 use std::fmt::Debug;
@@ -24,6 +23,8 @@ pub enum StandardModelError {
     ModelMissing(String, String),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error(transparent)]
+    User(#[from] UserError),
 }
 
 pub type StandardModelResult<T> = Result<T, StandardModelError>;

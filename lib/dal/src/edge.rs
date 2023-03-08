@@ -17,7 +17,7 @@ use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
     AttributeReadContext, AttributeValue, AttributeValueError, ComponentId, ExternalProviderError,
     Func, FuncError, HistoryActor, HistoryEventError, InternalProviderError, Node, PropId, Socket,
-    StandardModel, StandardModelError, Tenancy, Timestamp, UserId, Visibility,
+    StandardModel, StandardModelError, Tenancy, Timestamp, UserPk, Visibility,
 };
 use crate::{
     AttributePrototypeArgument, AttributePrototypeArgumentError, Component, DalContext,
@@ -129,8 +129,8 @@ pub struct Edge {
     tail_object_kind: VertexObjectKind,
     tail_object_id: EdgeObjectId,
     tail_socket_id: SocketId,
-    pub creation_user_id: Option<UserId>,
-    pub deletion_user_id: Option<UserId>,
+    pub creation_user_pk: Option<UserPk>,
+    pub deletion_user_pk: Option<UserPk>,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -177,8 +177,8 @@ impl Edge {
         tail_object_id: EdgeObjectId,
         tail_socket_id: SocketId,
     ) -> EdgeResult<Self> {
-        let actor_user_id = match ctx.history_actor() {
-            HistoryActor::User(user_id) => Some(*user_id),
+        let actor_user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
             _ => None,
         };
 
@@ -199,7 +199,7 @@ impl Edge {
                     &tail_object_kind.to_string(),
                     &tail_object_id,
                     &tail_socket_id,
-                    &actor_user_id,
+                    &actor_user_pk,
                 ],
             )
             .await?;
@@ -419,8 +419,8 @@ impl Edge {
 
         edge_argument.delete_by_id(ctx).await?;
 
-        let actor_user_id = match ctx.history_actor() {
-            HistoryActor::User(user_id) => Some(*user_id),
+        let actor_user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
             _ => None,
         };
         let _rows = ctx
@@ -428,7 +428,7 @@ impl Edge {
             .pg()
             .query(
                 "SELECT * FROM edge_deletion_v1($1, $2, $3, $4)",
-                &[ctx.tenancy(), ctx.visibility(), self.id(), &actor_user_id],
+                &[ctx.tenancy(), ctx.visibility(), self.id(), &actor_user_pk],
             )
             .await?;
 

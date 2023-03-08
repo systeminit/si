@@ -1,3 +1,3 @@
 SELECT row_to_json(users.*) AS object
-FROM users_v1($2, $3) AS users
-WHERE users.email = $1
+FROM users
+WHERE users.email = $1 AND users.visibility_deleted_at IS NULL

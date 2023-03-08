@@ -5,10 +5,9 @@ use dal::{
         binding::FuncBindingId,
         binding_return_value::FuncBindingReturnValueId,
     },
-    BillingAccount, BillingAccountPk, BillingAccountSignup, ChangeSet, Component, DalContext,
-    DalContextBuilder, Func, FuncBinding, FuncId, HistoryActor, JwtSecretKey, Node, Prop,
-    PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
-    Tenancy, User, Visibility,
+    BillingAccount, BillingAccountSignup, ChangeSet, Component, DalContext, DalContextBuilder,
+    Func, FuncBinding, FuncId, HistoryActor, JwtSecretKey, Node, Prop, PropId, RequestContext,
+    Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, Tenancy, User, Visibility,
 };
 use names::{Generator, Name};
 
@@ -57,14 +56,13 @@ pub async fn billing_account_signup(
     Ok((nba, auth_token))
 }
 
-pub async fn create_user(ctx: &DalContext, bid: BillingAccountPk) -> User {
+pub async fn create_user(ctx: &DalContext) -> User {
     let name = generate_fake_name();
     User::new(
         ctx,
         &name,
         &format!("{name}@test.systeminit.com"),
         "liesAreTold",
-        bid,
     )
     .await
     .expect("cannot create user")

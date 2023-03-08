@@ -12,9 +12,9 @@ use dal::{
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     BillingAccount, BillingAccountPk, ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind,
-    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, KeyPair, Node,
-    Organization, OrganizationPk, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariantId,
-    Secret, SecretKind, SecretObjectType, StandardModel, User, Visibility, Workspace,
+    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Organization,
+    OrganizationPk, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariantId, Secret, SecretKind,
+    SecretObjectType, StandardModel, User, Visibility, Workspace,
 };
 use lazy_static::lazy_static;
 use names::{Generator, Name};
@@ -286,14 +286,13 @@ pub async fn create_key_pair(ctx: &DalContext, billing_account_pk: BillingAccoun
         .expect("cannot create key_pair")
 }
 
-pub async fn create_user(ctx: &DalContext, bid: BillingAccountPk) -> User {
+pub async fn create_user(ctx: &DalContext) -> User {
     let name = generate_fake_name();
     User::new(
         ctx,
         &name,
         &format!("{name}@test.systeminit.com"),
         "liesAreTold",
-        bid,
     )
     .await
     .expect("cannot create user")

@@ -15,7 +15,7 @@ use crate::{
     AttributeValue, AttributeValueError, AttributeValueId, ChangeSetPk, Component, ComponentError,
     ComponentId, ComponentStatus, DalContext, ExternalProvider, ExternalProviderError,
     InternalProvider, InternalProviderError, Prop, PropError, PropId, SchemaVariant, SocketId,
-    StandardModel, StandardModelError, Tenancy, Timestamp, UserId, WsEvent, WsEventError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, UserPk, WsEvent, WsEventError,
     WsEventResult, WsPayload,
 };
 
@@ -44,8 +44,8 @@ pub enum StatusUpdateError {
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
     /// When a user is not found by id
-    #[error("user not found with id: {0}")]
-    UserNotFound(UserId),
+    #[error("user not found with pk: {0}")]
+    UserNotFound(UserPk),
 }
 
 impl From<PgPoolError> for StatusUpdateError {
@@ -826,7 +826,7 @@ impl WsEvent {
     ///
     /// # Errors
     ///
-    /// Returns [`Err`] if no user exists for a user id or if there is a connection issue with the
+    /// Returns [`Err`] if no user exists for a user pk or if there is a connection issue with the
     /// database.
     pub async fn status_update(
         ctx: &DalContext,

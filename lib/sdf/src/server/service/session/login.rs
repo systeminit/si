@@ -2,7 +2,7 @@ use super::SessionError;
 use super::SessionResult;
 use crate::server::extract::{HandlerContext, JwtSecretKey};
 use axum::Json;
-use dal::{context::AccessBuilder, BillingAccount, HistoryActor, StandardModel, Tenancy, User};
+use dal::{context::AccessBuilder, BillingAccount, HistoryActor, Tenancy, User};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -49,7 +49,7 @@ pub async fn login(
         .ok_or(SessionError::LoginFailed)?;
 
     // Update context history actor
-    ctx.update_history_actor(HistoryActor::User(*user.id()));
+    ctx.update_history_actor(HistoryActor::User(user.pk()));
 
     let jwt = user
         .login(

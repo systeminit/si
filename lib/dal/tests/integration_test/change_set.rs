@@ -1,10 +1,5 @@
-use dal::{
-    BillingAccountPk, ChangeSet, ChangeSetStatus, DalContext, Visibility,
-};
-use dal_test::{
-    helpers::{create_change_set},
-    test, DalContextHeadMutRef, DalContextHeadRef,
-};
+use dal::{ChangeSet, ChangeSetStatus, DalContext, Visibility};
+use dal_test::{helpers::create_change_set, test, DalContextHeadMutRef, DalContextHeadRef};
 
 #[test]
 async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
@@ -25,7 +20,7 @@ async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
 }
 
 #[test]
-async fn apply(ctx: &mut DalContext, bid: BillingAccountPk) {
+async fn apply(ctx: &mut DalContext) {
     let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
         .await
         .expect("could not perform get by pk")

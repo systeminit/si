@@ -1,5 +1,5 @@
 use axum::Json;
-use dal::{BillingAccount, StandardModel, User};
+use dal::{BillingAccount, User};
 use serde::{Deserialize, Serialize};
 
 use super::{SessionError, SessionResult};
@@ -26,7 +26,7 @@ pub async fn restore_authentication(
     )
     .await?;
 
-    let user = User::get_by_id(&ctx, &claim.user_id)
+    let user = User::get_by_pk(&ctx, claim.user_pk)
         .await?
         .ok_or(SessionError::LoginFailed)?;
 

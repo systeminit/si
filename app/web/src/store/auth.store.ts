@@ -13,7 +13,7 @@ const AUTH_LOCAL_STORAGE_KEYS = {
 };
 
 type TokenData = {
-  user_id: string;
+  user_pk: string;
   billing_account_pk: string;
   // isImpersonating?: boolean;
 };
@@ -28,7 +28,7 @@ export const useAuthStore = defineStore("auth", {
   state: () => ({
     token: null as string | null,
     billingAccountPk: null as string | null,
-    userId: null as string | null,
+    userPk: null as string | null,
     adminIsImpersonatingUser: false,
 
     // TODO: these maybe should live in another module related to the user/org/groups/etc
@@ -151,12 +151,12 @@ export const useAuthStore = defineStore("auth", {
       const token = storage.getItem(AUTH_LOCAL_STORAGE_KEYS.USER);
       if (!token) return;
 
-      // token contains user id and biling account id
-      const { user_id: userId, billing_account_pk: billingAccountPk } =
+      // token contains user pk and biling account pk
+      const { user_pk: userPk, billing_account_pk: billingAccountPk } =
         jwtDecode<TokenData>(token);
       this.$patch({
         token,
-        userId,
+        userPk,
         billingAccountPk,
         // adminIsImpersonatingUser: isImpersonating,
       });
@@ -176,7 +176,7 @@ export const useAuthStore = defineStore("auth", {
       storage.removeItem(AUTH_LOCAL_STORAGE_KEYS.USER);
       this.$patch({
         token: null,
-        userId: null,
+        userPk: null,
         billingAccountPk: null,
         adminIsImpersonatingUser: false,
       });
@@ -186,7 +186,7 @@ export const useAuthStore = defineStore("auth", {
     finishUserLogin(loginResponse: LoginResponse) {
       const decodedJwt = jwtDecode<TokenData>(loginResponse.jwt);
       this.$patch({
-        userId: decodedJwt.user_id,
+        userPk: decodedJwt.user_pk,
         billingAccountPk: decodedJwt.billing_account_pk,
         token: loginResponse.jwt,
         user: loginResponse.user,

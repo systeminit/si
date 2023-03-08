@@ -2,7 +2,7 @@ CREATE OR REPLACE FUNCTION component_delete_and_propagate_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_component_id ident,
-    this_user_id ident,
+    this_user_pk ident,
     this_has_resource boolean
 )
     RETURNS TABLE
@@ -71,11 +71,11 @@ BEGIN
 
     -- Ensure we now set the actor of who has deleted the component
     PERFORM update_by_id_v1('components',
-                            'deletion_user_id',
+                            'deletion_user_pk',
                             this_tenancy,
                             this_visibility || jsonb_build_object('visibility_deleted_at', deleted_timestamp),
                             this_component_id,
-                            this_user_id);
+                            this_user_pk);
 END;
 $$ LANGUAGE PLPGSQL STABLE;
 
