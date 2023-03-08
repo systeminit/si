@@ -76,6 +76,17 @@ pub async fn migrate(
     let driver = MigrationDriver::new(ctx).await?;
 
     // Perform migrations.
+    // we only want to migrate the kubernetes schemas if specifically requested
+    if specific_builtin_schemas.contains("kubernetes deployment") {
+        driver
+            .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+            .await?;
+    }
+    if specific_builtin_schemas.contains("kubernetes namespace") {
+        driver
+            .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
+            .await?;
+    }
     if migrate_all || specific_builtin_schemas.contains("docker image") {
         driver
             .migrate_docker_image(ctx, "Docker", NODE_COLOR_DOCKER)
@@ -84,16 +95,6 @@ pub async fn migrate(
     if migrate_all || specific_builtin_schemas.contains("docker hub credential") {
         driver
             .migrate_docker_hub_credential(ctx, "Docker", NODE_COLOR_DOCKER)
-            .await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("kubernetes deployment") {
-        driver
-            .migrate_kubernetes_deployment(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
-            .await?;
-    }
-    if migrate_all || specific_builtin_schemas.contains("kubernetes namespace") {
-        driver
-            .migrate_kubernetes_namespace(ctx, "Kubernetes", NODE_COLOR_KUBERNETES)
             .await?;
     }
     if migrate_all || specific_builtin_schemas.contains("coreos butane") {
