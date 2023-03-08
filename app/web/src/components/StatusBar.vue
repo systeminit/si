@@ -34,11 +34,7 @@
         >
           <ChangeSetTab :selected="selected" />
         </Tab>
-        <Tab
-          v-slot="{ selected }"
-          :aria-hidden="isViewMode"
-          :class="[isViewMode ? 'hidden' : '']"
-        >
+        <Tab v-slot="{ selected }">
           <QualificationTab :selected="selected" />
         </Tab>
 
@@ -130,11 +126,7 @@
           >
             <ChangeSetTabPanel />
           </TabPanel>
-          <TabPanel
-            :aria-hidden="isViewMode"
-            :class="[isViewMode ? 'hidden' : '']"
-            class="h-full"
-          >
+          <TabPanel class="h-full">
             <QualificationTabPanel />
           </TabPanel>
 

@@ -145,14 +145,14 @@ impl Component {
             Node::list_topologically_ish_sorted_configuration_nodes(ctx, false).await?;
         let mut results = Vec::new();
 
-        let ctx = &ctx.clone_with_delete_visibility();
+        let ctx_with_deleted = &ctx.clone_with_delete_visibility();
 
         for sorted_node_id in sorted_node_ids {
-            let sorted_node = Node::get_by_id(ctx, &sorted_node_id)
+            let sorted_node = Node::get_by_id(ctx_with_deleted, &sorted_node_id)
                 .await?
                 .ok_or(NodeError::NotFound(sorted_node_id))?;
             let component = sorted_node
-                .component(ctx)
+                .component(ctx_with_deleted)
                 .await?
                 .ok_or(NodeError::ComponentIsNone)?;
             let component_specific_confirmations =
