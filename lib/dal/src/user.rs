@@ -101,17 +101,10 @@ impl User {
         Ok(object)
     }
 
-    pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Option<User>> {
-        let maybe_row = ctx.txns().pg().query_opt(USER_GET_BY_PK, &[&pk]).await?;
-
-        let result = match maybe_row {
-            Some(row) => {
-                let json: serde_json::Value = row.try_get("object")?;
-                Some(serde_json::from_value(json)?)
-            }
-            None => None,
-        };
-        Ok(result)
+    pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Self> {
+        let row = ctx.txns().pg().query_one(USER_GET_BY_PK, &[&pk]).await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        Ok(serde_json::from_value(json)?)
     }
 
     pub async fn find_by_email(

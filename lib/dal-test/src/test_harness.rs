@@ -7,7 +7,7 @@ use dal::{
     func::{binding::FuncBinding, FuncId},
     job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
     jwt_key::JwtSecretKey,
-    key_pair::KeyPairId,
+    key_pair::KeyPairPk,
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
@@ -279,9 +279,9 @@ pub async fn create_workspace(ctx: &mut DalContext, oid: OrganizationPk) -> Work
         .expect("cannot create workspace")
 }
 
-pub async fn create_key_pair(ctx: &DalContext, billing_account_pk: BillingAccountPk) -> KeyPair {
+pub async fn create_key_pair(ctx: &DalContext) -> KeyPair {
     let name = generate_fake_name();
-    KeyPair::new(ctx, &name, billing_account_pk)
+    KeyPair::new(ctx, &name)
         .await
         .expect("cannot create key_pair")
 }
@@ -455,13 +455,12 @@ pub async fn create_func_binding(
 
 pub async fn encrypt_message(
     ctx: &DalContext,
-    key_pair_id: KeyPairId,
+    key_pair_pk: KeyPairPk,
     message: &serde_json::Value,
 ) -> Vec<u8> {
-    let public_key = KeyPair::get_by_id(ctx, &key_pair_id)
+    let public_key = KeyPair::get_by_pk(ctx, key_pair_pk)
         .await
-        .expect("failed to fetch key pair")
-        .expect("failed to find key pair");
+        .expect("failed to fetch key pair");
 
     let crypted = sodiumoxide::crypto::sealedbox::seal(
         &serde_json::to_vec(message).expect("failed to serialize message"),
@@ -472,7 +471,7 @@ pub async fn encrypt_message(
 
 pub async fn create_secret(
     ctx: &DalContext,
-    key_pair_id: KeyPairId,
+    key_pair_pk: KeyPairPk,
     billing_account_pk: BillingAccountPk,
 ) -> Secret {
     let name = generate_fake_name();
@@ -481,8 +480,8 @@ pub async fn create_secret(
         &name,
         SecretObjectType::Credential,
         SecretKind::DockerHub,
-        &encrypt_message(ctx, key_pair_id, &serde_json::json!({ "name": name })).await,
-        key_pair_id,
+        &encrypt_message(ctx, key_pair_pk, &serde_json::json!({ "name": name })).await,
+        key_pair_pk,
         Default::default(),
         Default::default(),
         billing_account_pk,
@@ -494,7 +493,7 @@ pub async fn create_secret(
 #[allow(clippy::too_many_arguments)]
 pub async fn create_secret_with_message(
     ctx: &DalContext,
-    key_pair_id: KeyPairId,
+    key_pair_pk: KeyPairPk,
     message: &serde_json::Value,
     billing_account_pk: BillingAccountPk,
 ) -> Secret {
@@ -504,8 +503,8 @@ pub async fn create_secret_with_message(
         &name,
         SecretObjectType::Credential,
         SecretKind::DockerHub,
-        &encrypt_message(ctx, key_pair_id, message).await,
-        key_pair_id,
+        &encrypt_message(ctx, key_pair_pk, message).await,
+        key_pair_pk,
         Default::default(),
         Default::default(),
         billing_account_pk,

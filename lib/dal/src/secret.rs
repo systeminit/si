@@ -15,12 +15,12 @@ use veritech_client::SensitiveContainer;
 
 use crate::{
     impl_standard_model,
-    key_pair::KeyPairId,
+    key_pair::KeyPairPk,
     pk,
     standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
-    BillingAccountPk, DalContext, HistoryEvent, HistoryEventError, KeyPair, KeyPairError,
-    StandardModel, StandardModelError, Timestamp, Visibility,
+    standard_model_accessor, standard_model_accessor_ro, BillingAccountPk, DalContext,
+    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError,
+    Timestamp, Visibility,
 };
 
 /// Error type for Secrets.
@@ -58,6 +58,7 @@ pub struct Secret {
     id: SecretId,
     name: String,
     object_type: SecretObjectType,
+    key_pair_pk: KeyPairPk,
     kind: SecretKind,
     #[serde(flatten)]
     tenancy: Tenancy,
@@ -113,16 +114,9 @@ impl Secret {
     standard_model_accessor_ro!(object_type, SecretObjectType);
     standard_model_accessor_ro!(kind, SecretKind);
 
-    standard_model_belongs_to!(
-        lookup_fn: key_pair,
-        set_fn: set_key_pair,
-        unset_fn: unset_key_pair,
-        table: "encrypted_secret_belongs_to_key_pair",
-        model_table: "key_pairs",
-        belongs_to_id: KeyPairId,
-        returns: KeyPair,
-        result: SecretResult,
-    );
+    pub async fn key_pair(&self, ctx: &DalContext) -> SecretResult<KeyPair> {
+        Ok(KeyPair::get_by_pk(ctx, self.key_pair_pk).await?)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -160,6 +154,7 @@ pub struct EncryptedSecret {
     object_type: SecretObjectType,
     kind: SecretKind,
     billing_account_pk: BillingAccountPk,
+    key_pair_pk: KeyPairPk,
     #[serde(with = "crypted_serde")]
     crypted: Vec<u8>,
     version: SecretVersion,
@@ -207,7 +202,7 @@ impl EncryptedSecret {
         object_type: SecretObjectType,
         kind: SecretKind,
         crypted: &[u8],
-        key_pair_id: KeyPairId,
+        key_pair_pk: KeyPairPk,
         version: SecretVersion,
         algorithm: SecretAlgorithm,
         billing_account_pk: BillingAccountPk,
@@ -218,7 +213,7 @@ impl EncryptedSecret {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -229,12 +224,11 @@ impl EncryptedSecret {
                     &version.as_ref(),
                     &algorithm.as_ref(),
                     &billing_account_pk,
+                    &key_pair_pk,
                 ],
             )
             .await?;
         let object: Secret = standard_model::finish_create_from_row(ctx, row).await?;
-
-        object.set_key_pair(ctx, &key_pair_id).await?;
 
         Ok(object)
     }
@@ -247,24 +241,10 @@ impl EncryptedSecret {
     standard_model_accessor_ro!(version, SecretVersion);
     standard_model_accessor_ro!(algorithm, SecretAlgorithm);
 
-    standard_model_belongs_to!(
-        lookup_fn: key_pair,
-        set_fn: set_key_pair,
-        unset_fn: unset_key_pair,
-        table: "encrypted_secret_belongs_to_key_pair",
-        model_table: "key_pairs",
-        belongs_to_id: KeyPairId,
-        returns: KeyPair,
-        result: SecretResult,
-    );
-
     /// Decrypts the encrypted secret with its associated [`KeyPair`] and returns a
     /// [`DecryptedSecret`].
     pub async fn decrypt(self, ctx: &DalContext) -> SecretResult<DecryptedSecret> {
-        let key_pair = self
-            .key_pair(ctx)
-            .await?
-            .ok_or(SecretError::KeyPairNotFound)?;
+        let key_pair = self.key_pair(ctx).await?;
         self.into_decrypted(key_pair.public_key(), key_pair.secret_key())
     }
 
@@ -283,6 +263,10 @@ impl EncryptedSecret {
                 .map_err(SecretError::DeserializeMessage)?,
             }),
         }
+    }
+
+    pub async fn key_pair(&self, ctx: &DalContext) -> SecretResult<KeyPair> {
+        Ok(KeyPair::get_by_pk(ctx, self.key_pair_pk).await?)
     }
 }
 
@@ -451,6 +435,7 @@ mod tests {
                 object_type,
                 kind,
                 billing_account_pk,
+                key_pair_pk: KeyPairPk::NONE,
                 crypted,
                 version: Default::default(),
                 algorithm: Default::default(),

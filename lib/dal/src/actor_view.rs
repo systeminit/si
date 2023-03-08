@@ -45,9 +45,7 @@ impl ActorView {
     ) -> Result<Self, StandardModelError> {
         match history_actor {
             HistoryActor::User(user_pk) => {
-                let user = User::get_by_pk(ctx, user_pk).await?.ok_or_else(|| {
-                    StandardModelError::ModelMissing("User".to_string(), user_pk.to_string())
-                })?;
+                let user = User::get_by_pk(ctx, user_pk).await?;
                 Ok(Self::User {
                     pk: user.pk(),
                     label: user.name().to_string(),

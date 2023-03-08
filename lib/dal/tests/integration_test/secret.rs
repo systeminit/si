@@ -17,7 +17,7 @@ async fn new_encrypted_secret(ctx: &DalContext, nba: &BillingAccountSignup) {
         SecretObjectType::Credential,
         SecretKind::DockerHub,
         "im-crypted-bytes-maybe".as_bytes(),
-        *nba.key_pair.id(),
+        nba.key_pair.pk(),
         SecretVersion::V1,
         SecretAlgorithm::Sealedbox,
         *nba.billing_account.pk(),
@@ -32,14 +32,13 @@ async fn new_encrypted_secret(ctx: &DalContext, nba: &BillingAccountSignup) {
     let key_pair = secret
         .key_pair(ctx)
         .await
-        .expect("failed to fetch key pair")
-        .expect("failed to find key pair");
+        .expect("failed to fetch key pair");
     assert_eq!(key_pair.pk(), nba.key_pair.pk());
 }
 
 #[test]
 async fn secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let og_secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.pk()).await;
+    let og_secret = create_secret(ctx, nba.key_pair.pk(), *nba.billing_account.pk()).await;
 
     let secret = Secret::get_by_id(ctx, og_secret.id())
         .await
@@ -50,7 +49,7 @@ async fn secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
 
 #[test]
 async fn encrypted_secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.pk()).await;
+    let secret = create_secret(ctx, nba.key_pair.pk(), *nba.billing_account.pk()).await;
 
     let encrypted_secret = EncryptedSecret::get_by_id(ctx, secret.id())
         .await
@@ -65,7 +64,7 @@ async fn encrypted_secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup
 
 #[test]
 async fn secret_update_name(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let mut secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.pk()).await;
+    let mut secret = create_secret(ctx, nba.key_pair.pk(), *nba.billing_account.pk()).await;
 
     let original_name = secret.name().to_string();
     secret
@@ -94,7 +93,7 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nba: &BillingAccountSignup
         SecretObjectType::Credential,
         SecretKind::DockerHub,
         &crypted,
-        *nba.key_pair.id(),
+        nba.key_pair.pk(),
         Default::default(),
         Default::default(),
         *nba.billing_account.pk(),

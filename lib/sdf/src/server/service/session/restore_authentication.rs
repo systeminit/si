@@ -2,7 +2,7 @@ use axum::Json;
 use dal::{BillingAccount, User};
 use serde::{Deserialize, Serialize};
 
-use super::{SessionError, SessionResult};
+use super::SessionResult;
 use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -26,9 +26,7 @@ pub async fn restore_authentication(
     )
     .await?;
 
-    let user = User::get_by_pk(&ctx, claim.user_pk)
-        .await?
-        .ok_or(SessionError::LoginFailed)?;
+    let user = User::get_by_pk(&ctx, claim.user_pk).await?;
 
     let reply = RestoreAuthenticationResponse {
         user,

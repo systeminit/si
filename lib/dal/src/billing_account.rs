@@ -113,7 +113,7 @@ impl BillingAccount {
         let organization = Organization::new(&*ctx, "default", *billing_account.pk()).await?;
         let workspace = Workspace::new(ctx, "default", *organization.pk()).await?;
 
-        let key_pair = KeyPair::new(&*ctx, "default", *billing_account.pk()).await?;
+        let key_pair = KeyPair::new(&*ctx, "default").await?;
 
         let user = User::new(&*ctx, &user_name, &user_email, &user_password).await?;
         let user_history_actor = HistoryActor::User(user.pk());
