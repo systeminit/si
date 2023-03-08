@@ -1,9 +1,0 @@
-[package]
-name = "si-data-faktory"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
-publish = false
-
-[dependencies]
-serde = { version = "1.0.123", features = ["derive"] }

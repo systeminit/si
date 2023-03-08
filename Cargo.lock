@@ -850,7 +850,6 @@ dependencies = [
  "derive_more",
  "diff",
  "dyn-clone",
- "faktory-async",
  "futures",
  "hex",
  "iftree",
@@ -1319,30 +1318,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "faktory-async"
-version = "0.1.0"
-source = "git+https://github.com/systeminit/faktory-async?branch=main#b3f2a449c7a82b8326d3068aa326f9a0f7693fcb"
-dependencies = [
- "faktory-lib-async",
- "rand",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "faktory-lib-async"
-version = "0.1.0"
-source = "git+https://github.com/systeminit/faktory-lib-async?branch=main#13c9f7315d791da1cc7f2c51271a9b0f13faf762"
-dependencies = [
- "chrono",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "fallible-iterator"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1514,11 +1489,9 @@ dependencies = [
  "convert_case 0.6.0",
  "dal",
  "derive_builder 0.11.2",
- "faktory-async",
  "futures",
  "serde",
  "serde_json",
- "si-data-faktory",
  "si-data-nats",
  "si-data-pg",
  "si-settings",
@@ -2681,11 +2654,9 @@ dependencies = [
  "color-eyre",
  "dal",
  "derive_builder 0.11.2",
- "faktory-async",
  "futures",
  "serde",
  "serde_json",
- "si-data-faktory",
  "si-data-nats",
  "si-data-pg",
  "si-settings",
@@ -3241,7 +3212,6 @@ dependencies = [
  "dal",
  "dal-test",
  "derive_builder 0.11.2",
- "faktory-async",
  "futures",
  "hyper",
  "names",
@@ -3253,7 +3223,6 @@ dependencies = [
  "serde_json",
  "serde_url_params",
  "serde_with",
- "si-data-faktory",
  "si-data-nats",
  "si-data-pg",
  "si-pkg",
@@ -3277,7 +3246,6 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "color-eyre",
- "faktory-async",
  "sdf",
  "telemetry-application",
  "tokio",
@@ -3503,13 +3471,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
 dependencies = [
  "lazy_static",
-]
-
-[[package]]
-name = "si-data-faktory"
-version = "0.1.0"
-dependencies = [
- "serde",
 ]
 
 [[package]]

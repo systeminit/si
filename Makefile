@@ -58,7 +58,6 @@ COMPONENTS = \
 	lib/nats-subscriber \
 	lib/object-tree \
 	lib/sdf \
-	lib/si-data-faktory \
 	lib/si-data-nats \
 	lib/si-data-pg \
 	lib/si-pkg \
@@ -248,8 +247,6 @@ test//lib/object-tree//RTESTDEPS: test//lib/si-pkg test//lib/dal
 
 test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
 test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga test//bin/council
-
-test//lib/si-data-faktory//RTESTDEPS: test//lib/sdf test//bin/pinga
 
 test//lib/si-data-nats//RTESTDEPS: test//lib/veritech-client test//lib/veritech-server test//lib/dal test//lib/sdf
 

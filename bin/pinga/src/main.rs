@@ -25,9 +25,7 @@ mod transport;
 
 use transport::{Consumer, ExecutionState};
 
-/// `faktory_async::Client` is also available
 type Transport = si_data_nats::Subscription;
-// type Transport = faktory_async::Client;
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 
@@ -311,8 +309,6 @@ pub enum JobError {
     FailureReporting(#[from] JobFailureError),
     #[error(transparent)]
     Nats(#[from] si_data_nats::Error),
-    #[error(transparent)]
-    Faktory(#[from] faktory_async::Error),
     #[error(transparent)]
     Pg(#[from] PgPoolError),
     #[error(transparent)]

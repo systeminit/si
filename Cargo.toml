@@ -21,7 +21,6 @@ members = [
     "lib/nats-subscriber",
     "lib/object-tree",
     "lib/sdf",
-    "lib/si-data-faktory",
     "lib/si-data-nats",
     "lib/si-data-pg",
     "lib/si-pkg",

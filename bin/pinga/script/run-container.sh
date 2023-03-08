@@ -34,10 +34,8 @@ main() {
       --add-host "postgres:$gateway" \
       --add-host "nats:$gateway" \
       --add-host "otelcol:$gateway" \
-      # --add-host "faktory:$gateway" \
       --env SI_PINGA__PG__HOSTNAME=postgres \
       --env SI_PINGA__NATS__URL=nats \
-      # --env SI_PINGA__FAKTORY__URL=faktory:7419 \
       --env OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317 \
       --name "$name" \
       "$@" \

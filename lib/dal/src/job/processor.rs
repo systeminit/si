@@ -5,7 +5,6 @@ use thiserror::Error;
 use super::producer::{JobProducer, JobProducerError};
 use crate::DalContext;
 
-pub mod faktory_processor;
 pub mod nats_processor;
 pub mod sync_processor;
 

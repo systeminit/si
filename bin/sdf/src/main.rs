@@ -14,10 +14,7 @@ use tokio::sync::mpsc;
 
 mod args;
 
-/// `sdf::FaktoryProcessor` and `sdf::SyncProcessor` are also available
 type JobProcessor = sdf::NatsProcessor;
-// type JobProcessor = sdf::FaktoryProcessor;
-// type JobProcessor = sdf::SyncProcessor;
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 

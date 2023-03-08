@@ -12,7 +12,6 @@ base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
 dal = { path = "../dal" }
 derive_builder = { version = "0.11.2" }
-faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }
 futures = { version = "0.3.17" }
 hyper = { version = "0.14", features = ["http1", "runtime", "server"] }
 names = { version = "0.14.0", default-features = false }
@@ -22,7 +21,6 @@ rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 serde_with = "2.0.0"
-si-data-faktory = { path = "../../lib/si-data-faktory" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-settings = { path = "../../lib/si-settings" }

@@ -134,7 +134,7 @@ There are other components and paradigms that aren't displayed, but this diagram
 - **[web](./app/web/):** the primary frontend web application for SI
 - **[sdf](./bin/sdf/):** the backend webserver for communicating with `web`
 - **[dal](./lib/dal/):** the library used by `sdf` routes to "make stuff happen" (the keystone of SI)
-- **[pinga](./bin/pinga/):** the job queueing service used by the `dal` to execute non-trivial jobs via `nats` (default) or `faktory` (disabled by default)
+- **[pinga](./bin/pinga/):** the job queueing service used by the `dal` to execute non-trivial jobs via `nats`
 - **[council](./bin/council/):** the DependentValuesUpdate job's synchronization service, used by `dal` via `nats` to avoid race conditions when updating attribute values
 - **[postgres](https://postgresql.org):** the database for storing SI data
 - **[nats](https://nats.io):** the messaging system used everywhere in SI, by `pinga`, `council`, `dal` and `sdf` (for multicast websocket events)
@@ -142,7 +142,6 @@ There are other components and paradigms that aren't displayed, but this diagram
 - **[deadpool-cyclone](./lib/deadpool-cyclone/):** a library used for managing a pool of `cyclone` instances of varying "types" (i.e. HTTP, UDS)
 - **[cyclone](./bin/cyclone/):** the manager for a secure execution runtime environment (e.g. `lang-js`)
 - **[lang-js](./bin/lang-js/):** a secure-ish (don't trust it) execution runtime environment for JS functions
-- **[faktory](https://github.com/contribsys/faktory):** disabled by default, one of the job queueing mechanism that can be used by `pinga` to execute non-trivial jobs
 
 It's worth noting that our database has many stored procedures (i.e. database functions) that perform non-trivial logic.
 While the [dal](./lib/dal) is the primary "data access layer" for the rest of the SI stack, it does not perform _all_ the heavy lifting.
