@@ -427,7 +427,7 @@ impl RequestContext {
 }
 
 impl Default for RequestContext {
-    /// Builds a new [`RequestContext`] with no tenancy (only usable for managing BillingAccounts/Organizations/Workspaces)
+    /// Builds a new [`RequestContext`] with no tenancy (only usable for managing objects that live outside of the standard model)
     /// and a head [`Visibility`] and the given [`HistoryActor`].
     fn default() -> Self {
         Self {

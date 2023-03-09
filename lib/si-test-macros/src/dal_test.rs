@@ -159,11 +159,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "OrganizationPk" => {
-                                let var = expander.setup_organization_pk();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
                             "ServicesContext" => {
                                 let var = expander.setup_services_context();
                                 let var = var.as_ref();
@@ -287,7 +282,6 @@ struct FnSetupExpander {
     transactions: Option<Arc<Ident>>,
     billing_account_signup: Option<(Arc<Ident>, Arc<Ident>)>,
     billing_account_pk: Option<Arc<Ident>>,
-    organization_pk: Option<Arc<Ident>>,
     workspace_pk: Option<Arc<Ident>>,
     dal_context_default: Option<Arc<Ident>>,
     dal_context_default_mut: Option<Arc<Ident>>,
@@ -316,7 +310,6 @@ impl FnSetupExpander {
             transactions: None,
             billing_account_signup: None,
             billing_account_pk: None,
-            organization_pk: None,
             workspace_pk: None,
             dal_context_default: None,
             dal_context_default_mut: None,
@@ -610,23 +603,6 @@ impl FnSetupExpander {
         self.billing_account_pk = Some(Arc::new(var));
 
         self.billing_account_pk.as_ref().unwrap().clone()
-    }
-
-    fn setup_organization_pk(&mut self) -> Arc<Ident> {
-        if let Some(ref idents) = self.organization_pk {
-            return idents.clone();
-        }
-
-        let bas = self.setup_billing_account_signup();
-        let nba = bas.0.as_ref();
-
-        let var = Ident::new("nba_organization_pk", Span::call_site());
-        self.code.extend(quote! {
-            let #var = *#nba.organization.pk();
-        });
-        self.organization_pk = Some(Arc::new(var));
-
-        self.organization_pk.as_ref().unwrap().clone()
     }
 
     fn setup_workspace_pk(&mut self) -> Arc<Ident> {

@@ -30,7 +30,7 @@ pub async fn login(
     let mut ctx = builder
         .build(
             AccessBuilder::new(
-                // Empty tenancy means things can be written, but won't ever be read, with the exception of billing accounts, organizations and workspaces
+                // Empty tenancy means things can be written, but won't ever be read by whatever uses the standard model
                 Tenancy::new_empty(),
                 HistoryActor::SystemInit,
             )

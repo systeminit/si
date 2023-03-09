@@ -32,8 +32,8 @@ use crate::{
     AttributePrototypeError, AttributePrototypeId, AttributeReadContext, CodeLanguage,
     ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderError,
     ExternalProviderId, FixError, Func, FuncBackendKind, FuncError, HistoryActor,
-    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, OrganizationError,
-    Prop, PropError, PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
+    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, Prop, PropError,
+    PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
     StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, ValidationPrototypeError,
     ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WsEvent,
     WsEventResult, WsPayload,
@@ -171,14 +171,10 @@ pub enum ComponentError {
     Qualification(#[from] QualificationError),
     #[error("workspace not found")]
     WorkspaceNotFound,
-    #[error("organization not found")]
-    OrganizationNotFound,
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
-    #[error("organization error: {0}")]
-    Organization(#[from] OrganizationError),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
     #[error("found child attribute value of a map without a key: {0}")]

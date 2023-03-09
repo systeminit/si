@@ -49,10 +49,6 @@ async fn get_defaults(ctx: &mut DalContext, nba: &BillingAccountSignup) {
         .await
         .expect("cannot get defaults for billing account");
     assert_eq!(
-        defaults.organization, nba.organization,
-        "default organization matches created organization"
-    );
-    assert_eq!(
         defaults.workspace, nba.workspace,
         "default workspace matches created workspace"
     );

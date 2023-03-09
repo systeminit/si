@@ -1,5 +1,5 @@
 export interface Workspace {
   pk: string;
   name: string;
-  organization_pk: string;
+  billing_account_pk: string;
 }

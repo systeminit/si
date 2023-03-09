@@ -5,8 +5,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    pk, standard_model, standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError,
-    OrganizationPk, StandardModelError, Tenancy, Timestamp, TransactionsError,
+    pk, standard_model, standard_model_accessor_ro, BillingAccountPk, DalContext, HistoryEvent,
+    HistoryEventError, StandardModelError, Tenancy, Timestamp, TransactionsError,
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
@@ -34,7 +34,7 @@ pk!(WorkspacePk);
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Workspace {
     pk: WorkspacePk,
-    organization_pk: OrganizationPk,
+    billing_account_pk: BillingAccountPk,
     name: String,
     #[serde(flatten)]
     timestamp: Timestamp,
@@ -64,7 +64,7 @@ impl Workspace {
     pub async fn new(
         ctx: &mut DalContext,
         name: impl AsRef<str>,
-        organization_pk: OrganizationPk,
+        billing_account_pk: BillingAccountPk,
     ) -> WorkspaceResult<Self> {
         let name = name.as_ref();
         let row = ctx
@@ -72,7 +72,7 @@ impl Workspace {
             .pg()
             .query_one(
                 "SELECT object FROM workspace_create_v1($1, $2)",
-                &[&name, &organization_pk],
+                &[&name, &billing_account_pk],
             )
             .await?;
 
@@ -85,8 +85,8 @@ impl Workspace {
 
         let _history_event = HistoryEvent::new(
             ctx,
-            "organization.create".to_owned(),
-            "Organization created".to_owned(),
+            "workspace.create".to_owned(),
+            "Workspace created".to_owned(),
             &serde_json::json![{ "visibility": ctx.visibility() }],
         )
         .await?;
@@ -104,5 +104,5 @@ impl Workspace {
     }
 
     standard_model_accessor_ro!(name, String);
-    standard_model_accessor_ro!(organization_pk, OrganizationPk);
+    standard_model_accessor_ro!(billing_account_pk, BillingAccountPk);
 }

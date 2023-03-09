@@ -128,6 +128,5 @@ async fn get_defaults() {
         &auth_token,
     )
     .await;
-    assert_eq!(nba.organization, response.organization);
     assert_eq!(nba.workspace, response.workspace);
 }

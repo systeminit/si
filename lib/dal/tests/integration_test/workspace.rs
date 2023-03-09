@@ -1,9 +1,9 @@
-use dal::{DalContext, OrganizationPk, Workspace};
+use dal::{BillingAccountPk, DalContext, Workspace};
 use dal_test::test;
 
 #[test]
-async fn new(ctx: &mut DalContext, oid: OrganizationPk) {
-    let _ = Workspace::new(ctx, "iron maiden", oid)
+async fn new(ctx: &mut DalContext, bid: BillingAccountPk) {
+    let _ = Workspace::new(ctx, "iron maiden", bid)
         .await
         .expect("cannot create workspace");
 }

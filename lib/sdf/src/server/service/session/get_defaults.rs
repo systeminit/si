@@ -1,21 +1,19 @@
 use super::SessionResult;
 use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 use axum::Json;
-use dal::{billing_account::BillingAccountDefaults, BillingAccount, Organization, Workspace};
+use dal::{billing_account::BillingAccountDefaults, BillingAccount, Workspace};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetDefaultsResponse {
     pub workspace: Workspace,
-    pub organization: Organization,
 }
 
 impl From<BillingAccountDefaults> for GetDefaultsResponse {
     fn from(defaults: BillingAccountDefaults) -> Self {
         GetDefaultsResponse {
             workspace: defaults.workspace,
-            organization: defaults.organization,
         }
     }
 }

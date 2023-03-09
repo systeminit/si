@@ -27,7 +27,6 @@
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
 import { BillingAccount } from "../../src/api/sdf/dal/billing_account";
-import { Organization } from "../../src/api/sdf/dal/organization";
 import { Workspace } from "../../src/api/sdf/dal/workspace";
 import { User } from "../../src/api/sdf/dal/user";
 import { PublicKey } from "../../src/api/sdf/dal/key_pair";
@@ -122,7 +121,6 @@ Cypress.Commands.add("signupAndLogin", () => {
 
 export interface TestCtx {
   billing_account: BillingAccount;
-  organization: Organization;
   workspace: Workspace;
   user: User;
   key_pair: PublicKey;

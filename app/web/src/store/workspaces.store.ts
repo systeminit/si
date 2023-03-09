@@ -4,23 +4,19 @@ import { watch } from "vue";
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
 
 import { Workspace } from "@/api/sdf/dal/workspace";
-import { Organization } from "@/api/sdf/dal/organization";
 import { addStoreHooks } from "@/store/lib/pinia_hooks_plugin";
 import { useAuthStore } from "./auth.store";
 import { useRouterStore } from "./router.store";
 
 type WorkspacePk = string;
-type OrganizationPk = string;
 
 export const useWorkspacesStore = addStoreHooks(
   defineStore("workspaces", {
     state: () => ({
       workspacesByPk: {} as Record<WorkspacePk, Workspace>,
-      organizationsByPk: {} as Record<OrganizationPk, Organization>,
     }),
     getters: {
       allWorkspaces: (state) => _.values(state.workspacesByPk),
-      allOrganizations: (state) => _.values(state.organizationsByPk),
       selectedWorkspacePk(): WorkspacePk | null {
         return this.selectedWorkspace?.pk || null;
       },
@@ -35,14 +31,11 @@ export const useWorkspacesStore = addStoreHooks(
           null,
         );
       },
-      // only have one org for now...
-      selectedOrganization: (state) => _.values(state.organizationsByPk)[0],
     },
     actions: {
       async FETCH_USER_WORKSPACES() {
         return new ApiRequest<{
           workspace: Workspace;
-          organization: Organization;
         }>({
           // TODO: probably should fetch list of all workspaces here...
           // something like `/users/USER_PK/workspaces`, `/my/workspaces`, etc
@@ -50,7 +43,6 @@ export const useWorkspacesStore = addStoreHooks(
           onSuccess: (response) => {
             // this.workspacesByPk = _.keyBy(response.workspaces, "pk");
             this.workspacesByPk = _.keyBy([response.workspace], "pk");
-            this.organizationsByPk = _.keyBy([response.organization], "pk");
 
             // NOTE - we could cache this stuff in localstorage too to avoid showing loading state
             // but this is a small optimization to make later...

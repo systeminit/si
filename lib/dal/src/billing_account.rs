@@ -7,9 +7,8 @@ use thiserror::Error;
 
 use crate::{
     pk, schema::variant::SchemaVariantError, standard_model_accessor_ro, DalContext, HistoryActor,
-    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, NodeError, Organization,
-    OrganizationError, SchemaError, Tenancy, Timestamp, TransactionsError, User, UserError,
-    Workspace, WorkspaceError,
+    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, NodeError, SchemaError, Tenancy,
+    Timestamp, TransactionsError, User, UserError, Workspace, WorkspaceError,
 };
 
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("queries/billing_account/get_by_name.sql");
@@ -34,8 +33,6 @@ pub enum BillingAccountError {
     User(#[from] UserError),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
-    #[error("organization error: {0}")]
-    Organization(#[from] OrganizationError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema not found")]
@@ -110,8 +107,7 @@ impl BillingAccount {
         user_password: impl AsRef<str>,
     ) -> BillingAccountResult<BillingAccountSignup> {
         let billing_account = BillingAccount::new(&*ctx, billing_account_name, None).await?;
-        let organization = Organization::new(&*ctx, "default", *billing_account.pk()).await?;
-        let workspace = Workspace::new(ctx, "default", *organization.pk()).await?;
+        let workspace = Workspace::new(ctx, "default", *billing_account.pk()).await?;
 
         let key_pair = KeyPair::new(&*ctx, "default").await?;
 
@@ -125,7 +121,6 @@ impl BillingAccount {
             billing_account,
             key_pair,
             user,
-            organization,
             workspace,
         })
     }
@@ -173,18 +168,13 @@ impl BillingAccount {
             .pg()
             .query_one(BILLING_ACCOUNT_GET_DEFAULTS, &[&pk])
             .await?;
-        let organization_json: serde_json::Value = row.try_get("organization")?;
-        let organization: Organization = serde_json::from_value(organization_json)?;
         let workspace_json: serde_json::Value = row.try_get("workspace")?;
         let workspace: Workspace = serde_json::from_value(workspace_json)?;
 
         let mut workspace_ctx = ctx.clone();
         workspace_ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
-        let result = BillingAccountDefaults {
-            organization,
-            workspace,
-        };
+        let result = BillingAccountDefaults { workspace };
         Ok(result)
     }
 }
@@ -194,12 +184,10 @@ pub struct BillingAccountSignup {
     pub billing_account: BillingAccount,
     pub key_pair: KeyPair,
     pub user: User,
-    pub organization: Organization,
     pub workspace: Workspace,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct BillingAccountDefaults {
-    pub organization: Organization,
     pub workspace: Workspace,
 }
