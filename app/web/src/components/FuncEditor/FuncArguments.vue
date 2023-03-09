@@ -56,15 +56,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, toRef, watch } from "vue";
+import { ref, watch } from "vue";
 import { FuncArgument, FuncArgumentKind } from "@/api/sdf/dal/func";
 import VButton from "@/components/VButton.vue";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
 import Inline from "@/ui-lib/layout/Inline.vue";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
-import { useFuncStore } from "@/store/func/funcs.store";
-
-const funcStore = useFuncStore();
+import { AttributeAssocations } from "@/store/func/types";
+import { nilId } from "@/utils/nilId";
 
 const generateKindOptions = () => {
   const options: Option[] = [];
@@ -84,14 +83,14 @@ const kindOptions = generateKindOptions();
 // const elementKindOptions = [kindToOption()].concat(generateKindOptions());
 
 const props = defineProps<{
-  funcId: string;
-  arguments: FuncArgument[];
+  modelValue: AttributeAssocations;
   disabled?: boolean;
 }>();
 
-function nilId(): string {
-  return "00000000000000000000000000";
-}
+const emit = defineEmits<{
+  (e: "update:modelValue", v: AttributeAssocations): void;
+  (e: "change", v: AttributeAssocations): void;
+}>();
 
 const defaultNewArg = {
   id: nilId(),
@@ -100,8 +99,6 @@ const defaultNewArg = {
   elementKind: kindToOption(),
 };
 
-const funcId = toRef(props, "funcId", nilId());
-const args = toRef(props, "arguments", []);
 const newArg = ref<EditingFuncArgument>(defaultNewArg);
 
 interface EditingFuncArgument {
@@ -129,12 +126,16 @@ const editingArgsToArgs = (editingArgs: EditingFuncArgument[]) =>
       : undefined,
   }));
 
-const editingArgs = ref<EditingFuncArgument[]>([]);
+const associations = ref(props.modelValue);
+const editingArgs = ref<EditingFuncArgument[]>(
+  argsToEditingArgs(props.modelValue.arguments),
+);
 
 watch(
-  args,
-  (args) => {
-    editingArgs.value = argsToEditingArgs(args);
+  () => props.modelValue,
+  (mv) => {
+    associations.value = mv;
+    editingArgs.value = argsToEditingArgs(associations.value.arguments);
   },
   { immediate: true },
 );
@@ -148,10 +149,9 @@ const addArgument = async () => {
 };
 
 const saveArguments = () => {
-  funcStore.updateFuncAttrArgs(
-    funcId.value,
-    editingArgsToArgs(editingArgs.value),
-  );
+  associations.value.arguments = editingArgsToArgs(editingArgs.value);
+  emit("change", associations.value);
+  emit("update:modelValue", associations.value);
 };
 
 const deleteArgument = async (name: string) => {
