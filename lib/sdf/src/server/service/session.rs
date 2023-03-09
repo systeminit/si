@@ -3,7 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{BillingAccountError, StandardModelError, TransactionsError, UserError};
+use dal::{StandardModelError, TransactionsError, UserError, WorkspaceError};
 use thiserror::Error;
 
 pub mod get_defaults;
@@ -20,12 +20,12 @@ pub enum SessionError {
     ContextTransactions(#[from] TransactionsError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    #[error("billing account error: {0}")]
-    BillingAccount(#[from] BillingAccountError),
     #[error("user error: {0}")]
     User(#[from] UserError),
     #[error("login failed")]
     LoginFailed,
+    #[error(transparent)]
+    Workspace(#[from] WorkspaceError),
 }
 
 pub type SessionResult<T> = std::result::Result<T, SessionError>;

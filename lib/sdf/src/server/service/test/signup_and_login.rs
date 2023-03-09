@@ -1,5 +1,5 @@
 use axum::Json;
-use dal::{billing_account::BillingAccountSignup, BillingAccount, RequestContext};
+use dal::{RequestContext, Workspace, WorkspaceSignup};
 use serde::{Deserialize, Serialize};
 
 use super::{generate_fake_name, TestResult};
@@ -7,7 +7,7 @@ use crate::server::extract::{HandlerContext, JwtSecretKey};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SignupResponse {
-    data: BillingAccountSignup,
+    data: WorkspaceSignup,
     jwt: String,
 }
 
@@ -17,14 +17,14 @@ pub async fn signup_and_login(
 ) -> TestResult<Json<SignupResponse>> {
     let mut ctx = builder.build(RequestContext::default()).await?;
 
-    let billing_account_name = generate_fake_name();
+    let workspace_name = generate_fake_name();
     let user_name = generate_fake_name();
     let user_email = format!("{user_name}@example.com");
     let user_password = "snakes";
 
-    let result = BillingAccount::signup(
+    let result = Workspace::signup(
         &mut ctx,
-        &billing_account_name,
+        &workspace_name,
         &user_name,
         &user_email,
         &user_password,

@@ -1,6 +1,5 @@
 mod action_prototype;
 mod attribute;
-mod billing_account;
 mod builtins;
 mod change_set;
 mod component;

@@ -31,7 +31,7 @@ async fn model_flow_fedora_coreos_ignition() {
         veritech,
         encr_key,
         app,
-        _nba,
+        _nw,
         auth_token,
         ctx,
         _job_processor,

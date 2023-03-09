@@ -125,21 +125,5 @@ pub mod widget;
 //             (None, None) => VisibilityDiff::None,
 //         };
 //     }
-//     if visibility.in_edit_session() {
-//         visibility_diff = match (target_value_option, change_set_value_option) {
-//             (Some(target_value), Some(change_set_value)) => {
-//                 if target_value != change_set_value {
-//                     VisibilityDiff::ChangeSet(Some(serde_json::to_value(change_set_value)?))
-//                 } else {
-//                     visibility_diff
-//                 }
-//             }
-//             (Some(_), None) => visibility_diff,
-//             (None, Some(change_set_value)) => {
-//                 VisibilityDiff::ChangeSet(Some(serde_json::to_value(change_set_value)?))
-//             }
-//             (None, None) => visibility_diff,
-//         };
-//     }
 //     Ok(visibility_diff)
 // }

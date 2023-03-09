@@ -17,7 +17,6 @@ use crate::builtins::BuiltinSchemaOption;
 pub mod action_prototype;
 pub mod actor_view;
 pub mod attribute;
-pub mod billing_account;
 pub mod builtins;
 pub mod change_set;
 pub mod change_status;
@@ -90,10 +89,6 @@ pub use attribute::{
         AttributeValue, AttributeValueError, AttributeValueId, AttributeValuePayload,
         AttributeValueResult,
     },
-};
-pub use billing_account::{
-    BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountPk,
-    BillingAccountSignup,
 };
 pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus};
@@ -189,7 +184,7 @@ pub use workflow_runner::workflow_runner_state::{
     WorkflowRunnerState, WorkflowRunnerStateId, WorkflowRunnerStatus,
 };
 pub use workflow_runner::{WorkflowRunner, WorkflowRunnerError, WorkflowRunnerId};
-pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
+pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult, WorkspaceSignup};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 #[cfg(debug_assertions)]

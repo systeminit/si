@@ -27,7 +27,7 @@ pub enum KeyPairError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error(transparent)]
-    Workspace(#[from] WorkspaceError),
+    Workspace(#[from] Box<WorkspaceError>),
     #[error("no current key pair found when one was expected")]
     NoCurrentKeyPair,
 }
@@ -118,7 +118,9 @@ impl KeyPair {
     standard_model_accessor_ro!(created_lamport_clock, u64);
 
     pub async fn workspace(&self, ctx: &DalContext) -> KeyPairResult<Workspace> {
-        Ok(Workspace::get_by_pk(ctx, &self.workspace_pk).await?)
+        Ok(Workspace::get_by_pk(ctx, &self.workspace_pk)
+            .await
+            .map_err(Box::new)?)
     }
 }
 

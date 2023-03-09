@@ -9,8 +9,8 @@ use tokio::task::JoinError;
 
 use crate::jwt_key::{get_jwt_signing_key, JwtKeyError};
 use crate::{
-    pk, standard_model_accessor_ro, BillingAccountPk, DalContext, HistoryEvent, HistoryEventError,
-    JwtSecretKey, Tenancy, Timestamp, TransactionsError, WorkspacePk,
+    pk, standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, JwtSecretKey,
+    Tenancy, Timestamp, TransactionsError, WorkspacePk,
 };
 
 const USER_PASSWORD: &str = include_str!("queries/user/password.sql");
@@ -199,15 +199,6 @@ impl UserClaim {
     ) -> UserResult<UserClaim> {
         let claims = crate::jwt_key::validate_bearer_token(ctx, &token).await?;
         Ok(claims.custom)
-    }
-
-    pub async fn find_billing_account_pk_for_workspace(
-        &self,
-        ctx: &DalContext,
-    ) -> UserResult<BillingAccountPk> {
-        Ok(ctx
-            .find_billing_account_pk_for_workspace(self.workspace_pk)
-            .await?)
     }
 }
 

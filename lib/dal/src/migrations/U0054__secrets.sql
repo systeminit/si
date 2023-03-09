@@ -10,7 +10,6 @@ CREATE TABLE encrypted_secrets
     name                        text                     NOT NULL,
     object_type                 text                     NOT NULL,
     kind                        text                     NOT NULL,
-    billing_account_pk          ident                    NOT NULL,
     key_pair_pk                 ident                    NOT NULL,
     crypted                     text                     NOT NULL,
     version                     text                     NOT NULL,
@@ -114,7 +113,6 @@ CREATE OR REPLACE FUNCTION encrypted_secret_create_v1(
     this_crypted text,
     this_version text,
     this_algorithm text,
-    this_billing_account_pk ident,
     this_key_pair_pk ident,
     OUT object json) AS
 $$
@@ -132,7 +130,6 @@ BEGIN
                                    name,
                                    object_type,
                                    kind,
-                                   billing_account_pk,
                                    crypted,
                                    version,
                                    algorithm,
@@ -143,7 +140,6 @@ BEGIN
             this_name,
             this_object_type,
             this_kind,
-            this_billing_account_pk,
             this_crypted,
             this_version,
             this_algorithm,

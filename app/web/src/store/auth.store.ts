@@ -5,7 +5,7 @@ import { useRouter } from "vue-router";
 import { ApiRequest } from "@/store/lib/pinia_api_tools";
 
 import { User } from "@/api/sdf/dal/user";
-import { BillingAccount } from "@/api/sdf/dal/billing_account";
+import { Workspace } from "@/api/sdf/dal/workspace";
 
 // keys we use to store auth tokens in local storage
 const AUTH_LOCAL_STORAGE_KEYS = {
@@ -14,33 +14,33 @@ const AUTH_LOCAL_STORAGE_KEYS = {
 
 type TokenData = {
   user_pk: string;
-  billing_account_pk: string;
+  workspace_pk: string;
   // isImpersonating?: boolean;
 };
 
 interface LoginResponse {
   user: User;
-  billingAccount: BillingAccount;
+  workspace: Workspace;
   jwt: string;
 }
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     token: null as string | null,
-    billingAccountPk: null as string | null,
+    workspacePk: null as string | null,
     userPk: null as string | null,
     adminIsImpersonatingUser: false,
 
     // TODO: these maybe should live in another module related to the user/org/groups/etc
     user: null as User | null,
-    billingAccount: null as BillingAccount | null,
+    workspace: null as Workspace | null,
   }),
   getters: {
     userIsLoggedIn: (state) => !!state.token,
   },
   actions: {
     async LOGIN(payload: {
-      billingAccountName: string;
+      workspaceName: string;
       userEmail: string;
       userPassword: string;
     }) {
@@ -55,13 +55,13 @@ export const useAuthStore = defineStore("auth", {
         },
       });
     },
-    // fetches user + billing account info - called on page refresh
+    // fetches user + workspace info - called on page refresh
     async RESTORE_AUTH() {
       return new ApiRequest<Omit<LoginResponse, "jwt">>({
         url: "/session/restore_authentication",
         onSuccess: (response) => {
           this.user = response.user;
-          this.billingAccount = response.billingAccount;
+          this.workspace = response.workspace;
         },
         onFail(e) {
           /* eslint-disable-next-line no-console */
@@ -97,7 +97,7 @@ export const useAuthStore = defineStore("auth", {
       });
     },
     COMPLETE_PASSWORD_RESET(payload: {
-      billingAccountName: string;
+      workspaceName: string;
       email: string;
       resetToken: string;
       newPassword: string;
@@ -130,7 +130,7 @@ export const useAuthStore = defineStore("auth", {
 
     // SIGNUP
     async SIGNUP(payload: {
-      billingAccountName: string;
+      workspaceName: string;
       userEmail: string;
       userPassword: string;
       userName: string;
@@ -152,16 +152,16 @@ export const useAuthStore = defineStore("auth", {
       if (!token) return;
 
       // token contains user pk and biling account pk
-      const { user_pk: userPk, billing_account_pk: billingAccountPk } =
+      const { user_pk: userPk, workspace_pk: workspacePk } =
         jwtDecode<TokenData>(token);
       this.$patch({
         token,
         userPk,
-        billingAccountPk,
+        workspacePk,
         // adminIsImpersonatingUser: isImpersonating,
       });
 
-      // this endpoint re-fetches the user and billing account
+      // this endpoint re-fetches the user and workspace
       // dont think it's 100% necessary at the moment and not quite the right shape, but can fix later
       const restoreAuthReq = await this.RESTORE_AUTH();
       if (!restoreAuthReq.result.success) {
@@ -177,7 +177,7 @@ export const useAuthStore = defineStore("auth", {
       this.$patch({
         token: null,
         userPk: null,
-        billingAccountPk: null,
+        workspacePk: null,
         adminIsImpersonatingUser: false,
       });
     },
@@ -187,10 +187,10 @@ export const useAuthStore = defineStore("auth", {
       const decodedJwt = jwtDecode<TokenData>(loginResponse.jwt);
       this.$patch({
         userPk: decodedJwt.user_pk,
-        billingAccountPk: decodedJwt.billing_account_pk,
+        workspacePk: decodedJwt.workspace_pk,
         token: loginResponse.jwt,
         user: loginResponse.user,
-        billingAccount: loginResponse.billingAccount,
+        workspace: loginResponse.workspace,
       });
 
       // store the token in localstorage

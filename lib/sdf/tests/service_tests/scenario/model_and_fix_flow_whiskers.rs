@@ -30,7 +30,7 @@ async fn model_and_fix_flow_whiskers() {
         veritech,
         encr_key,
         app,
-        _nba,
+        _nw,
         auth_token,
         ctx,
         _job_processor,

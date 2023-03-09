@@ -5,7 +5,7 @@ use dal::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 use super::SecretResult;
 
@@ -32,7 +32,6 @@ pub struct CreateSecretResponse {
 pub async fn create_secret(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_tx): AccessBuilder,
-    Authorization(claim): Authorization,
     Json(request): Json<CreateSecretRequest>,
 ) -> SecretResult<Json<CreateSecretResponse>> {
     let ctx = builder.build(request_tx.build(request.visibility)).await?;
@@ -46,7 +45,6 @@ pub async fn create_secret(
         request.key_pair_pk,
         request.version,
         request.algorithm,
-        claim.find_billing_account_pk_for_workspace(&ctx).await?,
     )
     .await?;
 

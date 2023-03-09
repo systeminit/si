@@ -7,8 +7,8 @@ use axum::{
 use thiserror::Error;
 
 use dal::{
-    BillingAccountError, ComponentError, NodeError, NodePositionError, SchemaError,
-    StandardModelError, TransactionsError,
+    ComponentError, NodeError, NodePositionError, SchemaError, StandardModelError,
+    TransactionsError, WorkspaceError,
 };
 
 pub mod create_account;
@@ -16,8 +16,6 @@ pub mod create_account;
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum SignupError {
-    #[error("billing account error: {0}")]
-    BillingAccount(#[from] BillingAccountError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
     #[error("invalid signup secret")]
@@ -36,6 +34,8 @@ pub enum SignupError {
     Node(#[from] NodeError),
     #[error("NodePosition error: {0}")]
     NodePosition(#[from] NodePositionError),
+    #[error(transparent)]
+    Workspace(#[from] WorkspaceError),
 }
 
 pub type SignupResult<T> = std::result::Result<T, SignupError>;

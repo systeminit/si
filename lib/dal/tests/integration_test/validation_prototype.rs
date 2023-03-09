@@ -1,7 +1,6 @@
 use dal::{
-    func::backend::validation::FuncBackendValidationArgs, validation::Validation,
-    BillingAccountSignup, DalContext, Func, Prop, Schema, StandardModel, ValidationPrototype,
-    ValidationPrototypeContext,
+    func::backend::validation::FuncBackendValidationArgs, validation::Validation, DalContext, Func,
+    Prop, Schema, StandardModel, ValidationPrototype, ValidationPrototypeContext,
 };
 use dal_test::{helpers::find_prop_and_parent_by_name, test};
 
@@ -54,7 +53,7 @@ async fn new(ctx: &DalContext) {
 }
 
 #[test]
-async fn find_for_prop(ctx: &DalContext, _nba: &BillingAccountSignup) {
+async fn find_for_prop(ctx: &DalContext) {
     let schema = Schema::find_by_attr(ctx, "name", &"Docker Image".to_string())
         .await
         .expect("cannot find docker image")

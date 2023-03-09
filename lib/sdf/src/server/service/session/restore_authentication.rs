@@ -1,5 +1,5 @@
 use axum::Json;
-use dal::{BillingAccount, User};
+use dal::{User, Workspace};
 use serde::{Deserialize, Serialize};
 
 use super::SessionResult;
@@ -9,7 +9,7 @@ use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 #[serde(rename_all = "camelCase")]
 pub struct RestoreAuthenticationResponse {
     pub user: User,
-    pub billing_account: BillingAccount,
+    pub workspace: Workspace,
 }
 
 pub async fn restore_authentication(
@@ -19,19 +19,11 @@ pub async fn restore_authentication(
 ) -> SessionResult<Json<RestoreAuthenticationResponse>> {
     let ctx = builder.build(request_ctx.build_head()).await?;
 
-    // Why is this here?
-    let billing_account = BillingAccount::get_by_pk(
-        &ctx,
-        &claim.find_billing_account_pk_for_workspace(&ctx).await?,
-    )
-    .await?;
+    let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_pk).await?;
 
     let user = User::get_by_pk(&ctx, claim.user_pk).await?;
 
-    let reply = RestoreAuthenticationResponse {
-        user,
-        billing_account,
-    };
+    let reply = RestoreAuthenticationResponse { user, workspace };
 
     Ok(Json(reply))
 }

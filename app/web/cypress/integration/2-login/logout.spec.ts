@@ -6,7 +6,7 @@ describe("Logout", () => {
 
   it("lets the user log out", () => {
     cy.visit("/");
-    cy.get("@nba").then((testCtx: any) => {
+    cy.get("@nw").then((testCtx: any) => {
       cy.getBySel("logout")
         .click()
         .should(() => {

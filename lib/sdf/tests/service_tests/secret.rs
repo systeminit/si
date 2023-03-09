@@ -21,7 +21,7 @@ async fn create_secret() {
         _veritech,
         _encr_key,
         app,
-        nba,
+        nw,
         auth_token,
         dal_ctx,
         _job_processor,
@@ -31,14 +31,14 @@ async fn create_secret() {
     let visibility = Visibility::new_head(false);
 
     let message = serde_json::json!({"artist":"Billy Talent"});
-    let crypted = encrypt_message(&dal_ctx, nba.key_pair.pk(), &message).await;
+    let crypted = encrypt_message(&dal_ctx, nw.key_pair.pk(), &message).await;
 
     let request = CreateSecretRequest {
         name: "reckless-paradise".to_string(),
         object_type: SecretObjectType::Credential,
         kind: SecretKind::DockerHub,
         crypted,
-        key_pair_pk: nba.key_pair.pk(),
+        key_pair_pk: nw.key_pair.pk(),
         version: SecretVersion::V1,
         algorithm: SecretAlgorithm::Sealedbox,
         visibility,

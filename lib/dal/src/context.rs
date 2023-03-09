@@ -12,10 +12,8 @@ use crate::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::JobProducer,
     },
-    BillingAccountPk, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
+    HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
 };
-
-const GET_BILLING_ACCOUNT: &str = include_str!("queries/context_get_billing_account.sql");
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -281,19 +279,6 @@ impl DalContext {
         let mut new = self.clone();
         new.update_to_head();
         new
-    }
-
-    pub async fn find_billing_account_pk_for_workspace(
-        &self,
-        workspace_pk: WorkspacePk,
-    ) -> Result<BillingAccountPk, TransactionsError> {
-        let row = self
-            .txns()
-            .pg()
-            .query_one(GET_BILLING_ACCOUNT, &[&workspace_pk])
-            .await?;
-        let pk = row.try_get("pk")?;
-        Ok(pk)
     }
 
     pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {

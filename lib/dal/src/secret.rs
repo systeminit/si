@@ -18,9 +18,9 @@ use crate::{
     key_pair::KeyPairPk,
     pk,
     standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_accessor_ro, BillingAccountPk, DalContext,
-    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError,
-    Timestamp, Visibility,
+    standard_model_accessor, standard_model_accessor_ro, DalContext, HistoryEvent,
+    HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError, Timestamp,
+    Visibility,
 };
 
 /// Error type for Secrets.
@@ -153,7 +153,6 @@ pub struct EncryptedSecret {
     name: String,
     object_type: SecretObjectType,
     kind: SecretKind,
-    billing_account_pk: BillingAccountPk,
     key_pair_pk: KeyPairPk,
     #[serde(with = "crypted_serde")]
     crypted: Vec<u8>,
@@ -205,7 +204,6 @@ impl EncryptedSecret {
         key_pair_pk: KeyPairPk,
         version: SecretVersion,
         algorithm: SecretAlgorithm,
-        billing_account_pk: BillingAccountPk,
     ) -> SecretResult<Secret> {
         let name = name.as_ref();
 
@@ -213,7 +211,7 @@ impl EncryptedSecret {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
@@ -223,7 +221,6 @@ impl EncryptedSecret {
                     &encode_crypted(crypted),
                     &version.as_ref(),
                     &algorithm.as_ref(),
-                    &billing_account_pk,
                     &key_pair_pk,
                 ],
             )
@@ -422,7 +419,6 @@ mod tests {
             object_type: SecretObjectType,
             kind: SecretKind,
             crypted: impl Into<Vec<u8>>,
-            billing_account_pk: BillingAccountPk,
             wid: WorkspacePk,
         ) -> EncryptedSecret {
             let name = name.into();
@@ -434,7 +430,6 @@ mod tests {
                 name,
                 object_type,
                 kind,
-                billing_account_pk,
                 key_pair_pk: KeyPairPk::NONE,
                 crypted,
                 version: Default::default(),
@@ -469,7 +464,6 @@ mod tests {
                 SecretObjectType::Credential,
                 SecretKind::DockerHub,
                 crypted,
-                BillingAccountPk::NONE,
                 WorkspacePk::NONE,
             );
             let decrypted = encrypted

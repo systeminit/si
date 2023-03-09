@@ -1,21 +1,13 @@
 use super::SessionResult;
 use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 use axum::Json;
-use dal::{billing_account::BillingAccountDefaults, BillingAccount, Workspace};
+use dal::Workspace;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetDefaultsResponse {
     pub workspace: Workspace,
-}
-
-impl From<BillingAccountDefaults> for GetDefaultsResponse {
-    fn from(defaults: BillingAccountDefaults) -> Self {
-        GetDefaultsResponse {
-            workspace: defaults.workspace,
-        }
-    }
 }
 
 pub async fn get_defaults(
@@ -25,12 +17,7 @@ pub async fn get_defaults(
 ) -> SessionResult<Json<GetDefaultsResponse>> {
     let ctx = builder.build(request_ctx.build_head()).await?;
 
-    let response = BillingAccount::get_defaults(
-        &ctx,
-        &claim.find_billing_account_pk_for_workspace(&ctx).await?,
-    )
-    .await?
-    .into();
+    let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_pk).await?;
 
-    Ok(Json(response))
+    Ok(Json(GetDefaultsResponse { workspace }))
 }

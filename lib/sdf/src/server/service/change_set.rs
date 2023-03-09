@@ -34,8 +34,6 @@ pub enum ChangeSetError {
     ContextError(#[from] TransactionsError),
     #[error("change set not found")]
     ChangeSetNotFound,
-    #[error("edit session not found")]
-    EditSessionNotFound,
     #[error(transparent)]
     ChangeStatusError(#[from] ChangeStatusError),
 }
@@ -46,7 +44,6 @@ impl IntoResponse for ChangeSetError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
             ChangeSetError::ChangeSetNotFound => (StatusCode::NOT_FOUND, self.to_string()),
-            ChangeSetError::EditSessionNotFound => (StatusCode::NOT_FOUND, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

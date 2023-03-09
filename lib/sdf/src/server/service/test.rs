@@ -4,7 +4,7 @@ use axum::{
     routing::post,
     Json, Router,
 };
-use dal::{BillingAccountError, TransactionsError, UserError};
+use dal::{TransactionsError, UserError, WorkspaceError};
 use names::{Generator, Name};
 use thiserror::Error;
 
@@ -19,10 +19,10 @@ pub enum TestError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
-    #[error("billing account error: {0}")]
-    BillingAccount(#[from] BillingAccountError),
-    #[error("user error: {0}")]
+    #[error(transparent)]
     User(#[from] UserError),
+    #[error(transparent)]
+    Workspace(#[from] WorkspaceError),
 }
 
 pub type TestResult<T> = std::result::Result<T, TestError>;

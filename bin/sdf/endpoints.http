@@ -7,7 +7,7 @@ POST http://localhost:8080/api/signup/create_account
 Content-Type: application/json
 
 {
-  "billingAccountName": "systeminit",
+  "workspaceName": "systeminit",
   "userName": "System Init",
   "userEmail": "example@systeminit.com",
   "userPassword": "Password123!",
@@ -19,7 +19,7 @@ POST http://localhost:8080/api/session/login
 Content-Type: application/json
 
 {
-  "billingAccountName": "systeminit",
+  "workspaceName": "systeminit",
   "userEmail": "sally@systeminit.com",
   "userPassword": "Password123!"
 }

@@ -190,7 +190,7 @@ macro_rules! test_setup {
         $veritech:ident,
         $encr_key:ident,
         $app:ident,
-        $nba:ident,
+        $nw:ident,
         $auth_token:ident,
         $dal_ctx:ident,
         $job_processor:ident,
@@ -229,7 +229,7 @@ macro_rules! test_setup {
         .expect("cannot build new server");
         let $app: ::axum::Router = $app.into();
 
-        let ($nba, $auth_token) = {
+        let ($nw, $auth_token) = {
             let services_context = ::dal::ServicesContext::new(
                 $pg.clone(),
                 $nats_conn.clone(),
@@ -245,12 +245,12 @@ macro_rules! test_setup {
                 .await
                 .expect("cannot start transactions");
 
-            let ($nba, $auth_token) =
-                ::dal_test::test_harness::billing_account_signup(&mut ctx, &$jwt_secret_key).await;
+            let ($nw, $auth_token) =
+                ::dal_test::test_harness::workspace_signup(&mut ctx, &$jwt_secret_key).await;
 
             ctx.commit().await.expect("cannot finish setup");
 
-            ($nba, $auth_token)
+            ($nw, $auth_token)
         };
 
         let services_context = dal::ServicesContext::new(
@@ -275,7 +275,7 @@ macro_rules! test_setup {
 
             let visibility = ::dal::Visibility::new_head(false);
 
-            ctx.update_tenancy(::dal::Tenancy::new(*$nba.workspace.pk()));
+            ctx.update_tenancy(::dal::Tenancy::new(*$nw.workspace.pk()));
             ctx.update_visibility(visibility);
             ctx.update_history_actor(::dal::HistoryActor::SystemInit);
             ctx

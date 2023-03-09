@@ -1,6 +1,5 @@
-use dal::{BillingAccountSignup, DalContext, JwtSecretKey, Tenancy, User};
-use dal_test::test;
-use dal_test::test_harness::{create_billing_account, create_workspace};
+use dal::{DalContext, JwtSecretKey, Tenancy, User, WorkspaceSignup};
+use dal_test::{test, test_harness::create_workspace};
 
 #[test]
 async fn new(ctx: &DalContext) {
@@ -43,8 +42,7 @@ async fn find_by_email(ctx: &mut DalContext) {
         "user by email does not match created user"
     );
 
-    let billing_account = create_billing_account(ctx).await;
-    let workspace = create_workspace(ctx, *billing_account.pk()).await;
+    let workspace = create_workspace(ctx).await;
     ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
     let email_user = User::find_by_email(ctx, "bobotclown@systeminit.com")
@@ -64,8 +62,8 @@ async fn find_by_email(ctx: &mut DalContext) {
 }
 
 #[test]
-async fn authorize(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let worked = User::authorize(ctx, &nba.user.pk())
+async fn authorize(ctx: &DalContext, nw: &WorkspaceSignup) {
+    let worked = User::authorize(ctx, &nw.user.pk())
         .await
         .expect("admin group user should be authorized");
     assert!(worked, "authorized admin group user returns true");
