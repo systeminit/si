@@ -335,7 +335,7 @@ struct HashingTree<T> {
 }
 
 impl<T> HashingTree<T> {
-    /// Builds newa [`HashingTree`] from a root [`NodeWithChildren`] that can be hashed and
+    /// Builds a new [`HashingTree`] from a root [`NodeWithChildren`] that can be hashed and
     /// computed.
     ///
     /// # Errors

@@ -1,6 +1,9 @@
 use dal::{installed_pkg::*, pkg::*, DalContext, Schema, SchemaVariant, StandardModel};
 use dal_test::test;
-use si_pkg::{PkgSpec, PropSpec, PropSpecKind, SchemaSpec, SchemaVariantSpec, SiPkg};
+use si_pkg::{
+    FuncBackendKind, FuncBackendResponseType, FuncSpec, PkgSpec, PropSpec, PropSpecKind,
+    SchemaSpec, SchemaVariantSpec, SiPkg,
+};
 
 #[test]
 async fn test_install_pkg(ctx: &DalContext) {
@@ -58,11 +61,27 @@ async fn test_install_pkg(ctx: &DalContext) {
         .build()
         .expect("able to make schema spec");
 
+    let code = "function truth() { return true; }";
+    let code_base64 = base64::encode(code.as_bytes());
+
+    let func_spec = FuncSpec::builder()
+        .name("si:truthy")
+        .display_name("truth")
+        .description("it returns true")
+        .handler("truth")
+        .code_base64(&code_base64)
+        .backend_kind(FuncBackendKind::JsAttribute)
+        .response_type(FuncBackendResponseType::Boolean)
+        .hidden(false)
+        .build()
+        .expect("build func spec");
+
     let spec_a = PkgSpec::builder()
         .name("The White Visitation")
         .version("0.1")
         .created_by("Pirate Prentice")
         .schema(schema_a.clone())
+        .func(func_spec)
         .build()
         .expect("able to build package spec");
 

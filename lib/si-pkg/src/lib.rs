@@ -4,8 +4,9 @@ mod spec;
 
 pub use pkg::{SiPkg, SiPkgError, SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant};
 pub use spec::{
-    PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec,
-    SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder, SpecError,
+    FuncBackendKind, FuncBackendResponseType, FuncSpec, PkgSpec, PkgSpecBuilder, PropSpec,
+    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
+    SchemaVariantSpecBuilder, SpecError,
 };
 
 #[cfg(test)]
@@ -38,6 +39,11 @@ mod tests {
         let pkg = SiPkg::load_from_spec(spec).expect("failed to load spec");
 
         let (graph, _root_idx) = pkg.as_petgraph();
+
+        let funcs = pkg.funcs().expect("failed to get funcs");
+        assert_eq!(1, funcs.len());
+        let func = funcs.get(0).expect("failed to get first func");
+        assert_eq!("si:truthy", func.name());
 
         // println!("{}", serde_json::to_string_pretty(&graph).unwrap());
 

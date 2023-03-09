@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use derive_builder::{Builder, UninitializedFieldError};
 use serde::{Deserialize, Serialize};
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
 use url::Url;
 
@@ -22,6 +23,9 @@ pub struct PkgSpec {
 
     #[builder(setter(each(name = "schema", into)), default)]
     pub schemas: Vec<SchemaSpec>,
+
+    #[builder(setter(each(name = "func", into)), default)]
+    pub funcs: Vec<FuncSpec>,
 }
 
 impl PkgSpec {
@@ -39,6 +43,15 @@ impl PkgSpecBuilder {
         let converted: SchemaSpec = item.try_into()?;
         Ok(self.schema(converted))
     }
+
+    #[allow(unused_mut)]
+    pub fn try_func<I>(&mut self, item: I) -> Result<&mut Self, I::Error>
+    where
+        I: TryInto<FuncSpec>,
+    {
+        let converted: FuncSpec = item.try_into()?;
+        Ok(self.func(converted))
+    }
 }
 
 impl TryFrom<PkgSpecBuilder> for PkgSpec {
@@ -46,6 +59,64 @@ impl TryFrom<PkgSpecBuilder> for PkgSpec {
 
     fn try_from(value: PkgSpecBuilder) -> Result<Self, Self::Error> {
         value.build()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
+#[serde(rename_all = "camelCase")]
+pub enum FuncBackendKind {
+    JsAttribute,
+    JsWorkflow,
+    JsCommand,
+    JsValidation,
+    Json,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
+#[serde(rename_all = "camelCase")]
+pub enum FuncBackendResponseType {
+    Array,
+    Boolean,
+    Integer,
+    Map,
+    Object,
+    Qualification,
+    CodeGeneration,
+    Confirmation,
+    String,
+    Json,
+    Validation,
+    Workflow,
+    Command,
+}
+
+#[derive(Builder, Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[builder(build_fn(error = "SpecError"))]
+pub struct FuncSpec {
+    #[builder(setter(into))]
+    pub name: String,
+    #[builder(setter(into, strip_option), default)]
+    pub display_name: Option<String>,
+    #[builder(setter(into, strip_option), default)]
+    pub description: Option<String>,
+    #[builder(setter(into))]
+    pub handler: String,
+    #[builder(setter(into))]
+    pub code_base64: String,
+    #[builder(setter(into))]
+    pub backend_kind: FuncBackendKind,
+    #[builder(setter(into))]
+    pub response_type: FuncBackendResponseType,
+    #[builder(setter(into))]
+    pub hidden: bool,
+    #[builder(setter(into, strip_option), default)]
+    pub link: Option<Url>,
+}
+
+impl FuncSpec {
+    pub fn builder() -> FuncSpecBuilder {
+        FuncSpecBuilder::default()
     }
 }
 

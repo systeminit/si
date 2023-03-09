@@ -80,8 +80,12 @@ impl NodeChild for PkgSpec {
                 created_at: self.created_at,
                 created_by: self.created_by.clone(),
             }),
-            vec![Box::new(PackageCategory::Schemas(self.schemas.clone()))
-                as Box<dyn NodeChild<NodeType = Self::NodeType>>],
+            vec![
+                Box::new(PackageCategory::Schemas(self.schemas.clone()))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+                Box::new(PackageCategory::Funcs(self.funcs.clone()))
+                    as Box<dyn NodeChild<NodeType = Self::NodeType>>,
+            ],
         )
     }
 }
