@@ -64,7 +64,6 @@
       </li>
 
       <AttributeBindingsModal
-        :func-id="funcId"
         :open="isModalOpen"
         :prototype="editingPrototype"
         :edit="editingPrototype !== undefined"
@@ -77,7 +76,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, ref, Ref, toRef } from "vue";
+import { computed, inject, ref, Ref, watch } from "vue";
 import { storeToRefs } from "pinia";
 import {
   AttributeAssocations,
@@ -86,6 +85,7 @@ import {
 import VButton from "@/components/VButton.vue";
 import { FuncArgument } from "@/api/sdf/dal/func";
 import { useFuncStore } from "@/store/func/funcs.store";
+import { nilId } from "@/utils/nilId";
 import AttributeBindingsModal from "./AttributeBindingsModal.vue";
 
 const funcStore = useFuncStore();
@@ -97,9 +97,25 @@ const {
   propForId,
 } = storeToRefs(funcStore);
 
-function nilId(): string {
-  return "00000000000000000000000000";
-}
+const props = defineProps<{
+  modelValue: AttributeAssocations;
+  disabled?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: "update:modelValue", v: AttributeAssocations): void;
+  (e: "change", v: AttributeAssocations): void;
+}>();
+
+const associations = ref(props.modelValue);
+
+watch(
+  () => props.modelValue,
+  (mv) => {
+    associations.value = mv;
+  },
+  { immediate: true },
+);
 
 const editingPrototype = ref<AttributePrototypeView | undefined>(undefined);
 const makeEmptyPrototype = (): AttributePrototypeView => ({
@@ -116,12 +132,35 @@ const closeModal = () => {
   isModalOpen.value = false;
 };
 
-const removeBinding = (prototypeId?: string) =>
-  prototypeId && funcStore.removeFuncAttrPrototype(props.funcId, prototypeId);
+const removeBinding = (prototypeId: string) => {
+  associations.value.prototypes = associations.value.prototypes.filter(
+    (proto) => proto.id !== prototypeId,
+  );
+  emit("update:modelValue", associations.value);
+  emit("change", associations.value);
+};
+
+const addOrUpdateBinding = (
+  associations: AttributeAssocations,
+  prototype: AttributePrototypeView,
+) => {
+  if (prototype.id !== nilId()) {
+    const currentPrototypeIdx = associations.prototypes.findIndex(
+      (proto) => proto.id === prototype.id,
+    );
+    associations.prototypes[currentPrototypeIdx] = prototype;
+  } else {
+    associations.prototypes.push(prototype);
+  }
+
+  return associations;
+};
 
 const saveModal = (prototype?: AttributePrototypeView) => {
   if (prototype) {
-    funcStore.updateFuncAttrPrototype(props.funcId, prototype);
+    associations.value = addOrUpdateBinding(associations.value, prototype);
+    emit("update:modelValue", associations.value);
+    emit("change", associations.value);
   }
   closeModal();
 };
@@ -139,18 +178,6 @@ const openModal = (prototypeId?: string) => {
 
 const funcArgumentsIdMap =
   inject<Ref<{ [key: string]: FuncArgument }>>("funcArgumentsIdMap");
-
-const props = defineProps<{
-  funcId: string;
-  associations: AttributeAssocations;
-  disabled?: boolean;
-}>();
-
-const associations = toRef(props, "associations", {
-  type: "attribute",
-  prototypes: [],
-  arguments: [],
-});
 
 const prototypeView = computed(() => {
   return associations.value.prototypes.map((proto) => {

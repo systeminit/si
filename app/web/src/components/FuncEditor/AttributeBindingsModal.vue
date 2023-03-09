@@ -62,7 +62,7 @@ import Modal from "@/ui-lib/modals/Modal.vue";
 import SelectMenu, { Option } from "@/components/SelectMenu.vue";
 import { AttributePrototypeView } from "@/store/func/types";
 import { FuncArgument } from "@/api/sdf/dal/func";
-import { FuncId, useFuncStore } from "@/store/func/funcs.store";
+import { useFuncStore } from "@/store/func/funcs.store";
 import { useComponentsStore } from "@/store/components.store";
 
 function nilId(): string {
@@ -83,7 +83,6 @@ const {
 
 const props = defineProps({
   open: { type: Boolean, default: false },
-  funcId: { type: String as PropType<FuncId>, required: true },
   prototype: { type: Object as PropType<AttributePrototypeView> },
 });
 

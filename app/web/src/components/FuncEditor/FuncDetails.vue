@@ -142,8 +142,8 @@
             editingFunc.associations &&
             editingFunc.associations.type === 'attribute'
           "
-          :func-id="selectedFuncId"
-          :associations="editingFunc.associations"
+          v-model="editingFunc.associations"
+          @change="updateFunc"
         />
       </TabGroupItem>
     </TabGroup>

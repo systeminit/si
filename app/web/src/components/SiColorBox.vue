@@ -1,10 +1,6 @@
 <template>
   <div>
-    <label
-      v-if="props.title"
-      :for="props.id"
-      class="block text-sm font-medium"
-    >
+    <label v-if="props.title" :for="props.id" class="block text-sm font-medium">
       {{ title }}
       <span
         v-if="props.required && !formSettings.hideRequiredLabel"
@@ -16,14 +12,14 @@
     <div class="mt-1 relative">
       <span class="flex">
         <span
-	  ref="pickerElement"
           :id="props.id"
+          ref="pickerElement"
           :aria-required="props.required"
           :style="{ backgroundColor: props.modelValue }"
           class="block w-10 h-6 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm dark:color-white"
           :class="boxClasses"
         ></span>
-	<span class="p-1">{{props.modelValue}}</span>
+        <span class="p-1">{{ props.modelValue }}</span>
       </span>
 
       <div
@@ -56,11 +52,11 @@
 <script setup lang="ts">
 import { computed, PropType, toRefs, onMounted, ref } from "vue";
 import _ from "lodash";
+import Picker from "vanilla-picker";
 import { useFormSettings } from "@/utils/formSettings";
 import { ValidatorArray, useValidations } from "@/utils/input_validations";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import SiValidation from "./SiValidation.vue";
-import Picker from 'vanilla-picker';
 
 const props = defineProps({
   modelValue: { type: String },

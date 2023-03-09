@@ -158,7 +158,8 @@ export const useFuncStore = () => {
           },
           keyRequestStatusBy: func.id,
           onSuccess: (response) => {
-            this.funcDetailsById[response.id] = response;
+            this.funcDetailsById[func.id].associations = response.associations;
+            this.funcDetailsById[func.id].isRevertible = response.isRevertible;
           },
         });
       },
@@ -206,37 +207,6 @@ export const useFuncStore = () => {
         });
       },
 
-      async removeFuncAttrPrototype(funcId: FuncId, prototypeId: string) {
-        const func = this.funcDetailsById[funcId];
-        if (func?.associations?.type !== "attribute") {
-          return;
-        }
-
-        func.associations.prototypes = func.associations.prototypes.filter(
-          (proto) => proto.id !== prototypeId,
-        );
-        this.funcDetailsById[funcId] = { ...func };
-        await this.saveUpdatedFunc(funcId);
-      },
-      async updateFuncAttrPrototype(
-        funcId: FuncId,
-        prototype: AttributePrototypeView,
-      ) {
-        const func = this.funcDetailsById[funcId];
-        if (func?.associations?.type !== "attribute") {
-          return;
-        }
-
-        if (prototype.id === nilId()) {
-          func.associations.prototypes.push(prototype);
-        } else {
-          const currentPrototypeIdx = func.associations.prototypes.findIndex(
-            (proto) => proto.id === prototype.id,
-          );
-          func.associations.prototypes[currentPrototypeIdx] = prototype;
-        }
-        this.saveUpdatedFunc(funcId);
-      },
       async updateFuncAttrArgs(funcId: FuncId, args: FuncArgument[]) {
         const func = this.funcDetailsById[funcId];
         if (func?.associations?.type !== "attribute") {
