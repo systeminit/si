@@ -3509,6 +3509,8 @@ dependencies = [
  "petgraph",
  "serde",
  "serde_json",
+ "strum",
+ "strum_macros",
  "thiserror",
  "tokio",
  "url",

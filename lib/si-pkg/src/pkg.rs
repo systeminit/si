@@ -181,11 +181,11 @@ fn schema_node_idxs(
 ) -> Result<Vec<NodeIndex>, SiPkgError> {
     let schemas_idx = graph
         .neighbors_directed(root_idx, Outgoing)
-        .find(|node_idx| match &graph[*node_idx].inner() {
-            PkgNode::Category(node) => match node {
-                CategoryNode::Schemas => true,
-            },
-            _ => false,
+        .find(|node_idx| {
+            matches!(
+                graph[*node_idx].inner(),
+                PkgNode::Category(CategoryNode::Schemas)
+            )
         })
         .ok_or(SiPkgError::CategoryNotFound(
             CategoryNode::Schemas.kind_str(),

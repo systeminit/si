@@ -6,11 +6,12 @@ use object_tree::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::SchemaSpec;
+use crate::{FuncSpec, SchemaSpec};
 
 use super::PkgNode;
 
-const CATEGORY_TY_SCHEMAS: &str = "schemas";
+const CATEGORY_TYPE_SCHEMAS: &str = "schemas";
+const CATEGORY_TYPE_FUNCS: &str = "funcs";
 
 const KEY_KIND_STR: &str = "kind";
 
@@ -18,17 +19,20 @@ const KEY_KIND_STR: &str = "kind";
 #[serde(rename_all = "camelCase")]
 pub enum PackageCategory {
     Schemas(Vec<SchemaSpec>),
+    Funcs(Vec<FuncSpec>),
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub enum CategoryNode {
     Schemas,
+    Funcs,
 }
 
 impl CategoryNode {
     pub fn kind_str(&self) -> &'static str {
         match self {
-            Self::Schemas => CATEGORY_TY_SCHEMAS,
+            Self::Schemas => CATEGORY_TYPE_SCHEMAS,
+            Self::Funcs => CATEGORY_TYPE_FUNCS,
         }
     }
 }
@@ -36,7 +40,8 @@ impl CategoryNode {
 impl NameStr for CategoryNode {
     fn name(&self) -> &str {
         match self {
-            Self::Schemas => CATEGORY_TY_SCHEMAS,
+            Self::Schemas => CATEGORY_TYPE_SCHEMAS,
+            Self::Funcs => CATEGORY_TYPE_FUNCS,
         }
     }
 }
@@ -56,7 +61,8 @@ impl ReadBytes for CategoryNode {
         let kind_str = read_key_value_line(reader, KEY_KIND_STR)?;
 
         let node = match kind_str.as_str() {
-            CATEGORY_TY_SCHEMAS => Self::Schemas,
+            CATEGORY_TYPE_SCHEMAS => Self::Schemas,
+            CATEGORY_TYPE_FUNCS => Self::Funcs,
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
                     "invalid package category node kind: {invalid_kind}"
@@ -84,6 +90,20 @@ impl NodeChild for PackageCategory {
                 NodeWithChildren::new(
                     NodeKind::Tree,
                     Self::NodeType::Category(CategoryNode::Schemas),
+                    children,
+                )
+            }
+            Self::Funcs(entries) => {
+                let mut children = Vec::new();
+                for entry in entries {
+                    children
+                        .push(Box::new(entry.clone())
+                            as Box<dyn NodeChild<NodeType = Self::NodeType>>);
+                }
+
+                NodeWithChildren::new(
+                    NodeKind::Tree,
+                    Self::NodeType::Category(CategoryNode::Funcs),
                     children,
                 )
             }

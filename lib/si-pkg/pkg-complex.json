@@ -4,6 +4,19 @@
   "description": "complex things",
   "createdAt": "2023-02-28T00:19:25Z",
   "createdBy": "fnichol",
+  "funcs": [
+    {
+      "name": "si:truthy",
+      "displayName": "truth",
+      "description": "it returns true",
+      "handler": "truth",
+      "codeBase64": "ZnVuY3Rpb24gdHJ1dGgoKSB7IHJldHVybiB0cnVlOyB9",
+      "backendKind": "jsAttribute",
+      "responseType": "boolean",
+      "hidden": false,
+      "link": "https://truth.com"
+    }
+  ],
   "schemas": [
     {
       "name": "k8sDeployment",

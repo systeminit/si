@@ -5,14 +5,15 @@ use object_tree::{
 };
 
 mod category;
+mod func;
 mod package;
 mod prop;
 mod schema;
 mod schema_variant;
 
 pub(crate) use self::{
-    category::CategoryNode, package::PackageNode, prop::PropNode, schema::SchemaNode,
-    schema_variant::SchemaVariantNode,
+    category::CategoryNode, func::FuncNode, package::PackageNode, prop::PropNode,
+    schema::SchemaNode, schema_variant::SchemaVariantNode,
 };
 
 const NODE_KIND_CATEGORY: &str = "category";
@@ -20,6 +21,7 @@ const NODE_KIND_PACKAGE: &str = "package";
 const NODE_KIND_PROP: &str = "prop";
 const NODE_KIND_SCHEMA: &str = "schema";
 const NODE_KIND_SCHEMA_VARIANT: &str = "schema_variant";
+const NODE_KIND_FUNC: &str = "func";
 
 const KEY_NODE_KIND_STR: &str = "node_kind";
 
@@ -30,6 +32,7 @@ pub enum PkgNode {
     Prop(PropNode),
     Schema(SchemaNode),
     SchemaVariant(SchemaVariantNode),
+    Func(FuncNode),
 }
 
 impl PkgNode {
@@ -38,6 +41,7 @@ impl PkgNode {
     pub const PROP_KIND_STR: &str = NODE_KIND_PROP;
     pub const SCHEMA_KIND_STR: &str = NODE_KIND_SCHEMA;
     pub const SCHEMA_VARIANT_KIND_STR: &str = NODE_KIND_SCHEMA_VARIANT;
+    pub const NODE_KIND_STR: &str = NODE_KIND_FUNC;
 
     pub fn node_kind_str(&self) -> &'static str {
         match self {
@@ -46,6 +50,7 @@ impl PkgNode {
             Self::Prop(_) => NODE_KIND_PROP,
             Self::Schema(_) => NODE_KIND_SCHEMA,
             Self::SchemaVariant(_) => NODE_KIND_SCHEMA_VARIANT,
+            Self::Func(_) => NODE_KIND_FUNC,
         }
     }
 }
@@ -58,6 +63,7 @@ impl NameStr for PkgNode {
             Self::Prop(node) => node.name(),
             Self::Schema(node) => node.name(),
             Self::SchemaVariant(node) => node.name(),
+            Self::Func(node) => node.name(),
         }
     }
 }
@@ -72,6 +78,7 @@ impl WriteBytes for PkgNode {
             Self::Prop(node) => node.write_bytes(writer)?,
             Self::Schema(node) => node.write_bytes(writer)?,
             Self::SchemaVariant(node) => node.write_bytes(writer)?,
+            Self::Func(node) => node.write_bytes(writer)?,
         };
 
         Ok(())
@@ -91,6 +98,7 @@ impl ReadBytes for PkgNode {
             NODE_KIND_PROP => Self::Prop(PropNode::read_bytes(reader)?),
             NODE_KIND_SCHEMA => Self::Schema(SchemaNode::read_bytes(reader)?),
             NODE_KIND_SCHEMA_VARIANT => Self::SchemaVariant(SchemaVariantNode::read_bytes(reader)?),
+            NODE_KIND_FUNC => Self::Func(FuncNode::read_bytes(reader)?),
             invalid_kind => {
                 return Err(GraphError::parse_custom(format!(
                     "invalid package node kind: {invalid_kind}"

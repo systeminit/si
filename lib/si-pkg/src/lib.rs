@@ -4,8 +4,9 @@ mod spec;
 
 pub use pkg::{SiPkg, SiPkgError, SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant};
 pub use spec::{
-    PkgSpec, PkgSpecBuilder, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec,
-    SchemaSpecBuilder, SchemaVariantSpec, SchemaVariantSpecBuilder, SpecError,
+    FuncBackendKind, FuncBackendResponseType, FuncSpec, PkgSpec, PkgSpecBuilder, PropSpec,
+    PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
+    SchemaVariantSpecBuilder, SpecError,
 };
 
 #[cfg(test)]
