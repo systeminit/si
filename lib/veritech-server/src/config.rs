@@ -165,7 +165,6 @@ impl CycloneStream {
         let socket_addr = socket_addrs
             .to_socket_addrs()
             .map_err(ConfigError::SocketAddrResolve)?
-            .into_iter()
             .next()
             .ok_or(ConfigError::NoSocketAddrResolved)?;
         Ok(Self::HttpSocket(socket_addr))
