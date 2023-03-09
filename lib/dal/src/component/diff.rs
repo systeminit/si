@@ -44,6 +44,13 @@ impl ComponentDiff {
         }
 
         let curr_component_view = ComponentView::new(ctx, component_id).await?;
+        if curr_component_view.properties.is_null() {
+            return Ok(Self {
+                current: CodeView::new(CodeLanguage::Json, Some("{}".to_owned())),
+                diffs: Vec::new(),
+            });
+        }
+
         let mut curr_component_view = ComponentViewProperties::try_from(curr_component_view)?;
         curr_component_view.drop_private();
 
@@ -55,6 +62,13 @@ impl ComponentDiff {
             .is_some()
         {
             let prev_component_view = ComponentView::new(&head_ctx, component_id).await?;
+            if prev_component_view.properties.is_null() {
+                return Ok(Self {
+                    current: CodeView::new(CodeLanguage::Json, Some(curr_json)),
+                    diffs: Vec::new(),
+                });
+            }
+
             let mut prev_component_view = ComponentViewProperties::try_from(prev_component_view)?;
             prev_component_view.drop_private();
 
