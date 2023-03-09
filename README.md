@@ -145,3 +145,13 @@ There are other components and paradigms that aren't displayed, but this diagram
 
 It's worth noting that our database has many stored procedures (i.e. database functions) that perform non-trivial logic.
 While the [dal](./lib/dal) is the primary "data access layer" for the rest of the SI stack, it does not perform _all_ the heavy lifting.
+
+## Contributing
+
+System Initiative is Open Source software under the [Apache License 2.0](LICENSE), and is the [copyright of its contributors](NOTICE). If you would like to contribute to System Initiative, you must:
+
+1. Read the [Contributors](CONTRIBUTORS.md) file.
+2. Agree to the terms by having a commit in your pull request "signing" the file by adding your name and GitHub handle on a new line at the bottom of the file.
+3. Make sure your commits Author metadata matches the name and handle you added to the file.
+
+This ensures that users, distributors, and other contributors can rely on all the software related to System Initiative being contributed under the terms of the [License](LICENSE). No contributions will be accepted without following this process.
