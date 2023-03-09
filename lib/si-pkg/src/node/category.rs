@@ -22,7 +22,7 @@ pub enum PackageCategory {
     Funcs(Vec<FuncSpec>),
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
 pub enum CategoryNode {
     Schemas,
     Funcs,

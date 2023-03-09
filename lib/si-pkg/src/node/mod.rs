@@ -41,7 +41,7 @@ impl PkgNode {
     pub const PROP_KIND_STR: &str = NODE_KIND_PROP;
     pub const SCHEMA_KIND_STR: &str = NODE_KIND_SCHEMA;
     pub const SCHEMA_VARIANT_KIND_STR: &str = NODE_KIND_SCHEMA_VARIANT;
-    pub const NODE_KIND_STR: &str = NODE_KIND_FUNC;
+    pub const FUNC_KIND_STR: &str = NODE_KIND_FUNC;
 
     pub fn node_kind_str(&self) -> &'static str {
         match self {

@@ -17,7 +17,7 @@ use url::Url;
 
 use crate::{
     node::{CategoryNode, PkgNode, PropNode},
-    spec::{PkgSpec, SpecError},
+    spec::{FuncBackendKind, FuncBackendResponseType, PkgSpec, SpecError},
 };
 
 #[derive(Debug, Error)]
@@ -116,6 +116,18 @@ impl SiPkg {
         Ok(self.metadata()?.hash())
     }
 
+    pub fn funcs(&self) -> Result<Vec<SiPkgFunc>, SiPkgError> {
+        let (graph, root_idx) = self.as_petgraph();
+
+        let node_idxs = func_node_idxs(graph, root_idx)?;
+        let mut funcs = Vec::with_capacity(node_idxs.len());
+        for node_idx in node_idxs {
+            funcs.push(SiPkgFunc::from_graph(graph, node_idx)?);
+        }
+
+        Ok(funcs)
+    }
+
     pub fn schemas(&self) -> Result<Vec<SiPkgSchema>, SiPkgError> {
         let (graph, root_idx) = self.as_petgraph();
 
@@ -175,23 +187,34 @@ fn idx_for_hash(
     Ok(node_idx)
 }
 
+fn category_node_idxs(
+    category_node: CategoryNode,
+    graph: &Graph<HashedNode<PkgNode>, ()>,
+    root_idx: NodeIndex,
+) -> Result<Vec<NodeIndex>, SiPkgError> {
+    let node_idxs = graph
+        .neighbors_directed(root_idx, Outgoing)
+        .find(|node_idx| match &graph[*node_idx].inner() {
+            PkgNode::Category(node) => *node == category_node,
+            _ => false,
+        })
+        .ok_or(SiPkgError::CategoryNotFound(category_node.kind_str()))?;
+
+    Ok(graph.neighbors_directed(node_idxs, Outgoing).collect())
+}
+
 fn schema_node_idxs(
     graph: &Graph<HashedNode<PkgNode>, ()>,
     root_idx: NodeIndex,
 ) -> Result<Vec<NodeIndex>, SiPkgError> {
-    let schemas_idx = graph
-        .neighbors_directed(root_idx, Outgoing)
-        .find(|node_idx| {
-            matches!(
-                graph[*node_idx].inner(),
-                PkgNode::Category(CategoryNode::Schemas)
-            )
-        })
-        .ok_or(SiPkgError::CategoryNotFound(
-            CategoryNode::Schemas.kind_str(),
-        ))?;
+    category_node_idxs(CategoryNode::Schemas, graph, root_idx)
+}
 
-    Ok(graph.neighbors_directed(schemas_idx, Outgoing).collect())
+fn func_node_idxs(
+    graph: &Graph<HashedNode<PkgNode>, ()>,
+    root_idx: NodeIndex,
+) -> Result<Vec<NodeIndex>, SiPkgError> {
+    category_node_idxs(CategoryNode::Funcs, graph, root_idx)
 }
 
 #[derive(Clone)]
@@ -274,6 +297,98 @@ impl SiPkgMetadata {
 
     pub fn hash(&self) -> Hash {
         self.hash
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SiPkgFunc<'a> {
+    name: String,
+    display_name: Option<String>,
+    description: Option<String>,
+    handler: String,
+    code_base64: String,
+    backend_kind: FuncBackendKind,
+    response_type: FuncBackendResponseType,
+    hidden: bool,
+    link: Option<Url>,
+
+    hash: Hash,
+    source: Source<'a>,
+}
+
+impl<'a> SiPkgFunc<'a> {
+    fn from_graph(
+        graph: &'a Graph<HashedNode<PkgNode>, ()>,
+        node_idx: NodeIndex,
+    ) -> Result<Self, SiPkgError> {
+        let func_hashed_node = &graph[node_idx];
+        let func_node = match func_hashed_node.inner() {
+            PkgNode::Func(node) => node.clone(),
+            unexpected => {
+                return Err(SiPkgError::UnexpectedPkgNodeType(
+                    PkgNode::FUNC_KIND_STR,
+                    unexpected.node_kind_str(),
+                ))
+            }
+        };
+
+        Ok(Self {
+            name: func_node.name,
+            display_name: func_node.display_name,
+            description: func_node.description,
+            handler: func_node.handler,
+            code_base64: func_node.code_base64,
+            backend_kind: func_node.backend_kind,
+            response_type: func_node.response_type,
+            hidden: func_node.hidden,
+            link: func_node.link,
+            hash: func_hashed_node.hash(),
+            source: Source::new(graph, node_idx),
+        })
+    }
+
+    pub fn name(&self) -> &str {
+        self.name.as_ref()
+    }
+
+    pub fn display_name(&self) -> Option<&str> {
+        self.display_name.as_deref()
+    }
+
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
+
+    pub fn handler(&self) -> &str {
+        self.handler.as_ref()
+    }
+
+    pub fn code_base64(&self) -> &str {
+        self.code_base64.as_ref()
+    }
+
+    pub fn backend_kind(&self) -> FuncBackendKind {
+        self.backend_kind
+    }
+
+    pub fn response_type(&self) -> FuncBackendResponseType {
+        self.response_type
+    }
+
+    pub fn hidden(&self) -> bool {
+        self.hidden
+    }
+
+    pub fn link(&self) -> Option<&Url> {
+        self.link.as_ref()
+    }
+
+    pub fn hash(&self) -> Hash {
+        self.hash
+    }
+
+    pub fn source(&self) -> &Source<'a> {
+        &self.source
     }
 }
 

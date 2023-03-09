@@ -40,6 +40,11 @@ mod tests {
 
         let (graph, _root_idx) = pkg.as_petgraph();
 
+        let funcs = pkg.funcs().expect("failed to get funcs");
+        assert_eq!(1, funcs.len());
+        let func = funcs.get(0).expect("failed to get first func");
+        assert_eq!("si:truthy", func.name());
+
         // println!("{}", serde_json::to_string_pretty(&graph).unwrap());
 
         println!("\n---- snip ----\n{:?}\n---- snip ----", Dot::new(graph));
