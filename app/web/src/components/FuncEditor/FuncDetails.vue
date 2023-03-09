@@ -22,7 +22,6 @@
           <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
             <VButton2
               class="--tone-success"
-              :disabled="!isDevMode && editingFunc.isBuiltin"
               icon="save"
               size="md"
               loading-text="Executing"
@@ -33,10 +32,7 @@
 
             <VButton2
               class="--tone-neutral"
-              :disabled="
-                (!isDevMode && editingFunc.isBuiltin) ||
-                !editingFunc.isRevertible
-              "
+              :disabled="!editingFunc.isRevertible"
               icon="x"
               size="md"
               loading-text="Reverting"
@@ -57,7 +53,6 @@
               label="Name"
               required
               placeholder="Type the name of this function here..."
-              :disabled="!isDevMode && editingFunc.isBuiltin"
               @blur="updateFunc"
             />
             <VormInput
@@ -65,7 +60,6 @@
               label="Entrypoint"
               required
               placeholder="The name of the function that will be executed..."
-              :disabled="!isDevMode && editingFunc.isBuiltin"
               @blur="updateFunc"
             />
             <VormInput
@@ -73,7 +67,6 @@
               type="textarea"
               placeholder="Provide a brief description of this function here..."
               label="Description"
-              :disabled="!isDevMode && editingFunc.isBuiltin"
               @blur="updateFunc"
             />
           </div>
@@ -84,7 +77,6 @@
             editingFunc.associations.type === 'qualification'
           "
           v-model="editingFunc.associations"
-          :disabled="editingFunc.isBuiltin"
           @change="updateFunc"
         />
         <CodeGenerationDetails
@@ -93,7 +85,6 @@
             editingFunc.associations.type === 'codeGeneration'
           "
           v-model="editingFunc.associations"
-          :disabled="editingFunc.isBuiltin"
           @change="updateFunc"
         />
         <ConfirmationDetails
@@ -102,7 +93,6 @@
             editingFunc.associations.type === 'confirmation'
           "
           v-model="editingFunc.associations"
-          :disabled="editingFunc.isBuiltin"
           @change="updateFunc"
         />
         <ValidationDetails
@@ -111,7 +101,6 @@
             editingFunc.associations.type === 'validation'
           "
           v-model="editingFunc.associations"
-          :disabled="editingFunc.isBuiltin"
           @change="updateFunc"
         />
 
@@ -125,9 +114,8 @@
               editingFunc.associations &&
               editingFunc.associations.type === 'attribute'
             "
-            :func-id="selectedFuncId"
-            :arguments="editingFunc.associations.arguments"
-            :disabled="editingFunc.isBuiltin"
+            v-model="editingFunc.associations"
+            @change="updateFunc"
           />
         </SiCollapsible>
       </TabGroupItem>

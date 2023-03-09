@@ -12,7 +12,6 @@ import { useRealtimeStore } from "../realtime/realtime.store";
 import { useComponentsStore } from "../components.store";
 
 import {
-  AttributePrototypeView,
   FuncAssociations,
   InputSourceSocket,
   InputSourceProp,
@@ -215,17 +214,12 @@ export const useFuncStore = () => {
         func.associations.arguments = args;
         await this.saveUpdatedFunc(funcId);
       },
-      async updateFuncAssociations(
-        funcId: FuncId,
-        associations: FuncAssociations | undefined,
-      ) {
-        this.funcDetailsById[funcId].associations = associations;
-        await this.saveUpdatedFunc(funcId);
-      },
+
       updateFuncCode(funcId: FuncId, code: string) {
         this.funcDetailsById[funcId].code = code;
         this.enqueueFuncSave(funcId);
       },
+
       enqueueFuncSave(funcId: FuncId) {
         // Lots of ways to handle this... we may want to handle this debouncing in the component itself
         // so the component has its own "draft" state that it passes back to the store when it's ready to save
