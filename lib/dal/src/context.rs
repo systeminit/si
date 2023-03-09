@@ -287,14 +287,11 @@ impl DalContext {
         &self,
         workspace_pk: WorkspacePk,
     ) -> Result<BillingAccountPk, TransactionsError> {
-        Self::raw_find_billing_account_pk_for_workspace(self.txns().pg(), workspace_pk).await
-    }
-
-    pub async fn raw_find_billing_account_pk_for_workspace(
-        txn: &PgTxn,
-        workspace_pk: WorkspacePk,
-    ) -> Result<BillingAccountPk, TransactionsError> {
-        let row = txn.query_one(GET_BILLING_ACCOUNT, &[&workspace_pk]).await?;
+        let row = self
+            .txns()
+            .pg()
+            .query_one(GET_BILLING_ACCOUNT, &[&workspace_pk])
+            .await?;
         let pk = row.try_get("pk")?;
         Ok(pk)
     }

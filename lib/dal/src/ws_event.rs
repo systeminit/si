@@ -11,8 +11,8 @@ use crate::{
     qualification::QualificationCheckPayload,
     status::StatusMessage,
     workflow::{CommandOutput, CommandReturn},
-    ActorView, AttributeValueId, BillingAccountPk, ChangeSetPk, ComponentId, DalContext, PropId,
-    SchemaPk, SocketId, StandardModelError, Tenancy, TransactionsError,
+    ActorView, AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
+    StandardModelError, Tenancy, TransactionsError, WorkspacePk,
 };
 
 #[derive(Error, Debug)]
@@ -90,7 +90,7 @@ impl AttributeValueStatusUpdate {
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
 pub struct WsEvent {
     version: i64,
-    billing_account_pks: Vec<BillingAccountPk>,
+    workspace_pk: WorkspacePk,
     actor: ActorView,
     change_set_pk: ChangeSetPk,
     payload: WsPayload,
@@ -104,33 +104,27 @@ impl WsEvent {
                 return Err(WsEventError::NoWorkspaceInTenancy(*ctx.tenancy()));
             }
         };
-        let billing_account_pks = vec![
-            ctx.find_billing_account_pk_for_workspace(workspace_pk)
-                .await?,
-        ];
         let change_set_pk = ctx.visibility().change_set_pk;
         let actor = ActorView::from_history_actor(ctx, *ctx.history_actor()).await?;
 
         Ok(WsEvent {
             version: 1,
-            billing_account_pks,
+            workspace_pk,
             actor,
             change_set_pk,
             payload,
         })
     }
 
-    pub fn billing_account_pks(&self) -> &Vec<BillingAccountPk> {
-        &self.billing_account_pks
+    pub fn workspace_pk(&self) -> WorkspacePk {
+        self.workspace_pk
     }
 
     /// Publishes the [`event`](Self) to the [`NatsTxn`](si_data_nats::NatsTxn). When the
     /// transaction is committed, the [`event`](Self) will be published for external use.
     pub async fn publish_on_commit(&self, ctx: &DalContext) -> WsEventResult<()> {
-        for billing_account_pk in self.billing_account_pks.iter() {
-            let subject = format!("si.billing_account_pk.{billing_account_pk}.event");
-            ctx.nats_txn().publish(subject, &self).await?;
-        }
+        let subject = format!("si.workspace_pk.{}.event", self.workspace_pk);
+        ctx.nats_txn().publish(subject, &self).await?;
         Ok(())
     }
 }

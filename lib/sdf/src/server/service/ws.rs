@@ -15,7 +15,7 @@ pub enum WsError {
     PgPool(#[from] PgPoolError),
 }
 
-pub mod billing_account_updates;
+pub mod workspace_updates;
 
 impl IntoResponse for WsError {
     fn into_response(self) -> Response {
@@ -35,7 +35,7 @@ impl IntoResponse for WsError {
 
 pub fn routes() -> Router {
     Router::new().route(
-        "/billing_account_updates",
-        get(billing_account_updates::billing_account_updates),
+        "/workspace_updates",
+        get(workspace_updates::workspace_updates),
     )
 }

@@ -3,23 +3,21 @@ use axum::{
     extract::{ws::WebSocket, Extension, WebSocketUpgrade},
     response::IntoResponse,
 };
-use dal::{BillingAccountPk, DalContext};
+use dal::WorkspacePk;
 use si_data_nats::NatsClient;
-use si_data_pg::PgTxn;
 use telemetry::prelude::*;
 use tokio::sync::broadcast;
 
 use crate::server::{
-    extract::{Nats, PgPool, WsAuthorization},
+    extract::{Nats, WsAuthorization},
     routes::ShutdownBroadcast,
 };
 
-#[instrument(skip(wsu, nats, pool))]
+#[instrument(skip(wsu, nats))]
 #[allow(clippy::unused_async)]
-pub async fn billing_account_updates(
+pub async fn workspace_updates(
     wsu: WebSocketUpgrade,
     Nats(nats): Nats,
-    PgPool(pool): PgPool,
     WsAuthorization(claim): WsAuthorization,
     Extension(shutdown_broadcast): Extension<ShutdownBroadcast>,
 ) -> Result<impl IntoResponse, WsError> {
@@ -27,38 +25,31 @@ pub async fn billing_account_updates(
         socket: WebSocket,
         nats: NatsClient,
         mut shutdown: broadcast::Receiver<()>,
-        billing_account_pk: BillingAccountPk,
+        workspace_pk: WorkspacePk,
     ) {
         tokio::select! {
-            _ = run_billing_account_updates_proto(socket, nats, billing_account_pk) => {
-                trace!("finished billing_account_updates proto");
+            _ = run_workspace_updates_proto(socket, nats, workspace_pk) => {
+                trace!("finished workspace_updates proto");
             }
             _ = shutdown.recv() => {
-                trace!("billing_account_updates received shutdown, ending session");
+                trace!("workspace_updates received shutdown, ending session");
             }
             else => {
-                trace!("returning from billing_account_updates, all select arms closed");
+                trace!("returning from workspace_updates, all select arms closed");
             }
         }
     }
 
-    let conn = pool.get().await?;
-    let txn = PgTxn::create(conn).await?;
-    let bid =
-        DalContext::raw_find_billing_account_pk_for_workspace(&txn, claim.workspace_pk).await?;
     let shutdown = shutdown_broadcast.subscribe();
-    Ok(wsu.on_upgrade(move |socket| handle_socket(socket, nats, shutdown, bid)))
+    Ok(wsu.on_upgrade(move |socket| handle_socket(socket, nats, shutdown, claim.workspace_pk)))
 }
 
-async fn run_billing_account_updates_proto(
+async fn run_workspace_updates_proto(
     mut socket: WebSocket,
     nats: NatsClient,
-    billing_account_pk: BillingAccountPk,
+    workspace_pk: WorkspacePk,
 ) {
-    let proto = match billing_account_updates::run(nats, billing_account_pk)
-        .start()
-        .await
-    {
+    let proto = match workspace_updates::run(nats, workspace_pk).start().await {
         Ok(started) => started,
         Err(err) => {
             // This is likely due to nats failing to subscribe to the required topic, which is
@@ -82,26 +73,23 @@ async fn run_billing_account_updates_proto(
     }
 }
 
-mod billing_account_updates {
+mod workspace_updates {
     use std::error::Error;
 
     use axum::extract::ws::{self, WebSocket};
-    use dal::BillingAccountPk;
+    use dal::WorkspacePk;
     use futures::TryStreamExt;
     use si_data_nats::{NatsClient, NatsError, Subscription};
     use telemetry::prelude::*;
     use thiserror::Error;
     use tokio_tungstenite::tungstenite;
 
-    pub fn run(nats: NatsClient, billing_account_pk: BillingAccountPk) -> BillingAccountUpdates {
-        BillingAccountUpdates {
-            nats,
-            billing_account_pk,
-        }
+    pub fn run(nats: NatsClient, workspace_pk: WorkspacePk) -> WorkspaceUpdates {
+        WorkspaceUpdates { nats, workspace_pk }
     }
 
     #[derive(Debug, Error)]
-    pub enum BillingAccountUpdatesError {
+    pub enum WorkspaceUpdatesError {
         #[error("error processing nats message from subscription")]
         NatsIo(#[source] NatsError),
         #[error("failed to subscribe to subject {1}")]
@@ -112,41 +100,41 @@ mod billing_account_updates {
         WsSendIo(#[source] axum::Error),
     }
 
-    type Result<T> = std::result::Result<T, BillingAccountUpdatesError>;
+    type Result<T> = std::result::Result<T, WorkspaceUpdatesError>;
 
     #[derive(Debug)]
-    pub struct BillingAccountUpdates {
+    pub struct WorkspaceUpdates {
         nats: NatsClient,
-        billing_account_pk: BillingAccountPk,
+        workspace_pk: WorkspacePk,
     }
 
-    impl BillingAccountUpdates {
-        pub async fn start(self) -> Result<BillingAccountUpdatesStarted> {
-            let subject = format!("si.billing_account_pk.{}.>", self.billing_account_pk);
+    impl WorkspaceUpdates {
+        pub async fn start(self) -> Result<WorkspaceUpdatesStarted> {
+            let subject = format!("si.workspace_pk.{}.>", self.workspace_pk);
             let subscription = self
                 .nats
                 .subscribe(&subject)
                 .await
-                .map_err(|err| BillingAccountUpdatesError::Subscribe(err, subject))?;
+                .map_err(|err| WorkspaceUpdatesError::Subscribe(err, subject))?;
 
-            Ok(BillingAccountUpdatesStarted { subscription })
+            Ok(WorkspaceUpdatesStarted { subscription })
         }
     }
 
     #[derive(Debug)]
-    pub struct BillingAccountUpdatesStarted {
+    pub struct WorkspaceUpdatesStarted {
         subscription: Subscription,
     }
 
-    impl BillingAccountUpdatesStarted {
-        pub async fn process(mut self, ws: &mut WebSocket) -> Result<BillingAccountUpdatesClosing> {
+    impl WorkspaceUpdatesStarted {
+        pub async fn process(mut self, ws: &mut WebSocket) -> Result<WorkspaceUpdatesClosing> {
             // Send all messages down the WebSocket until and unless an error is encountered, the
             // client websocket connection is closed, or the nats subscription naturally closes
             while let Some(nats_msg) = self
                 .subscription
                 .try_next()
                 .await
-                .map_err(BillingAccountUpdatesError::NatsIo)?
+                .map_err(WorkspaceUpdatesError::NatsIo)?
             {
                 let msg = ws::Message::Text(String::from_utf8_lossy(nats_msg.data()).to_string());
 
@@ -161,32 +149,30 @@ mod billing_account_updates {
                             tungstenite::Error::ConnectionClosed
                             | tungstenite::Error::AlreadyClosed => {
                                 trace!("websocket has cleanly closed, ending");
-                                return Ok(BillingAccountUpdatesClosing { ws_is_closed: true });
+                                return Ok(WorkspaceUpdatesClosing { ws_is_closed: true });
                             }
-                            _ => return Err(BillingAccountUpdatesError::WsSendIo(err)),
+                            _ => return Err(WorkspaceUpdatesError::WsSendIo(err)),
                         },
-                        None => return Err(BillingAccountUpdatesError::WsSendIo(err)),
+                        None => return Err(WorkspaceUpdatesError::WsSendIo(err)),
                     }
                 }
             }
 
-            Ok(BillingAccountUpdatesClosing {
+            Ok(WorkspaceUpdatesClosing {
                 ws_is_closed: false,
             })
         }
     }
 
     #[derive(Debug)]
-    pub struct BillingAccountUpdatesClosing {
+    pub struct WorkspaceUpdatesClosing {
         ws_is_closed: bool,
     }
 
-    impl BillingAccountUpdatesClosing {
+    impl WorkspaceUpdatesClosing {
         pub async fn finish(self, ws: WebSocket) -> Result<()> {
             if !self.ws_is_closed {
-                ws.close()
-                    .await
-                    .map_err(BillingAccountUpdatesError::WsClose)?;
+                ws.close().await.map_err(WorkspaceUpdatesError::WsClose)?;
             }
             Ok(())
         }

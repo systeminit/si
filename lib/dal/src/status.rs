@@ -812,11 +812,9 @@ impl StatusUpdater {
         // TODO(nick,fletcher): this method should be deleted once status updater is fully moved
         // to the status receiver because the status receiver should have its own ability to
         // "immediately publish" events.
-        for billing_account_pk in ws_event.billing_account_pks() {
-            let subject = format!("si.billing_account_pk.{billing_account_pk}.event");
-            let msg_bytes = serde_json::to_vec(&ws_event)?;
-            ctx.nats_conn().publish(subject, msg_bytes).await?;
-        }
+        let subject = format!("si.workspace_pk.{}.event", ws_event.workspace_pk());
+        let msg_bytes = serde_json::to_vec(&ws_event)?;
+        ctx.nats_conn().publish(subject, msg_bytes).await?;
         Ok(())
     }
 }
