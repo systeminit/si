@@ -220,6 +220,7 @@ impl QualificationView {
     PartialEq,
     Serialize,
     Copy,
+    Default,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
@@ -227,13 +228,8 @@ pub enum QualificationSubCheckStatus {
     Success,
     Warning,
     Failure,
+    #[default]
     Unknown,
-}
-
-impl Default for QualificationSubCheckStatus {
-    fn default() -> Self {
-        QualificationSubCheckStatus::Unknown
-    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]

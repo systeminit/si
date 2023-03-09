@@ -160,7 +160,6 @@ impl Client<(), (), ()> {
         let socket = socket_addrs
             .to_socket_addrs()
             .map_err(ClientError::SocketAddrResolve)?
-            .into_iter()
             .next()
             .ok_or(ClientError::NoSocketAddrResolved)?;
         let connector = HttpConnector::new();
