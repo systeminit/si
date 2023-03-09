@@ -120,6 +120,10 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "4222:4222"
+    command:
+      - "--config"
+      - "nats-server.conf"
+      - "-DVV"
 
   otel:
     image: "index.docker.io/systeminit/otelcol:stable"
