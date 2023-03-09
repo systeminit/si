@@ -12,7 +12,7 @@ use crate::{
     status::StatusMessage,
     workflow::{CommandOutput, CommandReturn},
     ActorView, AttributeValueId, ChangeSetPk, ComponentId, DalContext, PropId, SchemaPk, SocketId,
-    StandardModelError, Tenancy, TransactionsError, WorkspacePk,
+    StandardModelError, TransactionsError, WorkspacePk,
 };
 
 #[derive(Error, Debug)]
@@ -27,8 +27,8 @@ pub enum WsEventError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
-    #[error("no workspace in tenancy: {0:?}")]
-    NoWorkspaceInTenancy(Tenancy),
+    #[error("no workspace in tenancy")]
+    NoWorkspaceInTenancy,
 }
 
 pub type WsEventResult<T> = Result<T, WsEventError>;
@@ -101,7 +101,7 @@ impl WsEvent {
         let workspace_pk = match ctx.tenancy().workspace_pk() {
             Some(pk) => pk,
             None => {
-                return Err(WsEventError::NoWorkspaceInTenancy(*ctx.tenancy()));
+                return Err(WsEventError::NoWorkspaceInTenancy);
             }
         };
         let change_set_pk = ctx.visibility().change_set_pk;

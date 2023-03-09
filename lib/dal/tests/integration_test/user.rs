@@ -1,5 +1,6 @@
-use dal::{BillingAccountSignup, DalContext, JwtSecretKey, User, WorkspacePk};
+use dal::{BillingAccountSignup, DalContext, JwtSecretKey, Tenancy, User};
 use dal_test::test;
+use dal_test::test_harness::{create_billing_account, create_workspace};
 
 #[test]
 async fn new(ctx: &DalContext) {
@@ -14,14 +15,14 @@ async fn new(ctx: &DalContext) {
 }
 
 #[test]
-async fn login(ctx: &DalContext, jwt_secret_key: &JwtSecretKey, wid: WorkspacePk) {
+async fn login(ctx: &DalContext, jwt_secret_key: &JwtSecretKey) {
     let password = "snakesOnAPlane123";
     let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password)
         .await
         .expect("cannot create user");
 
     let _jwt = user
-        .login(ctx, jwt_secret_key, &wid, password)
+        .login(ctx, jwt_secret_key, password)
         .await
         .expect("cannot get jwt");
 }
@@ -41,6 +42,25 @@ async fn find_by_email(ctx: &mut DalContext) {
         email_user,
         "user by email does not match created user"
     );
+
+    let billing_account = create_billing_account(ctx).await;
+    let workspace = create_workspace(ctx, *billing_account.pk()).await;
+    ctx.update_tenancy(Tenancy::new(*workspace.pk()));
+
+    let email_user = User::find_by_email(ctx, "bobotclown@systeminit.com")
+        .await
+        .expect("cannot get by email");
+    assert!(
+        email_user.is_none(),
+        "wrong tenancy, user should not be found",
+    );
+
+    ctx.update_tenancy(Tenancy::new_empty());
+
+    let email_user = User::find_by_email(ctx, "bobotclown@systeminit.com")
+        .await
+        .expect("cannot get by email");
+    assert!(email_user.is_none(), "no tenancy, user should not be found",);
 }
 
 #[test]

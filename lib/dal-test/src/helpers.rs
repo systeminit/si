@@ -50,7 +50,7 @@ pub async fn billing_account_signup(
     .wrap_err("cannot signup a new billing_account")?;
     let auth_token = nba
         .user
-        .login(&ctx, jwt_secret_key, nba.workspace.pk(), "snakes")
+        .login(&ctx, jwt_secret_key, "snakes")
         .await
         .wrap_err("cannot log in newly created user")?;
     Ok((nba, auth_token))

@@ -52,12 +52,7 @@ pub async fn login(
     ctx.update_history_actor(HistoryActor::User(user.pk()));
 
     let jwt = user
-        .login(
-            &ctx,
-            &jwt_secret_key,
-            billing_account_defaults.workspace.pk(),
-            &request.user_password,
-        )
+        .login(&ctx, &jwt_secret_key, &request.user_password)
         .await
         .map_err(|_| SessionError::LoginFailed)?;
 

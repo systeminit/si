@@ -311,7 +311,7 @@ pub async fn billing_account_signup(
     .expect("cannot signup a new billing_account");
     let auth_token = nba
         .user
-        .login(&*ctx, jwt_secret_key, nba.workspace.pk(), "snakes")
+        .login(&*ctx, jwt_secret_key, "snakes")
         .await
         .expect("cannot log in newly created user");
     (nba, auth_token)

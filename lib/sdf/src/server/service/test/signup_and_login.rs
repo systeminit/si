@@ -32,7 +32,7 @@ pub async fn signup_and_login(
     .await?;
     let jwt = result
         .user
-        .login(&ctx, &jwt_secret_key, result.workspace.pk(), user_password)
+        .login(&ctx, &jwt_secret_key, user_password)
         .await?;
 
     ctx.commit().await?;

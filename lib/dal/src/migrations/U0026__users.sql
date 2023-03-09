@@ -11,10 +11,25 @@ CREATE TABLE users
 CREATE UNIQUE INDEX ON users (pk);
 CREATE INDEX ON users (visibility_deleted_at NULLS FIRST);
 
+CREATE TABLE user_belongs_to_workspaces
+(
+    pk                          ident primary key default ident_create_v1(),
+    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    user_pk                     ident                    NOT NULL,
+    workspace_pk                ident                    NOT NULL,
+    visibility_deleted_at       timestamp with time zone
+);
+CREATE UNIQUE INDEX ON user_belongs_to_workspaces (pk);
+CREATE INDEX ON user_belongs_to_workspaces (user_pk);
+CREATE INDEX ON user_belongs_to_workspaces (workspace_pk);
+CREATE INDEX ON user_belongs_to_workspaces (visibility_deleted_at NULLS FIRST);
+
 CREATE OR REPLACE FUNCTION user_create_v1(
     this_name text,
     this_email text,
     this_password bytea,
+    this_default_workspace_pk ident,
     OUT object json) AS
 $$
 DECLARE
@@ -23,6 +38,9 @@ BEGIN
     INSERT INTO users (name, email, password)
     VALUES (this_name, this_email, this_password)
     RETURNING * INTO this_new_row;
+
+    INSERT INTO user_belongs_to_workspaces (user_pk, workspace_pk)
+    VALUES (this_new_row.pk, this_default_workspace_pk);
 
     object := row_to_json(this_new_row);
 END;

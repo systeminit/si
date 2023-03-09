@@ -10,7 +10,7 @@ use tokio::task::JoinError;
 use crate::jwt_key::{get_jwt_signing_key, JwtKeyError};
 use crate::{
     pk, standard_model_accessor_ro, BillingAccountPk, DalContext, HistoryEvent, HistoryEventError,
-    JwtSecretKey, Timestamp, TransactionsError, WorkspacePk,
+    JwtSecretKey, Tenancy, Timestamp, TransactionsError, WorkspacePk,
 };
 
 const USER_PASSWORD: &str = include_str!("queries/user/password.sql");
@@ -39,6 +39,10 @@ pub enum UserError {
     JwtSimple(#[from] jwt_simple::Error),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error("no workspace in tenancy")]
+    NoWorkspaceInTenancy,
+    #[error("user not found in tenancy: {0} {1:?}")]
+    NotFoundInTenancy(UserPk, Tenancy),
 }
 
 pub type UserResult<T> = Result<T, UserError>;
@@ -79,8 +83,13 @@ impl User {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM user_create_v1($1, $2, $3)",
-                &[&name, &email, &encrypted_password.as_ref()],
+                "SELECT object FROM user_create_v1($1, $2, $3, $4)",
+                &[
+                    &name,
+                    &email,
+                    &encrypted_password.as_ref(),
+                    &ctx.tenancy().workspace_pk(),
+                ],
             )
             .await?;
 
@@ -115,7 +124,7 @@ impl User {
         let maybe_row = ctx
             .txns()
             .pg()
-            .query_opt(USER_FIND_BY_EMAIL, &[&email])
+            .query_opt(USER_FIND_BY_EMAIL, &[&email, &ctx.tenancy().workspace_pk()])
             .await?;
 
         let result = match maybe_row {
@@ -137,29 +146,36 @@ impl User {
         &self,
         ctx: &DalContext,
         jwt_secret_key: &JwtSecretKey,
-        workspace_pk: &WorkspacePk,
         password: impl Into<String>,
     ) -> UserResult<String> {
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(UserError::NoWorkspaceInTenancy)?;
         let row = ctx
             .txns()
             .pg()
-            .query_one(USER_PASSWORD, &[&self.pk()])
+            .query_opt(USER_PASSWORD, &[&self.pk(), &workspace_pk])
             .await?;
-        let current_password: Vec<u8> = row.try_get("password")?;
-        let verified = verify_password(password, current_password).await?;
-        if !verified {
-            return Err(UserError::MismatchedPassword);
+        if let Some(row) = row {
+            let current_password: Vec<u8> = row.try_get("password")?;
+            let verified = verify_password(password, current_password).await?;
+            if !verified {
+                return Err(UserError::MismatchedPassword);
+            }
+            let user_claim = UserClaim::new(self.pk(), workspace_pk);
+
+            let claims = Claims::with_custom_claims(user_claim, Duration::from_days(1))
+                .with_audience("https://app.systeminit.com")
+                .with_issuer("https://app.systeminit.com")
+                .with_subject(self.pk());
+
+            let signing_key = get_jwt_signing_key(ctx, jwt_secret_key).await?;
+            let jwt = signing_key.sign(claims)?;
+            Ok(jwt)
+        } else {
+            return Err(UserError::NotFoundInTenancy(self.pk(), *ctx.tenancy()));
         }
-        let user_claim = UserClaim::new(self.pk(), *workspace_pk);
-
-        let claims = Claims::with_custom_claims(user_claim, Duration::from_days(1))
-            .with_audience("https://app.systeminit.com")
-            .with_issuer("https://app.systeminit.com")
-            .with_subject(self.pk());
-
-        let signing_key = get_jwt_signing_key(ctx, jwt_secret_key).await?;
-        let jwt = signing_key.sign(claims)?;
-        Ok(jwt)
     }
 }
 
