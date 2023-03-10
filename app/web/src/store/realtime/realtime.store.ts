@@ -45,8 +45,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
   // ReconnectingWebsocket is a small wrapper around the native Websocket that should
   // handle basic reconnection logic
   const socket = new ReconnectingWebSocket(
-    () =>
-      `${API_WS_URL}/workspace_updates?token=Bearer+${authStore.token}`,
+    () => `${API_WS_URL}/workspace_updates?token=Bearer+${authStore.token}`,
     [],
     {
       // see options https://www.npmjs.com/package/reconnecting-websocket#available-options

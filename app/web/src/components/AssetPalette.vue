@@ -81,11 +81,11 @@ import NodeSkeleton from "@/components/NodeSkeleton.vue";
 
 const instructionsRef = ref();
 
-const hideInstructions = () => {
-  if (instructionsRef.value) {
-    instructionsRef.value.classList.add("hidden");
-  }
-};
+// const hideInstructions = () => {
+//   if (instructionsRef.value) {
+//     instructionsRef.value.classList.add("hidden");
+//   }
+// };
 
 const componentsStore = useComponentsStore();
 // NOTE - component store is automatically fetching things we need when it is used

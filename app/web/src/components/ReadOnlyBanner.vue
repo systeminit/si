@@ -31,11 +31,10 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
-import Icon from "@/ui-lib/icons/Icon.vue";
 
 const readOnlyRef = ref();
 
-const hideReadOnly = () => {
-  readOnlyRef.value.classList.add("hidden");
-};
+// const hideReadOnly = () => {
+//   readOnlyRef.value.classList.add("hidden");
+// };
 </script>

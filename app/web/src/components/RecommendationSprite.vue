@@ -129,9 +129,9 @@ const statusIconProps: Ref<{ name: IconNames; color: string }> = computed(
 );
 
 const recommendationIcon = (recommendationAction: ActionKind) => {
-  if(recommendationAction === "create") {
+  if (recommendationAction === "create") {
     return "plus-circle";
-  } else if(recommendationAction === "destroy") {
+  } else if (recommendationAction === "destroy") {
     return "minus-circle";
   } else {
     return "tilde-circle";
@@ -139,9 +139,9 @@ const recommendationIcon = (recommendationAction: ActionKind) => {
 };
 
 const recommendationColor = (recommendationAction: ActionKind) => {
-  if(recommendationAction === "create") {
+  if (recommendationAction === "create") {
     return "text-success-500 flex-none";
-  } else if(recommendationAction === "destroy") {
+  } else if (recommendationAction === "destroy") {
     return "text-destructive-500 flex-none";
   } else {
     return "text-warning-500 flex-none";
