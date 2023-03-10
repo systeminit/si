@@ -1,7 +1,7 @@
 <template>
   <div
     ref="readOnlyRef"
-    class="border-b-2 dark:border-neutral-600 text-sm leading-tight text-neutral-500 flex flex-col"
+    class="dark:border-neutral-600 text-sm leading-tight text-neutral-500 flex flex-col items-center"
   >
     <div class="text-center font-bold text-xl pt-xs">Read Only</div>
     <div class="flex flex-row items-center gap-4 px-xs pb-xs">

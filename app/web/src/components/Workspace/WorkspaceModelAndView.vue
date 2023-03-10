@@ -9,10 +9,7 @@
             <AssetPalette />
           </TabGroupItem>
           <TabGroupItem label="Diagram Outline">
-            <ComponentOutline
-              :disabled="isViewMode"
-              @right-click-item="onOutlineRightClick"
-            />
+            <ComponentOutline @right-click-item="onOutlineRightClick" />
           </TabGroupItem>
         </TabGroup>
       </div>
@@ -20,7 +17,19 @@
   </SiPanel>
 
   <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
-    <GlobalStatusOverlay />
+    <div
+      v-if="!statusStore.globalStatus.isUpdating && isViewMode"
+      :class="
+        clsx(
+          'absolute z-20 left-0 right-0 mx-4 mt-3 p-xs',
+          'bg-white dark:bg-neutral-800 dark:text-white border border-neutral-300 dark:border-neutral-600',
+          'shadow-md rounded-md font-bold text-center',
+        )
+      "
+    >
+      <ReadOnlyBanner />
+    </div>
+    <GlobalStatusOverlay v-else />
     <GenericDiagram
       v-if="diagramNodes"
       ref="diagramRef"
@@ -119,6 +128,7 @@ import _ from "lodash";
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import plur from "plur";
+import clsx from "clsx";
 import ChangeSetPanel from "@/components/ChangeSetPanel.vue";
 import ComponentDetails from "@/components/ComponentDetails.vue";
 import {
@@ -135,6 +145,7 @@ import Stack from "@/ui-lib/layout/Stack.vue";
 import SiPanel from "@/components/SiPanel.vue";
 import TabGroup from "@/ui-lib/tabs/TabGroup.vue";
 import TabGroupItem from "@/ui-lib/tabs/TabGroupItem.vue";
+import { useStatusStore } from "@/store/status.store";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette from "../AssetPalette.vue";
 import {
@@ -157,6 +168,9 @@ import EdgeDetailsPanel from "../EdgeDetailsPanel.vue";
 import MultiSelectDetailsPanel from "../MultiSelectDetailsPanel.vue";
 import ComponentCard from "../ComponentCard.vue";
 import EdgeCard from "../EdgeCard.vue";
+import ReadOnlyBanner from "../ReadOnlyBanner.vue";
+
+const statusStore = useStatusStore();
 
 const currentRoute = useRoute();
 
@@ -510,6 +524,9 @@ function onOutlineRightClick(e: MouseEvent) {
 
 const rightClickMenuItems = computed(() => {
   const items: MenuItemObjectDef[] = [];
+  if (isViewMode.value) {
+    return items;
+  }
   if (selectedEdgeId.value) {
     // single selected edge
     if (selectedEdge.value.changeStatus === "deleted") {
@@ -562,9 +579,6 @@ const rightClickMenuItems = computed(() => {
         onSelect: triggerRestoreSelection,
       });
     }
-  }
-  if (!items.length) {
-    items.push({ label: "empty menu" });
   }
   return items;
 });

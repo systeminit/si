@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col w-full">
-    <ReadOnlyBanner v-if="disabled" />
+    <ReadOnlyBanner v-if="disabled" class="border-b-2" />
     <PropertyEditor
       v-if="editorContext"
       :editor-context="editorContext"

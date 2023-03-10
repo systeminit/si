@@ -11,7 +11,6 @@
     <template v-else>
       <ScrollArea>
         <template v-if="rootComponents.length" #top>
-          <ReadOnlyBanner v-if="disabled" />
           <!-- search bar - dont need to show if no components -->
           <SiSearch auto-search @search="onSearchUpdated" />
         </template>
@@ -88,10 +87,6 @@ import ReadOnlyBanner from "../ReadOnlyBanner.vue";
 
 const outlineRef = ref<HTMLElement>();
 
-const props = defineProps({
-  disabled: { type: Boolean },
-});
-
 const emit = defineEmits<{
   // while we've avoided events for most things (selection, panning, etc)
   // we still have an emit for this one because the parent (WorkspaceModelAndView) owns the right click menu
@@ -130,11 +125,6 @@ function onSearchUpdated(newFilterString: string) {
 }
 
 function itemClickHandler(e: MouseEvent, id: ComponentId) {
-  if (props.disabled) {
-    e.preventDefault();
-    return;
-  }
-
   // right click
   if (e.button === 2) {
     if (!componentsStore.selectedComponentIds.includes(id)) {

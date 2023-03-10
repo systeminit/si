@@ -6,7 +6,7 @@
       v-bind="dynamicAttrs"
       :class="
         clsx(
-          'z-100 fixed text-sm rounded-md p-2xs shadow-[0_4px_8px_0_rgba(0,0,0,0.75)]',
+          'z-100 fixed text-sm rounded-md p-2xs shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden',
           'bg-black text-white',
           isRepositioning && 'opacity-0',
           // themeClasses('bg-white text-black', 'bg-black text-white'),
