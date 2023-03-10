@@ -4,7 +4,7 @@ use crate::service::diagram::DiagramError;
 use axum::Json;
 use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
-use dal::{DiagramKind, NodePosition, Visibility, WsEvent};
+use dal::{Node, StandardModel, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -22,7 +22,7 @@ pub struct SetNodePositionRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SetNodePositionResponse {
-    pub position: NodePosition,
+    pub node: Node,
 }
 
 pub async fn set_node_position(
@@ -32,6 +32,10 @@ pub async fn set_node_position(
 ) -> DiagramResult<Json<SetNodePositionResponse>> {
     let visibility = Visibility::new_change_set(request.visibility.change_set_pk, true);
     let ctx = builder.build(request_ctx.build(visibility)).await?;
+
+    let mut node = Node::get_by_id(&ctx, &request.node_id)
+        .await?
+        .ok_or(DiagramError::NodeNotFound(request.node_id))?;
 
     let (width, height) = {
         let component = dal::Component::find_for_node(&ctx, request.node_id)
@@ -51,19 +55,13 @@ pub async fn set_node_position(
             // If component is a frame, we set the size as either the one from the request or the previous one
             // If we don't do it like this upsert_by_node_id will delete the size on None instead of keeping it as is
             if s.name() == "Frame" && *s.edge_kind() == SocketEdgeKind::ConfigurationInput {
-                let node_position = NodePosition::list_for_node(&ctx, request.node_id)
-                    .await?
-                    .into_iter()
-                    .find(|n| *n.diagram_kind() == DiagramKind::Configuration)
-                    .ok_or(DiagramError::NodeNotFound(request.node_id))?;
-
                 size = (
                     request
                         .width
-                        .or_else(|| node_position.width().map(|v| v.to_string())),
+                        .or_else(|| node.width().map(|v| v.to_string())),
                     request
                         .height
-                        .or_else(|| node_position.height().map(|v| v.to_string())),
+                        .or_else(|| node.height().map(|v| v.to_string())),
                 );
                 break;
             }
@@ -72,16 +70,20 @@ pub async fn set_node_position(
         size
     };
 
-    let position = NodePosition::upsert_by_node_id(
-        &ctx,
-        DiagramKind::Configuration,
-        request.node_id,
-        &request.x,
-        &request.y,
-        width,
-        height,
-    )
-    .await?;
+    {
+        if node.visibility().deleted_at.is_some() {
+            node.set_geometry(&ctx, &request.x, &request.y, width, height)
+                .await?;
+        } else {
+            let ctx_without_deleted = &ctx.clone_with_new_visibility(Visibility::new_change_set(
+                ctx.visibility().change_set_pk,
+                false,
+            ));
+
+            node.set_geometry(ctx_without_deleted, &request.x, &request.y, width, height)
+                .await?;
+        };
+    }
 
     WsEvent::change_set_written(&ctx)
         .await?
@@ -90,5 +92,5 @@ pub async fn set_node_position(
 
     ctx.commit().await?;
 
-    Ok(Json(SetNodePositionResponse { position }))
+    Ok(Json(SetNodePositionResponse { node }))
 }

@@ -7,8 +7,7 @@ use axum::{
 use thiserror::Error;
 
 use dal::{
-    ComponentError, NodeError, NodePositionError, SchemaError, StandardModelError,
-    TransactionsError, WorkspaceError,
+    ComponentError, NodeError, SchemaError, StandardModelError, TransactionsError, WorkspaceError,
 };
 
 pub mod create_account;
@@ -32,8 +31,6 @@ pub enum SignupError {
     Schema(#[from] SchemaError),
     #[error("Node error: {0}")]
     Node(#[from] NodeError),
-    #[error("NodePosition error: {0}")]
-    NodePosition(#[from] NodePositionError),
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
 }

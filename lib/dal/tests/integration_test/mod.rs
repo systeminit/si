@@ -14,7 +14,6 @@ mod jwt_key;
 mod key_pair;
 mod node;
 mod node_menu;
-mod node_position;
 mod pkg;
 mod prop;
 mod property_editor;

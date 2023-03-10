@@ -18,8 +18,7 @@ use crate::socket::SocketError;
 use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributeValueError,
     ChangeSetPk, ComponentError, ComponentId, DalContext, Edge, EdgeError, Node, NodeError, NodeId,
-    NodeKind, NodePosition, NodePositionError, PropError, SchemaError, SocketId, StandardModel,
-    StandardModelError,
+    NodeKind, PropError, SchemaError, SocketId, StandardModel, StandardModelError,
 };
 
 pub mod connection;
@@ -73,8 +72,6 @@ pub enum DiagramError {
     Prop(#[from] PropError),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
-    #[error("node position error: {0}")]
-    NodePosition(#[from] NodePositionError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema not found")]
@@ -172,28 +169,6 @@ impl Diagram {
                     .ok_or(DiagramError::SchemaVariantNotFound)?,
             };
 
-            let positions = NodePosition::list_for_node(ctx_with_deleted, *node.id()).await?;
-
-            let mut maybe_position = None;
-
-            for this_position in positions {
-                maybe_position = Some(this_position.clone());
-                // NOTE(victor): This is setup to get you either the head position, or the specific changeset position, with priority on the latter
-                // but it's brittle since if the way we create positions changes it will just give you the last position on the list there's no specific one
-                // The real fix for this would be to fix the query to return the most valid entry for visibility OR make node_position a single value per node
-                // This second option feels more adequate, but we need to check with product if multiple node position contexts are coming back.
-                if maybe_position.is_some()
-                    && this_position.visibility().change_set_pk == ctx.visibility().change_set_pk
-                {
-                    break;
-                }
-            }
-
-            let position = match maybe_position {
-                Some(pos) => pos,
-                None => return Err(DiagramError::NoNodePositionsFound(*node.id(), *node.kind())),
-            };
-
             let is_modified = modified
                 .clone()
                 .iter()
@@ -240,7 +215,6 @@ impl Diagram {
                 node,
                 parent_node_id,
                 child_node_ids,
-                &position,
                 is_modified,
                 &schema_variant,
             )

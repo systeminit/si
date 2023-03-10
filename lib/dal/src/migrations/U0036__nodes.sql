@@ -1,13 +1,17 @@
 CREATE TABLE nodes
 (
-    pk                          ident primary key default ident_create_v1(),
-    id                          ident not null default ident_create_v1(),
-    tenancy_workspace_pk        ident,
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
-    visibility_deleted_at       timestamp with time zone,
-    created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
-    kind                        text                     NOT NULL
+    pk                       ident primary key                 default ident_create_v1(),
+    id                       ident                    not null default ident_create_v1(),
+    tenancy_workspace_pk     ident,
+    visibility_change_set_pk ident                    NOT NULL DEFAULT ident_nil_v1(),
+    visibility_deleted_at    timestamp with time zone,
+    created_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    updated_at               timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
+    kind                     text                     NOT NULL,
+    x                        text                     NOT NULL DEFAULT '0',
+    y                        text                     NOT NULL DEFAULT '0',
+    width                    text,
+    height                   text
 );
 SELECT standard_model_table_constraints_v1('nodes');
 SELECT belongs_to_table_create_v1('node_belongs_to_component', 'nodes', 'components');
