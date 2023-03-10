@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  repository_dispatch:
+    types:
+      - run-build-command
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -11,6 +14,8 @@ concurrency:
 
 jobs:
   check-run-tests:
+    if: github.event_name == 'repository_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
       run_tests: ${{ steps.save_output.outputs.run_tests }}
@@ -34,6 +39,8 @@ jobs:
           echo $RUN_TESTS
           echo "run_tests=$RUN_TESTS" >> $GITHUB_OUTPUT
   ci:
+    if: github.event_name == 'repository_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 40
     needs: check-run-tests
     name: Pull Request Checks
@@ -107,3 +114,19 @@ jobs:
           RUSTC_WRAPPER: /usr/local/bin/sccache
           CARGO_INCREMENTAL: false
           SI_LOG: info,cyclone_server=warn
+  comment-notification:
+    if: github.event_name == 'repository_dispatch'
+    name: comment-notification
+    runs-on: ubuntu-latest
+    steps:
+      - id: run-url
+        name: Create URL to the run output
+        run: echo ::set-output
+          name=run-url::https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+      - name: Update with Result
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          body: "Please view the PR build: ${{ steps.run-url.outputs.run-url }}"
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
