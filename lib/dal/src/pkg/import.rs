@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use si_pkg::{SiPkg, SiPkgError, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant};
+use si_pkg::{SiPkg, SiPkgError, SiPkgFunc, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant};
 
 use crate::{
     component::ComponentKind,
@@ -9,7 +9,7 @@ use crate::{
         InstalledPkgId,
     },
     schema::{variant::definition::hex_color_to_i64, SchemaUiMenu},
-    DalContext, Prop, PropId, PropKind, Schema, SchemaVariant, StandardModel,
+    DalContext, Func, Prop, PropId, PropKind, Schema, SchemaVariant, StandardModel,
 };
 
 use super::{PkgError, PkgResult};
@@ -27,6 +27,10 @@ pub async fn import_pkg_from_pkg(ctx: &DalContext, pkg: &SiPkg, file_name: &str)
     }
 
     let installed_pkg = InstalledPkg::new(ctx, &file_name, pkg.hash()?.to_string()).await?;
+
+    for func_spec in pkg.funcs()? {
+        create_func(ctx, func_spec, *installed_pkg.id()).await?;
+    }
 
     // TODO: gather up a record of what wasn't installed and why (the id of the package that
     // already contained the schema or variant)
@@ -50,6 +54,54 @@ pub async fn import_pkg(
     import_pkg_from_pkg(ctx, &pkg, &pkg_file_path_str).await?;
 
     Ok(pkg)
+}
+
+async fn create_func(
+    ctx: &DalContext,
+    func_spec: SiPkgFunc<'_>,
+    installed_pkg_id: InstalledPkgId,
+) -> PkgResult<()> {
+    let hash = func_spec.hash().to_string();
+    let existing_func =
+        InstalledPkgAsset::list_for_kind_and_hash(ctx, InstalledPkgAssetKind::Func, &hash)
+            .await?
+            .pop();
+
+    let func_id = match existing_func {
+        Some(installed_func_record) => match installed_func_record.as_installed_func()? {
+            InstalledPkgAssetTyped::Func { id, .. } => id,
+            _ => unreachable!(),
+        },
+        None => {
+            // How to handle name conflicts?
+            let mut func = Func::new(
+                ctx,
+                func_spec.name(),
+                func_spec.backend_kind().into(),
+                func_spec.response_type().into(),
+            )
+            .await?;
+
+            func.set_display_name(ctx, func_spec.display_name()).await?;
+            func.set_code_base64(ctx, Some(func_spec.code_base64()))
+                .await?;
+            func.set_description(ctx, func_spec.description()).await?;
+            func.set_handler(ctx, Some(func_spec.handler())).await?;
+            func.set_hidden(ctx, func.hidden()).await?;
+            func.set_link(ctx, func_spec.link().map(|l| l.to_string()))
+                .await?;
+
+            *func.id()
+        }
+    };
+
+    InstalledPkgAsset::new(
+        ctx,
+        InstalledPkgAssetTyped::new_for_func(func_id, installed_pkg_id, hash),
+    )
+    .await?;
+
+    Ok(())
 }
 
 async fn create_schema(

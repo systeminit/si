@@ -1,4 +1,4 @@
-use si_pkg::{SiPkgError, SpecError};
+use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
 use thiserror::Error;
 use url::ParseError;
 
@@ -10,8 +10,9 @@ pub use import::{import_pkg, import_pkg_from_pkg};
 
 use crate::{
     installed_pkg::InstalledPkgError, prop_tree::PropTreeError,
-    schema::variant::definition::SchemaVariantDefinitionError, PropError, SchemaError, SchemaId,
-    SchemaVariantError, SchemaVariantId, StandardModelError,
+    schema::variant::definition::SchemaVariantDefinitionError, FuncBackendKind,
+    FuncBackendResponseType, FuncError, PropError, SchemaError, SchemaId, SchemaVariantError,
+    SchemaVariantId, StandardModelError,
 };
 
 #[derive(Debug, Error)]
@@ -22,6 +23,8 @@ pub enum PkgError {
     Prop(#[from] PropError),
     #[error(transparent)]
     Schema(#[from] SchemaError),
+    #[error(transparent)]
+    Func(#[from] FuncError),
     #[error(transparent)]
     SchemaVariant(#[from] SchemaVariantError),
     #[error(transparent)]
@@ -63,3 +66,35 @@ impl PkgError {
 }
 
 pub type PkgResult<T> = Result<T, PkgError>;
+
+impl From<FuncSpecBackendKind> for FuncBackendKind {
+    fn from(value: FuncSpecBackendKind) -> Self {
+        match value {
+            FuncSpecBackendKind::JsAttribute => FuncBackendKind::JsAttribute,
+            FuncSpecBackendKind::JsCommand => FuncBackendKind::JsCommand,
+            FuncSpecBackendKind::Json => FuncBackendKind::Json,
+            FuncSpecBackendKind::JsValidation => FuncBackendKind::JsValidation,
+            FuncSpecBackendKind::JsWorkflow => FuncBackendKind::JsWorkflow,
+        }
+    }
+}
+
+impl From<FuncSpecBackendResponseType> for FuncBackendResponseType {
+    fn from(value: FuncSpecBackendResponseType) -> Self {
+        match value {
+            FuncSpecBackendResponseType::Array => FuncBackendResponseType::Array,
+            FuncSpecBackendResponseType::Boolean => FuncBackendResponseType::Boolean,
+            FuncSpecBackendResponseType::CodeGeneration => FuncBackendResponseType::CodeGeneration,
+            FuncSpecBackendResponseType::Command => FuncBackendResponseType::Command,
+            FuncSpecBackendResponseType::Confirmation => FuncBackendResponseType::Confirmation,
+            FuncSpecBackendResponseType::Integer => FuncBackendResponseType::Integer,
+            FuncSpecBackendResponseType::Json => FuncBackendResponseType::Json,
+            FuncSpecBackendResponseType::Map => FuncBackendResponseType::Map,
+            FuncSpecBackendResponseType::Object => FuncBackendResponseType::Object,
+            FuncSpecBackendResponseType::Qualification => FuncBackendResponseType::Qualification,
+            FuncSpecBackendResponseType::String => FuncBackendResponseType::String,
+            FuncSpecBackendResponseType::Validation => FuncBackendResponseType::Validation,
+            FuncSpecBackendResponseType::Workflow => FuncBackendResponseType::Workflow,
+        }
+    }
+}

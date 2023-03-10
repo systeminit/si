@@ -17,7 +17,7 @@ use url::Url;
 
 use crate::{
     node::{CategoryNode, PkgNode, PropNode},
-    spec::{FuncBackendKind, FuncBackendResponseType, PkgSpec, SpecError},
+    spec::{FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, SpecError},
 };
 
 #[derive(Debug, Error)]
@@ -307,8 +307,8 @@ pub struct SiPkgFunc<'a> {
     description: Option<String>,
     handler: String,
     code_base64: String,
-    backend_kind: FuncBackendKind,
-    response_type: FuncBackendResponseType,
+    backend_kind: FuncSpecBackendKind,
+    response_type: FuncSpecBackendResponseType,
     hidden: bool,
     link: Option<Url>,
 
@@ -367,11 +367,11 @@ impl<'a> SiPkgFunc<'a> {
         self.code_base64.as_ref()
     }
 
-    pub fn backend_kind(&self) -> FuncBackendKind {
+    pub fn backend_kind(&self) -> FuncSpecBackendKind {
         self.backend_kind
     }
 
-    pub fn response_type(&self) -> FuncBackendResponseType {
+    pub fn response_type(&self) -> FuncSpecBackendResponseType {
         self.response_type
     }
 
