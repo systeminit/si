@@ -5,7 +5,6 @@ use crate::schema::variant::definition::SchemaVariantDefinitionMetadataJson;
 use crate::schema::variant::leaves::LeafInput;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::SocketArity;
-use crate::validation::Validation;
 use crate::{
     action_prototype::ActionKind, schema::variant::leaves::LeafInputLocation, FuncDescription,
     FuncDescriptionContents,
@@ -24,9 +23,6 @@ const EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-egress.html#aws-properties-ec2-security-group-egress-properties";
 const EC2_TAG_DOCS_URL: &str =
     "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html";
-
-// Dataset(s)
-const INGRESS_EGRESS_PROTOCOLS: &[&str; 3] = &["tcp", "udp", "icmp"];
 
 impl MigrationDriver {
     /// A [`Schema`](crate::Schema) migration for [`AWS Egress`](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html).
@@ -69,101 +65,71 @@ impl MigrationDriver {
             )
             .await?;
 
-        let protocol_prop = self
+        let ip_permissions_prop = self
+            .create_prop(
+                ctx,
+                "IpPermissions",
+                PropKind::Array,
+                None,
+                Some(root_prop.domain_prop_id),
+                None,
+            )
+            .await?;
+
+        let ip_permission_prop = self
+            .create_prop(
+                ctx,
+                "IpPermission",
+                PropKind::Object,
+                None,
+                Some(*ip_permissions_prop.id()),
+                None,
+            )
+            .await?;
+
+        let _protocol_prop = self
             .create_prop(
                 ctx,
                 "IpProtocol",
                 PropKind::String,
                 None,
-                Some(root_prop.domain_prop_id),
+                Some(*ip_permission_prop.id()),
                 Some(EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
-        let expected = INGRESS_EGRESS_PROTOCOLS
-            .iter()
-            .map(|p| p.to_string())
-            .collect::<Vec<String>>();
-        self.create_validation(
-            ctx,
-            Validation::StringInStringArray {
-                value: None,
-                expected,
-                display_expected: true,
-            },
-            *protocol_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
-
-        let from_port_prop = self
-            .create_prop(
-                ctx,
-                "FromPort",
-                PropKind::Integer,
-                None,
-                Some(root_prop.domain_prop_id),
-                Some(EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL.to_string()),
-            )
-            .await?;
-
-        self.create_validation(
-            ctx,
-            Validation::IntegerIsBetweenTwoIntegers {
-                value: None,
-                lower_bound: -1,
-                upper_bound: 65537,
-            },
-            *from_port_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
-
-        let to_port_prop = self
+        let _to_port_prop = self
             .create_prop(
                 ctx,
                 "ToPort",
                 PropKind::Integer,
                 None,
-                Some(root_prop.domain_prop_id),
+                Some(*ip_permission_prop.id()),
                 Some(EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
 
-        self.create_validation(
-            ctx,
-            Validation::IntegerIsBetweenTwoIntegers {
-                value: None,
-                lower_bound: -1,
-                upper_bound: 65537,
-            },
-            *to_port_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
+        let _from_port_prop = self
+            .create_prop(
+                ctx,
+                "FromPort",
+                PropKind::Integer,
+                None,
+                Some(*ip_permission_prop.id()),
+                Some(EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL.to_string()),
+            )
+            .await?;
 
-        let cidr_prop = self
+        let _cidr_prop = self
             .create_prop(
                 ctx,
                 "CidrIp",
                 PropKind::String,
                 None,
-                Some(root_prop.domain_prop_id),
+                Some(*ip_permission_prop.id()),
                 Some(EC2_SECURITY_GROUP_EGRESS_PROPERTIES_DOCS_URL.to_string()),
             )
             .await?;
-
-        self.create_validation(
-            ctx,
-            Validation::StringIsValidIpAddr { value: None },
-            *cidr_prop.id(),
-            *schema.id(),
-            *schema_variant.id(),
-        )
-        .await?;
 
         let region_prop = self
             .create_prop(
@@ -301,8 +267,6 @@ impl MigrationDriver {
             serde_json::json!["security-group-rule"],
         )
         .await?;
-        self.set_default_value_for_prop(ctx, *protocol_prop.id(), serde_json::json!["tcp"])
-            .await?;
 
         // Bind sockets to providers
         let tags_map_attribute_read_context =
@@ -476,7 +440,7 @@ impl MigrationDriver {
                 provider: Some("AWS".to_string()),
             },
         )
-            .await?;
+        .await?;
 
         let name = "create";
         let context = ActionPrototypeContext {

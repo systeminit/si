@@ -690,6 +690,29 @@ impl AttributeValue {
             value,
             key,
             true,
+            true,
+        )
+        .await
+    }
+
+    pub async fn update_for_context_without_propagating_dependent_values(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        context: AttributeContext,
+        value: Option<serde_json::Value>,
+        // TODO: Allow updating the key
+        key: Option<String>,
+    ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
+        Self::update_for_context_raw(
+            ctx,
+            attribute_value_id,
+            parent_attribute_value_id,
+            context,
+            value,
+            key,
+            true,
+            false,
         )
         .await
     }
@@ -711,10 +734,12 @@ impl AttributeValue {
             value,
             key,
             false,
+            true,
         )
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn update_for_context_raw(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -724,6 +749,7 @@ impl AttributeValue {
         // TODO: Allow updating the key
         key: Option<String>,
         create_child_proxies: bool,
+        propagate_dependent_values: bool,
     ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
         let row = ctx.pg_txn().query_one(
             "SELECT new_attribute_value_id FROM attribute_value_update_for_context_raw_v1($1, $2, $3, $4, $5, $6, $7, $8)",
@@ -744,11 +770,13 @@ impl AttributeValue {
         // TODO(fnichol): we might want to fire off a status even at this point, however we've
         // already updated the initial attribute value, so is there much value?
 
-        ctx.enqueue_job(DependentValuesUpdate::new(
-            ctx,
-            vec![new_attribute_value_id],
-        ))
-        .await;
+        if propagate_dependent_values {
+            ctx.enqueue_job(DependentValuesUpdate::new(
+                ctx,
+                vec![new_attribute_value_id],
+            ))
+            .await;
+        }
 
         Ok((value, new_attribute_value_id))
     }
@@ -1072,7 +1100,7 @@ impl AttributeValue {
                         AttributeValueError::EmptyAttributePrototypeArgumentsForGroup(
                             argument_data.argument_name,
                         ),
-                    )
+                    );
                 }
             };
         }

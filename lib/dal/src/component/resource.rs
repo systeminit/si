@@ -76,6 +76,7 @@ impl Component {
         &self,
         ctx: &DalContext,
         result: CommandRunResult,
+        trigger_dependent_values_update: bool,
     ) -> ComponentResult<bool> {
         if !ctx.visibility().is_head() {
             return Err(ComponentError::CannotUpdateResourceTreeInChangeSet);
@@ -103,15 +104,31 @@ impl Component {
                 .set_component_id(self.id)
                 .to_context()?;
 
-        let (_, _) = AttributeValue::update_for_context(
-            ctx,
-            *resource_attribute_value.id(),
-            Some(*root_attribute_value.id()),
-            update_attribute_context,
-            Some(serde_json::to_value(result)?),
-            None,
-        )
-        .await?;
+        if trigger_dependent_values_update {
+            let (_, _) = AttributeValue::update_for_context(
+                ctx,
+                *resource_attribute_value.id(),
+                Some(*root_attribute_value.id()),
+                update_attribute_context,
+                Some(serde_json::to_value(result)?),
+                None,
+            )
+            .await?;
+        } else {
+            // Jacob / Paulo / Victor / Paul:
+            // We use this func to stop enqueueing another DependentValuesUpdate job
+            // The fix job was running DependentValuesUpdate inline and this func was also
+            // queueing a DependentValuesUpdate.
+            let (_, _) = AttributeValue::update_for_context_without_propagating_dependent_values(
+                ctx,
+                *resource_attribute_value.id(),
+                Some(*root_attribute_value.id()),
+                update_attribute_context,
+                Some(serde_json::to_value(result)?),
+                None,
+            )
+            .await?;
+        }
         Ok(true)
     }
 

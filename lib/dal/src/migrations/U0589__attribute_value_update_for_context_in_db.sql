@@ -1647,7 +1647,7 @@ BEGIN
         SELECT * FROM av_ap ORDER BY av_ap.av_id DESC
     LOOP
         IF attribute_prototype_id IS NULL THEN
-            RAISE 'Unable to find AttributePrototype of parent AttributeValue(%) with Tenancy(%) and Visibility(%)',
+            RAISE WARNING 'Unable to find AttributePrototype of parent AttributeValue(%) with Tenancy(%) and Visibility(%)',
                 tmp_attribute_value_id,
                 this_tenancy,
                 this_visibility;
