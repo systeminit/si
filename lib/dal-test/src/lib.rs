@@ -60,22 +60,21 @@ lazy_static! {
     static ref TEST_CONTEXT_BUILDER: Mutex<ContextBuilderState> = Mutex::new(Default::default());
 }
 
-/// A [`DalContext`] for a workspace in a billing account which is not in a change set nor an edit
-/// session.
+/// A [`DalContext`] for a workspace in a visibility which is not in a change set
 ///
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].
 /// To use mutably borrowed `DalContext` version, use [`DalContextHeadMutRef`].
 pub struct DalContextHead(pub DalContext);
 
-/// A reference to a [`DalContext`] for a workspace in a billing account which is not in a change
-/// set nor an edit session.
+/// A reference to a [`DalContext`] for a workspace in a visibility which is not in a change
+/// set
 ///
 /// To use an owned `DalContext` version, use [`DalContextHead`].
 /// To use mutably borrowed `DalContext` version, use [`DalContextHeadMutRef`].
 pub struct DalContextHeadRef<'a>(pub &'a DalContext);
 
-/// A mutable reference to a [`DalContext`] for a workspace in a billing account which is not in a
-/// change set nor an edit session.
+/// A mutable reference to a [`DalContext`] for a workspace in a visibility which is not in a
+/// change set
 ///
 /// To use an owned `DalContext` version, use [`DalContextHead`].
 /// To use a borrowed `DalContext` version, use [`DalContextHeadRef`].

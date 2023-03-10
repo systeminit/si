@@ -35,7 +35,7 @@ type TrackedSubscription = EventTypeAndCallback & {
 // shape of the extra data that comes through the websocket along with the payload
 type RealtimeEventMetadata = {
   version: number;
-  billing_account_pks: Array<number>;
+  workspace_pk: string;
   actor: ActorView;
 };
 
@@ -46,7 +46,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
   // handle basic reconnection logic
   const socket = new ReconnectingWebSocket(
     () =>
-      `${API_WS_URL}/billing_account_updates?token=Bearer+${authStore.token}`,
+      `${API_WS_URL}/workspace_updates?token=Bearer+${authStore.token}`,
     [],
     {
       // see options https://www.npmjs.com/package/reconnecting-websocket#available-options

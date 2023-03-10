@@ -1,5 +1,8 @@
 SELECT password
 FROM users
-INNER JOIN workspaces ON workspaces.pk = $2
-INNER JOIN organizations ON organizations.pk = workspaces.organization_pk
-WHERE users.pk = $1 AND users.billing_account_pk = organizations.billing_account_pk;
+INNER JOIN user_belongs_to_workspaces bt
+  ON bt.user_pk = users.pk
+     AND bt.visibility_deleted_at IS NULL
+WHERE users.pk = $1
+      AND users.visibility_deleted_at IS NULL
+      AND bt.workspace_pk = $2

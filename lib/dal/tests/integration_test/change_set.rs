@@ -1,11 +1,5 @@
-use dal::{
-    BillingAccountPk, ChangeSet, ChangeSetPk, ChangeSetStatus, DalContext, Group, StandardModel,
-    Visibility,
-};
-use dal_test::{
-    helpers::{create_change_set, create_group},
-    test, DalContextHeadMutRef, DalContextHeadRef,
-};
+use dal::{ChangeSet, ChangeSetStatus, DalContext, Visibility};
+use dal_test::{helpers::create_change_set, test, DalContextHeadMutRef, DalContextHeadRef};
 
 #[test]
 async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
@@ -26,13 +20,11 @@ async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_>) {
 }
 
 #[test]
-async fn apply(ctx: &mut DalContext, bid: BillingAccountPk) {
+async fn apply(ctx: &mut DalContext) {
     let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
         .await
         .expect("could not perform get by pk")
         .expect("could not get change set");
-
-    let group = create_group(ctx, bid).await;
 
     change_set
         .apply(ctx)
@@ -41,16 +33,6 @@ async fn apply(ctx: &mut DalContext, bid: BillingAccountPk) {
     assert_eq!(&change_set.status, &ChangeSetStatus::Applied);
 
     ctx.update_visibility(Visibility::new_head(false));
-
-    let head_group = Group::get_by_id(ctx, group.id())
-        .await
-        .expect("cannot get group")
-        .expect("head object should exist");
-
-    assert_eq!(group.id(), head_group.id());
-    assert_ne!(group.pk(), head_group.pk());
-    assert_eq!(group.name(), head_group.name());
-    assert_eq!(head_group.visibility().change_set_pk, ChangeSetPk::NONE);
 }
 
 #[test]

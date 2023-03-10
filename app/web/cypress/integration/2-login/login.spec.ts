@@ -8,8 +8,8 @@ describe("Login", () => {
 
   it("lets the user log in", () => {
     cy.visit("authenticate/login");
-    cy.get("@nba").then((testCtx: any) => {
-      cy.getBySel("billingAccountName").type(testCtx.billingAccountName);
+    cy.get("@nw").then((testCtx: any) => {
+      cy.getBySel("workspaceName").type(testCtx.workspaceName);
       cy.getBySel("userEmail").type(testCtx.userEmail);
       cy.getBySel("userPassword").type("snakes");
       cy.getBySel("login")

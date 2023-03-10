@@ -2,19 +2,18 @@ use std::{env, path::Path, sync::Arc};
 
 use color_eyre::Result;
 use dal::{
-    billing_account::BillingAccountSignup,
     component::ComponentKind,
     func::{binding::FuncBinding, FuncId},
     job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
     jwt_key::JwtSecretKey,
-    key_pair::KeyPairId,
+    key_pair::KeyPairPk,
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    BillingAccount, BillingAccountPk, ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind,
-    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, KeyPair, Node,
-    Organization, OrganizationPk, Prop, PropId, PropKind, Schema, SchemaId, SchemaVariantId,
-    Secret, SecretKind, SecretObjectType, StandardModel, User, Visibility, Workspace,
+    ChangeSet, ChangeSetPk, Component, DalContext, DiagramKind, EncryptedSecret, Func,
+    FuncBackendKind, FuncBackendResponseType, KeyPair, Node, Prop, PropId, PropKind, Schema,
+    SchemaId, SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, User,
+    Visibility, Workspace, WorkspaceSignup,
 };
 use lazy_static::lazy_static;
 use names::{Generator, Name};
@@ -251,85 +250,56 @@ pub fn create_visibility_head() -> Visibility {
     Visibility::new(ChangeSetPk::NONE, None)
 }
 
-pub async fn create_billing_account_with_name(
-    ctx: &DalContext,
-    name: impl AsRef<str>,
-) -> BillingAccount {
-    BillingAccount::new(ctx, &name, None)
-        .await
-        .expect("cannot create billing_account")
-}
-
-pub async fn create_billing_account(ctx: &DalContext) -> BillingAccount {
+pub async fn create_workspace(ctx: &mut DalContext) -> Workspace {
     let name = generate_fake_name();
-    create_billing_account_with_name(ctx, name).await
-}
-
-pub async fn create_organization(ctx: &DalContext, bid: BillingAccountPk) -> Organization {
-    let name = generate_fake_name();
-    Organization::new(ctx, &name, bid)
-        .await
-        .expect("cannot create organization")
-}
-
-pub async fn create_workspace(ctx: &mut DalContext, oid: OrganizationPk) -> Workspace {
-    let name = generate_fake_name();
-    Workspace::new(ctx, &name, oid)
+    Workspace::new(ctx, &name)
         .await
         .expect("cannot create workspace")
 }
 
-pub async fn create_key_pair(ctx: &DalContext, billing_account_pk: BillingAccountPk) -> KeyPair {
+pub async fn create_key_pair(ctx: &DalContext) -> KeyPair {
     let name = generate_fake_name();
-    KeyPair::new(ctx, &name, billing_account_pk)
+    KeyPair::new(ctx, &name)
         .await
         .expect("cannot create key_pair")
 }
 
-pub async fn create_user(ctx: &DalContext, bid: BillingAccountPk) -> User {
+pub async fn create_user(ctx: &DalContext) -> User {
     let name = generate_fake_name();
     User::new(
         ctx,
         &name,
         &format!("{name}@test.systeminit.com"),
         "liesAreTold",
-        bid,
     )
     .await
     .expect("cannot create user")
 }
 
-pub async fn create_group(ctx: &DalContext, bid: BillingAccountPk) -> Group {
-    let name = generate_fake_name();
-    Group::new(ctx, &name, bid)
-        .await
-        .expect("cannot create group")
-}
-
-pub async fn billing_account_signup(
+pub async fn workspace_signup(
     ctx: &mut DalContext,
     jwt_secret_key: &JwtSecretKey,
-) -> (BillingAccountSignup, String) {
-    let billing_account_name = generate_fake_name();
-    let user_name = format!("frank {billing_account_name}");
-    let user_email = format!("{billing_account_name}@example.com");
+) -> (WorkspaceSignup, String) {
+    let workspace_name = generate_fake_name();
+    let user_name = format!("frank {workspace_name}");
+    let user_email = format!("{workspace_name}@example.com");
     let user_password = "snakes";
 
-    let nba = BillingAccount::signup(
+    let nw = Workspace::signup(
         ctx,
-        &billing_account_name,
+        &workspace_name,
         &user_name,
         &user_email,
         &user_password,
     )
     .await
-    .expect("cannot signup a new billing_account");
-    let auth_token = nba
+    .expect("cannot signup a new workspace");
+    let auth_token = nw
         .user
-        .login(&*ctx, jwt_secret_key, nba.workspace.pk(), "snakes")
+        .login(&*ctx, jwt_secret_key, "snakes")
         .await
         .expect("cannot log in newly created user");
-    (nba, auth_token)
+    (nw, auth_token)
 }
 
 pub async fn create_schema(ctx: &DalContext) -> Schema {
@@ -463,13 +433,12 @@ pub async fn create_func_binding(
 
 pub async fn encrypt_message(
     ctx: &DalContext,
-    key_pair_id: KeyPairId,
+    key_pair_pk: KeyPairPk,
     message: &serde_json::Value,
 ) -> Vec<u8> {
-    let public_key = KeyPair::get_by_id(ctx, &key_pair_id)
+    let public_key = KeyPair::get_by_pk(ctx, key_pair_pk)
         .await
-        .expect("failed to fetch key pair")
-        .expect("failed to find key pair");
+        .expect("failed to fetch key pair");
 
     let crypted = sodiumoxide::crypto::sealedbox::seal(
         &serde_json::to_vec(message).expect("failed to serialize message"),
@@ -478,22 +447,17 @@ pub async fn encrypt_message(
     crypted
 }
 
-pub async fn create_secret(
-    ctx: &DalContext,
-    key_pair_id: KeyPairId,
-    billing_account_pk: BillingAccountPk,
-) -> Secret {
+pub async fn create_secret(ctx: &DalContext, key_pair_pk: KeyPairPk) -> Secret {
     let name = generate_fake_name();
     EncryptedSecret::new(
         ctx,
         &name,
         SecretObjectType::Credential,
         SecretKind::DockerHub,
-        &encrypt_message(ctx, key_pair_id, &serde_json::json!({ "name": name })).await,
-        key_pair_id,
+        &encrypt_message(ctx, key_pair_pk, &serde_json::json!({ "name": name })).await,
+        key_pair_pk,
         Default::default(),
         Default::default(),
-        billing_account_pk,
     )
     .await
     .expect("cannot create secret")
@@ -502,9 +466,8 @@ pub async fn create_secret(
 #[allow(clippy::too_many_arguments)]
 pub async fn create_secret_with_message(
     ctx: &DalContext,
-    key_pair_id: KeyPairId,
+    key_pair_pk: KeyPairPk,
     message: &serde_json::Value,
-    billing_account_pk: BillingAccountPk,
 ) -> Secret {
     let name = generate_fake_name();
     EncryptedSecret::new(
@@ -512,11 +475,10 @@ pub async fn create_secret_with_message(
         &name,
         SecretObjectType::Credential,
         SecretKind::DockerHub,
-        &encrypt_message(ctx, key_pair_id, message).await,
-        key_pair_id,
+        &encrypt_message(ctx, key_pair_pk, message).await,
+        key_pair_pk,
         Default::default(),
         Default::default(),
-        billing_account_pk,
     )
     .await
     .expect("cannot create secret")

@@ -4,11 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::component::{ComponentResult, COMPONENT_STATUS_UPDATE_BY_PK};
 use crate::standard_model::TypeHint;
-use crate::ComponentId;
-use crate::UserId;
 use crate::{
-    impl_standard_model, pk, standard_model, DalContext, HistoryActor, StandardModelError, Tenancy,
-    Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, ComponentId, DalContext, HistoryActor,
+    StandardModelError, Tenancy, Timestamp, UserPk, Visibility,
 };
 
 pk!(ComponentStatusPk);
@@ -31,9 +29,9 @@ pub struct ComponentStatus {
     #[serde(flatten)]
     visibility: Visibility,
     creation_timestamp: DateTime<Utc>,
-    creation_user_id: Option<UserId>,
+    creation_user_pk: Option<UserPk>,
     update_timestamp: DateTime<Utc>,
-    update_user_id: Option<UserId>,
+    update_user_pk: Option<UserPk>,
 }
 
 impl_standard_model! {
@@ -70,7 +68,7 @@ impl ComponentStatus {
         ctx: &DalContext,
         id: ComponentId,
     ) -> ComponentResult<DateTime<Utc>> {
-        let actor_user_id = Self::user_id(ctx.history_actor());
+        let actor_user_pk = Self::user_pk(ctx.history_actor());
 
         // TODO(fnichol): I would *highly* prefer to avoid 2 `UPDATE` statements, but our standard
         // model update code understands how to properly upsert a record to the correct visibility.
@@ -86,9 +84,9 @@ impl ComponentStatus {
         let update_timestamp = standard_model::update(
             ctx,
             "component_statuses",
-            "update_user_id",
+            "update_user_pk",
             &id,
-            &actor_user_id,
+            &actor_user_pk,
             TypeHint::BpChar,
         )
         .await?;
@@ -111,11 +109,11 @@ impl ComponentStatus {
     ///
     /// Return [`Err`] if there was a connection issue to the database.
     pub async fn record_update(&mut self, ctx: &DalContext) -> ComponentResult<DateTime<Utc>> {
-        let actor_user_id = Self::user_id(ctx.history_actor());
+        let actor_user_pk = Self::user_pk(ctx.history_actor());
 
         let row = ctx
             .pg_txn()
-            .query_one(COMPONENT_STATUS_UPDATE_BY_PK, &[&self.pk, &actor_user_id])
+            .query_one(COMPONENT_STATUS_UPDATE_BY_PK, &[&self.pk, &actor_user_pk])
             .await?;
         let updated_at = row.try_get("updated_at").map_err(|_| {
             StandardModelError::ModelMissing("component_statuses".to_string(), self.pk.to_string())
@@ -125,21 +123,21 @@ impl ComponentStatus {
         })?;
         self.timestamp.updated_at = updated_at;
         self.update_timestamp = update_timestamp;
-        self.update_user_id = actor_user_id;
+        self.update_user_pk = actor_user_pk;
 
         Ok(update_timestamp)
     }
 
     fn actor(&self) -> HistoryActor {
-        match self.creation_user_id {
-            Some(user_id) => user_id.into(),
+        match self.creation_user_pk {
+            Some(user_pk) => user_pk.into(),
             None => HistoryActor::SystemInit,
         }
     }
 
-    fn user_id(history_actor: &HistoryActor) -> Option<UserId> {
+    fn user_pk(history_actor: &HistoryActor) -> Option<UserPk> {
         match history_actor {
-            HistoryActor::User(user_id) => Some(*user_id),
+            HistoryActor::User(user_pk) => Some(*user_pk),
             _ => None,
         }
     }

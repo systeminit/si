@@ -13,13 +13,13 @@
           <Stack spacing="md">
             <ErrorMessage :request-status="loginReqStatus" />
             <VormInput
-              v-model="loginPayload.billingAccountName"
-              label="Billing Account Name"
+              v-model="loginPayload.workspaceName"
+              label="Workspace Name"
               required
               placeholder="ex: initech"
               to-lower-case
               :regex="VALID_USERNAME_REGEX"
-              regex-message="Invalid billing account name"
+              regex-message="Invalid workspace name"
             />
             <VormInput
               v-model="loginPayload.userEmail"
@@ -86,7 +86,7 @@ const devAutofill = true;
 
 // local dev prefills signup and login
 const loginPayload = reactive({
-  billingAccountName: import.meta.env.DEV && devAutofill ? "systeminit" : "",
+  workspaceName: import.meta.env.DEV && devAutofill ? "systeminit" : "",
   userEmail: import.meta.env.DEV && devAutofill ? "sally@systeminit.com" : "",
   userPassword: import.meta.env.DEV && devAutofill ? "Password123!" : "",
 });

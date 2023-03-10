@@ -12,10 +12,8 @@ use crate::{
         processor::{JobQueueProcessor, JobQueueProcessorError},
         producer::JobProducer,
     },
-    BillingAccountPk, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
+    HistoryActor, StandardModel, Tenancy, TenancyError, Visibility,
 };
-
-const GET_BILLING_ACCOUNT: &str = include_str!("queries/context_get_billing_account.sql");
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -283,22 +281,6 @@ impl DalContext {
         new
     }
 
-    pub async fn find_billing_account_pk_for_workspace(
-        &self,
-        workspace_pk: WorkspacePk,
-    ) -> Result<BillingAccountPk, TransactionsError> {
-        Self::raw_find_billing_account_pk_for_workspace(self.txns().pg(), workspace_pk).await
-    }
-
-    pub async fn raw_find_billing_account_pk_for_workspace(
-        txn: &PgTxn,
-        workspace_pk: WorkspacePk,
-    ) -> Result<BillingAccountPk, TransactionsError> {
-        let row = txn.query_one(GET_BILLING_ACCOUNT, &[&workspace_pk]).await?;
-        let pk = row.try_get("pk")?;
-        Ok(pk)
-    }
-
     pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
         self.txns().job_processor.enqueue_job(job, self).await
     }
@@ -427,7 +409,7 @@ impl RequestContext {
 }
 
 impl Default for RequestContext {
-    /// Builds a new [`RequestContext`] with no tenancy (only usable for managing BillingAccounts/Organizations/Workspaces)
+    /// Builds a new [`RequestContext`] with no tenancy (only usable for managing objects that live outside of the standard model)
     /// and a head [`Visibility`] and the given [`HistoryActor`].
     fn default() -> Self {
         Self {

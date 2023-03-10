@@ -13,8 +13,8 @@
           <Stack spacing="md">
             <ErrorMessage :request-status="signupReqStatus" />
             <VormInput
-              v-model="signupPayload.billingAccountName"
-              label="Billing Account Name"
+              v-model="signupPayload.workspaceName"
+              label="Workspace Name"
               required
               placeholder="ex: acmecorp"
               instructions="An org-level username - you will need this when you sign in"
@@ -111,7 +111,7 @@ const devAutofill = true;
 
 // local dev prefills signup and login
 const signupPayload = reactive({
-  billingAccountName: import.meta.env.DEV && devAutofill ? "systeminit" : "",
+  workspaceName: import.meta.env.DEV && devAutofill ? "systeminit" : "",
   userName: import.meta.env.DEV && devAutofill ? "Signup Sally" : "",
   userEmail: import.meta.env.DEV && devAutofill ? "sally@systeminit.com" : "",
   userPassword: import.meta.env.DEV && devAutofill ? "Password123!" : "",

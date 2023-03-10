@@ -186,12 +186,8 @@ BEGIN
     /* If updated_at is still null, that is because the update found no rows. We need to first copy the last known
        good data, and then update it. */
     IF updated_at IS NULL THEN
-        /* Check if we are doing an update to the edit session visibility. If we are, then we need to
-           copy the change set row if it exists, and if that doesn't exist, copy the head row. If
-           neither exist, that is an error.
-
-           If we aren't checking the change set and edit session, then we are pulling from head, so we
-           can just copy head. */
+        /* Check if we are doing an update to the change-set visibility. If we aren't, then we need to
+           copy the head row. If it doesn't exist, that is an error. */
         IF this_visibility_row.visibility_change_set_pk != ident_nil_v1() THEN
 
             SELECT string_agg(information_schema.columns.column_name::text, ',')

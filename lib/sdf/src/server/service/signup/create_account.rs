@@ -1,7 +1,7 @@
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use dal::{BillingAccount, RequestContext};
+use dal::{RequestContext, Workspace};
 use telemetry::prelude::*;
 
 use crate::{
@@ -14,7 +14,7 @@ use super::SignupResult;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAccountRequest {
-    pub billing_account_name: String,
+    pub workspace_name: String,
     pub user_name: String,
     pub user_email: String,
     pub user_password: String,
@@ -33,15 +33,15 @@ pub async fn create_account(
     Json(request): Json<CreateAccountRequest>,
 ) -> SignupResult<Json<CreateAccountResponse>> {
     if signup_secret.as_str() != request.signup_secret.as_str() {
-        warn!("invalid signup secret provided when signing up new billing account");
+        warn!("invalid signup secret provided when signing up new workspace");
         return Err(SignupError::InvalidSignupSecret);
     }
 
     let mut ctx = builder.build(RequestContext::default()).await?;
 
-    let _billing_acct = BillingAccount::signup(
+    let _nw = Workspace::signup(
         &mut ctx,
-        &request.billing_account_name,
+        &request.workspace_name,
         &request.user_name,
         &request.user_email,
         &request.user_password,

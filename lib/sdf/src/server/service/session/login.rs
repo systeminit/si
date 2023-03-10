@@ -2,13 +2,13 @@ use super::SessionError;
 use super::SessionResult;
 use crate::server::extract::{HandlerContext, JwtSecretKey};
 use axum::Json;
-use dal::{context::AccessBuilder, BillingAccount, HistoryActor, StandardModel, Tenancy, User};
+use dal::{context::AccessBuilder, HistoryActor, Tenancy, User, Workspace};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginRequest {
-    pub billing_account_name: String,
+    pub workspace_name: String,
     pub user_email: String,
     pub user_password: String,
 }
@@ -17,7 +17,7 @@ pub struct LoginRequest {
 #[serde(rename_all = "camelCase")]
 pub struct LoginResponse {
     pub user: User,
-    pub billing_account: BillingAccount,
+    pub workspace: Workspace,
     pub jwt: String,
 }
 
@@ -30,40 +30,35 @@ pub async fn login(
     let mut ctx = builder
         .build(
             AccessBuilder::new(
-                // Empty tenancy means things can be written, but won't ever be read, with the exception of billing accounts, organizations and workspaces
+                // Empty tenancy means things can be written, but won't ever be read by whatever uses the standard model
                 Tenancy::new_empty(),
                 HistoryActor::SystemInit,
             )
             .build_head(),
         )
         .await?;
-    let billing_account = BillingAccount::find_by_name(&ctx, &request.billing_account_name)
+
+    let workspace = Workspace::find_by_name(&ctx, &request.workspace_name)
         .await?
         .ok_or(SessionError::LoginFailed)?;
-    let billing_account_defaults = BillingAccount::get_defaults(&ctx, billing_account.pk()).await?;
 
-    ctx.update_tenancy(Tenancy::new(*billing_account_defaults.workspace.pk()));
+    ctx.update_tenancy(Tenancy::new(*workspace.pk()));
 
     let user = User::find_by_email(&ctx, &request.user_email)
         .await?
         .ok_or(SessionError::LoginFailed)?;
 
     // Update context history actor
-    ctx.update_history_actor(HistoryActor::User(*user.id()));
+    ctx.update_history_actor(HistoryActor::User(user.pk()));
 
     let jwt = user
-        .login(
-            &ctx,
-            &jwt_secret_key,
-            billing_account_defaults.workspace.pk(),
-            &request.user_password,
-        )
+        .login(&ctx, &jwt_secret_key, &request.user_password)
         .await
         .map_err(|_| SessionError::LoginFailed)?;
 
     Ok(Json(LoginResponse {
         jwt,
         user,
-        billing_account,
+        workspace,
     }))
 }

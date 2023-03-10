@@ -8,17 +8,14 @@ use thiserror::Error;
 use tokio::task::JoinError;
 
 use crate::jwt_key::{get_jwt_signing_key, JwtKeyError};
-use crate::standard_model::option_object_from_row;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, BillingAccount,
-    BillingAccountError, BillingAccountPk, DalContext, HistoryEventError, JwtSecretKey,
-    StandardModel, StandardModelError, Tenancy, Timestamp, TransactionsError, Visibility,
-    WorkspacePk,
+    pk, standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, JwtSecretKey,
+    Tenancy, Timestamp, TransactionsError, WorkspacePk,
 };
 
 const USER_PASSWORD: &str = include_str!("queries/user/password.sql");
 const USER_FIND_BY_EMAIL: &str = include_str!("queries/user/find_by_email.sql");
-const AUTHORIZE_USER: &str = include_str!("queries/user/authorize.sql");
+const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
 
 #[derive(Error, Debug)]
 pub enum UserError {
@@ -30,8 +27,6 @@ pub enum UserError {
     Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
     #[error("password hashing error; bug!")]
     PasswordHash,
     #[error("failed to join long lived async task; bug!")]
@@ -43,41 +38,34 @@ pub enum UserError {
     #[error("jwt: {0}")]
     JwtSimple(#[from] jwt_simple::Error),
     #[error(transparent)]
-    BillingAccount(#[from] Box<BillingAccountError>),
-    #[error(transparent)]
     Transactions(#[from] TransactionsError),
+    #[error("no workspace in tenancy")]
+    NoWorkspaceInTenancy,
+    #[error("user not found in tenancy: {0} {1:?}")]
+    NotFoundInTenancy(UserPk, Tenancy),
 }
 
 pub type UserResult<T> = Result<T, UserError>;
 
 pk!(UserPk);
-pk!(UserId);
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct User {
     pk: UserPk,
-    id: UserId,
     name: String,
-    billing_account_pk: BillingAccountPk,
     email: String,
     #[serde(flatten)]
-    tenancy: Tenancy,
-    #[serde(flatten)]
     timestamp: Timestamp,
-    #[serde(flatten)]
-    visibility: Visibility,
-}
-
-impl_standard_model! {
-    model: User,
-    pk: UserPk,
-    id: UserId,
-    table_name: "users",
-    history_event_label_base: "user",
-    history_event_message_name: "User"
 }
 
 impl User {
+    pub fn pk(&self) -> UserPk {
+        self.pk
+    }
+
+    standard_model_accessor_ro!(name, String);
+    standard_model_accessor_ro!(email, String);
+
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
@@ -85,7 +73,6 @@ impl User {
         name: impl AsRef<str>,
         email: impl AsRef<str>,
         password: impl AsRef<str>,
-        billing_account_pk: BillingAccountPk,
     ) -> UserResult<Self> {
         let name = name.as_ref();
         let email = email.as_ref();
@@ -96,29 +83,37 @@ impl User {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM user_create_v1($1, $2, $3, $4, $5, $6)",
+                "SELECT object FROM user_create_v1($1, $2, $3, $4)",
                 &[
-                    ctx.tenancy(),
-                    ctx.visibility(),
                     &name,
                     &email,
                     &encrypted_password.as_ref(),
-                    &billing_account_pk,
+                    &ctx.tenancy().workspace_pk(),
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(ctx, row).await?;
+
+        // Inlined `finish_create_from_row`
+
+        let json: serde_json::Value = row.try_get("object")?;
+        let object: Self = serde_json::from_value(json)?;
+
+        // HistoryEvent won't be accessible by any tenancy (null tenancy_workspace_pk)
+        let _history_event = HistoryEvent::new(
+            ctx,
+            "user.create".to_owned(),
+            "User created".to_owned(),
+            &serde_json::json![{ "visibility": ctx.visibility() }],
+        )
+        .await?;
+
         Ok(object)
     }
 
-    standard_model_accessor!(name, String, UserResult);
-    standard_model_accessor!(email, String, UserResult);
-    standard_model_accessor!(billing_account_pk, Pk(BillingAccountPk), UserResult);
-
-    pub async fn billing_account(&self, ctx: &DalContext) -> UserResult<BillingAccount> {
-        Ok(BillingAccount::get_by_pk(ctx, &self.billing_account_pk)
-            .await
-            .map_err(Box::new)?)
+    pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Self> {
+        let row = ctx.txns().pg().query_one(USER_GET_BY_PK, &[&pk]).await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        Ok(serde_json::from_value(json)?)
     }
 
     pub async fn find_by_email(
@@ -129,21 +124,21 @@ impl User {
         let maybe_row = ctx
             .txns()
             .pg()
-            .query_opt(
-                USER_FIND_BY_EMAIL,
-                &[&email, ctx.tenancy(), ctx.visibility()],
-            )
+            .query_opt(USER_FIND_BY_EMAIL, &[&email, &ctx.tenancy().workspace_pk()])
             .await?;
-        let result = option_object_from_row(maybe_row)?;
+
+        let result = match maybe_row {
+            Some(row) => {
+                let json: serde_json::Value = row.try_get("object")?;
+                Some(serde_json::from_value(json)?)
+            }
+            None => None,
+        };
         Ok(result)
     }
 
-    pub async fn authorize(ctx: &DalContext, user_id: &UserId) -> UserResult<bool> {
-        let _row = ctx
-            .txns()
-            .pg()
-            .query_one(AUTHORIZE_USER, &[ctx.tenancy(), ctx.visibility(), &user_id])
-            .await?;
+    pub async fn authorize(_ctx: &DalContext, _user_pk: &UserPk) -> UserResult<bool> {
+        // TODO(paulo,theo): implement capabilities through auth0
         Ok(true)
     }
 
@@ -151,42 +146,49 @@ impl User {
         &self,
         ctx: &DalContext,
         jwt_secret_key: &JwtSecretKey,
-        workspace_pk: &WorkspacePk,
         password: impl Into<String>,
     ) -> UserResult<String> {
+        let workspace_pk = ctx
+            .tenancy()
+            .workspace_pk()
+            .ok_or(UserError::NoWorkspaceInTenancy)?;
         let row = ctx
             .txns()
             .pg()
-            .query_one(USER_PASSWORD, &[&self.pk(), workspace_pk])
+            .query_opt(USER_PASSWORD, &[&self.pk(), &workspace_pk])
             .await?;
-        let current_password: Vec<u8> = row.try_get("password")?;
-        let verified = verify_password(password, current_password).await?;
-        if !verified {
-            return Err(UserError::MismatchedPassword);
+        if let Some(row) = row {
+            let current_password: Vec<u8> = row.try_get("password")?;
+            let verified = verify_password(password, current_password).await?;
+            if !verified {
+                return Err(UserError::MismatchedPassword);
+            }
+            let user_claim = UserClaim::new(self.pk(), workspace_pk);
+
+            let claims = Claims::with_custom_claims(user_claim, Duration::from_days(1))
+                .with_audience("https://app.systeminit.com")
+                .with_issuer("https://app.systeminit.com")
+                .with_subject(self.pk());
+
+            let signing_key = get_jwt_signing_key(ctx, jwt_secret_key).await?;
+            let jwt = signing_key.sign(claims)?;
+            Ok(jwt)
+        } else {
+            return Err(UserError::NotFoundInTenancy(self.pk(), *ctx.tenancy()));
         }
-        let user_claim = UserClaim::new(*self.id(), *workspace_pk);
-
-        let claims = Claims::with_custom_claims(user_claim, Duration::from_days(1))
-            .with_audience("https://app.systeminit.com")
-            .with_issuer("https://app.systeminit.com")
-            .with_subject(*self.id());
-
-        let signing_key = get_jwt_signing_key(ctx, jwt_secret_key).await?;
-        let jwt = signing_key.sign(claims)?;
-        Ok(jwt)
     }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct UserClaim {
-    pub user_id: UserId,
+    pub user_pk: UserPk,
     pub workspace_pk: WorkspacePk,
 }
 
 impl UserClaim {
-    pub fn new(user_id: UserId, workspace_pk: WorkspacePk) -> Self {
+    pub fn new(user_pk: UserPk, workspace_pk: WorkspacePk) -> Self {
         UserClaim {
-            user_id,
+            user_pk,
             workspace_pk,
         }
     }
@@ -197,15 +199,6 @@ impl UserClaim {
     ) -> UserResult<UserClaim> {
         let claims = crate::jwt_key::validate_bearer_token(ctx, &token).await?;
         Ok(claims.custom)
-    }
-
-    pub async fn find_billing_account_pk_for_workspace(
-        &self,
-        ctx: &DalContext,
-    ) -> UserResult<BillingAccountPk> {
-        Ok(ctx
-            .find_billing_account_pk_for_workspace(self.workspace_pk)
-            .await?)
     }
 }
 

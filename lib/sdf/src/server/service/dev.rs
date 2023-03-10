@@ -6,7 +6,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{BillingAccountError, StandardModelError, TransactionsError, UserError, WsEventError};
+use dal::{StandardModelError, TransactionsError, UserError, WsEventError};
 use thiserror::Error;
 
 mod create_builtin_func;
@@ -22,8 +22,6 @@ pub enum DevError {
     Pg(#[from] si_data_pg::PgError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
-    #[error("billing account error: {0}")]
-    BillingAccount(#[from] BillingAccountError),
     #[error("user error: {0}")]
     User(#[from] UserError),
     #[error("Function not found")]

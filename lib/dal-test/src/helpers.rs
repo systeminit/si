@@ -5,10 +5,9 @@ use dal::{
         binding::FuncBindingId,
         binding_return_value::FuncBindingReturnValueId,
     },
-    BillingAccount, BillingAccountPk, BillingAccountSignup, ChangeSet, Component, DalContext,
-    DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor, JwtSecretKey, Node, Prop,
-    PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
-    Tenancy, User, Visibility,
+    ChangeSet, Component, DalContext, Func, FuncBinding, FuncId, HistoryActor, JwtSecretKey, Node,
+    Prop, PropId, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, User,
+    Visibility, Workspace, WorkspaceSignup,
 };
 use names::{Generator, Name};
 
@@ -27,68 +26,46 @@ pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
 }
 
-pub async fn billing_account_signup(
+pub async fn workspace_signup(
     ctx: &DalContext,
     jwt_secret_key: &JwtSecretKey,
-) -> Result<(BillingAccountSignup, String)> {
+) -> Result<(WorkspaceSignup, String)> {
     use color_eyre::eyre::WrapErr;
 
     let mut ctx = ctx.clone_with_head();
 
-    let billing_account_name = generate_fake_name();
-    let user_name = format!("frank {billing_account_name}");
-    let user_email = format!("{billing_account_name}@example.com");
+    let workspace_name = generate_fake_name();
+    let user_name = format!("frank {workspace_name}");
+    let user_email = format!("{workspace_name}@example.com");
     let user_password = "snakes";
 
-    let nba = BillingAccount::signup(
+    let nw = Workspace::signup(
         &mut ctx,
-        &billing_account_name,
+        &workspace_name,
         &user_name,
         &user_email,
         &user_password,
     )
     .await
-    .wrap_err("cannot signup a new billing_account")?;
-    let auth_token = nba
+    .wrap_err("cannot signup a new workspace")?;
+    let auth_token = nw
         .user
-        .login(&ctx, jwt_secret_key, nba.workspace.pk(), "snakes")
+        .login(&ctx, jwt_secret_key, "snakes")
         .await
         .wrap_err("cannot log in newly created user")?;
-    Ok((nba, auth_token))
+    Ok((nw, auth_token))
 }
 
-pub async fn create_group(ctx: &DalContext, bid: BillingAccountPk) -> Group {
-    let name = generate_fake_name();
-    Group::new(ctx, &name, bid)
-        .await
-        .expect("cannot create group")
-}
-
-pub async fn create_user(ctx: &DalContext, bid: BillingAccountPk) -> User {
+pub async fn create_user(ctx: &DalContext) -> User {
     let name = generate_fake_name();
     User::new(
         ctx,
         &name,
         &format!("{name}@test.systeminit.com"),
         "liesAreTold",
-        bid,
     )
     .await
     .expect("cannot create user")
-}
-
-pub async fn create_billing_account_with_name(
-    ctx: &DalContext,
-    name: impl AsRef<str>,
-) -> BillingAccount {
-    BillingAccount::new(ctx, name, None)
-        .await
-        .expect("cannot create billing_account")
-}
-
-pub async fn create_billing_account(ctx: &DalContext) -> BillingAccount {
-    let name = generate_fake_name();
-    create_billing_account_with_name(ctx, name).await
 }
 
 pub async fn create_change_set(ctx: &DalContext) -> ChangeSet {
@@ -113,26 +90,6 @@ pub async fn create_visibility_for_new_change_set(ctx: &DalContext) -> Visibilit
 pub async fn create_change_set_and_update_ctx(ctx: &mut DalContext) {
     let visibility = create_visibility_for_new_change_set(ctx).await;
     ctx.update_visibility(visibility);
-}
-
-/// Creates a new [`DalContext`] in a change set and edit session in the given billing account.
-pub async fn create_ctx_for_new_change_set(
-    builder: &DalContextBuilder,
-    nba: &BillingAccountSignup,
-) -> DalContext {
-    let mut ctx = builder
-        .build(RequestContext::default())
-        .await
-        .expect("failed to build dal context");
-    ctx.update_tenancy(Tenancy::new(*nba.workspace.pk()));
-    create_change_set_and_update_ctx(&mut ctx).await;
-
-    ctx
-}
-
-pub async fn new_ctx_for_new_change_set(ctx: &DalContext) -> DalContext {
-    let visibility = create_visibility_for_new_change_set(ctx).await;
-    ctx.clone_with_new_visibility(visibility)
 }
 
 pub async fn create_component_and_node_for_schema(

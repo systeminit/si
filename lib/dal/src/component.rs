@@ -32,9 +32,9 @@ use crate::{
     AttributePrototypeError, AttributePrototypeId, AttributeReadContext, CodeLanguage,
     ComponentType, DalContext, EdgeError, ExternalProvider, ExternalProviderError,
     ExternalProviderId, FixError, Func, FuncBackendKind, FuncError, HistoryActor,
-    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, OrganizationError,
-    Prop, PropError, PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
-    StandardModelError, Tenancy, Timestamp, TransactionsError, UserId, ValidationPrototypeError,
+    HistoryEventError, InternalProvider, InternalProviderId, Node, NodeError, Prop, PropError,
+    PropId, RootPropChild, Schema, SchemaError, SchemaId, Socket, StandardModel,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, UserPk, ValidationPrototypeError,
     ValidationResolverError, Visibility, WorkflowRunnerError, WorkspaceError, WsEvent,
     WsEventResult, WsPayload,
 };
@@ -171,14 +171,10 @@ pub enum ComponentError {
     Qualification(#[from] QualificationError),
     #[error("workspace not found")]
     WorkspaceNotFound,
-    #[error("organization not found")]
-    OrganizationNotFound,
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
-    #[error("organization error: {0}")]
-    Organization(#[from] OrganizationError),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
     #[error("found child attribute value of a map without a key: {0}")]
@@ -271,7 +267,7 @@ pub struct Component {
     pk: ComponentPk,
     id: ComponentId,
     kind: ComponentKind,
-    pub deletion_user_id: Option<UserId>,
+    pub deletion_user_pk: Option<UserPk>,
     needs_destroy: bool,
     #[serde(flatten)]
     tenancy: Tenancy,
@@ -317,8 +313,8 @@ impl Component {
             .schema(ctx)
             .await?
             .ok_or(SchemaVariantError::MissingSchema(schema_variant_id))?;
-        let actor_user_id = match ctx.history_actor() {
-            HistoryActor::User(user_id) => Some(*user_id),
+        let actor_user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
             _ => None,
         };
 
@@ -330,7 +326,7 @@ impl Component {
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
-                    &actor_user_id,
+                    &actor_user_pk,
                     &schema.component_kind().as_ref(),
                 ],
             )
@@ -1031,8 +1027,8 @@ impl Component {
             return Err(ComponentError::ComponentProtected(self.id));
         }
 
-        let actor_user_id = match ctx.history_actor() {
-            HistoryActor::User(user_id) => Some(*user_id),
+        let actor_user_pk = match ctx.history_actor() {
+            HistoryActor::User(user_pk) => Some(*user_pk),
             _ => None,
         };
 
@@ -1046,7 +1042,7 @@ impl Component {
                     ctx.tenancy(),
                     ctx.visibility(),
                     self.id(),
-                    &actor_user_id,
+                    &actor_user_pk,
                     &has_resource,
                 ],
             )

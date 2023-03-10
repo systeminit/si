@@ -3,24 +3,22 @@ CREATE TABLE encrypted_secrets
     pk                          ident primary key default ident_create_v1(),
     id                          ident not null default ident_create_v1(),
     tenancy_workspace_pk        ident,
-    visibility_change_set_pk    ident                   NOT NULL DEFAULT ident_nil_v1(),
+    visibility_change_set_pk    ident                    NOT NULL DEFAULT ident_nil_v1(),
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL,
     object_type                 text                     NOT NULL,
     kind                        text                     NOT NULL,
-    billing_account_pk          ident                   NOT NULL,
+    key_pair_pk                 ident                    NOT NULL,
     crypted                     text                     NOT NULL,
     version                     text                     NOT NULL,
     algorithm                   text                     NOT NULL
 );
 SELECT standard_model_table_constraints_v1('encrypted_secrets');
-SELECT belongs_to_table_create_v1('encrypted_secret_belongs_to_key_pair', 'encrypted_secrets', 'key_pairs');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('encrypted_secrets', 'model', 'encrypted_secret', 'Encrypted Secret'),
-       ('encrypted_secret_belongs_to_key_pair', 'belongs_to', 'encrypted_secret.key_pair', 'Encrypted Secret <> Key Pair');
+VALUES ('encrypted_secrets', 'model', 'encrypted_secret', 'Encrypted Secret');
 
 -- The Rust type `Secret` will use this view as its source-of-truth "table" as
 -- it is a read-only subset of encrypted_secrets data
@@ -30,6 +28,7 @@ SELECT pk,
        tenancy_workspace_pk,
        visibility_change_set_pk,
        visibility_deleted_at,
+       key_pair_pk,
        created_at,
        updated_at,
        name,
@@ -114,7 +113,7 @@ CREATE OR REPLACE FUNCTION encrypted_secret_create_v1(
     this_crypted text,
     this_version text,
     this_algorithm text,
-    this_billing_account_pk ident,
+    this_key_pair_pk ident,
     OUT object json) AS
 $$
 DECLARE
@@ -131,20 +130,20 @@ BEGIN
                                    name,
                                    object_type,
                                    kind,
-                                   billing_account_pk,
                                    crypted,
                                    version,
-                                   algorithm)
+                                   algorithm,
+			           key_pair_pk)
     VALUES (this_tenancy_record.tenancy_workspace_pk,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at,
             this_name,
             this_object_type,
             this_kind,
-            this_billing_account_pk,
             this_crypted,
             this_version,
-            this_algorithm)
+            this_algorithm,
+            this_key_pair_pk)
     RETURNING * INTO this_new_row;
 
     -- Purge the returning record of sensitive data to avoid accidentally

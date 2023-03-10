@@ -1,13 +1,10 @@
 use dal::{
-    component::ComponentKind, standard_model, BillingAccountPk, ChangeSet, ChangeSetPk, DalContext,
-    Func, FuncBackendKind, Group, GroupId, Schema, SchemaVariant, StandardModel, User, UserId,
+    component::ComponentKind, standard_model, ChangeSet, ChangeSetPk, DalContext, Func,
+    FuncBackendKind, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModel,
 };
 use dal_test::{
     test,
-    test_harness::{
-        create_func, create_group, create_schema, create_schema_variant, create_user,
-        create_visibility_head,
-    },
+    test_harness::{create_func, create_schema, create_schema_variant, create_visibility_head},
 };
 use itertools::Itertools;
 
@@ -335,252 +332,287 @@ async fn has_many(ctx: &DalContext) {
 }
 
 #[test]
-async fn associate_many_to_many(ctx: &DalContext, bid: BillingAccountPk) {
-    let group = create_group(ctx, bid).await;
-    let user_one = create_user(ctx, bid).await;
-    let user_two = create_user(ctx, bid).await;
+async fn associate_many_to_many(ctx: &DalContext) {
+    let prop_one = Prop::new(ctx, "prop_one", PropKind::String, None)
+        .await
+        .expect("unable to create prop");
+    let prop_two = Prop::new(ctx, "prop_two", PropKind::String, None)
+        .await
+        .expect("unable to create prop");
+
+    let schema = create_schema(ctx).await;
+    let schema_variant_one = create_schema_variant(ctx, *schema.id()).await;
+    let schema_variant_two = create_schema_variant(ctx, *schema.id()).await;
+
     standard_model::associate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group.id(),
-        user_one.id(),
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_one.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::associate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group.id(),
-        user_two.id(),
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_two.id(),
+    )
+    .await
+    .expect("cannot associate many to many");
+
+    standard_model::associate_many_to_many(
+        ctx,
+        "prop_many_to_many_schema_variants",
+        prop_two.id(),
+        schema_variant_one.id(),
+    )
+    .await
+    .expect("cannot associate many to many");
+    standard_model::associate_many_to_many(
+        ctx,
+        "prop_many_to_many_schema_variants",
+        prop_two.id(),
+        schema_variant_two.id(),
     )
     .await
     .expect("cannot associate many to many");
 }
 
 #[test]
-async fn disassociate_many_to_many(ctx: &DalContext, bid: BillingAccountPk) {
-    let group = create_group(ctx, bid).await;
-    let user_one = create_user(ctx, bid).await;
-    let user_two = create_user(ctx, bid).await;
+async fn disassociate_many_to_many(ctx: &DalContext) {
+    let prop_one = Prop::new(ctx, "prop_one", PropKind::String, None)
+        .await
+        .expect("unable to create prop");
+
+    let schema = create_schema(ctx).await;
+    let schema_variant_one = create_schema_variant(ctx, *schema.id()).await;
+    let schema_variant_two = create_schema_variant(ctx, *schema.id()).await;
+
     standard_model::associate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group.id(),
-        user_one.id(),
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_one.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::associate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group.id(),
-        user_two.id(),
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_two.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::disassociate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group.id(),
-        user_two.id(),
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_two.id(),
     )
     .await
     .expect("cannot disassociate many to many");
 }
 
 #[test]
-async fn disassociate_all_many_to_many(ctx: &DalContext, bid: BillingAccountPk) {
-    let group = create_group(ctx, bid).await;
-    let user_one = create_user(ctx, bid).await;
-    let user_two = create_user(ctx, bid).await;
-    standard_model::associate_many_to_many(
-        ctx,
-        "group_many_to_many_users",
-        group.id(),
-        user_one.id(),
-    )
-    .await
-    .expect("cannot associate many to many");
-    standard_model::associate_many_to_many(
-        ctx,
-        "group_many_to_many_users",
-        group.id(),
-        user_two.id(),
-    )
-    .await
-    .expect("cannot associate many to many");
-    standard_model::disassociate_all_many_to_many(ctx, "group_many_to_many_users", group.id())
+async fn disassociate_all_many_to_many(ctx: &DalContext) {
+    let prop_one = Prop::new(ctx, "prop_one", PropKind::String, None)
         .await
-        .expect("cannot disassociate many to many");
+        .expect("unable to create prop");
+
+    let schema = create_schema(ctx).await;
+    let schema_variant_one = create_schema_variant(ctx, *schema.id()).await;
+    let schema_variant_two = create_schema_variant(ctx, *schema.id()).await;
+
+    standard_model::associate_many_to_many(
+        ctx,
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_one.id(),
+    )
+    .await
+    .expect("cannot associate many to many");
+    standard_model::associate_many_to_many(
+        ctx,
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_two.id(),
+    )
+    .await
+    .expect("cannot associate many to many");
+    standard_model::disassociate_all_many_to_many(
+        ctx,
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+    )
+    .await
+    .expect("cannot disassociate many to many");
 }
 
 #[test]
-async fn many_to_many(ctx: &DalContext, bid: BillingAccountPk) {
-    let group_one = create_group(ctx, bid).await;
-    let group_two = create_group(ctx, bid).await;
+async fn many_to_many(ctx: &DalContext) {
+    let prop_one = Prop::new(ctx, "prop_one", PropKind::String, None)
+        .await
+        .expect("unable to create prop");
+    let prop_two = Prop::new(ctx, "prop_two", PropKind::String, None)
+        .await
+        .expect("unable to create prop");
 
-    let user_one = create_user(ctx, bid).await;
-    let user_two = create_user(ctx, bid).await;
+    let schema = create_schema(ctx).await;
+    let schema_variant_one = create_schema_variant(ctx, *schema.id()).await;
+    let schema_variant_two = create_schema_variant(ctx, *schema.id()).await;
+
     standard_model::associate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group_one.id(),
-        user_one.id(),
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_one.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::associate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group_one.id(),
-        user_two.id(),
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_two.id(),
     )
     .await
     .expect("cannot associate many to many");
     standard_model::associate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group_two.id(),
-        user_two.id(),
+        "prop_many_to_many_schema_variants",
+        prop_two.id(),
+        schema_variant_two.id(),
     )
     .await
     .expect("cannot associate many to many");
 
-    let right_object_id: Option<&UserId> = None;
-    let left_object_id: Option<&GroupId> = None;
-    let group_users: Vec<User> = standard_model::many_to_many(
+    let right_object_id: Option<&SchemaVariantId> = None;
+    let left_object_id: Option<&PropId> = None;
+    let prop_variants: Vec<SchemaVariant> = standard_model::many_to_many(
         ctx,
-        "group_many_to_many_users",
-        "groups",
-        "users",
-        Some(group_one.id()),
+        "prop_many_to_many_schema_variants",
+        "props",
+        "schema_variants",
+        Some(prop_one.id()),
         right_object_id,
     )
     .await
     .expect("cannot get list of users for group");
-    assert_eq!(group_users.len(), 2);
+    assert_eq!(prop_variants.len(), 2);
     assert_eq!(
-        group_users
+        prop_variants
             .into_iter()
-            .filter(|g| g == &user_one || g == &user_two)
-            .count(),
-        2
-    );
-
-    let user_one_groups: Vec<Group> = standard_model::many_to_many(
-        ctx,
-        "group_many_to_many_users",
-        "groups",
-        "users",
-        left_object_id,
-        Some(user_one.id()),
-    )
-    .await
-    .expect("cannot get list of groups for user");
-    assert_eq!(user_one_groups, vec![group_one.clone()]);
-
-    let user_two_groups: Vec<Group> = standard_model::many_to_many(
-        ctx,
-        "group_many_to_many_users",
-        "groups",
-        "users",
-        left_object_id,
-        Some(user_two.id()),
-    )
-    .await
-    .expect("cannot get list of groups for user");
-    assert_eq!(user_two_groups.len(), 2);
-    assert_eq!(
-        user_two_groups
-            .into_iter()
-            .filter(|g| g == &group_one || g == &group_two)
+            .filter(|v| v == &schema_variant_one || v == &schema_variant_two)
             .count(),
         2
     );
 
     standard_model::disassociate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group_two.id(),
-        user_two.id(),
+        "prop_many_to_many_schema_variants",
+        prop_two.id(),
+        schema_variant_two.id(),
     )
     .await
     .expect("cannot disassociate many to many");
 
-    let user_two_groups: Vec<Group> = standard_model::many_to_many(
+    let variant_two_props: Vec<Prop> = standard_model::many_to_many(
         ctx,
-        "group_many_to_many_users",
-        "groups",
-        "users",
+        "prop_many_to_many_schema_variants",
+        "props",
+        "schema_variants",
         left_object_id,
-        Some(user_two.id()),
+        Some(schema_variant_two.id()),
     )
     .await
-    .expect("cannot get list of groups for user");
-    assert_eq!(user_two_groups, vec![group_one.clone()]);
+    .expect("cannot get list of props for variant");
+    assert_eq!(
+        variant_two_props
+            .into_iter()
+            .filter(|p| p == &prop_one)
+            .count(),
+        1
+    );
 
     standard_model::associate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group_two.id(),
-        user_two.id(),
+        "prop_many_to_many_schema_variants",
+        prop_two.id(),
+        schema_variant_two.id(),
     )
     .await
     .expect("cannot associate many to many");
 
-    let user_two_groups: Vec<Group> = standard_model::many_to_many(
+    let variant_two_props: Vec<Prop> = standard_model::many_to_many(
         ctx,
-        "group_many_to_many_users",
-        "groups",
-        "users",
+        "prop_many_to_many_schema_variants",
+        "props",
+        "schema_variants",
         left_object_id,
-        Some(user_two.id()),
+        Some(schema_variant_two.id()),
     )
     .await
-    .expect("cannot get list of groups for user");
-    assert_eq!(user_two_groups.len(), 2);
+    .expect("cannot get list of props for variant");
+    assert_eq!(variant_two_props.len(), 3);
     assert_eq!(
-        user_two_groups
+        variant_two_props
             .into_iter()
-            .filter(|g| g == &group_one || g == &group_two)
+            .filter(|p| p == &prop_one || p == &prop_two)
             .count(),
         2
     );
 
-    standard_model::disassociate_all_many_to_many(ctx, "group_many_to_many_users", group_two.id())
-        .await
-        .expect("cannot disassociate many to many");
-
-    let user_two_groups: Vec<Group> = standard_model::many_to_many(
+    standard_model::disassociate_all_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        "groups",
-        "users",
+        "prop_many_to_many_schema_variants",
+        prop_two.id(),
+    )
+    .await
+    .expect("cannot disassociate many to many");
+
+    let variant_two_props: Vec<Prop> = standard_model::many_to_many(
+        ctx,
+        "prop_many_to_many_schema_variants",
+        "props",
+        "schema_variants",
         left_object_id,
-        Some(user_two.id()),
+        Some(schema_variant_two.id()),
     )
     .await
     .expect("cannot get list of groups for user");
-    assert_eq!(user_two_groups, vec![group_one.clone()]);
+    assert_eq!(
+        variant_two_props
+            .into_iter()
+            .filter(|p| p == &prop_one)
+            .count(),
+        1
+    );
 }
 
 #[test]
-async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext, bid: BillingAccountPk) {
-    let group = create_group(ctx, bid).await;
-    let user_one = create_user(ctx, bid).await;
+async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext) {
+    let prop_one = Prop::new(ctx, "prop_one", PropKind::String, None)
+        .await
+        .expect("unable to create prop");
+
+    let schema = create_schema(ctx).await;
+    let schema_variant_one = create_schema_variant(ctx, *schema.id()).await;
+
     standard_model::associate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group.id(),
-        user_one.id(),
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_one.id(),
     )
     .await
     .expect("cannot associate many to many");
     let result = standard_model::associate_many_to_many(
         ctx,
-        "group_many_to_many_users",
-        group.id(),
-        user_one.id(),
+        "prop_many_to_many_schema_variants",
+        prop_one.id(),
+        schema_variant_one.id(),
     )
     .await;
     assert!(result.is_err(), "should error");

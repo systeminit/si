@@ -241,7 +241,7 @@ onMounted(() => {
 const changeSetMergeStatus =
   changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
 
-// Saves the current edit session and then applies the current change set
+// Applies the current change set
 const applyChangeSet = async () => {
   if (!wipeRef.value) return; // bail if the wipe doesn't exist
 

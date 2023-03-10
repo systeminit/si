@@ -35,7 +35,7 @@ async fn create_account() {
 
     let fake_name = generate_fake_name();
     let request = signup::create_account::CreateAccountRequest {
-        billing_account_name: fake_name,
+        workspace_name: fake_name,
         user_name: "bobo".to_string(),
         user_email: "bobo@tclown.org".to_string(),
         user_password: "bobor7les".to_string(),
@@ -85,7 +85,7 @@ async fn create_account_invalid_signup_secret() {
 
     let fake_name = generate_fake_name();
     let request = signup::create_account::CreateAccountRequest {
-        billing_account_name: fake_name,
+        workspace_name: fake_name,
         user_name: "bobo".to_string(),
         user_email: "bobo@tclown.org".to_string(),
         user_password: "bobor7les".to_string(),

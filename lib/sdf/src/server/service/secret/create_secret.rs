@@ -1,11 +1,11 @@
 use axum::Json;
 use dal::{
-    key_pair::KeyPairId, EncryptedSecret, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
+    key_pair::KeyPairPk, EncryptedSecret, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
     SecretVersion, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 use super::SecretResult;
 
@@ -16,7 +16,7 @@ pub struct CreateSecretRequest {
     pub object_type: SecretObjectType,
     pub kind: SecretKind,
     pub crypted: Vec<u8>,
-    pub key_pair_id: KeyPairId,
+    pub key_pair_pk: KeyPairPk,
     pub version: SecretVersion,
     pub algorithm: SecretAlgorithm,
     #[serde(flatten)]
@@ -32,7 +32,6 @@ pub struct CreateSecretResponse {
 pub async fn create_secret(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(request_tx): AccessBuilder,
-    Authorization(claim): Authorization,
     Json(request): Json<CreateSecretRequest>,
 ) -> SecretResult<Json<CreateSecretResponse>> {
     let ctx = builder.build(request_tx.build(request.visibility)).await?;
@@ -43,10 +42,9 @@ pub async fn create_secret(
         request.object_type,
         request.kind,
         &request.crypted,
-        request.key_pair_id,
+        request.key_pair_pk,
         request.version,
         request.algorithm,
-        claim.find_billing_account_pk_for_workspace(&ctx).await?,
     )
     .await?;
 

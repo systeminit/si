@@ -1,6 +1,6 @@
 use dal::{
-    BillingAccountSignup, DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretKind,
-    SecretObjectType, SecretVersion, StandardModel,
+    DalContext, EncryptedSecret, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
+    SecretVersion, StandardModel, WorkspaceSignup,
 };
 use dal_test::{
     test,
@@ -8,7 +8,7 @@ use dal_test::{
 };
 
 #[test]
-async fn new_encrypted_secret(ctx: &DalContext, nba: &BillingAccountSignup) {
+async fn new_encrypted_secret(ctx: &DalContext, nw: &WorkspaceSignup) {
     let name = generate_fake_name();
 
     let secret = EncryptedSecret::new(
@@ -17,10 +17,9 @@ async fn new_encrypted_secret(ctx: &DalContext, nba: &BillingAccountSignup) {
         SecretObjectType::Credential,
         SecretKind::DockerHub,
         "im-crypted-bytes-maybe".as_bytes(),
-        *nba.key_pair.id(),
+        nw.key_pair.pk(),
         SecretVersion::V1,
         SecretAlgorithm::Sealedbox,
-        *nba.billing_account.pk(),
     )
     .await
     .expect("failed to create secret");
@@ -32,14 +31,13 @@ async fn new_encrypted_secret(ctx: &DalContext, nba: &BillingAccountSignup) {
     let key_pair = secret
         .key_pair(ctx)
         .await
-        .expect("failed to fetch key pair")
-        .expect("failed to find key pair");
-    assert_eq!(key_pair.pk(), nba.key_pair.pk());
+        .expect("failed to fetch key pair");
+    assert_eq!(key_pair.pk(), nw.key_pair.pk());
 }
 
 #[test]
-async fn secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let og_secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.pk()).await;
+async fn secret_get_by_id(ctx: &DalContext, nw: &WorkspaceSignup) {
+    let og_secret = create_secret(ctx, nw.key_pair.pk()).await;
 
     let secret = Secret::get_by_id(ctx, og_secret.id())
         .await
@@ -49,8 +47,8 @@ async fn secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
 }
 
 #[test]
-async fn encrypted_secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.pk()).await;
+async fn encrypted_secret_get_by_id(ctx: &DalContext, nw: &WorkspaceSignup) {
+    let secret = create_secret(ctx, nw.key_pair.pk()).await;
 
     let encrypted_secret = EncryptedSecret::get_by_id(ctx, secret.id())
         .await
@@ -64,8 +62,8 @@ async fn encrypted_secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup
 }
 
 #[test]
-async fn secret_update_name(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let mut secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.pk()).await;
+async fn secret_update_name(ctx: &DalContext, nw: &WorkspaceSignup) {
+    let mut secret = create_secret(ctx, nw.key_pair.pk()).await;
 
     let original_name = secret.name().to_string();
     secret
@@ -78,8 +76,8 @@ async fn secret_update_name(ctx: &DalContext, nba: &BillingAccountSignup) {
 }
 
 #[test]
-async fn encrypt_decrypt_round_trip(ctx: &DalContext, nba: &BillingAccountSignup) {
-    let pkey = nba.key_pair.public_key();
+async fn encrypt_decrypt_round_trip(ctx: &DalContext, nw: &WorkspaceSignup) {
+    let pkey = nw.key_pair.public_key();
     let name = generate_fake_name();
 
     let message = serde_json::json!({"song": "Bar Round Here"});
@@ -94,10 +92,9 @@ async fn encrypt_decrypt_round_trip(ctx: &DalContext, nba: &BillingAccountSignup
         SecretObjectType::Credential,
         SecretKind::DockerHub,
         &crypted,
-        *nba.key_pair.id(),
+        nw.key_pair.pk(),
         Default::default(),
         Default::default(),
-        *nba.billing_account.pk(),
     )
     .await
     .expect("failed to create encrypted secret");

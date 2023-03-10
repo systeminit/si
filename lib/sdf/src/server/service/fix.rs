@@ -10,7 +10,7 @@ use dal::fix::FixError as DalFixError;
 use dal::schema::SchemaError as DalSchemaError;
 use dal::{
     ComponentError, ComponentId, FixBatchId, FixId, FixResolverError, FuncBindingReturnValueError,
-    StandardModelError, TransactionsError, UserError, UserId, WorkflowRunnerError,
+    StandardModelError, TransactionsError, UserError, UserPk, WorkflowRunnerError,
 };
 
 pub mod confirmations;
@@ -52,7 +52,7 @@ pub enum FixError {
     #[error("no schema variant found for component {0}")]
     NoSchemaVariantForComponent(ComponentId),
     #[error("invalid user {0}")]
-    InvalidUser(UserId),
+    InvalidUser(UserPk),
     #[error("invalid user system init")]
     InvalidUserSystemInit,
 }

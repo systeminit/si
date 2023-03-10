@@ -110,7 +110,7 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                         //
                         // ```ignore
                         // #[test]
-                        // async fn does_things(bid: BillingAccountPk) {
+                        // async fn does_things(wid: WorkspacePk) {
                         //      // ...
                         // }
                         // ```
@@ -119,13 +119,8 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                         // references and/or mutability, however the surrounding type is passed as
                         // an owned type.
                         match ty_str {
-                            "BillingAccountPk" => {
-                                let var = expander.setup_billing_account_pk();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
-                            "BillingAccountSignup" => {
-                                let var = expander.setup_billing_account_signup();
+                            "WorkspaceSignup" => {
+                                let var = expander.setup_workspace_signup();
                                 let var = var.0.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
@@ -159,11 +154,6 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
-                            "OrganizationPk" => {
-                                let var = expander.setup_organization_pk();
-                                let var = var.as_ref();
-                                expander.push_arg(parse_quote! {#var});
-                            }
                             "ServicesContext" => {
                                 let var = expander.setup_services_context();
                                 let var = var.as_ref();
@@ -194,18 +184,18 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                             // #[test]
                             // async fn does_things(
                             //      ctx: &mut DalContext,
-                            //      nba: &BillingAccountSignup
+                            //      nw: &WorkspaceSignup
                             //  ) {
                             //      // ...
                             // }
                             // ```
                             //
                             // In the above example, both would be matched types in this section,
-                            // even though `ctx` is a mutable reference and `nba` is an immutable
+                            // even though `ctx` is a mutable reference and `nw` is an immutable
                             // reference.
                             match ty_str {
-                                "BillingAccountSignup" => {
-                                    let var = expander.setup_billing_account_signup();
+                                "WorkspaceSignup" => {
+                                    let var = expander.setup_workspace_signup();
                                     let var = var.0.as_ref();
                                     expander.push_arg(parse_quote! {&#var});
                                 }
@@ -285,9 +275,7 @@ struct FnSetupExpander {
     connections: Option<Arc<Ident>>,
     owned_connections: Option<Arc<Ident>>,
     transactions: Option<Arc<Ident>>,
-    billing_account_signup: Option<(Arc<Ident>, Arc<Ident>)>,
-    billing_account_pk: Option<Arc<Ident>>,
-    organization_pk: Option<Arc<Ident>>,
+    workspace_signup: Option<(Arc<Ident>, Arc<Ident>)>,
     workspace_pk: Option<Arc<Ident>>,
     dal_context_default: Option<Arc<Ident>>,
     dal_context_default_mut: Option<Arc<Ident>>,
@@ -314,9 +302,7 @@ impl FnSetupExpander {
             connections: None,
             owned_connections: None,
             transactions: None,
-            billing_account_signup: None,
-            billing_account_pk: None,
-            organization_pk: None,
+            workspace_signup: None,
             workspace_pk: None,
             dal_context_default: None,
             dal_context_default_mut: None,
@@ -565,8 +551,8 @@ impl FnSetupExpander {
         self.transactions.as_ref().unwrap().clone()
     }
 
-    fn setup_billing_account_signup(&mut self) -> (Arc<Ident>, Arc<Ident>) {
-        if let Some(ref idents) = self.billing_account_signup {
+    fn setup_workspace_signup(&mut self) -> (Arc<Ident>, Arc<Ident>) {
+        if let Some(ref idents) = self.workspace_signup {
             return idents.clone();
         }
 
@@ -577,12 +563,12 @@ impl FnSetupExpander {
         let dal_context_builder = self.setup_dal_context_builder();
         let dal_context_builder = dal_context_builder.as_ref();
 
-        let var_nba = Ident::new("nba", Span::call_site());
+        let var_nw = Ident::new("nw", Span::call_site());
         let var_auth_token = Ident::new("auth_token", Span::call_site());
         self.code.extend(quote! {
-            let (#var_nba, #var_auth_token) = {
+            let (#var_nw, #var_auth_token) = {
                 let ctx = #dal_context_builder.build_default_with_txns(#transactions);
-                let r = ::dal_test::helpers::billing_account_signup(
+                let r = ::dal_test::helpers::workspace_signup(
                     &ctx,
                     #test_context.jwt_secret_key(),
                 ).await?;
@@ -590,43 +576,9 @@ impl FnSetupExpander {
                 r
             };
         });
-        self.billing_account_signup = Some((Arc::new(var_nba), Arc::new(var_auth_token)));
+        self.workspace_signup = Some((Arc::new(var_nw), Arc::new(var_auth_token)));
 
-        self.billing_account_signup.as_ref().unwrap().clone()
-    }
-
-    fn setup_billing_account_pk(&mut self) -> Arc<Ident> {
-        if let Some(ref idents) = self.billing_account_pk {
-            return idents.clone();
-        }
-
-        let bas = self.setup_billing_account_signup();
-        let nba = bas.0.as_ref();
-
-        let var = Ident::new("nba_billing_account_pk", Span::call_site());
-        self.code.extend(quote! {
-            let #var = *#nba.billing_account.pk();
-        });
-        self.billing_account_pk = Some(Arc::new(var));
-
-        self.billing_account_pk.as_ref().unwrap().clone()
-    }
-
-    fn setup_organization_pk(&mut self) -> Arc<Ident> {
-        if let Some(ref idents) = self.organization_pk {
-            return idents.clone();
-        }
-
-        let bas = self.setup_billing_account_signup();
-        let nba = bas.0.as_ref();
-
-        let var = Ident::new("nba_organization_pk", Span::call_site());
-        self.code.extend(quote! {
-            let #var = *#nba.organization.pk();
-        });
-        self.organization_pk = Some(Arc::new(var));
-
-        self.organization_pk.as_ref().unwrap().clone()
+        self.workspace_signup.as_ref().unwrap().clone()
     }
 
     fn setup_workspace_pk(&mut self) -> Arc<Ident> {
@@ -634,12 +586,12 @@ impl FnSetupExpander {
             return idents.clone();
         }
 
-        let bas = self.setup_billing_account_signup();
-        let nba = bas.0.as_ref();
+        let bas = self.setup_workspace_signup();
+        let nw = bas.0.as_ref();
 
-        let var = Ident::new("nba_workspace_pk", Span::call_site());
+        let var = Ident::new("nw_workspace_pk", Span::call_site());
         self.code.extend(quote! {
-            let #var = *#nba.workspace.pk();
+            let #var = *#nw.workspace.pk();
         });
         self.workspace_pk = Some(Arc::new(var));
 
@@ -655,14 +607,14 @@ impl FnSetupExpander {
         let dal_context_builder = dal_context_builder.as_ref();
         let transactions = self.setup_transactions();
         let transactions = transactions.as_ref();
-        let bas = self.setup_billing_account_signup();
-        let nba = bas.0.as_ref();
+        let bas = self.setup_workspace_signup();
+        let nw = bas.0.as_ref();
 
         let var = Ident::new("default_dal_context", Span::call_site());
         self.code.extend(quote! {
             let #var = {
                 let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
-                ctx.update_tenancy(::dal::Tenancy::new(*#nba.workspace.pk()));
+                ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
                 ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx).await;
                 ctx
             };
@@ -681,14 +633,14 @@ impl FnSetupExpander {
         let dal_context_builder = dal_context_builder.as_ref();
         let transactions = self.setup_transactions();
         let transactions = transactions.as_ref();
-        let bas = self.setup_billing_account_signup();
-        let nba = bas.0.as_ref();
+        let bas = self.setup_workspace_signup();
+        let nw = bas.0.as_ref();
 
         let var = Ident::new("dal_context_default_mut", Span::call_site());
         self.code.extend(quote! {
             let mut #var = {
                 let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
-                ctx.update_tenancy(::dal::Tenancy::new(*#nba.workspace.pk()));
+                ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
                 ::dal_test::helpers::create_change_set_and_update_ctx(&mut ctx).await;
                 ctx
             };
@@ -707,8 +659,8 @@ impl FnSetupExpander {
         let dal_context_builder = dal_context_builder.as_ref();
         let transactions = self.setup_transactions();
         let transactions = transactions.as_ref();
-        let bas = self.setup_billing_account_signup();
-        let nba = bas.0.as_ref();
+        let bas = self.setup_workspace_signup();
+        let nw = bas.0.as_ref();
 
         let var = Ident::new("dal_context_head", Span::call_site());
         self.code.extend(quote! {
@@ -718,7 +670,7 @@ impl FnSetupExpander {
                         ::dal::RequestContext::default(),
                         #transactions.clone(),
                     );
-                ctx.update_tenancy(::dal::Tenancy::new(*#nba.workspace.pk()));
+                ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
 
                 ::dal_test::DalContextHead(ctx)
             };
@@ -737,8 +689,8 @@ impl FnSetupExpander {
         let dal_context_builder = dal_context_builder.as_ref();
         let transactions = self.setup_transactions();
         let transactions = transactions.as_ref();
-        let bas = self.setup_billing_account_signup();
-        let nba = bas.0.as_ref();
+        let bas = self.setup_workspace_signup();
+        let nw = bas.0.as_ref();
 
         let var = Ident::new("dal_context_head_ref", Span::call_site());
         self.code.extend(quote! {
@@ -748,7 +700,7 @@ impl FnSetupExpander {
                         ::dal::RequestContext::default(),
                         #transactions.clone(),
                     );
-                ctx.update_tenancy(::dal::Tenancy::new(*#nba.workspace.pk()));
+                ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
                 ctx
             };
             let #var = ::dal_test::DalContextHeadRef(&_dchr);
@@ -767,8 +719,8 @@ impl FnSetupExpander {
         let dal_context_builder = dal_context_builder.as_ref();
         let transactions = self.setup_transactions();
         let transactions = transactions.as_ref();
-        let bas = self.setup_billing_account_signup();
-        let nba = bas.0.as_ref();
+        let bas = self.setup_workspace_signup();
+        let nw = bas.0.as_ref();
 
         let var = Ident::new("dal_context_head_mut_ref", Span::call_site());
         self.code.extend(quote! {
@@ -778,7 +730,7 @@ impl FnSetupExpander {
                         ::dal::RequestContext::default(),
                         #transactions.clone(),
                     );
-                ctx.update_tenancy(::dal::Tenancy::new(*#nba.workspace.pk()));
+                ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
                 ctx
             };
             let #var = ::dal_test::DalContextHeadMutRef(&mut _dchmr);

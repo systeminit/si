@@ -24,7 +24,7 @@ async fn login() {
         _veritech,
         _encr_key,
         app,
-        nba,
+        nw,
         _auth_token,
         _dal_ctx,
         _job_processor,
@@ -32,15 +32,15 @@ async fn login() {
     );
 
     let request = LoginRequest {
-        billing_account_name: nba.billing_account.name().to_string(),
-        user_email: nba.user.email().to_string(),
+        workspace_name: nw.workspace.name().to_string(),
+        user_email: nw.user.email().to_string(),
         user_password: "snakes".to_string(),
     };
     let _response: LoginResponse = api_request(app.clone(), "/api/session/login", &request).await;
 
     let wrong_ba_request = LoginRequest {
-        billing_account_name: "poop tastic".to_string(),
-        user_email: nba.user.email().to_string(),
+        workspace_name: "poop tastic".to_string(),
+        user_email: nw.user.email().to_string(),
         user_password: "snakes".to_string(),
     };
     let (wrong_ba_status, wrong_ba_response) =
@@ -49,7 +49,7 @@ async fn login() {
     assert_eq!(wrong_ba_response["error"]["message"], "login failed");
 
     let wrong_email_request = LoginRequest {
-        billing_account_name: nba.billing_account.name().to_string(),
+        workspace_name: nw.workspace.name().to_string(),
         user_email: "spinklehovfer@example.com".to_string(),
         user_password: "snakes".to_string(),
     };
@@ -59,8 +59,8 @@ async fn login() {
     assert_eq!(wrong_email_response["error"]["message"], "login failed");
 
     let wrong_password_request = LoginRequest {
-        billing_account_name: nba.billing_account.name().to_string(),
-        user_email: nba.user.email().to_string(),
+        workspace_name: nw.workspace.name().to_string(),
+        user_email: nw.user.email().to_string(),
         user_password: "poop".to_string(),
     };
     let (wrong_password_status, wrong_password_response) =
@@ -82,7 +82,7 @@ async fn restore_authentication() {
         _veritech,
         _encr_key,
         app,
-        nba,
+        nw,
         auth_token,
         _dal_ctx,
         _job_processor,
@@ -96,8 +96,8 @@ async fn restore_authentication() {
         &auth_token,
     )
     .await;
-    assert_eq!(nba.billing_account, response.billing_account);
-    assert_eq!(nba.user, response.user);
+    assert_eq!(nw.workspace, response.workspace);
+    assert_eq!(nw.user, response.user);
 }
 
 #[test]
@@ -113,7 +113,7 @@ async fn get_defaults() {
         _veritech,
         _encr_key,
         app,
-        nba,
+        nw,
         auth_token,
         dal_ctx,
         _job_processor,
@@ -128,6 +128,5 @@ async fn get_defaults() {
         &auth_token,
     )
     .await;
-    assert_eq!(nba.organization, response.organization);
-    assert_eq!(nba.workspace, response.workspace);
+    assert_eq!(nw.workspace, response.workspace);
 }

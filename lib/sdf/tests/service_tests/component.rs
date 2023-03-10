@@ -22,7 +22,7 @@ async fn get_components_metadata() {
         veritech,
         encr_key,
         app,
-        _nba,
+        _nw,
         auth_token,
         dal_ctx,
         _job_processor,

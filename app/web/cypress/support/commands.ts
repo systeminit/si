@@ -26,15 +26,11 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
-import { BillingAccount } from "../../src/api/sdf/dal/billing_account";
-import { Organization } from "../../src/api/sdf/dal/organization";
 import { Workspace } from "../../src/api/sdf/dal/workspace";
 import { User } from "../../src/api/sdf/dal/user";
-import { Group } from "../../src/api/sdf/dal/group";
 import { PublicKey } from "../../src/api/sdf/dal/key_pair";
 import Bottle from "bottlejs";
 import { user$ } from "../../src/observable/user";
-import { billingAccount$ } from "../../src/observable/billing_account";
 import { SDF } from "../../src/api/sdf";
 import { SessionService } from "../../src/service/session";
 import faker from "faker";
@@ -62,19 +58,19 @@ Cypress.Commands.add("signup", () => {
     .window({ log: false })
     .its("SignupService", { log: false })
     .then((signup) => {
-      const billingAccountName = faker.company.companyName();
+      const workspaceName = faker.company.companyName();
       const userName = faker.name.findName();
       const userEmail = faker.internet.email();
       const userPassword = "snakes";
       const signupSecret = "cool-steam";
       const request = {
-        billingAccountName,
+        workspaceName,
         userName,
         userEmail,
         userPassword,
         signupSecret,
       };
-      cy.wrap(request).as("nba");
+      cy.wrap(request).as("nw");
       return firstValueFrom(signup.createAccount(request));
     })
     .then((response) => {
@@ -97,14 +93,14 @@ Cypress.Commands.add("signupAndLogin", () => {
   });
 
   cy.signup();
-  return cy.get<CreateAccountRequest>("@nba").then((ctx) => {
+  return cy.get<CreateAccountRequest>("@nw").then((ctx) => {
     return cy
       .window()
       .its("SessionService")
       .then((SessionService) => {
         return firstValueFrom(
           SessionService.login({
-            billingAccountName: ctx.billingAccountName,
+            workspaceName: ctx.workspaceName,
             userEmail: ctx.userEmail,
             userPassword: ctx.userPassword,
           }),
@@ -122,10 +118,8 @@ Cypress.Commands.add("signupAndLogin", () => {
 });
 
 export interface TestCtx {
-  billing_account: BillingAccount;
-  organization: Organization;
+  workspace: Workspace;
   workspace: Workspace;
   user: User;
-  admin_group: Group;
   key_pair: PublicKey;
 }
