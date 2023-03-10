@@ -35,6 +35,7 @@ pub mod definition;
 pub mod leaves;
 pub mod root_prop;
 
+const ALL_FUNCS: &str = include_str!("../queries/schema_variant/all_related_funcs.sql");
 const ALL_PROPS: &str = include_str!("../queries/schema_variant/all_props.sql");
 const FIND_LEAF_ITEM_PROP: &str = include_str!("../queries/schema_variant/find_leaf_item_prop.sql");
 const FIND_ROOT_CHILD_IMPLICIT_INTERNAL_PROVIDER: &str =
@@ -461,6 +462,26 @@ impl SchemaVariant {
             .await?;
         let results = objects_from_rows(rows)?;
         Ok(results)
+    }
+
+    /// Find all [`Func`](crate::Func) objects connected to this schema variant in any way. Only
+    /// finds funcs connected at the schema variant context, ignoring any funcs connected to
+    /// directly to components
+    #[instrument(skip_all)]
+    pub async fn all_funcs(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<Vec<Func>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                ALL_FUNCS,
+                &[ctx.tenancy(), ctx.visibility(), &schema_variant_id],
+            )
+            .await?;
+
+        Ok(objects_from_rows(rows)?)
     }
 
     /// This method finds a [`leaf`](crate::schema::variant::leaves)'s entry

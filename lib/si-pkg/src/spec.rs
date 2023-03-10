@@ -110,13 +110,26 @@ pub struct FuncSpec {
     pub response_type: FuncSpecBackendResponseType,
     #[builder(setter(into))]
     pub hidden: bool,
+
     #[builder(setter(into, strip_option), default)]
     pub link: Option<Url>,
 }
 
 impl FuncSpec {
+    #[must_use]
     pub fn builder() -> FuncSpecBuilder {
         FuncSpecBuilder::default()
+    }
+}
+
+impl FuncSpecBuilder {
+    #[allow(unused_mut)]
+    pub fn try_link<V>(&mut self, value: V) -> Result<&mut Self, V::Error>
+    where
+        V: TryInto<Url>,
+    {
+        let converted: Url = value.try_into()?;
+        Ok(self.link(converted))
     }
 }
 
