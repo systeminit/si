@@ -58,7 +58,9 @@ pub struct NodeMetadata {
 
 impl NodeMetadata {
     pub fn merge_metadata(&mut self, reply_channel: String, dependencies: &Vec<Id>) {
-        self.wanted_by_reply_channels.push_back(reply_channel);
+        if !self.wanted_by_reply_channels.contains(&reply_channel) {
+            self.wanted_by_reply_channels.push_back(reply_channel);
+        }
         self.depends_on_node_ids.extend(dependencies);
     }
 

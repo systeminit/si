@@ -2,8 +2,9 @@ use dal::{
     func::binding::FuncBinding,
     workflow_prototype::WorkflowPrototypeContext,
     workflow_runner::{workflow_runner_state::WorkflowRunnerStatus, WorkflowRunnerContext},
-    ChangeSet, ChangeSetStatus, Component, DalContext, Func, Schema, StandardModel, Visibility,
-    WorkflowPrototype, WorkflowPrototypeId, WorkflowResolverId, WorkflowRunner,
+    ChangeSet, ChangeSetStatus, Component, DalContext, DependentValuesUpdate, Func, RootPropChild,
+    Schema, StandardModel, Visibility, WorkflowPrototype, WorkflowPrototypeId, WorkflowResolverId,
+    WorkflowRunner,
 };
 use dal_test::{test, test_harness::create_component_and_schema};
 use pretty_assertions_sorted::assert_eq;
@@ -194,6 +195,20 @@ async fn run(ctx: &mut DalContext) {
             .await
             .expect("unable to run workflow runner");
     assert_eq!(state.status(), WorkflowRunnerStatus::Success);
+
+    let resource_attribute_value = Component::root_prop_child_attribute_value_for_component(
+        ctx,
+        *component.id(),
+        RootPropChild::Resource,
+    )
+    .await
+    .expect("unable to find attribute value");
+
+    ctx.enqueue_job(DependentValuesUpdate::new(
+        ctx,
+        vec![*resource_attribute_value.id()],
+    ))
+    .await;
 
     assert!(component
         .resource(ctx)

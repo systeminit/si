@@ -317,7 +317,7 @@ impl WorkflowRunner {
                 }
 
                 if component
-                    .set_resource(ctx, result.clone())
+                    .set_resource(ctx, result.clone(), false)
                     .await
                     .map_err(Box::new)?
                     && should_trigger_confirmations

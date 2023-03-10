@@ -398,6 +398,7 @@ async fn dependent_values_resource_intelligence(mut octx: DalContext) {
                 logs: Default::default(),
                 message: Default::default(),
             },
+            true,
         )
         .await
         .expect("could not set resource field");

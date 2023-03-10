@@ -221,6 +221,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
                 message: None,
                 logs: vec![],
             },
+            true,
         )
         .await
         .expect("could not set resource");
@@ -262,6 +263,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
                 message: None,
                 logs: vec![],
             },
+            true,
         )
         .await
         .expect("could not set resource");
