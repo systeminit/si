@@ -13,13 +13,13 @@
         ref="instructionsRef"
         class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-500 flex flex-row items-center gap-2"
       >
-        <a
+        <!-- <a
           href="#"
           class="hover:text-neutral-600 dark:hover:text-neutral-400"
           @click="hideInstructions"
         >
           <Icon name="x-circle" />
-        </a>
+        </a> -->
         <div>
           Drag the assets that you wish to include in your application into the
           canvas to the right.

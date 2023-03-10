@@ -24,7 +24,6 @@
             loading-text="Merging"
             label="Merge"
             :request-status="applyChangeSetReqStatus"
-            hover-glow
             :disabled="statusStoreUpdating"
             @click="applyChangeSet"
           />

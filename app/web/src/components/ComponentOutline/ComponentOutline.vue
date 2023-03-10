@@ -11,6 +11,7 @@
     <template v-else>
       <ScrollArea>
         <template v-if="rootComponents.length" #top>
+          <ReadOnlyBanner v-if="disabled" />
           <!-- search bar - dont need to show if no components -->
           <SiSearch auto-search @search="onSearchUpdated" />
         </template>
@@ -74,6 +75,11 @@ import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import ScrollArea from "@/ui-lib/ScrollArea.vue";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue";
+import ReadOnlyBanner from "../ReadOnlyBanner.vue";
+
+const props = defineProps({
+  disabled: { type: Boolean },
+});
 
 const emit = defineEmits<{
   // while we've avoided events for most things (selection, panning, etc)
@@ -113,6 +119,11 @@ function onSearchUpdated(newFilterString: string) {
 }
 
 function itemClickHandler(e: MouseEvent, id: ComponentId) {
+  if (props.disabled) {
+    e.preventDefault();
+    return;
+  }
+
   // right click
   if (e.button === 2) {
     if (!componentsStore.selectedComponentIds.includes(id)) {

@@ -120,7 +120,7 @@ const statusIconProps: Ref<{ name: IconNames; color: string }> = computed(
   () => {
     switch (props.recommendation.status) {
       case "failure":
-        return { name: "x-circle", color: "text-destructive-500" };
+        return { name: "alert-triangle", color: "text-destructive-500" };
       case "success":
         return { name: "check-circle", color: "text-success-500" };
       default:

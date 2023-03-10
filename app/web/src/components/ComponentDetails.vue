@@ -69,13 +69,14 @@
                 :code="
                   selectedComponentCode[0]?.code || '# No code generated yet'
                 "
-                class="dark:text-neutral-50 text-neutral-900"
+                class="dark:text-neutral-50 text-neutral-900 pt-2"
               >
                 <template #title>
-                  <span
+                  <div
                     class="text-lg ml-4 whitespace-nowrap overflow-hidden text-ellipsis"
-                    >{{ selectedComponent.displayName }} Code</span
                   >
+                    {{ selectedComponent.displayName }} Code
+                  </div>
                 </template>
               </CodeViewer>
             </template>
@@ -88,7 +89,7 @@
                   ? JSON.stringify(selectedComponent.resource.data, null, 2)
                   : ''
               "
-              class="dark:text-neutral-50 text-neutral-900 pt-4"
+              class="dark:text-neutral-50 text-neutral-900 pt-2"
             >
               <template #title>
                 <HealthIcon
@@ -99,7 +100,6 @@
                       : []
                   "
                   :view-details="selectedComponent.resource.logs"
-                  class="ml-3"
                 />
               </template>
             </CodeViewer>

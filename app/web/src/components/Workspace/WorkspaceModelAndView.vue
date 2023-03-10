@@ -9,7 +9,10 @@
             <AssetPalette />
           </TabGroupItem>
           <TabGroupItem label="Diagram Outline">
-            <ComponentOutline @right-click-item="onOutlineRightClick" />
+            <ComponentOutline
+              :disabled="isViewMode"
+              @right-click-item="onOutlineRightClick"
+            />
           </TabGroupItem>
         </TabGroup>
       </div>

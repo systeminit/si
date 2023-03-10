@@ -1,5 +1,6 @@
 <template>
   <div class="flex flex-col w-full">
+    <ReadOnlyBanner v-if="disabled" />
     <PropertyEditor
       v-if="editorContext"
       :editor-context="editorContext"
@@ -22,6 +23,7 @@ import {
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
 import { useComponentsStore } from "@/store/components.store";
 import PropertyEditor from "./PropertyEditor.vue";
+import ReadOnlyBanner from "./ReadOnlyBanner.vue";
 
 const props = defineProps<{
   disabled?: boolean;

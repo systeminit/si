@@ -1,5 +1,5 @@
 <template>
-  <span class="flex flex-row">
+  <span class="flex flex-row items-center">
     <Icon
       :name="icon.name"
       class="pr-2 mr-2"
