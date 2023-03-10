@@ -3,11 +3,11 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{StandardModelError, TransactionsError, UserError, WorkspaceError};
+use dal::{StandardModelError, TransactionsError, UserError, WorkspaceError, UserPk, WorkspacePk};
 use thiserror::Error;
 
 pub mod get_defaults;
-pub mod login;
+pub mod auth_connect;
 pub mod restore_authentication;
 
 #[derive(Debug, Error)]
@@ -26,6 +26,16 @@ pub enum SessionError {
     LoginFailed,
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
+    #[error("json serialize failed")]
+    JSONSerialize(#[from] serde_json::Error),
+    #[error("auth api error: {0}")]
+    AuthApiError(String),
+    #[error("Invalid user: {0}")]
+    InvalidUser(UserPk),
+    #[error("Invalid workspace: {0}")]
+    InvalidWorkspace(WorkspacePk),
+    #[error("http error: {0}")]
+    Request(#[from] reqwest::Error),
 }
 
 pub type SessionResult<T> = std::result::Result<T, SessionError>;
@@ -47,7 +57,7 @@ impl IntoResponse for SessionError {
 
 pub fn routes() -> Router {
     Router::new()
-        .route("/login", post(login::login))
+        .route("/connect", post(auth_connect::auth_connect))
         .route(
             "/restore_authentication",
             get(restore_authentication::restore_authentication),

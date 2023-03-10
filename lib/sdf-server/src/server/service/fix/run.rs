@@ -39,7 +39,8 @@ pub async fn run(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let user = match ctx.history_actor() {
-        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?,
+        HistoryActor::User(user_pk) => User::get_by_pk(&ctx, *user_pk).await?.ok_or(FixError::InvalidUser(*user_pk))?,
+
         HistoryActor::SystemInit => return Err(FixError::InvalidUserSystemInit),
     };
     let batch = FixBatch::new(&ctx, user.email()).await?;

@@ -38,6 +38,7 @@ tower-http = { version = "0.3", features = ["trace"] }
 veritech-client = { path = "../../lib/veritech-client" }
 async-trait = "0.1.51"
 convert_case = "0.6.0"
+reqwest = { version = "0.11.14", features = ["json"] }
 
 [build-dependencies]
 thiserror = { version = "1.0" }

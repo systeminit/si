@@ -270,7 +270,6 @@ pub async fn create_user(ctx: &DalContext) -> User {
         ctx,
         &name,
         &format!("{name}@test.systeminit.com"),
-        "liesAreTold",
     )
     .await
     .expect("cannot create user")
@@ -290,7 +289,6 @@ pub async fn workspace_signup(
         &workspace_name,
         &user_name,
         &user_email,
-        &user_password,
     )
     .await
     .expect("cannot signup a new workspace");

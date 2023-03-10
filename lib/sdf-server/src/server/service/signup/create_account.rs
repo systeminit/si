@@ -44,7 +44,6 @@ pub async fn create_account(
         &request.workspace_name,
         &request.user_name,
         &request.user_email,
-        &request.user_password,
     )
     .await?;
 

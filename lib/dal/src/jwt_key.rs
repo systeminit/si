@@ -136,15 +136,32 @@ pub async fn get_jwt_validation_key(
     ctx: &DalContext,
     jwt_id: impl AsRef<str>,
 ) -> JwtKeyResult<RS256PublicKey> {
-    let jwt_id = jwt_id.as_ref();
-    let pk = JwtPk::from_str(jwt_id)?;
+    // let jwt_id = jwt_id.as_ref();
+    // let pk = JwtPk::from_str(jwt_id)?;
 
-    let row = ctx
-        .txns()
-        .pg()
-        .query_one(JWT_KEY_GET_PUBLIC_KEY, &[&pk])
-        .await?;
-    let key: String = row.try_get("public_key")?;
+    // let row = ctx
+    //     .txns()
+    //     .pg()
+    //     .query_one(JWT_KEY_GET_PUBLIC_KEY, &[&pk])
+    //     .await?;
+    // let key: String = row.try_get("public_key")?;
+
+    // TODO: this is the dev public key, we'll need to toggle to the prod public key
+    // and we want to load this in a much smarter way...
+    let key = "-----BEGIN PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA26alH+FYeuFfrLedINll
+EOCxMwDE8Y/cp3dMgoCBxB6pE1wn7uPkUispjjcsYFGKsmJ6pmrirQ6k65A3teeg
+QqBCVDoWkco6GFvdp9lhySFXoZ9SEo0DQWvqe/o+YzHRToq+KTrEFoY+SWJYGiJS
+yuwrm09YelG5QRA3E6ajGbbRNzd1XpvvSm0gI0OHUL8v6ZnFZeWVIDKqne/BXy/C
+NYTZEGKZr5hroxBqqpze3CqhCAAN9rfTtQxvKNOzd0lgy4Cu8X+RBKm+unKgDPhY
+SqA6wKcu4T5asMd4NdZ1r5g1onhQNm5ouxtKq35Mlh+hbRgw9/QMYEYMKggDYCvn
+AorwPyCXjGtgCBT0KVsaZBTBRf5uZzWV6D5mjcMHjJoFpC41VOceio3/NCGTqu1M
+j+TdmI+toprQqAU/OG0eXlDS7HNxyqKhbwDnBnI8gedQ0rhHHkyK0wnX+4H04c43
+5UyHxdbqJbcdSbssUDqYmGk0vcN6u72/YrQwT0GfVYBCBGQn+cpN8P3nT+k533nb
+w6zMZwg3ztrMZO1cV/xpiDUTxxV5iWN/HoiSSZ1PCK9Byc/NnLIeqL8vO2RHa0J/
+OZk+wfML7+4H53lowRr0zAmkMn2u1Wxda9oGSUezsIvyIDWnOruM/DtIOEQnkIEg
+08nljy29cVMh5/26Oga3qysCAwEAAQ==
+-----END PUBLIC KEY-----";
 
     tokio::task::spawn_blocking(move || {
         RS256PublicKey::from_pem(&key).map_err(|err| JwtKeyError::KeyFromPem(format!("{err}")))

@@ -87,7 +87,7 @@ router.post("/complete-auth-connect", async (ctx) => {
   const user = await getUserById(connectPayload.userId);
   if (!user) throw new ApiError('Conflict', 'User no longer exists');
 
-  const token = await createSdfAuthToken(user.id);
+  const token = await createSdfAuthToken(user.id, workspace.id);
 
   ctx.body = {
     user,

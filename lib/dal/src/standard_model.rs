@@ -1,4 +1,4 @@
-use crate::{Tenancy, UserError};
+use crate::{Tenancy, UserError, UserPk};
 use chrono::{DateTime, Utc};
 use postgres_types::ToSql;
 use serde::{de::DeserializeOwned, Serialize};
@@ -25,6 +25,8 @@ pub enum StandardModelError {
     HistoryEvent(#[from] HistoryEventError),
     #[error(transparent)]
     User(#[from] UserError),
+    #[error("user not found: {0}")]
+    UserNotFound(UserPk)
 }
 
 pub type StandardModelResult<T> = Result<T, StandardModelError>;

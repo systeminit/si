@@ -30,6 +30,8 @@ pub enum KeyPairError {
     Workspace(#[from] Box<WorkspaceError>),
     #[error("no current key pair found when one was expected")]
     NoCurrentKeyPair,
+    #[error("Invalid workspace: {0}")]
+    InvalidWorkspace(WorkspacePk)
 }
 
 pub type KeyPairResult<T> = Result<T, KeyPairError>;
@@ -120,7 +122,9 @@ impl KeyPair {
     pub async fn workspace(&self, ctx: &DalContext) -> KeyPairResult<Workspace> {
         Ok(Workspace::get_by_pk(ctx, &self.workspace_pk)
             .await
-            .map_err(Box::new)?)
+            .map_err(Box::new)?
+            .ok_or(KeyPairError::InvalidWorkspace(self.workspace_pk))?
+        )
     }
 }
 

@@ -18,6 +18,7 @@ app/web/cypress/screenshots/
 app/web/cypress/videos/
 
 .turbo
+.netlify
 
 # vim temp files
 .*.swp

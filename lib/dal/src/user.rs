@@ -2,7 +2,6 @@ use jwt_simple::{algorithms::RSAKeyPairLike, claims::Claims, reexports::coarseti
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use sodiumoxide::crypto::pwhash::argon2id13;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -13,7 +12,6 @@ use crate::{
     Tenancy, Timestamp, TransactionsError, WorkspacePk,
 };
 
-const USER_PASSWORD: &str = include_str!("queries/user/password.sql");
 const USER_FIND_BY_EMAIL: &str = include_str!("queries/user/find_by_email.sql");
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
 
@@ -27,12 +25,8 @@ pub enum UserError {
     Nats(#[from] NatsError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("password hashing error; bug!")]
-    PasswordHash,
     #[error("failed to join long lived async task; bug!")]
     Join(#[from] JoinError),
-    #[error("failed to validate the users password")]
-    MismatchedPassword,
     #[error("jwt key: {0}")]
     JwtKey(#[from] JwtKeyError),
     #[error("jwt: {0}")]
@@ -72,23 +66,18 @@ impl User {
         ctx: &DalContext,
         name: impl AsRef<str>,
         email: impl AsRef<str>,
-        password: impl AsRef<str>,
     ) -> UserResult<Self> {
         let name = name.as_ref();
         let email = email.as_ref();
-        let password = password.as_ref();
-        let encrypted_password = encrypt_password(password).await?;
 
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM user_create_v1($1, $2, $3, $4)",
+                "SELECT object FROM user_create_v1($1, $2)",
                 &[
                     &name,
                     &email,
-                    &encrypted_password.as_ref(),
-                    &ctx.tenancy().workspace_pk(),
                 ],
             )
             .await?;
@@ -110,10 +99,14 @@ impl User {
         Ok(object)
     }
 
-    pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Self> {
-        let row = ctx.txns().pg().query_one(USER_GET_BY_PK, &[&pk]).await?;
-        let json: serde_json::Value = row.try_get("object")?;
-        Ok(serde_json::from_value(json)?)
+    pub async fn get_by_pk(ctx: &DalContext, pk: UserPk) -> UserResult<Option<Self>> {
+        let row = ctx.txns().pg().query_opt(USER_GET_BY_PK, &[&pk]).await?;
+        if let Some(row) = row {
+            let json: serde_json::Value = row.try_get("object")?;
+            Ok(serde_json::from_value(json)?)
+        } else {
+            Ok(None)
+        }
     }
 
     pub async fn find_by_email(
@@ -142,40 +135,13 @@ impl User {
         Ok(true)
     }
 
-    pub async fn login(
-        &self,
-        ctx: &DalContext,
-        jwt_secret_key: &JwtSecretKey,
-        password: impl Into<String>,
-    ) -> UserResult<String> {
-        let workspace_pk = ctx
-            .tenancy()
-            .workspace_pk()
-            .ok_or(UserError::NoWorkspaceInTenancy)?;
-        let row = ctx
+    pub async fn associate_workspace(&self, ctx: &DalContext, workspace_pk: WorkspacePk) -> UserResult<()> {
+        ctx
             .txns()
             .pg()
-            .query_opt(USER_PASSWORD, &[&self.pk(), &workspace_pk])
+            .execute("SELECT user_associate_workspace_v1($1, $2)", &[&self.pk, &workspace_pk])
             .await?;
-        if let Some(row) = row {
-            let current_password: Vec<u8> = row.try_get("password")?;
-            let verified = verify_password(password, current_password).await?;
-            if !verified {
-                return Err(UserError::MismatchedPassword);
-            }
-            let user_claim = UserClaim::new(self.pk(), workspace_pk);
-
-            let claims = Claims::with_custom_claims(user_claim, Duration::from_days(1))
-                .with_audience("https://app.systeminit.com")
-                .with_issuer("https://app.systeminit.com")
-                .with_subject(self.pk());
-
-            let signing_key = get_jwt_signing_key(ctx, jwt_secret_key).await?;
-            let jwt = signing_key.sign(claims)?;
-            Ok(jwt)
-        } else {
-            return Err(UserError::NotFoundInTenancy(self.pk(), *ctx.tenancy()));
-        }
+        Ok(())
     }
 }
 
@@ -200,43 +166,4 @@ impl UserClaim {
         let claims = crate::jwt_key::validate_bearer_token(ctx, &token).await?;
         Ok(claims.custom)
     }
-}
-
-#[instrument(skip_all)]
-pub async fn encrypt_password(
-    password: impl Into<String>,
-) -> UserResult<argon2id13::HashedPassword> {
-    let password = password.into();
-    let password_hash: UserResult<argon2id13::HashedPassword> =
-        tokio::task::spawn_blocking(move || {
-            let password_hash = argon2id13::pwhash(
-                password.as_bytes(),
-                argon2id13::OPSLIMIT_INTERACTIVE,
-                argon2id13::MEMLIMIT_INTERACTIVE,
-            )
-            .map_err(|()| UserError::PasswordHash)?;
-            Ok(password_hash)
-        })
-        .await?;
-    password_hash
-}
-
-#[instrument(skip_all)]
-pub async fn verify_password(
-    password: impl Into<String>,
-    password_hash: impl Into<Vec<u8>>,
-) -> UserResult<bool> {
-    let password = password.into();
-    let password_hash = password_hash.into();
-    let result = tokio::task::spawn_blocking(move || {
-        let password_hash = password_hash.as_ref();
-        let password_bytes = password.as_bytes();
-        if let Some(argon_password) = argon2id13::HashedPassword::from_slice(password_hash) {
-            argon2id13::pwhash_verify(&argon_password, password_bytes)
-        } else {
-            false
-        }
-    })
-    .await?;
-    Ok(result)
 }

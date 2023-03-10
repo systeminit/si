@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::{
     pk, standard_model, standard_model_accessor_ro, DalContext, HistoryActor, HistoryEvent,
     HistoryEventError, KeyPair, KeyPairError, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, User, UserError,
+    TransactionsError, User, UserError, UserPk,
 };
 
 const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
@@ -103,12 +103,11 @@ impl Workspace {
         workspace_name: impl AsRef<str>,
         user_name: impl AsRef<str>,
         user_email: impl AsRef<str>,
-        user_password: impl AsRef<str>,
     ) -> WorkspaceResult<WorkspaceSignup> {
         let workspace = Workspace::new(ctx, workspace_name).await?;
         let key_pair = KeyPair::new(ctx, "default").await?;
 
-        let user = User::new(ctx, &user_name, &user_email, &user_password).await?;
+        let user = User::new(ctx, &user_name, &user_email).await?;
         ctx.update_history_actor(HistoryActor::User(user.pk()));
 
         ctx.import_builtins().await?;
@@ -130,14 +129,14 @@ impl Workspace {
         Ok(result)
     }
 
-    pub async fn get_by_pk(ctx: &DalContext, pk: &WorkspacePk) -> WorkspaceResult<Workspace> {
-        let row = ctx
-            .txns()
-            .pg()
-            .query_one(WORKSPACE_GET_BY_PK, &[&pk])
-            .await?;
-        let result = standard_model::object_from_row(row)?;
-        Ok(result)
+    pub async fn get_by_pk(ctx: &DalContext, pk: &WorkspacePk) -> WorkspaceResult<Option<Workspace>> {
+        let row = ctx.txns().pg().query_opt(WORKSPACE_GET_BY_PK, &[&pk]).await?;
+        if let Some(row) = row {
+            let json: serde_json::Value = row.try_get("object")?;
+            Ok(serde_json::from_value(json)?)
+        } else {
+            Ok(None)
+        }
     }
 
     standard_model_accessor_ro!(name, String);

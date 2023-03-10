@@ -9,6 +9,7 @@ use hyper::StatusCode;
 use si_data_nats::{NatsClient, NatsError};
 use si_data_pg::{PgError, PgPool};
 use si_std::SensitiveString;
+use tower::ServiceBuilder;
 use std::{path::Path, sync::Arc};
 use telemetry::TelemetryClient;
 use thiserror::Error;
@@ -119,16 +120,19 @@ pub fn routes(
     router = dev_routes(router);
 
     router = router
-        .layer(Extension(shared_state))
-        .layer(Extension(services_context))
-        .layer(Extension(telemetry))
-        .layer(Extension(pg_pool))
-        .layer(Extension(nats_conn))
-        .layer(Extension(veritech))
-        .layer(Extension(encryption_key))
-        .layer(Extension(jwt_secret_key))
-        .layer(Extension(signup_secret))
-        .layer(Extension(ShutdownBroadcast(shutdown_broadcast_tx)));
+        .layer(
+            ServiceBuilder::new()
+                .layer(Extension(shared_state))
+                .layer(Extension(services_context))
+                .layer(Extension(telemetry))
+                .layer(Extension(pg_pool))
+                .layer(Extension(nats_conn))
+                .layer(Extension(veritech))
+                .layer(Extension(encryption_key))
+                .layer(Extension(jwt_secret_key))
+                .layer(Extension(signup_secret))
+                .layer(Extension(ShutdownBroadcast(shutdown_broadcast_tx)))
+        );
     router
 }
 

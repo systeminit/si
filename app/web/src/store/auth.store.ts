@@ -74,7 +74,7 @@ export const useAuthStore = defineStore("auth", {
     async AUTH_CONNECT(payload: { code: string }) {
       return new ApiRequest<LoginResponse>({
         method: "post",
-        url: "/session/login",
+        url: "/session/connect",
         params: payload,
         onSuccess: (response) => {},
       });

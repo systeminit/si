@@ -34,14 +34,15 @@ export async function decodeAuthToken(token: string) {
 // Auth tokens used for communication between the user's browser and SDF
 // and between that SDF instance and this auth api if necessary
 type SdfAuthTokenData = {
-  // TODO: probably want to scope this for an instance type/url?
-  userId: string;
+  user_pk: string;
+  workspace_pk: string;
 };
 
 // will figure out what we want to pass in here...
-export function createSdfAuthToken(userId: string) {
+export function createSdfAuthToken(userId: string, workspaceId: string) {
   const payload: SdfAuthTokenData = {
-    userId,
+    user_pk: userId,
+    workspace_pk: workspaceId,
   };
   return createJWT(payload);
 }

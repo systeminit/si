@@ -1,4 +1,4 @@
-use super::SessionResult;
+use super::{SessionResult, SessionError};
 use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 use axum::Json;
 use dal::Workspace;
@@ -17,7 +17,9 @@ pub async fn get_defaults(
 ) -> SessionResult<Json<GetDefaultsResponse>> {
     let ctx = builder.build(request_ctx.build_head()).await?;
 
-    let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_pk).await?;
+    let workspace = Workspace::get_by_pk(&ctx, &claim.workspace_pk)
+        .await?
+        .ok_or(SessionError::InvalidWorkspace(claim.workspace_pk))?;
 
     Ok(Json(GetDefaultsResponse { workspace }))
 }
