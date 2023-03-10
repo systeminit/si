@@ -1,10 +1,14 @@
 import { JwtPayload } from 'jsonwebtoken';
 import * as Koa from 'koa';
-import { ApiError } from '../../lib/api-error';
-import { getCache } from '../../lib/cache';
-import { createJWT, verifyJWT } from "../../lib/jwt";
-import { tryCatch } from '../../lib/try-catch';
-import { getUserById } from '../users.service';
+import { nanoid } from 'nanoid';
+import { CustomAppContext, CustomAppState } from '../custom-state';
+import { ApiError } from '../lib/api-error';
+import { setCache } from '../lib/cache';
+import { createJWT, verifyJWT } from "../lib/jwt";
+import { tryCatch } from '../lib/try-catch';
+import { loadTosStatusForUser } from './tos.service';
+import { getUserById, User } from './users.service';
+import { Workspace } from './workspaces.service';
 
 export const SI_COOKIE_NAME = "si-auth";
 
@@ -46,7 +50,11 @@ export async function decodeSdfAuthToken(token: string) {
   return verifyJWT(token) as SdfAuthTokenData & JwtPayload;
 }
 
-export async function loadAuthMiddleware(ctx: Koa.Context, next: Koa.Next) {
+function wipeAuthCookie(ctx: Koa.Context) {
+  ctx.cookies.set(SI_COOKIE_NAME, null);
+}
+
+export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext> = async (ctx, next) => {
   const authToken = ctx.cookies.get(SI_COOKIE_NAME);
   if (!authToken) return next();
 
@@ -56,31 +64,42 @@ export async function loadAuthMiddleware(ctx: Koa.Context, next: Koa.Next) {
     // TODO: check the type of error before handling this way
 
     // clear the cookie and return an error
-    ctx.cookies.set(SI_COOKIE_NAME, null);
+    wipeAuthCookie(ctx);
     throw new ApiError('Forbidden', 'AuthTokenCorrupt', 'Invalid auth token');
   });
 
-  console.log(decoded);
+  // console.log(decoded);
 
-  // not sure what would cause this?
+  // make sure cookie is valid - not sure if this can happen...
   if (!decoded) {
+    wipeAuthCookie(ctx);
     throw new ApiError('Forbidden', 'AuthTokenCorrupt', 'Invalid auth token');
   }
-
   // TODO: deal with various other errors, logout on all devices, etc...
 
-  ctx.$ ||= ctx.state; // shorter alias for koa's ctx.state
+  const user = await getUserById(decoded.userId);
 
-  const { userId } = decoded;
-
-  // VERY TEMPORARY - grab user data from cache while we dont have a db
-  const user = await getUserById(userId);
   if (!user) {
-    ctx.cookies.set(SI_COOKIE_NAME, null);
+    wipeAuthCookie(ctx);
     throw new ApiError('Conflict', 'Cannot find user data');
   }
 
-  ctx.$.user = user;
+  // not sure we want to do this all the time...?
+  // but we do probably want to block them from doing most things if they have not agreed yet
+  await loadTosStatusForUser(user);
+
+  ctx.state.authUser = user;
 
   return next();
+};
+
+export async function beginAuthConnect(workspace: Workspace, user: User) {
+  // generate a new single use authentication code that we will send to the instance
+  const connectCode = nanoid(24);
+  await setCache(`auth:connect:${connectCode}`, {
+    workspaceId: workspace.id,
+    userId: user.id,
+  }, { expiresIn: 60 });
+
+  return `${workspace.instanceUrl}/auth-connect?code=${connectCode}`;
 }

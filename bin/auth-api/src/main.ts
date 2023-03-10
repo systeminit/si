@@ -5,19 +5,25 @@ import Koa from "koa";
 import bodyParser from 'koa-bodyparser';
 import chalk from 'chalk';
 import cors from '@koa/cors';
+import requestIp from 'request-ip';
 
 import { router } from "./routes";
 import { ApiError, errorHandlingMiddleware } from "./lib/api-error";
 import { httpRequestLoggingMiddleware } from "./lib/request-logger";
-import { loadAuthMiddleware } from "./services/auth";
+import { loadAuthMiddleware } from "./services/auth.service";
+import { detectClientIp } from "./lib/client-ip";
+import { User } from "./services/users.service";
+import { Workspace } from "./services/workspaces.service";
+import { CustomAppContext, CustomAppState } from "./custom-state";
 
-const app = new Koa();
+const app = new Koa<CustomAppState, CustomAppContext>();
 
 // include this one early since it can fire off and be done when handling OPTIONS requests
 app.use(cors({
   credentials: true,
 }));
 
+app.use(detectClientIp);
 app.use(httpRequestLoggingMiddleware);
 app.use(errorHandlingMiddleware);
 

@@ -6,7 +6,7 @@
     <template v-else>
       <nav>
         <template v-if="userIsLoggedIn">
-          <p>hello {{ authStore.userEmail }}!</p>
+          <p>hello {{ authStore.bestUserLabel }}!</p>
           <a href="http://localhost:9001/auth/logout">Log out!</a>
         </template>
         <template v-else>

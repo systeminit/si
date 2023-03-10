@@ -12,8 +12,8 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from "vue-router";
-import { computed, onBeforeMount } from "vue";
+import { RouterLink, useRoute, useRouter } from "vue-router";
+import { computed, onBeforeMount, watch } from "vue";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { API_HTTP_URL } from "@/store/api";
@@ -23,8 +23,19 @@ const workspacesStore = useWorkspacesStore();
 
 const workspaces = computed(() => workspacesStore.workspaces);
 
-onBeforeMount(async () => {
+const router = useRouter();
+
+function reloadWorkspaces() {
+  if (!authStore.userIsLoggedIn) return;
+
+  // might want to show in a modal, but we'll see...
+  if (authStore.user?.needsTosUpdate) {
+    return router.push({ name: "review-tos" });
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   workspacesStore.LOAD_WORKSPACES();
-});
+}
+
+watch(() => authStore.userIsLoggedIn, reloadWorkspaces, { immediate: true });
 </script>

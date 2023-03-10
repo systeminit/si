@@ -25,10 +25,10 @@ export const useWorkspacesStore = defineStore("workspaces", {
   },
   actions: {
     async LOAD_WORKSPACES() {
-      return new ApiRequest<{ workspaces: Workspace[] }>({
+      return new ApiRequest<Workspace[]>({
         url: "/workspaces",
         onSuccess: (response) => {
-          this.workspacesById = _.keyBy(response.workspaces, (w) => w.id);
+          this.workspacesById = _.keyBy(response, (w) => w.id);
         },
       });
     },

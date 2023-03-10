@@ -18,6 +18,7 @@
 */
 
 import _ from "lodash";
+import * as Koa from 'koa';
 
 // copied from https://github.com/jshttp/statuses/blob/master/src/node.json
 export const ErrorCodes = Object.freeze({
@@ -129,17 +130,16 @@ export class ApiError extends Error {
   }
 }
 
-export async function errorHandlingMiddleware(ctx, next) {
-  // disable koa's ctx.throw with a helpful message
-  ctx.throw = (...args) => {
+export async function errorHandlingMiddleware(ctx: Koa.Context, next: Koa.Next) {
+  // disable koa's built-in ctx.throw with a helpful message
+  ctx.throw = (..._args) => {
     throw new Error("Do not use ctx.throw, use `throw new ApiError()` instead");
   };
 
   try {
     await next();
   } catch (err) {
-    ctx.$ ||= ctx.state;
-    ctx.$.capturedError = err;
+    ctx.state.capturedError = err;
 
     // check if it's an ApiError, which signals that this error was not totally unexpected
     if (err instanceof ApiError) {
@@ -158,7 +158,7 @@ export async function errorHandlingMiddleware(ctx, next) {
           "An unexpected error occurred - please try again or contact customer service at support@systeminit.com",
       };
 
-      // error object is still attached to ctx.$.capturedError
+      // error object is still attached to ctx.state.capturedError
       // and will be logged by our request logging middleware
     }
   }
