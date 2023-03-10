@@ -39,12 +39,11 @@
         class="flex gap-2 items-center text-sm relative min-w-0"
         :class="classes"
       >
-        <!-- TODO(victor): We'll identify recommendations by their types. When this is done, the icon color should respond to that. -->
         <Icon
           v-if="recommendation.status !== 'success'"
-          name="tools"
+          :name="recommendationIcon(recommendation.actionKind)"
           size="md"
-          class="text-success-500 flex-none"
+          :class="recommendationColor(recommendation.actionKind)"
         />
         <div class="flex flex-col min-w-0">
           <span class="font-bold truncate"> {{ recommendation.name }}</span>
@@ -99,7 +98,7 @@ import clsx from "clsx";
 import Icon from "@/ui-lib/icons/Icon.vue";
 import { IconNames } from "@/ui-lib/icons/icon_set";
 import VormInput from "@/ui-lib/forms/VormInput.vue";
-import { Recommendation } from "@/store/fixes.store";
+import { Recommendation, ActionKind } from "@/store/fixes.store";
 import { themeClasses } from "@/ui-lib/theme_tools";
 import SiCollapsible from "./SiCollapsible.vue";
 
@@ -128,4 +127,24 @@ const statusIconProps: Ref<{ name: IconNames; color: string }> = computed(
     }
   },
 );
+
+const recommendationIcon = (recommendationAction: ActionKind) => {
+  if(recommendationAction === "create") {
+    return "plus-circle";
+  } else if(recommendationAction === "destroy") {
+    return "minus-circle";
+  } else {
+    return "tilde-circle";
+  }
+};
+
+const recommendationColor = (recommendationAction: ActionKind) => {
+  if(recommendationAction === "create") {
+    return "text-success-500 flex-none";
+  } else if(recommendationAction === "destroy") {
+    return "text-destructive-500 flex-none";
+  } else {
+    return "text-warning-500 flex-none";
+  }
+};
 </script>
