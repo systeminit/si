@@ -1,16 +1,17 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, HashSet},
+    convert::TryFrom,
     path::PathBuf,
 };
 
 use si_pkg::{
-    PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SiPkg, SpecError,
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, PropSpecBuilder,
+    PropSpecKind, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecBuilder, SiPkg, SpecError,
 };
 
 use crate::{
     prop_tree::{PropTree, PropTreeNode},
-    DalContext, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModel,
+    DalContext, Func, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModel,
     StandardModelError,
 };
 
@@ -38,7 +39,18 @@ pub async fn export_pkg(
         pkg_spec_builder.description(description);
     }
 
+    let mut inserted_functions = HashSet::new();
+
     for variant_id in variant_ids {
+        let related_funcs = SchemaVariant::all_funcs(ctx, variant_id).await?;
+        for func in &related_funcs {
+            if !inserted_functions.contains(func.id()) {
+                let func_spec = build_func_spec(func).await?;
+                pkg_spec_builder.func(func_spec);
+
+                inserted_functions.insert(*func.id());
+            }
+        }
         let schema_spec = build_schema_spec(ctx, variant_id).await?;
         pkg_spec_builder.schema(schema_spec);
     }
@@ -50,6 +62,37 @@ pub async fn export_pkg(
     pkg.write_to_file(pkg_file_path).await?;
 
     Ok(())
+}
+
+async fn build_func_spec(func: &Func) -> Result<FuncSpec, PkgError> {
+    let mut func_spec_builder = FuncSpec::builder();
+
+    func_spec_builder.name(func.name());
+
+    if let Some(display_name) = func.display_name() {
+        func_spec_builder.display_name(display_name);
+    }
+
+    if let Some(description) = func.description() {
+        func_spec_builder.description(description);
+    }
+
+    if let Some(link) = func.link() {
+        func_spec_builder.try_link(link)?;
+    }
+    // Should we package an empty func?
+    func_spec_builder.handler(func.handler().unwrap_or(""));
+    func_spec_builder.code_base64(func.code_base64().unwrap_or(""));
+
+    func_spec_builder.response_type(FuncSpecBackendResponseType::try_from(
+        *func.backend_response_type(),
+    )?);
+
+    func_spec_builder.backend_kind(FuncSpecBackendKind::try_from(*func.backend_kind())?);
+
+    func_spec_builder.hidden(func.hidden());
+
+    Ok(dbg!(func_spec_builder.build()?))
 }
 
 async fn build_schema_spec(

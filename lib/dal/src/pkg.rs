@@ -1,4 +1,5 @@
 use si_pkg::{FuncSpecBackendKind, FuncSpecBackendResponseType, SiPkgError, SpecError};
+use std::convert::TryFrom;
 use thiserror::Error;
 use url::ParseError;
 
@@ -53,6 +54,10 @@ pub enum PkgError {
     StandardModelMultipleBelongsTo(&'static str, &'static str, String),
     #[error(transparent)]
     UrlParse(#[from] ParseError),
+    #[error("Cannot package func with backend kind of {0}")]
+    InvalidFuncBackendKind(FuncBackendKind),
+    #[error("Cannot package func with backend response type of {0}")]
+    InvalidFuncBackendResponseType(FuncBackendResponseType),
 }
 
 impl PkgError {
@@ -67,6 +72,21 @@ impl PkgError {
 
 pub type PkgResult<T> = Result<T, PkgError>;
 
+impl TryFrom<FuncBackendKind> for FuncSpecBackendKind {
+    type Error = PkgError;
+
+    fn try_from(value: FuncBackendKind) -> Result<Self, Self::Error> {
+        Ok(match value {
+            FuncBackendKind::JsAttribute => FuncSpecBackendKind::JsAttribute,
+            FuncBackendKind::JsCommand => FuncSpecBackendKind::JsCommand,
+            FuncBackendKind::Json => FuncSpecBackendKind::Json,
+            FuncBackendKind::JsValidation => FuncSpecBackendKind::JsValidation,
+            FuncBackendKind::JsWorkflow => FuncSpecBackendKind::JsWorkflow,
+            _ => return Err(PkgError::InvalidFuncBackendKind(value)),
+        })
+    }
+}
+
 impl From<FuncSpecBackendKind> for FuncBackendKind {
     fn from(value: FuncSpecBackendKind) -> Self {
         match value {
@@ -76,6 +96,30 @@ impl From<FuncSpecBackendKind> for FuncBackendKind {
             FuncSpecBackendKind::JsValidation => FuncBackendKind::JsValidation,
             FuncSpecBackendKind::JsWorkflow => FuncBackendKind::JsWorkflow,
         }
+    }
+}
+
+impl TryFrom<FuncBackendResponseType> for FuncSpecBackendResponseType {
+    type Error = PkgError;
+
+    fn try_from(value: FuncBackendResponseType) -> Result<Self, Self::Error> {
+        Ok(match value {
+            FuncBackendResponseType::Array => FuncSpecBackendResponseType::Array,
+            FuncBackendResponseType::Boolean => FuncSpecBackendResponseType::Boolean,
+            FuncBackendResponseType::CodeGeneration => FuncSpecBackendResponseType::CodeGeneration,
+            FuncBackendResponseType::Command => FuncSpecBackendResponseType::Command,
+            FuncBackendResponseType::Confirmation => FuncSpecBackendResponseType::Confirmation,
+            FuncBackendResponseType::Integer => FuncSpecBackendResponseType::Integer,
+            FuncBackendResponseType::Json => FuncSpecBackendResponseType::Json,
+            FuncBackendResponseType::Map => FuncSpecBackendResponseType::Map,
+            FuncBackendResponseType::Object => FuncSpecBackendResponseType::Object,
+            FuncBackendResponseType::Qualification => FuncSpecBackendResponseType::Qualification,
+            FuncBackendResponseType::String => FuncSpecBackendResponseType::String,
+            FuncBackendResponseType::Validation => FuncSpecBackendResponseType::Validation,
+            FuncBackendResponseType::Workflow => FuncSpecBackendResponseType::Workflow,
+
+            _ => return Err(PkgError::InvalidFuncBackendResponseType(value)),
+        })
     }
 }
 
