@@ -173,8 +173,6 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/vue";
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
-import StatusBarTab from "@/components/StatusBar/StatusBarTab.vue";
-import StatusBarTabPill from "@/components/StatusBar/StatusBarTabPill.vue";
 import SiPanel from "@/components/SiPanel.vue";
 import QualificationTabPanel from "@/components/StatusBarTabs/Qualification/QualificationTabPanel.vue";
 import QualificationTab from "@/components/StatusBarTabs/Qualification/QualificationTab.vue";

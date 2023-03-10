@@ -26,14 +26,13 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed, watch, onBeforeUnmount } from "vue";
-import _, { parseInt } from "lodash";
+import _ from "lodash";
 import SiColorBox from "@/components/SiColorBox.vue";
 import { usePropertyEditorIsShown } from "@/utils/usePropertyEditorIsShown";
 import {
   PropertyEditorValidation,
   UpdatedProperty,
   PropertyPath,
-  PropertyEditorPropKind,
 } from "@/api/sdf/dal/property_editor";
 import { usePropertyEditorValidations } from "@/utils/input_validations";
 import UnsetButton from "./UnsetButton.vue";

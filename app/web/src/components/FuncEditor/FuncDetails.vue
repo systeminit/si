@@ -174,7 +174,6 @@ const loadFuncDetailsReqStatus = funcStore.getRequestStatus(
 );
 const { selectedFuncId } = storeToRefs(funcStore);
 
-const isDevMode = import.meta.env.DEV;
 const funcArgumentsIdMap = computed(() =>
   editingFunc?.value?.associations?.type === "attribute"
     ? editingFunc?.value?.associations.arguments.reduce((idMap, arg) => {

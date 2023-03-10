@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col w-full max-h-full overflow-hidden">
     <div
-      class="flex flex-row items-center justify-between py-2 text-base align-middle"
+      class="flex flex-row items-center justify-between p-2 text-base align-middle"
       :class="titleClasses"
     >
       <!-- NOTE(nick): add defaults for title if the need arises -->

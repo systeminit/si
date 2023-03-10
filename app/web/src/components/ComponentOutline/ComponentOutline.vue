@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col absolute inset-0">
+  <div ref="outlineRef" class="flex flex-col absolute inset-0">
     <RequestStatusMessage
       v-if="fetchComponentsReq.isPending && !rootComponents.length"
       :request-status="fetchComponentsReq"
@@ -25,7 +25,7 @@
         </template>
 
         <!-- tree mode -->
-        <div v-else class="">
+        <template v-else>
           <template v-if="!rootComponents.length">
             <div class="p-2 text-neutral-500">
               Your model is currently empty
@@ -38,7 +38,7 @@
               :component-id="component.id"
             />
           </template>
-        </div>
+        </template>
       </ScrollArea>
     </template>
   </div>
@@ -65,7 +65,16 @@ export function useComponentOutlineContext() {
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
-import { computed, ComputedRef, inject, InjectionKey, provide, ref } from "vue";
+import {
+  computed,
+  ComputedRef,
+  inject,
+  InjectionKey,
+  onBeforeUnmount,
+  onMounted,
+  provide,
+  ref,
+} from "vue";
 import _ from "lodash";
 import SiSearch from "@/components/SiSearch.vue";
 
@@ -74,6 +83,9 @@ import ErrorMessage from "@/ui-lib/ErrorMessage.vue";
 import RequestStatusMessage from "@/ui-lib/RequestStatusMessage.vue";
 import ScrollArea from "@/ui-lib/ScrollArea.vue";
 import ComponentOutlineNode from "./ComponentOutlineNode.vue";
+import ReadOnlyBanner from "../ReadOnlyBanner.vue";
+
+const outlineRef = ref<HTMLElement>();
 
 const emit = defineEmits<{
   // while we've avoided events for most things (selection, panning, etc)
@@ -140,4 +152,41 @@ const rootCtx = {
   itemClickHandler,
 };
 provide(ComponentOutlineCtxInjectionKey, rootCtx);
+
+onMounted(() => {
+  window.addEventListener("keydown", onKeyDown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeyDown);
+});
+
+const onKeyDown = (e: KeyboardEvent) => {
+  if (document?.activeElement?.tagName !== "BODY") return;
+
+  // Tab goes forwards, Shift-Tab goes backwards
+  if (e.key === "Tab") {
+    const selectedComponentId = _.last(componentsStore.selectedComponentIds);
+    if (!selectedComponentId) return;
+    e.preventDefault();
+
+    const componentOutlineNodes = outlineRef.value?.querySelectorAll(
+      ".component-outline-node",
+    );
+    const componentIds = _.map(componentOutlineNodes, (node) =>
+      node.getAttribute("data-component-id"),
+    );
+    const selectedIndex = componentIds.indexOf(selectedComponentId);
+
+    let toSelectIndex = selectedIndex + (e.shiftKey ? -1 : 1);
+
+    if (toSelectIndex < 0) {
+      toSelectIndex = componentIds.length - 1;
+    } else if (toSelectIndex === componentIds.length) {
+      toSelectIndex = 0;
+    }
+    const toSelect = componentIds[toSelectIndex];
+    componentsStore.setSelectedComponentId(toSelect);
+  }
+};
 </script>

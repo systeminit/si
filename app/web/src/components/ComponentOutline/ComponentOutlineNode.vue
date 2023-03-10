@@ -1,5 +1,5 @@
 <template>
-  <div class="">
+  <div class="component-outline-node" :data-component-id="componentId">
     <!-- component info -->
     <div
       :class="
