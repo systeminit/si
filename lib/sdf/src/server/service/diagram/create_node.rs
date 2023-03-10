@@ -5,8 +5,8 @@ use dal::edge::EdgeKind;
 use dal::node::NodeId;
 use dal::socket::SocketEdgeKind;
 use dal::{
-    generate_name, Component, ComponentId, Connection, DiagramKind, NodePosition, Schema, SchemaId,
-    Socket, StandardModel, Visibility, WsEvent,
+    generate_name, Component, ComponentId, Connection, Schema, SchemaId, Socket, StandardModel,
+    Visibility, WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -47,13 +47,10 @@ pub async fn create_node(
         .default_schema_variant_id()
         .ok_or(DiagramError::SchemaVariantNotFound)?;
 
-    let (component, node) = Component::new(&ctx, &name, *schema_variant_id).await?;
+    let (component, mut node) = Component::new(&ctx, &name, *schema_variant_id).await?;
 
-    // NOTE(nick): we currently assume all nodes created through this route are configuration nodes.
-    NodePosition::new(
+    node.set_geometry(
         &ctx,
-        *node.id(),
-        DiagramKind::Configuration,
         request.x.clone(),
         request.y.clone(),
         Some("500"),

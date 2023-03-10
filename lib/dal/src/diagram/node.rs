@@ -8,8 +8,8 @@ use crate::schema::SchemaUiMenu;
 use crate::socket::{SocketArity, SocketEdgeKind};
 use crate::{
     history_event, ActorView, ChangeSetPk, Component, ComponentId, ComponentStatus, ComponentType,
-    DalContext, DiagramError, HistoryActorTimestamp, Node, NodeId, NodePosition, ResourceView,
-    SchemaVariant, StandardModel,
+    DalContext, DiagramError, HistoryActorTimestamp, Node, NodeId, ResourceView, SchemaVariant,
+    StandardModel,
 };
 
 #[derive(
@@ -171,7 +171,6 @@ impl DiagramComponentView {
         node: &Node,
         parent_node_id: Option<NodeId>,
         child_node_ids: Vec<NodeId>,
-        position: &NodePosition,
         is_modified: bool,
         schema_variant: &SchemaVariant,
     ) -> DiagramResult<Self> {
@@ -184,7 +183,7 @@ impl DiagramComponentView {
             .await?
             .map(|um| um.category().to_string());
 
-        let size = if let (Some(w), Some(h)) = (position.width(), position.height()) {
+        let size = if let (Some(w), Some(h)) = (node.width(), node.height()) {
             Some(Size2D {
                 height: h.parse()?,
                 width: w.parse()?,
@@ -193,8 +192,8 @@ impl DiagramComponentView {
             None
         };
 
-        let x = position.x().parse::<f64>()?;
-        let y = position.y().parse::<f64>()?;
+        let x = node.x().parse::<f64>()?;
+        let y = node.y().parse::<f64>()?;
 
         let change_status = if node.visibility().deleted_at.is_some() {
             ChangeStatus::Deleted

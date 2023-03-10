@@ -86,6 +86,10 @@ pub struct Node {
     timestamp: Timestamp,
     #[serde(flatten)]
     visibility: Visibility,
+    x: String,
+    y: String,
+    width: Option<String>,
+    height: Option<String>,
 }
 
 impl_standard_model! {
@@ -113,6 +117,10 @@ impl Node {
     }
 
     standard_model_accessor!(kind, Enum(NodeKind), NodeResult);
+    standard_model_accessor!(x, String, NodeResult);
+    standard_model_accessor!(y, String, NodeResult);
+    standard_model_accessor!(width, Option<String>, NodeResult);
+    standard_model_accessor!(height, Option<String>, NodeResult);
 
     standard_model_belongs_to!(
         lookup_fn: component,
@@ -280,11 +288,28 @@ impl Node {
                 sorted.push(node_id);
             }
         }
-
         debug!(
             "listing topologically-ish sorted configuration nodes took {:?}",
             total_start.elapsed()
         );
         Ok(sorted)
+    }
+
+    pub async fn set_geometry(
+        &mut self,
+        ctx: &DalContext,
+        x: impl AsRef<str>,
+        y: impl AsRef<str>,
+        width: Option<impl AsRef<str>>,
+        height: Option<impl AsRef<str>>,
+    ) -> NodeResult<()> {
+        self.set_x(ctx, x.as_ref()).await?;
+        self.set_y(ctx, y.as_ref()).await?;
+        self.set_width(ctx, width.as_ref().map(|val| val.as_ref()))
+            .await?;
+        self.set_height(ctx, height.as_ref().map(|val| val.as_ref()))
+            .await?;
+
+        Ok(())
     }
 }

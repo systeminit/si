@@ -3,7 +3,7 @@ use dal::edge::EdgeKind;
 use dal::{
     socket::{SocketArity, SocketEdgeKind, SocketKind},
     Component, ComponentView, ComponentViewProperties, Connection, DalContext, Diagram,
-    DiagramEdgeView, DiagramKind, NodePosition, Schema, SchemaVariant, StandardModel,
+    DiagramEdgeView, DiagramKind, Node, Schema, SchemaVariant, StandardModel,
 };
 use dal_test::{
     helpers::builtins::{Builtin, SchemaBuiltinsTestHarness},
@@ -23,7 +23,7 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         .expect("could not find default schema variant id");
     let name = "13700KF".to_string();
 
-    let (component, node) = Component::new(ctx, &name, *schema_variant_id)
+    let (component, mut node) = Component::new(ctx, &name, *schema_variant_id)
         .await
         .expect("could not create component");
 
@@ -46,17 +46,9 @@ async fn create_node_and_check_intra_component_intelligence(ctx: &DalContext) {
         component_view_properties.drop_qualification().to_value() // actual
     );
 
-    NodePosition::new(
-        ctx,
-        *node.id(),
-        DiagramKind::Configuration,
-        "0",
-        "0",
-        Some("500"),
-        Some("500"),
-    )
-    .await
-    .expect("could not create node position");
+    node.set_geometry(ctx, "0", "0", Some("500"), Some("500"))
+        .await
+        .expect("Could not set node geometry");
 
     let component_view = ComponentView::new(ctx, *component.id())
         .await
@@ -138,29 +130,25 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
         })
         .expect("cannot find input socket");
 
-    let from_node_position = NodePosition::upsert_by_node_id(
-        ctx,
-        DiagramKind::Configuration,
-        from_docker_hub_credential.node_id,
-        "123",
-        "-10",
-        Some("500"),
-        Some("500"),
-    )
-    .await
-    .expect("cannot upsert node position");
+    let mut from_node = Node::get_by_id(ctx, &from_docker_hub_credential.node_id)
+        .await
+        .expect("Couldn't find node for from_docker_hub_credential")
+        .unwrap();
 
-    let to_node_position = NodePosition::upsert_by_node_id(
-        ctx,
-        DiagramKind::Configuration,
-        to_docker_image.node_id,
-        "124",
-        "-11",
-        Some("500"),
-        Some("500"),
-    )
-    .await
-    .expect("cannot upsert node position");
+    from_node
+        .set_geometry(ctx, "123", "-10", Some("500"), Some("500"))
+        .await
+        .expect("cannot set node geometry");
+
+    let mut to_node = Node::get_by_id(ctx, &to_docker_image.node_id)
+        .await
+        .expect("Couldn't find node for to_docker_image")
+        .unwrap();
+
+    to_node
+        .set_geometry(ctx, "124", "-11", Some("500"), Some("500"))
+        .await
+        .expect("cannot set node geometry");
 
     let connection = Connection::new(
         ctx,
@@ -192,10 +180,10 @@ async fn get_diagram_and_create_connection(ctx: &DalContext) {
         diagram
             .components()
             .iter()
-            .filter(|n| (n.position().x().to_string() == from_node_position.x()
-                && n.position().y().to_string() == from_node_position.y())
-                || (n.position().x().to_string() == to_node_position.x()
-                    && n.position().y().to_string() == to_node_position.y()))
+            .filter(|n| (n.position().x().to_string() == from_node.x()
+                && n.position().y().to_string() == from_node.y())
+                || (n.position().x().to_string() == to_node.x()
+                    && n.position().y().to_string() == to_node.y()))
             .count(),
         2
     );
@@ -277,29 +265,21 @@ async fn get_diagram_and_delete_connection(ctx: &DalContext) {
         })
         .expect("cannot find input socket");
 
-    let _from_node_position = NodePosition::upsert_by_node_id(
-        ctx,
-        DiagramKind::Configuration,
-        from_docker_hub_credential.node_id,
-        "123",
-        "-10",
-        Some("500"),
-        Some("500"),
-    )
-    .await
-    .expect("cannot upsert node position");
+    Node::get_by_id(ctx, &from_docker_hub_credential.node_id)
+        .await
+        .expect("Can't find node")
+        .unwrap()
+        .set_geometry(ctx, "123", "-10", Some("500"), Some("500"))
+        .await
+        .expect("cannot set node geometry");
 
-    let _to_node_position = NodePosition::upsert_by_node_id(
-        ctx,
-        DiagramKind::Configuration,
-        to_docker_image.node_id,
-        "124",
-        "-11",
-        Some("500"),
-        Some("500"),
-    )
-    .await
-    .expect("cannot upsert node position");
+    Node::get_by_id(ctx, &to_docker_image.node_id)
+        .await
+        .expect("Can't find node")
+        .unwrap()
+        .set_geometry(ctx, "124", "-11", Some("500"), Some("500"))
+        .await
+        .expect("cannot upsert node position");
 
     let connection = Connection::new(
         ctx,

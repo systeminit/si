@@ -39,7 +39,6 @@ pub mod key_pair;
 pub mod label_list;
 pub mod node;
 pub mod node_menu;
-pub mod node_position;
 pub mod pkg;
 pub mod prop;
 pub mod prop_tree;
@@ -131,9 +130,6 @@ pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use node::NodeId;
 pub use node::{Node, NodeError, NodeKind};
 pub use node_menu::NodeMenuError;
-pub use node_position::{
-    NodePosition, NodePositionError, NodePositionId, NodePositionPk, NodePositionResult,
-};
 pub use prop::{Prop, PropError, PropId, PropKind, PropPk, PropResult};
 pub use prototype_context::HasPrototypeContext;
 pub use prototype_list_for_func::{
