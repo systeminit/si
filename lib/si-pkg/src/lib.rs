@@ -2,9 +2,11 @@ pub(crate) mod node;
 mod pkg;
 mod spec;
 
-pub use pkg::{SiPkg, SiPkgError, SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant};
+pub use pkg::{
+    SiPkg, SiPkgError, SiPkgFunc, SiPkgMetadata, SiPkgProp, SiPkgSchema, SiPkgSchemaVariant,
+};
 pub use spec::{
-    FuncBackendKind, FuncBackendResponseType, FuncSpec, PkgSpec, PkgSpecBuilder, PropSpec,
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PkgSpecBuilder, PropSpec,
     PropSpecBuilder, PropSpecKind, SchemaSpec, SchemaSpecBuilder, SchemaVariantSpec,
     SchemaVariantSpecBuilder, SpecError,
 };

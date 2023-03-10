@@ -1,5 +1,5 @@
 use super::PkgNode;
-use crate::spec::{FuncBackendKind, FuncBackendResponseType, FuncSpec};
+use crate::spec::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType};
 use object_tree::{
     read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
     NodeWithChildren, ReadBytes, WriteBytes,
@@ -25,8 +25,8 @@ pub struct FuncNode {
     pub description: Option<String>,
     pub handler: String,
     pub code_base64: String,
-    pub backend_kind: FuncBackendKind,
-    pub response_type: FuncBackendResponseType,
+    pub backend_kind: FuncSpecBackendKind,
+    pub response_type: FuncSpecBackendResponseType,
     pub hidden: bool,
     pub link: Option<Url>,
 }
@@ -87,10 +87,10 @@ impl ReadBytes for FuncNode {
         let code_base64 = read_key_value_line(reader, KEY_CODE_STR)?;
         let backend_kind_str = read_key_value_line(reader, KEY_BACKEND_KIND_STR)?;
         let backend_kind =
-            FuncBackendKind::from_str(&backend_kind_str).map_err(GraphError::parse)?;
+            FuncSpecBackendKind::from_str(&backend_kind_str).map_err(GraphError::parse)?;
         let response_type_str = read_key_value_line(reader, KEY_RESPONSE_TYPE_STR)?;
         let response_type =
-            FuncBackendResponseType::from_str(&response_type_str).map_err(GraphError::parse)?;
+            FuncSpecBackendResponseType::from_str(&response_type_str).map_err(GraphError::parse)?;
         let hidden: bool = bool::from_str(&read_key_value_line(reader, KEY_HIDDEN_STR)?)
             .map_err(GraphError::parse)?;
         let link_str = read_key_value_line(reader, KEY_LINK_STR)?;

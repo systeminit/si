@@ -1,7 +1,7 @@
-use dal::{installed_pkg::*, pkg::*, DalContext, Schema, SchemaVariant, StandardModel};
+use dal::{installed_pkg::*, pkg::*, DalContext, Func, Schema, SchemaVariant, StandardModel};
 use dal_test::test;
 use si_pkg::{
-    FuncBackendKind, FuncBackendResponseType, FuncSpec, PkgSpec, PropSpec, PropSpecKind,
+    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, PkgSpec, PropSpec, PropSpecKind,
     SchemaSpec, SchemaVariantSpec, SiPkg,
 };
 
@@ -70,8 +70,8 @@ async fn test_install_pkg(ctx: &DalContext) {
         .description("it returns true")
         .handler("truth")
         .code_base64(&code_base64)
-        .backend_kind(FuncBackendKind::JsAttribute)
-        .response_type(FuncBackendResponseType::Boolean)
+        .backend_kind(FuncSpecBackendKind::JsAttribute)
+        .response_type(FuncSpecBackendResponseType::Boolean)
         .hidden(false)
         .build()
         .expect("build func spec");
@@ -124,8 +124,8 @@ async fn test_install_pkg(ctx: &DalContext) {
         .await
         .expect("able to fetch installed pkgs for pkg a");
 
-    // One schema, one variant
-    assert_eq!(2, pkg_a_ipas.len());
+    // One schema, one variant, one func
+    assert_eq!(3, pkg_a_ipas.len());
 
     for ipa in pkg_a_ipas {
         match ipa.asset_kind() {
@@ -156,6 +156,20 @@ async fn test_install_pkg(ctx: &DalContext) {
                             .expect("schema variant is there");
 
                         assert_eq!("Pig Bodine", schema_variant.name())
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            InstalledPkgAssetKind::Func => {
+                let typed: InstalledPkgAssetTyped =
+                    ipa.as_installed_func().expect("get func ipa typed");
+                match typed {
+                    InstalledPkgAssetTyped::Func { id, .. } => {
+                        let func = Func::get_by_id(ctx, &id)
+                            .await
+                            .expect("able to get func")
+                            .expect("func is there");
+                        assert_eq!("si:truthy", func.name());
                     }
                     _ => unreachable!(),
                 }

@@ -64,7 +64,7 @@ impl TryFrom<PkgSpecBuilder> for PkgSpec {
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
 #[serde(rename_all = "camelCase")]
-pub enum FuncBackendKind {
+pub enum FuncSpecBackendKind {
     JsAttribute,
     JsWorkflow,
     JsCommand,
@@ -74,7 +74,7 @@ pub enum FuncBackendKind {
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, AsRefStr, Display, EnumIter, EnumString)]
 #[serde(rename_all = "camelCase")]
-pub enum FuncBackendResponseType {
+pub enum FuncSpecBackendResponseType {
     Array,
     Boolean,
     Integer,
@@ -105,9 +105,9 @@ pub struct FuncSpec {
     #[builder(setter(into))]
     pub code_base64: String,
     #[builder(setter(into))]
-    pub backend_kind: FuncBackendKind,
+    pub backend_kind: FuncSpecBackendKind,
     #[builder(setter(into))]
-    pub response_type: FuncBackendResponseType,
+    pub response_type: FuncSpecBackendResponseType,
     #[builder(setter(into))]
     pub hidden: bool,
     #[builder(setter(into, strip_option), default)]

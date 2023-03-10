@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, DalContext, SchemaId,
+    impl_standard_model, pk, standard_model, standard_model_accessor, DalContext, FuncId, SchemaId,
     SchemaVariantId, StandardModel, Tenancy, Timestamp, Visibility,
 };
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
@@ -36,6 +36,7 @@ pk!(InstalledPkgAssetAssetId);
 pub enum InstalledPkgAssetKind {
     Schema,
     SchemaVariant,
+    Func,
 }
 
 /// An `InstalledPkgAsset` is a record of the installation of a package asset. It tracks the
@@ -57,6 +58,7 @@ pub struct InstalledPkgAsset {
     visibility: Visibility,
 }
 
+// Could simplify all this with macros if we end up adding more kinds
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum InstalledPkgAssetTyped {
@@ -70,6 +72,12 @@ pub enum InstalledPkgAssetTyped {
         installed_pkg_asset_id: InstalledPkgAssetId,
         installed_pkg_id: InstalledPkgId,
         id: SchemaVariantId,
+        hash: String,
+    },
+    Func {
+        installed_pkg_asset_id: InstalledPkgAssetId,
+        installed_pkg_id: InstalledPkgId,
+        id: FuncId,
         hash: String,
     },
 }
@@ -100,6 +108,15 @@ impl InstalledPkgAssetTyped {
             hash,
         }
     }
+
+    pub fn new_for_func(func_id: FuncId, installed_pkg_id: InstalledPkgId, hash: String) -> Self {
+        Self::Func {
+            installed_pkg_asset_id: InstalledPkgAssetId::NONE,
+            installed_pkg_id,
+            id: func_id,
+            hash,
+        }
+    }
 }
 
 impl From<&InstalledPkgAsset> for InstalledPkgAssetTyped {
@@ -109,26 +126,24 @@ impl From<&InstalledPkgAsset> for InstalledPkgAssetTyped {
         let hash = value.asset_hash().to_string();
 
         match value.asset_kind {
-            InstalledPkgAssetKind::Schema => {
-                let id: SchemaId = Into::<ulid::Ulid>::into(value.asset_id()).into();
-
-                Self::Schema {
-                    installed_pkg_asset_id,
-                    installed_pkg_id,
-                    id,
-                    hash,
-                }
-            }
-            InstalledPkgAssetKind::SchemaVariant => {
-                let id: SchemaVariantId = Into::<ulid::Ulid>::into(value.asset_id()).into();
-
-                Self::SchemaVariant {
-                    installed_pkg_asset_id,
-                    installed_pkg_id,
-                    id,
-                    hash,
-                }
-            }
+            InstalledPkgAssetKind::Schema => Self::Schema {
+                installed_pkg_asset_id,
+                installed_pkg_id,
+                id: Into::<ulid::Ulid>::into(value.asset_id()).into(),
+                hash,
+            },
+            InstalledPkgAssetKind::SchemaVariant => Self::SchemaVariant {
+                installed_pkg_asset_id,
+                installed_pkg_id,
+                id: Into::<ulid::Ulid>::into(value.asset_id()).into(),
+                hash,
+            },
+            InstalledPkgAssetKind::Func => Self::Func {
+                installed_pkg_asset_id,
+                installed_pkg_id,
+                id: Into::<ulid::Ulid>::into(value.asset_id()).into(),
+                hash,
+            },
         }
     }
 }
@@ -176,6 +191,17 @@ impl InstalledPkgAsset {
                 hash,
                 InstalledPkgAssetKind::SchemaVariant,
             ),
+            InstalledPkgAssetTyped::Func {
+                installed_pkg_id,
+                id,
+                hash,
+                ..
+            } => (
+                installed_pkg_id,
+                Into::<ulid::Ulid>::into(id).into(),
+                hash,
+                InstalledPkgAssetKind::Func,
+            ),
         };
 
         let row = ctx
@@ -211,6 +237,14 @@ impl InstalledPkgAsset {
                 InstalledPkgAssetKind::Schema,
                 InstalledPkgAssetKind::SchemaVariant,
             )),
+            InstalledPkgAssetTyped::Func {
+                installed_pkg_asset_id,
+                ..
+            } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
+                installed_pkg_asset_id,
+                InstalledPkgAssetKind::Schema,
+                InstalledPkgAssetKind::Func,
+            )),
         }
     }
 
@@ -226,6 +260,38 @@ impl InstalledPkgAsset {
                 installed_pkg_asset_id,
                 InstalledPkgAssetKind::SchemaVariant,
                 InstalledPkgAssetKind::Schema,
+            )),
+            InstalledPkgAssetTyped::Func {
+                installed_pkg_asset_id,
+                ..
+            } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
+                installed_pkg_asset_id,
+                InstalledPkgAssetKind::SchemaVariant,
+                InstalledPkgAssetKind::Func,
+            )),
+        }
+    }
+
+    pub fn as_installed_func(&self) -> InstalledPkgResult<InstalledPkgAssetTyped> {
+        let typed: InstalledPkgAssetTyped = self.into();
+
+        match typed {
+            InstalledPkgAssetTyped::Func { .. } => Ok(typed),
+            InstalledPkgAssetTyped::Schema {
+                installed_pkg_asset_id,
+                ..
+            } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
+                installed_pkg_asset_id,
+                InstalledPkgAssetKind::Func,
+                InstalledPkgAssetKind::Schema,
+            )),
+            InstalledPkgAssetTyped::SchemaVariant {
+                installed_pkg_asset_id,
+                ..
+            } => Err(super::InstalledPkgError::InstalledPkgKindMismatch(
+                installed_pkg_asset_id,
+                InstalledPkgAssetKind::Func,
+                InstalledPkgAssetKind::SchemaVariant,
             )),
         }
     }
