@@ -1,3 +1,6 @@
+//! This module contains [`ResourceScheduler`], which is a "long-running" tasks that performs
+//! [`resource`](crate::component::resource) syncing on a cadence.
+
 use std::{panic::AssertUnwindSafe, time::Duration};
 
 use futures::future::FutureExt;

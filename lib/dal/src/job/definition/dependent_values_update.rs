@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use tokio::{sync::Mutex, task::JoinSet};
 
-use crate::status_receiver::client::StatusReceiverClient;
-use crate::status_receiver::StatusReceiverRequest;
+use crate::tasks::StatusReceiverClient;
+use crate::tasks::StatusReceiverRequest;
 use crate::{
     job::consumer::{JobConsumer, JobConsumerError, JobConsumerResult, JobInfo},
     job::producer::{JobMeta, JobProducer, JobProducerResult},

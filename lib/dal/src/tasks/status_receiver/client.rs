@@ -1,5 +1,5 @@
 //! This module contains [`StatusReceiverClient`], which is used to talk to the
-//! [`StatusReceiver`](crate::status_receiver::StatusReceiver).
+//! [`StatusReceiver`](crate::tasks::StatusReceiver).
 
 use nats_subscriber::SubscriberError;
 use serde::Serialize;
@@ -7,7 +7,7 @@ use si_data_nats::{NatsClient, NatsError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::status_receiver::{StatusReceiverRequest, STATUS_RECEIVER_REQUEST_SUBJECT};
+use crate::tasks::status_receiver::{StatusReceiverRequest, STATUS_RECEIVER_REQUEST_SUBJECT};
 
 #[derive(Error, Debug)]
 pub enum StatusReceiverClientError {
@@ -21,7 +21,7 @@ pub enum StatusReceiverClientError {
 
 pub type StatusReceiverClientResult<T> = Result<T, StatusReceiverClientError>;
 
-/// The client used to talk to the [`StatusReceiver`](crate::status_receiver::StatusReceiver)
+/// The client used to talk to the [`StatusReceiver`](crate::tasks::StatusReceiver)
 /// over [NATS](https://nats.io).
 #[derive(Clone, Debug)]
 pub struct StatusReceiverClient {
@@ -34,7 +34,7 @@ impl StatusReceiverClient {
         Self { nats_client }
     }
 
-    /// Publishes a [`request`](crate::status_receiver::StatusReceiverRequest) to
+    /// Publishes a [`request`](crate::tasks::StatusReceiverRequest) to
     /// [NATS](https://nats.io) with the appropriate subject.
     ///
     /// The request is performed in a UDP-like manner without a reply mailbox.
