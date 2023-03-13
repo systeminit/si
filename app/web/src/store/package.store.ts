@@ -22,6 +22,12 @@ export interface SchemaVariant {
   outputSockets: DiagramOutputSocket[];
 }
 
+export interface PkgFuncView {
+  name: string;
+  displayName?: string;
+  description?: string;
+}
+
 export interface Package {
   name: string;
   version: string;
@@ -29,6 +35,7 @@ export interface Package {
   createdAt: Date;
   createdBy: string;
   schemas: string[];
+  funcs: PkgFuncView[];
   installed: boolean;
   hash: string;
 }
@@ -40,6 +47,7 @@ export interface PkgGetResponse {
   createdAt: string;
   createdBy: string;
   schemas: string[];
+  funcs: PkgFuncView[];
   installed: boolean;
   hash: string;
 }
