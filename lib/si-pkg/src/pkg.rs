@@ -22,7 +22,7 @@ use crate::{
 
 #[derive(Debug, Error)]
 pub enum SiPkgError {
-    #[error("could not find pkg node category {0}")]
+    #[error("Package missing required category: {0}")]
     CategoryNotFound(&'static str),
     #[error("could not find pkg node domain prop for variant with hash={0}")]
     DomainPropNotFound(Hash),

@@ -4,6 +4,7 @@ use axum::{extract::Query, Json};
 use chrono::{DateTime, Utc};
 use dal::{installed_pkg::InstalledPkg, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
+use std::cmp::{Ord, PartialOrd};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -11,6 +12,26 @@ pub struct PkgGetRequest {
     pub name: String,
     #[serde(flatten)]
     pub visibility: Visibility,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PkgFuncView {
+    pub name: String,
+    pub display_name: Option<String>,
+    pub description: Option<String>,
+}
+
+impl Ord for PkgFuncView {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for PkgFuncView {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.name.cmp(&other.name))
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -23,6 +44,7 @@ pub struct PkgGetResponse {
     pub created_at: DateTime<Utc>,
     pub created_by: String,
     pub schemas: Vec<String>,
+    pub funcs: Vec<PkgFuncView>,
     pub installed: bool,
 }
 
@@ -34,11 +56,23 @@ pub async fn get_pkg(
     let ctx = builder.build(request_ctx.build(request.visibility)).await?;
     let pkg = pkg_open(&builder, &request.name).await?;
 
-    let schemas = pkg
+    let mut schemas: Vec<String> = pkg
         .schemas()?
         .iter()
         .map(|schema| schema.name().to_string())
         .collect();
+    schemas.sort();
+
+    let mut funcs: Vec<PkgFuncView> = pkg
+        .funcs()?
+        .iter()
+        .map(|func| PkgFuncView {
+            name: func.name().to_string(),
+            display_name: func.display_name().map(|dname| dname.to_string()),
+            description: func.description().map(|desc| desc.to_string()),
+        })
+        .collect();
+    funcs.sort();
 
     let metadata = pkg.metadata()?;
     let root_hash = pkg.hash()?.to_string();
@@ -55,5 +89,6 @@ pub async fn get_pkg(
         created_by: metadata.created_by().to_string(),
         installed,
         schemas,
+        funcs,
     }))
 }
