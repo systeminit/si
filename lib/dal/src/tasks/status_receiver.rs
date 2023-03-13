@@ -18,7 +18,7 @@ use tokio::sync::broadcast;
 
 use crate::{
     AttributeValue, AttributeValueError, AttributeValueId, Component, ComponentId, DalContext,
-    DalContextBuilder, FixResolver, ServicesContext, StandardModel, StandardModelError, Tenancy,
+    DalContextBuilder, ServicesContext, StandardModel, StandardModelError, Tenancy,
     TransactionsError, Visibility, WsEvent,
 };
 
@@ -238,17 +238,6 @@ impl StatusReceiver {
                 Self::publish_immediately(&ctx, WsEvent::confirmations_updated(&ctx).await?)
                     .await?;
                 need_to_check_confirmations = false;
-            }
-        }
-
-        for confirmation_attribute_value in confirmation_attribute_values {
-            let resolver = FixResolver::find_for_confirmation_attribute_value(
-                &ctx,
-                confirmation_attribute_value,
-            )
-            .await?;
-            if let Some(mut resolver) = resolver {
-                resolver.set_success(&ctx, None::<bool>).await?;
             }
         }
 
