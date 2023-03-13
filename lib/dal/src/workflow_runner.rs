@@ -17,6 +17,7 @@ use crate::{
     WorkflowResolverError, WorkflowResolverId, WsEventError,
 };
 use crate::{DalContext, FuncError};
+use veritech_client::ResourceStatus;
 
 pub mod workflow_runner_state;
 
@@ -309,22 +310,24 @@ impl WorkflowRunner {
                     .await?
                     .ok_or(WorkflowRunnerError::ComponentNotFound(component_id))?;
 
-                if component.needs_destroy() && result.value.is_none() {
-                    component
-                        .set_needs_destroy(deleted_ctx, false)
-                        .await
-                        .map_err(Box::new)?;
-                }
+                if let ResourceStatus::Ok = result.status {
+                    if component.needs_destroy() && result.value.is_none() {
+                        component
+                            .set_needs_destroy(deleted_ctx, false)
+                            .await
+                            .map_err(Box::new)?;
+                    }
 
-                if component
-                    .set_resource(ctx, result.clone(), false)
-                    .await
-                    .map_err(Box::new)?
-                    && should_trigger_confirmations
-                {
-                    Component::run_all_confirmations(ctx)
+                    if component
+                        .set_resource(ctx, result.clone(), false)
                         .await
-                        .map_err(Box::new)?;
+                        .map_err(Box::new)?
+                        && should_trigger_confirmations
+                    {
+                        Component::run_all_confirmations(ctx)
+                            .await
+                            .map_err(Box::new)?;
+                    }
                 }
 
                 resources.push(result);
