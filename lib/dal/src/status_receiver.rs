@@ -25,7 +25,7 @@ use crate::{
 pub mod client;
 
 /// The [NATS](https://nats.io) subject for publishing and subscribing to
-/// [`requests`](DependentValuesUpdateRequest).
+/// [`requests`](StatusReceiverRequest).
 const STATUS_RECEIVER_REQUEST_SUBJECT: &str = "dependentValuesUpdateStatus.request";
 /// The queue name for [NATS](https://nats.io).
 const STATUS_RECEIVER_QUEUE_NAME: &str = "dependentValuesUpdateStatus";
