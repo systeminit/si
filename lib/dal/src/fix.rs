@@ -250,6 +250,7 @@ impl Fix {
         run_id: usize,
         action_workflow_prototype_id: WorkflowPrototypeId,
         should_trigger_confirmations: bool,
+        trigger_dependent_values_update: bool,
     ) -> FixResult<Vec<CommandRunResult>> {
         // Stamp started and run the workflow.
         self.stamp_started(ctx).await?;
@@ -259,6 +260,7 @@ impl Fix {
             action_workflow_prototype_id,
             self.component_id,
             should_trigger_confirmations,
+            trigger_dependent_values_update,
         )
         .await;
 

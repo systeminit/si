@@ -103,9 +103,15 @@ impl JobConsumer for WorkflowRun {
     }
 
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()> {
-        let (_runner, runner_state, func_binding_return_values, resources) =
-            WorkflowRunner::run(ctx, self.run_id, self.prototype_id, self.component_id, true)
-                .await?;
+        let (_runner, runner_state, func_binding_return_values, resources) = WorkflowRunner::run(
+            ctx,
+            self.run_id,
+            self.prototype_id,
+            self.component_id,
+            true,
+            true,
+        )
+        .await?;
 
         // NOTE(nick,wendy): this looks similar to code insider WorkflowRunner::run(). Do we need to run
         // it twice?

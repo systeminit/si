@@ -186,6 +186,7 @@ impl WorkflowRunner {
         prototype_id: WorkflowPrototypeId,
         component_id: ComponentId,
         should_trigger_confirmations: bool,
+        trigger_dependent_values_update: bool,
     ) -> WorkflowRunnerResult<(
         Self,
         WorkflowRunnerState,
@@ -215,6 +216,7 @@ impl WorkflowRunner {
             &func_binding_return_values,
             component_id,
             should_trigger_confirmations,
+            trigger_dependent_values_update,
         )
         .await?;
         let (workflow_runner_status, error_message) =
@@ -286,6 +288,7 @@ impl WorkflowRunner {
         func_binding_return_values: &Vec<FuncBindingReturnValue>,
         component_id: ComponentId,
         should_trigger_confirmations: bool,
+        trigger_dependent_values_update: bool,
     ) -> WorkflowRunnerResult<(FuncId, FuncBindingId, Vec<CommandRunResult>)> {
         let (identity, func_binding, mut func_binding_return_value) =
             Func::identity_with_binding_and_return_value(ctx).await?;
@@ -317,7 +320,7 @@ impl WorkflowRunner {
                 }
 
                 if component
-                    .set_resource(ctx, result.clone(), false)
+                    .set_resource(ctx, result.clone(), trigger_dependent_values_update)
                     .await
                     .map_err(Box::new)?
                     && should_trigger_confirmations
