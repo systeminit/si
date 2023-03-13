@@ -3,12 +3,13 @@ use std::{io, net::SocketAddr, path::Path, path::PathBuf, sync::Arc};
 use crate::server::config::{CycloneKeyPair, JwtSecretKey};
 use axum::routing::IntoMakeService;
 use axum::Router;
-use dal::status_receiver::{StatusReceiver, StatusReceiverError};
+use dal::tasks::{StatusReceiver, StatusReceiverError};
 use dal::{
     cyclone_key_pair::CycloneKeyPairError,
     job::processor::JobQueueProcessor,
     jwt_key::{install_new_jwt_key, jwt_key_exists},
-    ResourceScheduler, ServicesContext,
+    tasks::ResourceScheduler,
+    ServicesContext,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
