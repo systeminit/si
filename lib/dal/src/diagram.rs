@@ -153,7 +153,7 @@ impl Diagram {
         }
 
         let mut nodes = Node::list(ctx).await?;
-        nodes.extend(ComponentChangeStatus::list_deleted_nodes(ctx).await?);
+        nodes.extend(ComponentChangeStatus::list_deleted_nodes(ctx_with_deleted).await?);
 
         let mut component_views = Vec::with_capacity(nodes.len());
         for node in &nodes {
