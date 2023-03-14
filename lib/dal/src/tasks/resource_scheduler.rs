@@ -112,7 +112,8 @@ impl ResourceScheduler {
     #[instrument(skip_all, level = "debug")]
     async fn components(&self) -> ResourceSchedulerResult<Vec<Component>> {
         let builder = self.services_context.clone().into_builder();
-        let ctx = builder.build_default().await?;
+        let mut ctx = builder.build_default().await?;
+        ctx.update_with_deleted_visibility();
 
         // We need to bypass tenancy checks, only lists components on head as they are the only ones refreshed
         let rows = ctx
@@ -121,7 +122,8 @@ impl ResourceScheduler {
             .query(
                 "SELECT DISTINCT ON (id) id, row_to_json(components.*) as object
                  FROM components
-                 WHERE is_visible_v1($1, components.visibility_change_set_pk, components.visibility_deleted_at)
+                 WHERE is_visible_v1($1, visibility_change_set_pk, visibility_deleted_at)
+                       AND (visibility_deleted_at IS NULL OR needs_destroy)
                  ORDER BY id",
                 &[ctx.visibility()],
             )
