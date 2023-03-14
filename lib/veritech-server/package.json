@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "deadpool-cyclone": "workspace:*",
+    "nats-subscriber": "workspace:*",
     "si-data-nats": "workspace:*",
     "si-settings": "workspace:*",
     "telemetry": "workspace:*",

@@ -551,12 +551,14 @@ importers:
   lib/veritech-client:
     specifiers:
       cyclone-core: workspace:*
+      nats-subscriber: workspace:*
       si-data-nats: workspace:*
       telemetry: workspace:*
       veritech-core: workspace:*
       veritech-server: workspace:*
     dependencies:
       cyclone-core: link:../cyclone-core
+      nats-subscriber: link:../nats-subscriber
       si-data-nats: link:../si-data-nats
       telemetry: link:../telemetry-rs
       veritech-core: link:../veritech-core
@@ -569,12 +571,14 @@ importers:
   lib/veritech-server:
     specifiers:
       deadpool-cyclone: workspace:*
+      nats-subscriber: workspace:*
       si-data-nats: workspace:*
       si-settings: workspace:*
       telemetry: workspace:*
       veritech-core: workspace:*
     dependencies:
       deadpool-cyclone: link:../deadpool-cyclone
+      nats-subscriber: link:../nats-subscriber
       si-data-nats: link:../si-data-nats
       si-settings: link:../si-settings
       telemetry: link:../telemetry-rs

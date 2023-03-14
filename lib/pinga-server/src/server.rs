@@ -9,7 +9,9 @@ use dal::{
     JobFailureError, JobQueueProcessor, NatsProcessor, ServicesContext, TransactionsError,
 };
 use futures::{FutureExt, Stream, StreamExt};
-use nats_subscriber::{Request, SubscriberError, Subscription};
+use nats_subscriber::{
+    Request, SubscriberError, Subscription, SubscriptionConfig, SubscriptionConfigKeyOption,
+};
 use si_data_nats::{NatsClient, NatsConfig, NatsError};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use telemetry::prelude::*;
@@ -240,11 +242,17 @@ impl Subscriber {
         );
         let ctx_builder = DalContext::builder(services_context);
 
-        Ok(
-            Subscription::new(&nats, subject, Some(NATS_JOBS_DEFAULT_QUEUE))
-                .await?
-                .map(move |request| (ctx_builder.clone(), request.map_err(Into::into))),
+        Ok(Subscription::new(
+            &nats,
+            SubscriptionConfig {
+                subject,
+                queue_name: Some(NATS_JOBS_DEFAULT_QUEUE.into()),
+                final_message_header_key: SubscriptionConfigKeyOption::DoNotUseKey,
+                check_for_reply_mailbox: false,
+            },
         )
+        .await?
+        .map(move |request| (ctx_builder.clone(), request.map_err(Into::into))))
     }
 }
 
@@ -321,7 +329,7 @@ async fn job_request_task(ctx_builder: DalContextBuilder, request: Request<JobIn
 }
 
 async fn job_request(ctx_builder: DalContextBuilder, request: Request<JobInfo>) -> Result<()> {
-    let job_info = request.into_parts();
+    let (job_info, _) = request.into_parts();
     debug!(job = ?job_info, "executing job");
 
     let job = match job_info.kind() {

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "cyclone-core": "workspace:*",
+    "nats-subscriber": "workspace:*",
     "si-data-nats": "workspace:*",
     "telemetry": "workspace:*",
     "veritech-core": "workspace:*"

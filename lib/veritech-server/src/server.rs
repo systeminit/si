@@ -5,6 +5,7 @@ use deadpool_cyclone::{
     WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
+use nats_subscriber::Request;
 use si_data_nats::NatsClient;
 use std::io;
 use telemetry::prelude::*;
@@ -14,9 +15,7 @@ use tokio::{
     sync::{broadcast, mpsc},
 };
 
-use crate::{
-    config::CycloneSpec, Config, Publisher, PublisherError, Request, Subscriber, SubscriberError,
-};
+use crate::{config::CycloneSpec, Config, FunctionSubscriber, Publisher, PublisherError};
 
 #[derive(Error, Debug)]
 pub enum ServerError {
@@ -32,23 +31,26 @@ pub enum ServerError {
     NatsConnect(#[source] si_data_nats::NatsError),
     #[error(transparent)]
     Publisher(#[from] PublisherError),
-    #[error(transparent)]
-    ResolverFunction(#[from] deadpool_cyclone::ExecutionError<ResolverFunctionResultSuccess>),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
-    #[error(transparent)]
-    Subscriber(#[from] SubscriberError),
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
     WrongCycloneSpec(&'static str, CycloneSpec),
+    #[error(transparent)]
+    Subscriber(#[from] nats_subscriber::SubscriberError),
+    #[error("no reply mailbox found")]
+    NoReplyMailboxFound,
+
     #[error(transparent)]
     Validation(#[from] deadpool_cyclone::ExecutionError<ValidationResultSuccess>),
     #[error(transparent)]
     WorkflowResolve(#[from] deadpool_cyclone::ExecutionError<WorkflowResolveResultSuccess>),
     #[error(transparent)]
+    ResolverFunction(#[from] deadpool_cyclone::ExecutionError<ResolverFunctionResultSuccess>),
+    #[error(transparent)]
     CommandRun(#[from] deadpool_cyclone::ExecutionError<CommandRunResultSuccess>),
 }
 
-type Result<T> = std::result::Result<T, ServerError>;
+type ServerResult<T> = Result<T, ServerError>;
 
 pub struct Server {
     nats: NatsClient,
@@ -61,7 +63,7 @@ pub struct Server {
 
 impl Server {
     #[instrument(name = "veritech.init.cyclone.http", skip(config))]
-    pub async fn for_cyclone_http(config: Config) -> Result<Server> {
+    pub async fn for_cyclone_http(config: Config) -> ServerResult<Server> {
         match config.cyclone_spec() {
             CycloneSpec::LocalHttp(_spec) => {
                 // TODO(fnichol): Hi there! Ultimately, the Veritech server should be able to work
@@ -87,7 +89,7 @@ impl Server {
     }
 
     #[instrument(name = "veritech.init.cyclone.uds", skip(config))]
-    pub async fn for_cyclone_uds(config: Config) -> Result<Server> {
+    pub async fn for_cyclone_uds(config: Config) -> ServerResult<Server> {
         match config.cyclone_spec() {
             CycloneSpec::LocalUds(spec) => {
                 let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
@@ -130,7 +132,7 @@ impl Server {
 }
 
 impl Server {
-    pub async fn run(self) -> Result<()> {
+    pub async fn run(self) -> ServerResult<()> {
         let _ = join!(
             process_resolver_function_requests_task(
                 self.nats.clone(),
@@ -205,8 +207,9 @@ async fn process_resolver_function_requests(
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> Result<()> {
-    let mut requests = Subscriber::resolver_function(&nats, subject_prefix.as_deref()).await?;
+) -> ServerResult<()> {
+    let mut requests =
+        FunctionSubscriber::resolver_function(&nats, subject_prefix.as_deref()).await?;
 
     loop {
         tokio::select! {
@@ -263,8 +266,9 @@ async fn resolver_function_request(
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ResolverFunctionRequest>,
-) -> Result<()> {
-    let (reply_mailbox, cyclone_request) = request.into_parts();
+) -> ServerResult<()> {
+    let (cyclone_request, reply_mailbox) = request.into_parts();
+    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
@@ -317,8 +321,8 @@ async fn process_validation_requests(
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> Result<()> {
-    let mut requests = Subscriber::validation(&nats, subject_prefix.as_deref()).await?;
+) -> ServerResult<()> {
+    let mut requests = FunctionSubscriber::validation(&nats, subject_prefix.as_deref()).await?;
 
     loop {
         tokio::select! {
@@ -375,8 +379,9 @@ async fn validation_request(
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ValidationRequest>,
-) -> Result<()> {
-    let (reply_mailbox, cyclone_request) = request.into_parts();
+) -> ServerResult<()> {
+    let (cyclone_request, reply_mailbox) = request.into_parts();
+    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
@@ -430,8 +435,9 @@ async fn process_workflow_resolve_requests(
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> Result<()> {
-    let mut requests = Subscriber::workflow_resolve(&nats, subject_prefix.as_deref()).await?;
+) -> ServerResult<()> {
+    let mut requests =
+        FunctionSubscriber::workflow_resolve(&nats, subject_prefix.as_deref()).await?;
 
     loop {
         tokio::select! {
@@ -488,8 +494,9 @@ async fn workflow_resolve_request(
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<WorkflowResolveRequest>,
-) -> Result<()> {
-    let (reply_mailbox, cyclone_request) = request.into_parts();
+) -> ServerResult<()> {
+    let (cyclone_request, reply_mailbox) = request.into_parts();
+    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
@@ -543,8 +550,8 @@ async fn process_command_run_requests(
     subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> Result<()> {
-    let mut requests = Subscriber::command_run(&nats, subject_prefix.as_deref()).await?;
+) -> ServerResult<()> {
+    let mut requests = FunctionSubscriber::command_run(&nats, subject_prefix.as_deref()).await?;
 
     loop {
         tokio::select! {
@@ -601,8 +608,9 @@ async fn command_run_request(
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<CommandRunRequest>,
-) -> Result<()> {
-    let (reply_mailbox, cyclone_request) = request.into_parts();
+) -> ServerResult<()> {
+    let (cyclone_request, reply_mailbox) = request.into_parts();
+    let reply_mailbox = reply_mailbox.ok_or(ServerError::NoReplyMailboxFound)?;
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
     let mut client = cyclone_pool
@@ -638,7 +646,7 @@ async fn command_run_request(
     Ok(())
 }
 
-async fn connect_to_nats(config: &Config) -> Result<NatsClient> {
+async fn connect_to_nats(config: &Config) -> ServerResult<NatsClient> {
     info!("connecting to NATS; url={}", config.nats().url);
 
     let nats = NatsClient::new(config.nats())
@@ -651,7 +659,7 @@ async fn connect_to_nats(config: &Config) -> Result<NatsClient> {
 fn prepare_graceful_shutdown(
     mut shutdown_rx: mpsc::Receiver<ShutdownSource>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
-) -> Result<oneshot::Receiver<()>> {
+) -> ServerResult<oneshot::Receiver<()>> {
     let (graceful_shutdown_tx, graceful_shutdown_rx) = oneshot::channel::<()>();
     let mut sigterm_stream =
         unix::signal(unix::SignalKind::terminate()).map_err(ServerError::Signal)?;

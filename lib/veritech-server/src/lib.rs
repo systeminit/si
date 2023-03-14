@@ -12,6 +12,6 @@ pub use crate::{
 };
 pub(crate) use crate::{
     publisher::{Publisher, PublisherError},
-    subscriber::{Request, Subscriber, SubscriberError},
+    subscriber::FunctionSubscriber,
 };
 pub use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
