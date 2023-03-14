@@ -28,7 +28,7 @@ overflow hidden */
       @open:help="helpModalRef.open()"
     />
     <v-stage
-      v-if="customFontsLoaded"
+      v-if="customFontsLoaded && containerWidth > 0 && containerHeight > 0"
       ref="stageRef"
       :config="{
         width: containerWidth,
@@ -392,6 +392,7 @@ const resizeObserver = new ResizeObserver(debouncedOnResize);
 // or otherwise spacing gets messed up and we'd have to tell everything to rerender/recalculate when the fonts did get loaded
 const isMounted = ref(false);
 onMounted(() => {
+  resizeObserver.observe(containerRef.value!);
   isMounted.value = true;
 });
 
@@ -409,7 +410,6 @@ function onMountedAndReady() {
   window.addEventListener("mouseup", onMouseUp);
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
-  resizeObserver.observe(containerRef.value!);
 }
 
 onBeforeUnmount(() => {
