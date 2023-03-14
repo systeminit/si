@@ -60,24 +60,49 @@ pub struct Recommendation {
     component_name: String,
     provider: Option<String>,
 
-    /// The title of a "recommendation". An example: "Create EC2 Instance".
+    /// The title of a [recommendation](Self). An example: "Create EC2 Instance".
     name: String,
     /// Maps to the name of an [`ActionPrototype`](crate::ActionPrototype). An example: "create".
     pub recommended_action: String,
     /// The [`kind`](crate::action_prototype::ActionKind) of
-    /// [`ActionPrototype`](crate::ActionPrototype) that the "recommended_action" corresponds to.
+    /// [`ActionPrototype`](crate::ActionPrototype) that the recommended
+    /// [action](crate::ActionPrototype) corresponds to.
     action_kind: ActionKind,
-    /// The [`status`](RecommendationStatus) of the "recommendation".
+    /// The last recorded [`status`](RecommendationStatus) of the [recommendation](Self).
     pub status: RecommendationStatus,
+    /// Indicates the ability to "run" the [`Fix`](crate::Fix) associated with the
+    /// [recommendation](Self).
+    is_runnable: RecommendationIsRunnable,
 }
 
+/// Tracks the last known status of a [`Recommendation`] (corresponds to the
+/// [`FixResolver`](crate::FixResolver)).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum RecommendationStatus {
+    /// The last execution of the [`Recommendation`] succeeded.
     Success,
+    /// The last execution of the [`Recommendation`] failed.
     Failure,
+    /// The last execution of the [`Recommendation`] is still running.
     Running,
+    /// The [`Recommendation`] has never been ran.
     Unstarted,
+}
+
+/// Tracks the ability to run a [`Recommendation`] (corresponds to the state of "/root/resource"
+/// and the [`ActionKind`](crate::action_prototype::ActionKind) on the corresponding
+/// [`ActionPrototype`](crate::ActionPrototype).
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum RecommendationIsRunnable {
+    /// The [`Recommendation`] is ready to be ran.
+    Yes,
+    /// The [`Recommendation`] is not ready to be ran.
+    No,
+    /// There is a [`Fix`](crate::Fix) in-flight that prevents the [`Recommendation`] from being
+    /// able to be ran.
+    Running,
 }
 
 /// Cache metadata for confirmations. The "key" refers to the literal "key" in the
@@ -269,7 +294,7 @@ impl Component {
             }
 
             // Determine the status based on the entry's current value.
-            let status = match entry.success {
+            let confirmation_status = match entry.success {
                 Some(true) => ConfirmationStatus::Success,
                 Some(false) => ConfirmationStatus::Failure,
                 None => {
@@ -295,7 +320,7 @@ impl Component {
                             failure_description,
                             name,
                             provider,
-                        } => match status {
+                        } => match confirmation_status {
                             ConfirmationStatus::Success => {
                                 (success_description, Some(name), provider)
                             }
@@ -319,16 +344,39 @@ impl Component {
                     ActionPrototype::find_by_name(ctx, &action, schema_id, schema_variant_id)
                         .await?
                         .ok_or_else(|| ActionPrototypeError::NotFoundByName(action.clone()))?;
-                let recommendation_status = if status == ConfirmationStatus::Running
+
+                // Check if a fix is running before gathering the last recorded status of the
+                // recommendation and the ability to run the recommendation.
+                let is_running = confirmation_status == ConfirmationStatus::Running
                     || running_fixes.iter().any(|r| {
                         r.component_id() == component_id && r.action() == action_prototype.name()
-                    }) {
+                    });
+
+                // Track the last recorded status of the recommendation.
+                let recommendation_status = if is_running {
                     RecommendationStatus::Running
                 } else {
                     match fix_resolver.as_ref().and_then(FixResolver::success) {
                         Some(true) => RecommendationStatus::Success,
                         Some(false) => RecommendationStatus::Failure,
                         None => RecommendationStatus::Unstarted,
+                    }
+                };
+
+                // Track the ability to run the recommendation.
+                // TODO(nick): we do not need an enum here since "running" will be accurate for the
+                // "is_running" boolean. We should consider replacing the enum with a boolean.
+                let recommendation_is_runnable = if is_running {
+                    RecommendationIsRunnable::Running
+                } else {
+                    let resource = Component::resource_by_id(ctx, component_id).await?;
+                    match (action_prototype.kind(), resource.value) {
+                        (ActionKind::Create, Some(_)) => RecommendationIsRunnable::No,
+                        (ActionKind::Create, None) => RecommendationIsRunnable::Yes,
+                        (ActionKind::Other, Some(_)) => RecommendationIsRunnable::Yes,
+                        (ActionKind::Other, None) => RecommendationIsRunnable::No,
+                        (ActionKind::Destroy, Some(_)) => RecommendationIsRunnable::Yes,
+                        (ActionKind::Destroy, None) => RecommendationIsRunnable::No,
                     }
                 };
 
@@ -343,6 +391,7 @@ impl Component {
                     recommended_action: action_prototype.name().to_owned(),
                     action_kind: action_prototype.kind().to_owned(),
                     status: recommendation_status,
+                    is_runnable: recommendation_is_runnable,
                 })
             }
 
@@ -361,7 +410,7 @@ impl Component {
                 description,
                 output: Some(output.clone()).filter(|o| !o.is_empty()),
                 recommendations,
-                status,
+                status: confirmation_status,
                 provider: maybe_provider,
             };
             results.push(view);

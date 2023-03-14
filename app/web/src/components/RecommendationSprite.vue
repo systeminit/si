@@ -8,9 +8,8 @@
   >
     <template #prefix>
       <VormInput
-        v-if="recommendation.status === 'unstarted'"
+        v-if="recommendation.isRunnable === 'yes'"
         :model-value="selected"
-        :disabled="disableCheckbox"
         type="checkbox"
         class="flex-none pl-1"
         no-label
@@ -22,7 +21,10 @@
         "
       />
       <Icon
-        v-else-if="recommendation.status === 'running'"
+        v-else-if="
+          recommendation.status === 'running' ||
+          recommendation.isRunnable === 'running'
+        "
         name="loader"
         :class="clsx('flex-none pl-1', statusIconProps.color)"
         size="lg"
@@ -40,7 +42,6 @@
         :class="classes"
       >
         <Icon
-          v-if="recommendation.status !== 'success'"
           :name="recommendationIcon(recommendation.actionKind)"
           size="md"
           :class="recommendationColor(recommendation.actionKind)"
@@ -106,7 +107,6 @@ const props = defineProps({
   recommendation: { type: Object as PropType<Recommendation>, required: true },
   class: { type: String },
   selected: { type: Boolean, default: false },
-  disableCheckbox: { type: Boolean, default: false },
 });
 
 const classes = computed(() => props.class);

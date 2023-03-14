@@ -82,7 +82,6 @@
             v-for="recommendation in recommendations"
             :key="`${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`"
           >
-            <!-- TODO(nick,paulo): disable recommendation sprites that aren't ready using "disable-checkbox" -->
             <RecommendationSprite
               :recommendation="recommendation"
               :selected="
@@ -176,7 +175,7 @@ const selectedRecommendations = computed(() => {
     return (
       recommendationSelection[
         `${recommendation.confirmationAttributeValueId}-${recommendation.recommendedAction}`
-      ] && recommendation.status === "unstarted"
+      ] && recommendation.isRunnable === "yes"
     );
   });
 });
