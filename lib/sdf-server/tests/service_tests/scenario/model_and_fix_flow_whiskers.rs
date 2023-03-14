@@ -1,4 +1,4 @@
-use dal::component::confirmation::ConfirmationStatus;
+use dal::component::confirmation::view::ConfirmationStatus;
 use dal::qualification::QualificationSubCheckStatus;
 use dal::{Component, DalContext, FixBatchId, FixCompletionStatus};
 use dal_test::test;

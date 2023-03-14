@@ -12,6 +12,10 @@ use dal_test::helpers::setup_identity_func;
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 
+/// Recommendation: run this test with the following environment variable:
+/// ```shell
+/// SI_TEST_BUILTIN_SCHEMAS=none
+/// ```
 #[test]
 async fn topologically_ish_sorted_configuration_nodes(ctx: &DalContext) {
     let constructor = ConfigurationGraphConstructor::new(ctx).await;

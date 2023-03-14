@@ -11,13 +11,17 @@ use dal::{
 };
 
 use dal::action_prototype::ActionKind;
-use dal::component::confirmation::RecommendationStatus;
+use dal::component::confirmation::view::{RecommendationIsRunnable, RecommendationStatus};
 use dal::job::definition::{FixItem, FixesJob};
 use dal_test::test;
 use dal_test::test_harness::{create_schema, create_schema_variant_with_root};
 use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
 
+/// Recommendation: run this test with the following environment variable:
+/// ```shell
+/// SI_TEST_BUILTIN_SCHEMAS=none
+/// ```
 #[test]
 async fn add_and_run_confirmations(mut octx: DalContext) {
     let ctx = &mut octx;
@@ -97,7 +101,7 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
         ctx,
         *workflow_prototype.id(),
         "create",
-        ActionKind::Other,
+        ActionKind::Create,
         ActionPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id,
@@ -295,6 +299,10 @@ async fn add_and_run_confirmations(mut octx: DalContext) {
     );
 }
 
+/// Recommendation: run this test with the following environment variable:
+/// ```shell
+/// SI_TEST_BUILTIN_SCHEMAS=none
+/// ```
 #[test]
 async fn list_confirmations(mut octx: DalContext) {
     let ctx = &mut octx;
@@ -411,7 +419,7 @@ async fn list_confirmations(mut octx: DalContext) {
         .await
         .expect("set handler");
 
-    // Create workflow and action protoypes.
+    // Create workflow and action prototypes.
     let workflow_prototype = WorkflowPrototype::new(
         ctx,
         *workflow_func.id(),
@@ -429,7 +437,7 @@ async fn list_confirmations(mut octx: DalContext) {
         ctx,
         *workflow_prototype.id(),
         "create",
-        ActionKind::Other,
+        ActionKind::Create,
         ActionPrototypeContext {
             schema_id: *schema.id(),
             schema_variant_id,
@@ -477,6 +485,8 @@ async fn list_confirmations(mut octx: DalContext) {
         .recommendations
         .pop()
         .expect("recommendations are empty");
+
+    // Check that there is only one recommendation and that it looks as expected.
     assert!(view.recommendations.is_empty());
     assert_eq!(
         "create",                           // expected
@@ -486,8 +496,13 @@ async fn list_confirmations(mut octx: DalContext) {
         RecommendationStatus::Unstarted, // expected
         recommendation.status            // actual
     );
+    assert_eq!(
+        RecommendationIsRunnable::Yes, // expected
+        recommendation.is_runnable     // actual
+    );
 
-    // Observe that the confirmation failed.
+    // Observe that the confirmation "failed" (i.e. did not fail execution, but returned
+    // with an unsuccessful result).
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("could not generate component view");
@@ -531,7 +546,8 @@ async fn list_confirmations(mut octx: DalContext) {
     ctx.enqueue_job(FixesJob::new(ctx, fixes, *batch.id()))
         .await;
 
-    // Ensure that our confirmations views look as intended.
+    // Ensure that our confirmations views look as intended. We should have exactly zero
+    // recommendations!
     let mut views = Component::list_confirmations(ctx)
         .await
         .expect("could not list confirmations");
@@ -566,8 +582,8 @@ async fn list_confirmations(mut octx: DalContext) {
         component_view.properties // actual
     );
 
-    /* FIXME: nick, paulo, zack - the below should pass
-    // "Delete" the resource.
+    // "Delete" the resource. This is similar to deleting the resource in the "real world" and
+    // waiting for a resource sync, but the model has remained the same.
     component
         .set_resource(
             ctx,
@@ -577,10 +593,12 @@ async fn list_confirmations(mut octx: DalContext) {
                 message: None,
                 logs: vec![],
             },
+            true,
         )
         .await
         .expect("could not set resource");
 
+    // List confirmations.
     let mut views = Component::list_confirmations(ctx)
         .await
         .expect("could not list confirmations");
@@ -590,17 +608,25 @@ async fn list_confirmations(mut octx: DalContext) {
         .recommendations
         .pop()
         .expect("recommendations are empty");
+
+    // Check that there is only one recommendation and that it looks as expected.
     assert!(view.recommendations.is_empty());
     assert_eq!(
         "create",                           // expected
         &recommendation.recommended_action  // actual
     );
     assert_eq!(
-        RecommendationStatus::Unstarted, // expected
-        recommendation.status            // actual
+        RecommendationStatus::Success, // expected
+        recommendation.status          // actual
+    );
+    assert_eq!(
+        RecommendationIsRunnable::Yes, // expected
+        recommendation.is_runnable     // actual
     );
 
-    // Observe that the confirmation worked after "deletion".
+    // Observe that the confirmation worked after "deletion". The component should be re-creatable.
+    // The "success" field should be "false" because we have at least one recommended action (in
+    // this case, it should be exactly one).
     let component_view = ComponentView::new(ctx, *component.id())
         .await
         .expect("could not generate component view");
@@ -625,5 +651,4 @@ async fn list_confirmations(mut octx: DalContext) {
         }], // expected
         component_view.properties // actual
     );
-    */
 }

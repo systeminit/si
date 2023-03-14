@@ -5,105 +5,20 @@ use telemetry::prelude::*;
 
 use crate::action_prototype::ActionKind;
 use crate::attribute::value::AttributeValue;
+use crate::component::confirmation::view::{ConfirmationView, PrimaryActionKind};
 use crate::component::{
     ComponentResult, LIST_ALL_RESOURCE_IMPLICIT_INTERNAL_PROVIDER_ATTRIBUTE_VALUES,
 };
 use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::job::definition::DependentValuesUpdate;
 use crate::{
-    standard_model, ActionPrototype, ActionPrototypeError, AttributeReadContext,
-    AttributeValueError, AttributeValueId, ComponentError, DalContext, Fix, FixResolver,
-    FuncBindingReturnValue, FuncDescription, FuncDescriptionContents, FuncId, Node, NodeError,
-    RootPropChild, Schema, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, WsEvent,
-    WsEventResult, WsPayload,
+    standard_model, AttributeReadContext, AttributeValueError, AttributeValueId, ComponentError,
+    DalContext, Fix, FuncId, Node, NodeError, RootPropChild, Schema, SchemaVariant, StandardModel,
+    WsEvent, WsEventResult, WsPayload,
 };
 use crate::{Component, ComponentId};
 
-#[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum ConfirmationStatus {
-    Running,
-    Failure,
-    Success,
-    // FIXME(nick,paulo,paul,wendy): probably remove this once the fix flow is working again.
-    NeverStarted,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ConfirmationView {
-    pub attribute_value_id: AttributeValueId,
-    pub title: String,
-    description: Option<String>,
-
-    pub schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    pub component_id: ComponentId,
-
-    schema_name: String,
-    component_name: String,
-
-    output: Option<Vec<String>>,
-    pub status: ConfirmationStatus,
-    pub provider: Option<String>,
-    pub recommendations: Vec<Recommendation>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Recommendation {
-    // TODO(nick,paulo,paul,wendy): yes, these fields are technically already on the confirmation
-    // itself and we could just map the recommendations back to the confirmations in the frontend,
-    // but we want shit to work again before optimizing. Fix the fix flow!
-    pub confirmation_attribute_value_id: AttributeValueId,
-    pub component_id: ComponentId,
-    component_name: String,
-    provider: Option<String>,
-
-    /// The title of a [recommendation](Self). An example: "Create EC2 Instance".
-    name: String,
-    /// Maps to the name of an [`ActionPrototype`](crate::ActionPrototype). An example: "create".
-    pub recommended_action: String,
-    /// The [`kind`](crate::action_prototype::ActionKind) of
-    /// [`ActionPrototype`](crate::ActionPrototype) that the recommended
-    /// [action](crate::ActionPrototype) corresponds to.
-    action_kind: ActionKind,
-    /// The last recorded [`status`](RecommendationStatus) of the [recommendation](Self).
-    pub status: RecommendationStatus,
-    /// Indicates the ability to "run" the [`Fix`](crate::Fix) associated with the
-    /// [recommendation](Self).
-    is_runnable: RecommendationIsRunnable,
-}
-
-/// Tracks the last known status of a [`Recommendation`] (corresponds to the
-/// [`FixResolver`](crate::FixResolver)).
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum RecommendationStatus {
-    /// The last execution of the [`Recommendation`] succeeded.
-    Success,
-    /// The last execution of the [`Recommendation`] failed.
-    Failure,
-    /// The last execution of the [`Recommendation`] is still running.
-    Running,
-    /// The [`Recommendation`] has never been ran.
-    Unstarted,
-}
-
-/// Tracks the ability to run a [`Recommendation`] (corresponds to the state of "/root/resource"
-/// and the [`ActionKind`](crate::action_prototype::ActionKind) on the corresponding
-/// [`ActionPrototype`](crate::ActionPrototype).
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum RecommendationIsRunnable {
-    /// The [`Recommendation`] is ready to be ran.
-    Yes,
-    /// The [`Recommendation`] is not ready to be ran.
-    No,
-    /// There is a [`Fix`](crate::Fix) in-flight that prevents the [`Recommendation`] from being
-    /// able to be ran.
-    Running,
-}
+pub mod view;
 
 /// Cache metadata for confirmations. The "key" refers to the literal "key" in the
 /// "/root/confirmations" map entry.
@@ -168,10 +83,15 @@ impl Component {
     pub async fn list_confirmations(ctx: &DalContext) -> ComponentResult<Vec<ConfirmationView>> {
         let sorted_node_ids =
             Node::list_topologically_ish_sorted_configuration_nodes(ctx, false).await?;
-        let mut results = Vec::new();
+
+        // Go through all sorted nodes, assemble confirmations and order them by primary action
+        // kind.
+        let mut delete_results = Vec::new();
+        let mut create_results = Vec::new();
+        let mut other_results = Vec::new();
+        let mut no_recommendation_results = Vec::new();
 
         let ctx_with_deleted = &ctx.clone_with_delete_visibility();
-
         for sorted_node_id in sorted_node_ids {
             let sorted_node = Node::get_by_id(ctx_with_deleted, &sorted_node_id)
                 .await?
@@ -180,19 +100,43 @@ impl Component {
                 .component(ctx_with_deleted)
                 .await?
                 .ok_or(NodeError::ComponentIsNone)?;
-            let component_specific_confirmations =
-                Self::list_confirmations_for_component(ctx, *component.id()).await?;
-            results.extend(component_specific_confirmations);
+            if let Some((component_specific_confirmations, primary_action_kind)) =
+                Self::list_confirmations_for_component(ctx, *component.id()).await?
+            {
+                match primary_action_kind {
+                    PrimaryActionKind::HasRecommendations(action_kind) => match action_kind {
+                        ActionKind::Create => {
+                            create_results.extend(component_specific_confirmations)
+                        }
+                        ActionKind::Other => other_results.extend(component_specific_confirmations),
+                        ActionKind::Destroy => {
+                            delete_results.extend(component_specific_confirmations)
+                        }
+                    },
+                    PrimaryActionKind::NoRecommendations => {
+                        no_recommendation_results.extend(component_specific_confirmations)
+                    }
+                }
+                dbg!(component.name(ctx).await?, primary_action_kind);
+            }
         }
 
+        // We need to invert the order of the delete results before we create the final results.
+        // The final results are in the following order: destroy, create, other and "no
+        // recommendations" based on a topological-ish sort of the nodes.
+        let mut results = Vec::new();
+        delete_results.reverse();
+        results.extend(delete_results);
+        results.extend(create_results);
+        results.extend(other_results);
+        results.extend(no_recommendation_results);
         Ok(results)
     }
 
     async fn list_confirmations_for_component(
         ctx: &DalContext,
         component_id: ComponentId,
-    ) -> ComponentResult<Vec<ConfirmationView>> {
-        let mut results = Vec::new();
+    ) -> ComponentResult<Option<(Vec<ConfirmationView>, PrimaryActionKind)>> {
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
         let schema_id = Self::schema_id(ctx, component_id).await?;
         let schema_name = Schema::get_by_id(ctx, &schema_id)
@@ -210,213 +154,32 @@ impl Component {
                 < chrono::Duration::minutes(3)
             {
                 running_fixes.push(fix);
-                //} else {
-                //    fix.set_finished_at(ctx, Some(Utc::now().to_string()))
-                //        .await
-                //        .map_err(Box::new)?;
             }
         }
 
         let (all_confirmations_attribute_value, cache) =
             Self::prepare_confirmations(ctx, component_id).await?;
 
-        let all_confirmations: HashMap<String, ConfirmationEntry> =
-            match all_confirmations_attribute_value.get_value(ctx).await? {
-                Some(all_confirmations_raw) => {
-                    let deserialized_value: HashMap<String, ConfirmationEntry> =
-                        serde_json::from_value(all_confirmations_raw)?;
-                    // TODO(nick,paulo,paul,wendy): decide what to do if confirmation entries are
-                    // all empty.
-                    //
-                    // for entry in deserialized_value.values() {
-                    //     if entry.success.is_none() && entry.recommended_actions.is_empty() {
-                    //         let view = ConfirmationView {
-                    //             attribute_value_id,
-                    //             func_id,
-                    //             func_binding_return_value_id,
-                    //             title: key,
-                    //             component_id,
-                    //             schema_variant_id,
-                    //             schema_id,
-                    //             description: None,
-                    //             output: None,
-                    //             recommendations: vec![],
-                    //             status: ConfirmationStatus::Failure,
-                    //             provider: None,
-                    //         };
-                    //         results.push(view);
-                    //     }
-                    // }
-                    deserialized_value
-                }
-                None => {
-                    for (key, (_, attribute_value_id, _)) in cache {
-                        let view = ConfirmationView {
-                            attribute_value_id,
-                            title: key,
-                            component_id,
-                            schema_variant_id,
-                            schema_id,
-                            schema_name: schema_name.clone(),
-                            component_name: Component::find_name(ctx, component_id).await?,
-                            description: None,
-                            output: None,
-                            recommendations: vec![],
-                            status: ConfirmationStatus::NeverStarted,
-                            provider: None,
-                        };
-                        results.push(view);
-                    }
-                    return Ok(results);
-                }
-            };
-
-        for (confirmation_name, entry) in all_confirmations {
-            let (found_func_binding_return_value_id, found_attribute_value_id, found_func_id) =
-                cache.get(&confirmation_name).ok_or_else(|| {
-                    ComponentError::MissingFuncBindingReturnValueIdForLeafEntryName(
-                        confirmation_name.clone(),
-                    )
-                })?;
-
-            // Collect the output from the func binding return value.
-            let mut output = Vec::new();
-            if let Some(func_binding_return_value) =
-                FuncBindingReturnValue::get_by_id(ctx, found_func_binding_return_value_id).await?
-            {
-                if let Some(output_streams) =
-                    func_binding_return_value.get_output_stream(ctx).await?
-                {
-                    for output_stream in output_streams {
-                        output.push(output_stream.message);
-                    }
-                }
-            }
-
-            // Determine the status based on the entry's current value.
-            let confirmation_status = match entry.success {
-                Some(true) => ConfirmationStatus::Success,
-                Some(false) => ConfirmationStatus::Failure,
-                None => {
-                    // FIXME(nick,paulo,paul,wendy): in the past, the "None" state represented a
-                    // running confirmation in order to prevent race conditions. We may or may not
-                    // continue this behavior moving forward... we will ponder on this.
-                    ConfirmationStatus::NeverStarted
-                }
-            };
-
-            // Dynamically determine the description based on the status.
-            let (description, maybe_title, maybe_provider) =
-                match FuncDescription::find_for_func_and_schema_variant(
+        match all_confirmations_attribute_value.get_value(ctx).await? {
+            Some(all_confirmations_raw) => {
+                let deserialized_value: HashMap<String, ConfirmationEntry> =
+                    serde_json::from_value(all_confirmations_raw)?;
+                let view = ConfirmationView::assemble_for_component(
                     ctx,
-                    *found_func_id,
-                    schema_variant_id,
-                )
-                .await?
-                {
-                    Some(description) => match description.deserialized_contents()? {
-                        FuncDescriptionContents::Confirmation {
-                            success_description,
-                            failure_description,
-                            name,
-                            provider,
-                        } => match confirmation_status {
-                            ConfirmationStatus::Success => {
-                                (success_description, Some(name), provider)
-                            }
-                            ConfirmationStatus::Failure => {
-                                (failure_description, Some(name), provider)
-                            }
-                            _ => (None, Some(name), provider),
-                        },
-                    },
-                    None => (None, None, None),
-                };
-
-            let fix_resolver =
-                FixResolver::find_for_confirmation_attribute_value(ctx, *found_attribute_value_id)
-                    .await?;
-
-            // Gather all the action prototypes from the recommended actions raw strings.
-            let mut recommendations = Vec::new();
-            for action in entry.recommended_actions {
-                let action_prototype =
-                    ActionPrototype::find_by_name(ctx, &action, schema_id, schema_variant_id)
-                        .await?
-                        .ok_or_else(|| ActionPrototypeError::NotFoundByName(action.clone()))?;
-
-                // Check if a fix is running before gathering the last recorded status of the
-                // recommendation and the ability to run the recommendation.
-                let is_running = confirmation_status == ConfirmationStatus::Running
-                    || running_fixes.iter().any(|r| {
-                        r.component_id() == component_id && r.action() == action_prototype.name()
-                    });
-
-                // Track the last recorded status of the recommendation.
-                let recommendation_status = if is_running {
-                    RecommendationStatus::Running
-                } else {
-                    match fix_resolver.as_ref().and_then(FixResolver::success) {
-                        Some(true) => RecommendationStatus::Success,
-                        Some(false) => RecommendationStatus::Failure,
-                        None => RecommendationStatus::Unstarted,
-                    }
-                };
-
-                // Track the ability to run the recommendation.
-                // TODO(nick): we do not need an enum here since "running" will be accurate for the
-                // "is_running" boolean. We should consider replacing the enum with a boolean.
-                let recommendation_is_runnable = if is_running {
-                    RecommendationIsRunnable::Running
-                } else {
-                    let resource = Component::resource_by_id(ctx, component_id).await?;
-                    match (action_prototype.kind(), resource.value) {
-                        (ActionKind::Create, Some(_)) => RecommendationIsRunnable::No,
-                        (ActionKind::Create, None) => RecommendationIsRunnable::Yes,
-                        (ActionKind::Other, Some(_)) => RecommendationIsRunnable::Yes,
-                        (ActionKind::Other, None) => RecommendationIsRunnable::No,
-                        (ActionKind::Destroy, Some(_)) => RecommendationIsRunnable::Yes,
-                        (ActionKind::Destroy, None) => RecommendationIsRunnable::No,
-                    }
-                };
-
-                let workflow_prototype = action_prototype.workflow_prototype(ctx).await?;
-
-                recommendations.push(Recommendation {
-                    confirmation_attribute_value_id: *found_attribute_value_id,
                     component_id,
-                    component_name: Component::find_name(ctx, component_id).await?,
-                    provider: maybe_provider.clone(),
-                    name: workflow_prototype.title().to_owned(),
-                    recommended_action: action_prototype.name().to_owned(),
-                    action_kind: action_prototype.kind().to_owned(),
-                    status: recommendation_status,
-                    is_runnable: recommendation_is_runnable,
-                })
+                    &deserialized_value,
+                    &cache,
+                    schema_id,
+                    schema_variant_id,
+                    &running_fixes,
+                    schema_name.clone(),
+                )
+                .await
+                .map_err(|e| ComponentError::ConfirmationView(e.to_string()))?;
+                Ok(Some(view))
             }
-
-            // Assemble the view.
-            let view = ConfirmationView {
-                attribute_value_id: *found_attribute_value_id,
-                title: match maybe_title {
-                    Some(title) => title,
-                    None => confirmation_name,
-                },
-                component_id,
-                schema_variant_id,
-                schema_id,
-                schema_name: schema_name.clone(),
-                component_name: Component::find_name(ctx, component_id).await?,
-                description,
-                output: Some(output.clone()).filter(|o| !o.is_empty()),
-                recommendations,
-                status: confirmation_status,
-                provider: maybe_provider,
-            };
-            results.push(view);
+            None => Ok(None),
         }
-
-        Ok(results)
     }
 
     /// Find the [`AttributeValue`](crate::AttributeValue) corresponding to the _implicit_

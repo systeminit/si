@@ -199,7 +199,7 @@ async fn setup_confirmation_resolver_and_get_action_prototype(
         ctx,
         *workflow_prototype.id(),
         name,
-        ActionKind::Other,
+        ActionKind::Create,
         context,
     )
     .await
