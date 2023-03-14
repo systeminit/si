@@ -3,6 +3,7 @@ use std::{
     marker::{PhantomData, Unpin},
     path::PathBuf,
     sync::Arc,
+    time::Duration,
 };
 
 use axum::{
@@ -20,6 +21,7 @@ use cyclone_core::{
 use hyper::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
 use telemetry::{prelude::*, TelemetryLevel};
+use tokio::time;
 
 use super::{
     extract::LimitRequestGuard,
@@ -35,6 +37,8 @@ use crate::{
     },
     watch, DecryptionKey,
 };
+
+const PROCESS_TIMEOUT: Duration = Duration::from_secs(25);
 
 #[allow(clippy::unused_async)]
 pub async fn liveness() -> (StatusCode, &'static str) {
@@ -224,9 +228,11 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
             }
         }
     };
-    let proto = match proto.process(&mut socket).await {
-        Ok(processed) => processed,
-        Err(err) => {
+    let proto = match time::timeout(PROCESS_TIMEOUT, proto.process(&mut socket)).await {
+        // An execution was successfully completed and returned under the timeout limit
+        Ok(Ok(processed)) => processed,
+        // An execution failed to complete and return under the timeout limit
+        Ok(Err(err)) => {
             warn!(error = ?err, "failed to process protocol");
             if let Err(err) = fail_to_process(
                 socket,
@@ -237,6 +243,15 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
             {
                 warn!(error = ?err, kind = std::any::type_name::<Request>(), "failed to fail execute function");
             };
+            return;
+        }
+        // The timeout limit was exceeded
+        Err(_elapsed) => {
+            warn!(
+                kind = std::any::type_name::<Request>(),
+                timeout = PROCESS_TIMEOUT.as_secs(),
+                "function execution timeout exceeded"
+            );
             return;
         }
     };
