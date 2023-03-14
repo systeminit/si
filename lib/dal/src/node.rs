@@ -18,6 +18,7 @@ use crate::{DalContext, Edge, SchemaError};
 
 const LIST_FOR_KIND: &str = include_str!("queries/node/list_for_kind.sql");
 const LIST_CONNECTED_FOR_KIND: &str = include_str!("queries/node/list_connected_for_kind.sql");
+const LIST_LIVE_NODES: &str = include_str!("queries/node/list_live.sql");
 
 #[derive(Error, Debug)]
 pub enum NodeError {
@@ -132,6 +133,18 @@ impl Node {
         returns: Component,
         result: NodeResult,
     );
+
+    pub async fn list_live(ctx: &DalContext) -> NodeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_LIVE_NODES,
+                &[ctx.tenancy(), &ctx.visibility().to_deleted()],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
 
     /// Find all [`NodeIds`](Self) for a given [`NodeKind`].
     #[instrument(skip_all)]

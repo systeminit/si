@@ -8,14 +8,13 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::standard_model::objects_from_rows;
-use crate::{ComponentId, DalContext, Edge, Node, StandardModelError};
+use crate::{ComponentId, DalContext, Edge, StandardModelError};
 
 const LIST_MODIFIED_COMPONENTS: &str =
     include_str!("queries/change_status/list_modified_components.sql");
 const LIST_ADDED_COMPONENTS: &str = include_str!("queries/change_status/list_added_components.sql");
 const LIST_DELETED_COMPONENTS: &str =
     include_str!("queries/change_status/list_deleted_components.sql");
-const LIST_DELETED_NODES: &str = include_str!("queries/change_status/nodes_list_deleted.sql");
 const LIST_DELETED_EDGES: &str = include_str!("queries/change_status/edges_list_deleted.sql");
 
 #[derive(Error, Debug)]
@@ -93,19 +92,6 @@ impl ComponentChangeStatus {
             )
             .await?;
         ComponentChangeStatusGroup::new_from_rows(rows, ChangeStatus::Deleted)
-    }
-
-    #[instrument(skip_all)]
-    pub async fn list_deleted_nodes(ctx: &DalContext) -> ChangeStatusResult<Vec<Node>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                LIST_DELETED_NODES,
-                &[ctx.tenancy(), &ctx.visibility().change_set_pk],
-            )
-            .await?;
-        Ok(objects_from_rows(rows)?)
     }
 
     #[instrument(skip_all)]

@@ -47,6 +47,13 @@ impl Visibility {
     }
 
     /// Converts this [`Visibility`] to a new head [`Visibility`].
+    pub fn to_deleted(&self) -> Self {
+        let mut other = *self;
+        other.deleted_at = Some(Utc::now());
+        other
+    }
+
+    /// Converts this [`Visibility`] to a new head [`Visibility`].
     pub fn to_head(&self) -> Self {
         Self::new_head(self.deleted_at.is_some())
     }
