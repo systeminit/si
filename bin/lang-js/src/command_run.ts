@@ -142,12 +142,14 @@ function wrapCode(code: string, handle: string): string {
   const wrapped = `module.exports = function(args, callback) {
     ${code}
     const arguments = Array.isArray(args) ? args : [args];
+    const resource = arguments[0]?.properties?.resource?.value ?? null;
     const returnValue = ${handle}(...arguments, callback);
     if (returnValue instanceof Promise) {
       returnValue.then((data) => callback(data))
           .catch((err) => callback({
             status: "error",
-	    message: err.message,
+            value: resource,
+      	    message: err.message,
 	  }));
     } else {
       callback(returnValue);
