@@ -10,12 +10,14 @@ use crate::SchemaSpec;
 use super::PkgNode;
 
 const KEY_CATEGORY_STR: &str = "category";
+const KEY_CATEGORY_NAME_STR: &str = "category_name";
 const KEY_NAME_STR: &str = "name";
 
 #[derive(Clone, Debug)]
 pub struct SchemaNode {
     pub name: String,
     pub category: String,
+    pub category_name: Option<String>,
 }
 
 impl NameStr for SchemaNode {
@@ -28,6 +30,11 @@ impl WriteBytes for SchemaNode {
     fn write_bytes<W: Write>(&self, writer: &mut W) -> Result<(), GraphError> {
         write_key_value_line(writer, KEY_NAME_STR, self.name())?;
         write_key_value_line(writer, KEY_CATEGORY_STR, &self.category)?;
+        write_key_value_line(
+            writer,
+            KEY_CATEGORY_NAME_STR,
+            self.category_name.as_deref().unwrap_or(""),
+        )?;
 
         Ok(())
     }
@@ -40,8 +47,18 @@ impl ReadBytes for SchemaNode {
     {
         let name = read_key_value_line(reader, KEY_NAME_STR)?;
         let category = read_key_value_line(reader, KEY_CATEGORY_STR)?;
+        let category_name_str = read_key_value_line(reader, KEY_CATEGORY_NAME_STR)?;
+        let category_name = if category_name_str.is_empty() {
+            None
+        } else {
+            Some(category_name_str)
+        };
 
-        Ok(Self { name, category })
+        Ok(Self {
+            name,
+            category,
+            category_name,
+        })
     }
 }
 
@@ -59,6 +76,7 @@ impl NodeChild for SchemaSpec {
             Self::NodeType::Schema(SchemaNode {
                 name: self.name.to_string(),
                 category: self.category.to_string(),
+                category_name: self.category_name.clone(),
             }),
             children,
         )

@@ -396,6 +396,7 @@ impl<'a> SiPkgFunc<'a> {
 pub struct SiPkgSchema<'a> {
     name: String,
     category: String,
+    category_name: Option<String>,
 
     hash: Hash,
 
@@ -421,6 +422,7 @@ impl<'a> SiPkgSchema<'a> {
         let schema = Self {
             name: schema_node.name,
             category: schema_node.category,
+            category_name: schema_node.category_name,
             hash: schema_hashed_node.hash(),
             source: Source::new(graph, node_idx),
         };
@@ -434,6 +436,10 @@ impl<'a> SiPkgSchema<'a> {
 
     pub fn category(&self) -> &str {
         self.category.as_ref()
+    }
+
+    pub fn category_name(&self) -> Option<&str> {
+        self.category_name.as_deref()
     }
 
     pub fn variants(&self) -> Result<Vec<SiPkgSchemaVariant<'a>>, SiPkgError> {
