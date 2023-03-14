@@ -175,7 +175,9 @@ impl StatusReceiver {
     /// Evaluate the request from the [`DependentValuesUpdate`](crate::DependentValuesUpdate) job
     /// and perform work accordingly.
     ///
-    /// This function is considered the "critical section" of the [`receiver`](Self).
+    /// This function is considered the "critical section" of the [`receiver`](Self). It _CANNOT_
+    /// mutate rows that [`DependentValuesUpdate`](crate::DependentValuesUpdate) is mutating,
+    /// otherwise a database deadlock may occur.
     async fn process(
         ctx_builder: DalContextBuilder,
         request: Request<StatusReceiverRequest>,

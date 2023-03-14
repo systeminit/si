@@ -18,8 +18,17 @@ use crate::{
 use crate::{RootPropChild, WsEventResult};
 
 impl Component {
+    /// Calls [`Self::resource_by_id`] using the [`ComponentId`](Component) off [`Component`].
     pub async fn resource(&self, ctx: &DalContext) -> ComponentResult<CommandRunResult> {
-        let schema_variant_id = Self::schema_variant_id(ctx, self.id).await?;
+        Self::resource_by_id(ctx, self.id).await
+    }
+
+    /// Find the object corresponding to "/root/resource".
+    pub async fn resource_by_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<CommandRunResult> {
+        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
         let implicit_internal_provider = SchemaVariant::find_root_child_implicit_internal_provider(
             ctx,
             schema_variant_id,
@@ -29,7 +38,7 @@ impl Component {
 
         let value_context = AttributeReadContext {
             internal_provider_id: Some(*implicit_internal_provider.id()),
-            component_id: Some(self.id),
+            component_id: Some(component_id),
             ..AttributeReadContext::default()
         };
 

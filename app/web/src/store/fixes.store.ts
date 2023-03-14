@@ -14,6 +14,7 @@ function nilId(): string {
 }
 
 export type FixStatus = "success" | "failure" | "running" | "unstarted";
+export type RecommendationIsRunnable = "yes" | "no" | "running";
 export type ActionKind = "create" | "other" | "destroy";
 
 export type Confirmation = {
@@ -43,6 +44,7 @@ export type Recommendation = {
   provider: string;
   actionKind: ActionKind;
   status: FixStatus;
+  isRunnable: RecommendationIsRunnable;
 };
 
 // TODO(nick): use real user data and real timestamps. This is dependent on the backend.
@@ -272,6 +274,7 @@ export const useFixesStore = () => {
                     )
                   ) {
                     r.status = "running";
+                    r.isRunnable = "running";
                   }
                 }
                 return c;
