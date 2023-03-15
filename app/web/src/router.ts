@@ -7,6 +7,7 @@ import { useRouterStore } from "./store/router.store";
 
 // Cannot use inside the template directly.
 const isDevMode = import.meta.env.DEV;
+const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 
 const routes: RouteRecordRaw[] = [
   {
@@ -128,13 +129,10 @@ const routes: RouteRecordRaw[] = [
     path: "/login",
     name: "login",
     meta: { public: true },
-    component: () => import("@/pages/auth/LoginPage.vue"),
-  },
-  {
-    path: "/signup",
-    name: "signup",
-    meta: { public: true },
-    component: () => import("@/pages/auth/SignupPage.vue"),
+    beforeEnter: () => {
+      window.location.href = `${AUTH_PORTAL_URL}/login`;
+    },
+    component: () => import("@/pages/auth/AuthConnectPage.vue"),
   },
   {
     path: "/logout",
@@ -142,9 +140,11 @@ const routes: RouteRecordRaw[] = [
     beforeEnter: () => {
       const authStore = useAuthStore();
       authStore.localLogout();
+
+      window.location.href = `${AUTH_PORTAL_URL}/logout`;
       return { name: "login" };
     },
-    component: () => import("@/pages/auth/LoginPage.vue"), // just need something here for TS, but guard always redirects
+    component: () => import("@/pages/auth/AuthConnectPage.vue"), // just need something here for TS, but guard always redirects
   },
 
   // 404

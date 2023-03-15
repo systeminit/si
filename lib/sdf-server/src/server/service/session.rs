@@ -3,11 +3,14 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{StandardModelError, TransactionsError, UserError, WorkspaceError, UserPk, WorkspacePk};
+use dal::{
+    KeyPairError, StandardModelError, TransactionsError, UserError, UserPk, WorkspaceError,
+    WorkspacePk,
+};
 use thiserror::Error;
 
-pub mod get_defaults;
 pub mod auth_connect;
+pub mod get_defaults;
 pub mod restore_authentication;
 
 #[derive(Debug, Error)]
@@ -36,6 +39,8 @@ pub enum SessionError {
     InvalidWorkspace(WorkspacePk),
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
+    #[error(transparent)]
+    KeyPair(#[from] KeyPairError),
 }
 
 pub type SessionResult<T> = std::result::Result<T, SessionError>;

@@ -1,6 +1,4 @@
-import _ from "lodash";
 import { z } from 'zod';
-import Router from "@koa/router";
 import { ApiError } from "../lib/api-error";
 import {
   completeAuth0TokenExchange, getAuth0LoginUrl, getAuth0LogoutUrl,
@@ -51,7 +49,7 @@ router.get("/auth/login-callback", async (ctx) => {
     throw new ApiError('Conflict', 'Oauth state does not match');
   }
 
-  const { profile, token } = await completeAuth0TokenExchange(reqQuery.code);
+  const { profile } = await completeAuth0TokenExchange(reqQuery.code);
 
   const user = await createOrUpdateUserFromAuth0Details(profile);
   // TODO: create/update user, send to posthog, etc...
@@ -62,7 +60,7 @@ router.get("/auth/login-callback", async (ctx) => {
   ctx.cookies.set(SI_COOKIE_NAME, siToken, {
     // TODO: verify these settings
     httpOnly: true,
-    // secure: true, // IMPORTANT - turn this on if domain is not localhost
+    secure: !(process.env.AUTH_API_URL as string).includes('localhost'),
     // domain:,
   });
 

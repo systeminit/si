@@ -1,4 +1,3 @@
-use jwt_simple::{algorithms::RSAKeyPairLike, claims::Claims, reexports::coarsetime::Duration};
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
@@ -6,13 +5,11 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::jwt_key::{get_jwt_signing_key, JwtKeyError};
 use crate::{
-    pk, standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, JwtSecretKey,
-    Tenancy, Timestamp, TransactionsError, WorkspacePk,
+    jwt_key::JwtKeyError, pk, standard_model_accessor_ro, DalContext, HistoryEvent,
+    HistoryEventError, Tenancy, Timestamp, TransactionsError, WorkspacePk,
 };
 
-const USER_FIND_BY_EMAIL: &str = include_str!("queries/user/find_by_email.sql");
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
 
 #[derive(Error, Debug)]
@@ -27,10 +24,8 @@ pub enum UserError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("failed to join long lived async task; bug!")]
     Join(#[from] JoinError),
-    #[error("jwt key: {0}")]
+    #[error(transparent)]
     JwtKey(#[from] JwtKeyError),
-    #[error("jwt: {0}")]
-    JwtSimple(#[from] jwt_simple::Error),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error("no workspace in tenancy")]
@@ -64,6 +59,7 @@ impl User {
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext,
+        pk: UserPk,
         name: impl AsRef<str>,
         email: impl AsRef<str>,
     ) -> UserResult<Self> {
@@ -74,11 +70,8 @@ impl User {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM user_create_v1($1, $2)",
-                &[
-                    &name,
-                    &email,
-                ],
+                "SELECT object FROM user_create_v1($1, $2, $3)",
+                &[&pk, &name, &email],
             )
             .await?;
 
@@ -109,43 +102,28 @@ impl User {
         }
     }
 
-    pub async fn find_by_email(
-        ctx: &DalContext,
-        email: impl AsRef<str>,
-    ) -> UserResult<Option<User>> {
-        let email = email.as_ref();
-        let maybe_row = ctx
-            .txns()
-            .pg()
-            .query_opt(USER_FIND_BY_EMAIL, &[&email, &ctx.tenancy().workspace_pk()])
-            .await?;
-
-        let result = match maybe_row {
-            Some(row) => {
-                let json: serde_json::Value = row.try_get("object")?;
-                Some(serde_json::from_value(json)?)
-            }
-            None => None,
-        };
-        Ok(result)
-    }
-
     pub async fn authorize(_ctx: &DalContext, _user_pk: &UserPk) -> UserResult<bool> {
         // TODO(paulo,theo): implement capabilities through auth0
         Ok(true)
     }
 
-    pub async fn associate_workspace(&self, ctx: &DalContext, workspace_pk: WorkspacePk) -> UserResult<()> {
-        ctx
-            .txns()
+    pub async fn associate_workspace(
+        &self,
+        ctx: &DalContext,
+        workspace_pk: WorkspacePk,
+    ) -> UserResult<()> {
+        ctx.txns()
             .pg()
-            .execute("SELECT user_associate_workspace_v1($1, $2)", &[&self.pk, &workspace_pk])
+            .execute(
+                "SELECT user_associate_workspace_v1($1, $2)",
+                &[&self.pk, &workspace_pk],
+            )
             .await?;
         Ok(())
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 pub struct UserClaim {
     pub user_pk: UserPk,
     pub workspace_pk: WorkspacePk,

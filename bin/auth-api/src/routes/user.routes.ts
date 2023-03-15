@@ -1,9 +1,8 @@
-import Router from "@koa/router";
 import _ from 'lodash';
 import { z } from 'zod';
 import { ApiError } from "../lib/api-error";
 import { validate } from "../lib/validation-helpers";
-import { findLatestAgreedVersionForUser, findLatestTosForUser, saveTosAgreement } from "../services/tos.service";
+import { findLatestTosForUser, saveTosAgreement } from "../services/tos.service";
 
 import { router } from ".";
 
@@ -37,8 +36,8 @@ router.post("/tos-agreement", async (ctx) => {
     tosVersionId: z.string(),
   }));
 
-  const latestTosVersion = await findLatestAgreedVersionForUser(ctx.state.authUser.id);
-  if (latestTosVersion <= reqBody.tosVersionId) {
+  const latestTosVersion = ctx.state.authUser.agreedTosVersion;
+  if (latestTosVersion && latestTosVersion <= reqBody.tosVersionId) {
     throw new ApiError('Conflict', 'Cannot agree to earlier version of TOS');
   }
   const agreemenet = await saveTosAgreement(ctx.state.authUser.id, reqBody.tosVersionId, ctx.state.clientIp);

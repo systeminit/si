@@ -1,10 +1,11 @@
 import _ from 'lodash';
 import { ulid } from "ulidx";
-import * as Auth0 from 'auth0';
 import { marked } from 'marked';
 
-import { createWorkspace } from "./workspaces.service";
-import { User, UserId } from './users.service';
+import { PrismaClient } from '@prisma/client';
+import { UserId, UserWithTosStatus } from './users.service';
+
+const prisma = new PrismaClient();
 
 export type TosAgreement = {
   id: string; // primary key, probably not really used for anything
@@ -26,13 +27,11 @@ export type TosVersions = {
   html?: string;
 };
 
-const tosAgreements: TosAgreement[] = [];
-
 // could store in db, or just in file-system of this repo...
-// will need flexible solution eventually for custom TOS versions, but should be simpl for now
+// will need flexible solution eventually for custom TOS versions, but should be simple for now
 const tosVersions: TosVersions[] = [
   {
-    id: '2023-01-01',
+    id: '2023-03-02',
     pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     markdown: `
 # Terms of service (2023-01-01)
@@ -62,42 +61,33 @@ tosVersions.forEach((tos) => {
   tos.html = marked.parse(tos.markdown);
 });
 
-const LATEST_TOS_VERSION_ID = _.max(_.map(tosVersions, (t) => t.id))!;
+export const LATEST_TOS_VERSION_ID = _.max(_.map(tosVersions, (t) => t.id))!;
 
 export async function getTosVersionById(id: TosVersionId) {
   return _.find(tosVersions, (t) => t.id === id);
 }
 
-export async function findLatestAgreedVersionForUser(userId: UserId) {
-  const entries = _.filter(tosAgreements, (t) => t.userId === userId);
-  const sorted = _.sortBy(entries, (t) => t.tosVersionId);
-  return sorted?.[0]?.tosVersionId;
-}
-
-export async function findLatestTosForUser(user: User) {
-  if (!user.needsTosUpdate) return;
+export async function findLatestTosForUser(user: UserWithTosStatus) {
+  // eventually this logic may be more complex...
+  if (user.agreedTosVersion === LATEST_TOS_VERSION_ID) return null;
   return getTosVersionById(LATEST_TOS_VERSION_ID);
 }
 
-/**
- * populates user's TOS agreement status (do they need to agree to new TOS)
- * */
-export async function loadTosStatusForUser(user: User) {
-  const latestAgreedVersionId = await findLatestAgreedVersionForUser(user.id);
-  user.needsTosUpdate = !latestAgreedVersionId || latestAgreedVersionId !== LATEST_TOS_VERSION_ID;
-}
+export async function saveTosAgreement(
+  userId: UserId,
+  tosVersionId: TosVersionId,
+  ipAddress: IpAddressString,
+) {
+  // do we care about recording multiple agreements to the same tos version?
+  const newAgreement = await prisma.tosAgreement.create({
+    data: {
+      id: ulid(),
+      userId,
+      tosVersionId,
+      ipAddress,
+      timestamp: new Date().toISOString(),
+    },
+  });
 
-export async function saveTosAgreement(userId: UserId, tosVersionId: TosVersionId, ipAddress: IpAddressString) {
-  // do we care if we record multiple agreements for the same version?
-
-  const agreement: TosAgreement = {
-    id: ulid(),
-    userId,
-    tosVersionId,
-    ipAddress,
-    timestamp: new Date().toISOString(),
-  };
-  tosAgreements.push(agreement);
-
-  return agreement;
+  return newAgreement;
 }

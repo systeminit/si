@@ -905,6 +905,7 @@ dependencies = [
  "color-eyre",
  "council-server",
  "dal",
+ "jwt-simple",
  "lazy_static",
  "names",
  "serde",

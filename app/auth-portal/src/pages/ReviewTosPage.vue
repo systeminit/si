@@ -1,6 +1,7 @@
+<!-- eslint-disable vue/no-v-html -->
 <template>
   <div>
-    <h1>Review TOS!</h1>
+    <h2>Review TOS!</h2>
 
     <template v-if="loadTosReqStatus.isPending"> loading... </template>
     <template v-else-if="loadTosReqStatus.isError">
@@ -20,11 +21,9 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink, useRouter } from "vue-router";
-import { computed, onBeforeMount, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { computed, ref, watch } from "vue";
 import { useAuthStore } from "@/store/auth.store";
-import { useWorkspacesStore } from "@/store/workspaces.store";
-import { API_HTTP_URL } from "@/store/api";
 
 const authStore = useAuthStore();
 const router = useRouter();

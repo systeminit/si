@@ -1,0 +1,6 @@
+[build]
+  command = "pnpm run build"
+  publish = "dist"
+
+[build.environment]
+  PNPM_FLAGS = "--frozen-lockfile --filter root --filter @si/auth-portal..."

@@ -7,7 +7,6 @@ export function validate<Z extends Zod.Schema>(obj: any, schema: Z) {
   } catch (err) {
     if (!(err instanceof Zod.ZodError)) throw err;
 
-    console.log(err);
     const firstError = err.errors[0];
     const pathStr = firstError.path.join('.');
 

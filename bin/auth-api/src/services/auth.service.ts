@@ -1,3 +1,4 @@
+import { User, Workspace } from '@prisma/client';
 import { JwtPayload } from 'jsonwebtoken';
 import * as Koa from 'koa';
 import { nanoid } from 'nanoid';
@@ -6,9 +7,7 @@ import { ApiError } from '../lib/api-error';
 import { setCache } from '../lib/cache';
 import { createJWT, verifyJWT } from "../lib/jwt";
 import { tryCatch } from '../lib/try-catch';
-import { loadTosStatusForUser } from './tos.service';
-import { getUserById, User } from './users.service';
-import { Workspace } from './workspaces.service';
+import { getUserById } from './users.service';
 
 export const SI_COOKIE_NAME = "si-auth";
 
@@ -44,7 +43,8 @@ export function createSdfAuthToken(userId: string, workspaceId: string) {
     user_pk: userId,
     workspace_pk: workspaceId,
   };
-  return createJWT(payload);
+  // can add more metadata, expiry, etc...
+  return createJWT(payload, { subject: userId });
 }
 
 export async function decodeSdfAuthToken(token: string) {
@@ -84,10 +84,6 @@ export const loadAuthMiddleware: Koa.Middleware<CustomAppState, CustomAppContext
     wipeAuthCookie(ctx);
     throw new ApiError('Conflict', 'Cannot find user data');
   }
-
-  // not sure we want to do this all the time...?
-  // but we do probably want to block them from doing most things if they have not agreed yet
-  await loadTosStatusForUser(user);
 
   ctx.state.authUser = user;
 

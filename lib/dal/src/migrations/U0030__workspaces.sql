@@ -6,14 +6,11 @@ CREATE TABLE workspaces
     updated_at                  timestamp with time zone NOT NULL DEFAULT CLOCK_TIMESTAMP(),
     name                        text                     NOT NULL
 );
-CREATE UNIQUE INDEX unique_workspaces_name_live ON workspaces (
-	name,
-	(visibility_deleted_at IS NULL))
-    WHERE visibility_deleted_at IS NULL;
 CREATE UNIQUE INDEX ON workspaces (pk);
 CREATE INDEX ON workspaces (visibility_deleted_at NULLS FIRST);
 
 CREATE OR REPLACE FUNCTION workspace_create_v1(
+    this_pk ident,
     this_name text,
     OUT object json) AS
 $$
@@ -21,8 +18,8 @@ DECLARE
     this_new_row           workspaces%ROWTYPE;
 BEGIN
 
-    INSERT INTO workspaces (name)
-    VALUES (this_name)
+    INSERT INTO workspaces (pk, name)
+    VALUES (this_pk, this_name)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

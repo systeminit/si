@@ -1,4 +1,4 @@
-use super::{SessionResult, SessionError};
+use super::{SessionError, SessionResult};
 use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 use axum::Json;
 use dal::Workspace;

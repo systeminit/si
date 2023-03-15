@@ -11,8 +11,11 @@ import JWT from "jsonwebtoken";
 const JWT_PRIVATE_KEY = process.env.JWT_PRIVATE_KEY!;
 export const JWT_PUBLIC_KEY = process.env.JWT_PRIVATE_KEY!;
 
-export function createJWT(payload: Record<string, any>) {
-  return JWT.sign(payload, JWT_PRIVATE_KEY, { algorithm: "RS256" });
+export function createJWT(
+  payload: Record<string, any>,
+  options?: Omit<JWT.SignOptions, 'algorithm'>,
+) {
+  return JWT.sign(payload, JWT_PRIVATE_KEY, { algorithm: "RS256", ...options });
 }
 export function verifyJWT(token: string) {
   return JWT.verify(token, JWT_PUBLIC_KEY);

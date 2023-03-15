@@ -26,7 +26,7 @@ pub enum StandardModelError {
     #[error(transparent)]
     User(#[from] UserError),
     #[error("user not found: {0}")]
-    UserNotFound(UserPk)
+    UserNotFound(UserPk),
 }
 
 pub type StandardModelResult<T> = Result<T, StandardModelError>;

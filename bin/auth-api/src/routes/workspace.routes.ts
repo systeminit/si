@@ -1,11 +1,11 @@
-import _ from "lodash";
 import { nanoid } from "nanoid";
 import { z } from 'zod';
+import { Workspace } from "@prisma/client";
 import { ApiError } from "../lib/api-error";
 import { getCache, setCache } from "../lib/cache";
 import { getUserById } from "../services/users.service";
 import {
-  getUserWorkspaces, getWorkspaceById, Workspace, WorkspaceId,
+  getUserWorkspaces, getWorkspaceById, WorkspaceId,
 } from "../services/workspaces.service";
 import { validate } from "../lib/validation-helpers";
 
@@ -42,7 +42,7 @@ router.param('workspaceId', async (id: WorkspaceId, ctx, next) => {
   }
 
   // overly simplified access model...
-  if (workspace.createdByUserId !== ctx.state.authUser.id) {
+  if (workspace.creatorUserId !== ctx.state.authUser.id) {
     throw new ApiError('Forbidden', 'You do not have access to that workspace');
   }
 

@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import isPromise from 'is-promise';
 
 // see https://www.npmjs.com/package/no-try for inspiration

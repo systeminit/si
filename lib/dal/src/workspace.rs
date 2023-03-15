@@ -73,12 +73,19 @@ impl Workspace {
     }
 
     #[instrument(skip_all)]
-    pub async fn new(ctx: &mut DalContext, name: impl AsRef<str>) -> WorkspaceResult<Self> {
+    pub async fn new(
+        ctx: &mut DalContext,
+        pk: WorkspacePk,
+        name: impl AsRef<str>,
+    ) -> WorkspaceResult<Self> {
         let name = name.as_ref();
         let row = ctx
             .txns()
             .pg()
-            .query_one("SELECT object FROM workspace_create_v1($1)", &[&name])
+            .query_one(
+                "SELECT object FROM workspace_create_v1($1, $2)",
+                &[&pk, &name],
+            )
             .await?;
 
         // Inlined `finish_create_from_row`
@@ -104,10 +111,10 @@ impl Workspace {
         user_name: impl AsRef<str>,
         user_email: impl AsRef<str>,
     ) -> WorkspaceResult<WorkspaceSignup> {
-        let workspace = Workspace::new(ctx, workspace_name).await?;
+        let workspace = Workspace::new(ctx, WorkspacePk::generate(), workspace_name).await?;
         let key_pair = KeyPair::new(ctx, "default").await?;
 
-        let user = User::new(ctx, &user_name, &user_email).await?;
+        let user = User::new(ctx, UserPk::generate(), &user_name, &user_email).await?;
         ctx.update_history_actor(HistoryActor::User(user.pk()));
 
         ctx.import_builtins().await?;
@@ -129,8 +136,15 @@ impl Workspace {
         Ok(result)
     }
 
-    pub async fn get_by_pk(ctx: &DalContext, pk: &WorkspacePk) -> WorkspaceResult<Option<Workspace>> {
-        let row = ctx.txns().pg().query_opt(WORKSPACE_GET_BY_PK, &[&pk]).await?;
+    pub async fn get_by_pk(
+        ctx: &DalContext,
+        pk: &WorkspacePk,
+    ) -> WorkspaceResult<Option<Workspace>> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(WORKSPACE_GET_BY_PK, &[&pk])
+            .await?;
         if let Some(row) = row {
             let json: serde_json::Value = row.try_get("object")?;
             Ok(serde_json::from_value(json)?)

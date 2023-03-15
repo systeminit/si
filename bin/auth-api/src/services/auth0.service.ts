@@ -67,7 +67,7 @@ export async function completeAuth0TokenExchange(code: string) {
         headers: { "content-type": "application/x-www-form-urlencoded" },
       },
     );
-    console.log(tokenReq.data);
+    // console.log(tokenReq.data);
     return tokenReq.data.access_token as string;
   }, (err) => {
     // if err is an http error from auth0, it will usually look something like:
@@ -100,7 +100,7 @@ export async function completeAuth0TokenExchange(code: string) {
     // );
     // return profileReq.data;
   }, (err) => {
-    console.log(err);
+    // console.log(err);
     if (!err?.response.data.error_description) throw err;
     throw new ApiError(
       "Conflict",
@@ -146,7 +146,7 @@ export async function completeAuth0TokenExchange(code: string) {
   //   email_verified: false
   // }
 
-  console.log(profile);
+  // console.log(profile);
 
   return { profile, token };
 }

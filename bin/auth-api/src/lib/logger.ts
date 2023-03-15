@@ -121,6 +121,6 @@ export function log(
   }
 }
 
-async function flush() {
-  // TODO: probably want to flush logs before shutdown
-}
+// async function flush() {
+//   // TODO: probably want to flush logs before shutdown
+// }

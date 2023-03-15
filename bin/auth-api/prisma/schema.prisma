@@ -11,24 +11,71 @@ datasource db {
 }
 
 model User {
-  id            Int         @id @default(autoincrement())
+  /// SI's id for the user (ULID)
+  id            String  @id @db.Char(26)
+  /// Auth0's id
+  auth0Id       String  @unique @map("auth0_id")
+  /// raw json blob of Auth0 data
+  auth0Details  Json    @map("auth0_details")
+  /// single name string we can use as label for the user
+  nickname      String
+  /// user's email
   email         String
-  emailVerified Boolean     @default(false)
-  firstName     String?
-  lastName      String?
-  pictureUrl    String?
-  auth0Details  Json
-  Workspace     Workspace[]
+  /// whether email has been verified
+  emailVerified Boolean @default(false) @map("email_verified")
+  /// user's first name
+  firstName     String? @map("first_name")
+  /// user's last name
+  lastName      String? @map("last_name")
+  /// public url to profile photo
+  pictureUrl    String? @map("picture_url")
+
+  /// user's discord username
+  discordUsername String? @map("discord_username")
+  /// user's github username
+  githubUsername  String? @map("github_username")
+
+  /// array of workspaces the user created
+  CreatedWorkspaces Workspace[]
+  TosAgreement      TosAgreement[]
+
+  @@index(fields: [email])
+  @@map("users")
 }
 
 model Workspace {
-  id              Int             @id @default(autoincrement())
-  slug            String
-  name            String
-  creatorUser     User            @relation(fields: [creatorUserId], references: [id])
-  creatorUserId   Int
-  instanceUrl     String
-  instanceEnvType InstanceEnvType
+  /// SI's id for the workspace (ULID)
+  id              String          @id @db.Char(26)
+  /// type of instance (local, private, si sass)
+  instanceEnvType InstanceEnvType @map("instance_env_type")
+  /// url of instance
+  instanceUrl     String?         @map("instance_url")
+  /// label for the workspace
+  displayName     String          @map("display_name")
+
+  /// id of user who created workspace
+  creatorUserId String @map("creator_user_id")
+  /// user who created workspace
+  creatorUser   User   @relation(fields: [creatorUserId], references: [id])
+
+  @@index(fields: [creatorUserId])
+  @@map("workspaces")
+}
+
+model TosAgreement {
+  /// id of agreement - not really used for anything...
+  id           String   @id @db.Char(26)
+  userId       String   @map("user_id")
+  User         User     @relation(fields: [userId], references: [id])
+  /// TOS version ID agreed to (these are sortable to find latest)
+  tosVersionId String   @map("tos_version_id")
+  /// timestamp when they agreed to the TOS
+  timestamp    DateTime
+  /// IP address of user when they agreed
+  ipAddress    String   @map("ip_address")
+
+  @@index(fields: [userId])
+  @@map("tos_agreements")
 }
 
 enum InstanceEnvType {

@@ -1,12 +1,6 @@
 import { defineStore } from "pinia";
 // import storage from "local-storage-fallback"; // drop-in storage polyfill which falls back to cookies/memory
-import { useRouter } from "vue-router";
 import { ApiRequest } from "@si/vue-lib";
-
-// keys we use to store auth tokens in local storage
-const AUTH_LOCAL_STORAGE_KEYS = {
-  USER: "si-auth",
-};
 
 export type UserId = string;
 
@@ -14,6 +8,7 @@ export type UserId = string;
 export type User = {
   id: UserId;
   externalId: string; // auth0 id - based on 3rd party
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   externalDetails?: any; // json blob, just store auth0 details for now
   nickname: string;
   firstName?: string;

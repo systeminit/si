@@ -11,7 +11,6 @@ mod scenario;
 mod schema;
 mod secret;
 mod session;
-mod signup;
 
 pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
     app: Router,
@@ -122,59 +121,6 @@ pub async fn api_request_auth_empty<Res: DeserializeOwned>(
         assert_eq!(status, StatusCode::OK);
     }
     serde_json::from_value(body_json).expect("response is not a valid rust struct")
-}
-
-pub async fn api_request<Req: Serialize, Res: DeserializeOwned>(
-    app: Router,
-    uri: impl AsRef<str>,
-    request: &Req,
-) -> Res {
-    let uri = uri.as_ref();
-    let api_request = Request::builder()
-        .method(Method::POST)
-        .uri(uri)
-        .header(http::header::CONTENT_TYPE, "application/json");
-
-    let api_request = api_request
-        .body(Body::from(
-            serde_json::to_vec(&serde_json::json!(&request)).expect("cannot turn request to json"),
-        ))
-        .expect("cannot create api request");
-    let response = app.oneshot(api_request).await.expect("cannot send request");
-    let status = response.status();
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
-    let body_json: serde_json::Value =
-        serde_json::from_slice(&body).expect("response is not valid json");
-    if status != StatusCode::OK {
-        dbg!(&body_json);
-        assert_eq!(
-            StatusCode::OK, // expected
-            status,         // actual
-        );
-    }
-    serde_json::from_value(body_json).expect("response is not a valid rust struct")
-}
-
-pub async fn api_request_raw<Req: Serialize>(
-    app: Router,
-    uri: impl AsRef<str>,
-    request: &Req,
-) -> (StatusCode, serde_json::Value) {
-    let uri = uri.as_ref();
-    let api_request = Request::builder()
-        .method(Method::POST)
-        .uri(uri)
-        .header(http::header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            serde_json::to_vec(&serde_json::json!(&request)).expect("cannot turn request to json"),
-        ))
-        .expect("cannot create api request");
-    let response = app.oneshot(api_request).await.expect("cannot send request");
-    let status = response.status();
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
-    let body_json: serde_json::Value =
-        serde_json::from_slice(&body).expect("response is not valid json");
-    (status, body_json)
 }
 
 #[macro_export]

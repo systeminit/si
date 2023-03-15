@@ -1,19 +1,23 @@
 <template>
   <div>
-    <h1>Dashboard!</h1>
+    <h2>Auth Dashboard!</h2>
 
     <ul>
       <li v-for="workspace in workspaces" :key="workspace.id">
         {{ workspace.displayName }}
-        <a :href="`${API_HTTP_URL}/workspaces/${workspace.id}/go`">Go</a>
+        <a
+          class="button"
+          :href="`${API_HTTP_URL}/workspaces/${workspace.id}/go`"
+          >Go</a
+        >
       </li>
     </ul>
   </div>
 </template>
 
 <script setup lang="ts">
-import { RouterLink, useRoute, useRouter } from "vue-router";
-import { computed, onBeforeMount, watch } from "vue";
+import { useRouter } from "vue-router";
+import { computed, watch } from "vue";
 import { useAuthStore } from "@/store/auth.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { API_HTTP_URL } from "@/store/api";

@@ -9,11 +9,11 @@ use hyper::StatusCode;
 use si_data_nats::{NatsClient, NatsError};
 use si_data_pg::{PgError, PgPool};
 use si_std::SensitiveString;
-use tower::ServiceBuilder;
 use std::{path::Path, sync::Arc};
 use telemetry::TelemetryClient;
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
+use tower::ServiceBuilder;
 use veritech_client::{Client as VeritechClient, EncryptionKey};
 
 use super::{
@@ -45,12 +45,6 @@ impl ShutdownBroadcast {
 
 #[derive(Clone, Debug)]
 pub struct SignupSecret(Arc<SensitiveString>);
-
-impl SignupSecret {
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
 
 #[must_use]
 #[allow(clippy::too_many_arguments)]
@@ -104,7 +98,6 @@ pub fn routes(
         .nest("/api/diagram", crate::server::service::diagram::routes())
         .nest("/api/secret", crate::server::service::secret::routes())
         .nest("/api/session", crate::server::service::session::routes())
-        .nest("/api/signup", crate::server::service::signup::routes())
         .nest("/api/status", crate::server::service::status::routes())
         .nest(
             "/api/variant_def",
@@ -113,38 +106,22 @@ pub fn routes(
         .nest("/api/workflow", crate::server::service::workflow::routes())
         .nest("/api/ws", crate::server::service::ws::routes());
 
-    // Load test routes if we are in test mode (decided by "opt-level" at the moment).
-    router = test_routes(router);
-
     // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
     router = dev_routes(router);
 
-    router = router
-        .layer(
-            ServiceBuilder::new()
-                .layer(Extension(shared_state))
-                .layer(Extension(services_context))
-                .layer(Extension(telemetry))
-                .layer(Extension(pg_pool))
-                .layer(Extension(nats_conn))
-                .layer(Extension(veritech))
-                .layer(Extension(encryption_key))
-                .layer(Extension(jwt_secret_key))
-                .layer(Extension(signup_secret))
-                .layer(Extension(ShutdownBroadcast(shutdown_broadcast_tx)))
-        );
-    router
-}
-
-#[cfg(debug_assertions)]
-pub fn test_routes(mut router: Router) -> Router {
-    router = router.nest("/api/test", crate::server::service::test::routes());
-    router
-}
-
-#[cfg(not(debug_assertions))]
-pub fn test_routes(router: Router) -> Router {
-    telemetry::prelude::debug!("skipping test routes...");
+    router = router.layer(
+        ServiceBuilder::new()
+            .layer(Extension(shared_state))
+            .layer(Extension(services_context))
+            .layer(Extension(telemetry))
+            .layer(Extension(pg_pool))
+            .layer(Extension(nats_conn))
+            .layer(Extension(veritech))
+            .layer(Extension(encryption_key))
+            .layer(Extension(jwt_secret_key))
+            .layer(Extension(signup_secret))
+            .layer(Extension(ShutdownBroadcast(shutdown_broadcast_tx))),
+    );
     router
 }
 
