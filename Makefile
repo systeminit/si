@@ -44,6 +44,7 @@ COMPONENTS = \
 	bin/pinga \
 	bin/council \
 	bin/sdf \
+	bin/si-discord-bot \
 	bin/veritech \
 	lib/council \
 	lib/bytes-lines-codec \
@@ -69,11 +70,6 @@ COMPONENTS = \
 	lib/veritech-client \
 	lib/veritech-core \
 	lib/veritech-server
-
-# TODO(fnichol): si-discord-bot fails to build and is not a pnpm workspace
-# member. We need to restore clean building of this component, this this entry
-# should be re-inserted into $COMPONENTS above
-#	bin/si-discord-bot \
 
 RELEASEABLE_COMPONENTS = \
 	app/web \
