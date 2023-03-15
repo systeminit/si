@@ -86,7 +86,6 @@ export const useFuncStore = () => {
             label: `${prop.path}${prop.name}`,
             value: prop.propId,
           })),
-      // selectedFunc: (state) => state.openFuncsById[state.selectedFuncId || ""],
       schemaVariantOptions() {
         return componentsStore.schemaVariants.map((sv) => ({
           label: sv.schemaName,
@@ -212,7 +211,7 @@ export const useFuncStore = () => {
           return;
         }
         func.associations.arguments = args;
-        await this.saveUpdatedFunc(funcId);
+        await this.UPDATE_FUNC(this.funcDetailsById[funcId]);
       },
 
       updateFuncCode(funcId: FuncId, code: string) {
@@ -226,15 +225,11 @@ export const useFuncStore = () => {
         // however this should work for now, and lets the store handle this logic
         if (!this.saveQueue[funcId]) {
           this.saveQueue[funcId] = _.debounce(() => {
-            this.saveUpdatedFunc(funcId);
+            this.UPDATE_FUNC(this.funcDetailsById[funcId]);
           }, 2000);
         }
         // call debounced function which will trigger sending the save to the backend
         this.saveQueue[funcId]();
-      },
-      async saveUpdatedFunc(funcId: FuncId) {
-        // saves the latest func state from the store, rather than passing in the new state
-        return this.UPDATE_FUNC(this.funcDetailsById[funcId]);
       },
     },
     onActivated() {
