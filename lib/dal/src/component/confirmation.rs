@@ -205,15 +205,15 @@ impl Component {
         // FIXME(paulo,fletcher,nick,paul): hardcoding 3 minutes timeout to avoid permanently running fixes
         let fixes = Fix::find_by_attr_null(ctx, "finished_at").await?;
         let mut running_fixes = Vec::new();
-        for mut fix in fixes {
+        for fix in fixes {
             if Utc::now().signed_duration_since(fix.timestamp().created_at)
-                > chrono::Duration::minutes(3)
+                < chrono::Duration::minutes(3)
             {
-                fix.set_finished_at(ctx, Some(Utc::now().to_string()))
-                    .await
-                    .map_err(Box::new)?;
-            } else {
                 running_fixes.push(fix);
+                //} else {
+                //    fix.set_finished_at(ctx, Some(Utc::now().to_string()))
+                //        .await
+                //        .map_err(Box::new)?;
             }
         }
 
