@@ -9,8 +9,8 @@ use thiserror::Error;
 use dal::fix::FixError as DalFixError;
 use dal::schema::SchemaError as DalSchemaError;
 use dal::{
-    ComponentError, ComponentId, FixResolverError, FuncBindingReturnValueError, StandardModelError,
-    TransactionsError, UserError, UserPk, WorkflowRunnerError,
+    ComponentError, ComponentId, FixBatchId, FixResolverError, FuncBindingReturnValueError,
+    StandardModelError, TransactionsError, UserError, UserPk, WorkflowRunnerError,
 };
 
 pub mod confirmations;
@@ -39,6 +39,7 @@ pub enum FixError {
     User(#[from] UserError),
     #[error("component {0} not found")]
     ComponentNotFound(ComponentId),
+
     #[error("no schema found for component {0}")]
     NoSchemaForComponent(ComponentId),
     #[error("no schema variant found for component {0}")]

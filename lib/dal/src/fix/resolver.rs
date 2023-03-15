@@ -1,4 +1,7 @@
-use crate::{AttributeValueId, DalContext};
+//! Contains the ability to resolve _current_ fixes, provided by
+//! [`FixResolver`](crate::FixResolver).
+
+use crate::{AttributeValueId, DalContext, FixId};
 use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use telemetry::prelude::*;
@@ -46,6 +49,9 @@ pub struct FixResolver {
     attribute_value_id: AttributeValueId,
     /// The ternary state of a "fix" execution.
     success: Option<bool>,
+    /// Indicates the last [`Fix`](crate::Fix) that was ran corresponding to this
+    /// [`resolver`](Self).
+    last_fix_id: FixId,
 }
 
 impl_standard_model! {
@@ -65,18 +71,20 @@ impl FixResolver {
         workflow_prototype_id: WorkflowPrototypeId,
         attribute_value_id: AttributeValueId,
         success: Option<bool>,
+        last_fix_id: FixId,
     ) -> FixResolverResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM fix_resolver_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM fix_resolver_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.tenancy(),
                     ctx.visibility(),
                     &workflow_prototype_id,
                     &attribute_value_id,
                     &success,
+                    &last_fix_id,
                 ],
             )
             .await?;
@@ -108,6 +116,7 @@ impl FixResolver {
         workflow_prototype_id: WorkflowPrototypeId,
         attribute_value_id: AttributeValueId,
         success: Option<bool>,
+        last_fix_id: FixId,
     ) -> FixResolverResult<Self> {
         if let Some(mut resolver) =
             Self::find_for_confirmation_attribute_value(ctx, attribute_value_id).await?
@@ -116,9 +125,17 @@ impl FixResolver {
                 .set_workflow_prototype_id(ctx, workflow_prototype_id)
                 .await?;
             resolver.set_success(ctx, success).await?;
+            resolver.set_last_fix_id(ctx, last_fix_id).await?;
             Ok(resolver)
         } else {
-            Ok(Self::new(ctx, workflow_prototype_id, attribute_value_id, success).await?)
+            Ok(Self::new(
+                ctx,
+                workflow_prototype_id,
+                attribute_value_id,
+                success,
+                last_fix_id,
+            )
+            .await?)
         }
     }
 
@@ -129,4 +146,5 @@ impl FixResolver {
     );
     standard_model_accessor!(attribute_value_id, Pk(AttributeValueId), FixResolverResult);
     standard_model_accessor!(success, Option<bool>, FixResolverResult);
+    standard_model_accessor!(last_fix_id, Pk(FixId), FixResolverResult);
 }

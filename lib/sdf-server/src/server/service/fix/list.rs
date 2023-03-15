@@ -1,11 +1,14 @@
 use axum::{extract::Query, Json};
 use chrono::Utc;
+use dal::fix::FixError as DalFixError;
+use dal::fix::FixHistoryView;
 use dal::{
     func::backend::js_command::CommandRunResult, schema::SchemaUiMenu,
     workflow_runner::WorkflowRunnerError, AttributeValueId, Component,
     ComponentError as DalComponentError, ComponentId, FixBatch, FixBatchId, FixCompletionStatus,
-    FixId, ResourceView, StandardModel, Visibility,
+    FixId, ResourceView,
 };
+use dal::{StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
@@ -18,22 +21,6 @@ use veritech_client::ResourceStatus;
 pub struct ListFixesRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FixHistoryView {
-    id: FixId,
-    status: FixCompletionStatus,
-    action: String,
-    schema_name: String,
-    component_name: String,
-    component_id: ComponentId,
-    attribute_value_id: AttributeValueId,
-    provider: Option<String>,
-    started_at: Option<String>,
-    finished_at: Option<String>,
-    resource: ResourceView,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -74,60 +61,11 @@ pub async fn list(
 
         let mut fix_views = Vec::new();
         for fix in batch.fixes(&ctx).await? {
-            // Technically WorkflowRunner returns a vec of resources, but we only handle one resource at a time
-            // It's a technical debt we haven't tackled yet, so let's assume it's only one resource
-            let resource = fix
-                .workflow_runner(&ctx)
-                .await?
-                .map(|r| Ok::<_, WorkflowRunnerError>(r.resources()?.pop()))
-                .transpose()?
-                .flatten();
-
-            let resource = if let Some(resource) = resource {
-                resource
-            } else if batch_timedout {
-                CommandRunResult {
-                    status: ResourceStatus::Error,
-                    value: None,
-                    message: Some("Execution timed-out".to_owned()),
-                    // TODO: add propper logs here
-                    logs: vec![],
-                }
-            } else {
-                // Note: at least one resource is required for fixes that finished, but it's not clear
-                // if we want to break this route if the assumption is incorrect or just hide the fix
-                warn!("Fix didn't have any resource: {fix:?}");
-                continue;
-            };
-
-            let component = Component::get_by_id(&ctx, &fix.component_id())
-                .await?
-                .ok_or_else(|| DalComponentError::NotFound(fix.component_id()))?;
-            let schema = component
-                .schema(&ctx)
-                .await?
-                .ok_or_else(|| DalComponentError::NoSchema(fix.component_id()))?;
-            let category = SchemaUiMenu::find_for_schema(&ctx, *schema.id())
-                .await?
-                .map(|um| um.category().to_string());
-
-            fix_views.push(FixHistoryView {
-                id: *fix.id(),
-                status: fix
-                    .completion_status()
-                    .copied()
-                    .unwrap_or(FixCompletionStatus::Failure),
-                action: fix.action().to_owned(),
-                schema_name: schema.name().to_owned(),
-                attribute_value_id: *fix.attribute_value_id(),
-                component_name: component.name(&ctx).await?,
-                component_id: *component.id(),
-                provider: category,
-                resource: ResourceView::new(resource),
-                started_at: fix.started_at().map(|s| s.to_string()),
-                finished_at: fix.finished_at().map(|s| s.to_string()),
-            })
+            if let Some(history_view) = fix.history_view(&ctx).await? {
+                fix_views.push(history_view)
+            }
         }
+
         batch_views.push(BatchHistoryView {
             id: *batch.id(),
             status: completion_status,

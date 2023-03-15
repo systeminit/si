@@ -493,8 +493,8 @@ async fn list_confirmations(mut octx: DalContext) {
         &recommendation.recommended_action  // actual
     );
     assert_eq!(
-        RecommendationStatus::Unstarted, // expected
-        recommendation.status            // actual
+        None,                    // expected
+        recommendation.last_fix  // actual
     );
     assert_eq!(
         RecommendationIsRunnable::Yes, // expected
