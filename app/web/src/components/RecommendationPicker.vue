@@ -108,17 +108,11 @@
           leave-from-class="opacity-100 "
           leave-to-class="opacity-0"
         >
-          <div v-if="recommendations.length === 0" class="absolute top-0 p-4">
-            <img
-              v-if="recommendations.length > 0"
-              src="../assets/images/WhiskersTriumphV1.png"
-              alt="Whiskers the cat, relaxing"
-            />
-            <img
-              v-else
-              src="../assets/images/WhiskersPensiveV1.png"
-              alt="Whiskers the cat, looking at you"
-            />
+          <div
+            v-if="recommendations.length === 0"
+            class="absolute top-0 p-4 italic"
+          >
+            No recommendations are available at this time.
           </div>
         </Transition>
       </div>

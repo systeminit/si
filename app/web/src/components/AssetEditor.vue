@@ -30,18 +30,20 @@
         text="read-only"
       />
     </div>
-    <CodeEditor
-      v-model="editingAsset"
-      json
-      :disabled="assetStore.selectedAsset.variantExists"
-      @change="onChange"
-    >
-      <template #title>
-        <div class="truncate">
-          Code for "{{ assetDisplayName(assetStore.selectedAsset) }}"
-        </div>
-      </template>
-    </CodeEditor>
+    <div class="flex-grow relative overflow-auto">
+      <CodeEditor
+        v-model="editingAsset"
+        json
+        :disabled="assetStore.selectedAsset.variantExists"
+        @change="onChange"
+      >
+        <template #title>
+          <div class="truncate">
+            Code for "{{ assetDisplayName(assetStore.selectedAsset) }}"
+          </div>
+        </template>
+      </CodeEditor>
+    </div>
   </div>
   <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
     <template v-if="assetId">Asset "{{ assetId }}" does not exist!</template>

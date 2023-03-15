@@ -27,12 +27,10 @@
           @click="selectFixBatch(fixBatch.id)"
         >
           <span
-	     v-if="fixBatch.finishedAt"
-	     class="truncate mr-3 whitespace-nowrap"
-	  >
-            <!-- FIXME(nick): change to timestamp once its available in "Date" format. -->
-            <!-- <Timestamp :date="fixBatch.finishedAt" size="long" /> -->
-            <span class="timestamp">{{ fixBatch.finishedAt }}</span>
+            v-if="fixBatch.finishedAt"
+            class="truncate mr-3 whitespace-nowrap"
+          >
+            <Timestamp :date="new Date(fixBatch.finishedAt)" size="long" />
           </span>
         </div>
       </div>
@@ -127,6 +125,7 @@ import { ref, computed } from "vue";
 import { useFixesStore } from "@/store/fixes.store";
 import CodeViewer from "@/components/CodeViewer.vue";
 import HealthIcon from "@/components/HealthIcon.vue";
+import Timestamp from "@/ui-lib/Timestamp.vue";
 
 export interface SortOption {
   value: string;

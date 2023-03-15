@@ -22,11 +22,13 @@
         >
           <template #label>
             <div class="flex flex-row items-center gap-2">
-              <span class="font-bold flex">
+              <span class="font-bold flex flex-row items-center">
                 <Icon
                   v-if="['success', 'failure'].includes(fixBatch.status)"
                   :name="
-                    fixBatch.status === 'success' ? 'check-square' : 'x-square'
+                    fixBatch.status === 'success'
+                      ? 'check-square'
+                      : 'alert-triangle'
                   "
                   :class="
                     fixBatch.status === 'success'
@@ -42,10 +44,9 @@
                     fixBatch.status === 'success'
 		    && fixBatch.fixes.filter((f) => f.status === 'success').length === fixBatch.fixes.length
                   "
-                  class="mt-2"
                   >All fixes succeeded</span
                 >
-                <span v-else class="mt-2"
+                <span v-else
                   >{{
                     fixBatch.fixes.filter((f) => f.status === "success").length
                   }}
@@ -63,7 +64,6 @@
                     themeClasses('text-neutral-700', 'text-neutral-300'),
                   )
                 "
-                class="mt-1"
               >
                 <Timestamp
                   size="mini"

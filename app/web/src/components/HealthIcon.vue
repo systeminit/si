@@ -12,11 +12,7 @@
       class="flex flex-col w-full h-full break-words"
       :title="message.join('\n')"
     >
-      <strong
-        v-for="(singleMessage, index) in message"
-        :key="singleMessage"
-        class="mt-1 ml-1"
-      >
+      <strong v-for="(singleMessage, index) in message" :key="singleMessage">
         {{ singleMessage }}
         <button
           v-if="index === 0 && details.length > 0"
@@ -94,7 +90,10 @@ const icon = computed(() => {
     case ResourceHealth.Warning:
       return { name: "alert-square" as IconNames, class: "text-warning-500" };
     case ResourceHealth.Error:
-      return { name: "x-square" as IconNames, class: "text-destructive-500" };
+      return {
+        name: "alert-triangle" as IconNames,
+        class: "text-destructive-500",
+      };
     case ResourceHealth.Unknown:
     default:
       return { name: "help-circle" as IconNames, class: "text-neutral-300" };

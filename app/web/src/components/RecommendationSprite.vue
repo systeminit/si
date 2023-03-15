@@ -1,7 +1,14 @@
 <template>
   <SiCollapsible
     as="div"
-    class="w-full"
+    :class="
+      clsx(
+        'w-full hover:border-action-500 dark:hover:border-action-300 border border-transparent',
+        selected
+          ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
+          : '',
+      )
+    "
     content-as="ul"
     :default-open="false"
     hide-bottom-border-when-open
@@ -26,13 +33,13 @@
           recommendation.isRunnable === 'running'
         "
         name="loader"
-        :class="clsx('flex-none pl-1', statusIconProps.color)"
+        :class="clsx('flex-none mx-1', statusIconProps.color)"
         size="lg"
       />
       <Icon
         v-else
         :name="statusIconProps.name"
-        :class="clsx('flex-none pl-1', statusIconProps.color)"
+        :class="clsx('flex-none mx-1', statusIconProps.color)"
         size="lg"
       />
     </template>
